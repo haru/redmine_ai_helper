@@ -1,0 +1,97 @@
+fr:
+  project_module_ai_helper: "Assistant IA"
+  label_ai_helper: "Assistant IA"
+  label_chat_placeholder: "Saisissez votre message ici..."
+  label_ai_helper_input_newline: "Appuyez sur Maj + Entrée pour une nouvelle ligne."
+  label_ai_helper_start_new_chat: "Démarrer une nouvelle discussion"
+  ai_helper_summary: "Résumer avec l'Assistant IA"
+  ai_helper_similar_issues: "Trouver des demandes similaires avec l'Assistant IA"
+  ai_helper_find_similar_issues: "Trouver des demandes similaires"
+  ai_helper_similarity: "Similarité"
+  ai_helper_no_similar_issues_found: "Aucune demande similaire trouvée"
+  ai_helper_text_summary_generated_time: "Généré à %{time}"
+  ai_helper_error_occurred: "Une erreur est survenue"
+  permission_view_ai_helper: "Voir l'Assistant IA"
+  label_ai_helper_error: "Erreur"
+  ai_helper:
+    project_health:
+      title: "Rapport de santé du projet"
+      pdf_title: "Rapport de santé du projet"
+      generate_report: "Générer le rapport"
+      generating: "Génération en cours"
+      placeholder: "Cliquez sur 'Générer le rapport' pour analyser les métriques du projet et obtenir des informations."
+      note: "Le rapport analysera les statistiques des demandes, les métriques de temps, la distribution de la charge de travail et fournira des recommandations exploitables."
+      no_report_available: "Aucun rapport de santé disponible pour l'exportation PDF"
+      report_content: "Contenu du rapport de santé"
+    generate_issue_reply:
+      title: "Créer un brouillon de commentaire avec l'Assistant IA"
+      instructions: "Veuillez saisir les points clés ou les instructions pour la réponse."
+      generated_reply: "Notes générées"
+      apply: "Appliquer"
+      copy_to_clipboard: "Copier dans le presse-papiers"
+    generate_sub_issues:
+      title: "Créer des sous-tâches avec l'Assistant IA"
+      instructions: "Veuillez saisir vos instructions."
+      generate_draft: "Générer le brouillon"
+    model_profiles:
+      create_profile_title: "Nouveau profil de modèle"
+      edit_profile_title: "Modifier le profil du modèle"
+      messages:
+        confirm_delete: "Êtes-vous sûr de vouloir supprimer ce profil de modèle ?"
+        must_be_valid_url: "doit être une URL valide"
+    prompts:
+      current_page_info:
+        project_page: "Ceci est la page d'information pour le projet '%{project_name}'."
+        issue_detail_page: "Ceci est la page de détail pour la demande #%{issue_id}.\nSi l'utilisateur se réfère à 'la demande' sans spécifier d'ID ou de nom, il se réfère à cette demande."
+        issue_list_page: "Ceci est la page de la liste des demandes."
+        issue_with_action_page: "Ceci est la page %{action_name} pour la demande."
+        wiki_page: "Ceci est la page Wiki intitulée '%{page_title}'.\nSi l'utilisateur se réfère à 'la page Wiki' ou 'la page' sans spécifier de titre, il se réfère à cette page Wiki."
+        repository_page: "Ceci est la page d'information pour le dépôt '%{repo_name}'. L'ID du dépôt est %{repo_id}."
+        repository_file_page: "Ceci est la page d'information du fichier pour le dépôt. Le chemin du fichier affiché est %{path}. La révision est %{rev}. Le dépôt est '%{repo_name}'. L'ID du dépôt est %{repo_id}."
+        repository_diff:
+          page: "Ceci est la page de comparaison pour le dépôt '%{repo_name}'. L'ID du dépôt est %{repo_id}."
+          rev: "La révision est %{rev}."
+          rev_to: "La révision va de %{rev} à %{rev_to}."
+          path: "Le chemin du fichier est %{path}."
+        repository_revision_page: "Ceci est la page d'information de la révision pour le dépôt '%{repo_name}'. La révision est %{rev}. L'ID du dépôt est %{repo_id}."
+        repository_other_page: "Ceci est la page d'information pour le dépôt."
+        boards:
+          show: "Ceci est la page du forum '%{board_name}'. L'ID du forum est %{board_id}."
+          index: "Ceci est la page de la liste des forums."
+          other: "Ceci est la page du forum."
+        messages:
+          show: "Ceci est la page du message '%{subject}'. L'ID du message est %{message_id}."
+          other: "Ceci est la page du message."
+        versions:
+          show: "Ceci est la page de la version '%{version_name}'. L'ID de la version est %{version_id}."
+          other: "Ceci est la page de la version."
+        other_page: "Ceci est la page %{action_name} pour %{controller_name}."
+      issue_agent:
+        search_answer_instruction: "Pour des tâches telles que la recherche de plusieurs demandes correspondant à certaines conditions, comme 'Trouver les demandes qui remplissent ces conditions' ou 'Montrez-moi les demandes avec ces critères', veuillez retourner l'URL de la recherche de demandes."
+      leader_agent:
+        generate_final_response: "Tous les agents ont terminé leurs tâches. Veuillez créer la réponse finale pour l'utilisateur."
+  activerecord:
+    models:
+      ai_helper_model_profile: "Profil du modèle"
+      ai_helper_setting: "Paramètre de l'Assistant IA"
+    attributes:
+      ai_helper_model_profile:
+        llm_type: "Type"
+        llm_model: "Nom du modèle"
+        access_key: "Clé d'accès"
+        temperature: "Température"
+        organization_id: "ID de l'organisation"
+        base_uri: "URI de base"
+        max_tokens: "Jetons max"
+      ai_helper_setting:
+        model_profile_id: "Profil du modèle"
+        additional_instructions: "Instructions supplémentaires"
+        vector_search_enabled: "Activer la recherche vectorielle"
+        vector_search_uri: "URI"
+        vector_search_api_key: "Clé API"
+        embedding_model: "Modèle d'intégration"
+        dimension: "Dimension"
+      ai_helper_project_setting:
+        issue_draft_instructions: "Instructions pour la génération de commentaires de demande"
+        subtask_instructions: "Instructions pour la génération de sous-tâches"
+        health_report_instructions: "Instructions pour la génération de rapports de santé"
