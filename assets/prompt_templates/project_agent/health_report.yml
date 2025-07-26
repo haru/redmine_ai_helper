@@ -24,8 +24,6 @@ template: |
           - Progress Metrics: Completion rate, progress distribution
           - Team Metrics: Distribution of workload among members, assignment patterns
           - Activity & Communication Metrics: Update frequency, ticket engagement, communication patterns
-          - Documentation & Knowledge Management: Attachment usage, documentation coverage, information sharing practices
-
      3. Provide a structured health report composed of the following sections:
           {report_sections}
 
@@ -35,7 +33,6 @@ template: |
      7. Provide specific insights for all metrics:
           - Update Frequency: Assess project activity, communication effectiveness, and ticket maintenance quality
           - Estimation Accuracy: Evaluate planning reliability, identify patterns in over/under-estimation, suggest improvements
-          - Attachment Analysis: Review documentation practices, identify gaps in knowledge sharing, recommend best practices
      8. Important: Never use placeholder values such as "XX", "[number]", or "[people]". If data is unavailable or zero, do the following:
           - Completely omit that specific metric from the report
           - Clearly state that the data is unavailable (e.g., "No data", "Unavailable")
