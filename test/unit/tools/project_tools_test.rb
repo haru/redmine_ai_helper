@@ -449,4 +449,228 @@ class ProjectToolsTest < ActiveSupport::TestCase
       assert module_info.key?(:name)
     end
   end
+
+  def test_get_metrics_includes_new_priority_a_metrics
+    project = Project.find(1)
+
+    metrics = @provider.get_metrics(project_id: project.id)
+
+    assert metrics.key?(:update_frequency_metrics)
+    assert metrics.key?(:estimation_accuracy_metrics)
+    assert metrics.key?(:attachment_metrics)
+  end
+
+  def test_get_metrics_update_frequency_metrics_structure
+    project = Project.find(1)
+
+    metrics = @provider.get_metrics(project_id: project.id)
+    update_metrics = metrics[:update_frequency_metrics]
+
+    assert update_metrics.key?(:average_updates_per_ticket)
+    assert update_metrics.key?(:total_updates)
+    assert update_metrics.key?(:update_recency_distribution)
+    assert update_metrics.key?(:actively_updated_tickets)
+    assert update_metrics.key?(:active_update_ratio)
+
+    recency_dist = update_metrics[:update_recency_distribution]
+    assert recency_dist.key?(:within_1_week)
+    assert recency_dist.key?(:within_1_month)
+    assert recency_dist.key?(:over_1_month)
+
+    assert update_metrics[:average_updates_per_ticket].is_a?(Numeric)
+    assert update_metrics[:total_updates].is_a?(Integer)
+    assert update_metrics[:actively_updated_tickets].is_a?(Integer)
+    assert update_metrics[:active_update_ratio].is_a?(Numeric)
+  end
+
+  def test_get_metrics_estimation_accuracy_metrics_structure
+    project = Project.find(1)
+
+    metrics = @provider.get_metrics(project_id: project.id)
+    accuracy_metrics = metrics[:estimation_accuracy_metrics]
+
+    assert accuracy_metrics.key?(:accuracy_data_available)
+
+    if accuracy_metrics[:accuracy_data_available]
+      assert accuracy_metrics.key?(:average_accuracy_percentage)
+      assert accuracy_metrics.key?(:estimation_ratios)
+      assert accuracy_metrics.key?(:accuracy_by_tracker)
+      assert accuracy_metrics.key?(:accuracy_by_assignee)
+      assert accuracy_metrics.key?(:total_analyzed_issues)
+
+      estimation_ratios = accuracy_metrics[:estimation_ratios]
+      assert estimation_ratios.key?(:overestimated_count)
+      assert estimation_ratios.key?(:underestimated_count)
+      assert estimation_ratios.key?(:accurate_count)
+      assert estimation_ratios.key?(:overestimated_ratio)
+      assert estimation_ratios.key?(:underestimated_ratio)
+      assert estimation_ratios.key?(:accurate_ratio)
+
+      assert accuracy_metrics[:average_accuracy_percentage].is_a?(Numeric)
+      assert accuracy_metrics[:total_analyzed_issues].is_a?(Integer)
+    else
+      assert_equal false, accuracy_metrics[:accuracy_data_available]
+    end
+  end
+
+  def test_get_metrics_attachment_metrics_structure
+    project = Project.find(1)
+
+    metrics = @provider.get_metrics(project_id: project.id)
+    attachment_metrics = metrics[:attachment_metrics]
+
+    assert attachment_metrics.key?(:attachments_available)
+
+    if attachment_metrics[:attachments_available]
+      assert attachment_metrics.key?(:document_attachment_rate)
+      assert attachment_metrics.key?(:total_attachments)
+      assert attachment_metrics.key?(:average_attachments_per_ticket)
+      assert attachment_metrics.key?(:average_attachments_per_ticket_with_attachments)
+      assert attachment_metrics.key?(:file_type_distribution)
+      assert attachment_metrics.key?(:file_size_statistics)
+
+      file_size_stats = attachment_metrics[:file_size_statistics]
+      assert file_size_stats.key?(:total_size_mb)
+      assert file_size_stats.key?(:average_size_kb)
+      assert file_size_stats.key?(:large_files_count)
+      assert file_size_stats.key?(:large_files_ratio)
+
+      assert attachment_metrics[:document_attachment_rate].is_a?(Numeric)
+      assert attachment_metrics[:total_attachments].is_a?(Integer)
+      assert attachment_metrics[:average_attachments_per_ticket].is_a?(Numeric)
+      assert attachment_metrics[:file_type_distribution].is_a?(Hash)
+    else
+      assert_equal false, attachment_metrics[:attachments_available]
+    end
+  end
+
+  def test_get_metrics_update_frequency_with_test_data
+    project = Project.find(1)
+    issue = project.issues.first
+
+    original_journal_count = issue.journals.count
+
+    journal1 = Journal.new(
+      journalized: issue,
+      user: User.find(1),
+      notes: "Test update 1",
+      created_on: 5.days.ago,
+    )
+    journal1.save!
+
+    journal2 = Journal.new(
+      journalized: issue,
+      user: User.find(1),
+      notes: "Test update 2",
+      created_on: 2.days.ago,
+    )
+    journal2.save!
+
+    issue.reload
+
+    metrics = @provider.get_metrics(project_id: project.id)
+    update_metrics = metrics[:update_frequency_metrics]
+
+    assert update_metrics[:total_updates] >= original_journal_count + 2
+    assert update_metrics[:average_updates_per_ticket] > 0
+    assert update_metrics[:actively_updated_tickets] >= 1
+
+    journal1.destroy
+    journal2.destroy
+  end
+
+  def test_get_metrics_estimation_accuracy_with_test_data
+    project = Project.find(1)
+    issue = project.issues.first
+
+    issue.update!(estimated_hours: 10.0)
+
+    time_entry = TimeEntry.new(
+      project: project,
+      issue: issue,
+      user: User.find(1),
+      activity: TimeEntryActivity.first,
+      hours: 12.0,
+      spent_on: Date.current,
+    )
+    time_entry.save!
+
+    metrics = @provider.get_metrics(project_id: project.id)
+    accuracy_metrics = metrics[:estimation_accuracy_metrics]
+
+    if accuracy_metrics[:accuracy_data_available]
+      assert accuracy_metrics[:total_analyzed_issues] >= 1
+      assert accuracy_metrics[:average_accuracy_percentage] > 0
+      assert accuracy_metrics[:estimation_ratios][:underestimated_count] >= 1
+    end
+
+    time_entry.destroy
+    issue.update!(estimated_hours: nil)
+  end
+
+  def test_get_metrics_attachment_with_test_data
+    project = Project.find(1)
+    issue = project.issues.first
+
+    attachment = Attachment.new(
+      container: issue,
+      file: StringIO.new("test content"),
+      filename: "test_document.pdf",
+      author: User.find(1),
+      filesize: 5000,
+      content_type: "application/pdf",
+    )
+    attachment.save!
+
+    metrics = @provider.get_metrics(project_id: project.id)
+    attachment_metrics = metrics[:attachment_metrics]
+
+    if attachment_metrics[:attachments_available]
+      assert attachment_metrics[:total_attachments] >= 1
+      assert attachment_metrics[:document_attachment_rate] > 0
+      assert attachment_metrics[:file_type_distribution]["PDF"] >= 1 if attachment_metrics[:file_type_distribution]["PDF"]
+      assert attachment_metrics[:file_size_statistics][:total_size_mb] > 0
+    end
+
+    attachment.destroy
+  end
+
+  def test_get_metrics_update_frequency_edge_cases
+    project = Project.find(1)
+
+    metrics = @provider.get_metrics(project_id: project.id)
+    update_metrics = metrics[:update_frequency_metrics]
+
+    assert update_metrics[:average_updates_per_ticket] >= 0
+    assert update_metrics[:total_updates] >= 0
+    assert update_metrics[:active_update_ratio] >= 0
+    assert update_metrics[:active_update_ratio] <= 100
+  end
+
+  def test_get_metrics_estimation_accuracy_no_data
+    project = Project.find(1)
+    
+    project.issues.each do |issue|
+      issue.update!(estimated_hours: nil)
+      issue.time_entries.destroy_all
+    end
+
+    metrics = @provider.get_metrics(project_id: project.id)
+    accuracy_metrics = metrics[:estimation_accuracy_metrics]
+
+    assert_equal false, accuracy_metrics[:accuracy_data_available]
+  end
+
+  def test_get_metrics_attachment_no_data
+    project = Project.find(1)
+    
+    project.issues.each do |issue|
+      issue.attachments.destroy_all
+    end
+
+    metrics = @provider.get_metrics(project_id: project.id)
+    attachment_metrics = metrics[:attachment_metrics]
+
+    assert_equal false, attachment_metrics[:attachments_available]
+  end
 end

@@ -19,24 +19,27 @@ template: |
      2. Analyze the metrics data from multiple perspectives:
           - Issue Statistics: Total number of issues, open/closed ratio, distribution by priority/tracker/status
           - Timing Metrics: Resolution time, overdue issues, delivery performance
-          - Workload Metrics: Estimation accuracy, resource utilization rate, time management
+          - Workload & Estimation Metrics: Estimation accuracy by tracker/assignee, resource utilization, time management, estimation reliability
           - Quality Metrics: Bug ratio, reopened issues, quality indicators
           - Progress Metrics: Completion rate, progress distribution
           - Team Metrics: Distribution of workload among members, assignment patterns
-
+          - Activity & Communication Metrics: Update frequency, ticket engagement, communication patterns
      3. Provide a structured health report composed of the following sections:
           {report_sections}
 
      4. Use clear and actionable language, and provide specific data points to support your analysis.
      5. Highlight both positive outcomes and areas needing improvement.
      6. Ensure that recommendations are practical and implementable within the Redmine environment.
-     7. Important: Never use placeholder values such as "XX", "[number]", or "[people]". If data is unavailable or zero, do the following:
+     7. Provide specific insights for all metrics:
+          - Update Frequency: Assess project activity, communication effectiveness, and ticket maintenance quality
+          - Estimation Accuracy: Evaluate planning reliability, identify patterns in over/under-estimation, suggest improvements
+     8. Important: Never use placeholder values such as "XX", "[number]", or "[people]". If data is unavailable or zero, do the following:
           - Completely omit that specific metric from the report
           - Clearly state that the data is unavailable (e.g., "No data", "Unavailable")
           - Use actual zero values where appropriate (e.g., "0 items", "0%")
-     8. Include metrics and sections only if actual numerical data is available.
-     9. {focus_guidance}
-     10. Create a summary table of the statistics.
+     9. Include metrics and sections only if actual numerical data is available.
+     10. {focus_guidance}
+     11. Create a comprehensive summary table that includes all metrics insights.
 
      To enhance readability, format your response as a report using *hierarchical and clearly marked Markdown sections*.
      Use bullet points, numbered lists, and tables as needed to organize information.

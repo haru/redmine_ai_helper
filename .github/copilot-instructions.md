@@ -4,4 +4,4 @@ Text and messages displayed on the screen must support i18n (internationalizatio
 
 Please write test code using shoulda.
 
-Please write commit messages in English.
+Please write Git commit messages in English.

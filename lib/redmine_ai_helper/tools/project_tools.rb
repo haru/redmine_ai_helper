@@ -218,7 +218,7 @@ module RedmineAiHelper
 
           # Limit the number of issues to prevent memory issues and long processing times
           # For health reports, we typically don't need more than 10,000 issues for meaningful analysis
-          issues = issues_scope.includes(:status, :priority, :tracker, :assigned_to, :author, :fixed_version, :time_entries).limit(10000)
+          issues = issues_scope.includes(:status, :priority, :tracker, :assigned_to, :author, :fixed_version, :time_entries, :journals, :attachments).limit(10000)
 
           metrics = {
             project_info: {
@@ -239,6 +239,9 @@ module RedmineAiHelper
             quality_metrics: calculate_quality_metrics(issues),
             progress_metrics: calculate_progress_metrics(issues),
             member_metrics: calculate_member_metrics(issues),
+            update_frequency_metrics: calculate_update_frequency_metrics(issues),
+            estimation_accuracy_metrics: calculate_estimation_accuracy_metrics(issues),
+            attachment_metrics: calculate_attachment_metrics(issues),
             issue_list: extract_issue_list(issues),
           }
 
@@ -439,6 +442,156 @@ module RedmineAiHelper
             done_ratio: issue.done_ratio,
           }
         end
+      end
+
+      def calculate_update_frequency_metrics(issues)
+        issue_list = issues.to_a
+        now = Time.current
+
+        update_stats = issue_list.map do |issue|
+          journal_count = issue.journals.count
+          last_update = issue.updated_on
+          days_since_update = last_update ? ((now - last_update) / 1.day).to_i : nil
+
+          {
+            issue_id: issue.id,
+            update_count: journal_count,
+            days_since_last_update: days_since_update,
+          }
+        end
+
+        total_updates = update_stats.sum { |s| s[:update_count] }
+        average_updates = issue_list.count > 0 ? (total_updates.to_f / issue_list.count).round(2) : 0
+
+        within_week = update_stats.count { |s| s[:days_since_last_update] && s[:days_since_last_update] <= 7 }
+        within_month = update_stats.count { |s| s[:days_since_last_update] && s[:days_since_last_update] <= 30 }
+        over_month = update_stats.count { |s| s[:days_since_last_update] && s[:days_since_last_update] > 30 }
+
+        actively_updated = update_stats.count { |s| s[:days_since_last_update] && s[:days_since_last_update] <= 14 }
+
+        {
+          average_updates_per_ticket: average_updates,
+          total_updates: total_updates,
+          update_recency_distribution: {
+            within_1_week: within_week,
+            within_1_month: within_month,
+            over_1_month: over_month,
+          },
+          actively_updated_tickets: actively_updated,
+          active_update_ratio: issue_list.count > 0 ? (actively_updated.to_f / issue_list.count * 100).round(2) : 0,
+        }
+      end
+
+      def calculate_estimation_accuracy_metrics(issues)
+        issue_list = issues.to_a
+
+        issues_with_both = issue_list.select do |issue|
+          estimated = issue.estimated_hours
+          spent = issue.time_entries.sum(&:hours)
+          estimated && estimated > 0 && spent > 0
+        end
+
+        return { accuracy_data_available: false } if issues_with_both.empty?
+
+        accuracy_data = issues_with_both.map do |issue|
+          estimated = issue.estimated_hours
+          spent = issue.time_entries.sum(&:hours)
+          accuracy = (spent / estimated * 100).round(2)
+          variance = ((spent - estimated) / estimated * 100).round(2)
+
+          {
+            issue_id: issue.id,
+            estimated_hours: estimated,
+            spent_hours: spent,
+            accuracy_percentage: accuracy,
+            variance_percentage: variance,
+            tracker: issue.tracker&.name,
+            assignee: issue.assigned_to&.name,
+          }
+        end
+
+        total_accuracy = accuracy_data.sum { |d| d[:accuracy_percentage] } / accuracy_data.size
+        overestimated = accuracy_data.count { |d| d[:variance_percentage] < -10 }
+        underestimated = accuracy_data.count { |d| d[:variance_percentage] > 10 }
+        accurate = accuracy_data.count { |d| d[:variance_percentage].abs <= 10 }
+
+        by_tracker = accuracy_data.group_by { |d| d[:tracker] }.transform_values do |tracker_data|
+          avg_accuracy = tracker_data.sum { |d| d[:accuracy_percentage] } / tracker_data.size
+          {
+            count: tracker_data.size,
+            average_accuracy: avg_accuracy.round(2),
+          }
+        end
+
+        by_assignee = accuracy_data.group_by { |d| d[:assignee] }.compact.transform_values do |assignee_data|
+          avg_accuracy = assignee_data.sum { |d| d[:accuracy_percentage] } / assignee_data.size
+          {
+            count: assignee_data.size,
+            average_accuracy: avg_accuracy.round(2),
+          }
+        end
+
+        {
+          accuracy_data_available: true,
+          average_accuracy_percentage: total_accuracy.round(2),
+          estimation_ratios: {
+            overestimated_count: overestimated,
+            underestimated_count: underestimated,
+            accurate_count: accurate,
+            overestimated_ratio: (overestimated.to_f / accuracy_data.size * 100).round(2),
+            underestimated_ratio: (underestimated.to_f / accuracy_data.size * 100).round(2),
+            accurate_ratio: (accurate.to_f / accuracy_data.size * 100).round(2),
+          },
+          accuracy_by_tracker: by_tracker,
+          accuracy_by_assignee: by_assignee,
+          total_analyzed_issues: accuracy_data.size,
+        }
+      end
+
+      def calculate_attachment_metrics(issues)
+        issue_list = issues.to_a
+
+        issues_with_attachments = issue_list.select { |issue| issue.attachments.any? }
+        total_attachments = issue_list.sum { |issue| issue.attachments.count }
+
+        return { attachments_available: false } if total_attachments == 0
+
+        all_attachments = issue_list.flat_map(&:attachments)
+        total_size_bytes = all_attachments.sum(&:filesize)
+        average_size_bytes = total_size_bytes / all_attachments.count
+
+        file_type_stats = all_attachments.group_by do |attachment|
+          extension = File.extname(attachment.filename).downcase
+          case extension
+          when ".pdf"
+            "PDF"
+          when ".doc", ".docx", ".odt", ".rtf", ".txt"
+            "Document"
+          when ".xls", ".xlsx", ".ods", ".csv"
+            "Spreadsheet"
+          when ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg"
+            "Image"
+          else
+            "Other"
+          end
+        end.transform_values(&:count)
+
+        large_files = all_attachments.select { |att| att.filesize > 10.megabytes }
+
+        {
+          attachments_available: true,
+          document_attachment_rate: issue_list.count > 0 ? (issues_with_attachments.count.to_f / issue_list.count * 100).round(2) : 0,
+          total_attachments: total_attachments,
+          average_attachments_per_ticket: issue_list.count > 0 ? (total_attachments.to_f / issue_list.count).round(2) : 0,
+          average_attachments_per_ticket_with_attachments: issues_with_attachments.count > 0 ? (total_attachments.to_f / issues_with_attachments.count).round(2) : 0,
+          file_type_distribution: file_type_stats,
+          file_size_statistics: {
+            total_size_mb: (total_size_bytes.to_f / 1.megabyte).round(2),
+            average_size_kb: (average_size_bytes.to_f / 1.kilobyte).round(2),
+            large_files_count: large_files.count,
+            large_files_ratio: (large_files.count.to_f / all_attachments.count * 100).round(2),
+          },
+        }
       end
     end
   end
