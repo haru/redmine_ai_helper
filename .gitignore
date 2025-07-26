@@ -72,3 +72,4 @@ config/config.yaml
 .devcontainer/weaviate_data/*
 .devcontainer/qdrant/*
 .claude/settings.local.json
+GEMINI.md
