@@ -11,27 +11,24 @@ class TransportTest < ActiveSupport::TestCase
 
   def test_create_stdio_transport
     config = { 'transport' => 'stdio', 'command' => 'node', 'args' => ['server.js'] }
-    transport = RedmineAiHelper::Transport.create(config)
-    
-    assert_not_nil transport
-    assert_instance_of RedmineAiHelper::Transport::StdioTransport, transport
+    assert_raises(NotImplementedError) do
+      RedmineAiHelper::Transport.create(config)
+    end
   end
 
   def test_create_http_transport
     config = { 'transport' => 'http', 'url' => 'http://localhost:3000' }
-    transport = RedmineAiHelper::Transport.create(config)
-    
-    assert_not_nil transport
-    assert_instance_of RedmineAiHelper::Transport::HttpSseTransport, transport
+    assert_raises(NotImplementedError) do
+      RedmineAiHelper::Transport.create(config)
+    end
   end
 
   def test_create_with_legacy_config
     # Legacy stdio config without explicit transport type
     stdio_config = { 'command' => 'node', 'args' => ['server.js'] }
-    transport = RedmineAiHelper::Transport.create(stdio_config)
-    
-    assert_not_nil transport
-    assert_instance_of RedmineAiHelper::Transport::StdioTransport, transport
+    assert_raises(NotImplementedError) do
+      RedmineAiHelper::Transport.create(stdio_config)
+    end
   end
 
   def test_valid_config_stdio
@@ -75,7 +72,7 @@ class TransportTest < ActiveSupport::TestCase
 
   def test_create_with_unsupported_transport
     config = { 'transport' => 'unsupported' }
-    assert_raises(ArgumentError) do
+    assert_raises(NotImplementedError) do
       RedmineAiHelper::Transport.create(config)
     end
   end

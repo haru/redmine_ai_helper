@@ -2,39 +2,30 @@
 
 module RedmineAiHelper
   module Transport
-    # Transport module provides MCP (Model Context Protocol) transport abstraction
-    # Supports both STDIO and HTTP+SSE transports
+    # Transport module is now deprecated - replaced by ruby-mcp-client gem
+    # This module is kept for backward compatibility only
     
-    # Autoload transport classes to avoid circular dependencies
-    autoload :BaseTransport, 'redmine_ai_helper/transport/base_transport'
-    autoload :StdioTransport, 'redmine_ai_helper/transport/stdio_transport'
-    autoload :HttpSseTransport, 'redmine_ai_helper/transport/http_sse_transport'
-    autoload :TransportFactory, 'redmine_ai_helper/transport/transport_factory'
-    
-    # Get list of available transport types
+    # @deprecated Use ruby-mcp-client gem instead
     def self.available_transports
-      TransportFactory.supported_transports
+      %w[stdio http sse streamable_http]
     end
     
-    # Create transport instance from configuration
-    # @param config [Hash] Transport configuration
-    # @return [BaseTransport] Transport instance
+    # @deprecated Use ruby-mcp-client gem instead  
     def self.create(config)
-      TransportFactory.create(config)
+      raise NotImplementedError, "Transport layer replaced by ruby-mcp-client gem. Use MCPClient.create_client instead."
     end
     
-    # Validate transport configuration
-    # @param config [Hash] Configuration to validate
-    # @return [Boolean] True if valid
+    # @deprecated Use ruby-mcp-client gem instead
     def self.valid_config?(config)
-      TransportFactory.valid_config?(config)
+      return false unless config.is_a?(Hash)
+      !!(config['command'] || config['url'])
     end
     
-    # Determine transport type from configuration
-    # @param config [Hash] Configuration
-    # @return [String] Transport type
+    # @deprecated Use ruby-mcp-client gem instead
     def self.determine_type(config)
-      TransportFactory.determine_transport_type(config)
+      return 'stdio' if config['command'] || config['args']
+      return 'http' if config['url']
+      'stdio'
     end
   end
 end

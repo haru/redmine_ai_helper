@@ -1,6 +1,14 @@
 require File.expand_path("../../../test_helper", __FILE__)
 require "redmine_ai_helper/tools/mcp_tools"
 
+# Mock MCPClient constant for tests
+class MCPClient
+  def self.create_client(*args); end
+  def self.stdio_config(*args); end  
+  def self.http_config(*args); end
+  def self.sse_config(*args); end
+end
+
 class RedmineAiHelper::Tools::McpToolsSimplifiedTest < ActiveSupport::TestCase
   context "McpTools basic functionality" do
     should "return empty command array" do
@@ -43,8 +51,16 @@ class RedmineAiHelper::Tools::McpToolsSimplifiedTest < ActiveSupport::TestCase
 
   context "class generation with mocked transport" do
     setup do
-      # Mock all transport and communication methods
-      RedmineAiHelper::Transport::TransportFactory.stubs(:create).returns(mock('transport'))
+      # Mock the require statement to prevent loading the real gem
+      Kernel.stubs(:require).with('mcp_client').returns(true)
+      
+      # Mock ruby-mcp-client
+      mock_client = mock('mcp_client')
+      mock_client.stubs(:list_tools).returns([])
+      mock_client.stubs(:cleanup)
+      ::MCPClient.stubs(:create_client).returns(mock_client)
+      ::MCPClient.stubs(:stdio_config).returns({type: 'stdio'})
+      ::MCPClient.stubs(:http_config).returns({type: 'http'})
     end
 
     should "generate tool class with correct name without server communication" do

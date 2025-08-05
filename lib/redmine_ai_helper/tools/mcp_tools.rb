@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 require "redmine_ai_helper/base_tools"
 require "redmine_ai_helper/util/langchain_patch"
-require "redmine_ai_helper/transport/transport_factory"
 
 module RedmineAiHelper
   module Tools
@@ -17,7 +16,7 @@ module RedmineAiHelper
       class << self
 
         # Generate tool classes based on the definition JSON from the MCP server
-        # The JSON format supports both STDIO and HTTP transports (auto-detected):
+        # The JSON format supports both STDIO and HTTP transports using ruby-mcp-client:
         # STDIO format (detected by presence of 'command' or 'args'):
         # {
         #     "command": "npx",
@@ -45,11 +44,61 @@ module RedmineAiHelper
                            Class.new(RedmineAiHelper::Tools::McpTools) do
             @mcp_server_json = json
             @mcp_server_json.freeze
-            @transport = nil
+            @mcp_client = nil
             @mcp_server_call_counter = 0
             
-            def self.transport
-              @transport ||= RedmineAiHelper::Transport::TransportFactory.create(@mcp_server_json)
+            def self.mcp_client
+              return @mcp_client if @mcp_client
+              
+              begin
+                require 'mcp_client'
+                
+                # Convert configuration to ruby-mcp-client format
+                config = convert_config_for_mcp_client(@mcp_server_json)
+                
+                @mcp_client = ::MCPClient.create_client(
+                  mcp_server_configs: [config],
+                  logger: Rails.logger
+                )
+                
+                @mcp_client
+              rescue => e
+                Rails.logger.error "Failed to create MCP client: #{e.message}"
+                raise
+              end
+            end
+
+            # Convert legacy config format to ruby-mcp-client format
+            def self.convert_config_for_mcp_client(json)
+              if json['url']
+                # HTTP/SSE transport
+                if json['url'].include?('/sse')
+                  ::MCPClient.sse_config(
+                    base_url: json['url'],
+                    headers: json['headers'] || {},
+                    read_timeout: json['timeout'] || 30,
+                    name: name.downcase
+                  )
+                else
+                  ::MCPClient.http_config(
+                    base_url: json['url'],
+                    headers: json['headers'] || {},
+                    read_timeout: json['timeout'] || 30,
+                    name: name.downcase
+                  )
+                end
+              else
+                # STDIO transport
+                command_parts = []
+                command_parts << json['command'] if json['command']
+                command_parts += json['args'] if json['args']
+                
+                ::MCPClient.stdio_config(
+                  command: command_parts,
+                  env: json['env'] || {},
+                  name: name.downcase
+                )
+              end
             end
 
             # Backward compatibility methods (existing code may depend on these)
@@ -65,15 +114,63 @@ module RedmineAiHelper
               @mcp_server_json["env"] || {}
             end
 
-            # Close the transport
+            # Close the MCP client
             def self.close_transport
-              @transport&.close
-              @transport = nil
+              @mcp_client&.cleanup
+              @mcp_client = nil
             end
 
-            # Send MCP request using the configured transport
+            # Send MCP request using ruby-mcp-client
             def self.send_mcp_request(message)
-              transport.send_request(message)
+              method_name = message['method']
+              params = message['params'] || {}
+              
+              case method_name
+              when 'tools/list'
+                tools = mcp_client.list_tools
+                {
+                  'jsonrpc' => '2.0',
+                  'id' => message['id'],
+                  'result' => {
+                    'tools' => tools.map do |tool|
+                      {
+                        'name' => tool.name,
+                        'description' => tool.description,
+                        'inputSchema' => tool.schema || {}
+                      }
+                    end
+                  }
+                }
+              when 'tools/call'
+                tool_name = params['name']
+                arguments = params['arguments'] || {}
+                
+                result = mcp_client.call_tool(tool_name, arguments)
+                
+                {
+                  'jsonrpc' => '2.0',
+                  'id' => message['id'],
+                  'result' => {
+                    'content' => [
+                      {
+                        'type' => 'text',
+                        'text' => result.to_s
+                      }
+                    ]
+                  }
+                }
+              else
+                raise NotImplementedError, "Unsupported method: #{method_name}"
+              end
+            rescue => e
+              {
+                'jsonrpc' => '2.0',
+                'id' => message['id'],
+                'error' => {
+                  'code' => -1,
+                  'message' => e.message
+                }
+              }
             end
           end)
           klass = Object.const_get(class_name)
@@ -119,11 +216,11 @@ module RedmineAiHelper
           response.to_json
         end
 
-        # Sends a request to the MCP server using the configured transport.
+        # Sends a request to the MCP server using ruby-mcp-client.
         # @param message [Hash] The JSON-RPC message to send.
         # @return [Hash] The response from the MCP server.
         def send_mcp_request(message)
-          # This method should be overridden in generated subclasses to use their transport
+          # This method should be overridden in generated subclasses to use their mcp_client
           raise NotImplementedError, "send_mcp_request must be implemented in generated subclass"
         end
 
