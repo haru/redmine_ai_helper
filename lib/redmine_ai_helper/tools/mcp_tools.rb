@@ -53,13 +53,11 @@ module RedmineAiHelper
               begin
                 require 'mcp_client'
                 
-                # Convert configuration to ruby-mcp-client format
-                config = convert_config_for_mcp_client(@mcp_server_json)
+                # Use server_definition_file to load config directly
+                config_path = '/usr/local/redmine/config/ai_helper/config.json'
                 
-                # Create a standard Logger to avoid Rails tagged logging issues
-                # Use nil logger to disable logging for now since it's causing compatibility issues
                 @mcp_client = ::MCPClient.create_client(
-                  mcp_server_configs: [config],
+                  server_definition_file: config_path,
                   logger: nil
                 )
                 
@@ -67,46 +65,6 @@ module RedmineAiHelper
               rescue => e
                 Rails.logger.error "Failed to create MCP client: #{e.message}"
                 raise
-              end
-            end
-
-            # Convert standard config format to ruby-mcp-client format
-            def self.convert_config_for_mcp_client(json)
-              # Only support ruby-mcp-client standard format with explicit type
-              unless json['type']
-                raise ArgumentError, "MCP server configuration must include 'type' field. Supported types: 'http', 'sse', 'stdio'"
-              end
-
-              case json['type']
-              when 'http'
-                headers = json['headers'] || {}
-                ::MCPClient.http_config(
-                  base_url: json['url'],
-                  endpoint: json['endpoint'] || '/rpc',
-                  headers: headers,
-                  read_timeout: json['read_timeout'] || json['timeout'] || 30,
-                  name: name.downcase
-                )
-              when 'sse'
-                headers = json['headers'] || {}
-                ::MCPClient.sse_config(
-                  base_url: json['url'],
-                  headers: headers,
-                  read_timeout: json['read_timeout'] || json['timeout'] || 30,
-                  name: name.downcase
-                )
-              when 'stdio'
-                command_parts = []
-                command_parts << json['command'] if json['command']
-                command_parts += json['args'] if json['args']
-                
-                ::MCPClient.stdio_config(
-                  command: command_parts,
-                  env: json['env'] || {},
-                  name: name.downcase
-                )
-              else
-                raise ArgumentError, "Unsupported MCP server type: #{json['type']}. Supported types: 'http', 'sse', 'stdio'"
               end
             end
 

@@ -146,25 +146,34 @@ Reference: https://github.com/modelcontextprotocol/servers
 The AI Helper Plugin can use the MCP Server to perform tasks, such as sending issue summaries to Slack.
 
 1. Create `config/ai_helper/config.json` under the root directory of Redmine.
-2. Configure the MCP server as follows (example for Slack and GitHub):
+2. Configure the MCP server as follows (example for Slack, GitHub, and Context7):
    ```json
    {
       "mcpServers": {
          "slack": {
+            "type": "stdio",
             "command": "npx",
             "args": [
-            "-y",
-            "@modelcontextprotocol/server-slack"
+               "-y",
+               "@modelcontextprotocol/server-slack"
             ],
             "env": {
-            "SLACK_BOT_TOKEN": "xoxb-your-bot-token",
-            "SLACK_TEAM_ID": "T01234567"
+               "SLACK_BOT_TOKEN": "xoxb-your-bot-token",
+               "SLACK_TEAM_ID": "T01234567"
             }
          },
          "github": {
+            "type": "http",
             "url": "https://api.githubcopilot.com/mcp/",
-            "authorization_token": "Bearer github_pat_xxxxxxxxxxxxxxx"
-        },
+            "headers": {
+               "Authorization": "Bearer github_pat_xxxxxxxxxxxxxxx"
+            }
+         },
+         "context7": {
+            "type": "sse",
+            "url": "https://mcp.context7.com",
+            "endpoint": "/sse"
+         }
       }
    }
    ```
