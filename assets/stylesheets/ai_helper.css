@@ -1,5 +1,5 @@
 #aihelper-chat-submit {
-  /* 右寄せ */
+  /* Right aligned */
   float: right;
 }
 
@@ -8,7 +8,7 @@
 }
 
 #aihelper-chat-conversation {
-  /* チャットのスクロール */
+  /* Chat scrollable area */
   overflow-y: auto;
   max-height: 500px;
   padding: 5px;
@@ -72,7 +72,7 @@
   display: inline-block;
   z-index: 2;
   width: fit-content;
-  /* ハンバーガーメニューの幅を内容に合わせる */
+  /* Adjust hamburger menu width to content */
   vertical-align: middle;
   border-radius: 3px;
   border: 1px solid #ccc;
@@ -140,7 +140,7 @@ span.aihelper-title {
   display: inline-block;
   vertical-align: middle;
   margin-left: 5px;
-  /* 必要に応じて調整 */
+  /* Adjust as needed */
   font-size: 0.875rem;
   /* color: #555; */
   font-weight: bold;

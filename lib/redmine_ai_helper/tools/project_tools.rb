@@ -187,7 +187,7 @@ module RedmineAiHelper
           }
         end
         json = { "activities": list }
-        ToolResponse.create_success json # TODO: jsonだけ返せば良い？
+        ToolResponse.create_success json # TODO: Should just return json?
       end
 
       define_function :get_metrics, description: "REQUIRED FIRST STEP: Get comprehensive project health metrics for a specific project. You MUST call this function BEFORE generating any project health report. Returns essential raw data including issue statistics, timing metrics, workload distribution, quality metrics, progress metrics, and team metrics that are absolutely necessary for accurate health analysis." do
