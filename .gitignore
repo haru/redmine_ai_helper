@@ -73,3 +73,5 @@ config/config.yaml
 .devcontainer/qdrant/*
 .claude/settings.local.json
 GEMINI.md
+.serena/cache/
+.serena/cache/

@@ -1,11 +1,22 @@
 require File.expand_path("../../../test_helper", __FILE__)
 require "redmine_ai_helper/tools/mcp_tools"
 
+# Mock MCPClient constant for tests
+class MCPClient
+  def self.create_client(*args); end
+  def self.stdio_config(*args); end  
+  def self.http_config(*args); end
+  def self.sse_config(*args); end
+end
+
 class RedmineAiHelper::Tools::McpToolsComprehensiveTest < ActiveSupport::TestCase
   context "McpTools comprehensive coverage" do
     setup do
       # Reset counter and clean up any existing constants
       RedmineAiHelper::Tools::McpTools.instance_variable_set(:@mcp_server_call_counter, 0)
+      
+      # Mock the require statement to prevent loading the real gem
+      Kernel.stubs(:require).with('mcp_client').returns(true)
     end
 
     teardown do
@@ -21,8 +32,13 @@ class RedmineAiHelper::Tools::McpToolsComprehensiveTest < ActiveSupport::TestCas
         
         # Mock the load_from_mcp_server to prevent actual MCP communication
         RedmineAiHelper::Tools::McpTools.stubs(:load_from_mcp_server).returns(nil)
-        mock_transport = mock('transport')
-        RedmineAiHelper::Transport::TransportFactory.stubs(:create).returns(mock_transport)
+        
+        # Mock ruby-mcp-client
+        mock_client = mock('mcp_client')
+        mock_client.stubs(:list_tools).returns([])
+        mock_client.stubs(:cleanup)
+        ::MCPClient.stubs(:create_client).returns(mock_client)
+        ::MCPClient.stubs(:stdio_config).returns({type: 'stdio'})
         
         klass = nil
         assert_nothing_raised do
@@ -39,18 +55,24 @@ class RedmineAiHelper::Tools::McpToolsComprehensiveTest < ActiveSupport::TestCas
       should "handle transport creation and method delegation" do
         json = { "command" => "node", "args" => ["server.js"], "env" => { "NODE_ENV" => "test" } }
         
-        mock_transport = mock('transport')
-        mock_transport.stubs(:send_request).returns({ "result" => "success" })
-        RedmineAiHelper::Transport::TransportFactory.expects(:create).with(json).returns(mock_transport)
-        
         # Mock load_from_mcp_server to avoid actual MCP calls
         RedmineAiHelper::Tools::McpTools.stubs(:load_from_mcp_server).returns(nil)
         
         klass = RedmineAiHelper::Tools::McpTools.generate_tool_class(name: "transport_test", json: json)
         
-        # Test transport method
-        transport = klass.transport
-        assert_not_nil transport
+        # Mock the mcp_client method on the generated class to avoid gem loading
+        mock_client = mock('mcp_client')
+        mock_client.stubs(:list_tools).returns([])
+        mock_client.stubs(:cleanup)
+        mock_client.stubs(:call_tool).returns("success")
+        klass.stubs(:mcp_client).returns(mock_client)
+        
+        # Mock send_mcp_request to avoid actual MCP calls
+        klass.stubs(:send_mcp_request).returns({ "result" => "success" })
+        
+        # Test mcp_client method
+        client = klass.mcp_client
+        assert_not_nil client
         
         # Test command_array method
         expected_command = ["node", "server.js"]
@@ -68,14 +90,18 @@ class RedmineAiHelper::Tools::McpToolsComprehensiveTest < ActiveSupport::TestCas
       should "handle HTTP configuration" do
         json = { "url" => "http://localhost:3000", "headers" => { "Auth" => "Bearer token" } }
         
-        mock_transport = mock('transport')
-        RedmineAiHelper::Transport::TransportFactory.expects(:create).with(json).returns(mock_transport)
         RedmineAiHelper::Tools::McpTools.stubs(:load_from_mcp_server).returns(nil)
         
         klass = RedmineAiHelper::Tools::McpTools.generate_tool_class(name: "http_test", json: json)
         
-        # Access transport to trigger the expectation
-        klass.transport
+        # Mock the mcp_client method on the generated class to avoid gem loading
+        mock_client = mock('mcp_client')
+        mock_client.stubs(:list_tools).returns([])
+        mock_client.stubs(:cleanup)
+        klass.stubs(:mcp_client).returns(mock_client)
+        
+        # Access mcp_client to test
+        klass.mcp_client
         
         # HTTP config should return empty command_array
         assert_equal [], klass.command_array
@@ -87,18 +113,21 @@ class RedmineAiHelper::Tools::McpToolsComprehensiveTest < ActiveSupport::TestCas
       should "handle transport closing" do
         json = { "command" => "test" }
         
-        mock_transport = mock('transport')
-        mock_transport.expects(:close).once
-        RedmineAiHelper::Transport::TransportFactory.stubs(:create).returns(mock_transport)
+        # Mock ruby-mcp-client for close testing
+        mock_client = mock('mcp_client')
+        mock_client.stubs(:list_tools).returns([])
+        mock_client.expects(:cleanup).once
+        ::MCPClient.stubs(:create_client).returns(mock_client)
+        ::MCPClient.stubs(:stdio_config).returns({type: 'stdio'})
         RedmineAiHelper::Tools::McpTools.stubs(:load_from_mcp_server).returns(nil)
         
         klass = RedmineAiHelper::Tools::McpTools.generate_tool_class(name: "close_test", json: json)
         
-        # Set transport and test closing
-        klass.instance_variable_set(:@transport, mock_transport)
+        # Set mcp_client and test closing
+        klass.instance_variable_set(:@mcp_client, mock_client)
         klass.close_transport
         
-        assert_nil klass.instance_variable_get(:@transport)
+        assert_nil klass.instance_variable_get(:@mcp_client)
       end
     end
 
