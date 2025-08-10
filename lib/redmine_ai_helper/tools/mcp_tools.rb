@@ -40,7 +40,9 @@ module RedmineAiHelper
             # Get tool list from MCP server and generate ToolDefinition
             define_singleton_method :load_tools_from_mcp_server do
               begin
-                tools = @mcp_client.list_tools
+                # Cache tools list per MCP server to avoid multiple requests
+                @cached_tools ||= @mcp_client.list_tools
+                tools = @cached_tools
                 load_tools_from_list(tools)
                 RedmineAiHelper::CustomLogger.instance.info "Loaded #{tools.size} tools from MCP server '#{@mcp_server_name}'"
               rescue => e
