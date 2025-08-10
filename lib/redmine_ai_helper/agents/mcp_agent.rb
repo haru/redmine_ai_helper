@@ -8,9 +8,14 @@ module RedmineAiHelper
       end
 
       def backstory
+        # Base (abstract) McpAgent: supply only variables required by the template.
         prompt = load_prompt("mcp_agent/backstory")
-        content = prompt.format
-        content
+        # Langchain::Prompt exposes input_variables
+        if prompt.respond_to?(:input_variables) && prompt.input_variables.include?("server_name")
+          prompt.format(server_name: "generic")
+        else
+          prompt.format
+        end
       end
 
       # McpAgent base class is not used as an actual agent
