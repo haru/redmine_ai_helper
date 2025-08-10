@@ -22,6 +22,7 @@ template: |-
     - Limit the steps to a maximum of 3.
     - Write the instructions for the agents in JSON format.
     - Write the instructions for the agents in {lang}.
+    - Select the agent from the agent_name in the list of agents. Do not use any other names.
 
     **If the goal is to confirm something with the user, do not give instructions to other agents to create or update data. In that case, you may only request other agents to retrieve information.**
 
