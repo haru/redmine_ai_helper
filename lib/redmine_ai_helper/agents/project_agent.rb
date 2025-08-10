@@ -97,7 +97,7 @@ module RedmineAiHelper
             if all_time_metrics[:issue_statistics][:total_issues] > 0
               metrics_list << {
                 period_name: "All Time Analysis",
-                period_description: "全期間の分析（最近のデータが不足しているため）",
+                period_description: "Analysis for all periods (due to lack of recent data)",
                 start_date: nil,
                 end_date: nil,
                 metrics: all_time_metrics,
@@ -106,7 +106,7 @@ module RedmineAiHelper
               # No data at all - add empty metrics for display
               metrics_list << {
                 period_name: "Recent Activity",
-                period_description: "最近のアクティビティ（データなし）",
+                period_description: "Recent activity (no data)",
                 start_date: one_week_ago,
                 end_date: today,
                 metrics: one_week_metrics,
@@ -116,7 +116,7 @@ module RedmineAiHelper
             # Add metrics for both periods
             metrics_list << {
               period_name: "Last 1 Week",
-              period_description: "直近1週間の分析",
+              period_description: "Analysis for the last 1 week",
               start_date: one_week_ago,
               end_date: today,
               metrics: one_week_metrics,
@@ -124,7 +124,7 @@ module RedmineAiHelper
 
             metrics_list << {
               period_name: "Last 1 Month",
-              period_description: "直近1ヶ月の分析",
+              period_description: "Analysis for the last 1 month",
               start_date: one_month_ago,
               end_date: today,
               metrics: one_month_metrics,
