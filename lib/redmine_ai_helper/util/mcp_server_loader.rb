@@ -221,6 +221,9 @@ module RedmineAiHelper
           end
 
           define_method :backstory do
+            # Cache backstory to avoid regeneration for the same MCP agent class
+            return @cached_backstory if @cached_backstory
+
             # Generate backstory strictly from prompt template (no fallback)
             prompt = load_prompt("mcp_agent/backstory")
             base_backstory = prompt.format(server_name: server_name)
@@ -229,20 +232,25 @@ module RedmineAiHelper
             begin
               tools_list = available_tools
               if tools_list.is_a?(Array) && !tools_list.empty?
-                tools_info += "\n\nAvailable tools (#{server_name}):\n"
+                tools_info += "
+
+Available tools (#{server_name}):
+"
                 tools_list.each do |tool_schemas|
                   if tool_schemas.is_a?(Array)
                     tool_schemas.each do |tool|
-                      if tool.is_a?(Hash) && tool.dig(:function, :name) && tool.dig(:function, :description)
-                        function_name = tool.dig(:function, :name)
+                      if tool.is_a?(Hash) && tool.dig(:function, :description)
                         description = tool.dig(:function, :description)
-                        tools_info += "- **#{function_name}**: #{description}\n"
+                        tools_info += "- #{description}
+"
                       end
                     end
                   end
                 end
               else
-                tools_info += "\n\nNo tools available at the moment for #{server_name}."
+                tools_info += "
+
+No tools available at the moment for #{server_name}."
               end
             rescue => e
               # Log tool info retrieval errors but do not mask prompt issues
@@ -250,7 +258,7 @@ module RedmineAiHelper
               raise
             end
 
-            base_backstory + tools_info
+            @cached_backstory = base_backstory + tools_info
           end
 
           # Set class name with singleton method
