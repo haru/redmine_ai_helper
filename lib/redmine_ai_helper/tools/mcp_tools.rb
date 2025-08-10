@@ -10,12 +10,23 @@ module RedmineAiHelper
         # @param mcp_client [Object] MCP client instance
         # @return [Class] Generated tool class
         def generate_tool_class(mcp_server_name:, mcp_client:)
-          class_name = "AiHelperMcp#{mcp_server_name.camelize}Tools"
+          # Short class naming pattern: AiHleprMcp1, AiHleprMcp2, ...
+          @@server_tool_class_map ||= {}
+          @@short_class_counter ||= 0
 
-          # Avoid duplicate class definitions
-          if Object.const_defined?(class_name)
-            return Object.const_get(class_name)
+          if @@server_tool_class_map[mcp_server_name]
+            const_name = @@server_tool_class_map[mcp_server_name]
+            return Object.const_get(const_name) if Object.const_defined?(const_name)
           end
+
+          begin
+            @@short_class_counter += 1
+            const_name = "AiHleprMcp#{@@short_class_counter}"
+          end while Object.const_defined?(const_name)
+
+          @@server_tool_class_map[mcp_server_name] = const_name
+
+          class_name = const_name
 
           # Dynamically generate tool class
           tool_class = Class.new(RedmineAiHelper::Tools::McpTools) do
@@ -40,34 +51,34 @@ module RedmineAiHelper
 
             # Helper method to return default schema (defined at class level)
             define_singleton_method :default_schema do
-              { 
+              {
                 "type" => "object",
-                "properties" => { 
-                  "dummy_property" => { 
-                    "type" => "string", 
-                    "description" => "dummy property for tools without parameters" 
-                  } 
+                "properties" => {
+                  "dummy_property" => {
+                    "type" => "string",
+                    "description" => "dummy property for tools without parameters",
+                  },
                 },
-                "required" => []
+                "required" => [],
               }
             end
 
             # Helper method to normalize schema (defined at class level)
             define_singleton_method :normalize_input_schema do |schema|
               return default_schema if schema.nil?
-              
+
               # Use default schema if properties is nil or empty
-              if schema.dig("properties").nil? || 
+              if schema.dig("properties").nil? ||
                  (schema.dig("properties").is_a?(Hash) && schema.dig("properties").empty?)
                 return default_schema
               end
-              
+
               # Use default schema if properties is an empty object
               properties = schema.dig("properties")
               if properties.is_a?(Hash) && properties.keys.empty?
                 return default_schema
               end
-              
+
               # Check if each property has appropriate structure
               if properties.is_a?(Hash)
                 properties.each do |key, value|
@@ -77,7 +88,7 @@ module RedmineAiHelper
                   end
                 end
               end
-              
+
               schema
             end
 
@@ -85,12 +96,12 @@ module RedmineAiHelper
             define_singleton_method :load_tools_from_list do |tools|
               # Extend langchain_patch to make build_properties_from_json method available
               extend RedmineAiHelper::Util::LangchainPatch
-              
+
               tools.each do |tool|
                 begin
                   # Normalize schema in advance
                   input_schema = normalize_input_schema(tool.schema)
-                  
+
                   define_function tool.name, description: tool.description do
                     # Use normalized schema
                     build_properties_from_json(input_schema)
@@ -111,14 +122,14 @@ module RedmineAiHelper
               function = schema.find do |f|
                 function_name = f.dig(:function, :name)
                 # Exact match, pattern ending with __, or direct tool name
-                function_name == method_name.to_s || 
+                function_name == method_name.to_s ||
                 function_name&.end_with?("__#{method_name}") ||
                 function_name&.split("__").last == method_name.to_s
               end
 
               unless function
                 available_functions = schema.map { |f| f.dig(:function, :name) }
-                raise ArgumentError, "Function not found: #{method_name}. Available: #{available_functions.join(', ')}"
+                raise ArgumentError, "Function not found: #{method_name}. Available: #{available_functions.join(", ")}"
               end
 
               begin
@@ -126,9 +137,9 @@ module RedmineAiHelper
                 arguments = args[0] || {}
                 # Remove dummy_property if it exists
                 arguments.delete("dummy_property") if arguments.is_a?(Hash)
-                
+
                 result = self.class.mcp_client.call_tool(method_name.to_s, arguments)
-                
+
                 # Return result as string
                 case result
                 when String
