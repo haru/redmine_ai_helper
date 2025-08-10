@@ -76,6 +76,12 @@ module RedmineAiHelper
       # Validate server configuration
       def valid_server_config?(config)
         return false unless config.is_a?(Hash)
+
+        # Infer type if missing (backward compatibility):
+        # - If command/args present => stdio
+        # - If url present => http (default over sse since we cannot auto-detect sse reliably)
+        config["type"] ||= infer_server_type(config)
+
         return false unless config["type"]
 
         case config["type"]
@@ -88,6 +94,13 @@ module RedmineAiHelper
         end
       end
 
+      # Infer server type from available keys (internal helper)
+      def infer_server_type(config)
+        return "stdio" if config["command"] || config["args"]
+        return "http" if config["url"]
+        nil
+      end
+
       # Validate URL format
       def valid_url?(url)
         uri = URI.parse(url)
@@ -98,7 +111,9 @@ module RedmineAiHelper
 
       # Create MCP client
       def create_mcp_client(server_name, server_config)
-        case server_config["type"]
+        # Allow implicit type inference
+        server_type = server_config["type"] || infer_server_type(server_config)
+        case server_type
         when "stdio"
           create_stdio_client(server_name, server_config)
         when "http"
@@ -106,7 +121,7 @@ module RedmineAiHelper
         when "sse"
           create_sse_client(server_name, server_config)
         else
-          raise ArgumentError, "Unsupported MCP server type: #{server_config["type"]}"
+          raise ArgumentError, "Unsupported MCP server type: #{server_config["type"] || "unknown"}"
         end
       end
 
@@ -206,22 +221,15 @@ module RedmineAiHelper
           end
 
           define_method :backstory do
-            # Get backstory from parent class (McpAgent)
-            base_backstory = begin
-                prompt = load_prompt("mcp_agent/backstory")
-                prompt.format(server_name: server_name)
-              rescue => e
-                # Fallback message
-                "I am an AI agent specialized in using the #{server_name} MCP server. I can help you with tasks that require interaction with #{server_name} services."
-              end
+            # Generate backstory strictly from prompt template (no fallback)
+            prompt = load_prompt("mcp_agent/backstory")
+            base_backstory = prompt.format(server_name: server_name)
 
-            # Get information about available tools
             tools_info = ""
             begin
-              # Get tool schemas using available_tools method
               tools_list = available_tools
               if tools_list.is_a?(Array) && !tools_list.empty?
-                tools_info += "\n\nAvailable tools:\n"
+                tools_info += "\n\nAvailable tools (#{server_name}):\n"
                 tools_list.each do |tool_schemas|
                   if tool_schemas.is_a?(Array)
                     tool_schemas.each do |tool|
@@ -234,13 +242,14 @@ module RedmineAiHelper
                   end
                 end
               else
-                tools_info += "\n\nNo tools available at the moment."
+                tools_info += "\n\nNo tools available at the moment for #{server_name}."
               end
             rescue => e
-              tools_info += "\n\nError retrieving tools information: #{e.message}"
+              # Log tool info retrieval errors but do not mask prompt issues
+              ai_helper_logger.error "Error retrieving tools information for '#{server_name}': #{e.message}"
+              raise
             end
 
-            # Add tool information to parent class backstory
             base_backstory + tools_info
           end
 
