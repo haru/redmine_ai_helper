@@ -8,14 +8,16 @@ Dir[File.join(File.dirname(__FILE__), "lib/redmine_ai_helper/agents", "*_agent.r
   require file
 end
 
-# Generate SubMcpAgent classes after all agents are loaded
+# Load MCP Server Loader and generate MCP Agent classes
+require "redmine_ai_helper/util/mcp_server_loader"
+
+# Generate MCP Agent classes after all agents are loaded
 begin
-  # Use ai_helper_logger directly
-  RedmineAiHelper::CustomLogger.instance.debug("Starting SubMcpAgent generation...")
-  RedmineAiHelper::Agents::McpAgent.generate_sub_agents
-  RedmineAiHelper::CustomLogger.instance.debug("SubMcpAgent generation completed")
+  RedmineAiHelper::CustomLogger.instance.debug("Starting MCP Agent generation...")
+  RedmineAiHelper::Util::McpServerLoader.load_all
+  RedmineAiHelper::CustomLogger.instance.debug("MCP Agent generation completed")
 rescue => e
-  RedmineAiHelper::CustomLogger.instance.error("Error generating SubMcpAgent classes: #{e.message}")
+  RedmineAiHelper::CustomLogger.instance.error("Error generating MCP Agent classes: #{e.message}")
   RedmineAiHelper::CustomLogger.instance.error(e.backtrace.join("\n"))
 end
 Redmine::Plugin.register :redmine_ai_helper do
@@ -26,7 +28,7 @@ Redmine::Plugin.register :redmine_ai_helper do
   author_url "https://github.com/haru"
   requires_redmine :version_or_higher => "6.0.0"
 
-  version "1.5.3"
+  version "1.5.4"
 
   project_module :ai_helper do
     permission :view_ai_helper,

@@ -6,7 +6,7 @@ require_relative "langfuse_util/langfuse_wrapper"
 module RedmineAiHelper
 
   # A class that is directly called from the controller to interact with AI using LLM.
-  # TODO: クラス名を変えたい
+  # TODO: Want to change class name
   class Llm
     include RedmineAiHelper::Logger
     attr_accessor :model

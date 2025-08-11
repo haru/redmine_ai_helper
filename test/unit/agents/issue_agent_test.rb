@@ -38,12 +38,12 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
     should "generate issue summary for visible issue" do
       @issue.stubs(:visible?).returns(true)
 
-      # モックプロンプトを設定
+      # Set up mock prompt
       mock_prompt = mock("Prompt")
       mock_prompt.stubs(:format).returns("Summarize this issue")
       @agent.stubs(:load_prompt).with("issue_agent/summary").returns(mock_prompt)
 
-      # chatメソッドをモック
+      # Mock chat method
       @agent.stubs(:chat).returns("This is a summary of the issue.")
 
       result = @agent.issue_summary(issue: @issue)
@@ -74,12 +74,12 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
       should "generate reply for visible issue" do
         @issue.stubs(:visible?).returns(true)
 
-        # モックプロンプトを設定
+        # Set up mock prompt
         mock_prompt = mock("Prompt")
         mock_prompt.stubs(:format).returns("Generate a reply for this issue")
         @agent.stubs(:load_prompt).with("issue_agent/generate_reply").returns(mock_prompt)
 
-        # chatメソッドをモック
+        # Mock chat method
         @agent.stubs(:chat).returns("This is a generated reply.")
 
         result = @agent.generate_issue_reply(issue: @issue, instructions: "Please provide a detailed response.")
@@ -208,7 +208,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
     end
 
     def get_format
-      # フォーマットは単純な文字列とする
+      # Format is a simple string
       "string"
     end
   end
