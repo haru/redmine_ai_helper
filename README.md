@@ -171,8 +171,7 @@ The AI Helper Plugin can use the MCP Server to perform tasks, such as sending is
          },
          "context7": {
             "type": "sse",
-            "url": "https://mcp.context7.com",
-            "endpoint": "/sse"
+            "url": "https://mcp.context7.com/sse"
          }
       }
    }
