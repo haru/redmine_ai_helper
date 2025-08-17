@@ -44,7 +44,7 @@ module RedmineAiHelper
           ["OpenAI", LLM_OPENAI],
           ["OpenAI Compatible(Experimental)", LLM_OPENAI_COMPATIBLE],
           ["Gemini(Experimental)", LLM_GEMINI],
-          ["Anthropic(Experimental)", LLM_ANTHROPIC],
+          ["Anthropic", LLM_ANTHROPIC],
           ["Azure OpenAI(Experimental)", LLM_AZURE_OPENAI],
         ]
       end
