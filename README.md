@@ -183,6 +183,8 @@ The AI Helper Plugin can use the MCP Server to perform tasks, such as sending is
 Configure settings to perform vector searches for issues using Qdrant.
 With this configuration, the AI Helper Plugin can use Qdrant to perform vector searches on Redmine issues and wiki data.
 
+**Note:** Vector search functionality is not available when using Anthropic AI models. Please use OpenAI or other supported AI providers for vector search features.
+
 ### Qdrant Setup
 
 Here is an example configuration using Docker Compose.
