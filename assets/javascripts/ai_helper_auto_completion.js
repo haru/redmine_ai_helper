@@ -316,6 +316,27 @@ class AiHelperAutoCompletion {
     this.currentRequestId++;
   }
 
+  // Get textarea background color for masking
+  getTextareaBackgroundColor() {
+    const computedStyle = window.getComputedStyle(this.textarea);
+    let bgColor = computedStyle.backgroundColor;
+    
+    // If transparent or rgba(0,0,0,0), use parent background or default to white
+    if (bgColor === 'transparent' || bgColor === 'rgba(0, 0, 0, 0)') {
+      const parent = this.textarea.parentNode;
+      const parentStyle = window.getComputedStyle(parent);
+      bgColor = parentStyle.backgroundColor;
+      
+      // If still transparent, default to white
+      if (bgColor === 'transparent' || bgColor === 'rgba(0, 0, 0, 0)') {
+        bgColor = '#ffffff';
+      }
+    }
+    
+    return bgColor;
+  }
+
+
   displayInlineSuggestion(suggestion, cursorPosition) {
     const text = this.textarea.value;
     const beforeCursor = text.substring(0, cursorPosition);
@@ -327,23 +348,39 @@ class AiHelperAutoCompletion {
       cursorPosition: cursorPosition
     };
     
+    // Hide textarea temporarily and show overlay with full content
+    this.textarea.style.color = 'transparent';
+    
+    // Set background color for overlay to match textarea
+    const bgColor = this.getTextareaBackgroundColor();
+    this.overlay.style.backgroundColor = bgColor;
+    
     // Create overlay content with suggestion
     const suggestionSpan = document.createElement('span');
-    suggestionSpan.className = 'ai-helper-inline-suggestion';
+    suggestionSpan.className = 'ai-helper-inline-suggestion ai-helper-suggestion-active';
     suggestionSpan.textContent = suggestion;
     suggestionSpan.style.color = this.options.suggestionColor;
-    suggestionSpan.style.cursor = 'pointer';
     
     // Add click handler to suggestion
     suggestionSpan.addEventListener('click', () => {
       this.acceptSuggestion();
     });
     
-    // Update overlay content
+    // Update overlay content - show full text with highlighted suggestion
     this.overlay.innerHTML = '';
-    this.overlay.appendChild(document.createTextNode(beforeCursor));
+    
+    // Create spans for all text parts to control colors
+    const beforeSpan = document.createElement('span');
+    beforeSpan.textContent = beforeCursor;
+    beforeSpan.style.color = '#000000'; // Normal text color
+    
+    const afterSpan = document.createElement('span');
+    afterSpan.textContent = afterCursor;
+    afterSpan.style.color = '#000000'; // Normal text color
+    
+    this.overlay.appendChild(beforeSpan);
     this.overlay.appendChild(suggestionSpan);
-    this.overlay.appendChild(document.createTextNode(afterCursor));
+    this.overlay.appendChild(afterSpan);
     
     // Sync scroll position with textarea
     this.overlay.scrollTop = this.textarea.scrollTop;
@@ -385,7 +422,10 @@ class AiHelperAutoCompletion {
     this.currentSuggestion = null;
     if (this.overlay) {
       this.overlay.innerHTML = '';
+      this.overlay.style.backgroundColor = 'transparent';
     }
+    // Restore textarea text visibility
+    this.textarea.style.color = '';
   }
 
   // Sync overlay scroll with textarea scroll

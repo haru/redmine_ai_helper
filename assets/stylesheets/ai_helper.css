@@ -549,14 +549,35 @@ table.ai-helper-sub-issues-table td {
 
 .ai-helper-inline-suggestion {
   color: #888888;
-  background: transparent;
   cursor: pointer;
   pointer-events: auto;
   position: relative;
+  display: inline;
+  padding: 0 2px;
+  border-radius: 2px;
 }
 
 .ai-helper-inline-suggestion:hover {
   background: rgba(136, 136, 136, 0.1);
+}
+
+/* Active suggestion with solid background to hide underlying text */
+.ai-helper-suggestion-active {
+  background-color: #ffff99 !important; /* Light yellow background for visibility */
+  color: #666666 !important; /* Darker gray text for suggestion */
+  padding: 0 2px !important;
+  border-radius: 2px !important;
+}
+
+/* Cursor marker in overlay */
+.ai-helper-cursor-marker {
+  color: #000000;
+  animation: blink 1s infinite;
+}
+
+/* Multi-line suggestion support */
+.ai-helper-suggestion-line {
+  display: block;
 }
 
 /* Adjust textarea background to transparent to show overlay */
