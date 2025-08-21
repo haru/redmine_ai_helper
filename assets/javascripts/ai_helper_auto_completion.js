@@ -84,22 +84,42 @@ class AiHelperAutoCompletion {
     this.overlay.style.fontSize = computedStyle.fontSize;
     this.overlay.style.fontFamily = computedStyle.fontFamily;
     this.overlay.style.lineHeight = computedStyle.lineHeight;
-    this.overlay.style.padding = computedStyle.padding;
+    
+    // Copy padding but add extra right padding to prevent text overflow
+    const paddingTop = computedStyle.paddingTop;
+    const paddingRight = computedStyle.paddingRight;
+    const paddingBottom = computedStyle.paddingBottom;
+    const paddingLeft = computedStyle.paddingLeft;
+    
+    // Copy padding normally since width is adjusted instead
+    this.overlay.style.paddingTop = paddingTop;
+    this.overlay.style.paddingRight = paddingRight;
+    this.overlay.style.paddingBottom = paddingBottom;
+    this.overlay.style.paddingLeft = paddingLeft;
+    
     this.overlay.style.border = computedStyle.border;
     this.overlay.style.borderColor = 'transparent';
     this.overlay.style.backgroundColor = 'transparent';
+    this.overlay.style.boxSizing = 'border-box'; // Ensure consistent sizing with textarea
     
-    // Position overlay
+    // Position overlay to match textarea exactly
     this.overlay.style.position = 'absolute';
-    this.overlay.style.top = '0';
-    this.overlay.style.left = '0';
-    this.overlay.style.width = '100%';
-    this.overlay.style.height = '100%';
     this.overlay.style.pointerEvents = 'none';
     this.overlay.style.zIndex = '5'; // Below textarea but above background
     this.overlay.style.overflow = 'hidden';
     this.overlay.style.whiteSpace = 'pre-wrap';
     this.overlay.style.wordWrap = 'break-word';
+    
+    // Function to update overlay position and size to match textarea
+    this.updateOverlayPosition = () => {
+      const rect = this.textarea.getBoundingClientRect();
+      const parentRect = this.textarea.parentNode.getBoundingClientRect();
+      
+      this.overlay.style.top = (rect.top - parentRect.top) + 'px';
+      this.overlay.style.left = (rect.left - parentRect.left) + 'px';
+      this.overlay.style.width = rect.width + 'px';
+      this.overlay.style.height = rect.height + 'px';
+    };
     
     // Ensure parent has relative positioning for overlay
     const parent = this.textarea.parentNode;
@@ -109,6 +129,9 @@ class AiHelperAutoCompletion {
     
     // Insert overlay after textarea
     parent.insertBefore(this.overlay, this.textarea.nextSibling);
+    
+    // Set initial position
+    this.updateOverlayPosition();
     
     // Ensure textarea is above overlay and can receive input
     this.textarea.style.position = 'relative';
@@ -347,6 +370,9 @@ class AiHelperAutoCompletion {
       text: suggestion,
       cursorPosition: cursorPosition
     };
+    
+    // Update overlay position to match textarea exactly
+    this.updateOverlayPosition();
     
     // Hide textarea temporarily and show overlay with full content
     this.textarea.style.color = 'transparent';
