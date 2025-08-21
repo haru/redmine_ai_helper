@@ -400,6 +400,61 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
     end
   end
 
+  context "generate_text_completion" do
+    setup do
+      @project = Project.find(1)
+      @issue = Issue.find(1)
+      @llm = RedmineAiHelper::Llm.new(@params)
+    end
+
+    should "generate text completion successfully" do
+      RedmineAiHelper::Agents::IssueAgent.any_instance.stubs(:generate_text_completion).returns("This is a completion.")
+      
+      result = @llm.generate_text_completion(
+        text: "Login page has error",
+        context_type: "description",
+        cursor_position: 18,
+        project: @project,
+        issue: @issue
+      )
+      
+      assert_equal "This is a completion.", result
+    end
+
+    should "handle agent error gracefully" do
+      RedmineAiHelper::Agents::IssueAgent.any_instance.stubs(:generate_text_completion).raises(StandardError, "Agent error")
+      
+      result = @llm.generate_text_completion(
+        text: "Login page has error",
+        context_type: "description",
+        cursor_position: 18,
+        project: @project,
+        issue: @issue
+      )
+      
+      assert_equal "", result
+    end
+
+    should "parse single suggestion correctly" do
+      # Test with normal text
+      result = @llm.send(:parse_single_suggestion, "This is a suggestion.")
+      assert_equal "This is a suggestion.", result
+      
+      # Test with markdown formatting
+      result = @llm.send(:parse_single_suggestion, "**Bold** and *italic* text.")
+      assert_equal "Bold and italic text.", result
+      
+      # Test with too many sentences
+      long_text = "First sentence. Second sentence. Third sentence. Fourth sentence."
+      result = @llm.send(:parse_single_suggestion, long_text)
+      assert_equal "First sentence. Second sentence. Third sentence.", result
+      
+      # Test with empty/nil
+      assert_equal "", @llm.send(:parse_single_suggestion, "")
+      assert_equal "", @llm.send(:parse_single_suggestion, nil)
+    end
+  end
+
   class DummyIssueAgent
     def generate_sub_issues_draft(args = {})
       return "Permission denied" unless args[:issue].visible?

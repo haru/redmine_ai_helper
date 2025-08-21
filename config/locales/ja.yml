@@ -33,6 +33,14 @@ ja:
       title: "AIヘルパーで子チケットを作成"
       instructions: "指示を入力してください。"
       generate_draft: "ドラフトを生成"
+    autocompletion:
+      loading: "AI提案を生成中..."
+      no_suggestions: "提案がありません"
+      accept_suggestion: "提案を適用"
+      dismiss: "閉じる"
+      toggle_label: "AI補完"
+      enabled_tooltip: "AI自動補完が有効です。Tabキーで提案を適用、Escキーで閉じます。"
+      disabled_tooltip: "AI自動補完が無効です。チェックボックスをオンにして有効化してください。"
     model_profiles:
       create_profile_title: "新しいモデルプロファイル"
       edit_profile_title: "モデルプロファイルの編集"

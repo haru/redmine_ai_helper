@@ -33,6 +33,14 @@ en:
       title: "Create subtasks with AI Helper"
       instructions: "Please enter your instructions."
       generate_draft: "Generate draft"
+    autocompletion:
+      loading: "Generating AI suggestions..."
+      no_suggestions: "No suggestions available"
+      accept_suggestion: "Accept suggestion"
+      dismiss: "Dismiss"
+      toggle_label: "AI Completion"
+      enabled_tooltip: "AI auto-completion is enabled. Press Tab to accept suggestions or Esc to dismiss."
+      disabled_tooltip: "AI auto-completion is disabled. Check the box to enable."
     model_profiles:
       create_profile_title: "New model profile"
       edit_profile_title: "Edit model profile"

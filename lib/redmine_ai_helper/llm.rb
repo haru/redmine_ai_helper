@@ -179,5 +179,164 @@ module RedmineAiHelper
       ai_helper_logger.info "project health report: #{answer}"
       answer
     end
+
+    # Generate text completion for inline auto-completion
+    # @param text [String] The current text content
+    # @param context_type [String] The context type (description, etc.)
+    # @param cursor_position [Integer] The cursor position in the text
+    # @param project [Project] The project object
+    # @param issue [Issue] Optional issue object for context
+    # @return [String] The completion suggestion
+    def generate_text_completion(text:, context_type:, cursor_position: nil, project: nil, issue: nil)
+      begin
+        ai_helper_logger.info "Starting text completion: text='#{text[0..50]}...', cursor_position=#{cursor_position}"
+        
+        context = build_completion_context(text, context_type, project, issue)
+        ai_helper_logger.info "Built context: #{context}"
+        
+        prompt = build_inline_completion_prompt(text, context, cursor_position)
+        ai_helper_logger.info "Built prompt: '#{prompt[0..200]}#{'...' if prompt.length > 200}'"
+        
+        langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: prompt)
+        options = { langfuse: langfuse, project: project }
+        agent = RedmineAiHelper::Agents::IssueAgent.new(options)
+        
+        langfuse.create_span(name: "text_completion", input: prompt)
+        
+        # Use the agent to generate completion with a special prompt
+        completion = agent.generate_text_completion(
+          text: text,
+          cursor_position: cursor_position,
+          context: context
+        )
+        
+        ai_helper_logger.info "Agent returned raw completion: '#{completion}' (length: #{completion.length})"
+        
+        suggestion = parse_single_suggestion(completion)
+        
+        ai_helper_logger.info "Parsed final suggestion: '#{suggestion}' (length: #{suggestion.length})"
+        
+        langfuse.finish_current_span(output: suggestion)
+        langfuse.flush
+        
+        suggestion
+      rescue => e
+        ai_helper_logger.error "Text completion error: #{e.full_message}"
+        ai_helper_logger.error e.backtrace.join("\n")
+        # Return empty string on error to avoid breaking UI
+        ""
+      end
+    end
+
+    private
+
+    # Build context for completion based on project and issue information
+    # @param text [String] The current text
+    # @param context_type [String] The context type
+    # @param project [Project] The project object
+    # @param issue [Issue] The issue object
+    # @return [Hash] Context information
+    def build_completion_context(text, context_type, project, issue)
+      context = {
+        context_type: context_type,
+        project_name: project&.name,
+        issue_title: issue&.subject,
+        text_length: text.length
+      }
+      
+      # Add project-specific context if available
+      if project
+        context[:project_description] = project.description if project.description.present?
+        context[:project_identifier] = project.identifier
+      end
+      
+      context
+    end
+
+    # Build the prompt for inline completion
+    # @param text [String] The current text
+    # @param context [Hash] Context information
+    # @param cursor_position [Integer] Cursor position
+    # @return [String] The formatted prompt
+    def build_inline_completion_prompt(text, context, cursor_position)
+      config = load_autocompletion_config
+      max_sentences = config['max_sentences'] || 3
+      
+      prefix_text = cursor_position ? text[0...cursor_position] : text
+      suffix_text = (cursor_position && cursor_position < text.length) ? text[cursor_position..-1] : ""
+      
+      # Load prompt template
+      locale = User.current.language || 'en'
+      template_key = locale == 'ja' ? 'ja' : 'en'
+      
+      template = load_prompt_template('inline_completion', template_key)
+      
+      # Replace placeholders in template
+      template.gsub('{issue_title}', context[:issue_title] || 'New Issue')
+              .gsub('{prefix_text}', prefix_text)
+              .gsub('{suffix_text}', suffix_text)
+              .gsub('{project_name}', context[:project_name] || 'Unknown Project')
+              .gsub('{cursor_position}', cursor_position.to_s)
+              .gsub('{max_sentences}', max_sentences.to_s)
+    end
+
+    # Load autocompletion configuration
+    # @return [Hash] Configuration hash
+    def load_autocompletion_config
+      @autocompletion_config ||= begin
+        config_path = Rails.root.join('plugins', 'redmine_ai_helper', 'config', 'ai_helper', 'config.yml')
+        if File.exist?(config_path)
+          config_data = YAML.load_file(config_path)
+          config_data['autocompletion'] || {}
+        else
+          {}
+        end
+      end
+    end
+
+    # Load prompt template
+    # @param template_name [String] Template name
+    # @param locale [String] Locale code
+    # @return [String] Prompt template
+    def load_prompt_template(template_name, locale)
+      template_path = Rails.root.join('plugins', 'redmine_ai_helper', 'assets', 'prompt_templates', "#{template_name}.yml")
+      if File.exist?(template_path)
+        template_data = YAML.load_file(template_path)
+        template_data[template_name] && template_data[template_name][locale] || ""
+      else
+        # Fallback template
+        case locale
+        when 'ja'
+          "カーソル位置からテキストを短く補完してください（最大3文）: {prefix_text}|{suffix_text}"
+        else
+          "Complete the text from cursor position (max 3 sentences): {prefix_text}|{suffix_text}"
+        end
+      end
+    end
+
+    # Parse single suggestion from LLM response
+    # @param response [String] The LLM response
+    # @return [String] Clean suggestion text
+    def parse_single_suggestion(response)
+      return "" if response.blank?
+      
+      # Clean up the response - remove any markdown, extra whitespace, etc.
+      cleaned = response.strip
+      
+      # Remove any potential markdown formatting
+      cleaned = cleaned.gsub(/^\*+\s*/, '')  # Remove bullet points
+      cleaned = cleaned.gsub(/^#+\s*/, '')   # Remove headers
+      cleaned = cleaned.gsub(/\*\*(.*?)\*\*/, '\\1')  # Remove bold
+      cleaned = cleaned.gsub(/\*(.*?)\*/, '\\1')      # Remove italic
+      
+      # Limit to reasonable length (max 3 sentences as per spec)
+      sentences = cleaned.split(/[.!?]+/)
+      if sentences.length > 3
+        cleaned = sentences[0..2].join('. ').strip
+        cleaned += '.' unless cleaned.end_with?('.', '!', '?')
+      end
+      
+      cleaned
+    end
   end
 end

@@ -1,0 +1,66 @@
+<%# Auto-completion integration for issue description textarea %>
+<% 
+  # Determine project from @issue if @project is not available
+  project = @project || (@issue&.project)
+%>
+<% if project&.module_enabled?(:ai_helper) && User.current.allowed_to?(:view_ai_helper, project) %>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Find ticket description textarea element
+  const descriptionTextarea = document.querySelector('textarea[name="issue[description]"]');
+
+  console.log('AI Helper Auto Completion: Looking for description textarea');
+  console.log('Description textarea found:', descriptionTextarea);
+  console.log('AiHelperAutoCompletion class available:', typeof AiHelperAutoCompletion !== 'undefined');
+  
+  // Initialize autocompletion for description field
+  if (descriptionTextarea && typeof AiHelperAutoCompletion !== 'undefined') {
+    // Load configuration with fallback values
+    const config = {
+      debounce_delay: 500,
+      min_length: 5,
+      suggestion_color: '#888888'
+    };
+    
+    console.log('Initializing AI Helper Auto Completion with config:', config);
+    
+    const autoCompletion = new AiHelperAutoCompletion(descriptionTextarea, {
+      contextType: 'description',
+      endpoint: '<%= ai_helper_suggest_completion_path(@issue&.persisted? ? @issue.id : 'new') %>',
+      debounceDelay: config.debounce_delay,
+      minLength: config.min_length,
+      suggestionColor: config.suggestion_color,
+      // I18n labels
+      labels: {
+        toggleLabel: '<%= t('ai_helper.autocompletion.toggle_label') %>',
+        loading: '<%= t('ai_helper.autocompletion.loading') %>',
+        noSuggestions: '<%= t('ai_helper.autocompletion.no_suggestions') %>',
+        acceptSuggestion: '<%= t('ai_helper.autocompletion.accept_suggestion') %>',
+        dismiss: '<%= t('ai_helper.autocompletion.dismiss') %>',
+        enabledTooltip: '<%= t('ai_helper.autocompletion.enabled_tooltip') %>',
+        disabledTooltip: '<%= t('ai_helper.autocompletion.disabled_tooltip') %>'
+      }
+    });
+    
+    autoCompletion.init();
+    
+    // Store reference globally for potential updates
+    if (!window.aiHelperInstances) {
+      window.aiHelperInstances = {};
+    }
+    window.aiHelperInstances.autoCompletion = autoCompletion;
+    
+    console.log('AI Helper Auto Completion initialized successfully');
+  } else {
+    if (!descriptionTextarea) {
+      console.log('AI Helper Auto Completion: Description textarea not found');
+    }
+    if (typeof AiHelperAutoCompletion === 'undefined') {
+      console.log('AI Helper Auto Completion: AiHelperAutoCompletion class not loaded');
+    }
+  }
+});
+</script>
+<% else %>
+<!-- AI Helper auto-completion not available (project module disabled or insufficient permissions) -->
+<% end %>

@@ -1,0 +1,30 @@
+inline_completion:
+  en: |
+    Complete the following issue description text inline, starting from the cursor position.
+    Provide only the continuation text that should appear after the cursor, without repeating the existing text.
+    
+    IMPORTANT: Keep the completion SHORT - between 1 to 3 sentences maximum. Do not generate long explanations, step lists, or detailed descriptions.
+
+    Title: {issue_title}
+    Existing text before cursor: "{prefix_text}"
+    Text after cursor: "{suffix_text}"
+    Project: {project_name}
+    Cursor position: {cursor_position}
+
+    Generate a brief, natural continuation that adds relevant details while maintaining consistency with the existing content.
+    Return only the completion text (1-3 sentences max), no explanations.
+
+  ja: |
+    チケット説明文をカーソル位置からインライン補完してください。
+    既存のテキストを繰り返さず、カーソル以降に表示すべき続きのテキストのみを提供してください。
+    
+    重要：補完は短く - 最大1文から3文以内に収めてください。長い説明、手順リスト、詳細な記述は生成しないでください。
+
+    タイトル: {issue_title}
+    カーソル前のテキスト: "{prefix_text}"
+    カーソル後のテキスト: "{suffix_text}"
+    プロジェクト: {project_name}
+    カーソル位置: {cursor_position}
+
+    既存内容との一貫性を保ちながら、関連する詳細を追加する簡潔で自然な続きを生成してください。
+    補完テキストのみを返してください（最大1-3文）。説明は不要です。

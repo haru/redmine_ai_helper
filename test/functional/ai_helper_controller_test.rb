@@ -1088,6 +1088,108 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_response :success
         assert_equal cached_content, assigns(:health_report)
       end
+
+      # Auto-completion tests
+      should "suggest completion with valid request" do
+        issue = Issue.find(1)
+        RedmineAiHelper::Llm.any_instance.stubs(:generate_text_completion).returns("This is a suggested completion.")
+        
+        post :suggest_completion, params: { id: issue.id }, 
+             body: { text: "Login page error", cursor_position: 16 }.to_json,
+             headers: { 'Content-Type' => 'application/json' }
+        
+        assert_response :success
+        json_response = JSON.parse(response.body)
+        assert json_response.key?('suggestion')
+        assert_equal "This is a suggested completion.", json_response['suggestion']
+      end
+
+      should "return error for non-JSON request in suggest_completion" do
+        issue = Issue.find(1)
+        
+        post :suggest_completion, params: { id: issue.id, text: "Some text" }
+        
+        assert_response :unsupported_media_type
+        json_response = JSON.parse(response.body)
+        assert_equal "Unsupported Media Type", json_response['error']
+      end
+
+      should "return error for invalid JSON in suggest_completion" do
+        issue = Issue.find(1)
+        
+        post :suggest_completion, params: { id: issue.id },
+             body: "invalid json",
+             headers: { 'Content-Type' => 'application/json' }
+        
+        assert_response :bad_request
+        json_response = JSON.parse(response.body)
+        assert_equal "Invalid JSON", json_response['error']
+      end
+
+      should "return error for empty text in suggest_completion" do
+        issue = Issue.find(1)
+        
+        post :suggest_completion, params: { id: issue.id },
+             body: { text: "", cursor_position: 0 }.to_json,
+             headers: { 'Content-Type' => 'application/json' }
+        
+        assert_response :bad_request
+        json_response = JSON.parse(response.body)
+        assert_equal "Text is required", json_response['error']
+      end
+
+      should "return error for text too long in suggest_completion" do
+        issue = Issue.find(1)
+        long_text = "a" * 5001
+        
+        post :suggest_completion, params: { id: issue.id },
+             body: { text: long_text, cursor_position: 100 }.to_json,
+             headers: { 'Content-Type' => 'application/json' }
+        
+        assert_response :bad_request
+        json_response = JSON.parse(response.body)
+        assert_equal "Text too long", json_response['error']
+      end
+
+      should "return error for invalid cursor position in suggest_completion" do
+        issue = Issue.find(1)
+        text = "Test text"
+        
+        post :suggest_completion, params: { id: issue.id },
+             body: { text: text, cursor_position: text.length + 1 }.to_json,
+             headers: { 'Content-Type' => 'application/json' }
+        
+        assert_response :bad_request
+        json_response = JSON.parse(response.body)
+        assert_equal "Invalid cursor position", json_response['error']
+      end
+
+      should "handle LLM error gracefully in suggest_completion" do
+        issue = Issue.find(1)
+        RedmineAiHelper::Llm.any_instance.stubs(:generate_text_completion).raises(StandardError, "LLM error")
+        
+        post :suggest_completion, params: { id: issue.id },
+             body: { text: "Login page error", cursor_position: 16 }.to_json,
+             headers: { 'Content-Type' => 'application/json' }
+        
+        assert_response :internal_server_error
+        json_response = JSON.parse(response.body)
+        assert_equal "Failed to generate suggestion", json_response['error']
+      end
+
+      should "handle suggest_completion with nil cursor position" do
+        issue = Issue.find(1)
+        RedmineAiHelper::Llm.any_instance.stubs(:generate_text_completion).returns("completion text")
+        
+        post :suggest_completion, params: { id: issue.id },
+             body: { text: "Login page error" }.to_json,
+             headers: { 'Content-Type' => 'application/json' }
+        
+        assert_response :success
+        json_response = JSON.parse(response.body)
+        assert json_response.key?('suggestion')
+        assert_equal "completion text", json_response['suggestion']
+      end
     end
   end
 end

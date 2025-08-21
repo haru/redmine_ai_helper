@@ -75,3 +75,4 @@ config/config.yaml
 GEMINI.md
 .serena/cache/
 .serena/cache/
+specs/

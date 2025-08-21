@@ -181,6 +181,58 @@ module RedmineAiHelper
         end
       end
 
+      # Generate text completion for inline auto-completion
+      # @param text [String] The current text content
+      # @param cursor_position [Integer] The cursor position in the text
+      # @param context [Hash] Context information
+      # @return [String] The completion suggestion
+      def generate_text_completion(text:, cursor_position: nil, context: {})
+        begin
+          # Use direct LLM call for simple text completion without tools
+          # This is faster and more suitable for inline completion
+          
+          # Build completion prompt from context
+          issue_context = ""
+          if context[:issue_title]
+            issue_context = "Issue: #{context[:issue_title]}\n"
+          end
+          
+          project_context = ""
+          if context[:project_name]
+            project_context = "Project: #{context[:project_name]}\n"
+          end
+          
+          prefix_text = cursor_position ? text[0...cursor_position] : text
+          suffix_text = (cursor_position && cursor_position < text.length) ? text[cursor_position..-1] : ""
+          
+          # Simple, focused prompt for completion
+          completion_prompt = <<~PROMPT
+            #{project_context}#{issue_context}
+            Complete the following issue description text starting from the cursor position.
+            Provide only the continuation text (1-3 sentences maximum).
+            
+            Text before cursor: "#{prefix_text}"
+            Text after cursor: "#{suffix_text}"
+            
+            Generate a brief, natural continuation:
+          PROMPT
+          
+          message = { role: "user", content: completion_prompt }
+          messages = [message]
+          
+          # Use the base chat method without streaming for fast response
+          completion = chat(messages, {})
+          
+          ai_helper_logger.debug "Generated text completion: #{completion.length} characters"
+          completion
+        rescue => e
+          ai_helper_logger.error "Text completion error in IssueAgent: #{e.message}"
+          ai_helper_logger.error e.backtrace.join("\n")
+          # Return empty string on error
+          ""
+        end
+      end
+
       private
 
       # Generate a available issue properties string
