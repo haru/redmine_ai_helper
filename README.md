@@ -116,7 +116,7 @@ Helth report can be exported to Markdown and PDF formats.
 
 1. Open the AI Helper settings page from the Administration menu.
 2. Create a model profile and fill in the following fields:
-   - Type: Choose the AI model type (e.g., OpenAI, Anthropic. Strongly recommend using OpenAI)
+   - Type: Choose the AI model type (e.g., OpenAI, Anthropic. Strongly recommend using OpenAI or Anthropic)
    - Name: Enter a name for the model profile
    - Access Key: Enter the API key for the AI service
    - Model name: Specify the AI model name (e.g., gpt-4.1-mini)
@@ -182,6 +182,8 @@ The AI Helper Plugin can use the MCP Server to perform tasks, such as sending is
 
 Configure settings to perform vector searches for issues using Qdrant.
 With this configuration, the AI Helper Plugin can use Qdrant to perform vector searches on Redmine issues and wiki data.
+
+**Note:** Vector search functionality is not available when using Anthropic AI models. Please use OpenAI or other supported AI providers for vector search features.
 
 ### Qdrant Setup
 

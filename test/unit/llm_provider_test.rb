@@ -12,7 +12,7 @@ class LlmProviderTest < ActiveSupport::TestCase
         ["OpenAI", "OpenAI"],
         ["OpenAI Compatible(Experimental)", "OpenAICompatible"],
         ["Gemini(Experimental)", "Gemini"],
-        ["Anthropic(Experimental)", "Anthropic"],
+        ["Anthropic", "Anthropic"],
         ["Azure OpenAI(Experimental)", "AzureOpenAi"],
       ]
       assert_equal expected_options, @llm_provider.option_for_select
