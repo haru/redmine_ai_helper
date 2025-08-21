@@ -15,11 +15,24 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Initialize autocompletion for description field
   if (descriptionTextarea && typeof AiHelperAutoCompletion !== 'undefined') {
-    // Load configuration with fallback values
+    // Load configuration from YAML file with fallback values
+    <%
+      config_path = Rails.root.join('plugins', 'redmine_ai_helper', 'config', 'ai_helper', 'config.yml')
+      autocompletion_config = {}
+      if File.exist?(config_path)
+        begin
+          config_data = YAML.load_file(config_path)
+          autocompletion_config = config_data['autocompletion'] || {}
+        rescue => e
+          # If YAML loading fails, use default values
+          autocompletion_config = {}
+        end
+      end
+    %>
     const config = {
-      debounce_delay: 500,
-      min_length: 5,
-      suggestion_color: '#888888'
+      debounce_delay: <%= autocompletion_config['debounce_delay'] || 500 %>,
+      min_length: <%= autocompletion_config['min_length'] || 5 %>,
+      suggestion_color: '<%= autocompletion_config['suggestion_color'] || '#888888' %>'
     };
     
     console.log('Initializing AI Helper Auto Completion with config:', config);
