@@ -326,14 +326,17 @@ module RedmineAiHelper
       # Remove any potential markdown formatting
       cleaned = cleaned.gsub(/^\*+\s*/, '')  # Remove bullet points
       cleaned = cleaned.gsub(/^#+\s*/, '')   # Remove headers
-      cleaned = cleaned.gsub(/\*\*(.*?)\*\*/, '\\1')  # Remove bold
-      cleaned = cleaned.gsub(/\*(.*?)\*/, '\\1')      # Remove italic
+      cleaned = cleaned.gsub(/\*\*(.*?)\*\*/, '\1')  # Remove bold
+      cleaned = cleaned.gsub(/\*(.*?)\*/, '\1')      # Remove italic
+      
+      # Normalize multiple spaces to single spaces
+      cleaned = cleaned.gsub(/\s+/, ' ')
       
       # Limit to reasonable length (max 3 sentences as per spec)
-      sentences = cleaned.split(/[.!?]+/)
+      # Split on sentence-ending punctuation but preserve the punctuation
+      sentences = cleaned.split(/(?<=[.!?])\s+/)
       if sentences.length > 3
-        cleaned = sentences[0..2].join('. ').strip
-        cleaned += '.' unless cleaned.end_with?('.', '!', '?')
+        cleaned = sentences[0..2].join(' ')
       end
       
       cleaned
