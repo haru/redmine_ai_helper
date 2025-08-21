@@ -191,33 +191,21 @@ module RedmineAiHelper
           # Use direct LLM call for simple text completion without tools
           # This is faster and more suitable for inline completion
           
-          # Build completion prompt from context
-          issue_context = ""
-          if context[:issue_title]
-            issue_context = "Issue: #{context[:issue_title]}\n"
-          end
-          
-          project_context = ""
-          if context[:project_name]
-            project_context = "Project: #{context[:project_name]}\n"
-          end
-          
           prefix_text = cursor_position ? text[0...cursor_position] : text
           suffix_text = (cursor_position && cursor_position < text.length) ? text[cursor_position..-1] : ""
           
-          # Simple, focused prompt for completion
-          completion_prompt = <<~PROMPT
-            #{project_context}#{issue_context}
-            Complete the following issue description text starting from the cursor position.
-            Provide only the continuation text (1-3 sentences maximum).
-            
-            Text before cursor: "#{prefix_text}"
-            Text after cursor: "#{suffix_text}"
-            
-            Generate a brief, natural continuation:
-          PROMPT
+          # Load prompt template using the same pattern as other methods
+          prompt = load_prompt("issue_agent/inline_completion")
+          prompt_text = prompt.format(
+            prefix_text: prefix_text,
+            suffix_text: suffix_text,
+            issue_title: context[:issue_title] || 'New Issue',
+            project_name: context[:project_name] || 'Unknown Project',
+            cursor_position: cursor_position.to_s,
+            max_sentences: '3'
+          )
           
-          message = { role: "user", content: completion_prompt }
+          message = { role: "user", content: prompt_text }
           messages = [message]
           
           # Use the base chat method without streaming for fast response
@@ -227,8 +215,6 @@ module RedmineAiHelper
           completion
         rescue => e
           ai_helper_logger.error "Text completion error in IssueAgent: #{e.message}"
-          ai_helper_logger.error e.backtrace.join("\n")
-          # Return empty string on error
           ""
         end
       end

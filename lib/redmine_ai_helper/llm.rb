@@ -265,11 +265,29 @@ module RedmineAiHelper
       prefix_text = cursor_position ? text[0...cursor_position] : text
       suffix_text = (cursor_position && cursor_position < text.length) ? text[cursor_position..-1] : ""
       
-      # Load prompt template
+      # Load prompt template from issue_agent directory
       locale = User.current.language || 'en'
-      template_key = locale == 'ja' ? 'ja' : 'en'
       
-      template = load_prompt_template('inline_completion', template_key)
+      if locale == 'ja'
+        template_path = Rails.root.join('plugins', 'redmine_ai_helper', 'assets', 'prompt_templates', 'issue_agent', 'inline_completion_ja.yml')
+        template_key = 'ja'
+      else
+        template_path = Rails.root.join('plugins', 'redmine_ai_helper', 'assets', 'prompt_templates', 'issue_agent', 'inline_completion.yml')
+        template_key = 'en'
+      end
+      
+      if File.exist?(template_path)
+        template_data = YAML.load_file(template_path)
+        template = template_data['inline_completion'] && template_data['inline_completion'][template_key] || ""
+      else
+        # Fallback template
+        template = case locale
+        when 'ja'
+          "カーソル位置からテキストを短く補完してください（最大3文）: {prefix_text}|{suffix_text}"
+        else
+          "Complete the text from cursor position (max 3 sentences): {prefix_text}|{suffix_text}"
+        end
+      end
       
       # Replace placeholders in template
       template.gsub('{issue_title}', context[:issue_title] || 'New Issue')
