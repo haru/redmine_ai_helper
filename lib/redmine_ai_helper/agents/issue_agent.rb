@@ -202,7 +202,8 @@ module RedmineAiHelper
             issue_title: context[:issue_title] || 'New Issue',
             project_name: context[:project_name] || 'Unknown Project',
             cursor_position: cursor_position.to_s,
-            max_sentences: '3'
+            max_sentences: '3',
+            format: Setting.text_formatting
           )
           
           message = { role: "user", content: prompt_text }

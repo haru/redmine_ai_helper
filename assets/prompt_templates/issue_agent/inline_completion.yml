@@ -7,6 +7,7 @@ input_variables:
   - project_name
   - cursor_position
   - max_sentences
+  - format
 template: |-
   You are helping to complete text in the issue "{issue_title}" for project "{project_name}".
   
@@ -25,11 +26,20 @@ template: |-
   - "The issu" → "e has been resolved" (incomplete word, no space)
   - "The issue" → " has been resolved" (complete word, add space)
   
+  List continuation examples:
+  - "- First item\n- Sec" → "ond item" (incomplete list item, continue the item)
+  - "- First item\n- Second item\n-" → " Third item" (new list item, add space and content)
+  - "* Item 1\n*" → " Item 2" (bullet list, add space and content)
+  - "1. First\n2." → " Second" (numbered list, add space and content)
+  
   Rules:
   - DO NOT repeat any part of "{prefix_text}"
   - Write ONLY the continuation that comes after the cursor
   - Pay attention to word boundaries for proper spacing
   - Maximum {max_sentences} sentences
   - Consider the context of suffix text: "{suffix_text}"
+  - Format the text as {format}. If format is "textile", use Textile syntax (e.g., *bold*, _italic_, "link text":http://example.com). If format is "markdown", use Markdown syntax (e.g., **bold**, *italic*, [link text](http://example.com))
+  - If the prefix text shows a list pattern (starts with -, *, +, or numbers like 1., 2.), continue the list pattern appropriately
+  - Detect list context: if the text contains list markers, maintain the same list format and continue with the next appropriate item
   
   Write the continuation:
