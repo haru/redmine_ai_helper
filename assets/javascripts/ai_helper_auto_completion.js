@@ -50,12 +50,30 @@ class AiHelperAutoCompletion {
     if (this.options.contextType === 'note') {
       this.checkbox.id = 'ai-helper-autocompletion-notes-toggle';
       label.htmlFor = 'ai-helper-autocompletion-notes-toggle';
-      label.textContent = this.options.labels.toggleLabel || 'AI Notes Completion';
     } else {
       this.checkbox.id = 'ai-helper-autocompletion-description-toggle';
       label.htmlFor = 'ai-helper-autocompletion-description-toggle';
-      label.textContent = this.options.labels.toggleLabel || 'AI Description Completion';
     }
+    
+    // Get label text from options or use fallback
+    const labelText = this.options.labels.commonToggleLabel || 'AI Helper Completion';
+    
+    // Create robot icon using SVG (same as sprite_icon helper generates)
+    const iconSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    iconSvg.setAttribute('class', 'icon icon-ai-helper-robot');
+    iconSvg.setAttribute('width', '16');
+    iconSvg.setAttribute('height', '16');
+    iconSvg.setAttribute('viewBox', '0 0 24 24');
+    iconSvg.setAttribute('fill', 'currentColor');
+    
+    const iconUse = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    iconUse.setAttribute('href', '/plugin_assets/redmine_ai_helper/images/icons.svg#icon--ai-helper-robot');
+    iconSvg.appendChild(iconUse);
+    
+    // Set common label text with robot icon
+    label.innerHTML = '';
+    label.appendChild(iconSvg);
+    label.appendChild(document.createTextNode(' ' + labelText));
     
     const container = document.createElement('div');
     container.className = 'ai-helper-autocompletion-controls';
