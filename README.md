@@ -45,6 +45,7 @@ The Redmine AI Helper Plugin adds AI chat functionality to Redmine, enhancing pr
   - Issue and Wiki content summarization
   - Repository source code explanation
   - Generate subtasks from issues
+  - Inline issue description completion
   - Other project and Redmine-related inquiries
 - Provides a project health report
 - Supports multiple AI models and services
@@ -80,6 +81,12 @@ You can generate subtasks from issues using the AI Helper Plugin. This feature a
 You can search for similar issues using the AI Helper Plugin. This feature is only available if vector search is set up. The AI Helper Plugin allows you to find issues similar to the current one based on its content, making it easier to discover related past issues and solutions.
 
 ![Image](https://github.com/user-attachments/assets/3217149b-4874-49b9-aa98-b35a7324bca3)
+
+## Inline Issue Description Completion
+
+You can use the AI Helper Plugin to complete issue descriptions inline. This feature provides suggestions and completions as you type, helping you write more detailed and accurate issue descriptions.
+
+![Image](https://github.com/user-attachments/assets/d8e5da82-a5bb-46bf-836b-b548a32e2ab0)
 
 ## Project Health Report
 
