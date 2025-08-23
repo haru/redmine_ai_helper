@@ -45,6 +45,7 @@ The Redmine AI Helper Plugin adds AI chat functionality to Redmine, enhancing pr
   - Issue and Wiki content summarization
   - Repository source code explanation
   - Generate subtasks from issues
+  - Inline issue description completion
   - Other project and Redmine-related inquiries
 - Provides a project health report
 - Supports multiple AI models and services
@@ -81,6 +82,12 @@ You can search for similar issues using the AI Helper Plugin. This feature is on
 
 ![Image](https://github.com/user-attachments/assets/3217149b-4874-49b9-aa98-b35a7324bca3)
 
+## Inline Issue Description Completion
+
+You can use the AI Helper Plugin to complete issue descriptions inline. This feature provides suggestions and completions as you type, helping you write more detailed and accurate issue descriptions.
+
+![Image](https://github.com/user-attachments/assets/d8e5da82-a5bb-46bf-836b-b548a32e2ab0)
+
 ## Project Health Report
 
 You can generate a project health report using the AI Helper Plugin. This feature provides a comprehensive overview of the project's status, including metrics such as open issues, closed issues, and overall project health.
@@ -116,7 +123,7 @@ Helth report can be exported to Markdown and PDF formats.
 
 1. Open the AI Helper settings page from the Administration menu.
 2. Create a model profile and fill in the following fields:
-   - Type: Choose the AI model type (e.g., OpenAI, Anthropic. Strongly recommend using OpenAI)
+   - Type: Choose the AI model type (e.g., OpenAI, Anthropic. Strongly recommend using OpenAI or Anthropic)
    - Name: Enter a name for the model profile
    - Access Key: Enter the API key for the AI service
    - Model name: Specify the AI model name (e.g., gpt-4.1-mini)
@@ -182,6 +189,8 @@ The AI Helper Plugin can use the MCP Server to perform tasks, such as sending is
 
 Configure settings to perform vector searches for issues using Qdrant.
 With this configuration, the AI Helper Plugin can use Qdrant to perform vector searches on Redmine issues and wiki data.
+
+**Note:** Vector search functionality is not available when using Anthropic AI models. Please use OpenAI or other supported AI providers for vector search features.
 
 ### Qdrant Setup
 

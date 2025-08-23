@@ -1088,6 +1088,231 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_response :success
         assert_equal cached_content, assigns(:health_report)
       end
+
+      # Auto-completion tests
+      should "suggest completion with valid request" do
+        issue = Issue.find(1)
+        RedmineAiHelper::Llm.any_instance.stubs(:generate_text_completion).returns("This is a suggested completion.")
+        
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.id }, 
+             body: { text: "Login page error", cursor_position: 16 }.to_json
+        
+        assert_response :success
+        json_response = JSON.parse(response.body)
+        assert json_response.key?('suggestion')
+        assert_equal "This is a suggested completion.", json_response['suggestion']
+      end
+
+      should "return error for non-JSON request in suggest_completion" do
+        issue = Issue.find(1)
+        
+        post :suggest_completion, params: { id: issue.id, text: "Some text" }
+        
+        assert_response :unsupported_media_type
+        json_response = JSON.parse(response.body)
+        assert_equal "Unsupported Media Type", json_response['error']
+      end
+
+
+      should "return error for empty text in suggest_completion" do
+        issue = Issue.find(1)
+        
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.id },
+             body: { text: "", cursor_position: 0 }.to_json
+        
+        assert_response :bad_request
+        json_response = JSON.parse(response.body)
+        assert_equal "Text is required", json_response['error']
+      end
+
+      should "return error for text too long in suggest_completion" do
+        issue = Issue.find(1)
+        long_text = "a" * 5001
+        
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.id },
+             body: { text: long_text, cursor_position: 100 }.to_json
+        
+        assert_response :bad_request
+        json_response = JSON.parse(response.body)
+        assert_equal "Text too long", json_response['error']
+      end
+
+      should "return error for invalid cursor position in suggest_completion" do
+        issue = Issue.find(1)
+        text = "Test text"
+        
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.id },
+             body: { text: text, cursor_position: text.length + 1 }.to_json
+        
+        assert_response :bad_request
+        json_response = JSON.parse(response.body)
+        assert_equal "Invalid cursor position", json_response['error']
+      end
+
+      should "handle LLM error gracefully in suggest_completion" do
+        issue = Issue.find(1)
+        RedmineAiHelper::Llm.any_instance.stubs(:generate_text_completion).raises(StandardError, "LLM error")
+        
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.id },
+             body: { text: "Login page error", cursor_position: 16 }.to_json
+        
+        assert_response :internal_server_error
+        json_response = JSON.parse(response.body)
+        assert_equal "Failed to generate suggestion", json_response['error']
+      end
+
+      should "handle suggest_completion with nil cursor position" do
+        issue = Issue.find(1)
+        RedmineAiHelper::Llm.any_instance.stubs(:generate_text_completion).returns("completion text")
+        
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.id },
+             body: { text: "Login page error" }.to_json
+        
+        assert_response :success
+        json_response = JSON.parse(response.body)
+        assert json_response.key?('suggestion')
+        assert_equal "completion text", json_response['suggestion']
+      end
+
+      should "suggest completion for notes context type" do
+        issue = Issue.find(1)
+        RedmineAiHelper::Llm.any_instance.stubs(:generate_text_completion).returns("I have reviewed this issue.")
+        
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.id },
+             body: { text: "I have reviewed", cursor_position: 15, context_type: "note" }.to_json
+        
+        assert_response :success
+        json_response = JSON.parse(response.body)
+        assert json_response.key?('suggestion')
+        assert_equal "I have reviewed this issue.", json_response['suggestion']
+      end
+
+      should "return error for invalid context_type" do
+        issue = Issue.find(1)
+        
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.id },
+             body: { text: "Test text", cursor_position: 5, context_type: "invalid" }.to_json
+        
+        assert_response :bad_request
+        json_response = JSON.parse(response.body)
+        assert_equal "Invalid context_type. Must be 'description' or 'note'", json_response['error']
+      end
+
+      should "return error for note context_type without existing issue" do
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: 'new' },
+             body: { text: "Test note", cursor_position: 5, context_type: "note" }.to_json
+        
+        assert_response :bad_request
+        json_response = JSON.parse(response.body)
+        assert_equal "Issue is required for note completion", json_response['error']
+      end
+
+      should "handle note completion with issue context" do
+        issue = Issue.find(1)
+        
+        # Create a journal entry for context
+        journal = Journal.create!(
+          journalized: issue,
+          user: User.find(1),
+          notes: "This is a test note for context."
+        )
+        
+        RedmineAiHelper::Llm.any_instance.stubs(:generate_text_completion).returns(" and I agree with the analysis.")
+        
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.id },
+             body: { text: "Thank you for the feedback", cursor_position: 25, context_type: "note" }.to_json
+        
+        assert_response :success
+        json_response = JSON.parse(response.body)
+        assert json_response.key?('suggestion')
+        assert_equal " and I agree with the analysis.", json_response['suggestion']
+        
+        # Clean up
+        journal.destroy
+      end
+
+      # Integration tests for refactored architecture
+      should "test refactored generate_text_completion integration" do
+        issue = Issue.find(1)
+        
+        # Test that the new architecture works end-to-end
+        # The controller should call llm.rb which delegates to IssueAgent
+        @request.headers["Content-Type"] = "application/json"
+        
+        post :suggest_completion, params: { id: issue.id },
+             body: { text: "This is a test issue", cursor_position: 17, context_type: "description" }.to_json
+        
+        assert_response :success
+        json_response = JSON.parse(response.body)
+        assert json_response.key?('suggestion')
+        # The response should be a string (empty in test environment due to mocking)
+        assert json_response['suggestion'].is_a?(String)
+      end
+
+      should "test prompt loader integration through agent" do
+        issue = Issue.find(1)
+        
+        # Mock the PromptLoader to verify it's being used
+        mock_prompt = mock("Prompt")
+        mock_prompt.stubs(:format).returns("Mocked prompt text")
+        
+        # The IssueAgent should use PromptLoader via load_prompt
+        RedmineAiHelper::Agents::IssueAgent.any_instance.expects(:load_prompt)
+          .with("issue_agent/inline_completion")
+          .returns(mock_prompt)
+        
+        RedmineAiHelper::Agents::IssueAgent.any_instance.stubs(:chat).returns("Mocked completion")
+        
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.id },
+             body: { text: "Test prompt loading", cursor_position: 4, context_type: "description" }.to_json
+        
+        assert_response :success
+        json_response = JSON.parse(response.body)
+        assert_equal "Mocked completion", json_response['suggestion']
+      end
+
+      should "test note context integration" do
+        issue = Issue.find(1)
+        
+        # Create test journal for context
+        journal = Journal.create!(
+          journalized: issue,
+          user: User.find(1),
+          notes: "Previous discussion point"
+        )
+        
+        # Mock the note template loading
+        mock_prompt = mock("Prompt") 
+        mock_prompt.stubs(:format).returns("Note completion prompt")
+        
+        RedmineAiHelper::Agents::IssueAgent.any_instance.expects(:load_prompt)
+          .with("issue_agent/note_inline_completion")
+          .returns(mock_prompt)
+        
+        RedmineAiHelper::Agents::IssueAgent.any_instance.stubs(:chat).returns("Contextual note completion")
+        
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.id },
+             body: { text: "I agree with", cursor_position: 12, context_type: "note" }.to_json
+        
+        assert_response :success
+        json_response = JSON.parse(response.body)
+        assert_equal "Contextual note completion", json_response['suggestion']
+        
+        # Clean up
+        journal.destroy
+      end
     end
   end
 end

@@ -1,0 +1,6 @@
+<!-- AI Helper Debug Hook: This message shows this hook is being called -->
+<script>
+console.log('AI Helper Debug: Hook called on', window.location.pathname);
+console.log('Notes textarea present:', document.querySelector('textarea[name="notes"]') !== null);
+console.log('Issue form conditions - project:', '<%= @project&.name %>', 'ai_helper enabled:', '<%= @project&.module_enabled?(:ai_helper) %>', 'user allowed:', '<%= User.current.allowed_to?({ controller: :ai_helper, action: :chat_form }, @project) %>', 'model profile:', '<%= AiHelperSetting.find_or_create.model_profile.present? %>');
+</script>

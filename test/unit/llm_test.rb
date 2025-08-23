@@ -400,6 +400,174 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
     end
   end
 
+  context "generate_text_completion" do
+    setup do
+      @project = Project.find(1)
+      @issue = Issue.find(1)
+      @llm = RedmineAiHelper::Llm.new(@params)
+    end
+
+    should "generate text completion successfully" do
+      RedmineAiHelper::Agents::IssueAgent.any_instance.stubs(:generate_text_completion).returns("This is a completion.")
+      
+      result = @llm.generate_text_completion(
+        text: "Login page has error",
+        context_type: "description",
+        cursor_position: 18,
+        project: @project,
+        issue: @issue
+      )
+      
+      assert_equal "This is a completion.", result
+    end
+
+    should "handle agent error gracefully" do
+      RedmineAiHelper::Agents::IssueAgent.any_instance.stubs(:generate_text_completion).raises(StandardError, "Agent error")
+      
+      result = @llm.generate_text_completion(
+        text: "Login page has error",
+        context_type: "description",
+        cursor_position: 18,
+        project: @project,
+        issue: @issue
+      )
+      
+      assert_equal "", result
+    end
+
+    should "parse single suggestion correctly" do
+      # This functionality has been moved to IssueAgent#parse_completion_response
+      # Create an IssueAgent instance for testing
+      agent = RedmineAiHelper::Agents::IssueAgent.new
+
+      # Test with normal text
+      result = agent.send(:parse_completion_response, "This is a suggestion.")
+      assert_equal "This is a suggestion.", result
+      
+      # Test with markdown formatting  
+      result = agent.send(:parse_completion_response, "**Bold** and *italic* text.")
+      assert_equal "Bold and italic text.", result
+      
+      # Test with too many sentences
+      long_text = "First sentence. Second sentence. Third sentence. Fourth sentence."
+      result = agent.send(:parse_completion_response, long_text)
+      assert_equal "First sentence. Second sentence. Third sentence.", result
+      
+      # Test with empty/nil
+      assert_equal "", agent.send(:parse_completion_response, "")
+      assert_equal "", agent.send(:parse_completion_response, nil)
+    end
+
+    # Tests for refactored generate_text_completion method
+    context "generate_text_completion (refactored)" do
+      should "delegate to IssueAgent properly" do
+        # Mock LangfuseWrapper
+        mock_langfuse = mock('LangfuseWrapper')
+        mock_langfuse.stubs(:create_span)
+        mock_langfuse.stubs(:finish_current_span)
+        mock_langfuse.stubs(:flush)
+        RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
+
+        # Mock IssueAgent
+        mock_agent = mock('IssueAgent')
+        mock_agent.expects(:generate_text_completion).with(
+          text: "Test text",
+          cursor_position: 4,
+          context_type: "description",
+          project: @project,
+          issue: @issue
+        ).returns("Completed text")
+        
+        RedmineAiHelper::Agents::IssueAgent.expects(:new).returns(mock_agent)
+
+        result = @llm.generate_text_completion(
+          text: "Test text",
+          context_type: "description",
+          cursor_position: 4,
+          project: @project,
+          issue: @issue
+        )
+
+        assert_equal "Completed text", result
+      end
+
+      should "handle agent errors gracefully" do
+        # Mock LangfuseWrapper
+        mock_langfuse = mock('LangfuseWrapper')
+        mock_langfuse.stubs(:create_span)
+        mock_langfuse.stubs(:finish_current_span)
+        mock_langfuse.stubs(:flush)
+        RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
+
+        # Mock IssueAgent to raise an error
+        mock_agent = mock('IssueAgent')
+        mock_agent.expects(:generate_text_completion).raises(StandardError, "Agent failed")
+        
+        RedmineAiHelper::Agents::IssueAgent.expects(:new).returns(mock_agent)
+
+        result = @llm.generate_text_completion(
+          text: "Test text",
+          context_type: "description",
+          cursor_position: 4,
+          project: @project,
+          issue: @issue
+        )
+
+        assert_equal "", result
+      end
+
+      should "pass correct options to IssueAgent" do
+        # Mock LangfuseWrapper
+        mock_langfuse = mock('LangfuseWrapper')
+        mock_langfuse.stubs(:create_span)
+        mock_langfuse.stubs(:finish_current_span)
+        mock_langfuse.stubs(:flush)
+        RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
+
+        # Verify correct options are passed to IssueAgent
+        expected_options = { langfuse: mock_langfuse, project: @project }
+        
+        mock_agent = mock('IssueAgent')
+        mock_agent.expects(:generate_text_completion).returns("Result")
+        
+        RedmineAiHelper::Agents::IssueAgent.expects(:new).with(expected_options).returns(mock_agent)
+
+        @llm.generate_text_completion(
+          text: "Test text",
+          context_type: "note",
+          project: @project,
+          issue: @issue
+        )
+      end
+
+      should "create proper Langfuse spans" do
+        test_text = "Test input"
+        test_output = "Test output"
+        
+        # Mock LangfuseWrapper to verify proper span handling
+        mock_langfuse = mock('LangfuseWrapper')
+        mock_langfuse.expects(:create_span).with(name: "text_completion", input: test_text)
+        mock_langfuse.expects(:finish_current_span).with(output: test_output)
+        mock_langfuse.expects(:flush)
+        
+        RedmineAiHelper::LangfuseUtil::LangfuseWrapper.expects(:new).with(input: test_text).returns(mock_langfuse)
+
+        # Mock IssueAgent
+        mock_agent = mock('IssueAgent')
+        mock_agent.stubs(:generate_text_completion).returns(test_output)
+        RedmineAiHelper::Agents::IssueAgent.stubs(:new).returns(mock_agent)
+
+        result = @llm.generate_text_completion(
+          text: test_text,
+          context_type: "description",
+          project: @project
+        )
+
+        assert_equal test_output, result
+      end
+    end
+  end
+
   class DummyIssueAgent
     def generate_sub_issues_draft(args = {})
       return "Permission denied" unless args[:issue].visible?

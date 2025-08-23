@@ -10,12 +10,12 @@ class AiHelperController < ApplicationController
   include AiHelperHelper
   include RedmineAiHelper::Export::PDF::ProjectHealthPdfHelper
 
-  protect_from_forgery except: [:generate_project_health]
+  protect_from_forgery except: [:generate_project_health, :suggest_completion]
   before_action :find_issue, only: [:issue_summary, :update_issue_summary, :generate_issue_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues]
   before_action :find_wiki_page, only: [:wiki_summary, :generate_wiki_summary]
-  before_action :find_project, except: [:issue_summary, :wiki_summary, :generate_issue_summary, :generate_wiki_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues]
+  before_action :find_project, except: [:issue_summary, :wiki_summary, :generate_issue_summary, :generate_wiki_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues, :suggest_completion]
   before_action :find_user, :create_session, :find_conversation
-  before_action :authorize, except: [:project_health, :generate_project_health]
+  before_action :authorize, except: [:project_health, :generate_project_health, :suggest_completion]
   before_action :authorize_project_health, only: [:project_health, :generate_project_health]
 
   # Display the chat form in the sidebar
@@ -254,6 +254,92 @@ class AiHelperController < ApplicationController
       ai_helper_logger.error "Similar issues search error: #{e.message}"
       ai_helper_logger.error e.backtrace.join("\n")
       render json: { error: e.message }, status: :internal_server_error
+    end
+  end
+
+  # Suggest auto-completion for textarea input
+  def suggest_completion
+    unless request.content_type == "application/json"
+      render json: { error: "Unsupported Media Type" }, status: :unsupported_media_type and return
+    end
+
+    begin
+      data = JSON.parse(request.body.read)
+    rescue JSON::ParserError
+      render json: { error: "Invalid JSON" }, status: :bad_request and return
+    end
+
+    text = data["text"]
+    context_type = data["context_type"] || "description" # "description" or "note"
+    cursor_position = data["cursor_position"]
+
+    # Input validation
+    if text.blank?
+      render json: { error: "Text is required" }, status: :bad_request and return
+    end
+
+    if text.length > 5000
+      render json: { error: "Text too long" }, status: :bad_request and return
+    end
+
+    if cursor_position && (cursor_position < 0 || cursor_position > text.length)
+      render json: { error: "Invalid cursor position" }, status: :bad_request and return
+    end
+
+    # Validate context_type
+    unless %w[description note].include?(context_type)
+      render json: { error: "Invalid context_type. Must be 'description' or 'note'" }, status: :bad_request and return
+    end
+
+    # Handle new issue case
+    issue = nil
+    project = nil
+    
+    if params[:id] != 'new'
+      issue = Issue.find_by(id: params[:id])
+      project = issue&.project
+    else
+      # For new issues, try to get project from various sources
+      if data["project_id"].present?
+        project = Project.find_by(id: data["project_id"])
+      elsif data["project_identifier"].present?
+        project = Project.find_by(identifier: data["project_identifier"])
+      else
+        # Try to get from URL or session
+        project = @project
+      end
+    end
+
+    # Note completion requires an existing issue
+    if context_type == "note" && !issue
+      render json: { error: "Issue is required for note completion" }, status: :bad_request and return
+    end
+
+    # Debug logging
+    ai_helper_logger.info "Auto-completion request: id=#{params[:id]}, context_type=#{context_type}, project=#{project&.identifier}, user=#{User.current.id}"
+    
+    # Check permissions
+    unless project&.module_enabled?(:ai_helper) && User.current.allowed_to?(:view_ai_helper, project)
+      ai_helper_logger.warn "Permission denied: project=#{project&.identifier}, ai_helper_enabled=#{project&.module_enabled?(:ai_helper)}, user_allowed=#{project ? User.current.allowed_to?(:view_ai_helper, project) : false}"
+      render json: { error: "Permission denied" }, status: :forbidden and return
+    end
+
+    begin
+      llm = RedmineAiHelper::Llm.new
+      suggestion = llm.generate_text_completion(
+        text: text,
+        context_type: context_type,
+        cursor_position: cursor_position,
+        project: project,
+        issue: issue
+      )
+
+      response_data = { suggestion: suggestion }
+      render json: response_data
+    rescue => e
+      ai_helper_logger.error "Auto-completion error: #{e.message}"
+      ai_helper_logger.error e.backtrace.join("\n")
+      render json: { error: "Failed to generate suggestion" }, status: :internal_server_error
     end
   end
 

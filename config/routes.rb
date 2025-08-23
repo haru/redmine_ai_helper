@@ -17,6 +17,7 @@ RedmineApp::Application.routes.draw do
   post "ai_helper/issue/:id/subissue_gen", to: "ai_helper#generate_sub_issues", as: "ai_helper_subissue_gen"
   post "ai_helper/issue/:id/add_sub_issues", to: "ai_helper#add_sub_issues", as: "ai_helper_add_sub_issues"
   get "ai_helper/issue/:id/similar_issues", to: "ai_helper#similar_issues", as: "ai_helper_similar_issues"
+  post "ai_helper/issue/:id/suggest_completion", to: "ai_helper#suggest_completion", as: "ai_helper_suggest_completion", constraints: { id: /\d+|new/ }
   get "projects/:id/ai_helper/project_health", to: "ai_helper#project_health", as: "ai_helper_project_health"
   get "projects/:id/ai_helper/generate_project_health", to: "ai_helper#generate_project_health", as: "ai_helper_generate_project_health"
   post "projects/:id/ai_helper/project_health_pdf", to: "ai_helper#project_health_pdf", as: "ai_helper_project_health_pdf"
