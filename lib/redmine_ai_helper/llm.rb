@@ -179,5 +179,55 @@ module RedmineAiHelper
       ai_helper_logger.info "project health report: #{answer}"
       answer
     end
+
+    # Generate text completion for inline auto-completion
+    # @param text [String] The current text content
+    # @param context_type [String] The context type (description, etc.)
+    # @param cursor_position [Integer] The cursor position in the text
+    # @param project [Project] The project object
+    # @param issue [Issue] Optional issue object for context
+    # @return [String] The completion suggestion
+    def generate_text_completion(text:, context_type:, cursor_position: nil, project: nil, issue: nil)
+      begin
+        ai_helper_logger.info "Starting text completion: text='#{text[0..50]}...', cursor_position=#{cursor_position}, context_type=#{context_type}"
+        
+        # Initialize agent and delegate all processing to it
+        langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: text)
+        options = { langfuse: langfuse, project: project }
+        agent = RedmineAiHelper::Agents::IssueAgent.new(options)
+        
+        langfuse.create_span(name: "text_completion", input: text)
+        
+        # Agent handles all context building and prompt logic
+        completion = agent.generate_text_completion(
+          text: text,
+          cursor_position: cursor_position,
+          context_type: context_type,
+          project: project,
+          issue: issue
+        )
+        
+        ai_helper_logger.info "Agent returned completion: '#{completion}' (length: #{completion.length})"
+        
+        langfuse.finish_current_span(output: completion)
+        langfuse.flush
+        
+        completion
+      rescue => e
+        ai_helper_logger.error "Text completion error: #{e.full_message}"
+        ai_helper_logger.error e.backtrace.join("\n")
+        # Return empty string on error to avoid breaking UI
+        ""
+      end
+    end
+
+    private
+
+
+
+
+
+
+
   end
 end

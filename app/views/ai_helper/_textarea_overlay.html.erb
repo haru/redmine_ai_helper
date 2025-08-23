@@ -1,0 +1,158 @@
+<%# Auto-completion integration for issue description textarea %>
+<% 
+  # Determine project from @issue if @project is not available
+  project = @project || (@issue&.project)
+%>
+<% if project&.module_enabled?(:ai_helper) && User.current.allowed_to?(:view_ai_helper, project) %>
+
+<!-- Create checkboxes in ERB with proper Redmine sprite_icon -->
+<div id="ai-helper-description-checkbox-container" class="ai-helper-autocompletion-controls">
+  <input type="checkbox" id="ai-helper-autocompletion-description-toggle" />
+  <label for="ai-helper-autocompletion-description-toggle">
+    <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
+    <%= t('ai_helper.autocompletion.common_toggle_label') %>
+  </label>
+</div>
+
+<% if @issue&.persisted? && !@issue.new_record? %>
+<div id="ai-helper-notes-checkbox-container" class="ai-helper-autocompletion-controls">
+  <input type="checkbox" id="ai-helper-autocompletion-notes-toggle" />
+  <label for="ai-helper-autocompletion-notes-toggle">
+    <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
+    <%= t('ai_helper.autocompletion.common_toggle_label') %>
+  </label>
+</div>
+<% end %>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Prevent multiple initialization by checking if already processed
+  if (window.aiHelperAutoCompletionInitialized) {
+    return;
+  }
+  
+  // Find ticket description and notes textarea elements
+  const descriptionTextarea = document.querySelector('textarea[name="issue[description]"]');
+  const notesTextarea = document.getElementById('issue_notes');
+
+  
+  // Load configuration from YAML file with fallback values
+  <%
+    config_path = Rails.root.join('plugins', 'redmine_ai_helper', 'config', 'ai_helper', 'config.yml')
+    autocompletion_config = {}
+    if File.exist?(config_path)
+      begin
+        config_data = YAML.load_file(config_path)
+        autocompletion_config = config_data['autocompletion'] || {}
+      rescue => e
+        # If YAML loading fails, use default values
+        autocompletion_config = {}
+      end
+    end
+  %>
+  const config = {
+    debounce_delay: <%= autocompletion_config['debounce_delay'] || 500 %>,
+    min_length: <%= autocompletion_config['min_length'] || 5 %>,
+    suggestion_color: '<%= autocompletion_config['suggestion_color'] || '#888888' %>'
+  };
+  
+  // Initialize autocompletion for description field
+  if (descriptionTextarea && typeof AiHelperAutoCompletion !== 'undefined') {
+    
+    const autoCompletion = new AiHelperAutoCompletion(descriptionTextarea, {
+      contextType: 'description',
+      endpoint: '<%= ai_helper_suggest_completion_path(@issue&.persisted? ? @issue.id : 'new') %>',
+      debounceDelay: config.debounce_delay,
+      minLength: config.min_length,
+      suggestionColor: config.suggestion_color,
+      // I18n labels
+      labels: {
+        commonToggleLabel: '<%= t('ai_helper.autocompletion.common_toggle_label') %>',
+        loading: '<%= t('ai_helper.autocompletion.loading') %>',
+        noSuggestions: '<%= t('ai_helper.autocompletion.no_suggestions') %>',
+        acceptSuggestion: '<%= t('ai_helper.autocompletion.accept_suggestion') %>',
+        dismiss: '<%= t('ai_helper.autocompletion.dismiss') %>',
+        enabledTooltip: '<%= t('ai_helper.autocompletion.enabled_tooltip') %>',
+        disabledTooltip: '<%= t('ai_helper.autocompletion.disabled_tooltip') %>'
+      }
+    });
+    
+    autoCompletion.init();
+    
+    // Move the description checkbox to below the description textarea
+    setTimeout(function() {
+      const descriptionContainer = document.getElementById('ai-helper-description-checkbox-container');
+      if (descriptionContainer && descriptionTextarea) {
+        const parent = descriptionTextarea.parentNode;
+        const nextSibling = descriptionTextarea.nextSibling;
+        
+        if (nextSibling) {
+          parent.insertBefore(descriptionContainer, nextSibling);
+        } else {
+          parent.appendChild(descriptionContainer);
+        }
+      }
+    }, 100);
+    
+    // Store reference globally for potential updates
+    if (!window.aiHelperInstances) {
+      window.aiHelperInstances = {};
+    }
+    window.aiHelperInstances.autoCompletion = autoCompletion;
+  }
+  
+  // Initialize autocompletion for notes field (only for existing issues, not for new issue creation)
+  if (notesTextarea && typeof AiHelperAutoCompletion !== 'undefined' && <%= (@issue&.persisted? && !@issue.new_record?) ? 'true' : 'false' %>) {
+    
+    const notesAutoCompletion = new AiHelperAutoCompletion(notesTextarea, {
+      contextType: 'note',
+      endpoint: '<%= @issue&.persisted? ? ai_helper_suggest_completion_path(@issue.id) : '#' %>',
+      debounceDelay: config.debounce_delay,
+      minLength: config.min_length,
+      suggestionColor: config.suggestion_color,
+      issueId: '<%= @issue&.id %>',
+      projectId: '<%= project&.id %>',
+      // I18n labels
+      labels: {
+        commonToggleLabel: '<%= t('ai_helper.autocompletion.common_toggle_label') %>',
+        loading: '<%= t('ai_helper.autocompletion.loading') %>',
+        noSuggestions: '<%= t('ai_helper.autocompletion.no_suggestions') %>',
+        acceptSuggestion: '<%= t('ai_helper.autocompletion.accept_suggestion') %>',
+        dismiss: '<%= t('ai_helper.autocompletion.dismiss') %>',
+        enabledTooltip: '<%= t('ai_helper.autocompletion.note_enabled_tooltip') %>',
+        disabledTooltip: '<%= t('ai_helper.autocompletion.note_disabled_tooltip') %>'
+      }
+    });
+    
+    notesAutoCompletion.init();
+    
+    // Move the notes checkbox to right below the notes textarea
+    setTimeout(function() {
+      const notesContainer = document.getElementById('ai-helper-notes-checkbox-container');
+      
+      if (notesContainer && notesTextarea) {
+        const parent = notesTextarea.parentNode;
+        const nextSibling = notesTextarea.nextSibling;
+        
+        if (nextSibling) {
+          parent.insertBefore(notesContainer, nextSibling);
+        } else {
+          parent.appendChild(notesContainer);
+        }
+      }
+    }, 500);
+    
+    // Store reference globally for potential updates
+    if (!window.aiHelperInstances) {
+      window.aiHelperInstances = {};
+    }
+    window.aiHelperInstances.notesAutoCompletion = notesAutoCompletion;
+  }
+  
+  // Mark as initialized to prevent duplicate execution
+  window.aiHelperAutoCompletionInitialized = true;
+});
+</script>
+<% else %>
+<!-- AI Helper auto-completion not available (project module disabled or insufficient permissions) -->
+<% end %>

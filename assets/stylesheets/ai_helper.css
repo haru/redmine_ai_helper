@@ -521,3 +521,78 @@ table.ai-helper-sub-issues-table td {
 .ai-helper-project-health-content::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+/* Auto-completion styles */
+.ai-helper-textarea-container {
+  position: relative;
+}
+
+.ai-helper-textarea-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 5;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  padding: inherit;
+  border: inherit;
+  box-sizing: border-box;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: transparent;
+}
+
+.ai-helper-inline-suggestion {
+  color: #888888;
+  cursor: pointer;
+  pointer-events: auto;
+  position: relative;
+  display: inline;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.ai-helper-inline-suggestion:hover {
+  background: rgba(136, 136, 136, 0.1);
+}
+
+/* Active suggestion with solid background to hide underlying text */
+.ai-helper-suggestion-active {
+  background-color: #ffff99 !important; /* Light yellow background for visibility */
+  color: #666666 !important; /* Darker gray text for suggestion */
+  padding: 0 2px !important;
+  border-radius: 2px !important;
+}
+
+/* Cursor marker in overlay */
+.ai-helper-cursor-marker {
+  color: #000000;
+  animation: blink 1s infinite;
+}
+
+/* Multi-line suggestion support */
+.ai-helper-suggestion-line {
+  display: block;
+}
+
+/* Adjust textarea background to transparent to show overlay */
+.ai-helper-textarea-with-overlay {
+  position: relative;
+  background: transparent;
+}
+
+/* Auto-completion checkbox controls - use Redmine default styles */
+.ai-helper-autocompletion-controls {
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+/* Ensure overlay scrolling matches textarea */
+.ai-helper-textarea-overlay[data-scrolled] {
+  overflow: hidden;
+}
