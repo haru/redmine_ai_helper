@@ -297,9 +297,8 @@ module RedmineAiHelper
         # Current user
         current_user = User.current
         
-        # Use IssueJson to get comprehensive issue data
-        issue_json_util = RedmineAiHelper::Util::IssueJson.new
-        issue_data = issue_json_util.generate_issue_data(issue)
+        # Use IssueJson to get comprehensive issue data (already included in this class)
+        issue_data = generate_issue_data(issue)
         
         # Extract and format data for note completion context
         note_context = {
@@ -377,8 +376,8 @@ module RedmineAiHelper
         # Remove any unwanted prefixes or suffixes
         suggestion = response.strip
         
-        # Remove any markdown code block markers
-        suggestion = suggestion.gsub(/^```.*?\n/, '').gsub(/\n```$/, '')
+        # Remove any markdown code block markers (multiline)
+        suggestion = suggestion.gsub(/```[^\n]*\n.*?\n```/m, '')
         
         # Remove any potential markdown formatting
         suggestion = suggestion.gsub(/^\*+\s*/, '')  # Remove bullet points
@@ -388,6 +387,9 @@ module RedmineAiHelper
         
         # Normalize multiple spaces to single spaces
         suggestion = suggestion.gsub(/\s+/, ' ')
+        
+        # Clean up any leading/trailing whitespace after processing
+        suggestion = suggestion.strip
         
         # Limit to reasonable length (max 3 sentences as per spec)
         # Split on sentence-ending punctuation but preserve the punctuation

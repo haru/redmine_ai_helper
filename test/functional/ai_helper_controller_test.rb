@@ -1240,6 +1240,79 @@ class AiHelperControllerTest < ActionController::TestCase
         # Clean up
         journal.destroy
       end
+
+      # Integration tests for refactored architecture
+      should "test refactored generate_text_completion integration" do
+        issue = Issue.find(1)
+        
+        # Test that the new architecture works end-to-end
+        # The controller should call llm.rb which delegates to IssueAgent
+        @request.headers["Content-Type"] = "application/json"
+        
+        post :suggest_completion, params: { id: issue.id },
+             body: { text: "This is a test issue", cursor_position: 17, context_type: "description" }.to_json
+        
+        assert_response :success
+        json_response = JSON.parse(response.body)
+        assert json_response.key?('suggestion')
+        # The response should be a string (empty in test environment due to mocking)
+        assert json_response['suggestion'].is_a?(String)
+      end
+
+      should "test prompt loader integration through agent" do
+        issue = Issue.find(1)
+        
+        # Mock the PromptLoader to verify it's being used
+        mock_prompt = mock("Prompt")
+        mock_prompt.stubs(:format).returns("Mocked prompt text")
+        
+        # The IssueAgent should use PromptLoader via load_prompt
+        RedmineAiHelper::Agents::IssueAgent.any_instance.expects(:load_prompt)
+          .with("issue_agent/inline_completion")
+          .returns(mock_prompt)
+        
+        RedmineAiHelper::Agents::IssueAgent.any_instance.stubs(:chat).returns("Mocked completion")
+        
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.id },
+             body: { text: "Test prompt loading", cursor_position: 4, context_type: "description" }.to_json
+        
+        assert_response :success
+        json_response = JSON.parse(response.body)
+        assert_equal "Mocked completion", json_response['suggestion']
+      end
+
+      should "test note context integration" do
+        issue = Issue.find(1)
+        
+        # Create test journal for context
+        journal = Journal.create!(
+          journalized: issue,
+          user: User.find(1),
+          notes: "Previous discussion point"
+        )
+        
+        # Mock the note template loading
+        mock_prompt = mock("Prompt") 
+        mock_prompt.stubs(:format).returns("Note completion prompt")
+        
+        RedmineAiHelper::Agents::IssueAgent.any_instance.expects(:load_prompt)
+          .with("issue_agent/note_inline_completion")
+          .returns(mock_prompt)
+        
+        RedmineAiHelper::Agents::IssueAgent.any_instance.stubs(:chat).returns("Contextual note completion")
+        
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.id },
+             body: { text: "I agree with", cursor_position: 12, context_type: "note" }.to_json
+        
+        assert_response :success
+        json_response = JSON.parse(response.body)
+        assert_equal "Contextual note completion", json_response['suggestion']
+        
+        # Clean up
+        journal.destroy
+      end
     end
   end
 end

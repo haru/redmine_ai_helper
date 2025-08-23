@@ -200,6 +200,189 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
         assert_equal similar_issues_data, result
       end
     end
+
+    # Tests for refactoring - methods moved from llm.rb to IssueAgent
+    context "text completion methods (refactored from llm.rb)" do
+      setup do
+        @project = Project.find(1)
+        @issue = Issue.find(1)
+        @user = User.find(1)
+        User.current = @user
+        @agent = RedmineAiHelper::Agents::IssueAgent.new(project: @project)
+      end
+
+      should "build completion context for description" do
+        text = "This is a test description"
+        context = @agent.send(:build_completion_context, text, "description", @project, @issue)
+        
+        assert_equal "description", context[:context_type]
+        assert_equal @project.name, context[:project_name]
+        assert_equal @issue.subject, context[:issue_title]
+        assert_equal text.length, context[:text_length]
+        assert_equal @project.description, context[:project_description]
+        assert_equal @project.identifier, context[:project_identifier]
+      end
+
+      should "build completion context for note" do
+        # Create some journals for the issue
+        journal = Journal.create!(
+          journalized: @issue,
+          user: @user,
+          notes: "This is a test note."
+        )
+        
+        text = "Reply: "
+        context = @agent.send(:build_completion_context, text, "note", @project, @issue)
+        
+        assert_equal "note", context[:context_type]
+        assert_equal @project.name, context[:project_name]
+        assert_equal @issue.subject, context[:issue_title]
+        
+        # Should include note-specific context
+        assert context.key?(:issue_description)
+        assert context.key?(:current_user_name)
+        assert context.key?(:user_role_context)
+      end
+
+      should "build note specific context" do
+        # Create some test data
+        journal1 = Journal.create!(
+          journalized: @issue,
+          user: @user,
+          notes: "First note"
+        )
+        journal2 = Journal.create!(
+          journalized: @issue,
+          user: User.find(2),
+          notes: "Second note from another user"
+        )
+        
+        context = @agent.send(:build_note_specific_context, @issue)
+        
+        assert_equal @issue.id, context[:issue_id]
+        assert_equal @issue.subject, context[:issue_subject]
+        assert_equal @user.name, context[:current_user_name]
+        assert_equal @user.id, context[:current_user_id]
+        assert context.key?(:recent_notes)
+        assert context.key?(:user_role_context)
+        
+        # Check user role context
+        role_context = context[:user_role_context]
+        assert role_context.key?(:is_issue_author)
+        assert role_context.key?(:is_assignee)
+        assert role_context.key?(:suggested_role)
+      end
+
+      should "analyze user role in conversation" do
+        # Mock issue data
+        issue_data = {
+          author: { id: @user.id, name: @user.name },
+          assigned_to: { id: User.find(2).id, name: User.find(2).name }
+        }
+        
+        journals = [
+          { user: { id: @user.id, name: @user.name }, created_on: Time.current },
+          { user: { id: User.find(2).id, name: User.find(2).name }, created_on: Time.current }
+        ]
+        
+        role_info = @agent.send(:analyze_user_role_in_conversation, @user, journals, issue_data)
+        
+        assert role_info[:is_issue_author]
+        assert_not role_info[:is_assignee]
+        assert_equal 1, role_info[:participation_count]
+        assert_equal "issue_author", role_info[:suggested_role]
+      end
+
+      should "parse completion response correctly" do
+        # Test with normal text
+        result = @agent.send(:parse_completion_response, "This is a suggestion.")
+        assert_equal "This is a suggestion.", result
+        
+        # Test with markdown formatting
+        result = @agent.send(:parse_completion_response, "**Bold** and *italic* text.")
+        assert_equal "Bold and italic text.", result
+        
+        # Test with too many sentences
+        long_text = "First sentence. Second sentence. Third sentence. Fourth sentence."
+        result = @agent.send(:parse_completion_response, long_text)
+        assert_equal "First sentence. Second sentence. Third sentence.", result
+        
+        # Test with empty/nil
+        assert_equal "", @agent.send(:parse_completion_response, "")
+        assert_equal "", @agent.send(:parse_completion_response, nil)
+        
+        # Test with code blocks
+        result = @agent.send(:parse_completion_response, "```ruby\ncode here\n```\nSome text.")
+        assert_equal "Some text.", result
+      end
+
+      should "generate text completion with proper template loading" do
+        # Mock the prompt loading
+        mock_prompt = mock("Prompt")
+        mock_prompt.expects(:format).with(
+          prefix_text: "Test",
+          suffix_text: " completion",
+          issue_title: @issue.subject,
+          project_name: @project.name,
+          cursor_position: "4",
+          max_sentences: "3",
+          format: Setting.text_formatting
+        ).returns("Complete the text")
+        
+        @agent.expects(:load_prompt).with("issue_agent/inline_completion").returns(mock_prompt)
+        @agent.expects(:chat).returns("This is the completion.")
+        
+        result = @agent.generate_text_completion(
+          text: "Test completion",
+          cursor_position: 4,
+          context_type: "description",
+          project: @project,
+          issue: @issue
+        )
+        
+        assert_equal "This is the completion.", result
+      end
+
+      should "generate text completion for note context" do
+        # Create test journal
+        Journal.create!(
+          journalized: @issue,
+          user: @user,
+          notes: "Previous note"
+        )
+        
+        # Mock the prompt loading for note completion
+        mock_prompt = mock("Prompt")
+        mock_prompt.expects(:format).returns("Complete the note")
+        
+        @agent.expects(:load_prompt).with("issue_agent/note_inline_completion").returns(mock_prompt)
+        @agent.expects(:chat).returns("I agree with the analysis.")
+        
+        result = @agent.generate_text_completion(
+          text: "Reply: I",
+          cursor_position: 8,
+          context_type: "note",
+          project: @project,
+          issue: @issue
+        )
+        
+        assert_equal "I agree with the analysis.", result
+      end
+
+      should "handle errors gracefully in text completion" do
+        @agent.expects(:load_prompt).raises(StandardError, "Template not found")
+        
+        result = @agent.generate_text_completion(
+          text: "Test",
+          cursor_position: 4,
+          context_type: "description",
+          project: @project,
+          issue: @issue
+        )
+        
+        assert_equal "", result
+      end
+    end
   end
 
   class DummyFixParser

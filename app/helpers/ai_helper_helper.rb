@@ -9,16 +9,4 @@ module AiHelperHelper
     MarkdownPipeline.call(text)[:output].to_s.html_safe
   end
 
-  # Load autocompletion configuration from YAML file
-  def load_autocompletion_config
-    @autocompletion_config ||= begin
-      config_path = Rails.root.join('plugins', 'redmine_ai_helper', 'config', 'ai_helper', 'config.yml')
-      if File.exist?(config_path)
-        config_data = YAML.load_file(config_path)
-        config_data['autocompletion'] || {}
-      else
-        {}
-      end
-    end
-  end
 end
