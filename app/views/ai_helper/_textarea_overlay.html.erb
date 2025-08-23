@@ -4,6 +4,24 @@
   project = @project || (@issue&.project)
 %>
 <% if project&.module_enabled?(:ai_helper) && User.current.allowed_to?(:view_ai_helper, project) %>
+
+<!-- Create checkboxes in ERB with proper Redmine sprite_icon -->
+<div id="ai-helper-description-checkbox-container" class="ai-helper-autocompletion-controls">
+  <input type="checkbox" id="ai-helper-autocompletion-description-toggle" />
+  <label for="ai-helper-autocompletion-description-toggle">
+    <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
+    <%= t('ai_helper.autocompletion.common_toggle_label') %>
+  </label>
+</div>
+
+<div id="ai-helper-notes-checkbox-container" class="ai-helper-autocompletion-controls">
+  <input type="checkbox" id="ai-helper-autocompletion-notes-toggle" />
+  <label for="ai-helper-autocompletion-notes-toggle">
+    <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
+    <%= t('ai_helper.autocompletion.common_toggle_label') %>
+  </label>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   // Prevent multiple initialization by checking if already processed
@@ -15,12 +33,6 @@ document.addEventListener('DOMContentLoaded', function() {
   const descriptionTextarea = document.querySelector('textarea[name="issue[description]"]');
   const notesTextarea = document.getElementById('issue_notes');
 
-  console.log('AI Helper Auto Completion: Looking for textareas');
-  console.log('Description textarea found:', descriptionTextarea);
-  console.log('Notes textarea found:', notesTextarea);
-  console.log('AiHelperAutoCompletion class available:', typeof AiHelperAutoCompletion !== 'undefined');
-  console.log('Current page URL:', window.location.pathname);
-  console.log('Issue persisted:', <%= @issue&.persisted? ? 'true' : 'false' %>);
   
   // Load configuration from YAML file with fallback values
   <%
@@ -66,6 +78,21 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     autoCompletion.init();
+    
+    // Move the description checkbox to below the description textarea
+    setTimeout(function() {
+      const descriptionContainer = document.getElementById('ai-helper-description-checkbox-container');
+      if (descriptionContainer && descriptionTextarea) {
+        const parent = descriptionTextarea.parentNode;
+        const nextSibling = descriptionTextarea.nextSibling;
+        
+        if (nextSibling) {
+          parent.insertBefore(descriptionContainer, nextSibling);
+        } else {
+          parent.appendChild(descriptionContainer);
+        }
+      }
+    }, 100);
     
     // Store reference globally for potential updates
     if (!window.aiHelperInstances) {
@@ -113,10 +140,10 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(function() {
       console.log('DEBUG: Starting notes checkbox move process');
       
-      // Move the entire notes container
-      const notesContainer = notesAutoCompletion.container;
+      // Get the notes checkbox container directly by ID
+      const notesContainer = document.getElementById('ai-helper-notes-checkbox-container');
       
-      console.log('DEBUG: Notes container from instance:', notesContainer);
+      console.log('DEBUG: Notes container found:', notesContainer);
       console.log('DEBUG: Notes textarea:', notesTextarea);
       
       if (notesContainer && notesTextarea) {

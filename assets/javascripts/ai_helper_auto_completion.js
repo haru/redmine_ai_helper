@@ -40,66 +40,24 @@ class AiHelperAutoCompletion {
   }
 
   createCheckbox() {
-    // Create checkbox control for this instance's context type only
-    this.checkbox = document.createElement('input');
-    this.checkbox.type = 'checkbox';
-    
-    const label = document.createElement('label');
-    
-    // Set ID and label based on context type
+    // This method now expects the checkbox to be already created in ERB
+    // Just find and reference the existing checkbox
     if (this.options.contextType === 'note') {
-      this.checkbox.id = 'ai-helper-autocompletion-notes-toggle';
-      label.htmlFor = 'ai-helper-autocompletion-notes-toggle';
+      this.checkbox = document.getElementById('ai-helper-autocompletion-notes-toggle');
+      this.container = document.getElementById('ai-helper-notes-checkbox-container');
     } else {
-      this.checkbox.id = 'ai-helper-autocompletion-description-toggle';
-      label.htmlFor = 'ai-helper-autocompletion-description-toggle';
+      this.checkbox = document.getElementById('ai-helper-autocompletion-description-toggle');
+      this.container = document.getElementById('ai-helper-description-checkbox-container');
     }
     
-    // Get label text from options or use fallback
-    const labelText = this.options.labels.commonToggleLabel || 'AI Helper Completion';
-    
-    // Create robot icon using SVG (same as sprite_icon helper generates)
-    const iconSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    iconSvg.setAttribute('class', 'icon icon-ai-helper-robot');
-    iconSvg.setAttribute('width', '16');
-    iconSvg.setAttribute('height', '16');
-    iconSvg.setAttribute('viewBox', '0 0 24 24');
-    iconSvg.setAttribute('fill', 'currentColor');
-    
-    const iconUse = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-    iconUse.setAttribute('href', '/plugin_assets/redmine_ai_helper/images/icons.svg#icon--ai-helper-robot');
-    iconSvg.appendChild(iconUse);
-    
-    // Set common label text with robot icon
-    label.innerHTML = '';
-    label.appendChild(iconSvg);
-    label.appendChild(document.createTextNode(' ' + labelText));
-    
-    const container = document.createElement('div');
-    container.className = 'ai-helper-autocompletion-controls';
-    container.appendChild(this.checkbox);
-    container.appendChild(label);
-    
-    // Store container reference for later use
-    this.container = container;
-    
-    // Insert the controls container after the textarea
-    const parent = this.textarea.parentNode;
-    
-    // Find the next sibling after textarea, or insert at the end if none
-    const nextSibling = this.textarea.nextSibling;
-    if (nextSibling) {
-      parent.insertBefore(container, nextSibling);
-    } else {
-      parent.appendChild(container);
+    if (this.checkbox) {
+      this.checkbox.addEventListener('change', () => {
+        this.saveSettings();
+        if (!this.checkbox.checked) {
+          this.clearSuggestion();
+        }
+      });
     }
-    
-    this.checkbox.addEventListener('change', () => {
-      this.saveSettings();
-      if (!this.checkbox.checked) {
-        this.clearSuggestion();
-      }
-    });
   }
 
   createOverlay() {
