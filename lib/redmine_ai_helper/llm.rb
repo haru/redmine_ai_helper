@@ -189,13 +189,13 @@ module RedmineAiHelper
     # @return [String] The completion suggestion
     def generate_text_completion(text:, context_type:, cursor_position: nil, project: nil, issue: nil)
       begin
-        ai_helper_logger.info "Starting text completion: text='#{text[0..50]}...', cursor_position=#{cursor_position}"
+        ai_helper_logger.info "Starting text completion: text='#{text[0..50]}...', cursor_position=#{cursor_position}, context_type=#{context_type}"
         
         context = build_completion_context(text, context_type, project, issue)
         ai_helper_logger.info "Built context: #{context}"
         
         prompt = build_inline_completion_prompt(text, context, cursor_position)
-        ai_helper_logger.info "Built prompt: '#{prompt[0..200]}#{'...' if prompt.length > 200}'"
+        ai_helper_logger.info "Built prompt length: #{prompt.length}, first 200 chars: '#{prompt[0..200]}#{'...' if prompt.length > 200}'"
         
         langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: prompt)
         options = { langfuse: langfuse, project: project }
@@ -250,6 +250,11 @@ module RedmineAiHelper
         context[:project_identifier] = project.identifier
       end
       
+      # Add note-specific context
+      if context_type == "note" && issue
+        context.merge!(build_note_specific_context(issue))
+      end
+      
       context
     end
 
@@ -265,37 +270,77 @@ module RedmineAiHelper
       prefix_text = cursor_position ? text[0...cursor_position] : text
       suffix_text = (cursor_position && cursor_position < text.length) ? text[cursor_position..-1] : ""
       
+      # Select prompt template according to context type
+      if context[:context_type] == "note"
+        template_name = "note_inline_completion"
+      else
+        template_name = "inline_completion"
+      end
+      
       # Load prompt template from issue_agent directory
       locale = User.current.language || 'en'
       
       if locale == 'ja'
-        template_path = Rails.root.join('plugins', 'redmine_ai_helper', 'assets', 'prompt_templates', 'issue_agent', 'inline_completion_ja.yml')
+        template_path = Rails.root.join('plugins', 'redmine_ai_helper', 'assets', 'prompt_templates', 'issue_agent', "#{template_name}_ja.yml")
         template_key = 'ja'
       else
-        template_path = Rails.root.join('plugins', 'redmine_ai_helper', 'assets', 'prompt_templates', 'issue_agent', 'inline_completion.yml')
+        template_path = Rails.root.join('plugins', 'redmine_ai_helper', 'assets', 'prompt_templates', 'issue_agent', "#{template_name}.yml")
         template_key = 'en'
       end
       
-      if File.exist?(template_path)
-        template_data = YAML.load_file(template_path)
-        template = template_data['inline_completion'] && template_data['inline_completion'][template_key] || ""
+      unless File.exist?(template_path)
+        raise "Template file not found: #{template_path}"
+      end
+      
+      template_data = YAML.load_file(template_path)
+      
+      # Check if it's a direct template or nested structure
+      if template_data.has_key?('template')
+        # Direct template structure (existing inline_completion.yml format)
+        template = template_data['template']
+      elsif template_data.has_key?(template_name) && template_data[template_name].is_a?(Hash)
+        # Nested template structure (new note template format)
+        template = template_data[template_name][template_key]
       else
-        # Fallback template
-        template = case locale
-        when 'ja'
-          "カーソル位置からテキストを短く補完してください（最大3文）: {prefix_text}|{suffix_text}"
-        else
-          "Complete the text from cursor position (max 3 sentences): {prefix_text}|{suffix_text}"
-        end
+        template = nil
+      end
+      
+      if template.blank?
+        raise "Template '#{template_name}' not found in #{template_path}"
       end
       
       # Replace placeholders in template
-      template.gsub('{issue_title}', context[:issue_title] || 'New Issue')
-              .gsub('{prefix_text}', prefix_text)
-              .gsub('{suffix_text}', suffix_text)
-              .gsub('{project_name}', context[:project_name] || 'Unknown Project')
-              .gsub('{cursor_position}', cursor_position.to_s)
-              .gsub('{max_sentences}', max_sentences.to_s)
+      formatted_template = template.dup
+      
+      # Common placeholders
+      formatted_template.gsub!('{issue_title}', context[:issue_title] || 'New Issue')
+                       .gsub!('{prefix_text}', prefix_text)
+                       .gsub!('{suffix_text}', suffix_text)
+                       .gsub!('{project_name}', context[:project_name] || 'Unknown Project')
+                       .gsub!('{cursor_position}', cursor_position.to_s)
+                       .gsub!('{max_sentences}', max_sentences.to_s)
+                       .gsub!('{format}', Setting.text_formatting)
+      
+      # Note-specific placeholders
+      if context[:context_type] == "note"
+        formatted_template.gsub!('{issue_description}', context[:issue_description] || '')
+                         .gsub!('{issue_status}', context[:issue_status] || '')
+                         .gsub!('{issue_assigned_to}', context[:issue_assigned_to] || 'None')
+                         .gsub!('{current_user_name}', context[:current_user_name] || '')
+                         .gsub!('{user_role}', context.dig(:user_role_context, :suggested_role) || 'participant')
+        
+        # Embed recent notes information as string
+        if context[:recent_notes]&.any?
+          recent_notes_text = context[:recent_notes][0..4].map do |note| # Latest 5 entries only
+            "#{note[:user_name]} (#{note[:created_on]}): #{note[:notes]}"
+          end.join("\n")
+          formatted_template.gsub!('{recent_notes}', recent_notes_text)
+        else
+          formatted_template.gsub!('{recent_notes}', 'No recent notes available.')
+        end
+      end
+      
+      formatted_template
     end
 
     # Load autocompletion configuration
@@ -358,6 +403,82 @@ module RedmineAiHelper
       end
       
       cleaned
+    end
+
+    # Build note-specific context using IssueJson
+    # @param issue [Issue] The issue object
+    # @return [Hash] Note-specific context information
+    def build_note_specific_context(issue)
+      # Current user
+      current_user = User.current
+      
+      # Use IssueJson to get comprehensive issue data
+      issue_json_util = RedmineAiHelper::Util::IssueJson.new
+      issue_data = issue_json_util.generate_issue_data(issue)
+      
+      # Extract and format data for note completion context
+      note_context = {
+        issue_id: issue_data[:id],
+        issue_subject: issue_data[:subject],
+        issue_description: issue_data[:description].present? ? issue_data[:description][0..500] : "", # First 500 characters only
+        issue_status: issue_data.dig(:status, :name) || '',
+        issue_priority: issue_data.dig(:priority, :name) || '',
+        issue_tracker: issue_data.dig(:tracker, :name) || '',
+        issue_assigned_to: issue_data.dig(:assigned_to, :name) || 'None',
+        issue_author: issue_data.dig(:author, :name) || '',
+        issue_created_on: issue_data[:created_on],
+        current_user_name: current_user.name,
+        current_user_id: current_user.id
+      }
+      
+      # Extract recent notes from journals (limit to latest 20 with notes)
+      journals_with_notes = issue_data[:journals]
+        .select { |journal| journal[:notes].present? && !journal[:private_notes] }
+        .first(20) # Already sorted by created_on desc in generate_issue_data
+      
+      note_context[:recent_notes] = journals_with_notes.map do |journal|
+        {
+          user_name: journal.dig(:user, :name) || 'Unknown',
+          user_id: journal.dig(:user, :id),
+          notes: journal[:notes][0..300], # First 300 characters only
+          created_on: journal[:created_on],
+          is_current_user: journal.dig(:user, :id) == current_user.id
+        }
+      end
+      
+      # User role analysis
+      user_roles = analyze_user_role_in_conversation(current_user, journals_with_notes, issue_data)
+      note_context[:user_role_context] = user_roles
+      
+      note_context
+    end
+
+    # Analyze user's role in the conversation
+    # @param current_user [User] Current user
+    # @param journals [Array] Journal entries with notes
+    # @param issue_data [Hash] Issue data from IssueJson
+    # @return [Hash] Role analysis information
+    def analyze_user_role_in_conversation(current_user, journals, issue_data)
+      role_info = {
+        is_issue_author: issue_data.dig(:author, :id) == current_user.id,
+        is_assignee: issue_data.dig(:assigned_to, :id) == current_user.id,
+        participation_count: journals.count { |j| j.dig(:user, :id) == current_user.id },
+        last_participation_date: journals.find { |j| j.dig(:user, :id) == current_user.id }&.dig(:created_on),
+        conversation_participants: journals.map { |j| j.dig(:user, :name) }.uniq.compact
+      }
+      
+      # User's role in the conversation flow
+      if role_info[:is_issue_author]
+        role_info[:suggested_role] = "issue_author"
+      elsif role_info[:is_assignee]
+        role_info[:suggested_role] = "assignee"
+      elsif role_info[:participation_count] > 0
+        role_info[:suggested_role] = "participant"
+      else
+        role_info[:suggested_role] = "new_participant"
+      end
+      
+      role_info
     end
   end
 end

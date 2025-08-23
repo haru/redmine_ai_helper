@@ -41,6 +41,9 @@ ja:
       toggle_label: "AI補完"
       enabled_tooltip: "AI自動補完が有効です。Tabキーで提案を適用、Escキーで閉じます。"
       disabled_tooltip: "AI自動補完が無効です。チェックボックスをオンにして有効化してください。"
+      note_toggle_label: "AIノート補完"
+      note_enabled_tooltip: "AIノート自動補完が有効です。Tabキーで提案を適用、Escキーで閉じます。"
+      note_disabled_tooltip: "AIノート自動補完が無効です。チェックボックスをオンにして有効化してください。"
     model_profiles:
       create_profile_title: "新しいモデルプロファイル"
       edit_profile_title: "モデルプロファイルの編集"

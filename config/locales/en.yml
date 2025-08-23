@@ -41,6 +41,9 @@ en:
       toggle_label: "AI Completion"
       enabled_tooltip: "AI auto-completion is enabled. Press Tab to accept suggestions or Esc to dismiss."
       disabled_tooltip: "AI auto-completion is disabled. Check the box to enable."
+      note_toggle_label: "AI Note Completion"
+      note_enabled_tooltip: "AI note auto-completion is enabled. Press Tab to accept suggestions or Esc to dismiss."
+      note_disabled_tooltip: "AI note auto-completion is disabled. Check the box to enable."
     model_profiles:
       create_profile_title: "New model profile"
       edit_profile_title: "Edit model profile"

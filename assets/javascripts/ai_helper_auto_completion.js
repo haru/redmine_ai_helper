@@ -40,19 +40,30 @@ class AiHelperAutoCompletion {
   }
 
   createCheckbox() {
-    // Create checkbox control
+    // Create checkbox control for this instance's context type only
     this.checkbox = document.createElement('input');
     this.checkbox.type = 'checkbox';
-    this.checkbox.id = 'ai-helper-autocompletion-toggle';
     
     const label = document.createElement('label');
-    label.htmlFor = 'ai-helper-autocompletion-toggle';
-    label.textContent = this.options.labels.toggleLabel;
+    
+    // Set ID and label based on context type
+    if (this.options.contextType === 'note') {
+      this.checkbox.id = 'ai-helper-autocompletion-notes-toggle';
+      label.htmlFor = 'ai-helper-autocompletion-notes-toggle';
+      label.textContent = this.options.labels.toggleLabel || 'AI Notes Completion';
+    } else {
+      this.checkbox.id = 'ai-helper-autocompletion-description-toggle';
+      label.htmlFor = 'ai-helper-autocompletion-description-toggle';
+      label.textContent = this.options.labels.toggleLabel || 'AI Description Completion';
+    }
     
     const container = document.createElement('div');
     container.className = 'ai-helper-autocompletion-controls';
     container.appendChild(this.checkbox);
     container.appendChild(label);
+    
+    // Store container reference for later use
+    this.container = container;
     
     // Insert the controls container after the textarea
     const parent = this.textarea.parentNode;

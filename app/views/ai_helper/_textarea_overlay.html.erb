@@ -6,34 +6,44 @@
 <% if project&.module_enabled?(:ai_helper) && User.current.allowed_to?(:view_ai_helper, project) %>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Find ticket description textarea element
+  // Prevent multiple initialization by checking if already processed
+  if (window.aiHelperAutoCompletionInitialized) {
+    return;
+  }
+  
+  // Find ticket description and notes textarea elements
   const descriptionTextarea = document.querySelector('textarea[name="issue[description]"]');
+  const notesTextarea = document.getElementById('issue_notes');
 
-  console.log('AI Helper Auto Completion: Looking for description textarea');
+  console.log('AI Helper Auto Completion: Looking for textareas');
   console.log('Description textarea found:', descriptionTextarea);
+  console.log('Notes textarea found:', notesTextarea);
   console.log('AiHelperAutoCompletion class available:', typeof AiHelperAutoCompletion !== 'undefined');
+  console.log('Current page URL:', window.location.pathname);
+  console.log('Issue persisted:', <%= @issue&.persisted? ? 'true' : 'false' %>);
+  
+  // Load configuration from YAML file with fallback values
+  <%
+    config_path = Rails.root.join('plugins', 'redmine_ai_helper', 'config', 'ai_helper', 'config.yml')
+    autocompletion_config = {}
+    if File.exist?(config_path)
+      begin
+        config_data = YAML.load_file(config_path)
+        autocompletion_config = config_data['autocompletion'] || {}
+      rescue => e
+        # If YAML loading fails, use default values
+        autocompletion_config = {}
+      end
+    end
+  %>
+  const config = {
+    debounce_delay: <%= autocompletion_config['debounce_delay'] || 500 %>,
+    min_length: <%= autocompletion_config['min_length'] || 5 %>,
+    suggestion_color: '<%= autocompletion_config['suggestion_color'] || '#888888' %>'
+  };
   
   // Initialize autocompletion for description field
   if (descriptionTextarea && typeof AiHelperAutoCompletion !== 'undefined') {
-    // Load configuration from YAML file with fallback values
-    <%
-      config_path = Rails.root.join('plugins', 'redmine_ai_helper', 'config', 'ai_helper', 'config.yml')
-      autocompletion_config = {}
-      if File.exist?(config_path)
-        begin
-          config_data = YAML.load_file(config_path)
-          autocompletion_config = config_data['autocompletion'] || {}
-        rescue => e
-          # If YAML loading fails, use default values
-          autocompletion_config = {}
-        end
-      end
-    %>
-    const config = {
-      debounce_delay: <%= autocompletion_config['debounce_delay'] || 500 %>,
-      min_length: <%= autocompletion_config['min_length'] || 5 %>,
-      suggestion_color: '<%= autocompletion_config['suggestion_color'] || '#888888' %>'
-    };
     
     console.log('Initializing AI Helper Auto Completion with config:', config);
     
@@ -63,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     window.aiHelperInstances.autoCompletion = autoCompletion;
     
-    console.log('AI Helper Auto Completion initialized successfully');
+    console.log('AI Helper Auto Completion initialized successfully for description field');
   } else {
     if (!descriptionTextarea) {
       console.log('AI Helper Auto Completion: Description textarea not found');
@@ -72,6 +82,80 @@ document.addEventListener('DOMContentLoaded', function() {
       console.log('AI Helper Auto Completion: AiHelperAutoCompletion class not loaded');
     }
   }
+  
+  // Initialize autocompletion for notes field
+  if (notesTextarea && typeof AiHelperAutoCompletion !== 'undefined' && <%= @issue&.persisted? ? 'true' : 'false' %>) {
+    console.log('Initializing AI Helper Auto Completion for notes field');
+    
+    const notesAutoCompletion = new AiHelperAutoCompletion(notesTextarea, {
+      contextType: 'note',
+      endpoint: '<%= @issue&.persisted? ? ai_helper_suggest_completion_path(@issue.id) : '#' %>',
+      debounceDelay: config.debounce_delay,
+      minLength: config.min_length,
+      suggestionColor: config.suggestion_color,
+      issueId: '<%= @issue&.id %>',
+      projectId: '<%= project&.id %>',
+      // I18n labels
+      labels: {
+        toggleLabel: '<%= t('ai_helper.autocompletion.note_toggle_label') %>',
+        loading: '<%= t('ai_helper.autocompletion.loading') %>',
+        noSuggestions: '<%= t('ai_helper.autocompletion.no_suggestions') %>',
+        acceptSuggestion: '<%= t('ai_helper.autocompletion.accept_suggestion') %>',
+        dismiss: '<%= t('ai_helper.autocompletion.dismiss') %>',
+        enabledTooltip: '<%= t('ai_helper.autocompletion.note_enabled_tooltip') %>',
+        disabledTooltip: '<%= t('ai_helper.autocompletion.note_disabled_tooltip') %>'
+      }
+    });
+    
+    notesAutoCompletion.init();
+    
+    // Move the notes checkbox to right below the notes textarea
+    setTimeout(function() {
+      console.log('DEBUG: Starting notes checkbox move process');
+      
+      // Move the entire notes container
+      const notesContainer = notesAutoCompletion.container;
+      
+      console.log('DEBUG: Notes container from instance:', notesContainer);
+      console.log('DEBUG: Notes textarea:', notesTextarea);
+      
+      if (notesContainer && notesTextarea) {
+        console.log('DEBUG: Notes container and textarea found, proceeding with move');
+        
+        // Insert the container right after the notes textarea
+        const parent = notesTextarea.parentNode;
+        const nextSibling = notesTextarea.nextSibling;
+        
+        if (nextSibling) {
+          parent.insertBefore(notesContainer, nextSibling);
+          console.log('DEBUG: Inserted notes container after notes textarea');
+        } else {
+          parent.appendChild(notesContainer);
+          console.log('DEBUG: Appended notes container to notes textarea parent');
+        }
+      } else {
+        console.log('DEBUG: Notes container or textarea not found');
+      }
+    }, 500);
+    
+    // Store reference globally for potential updates
+    if (!window.aiHelperInstances) {
+      window.aiHelperInstances = {};
+    }
+    window.aiHelperInstances.notesAutoCompletion = notesAutoCompletion;
+    
+    console.log('AI Helper Auto Completion initialized successfully for notes field');
+  } else {
+    if (!notesTextarea) {
+      console.log('AI Helper Auto Completion: Notes textarea not found');
+    }
+    if (!<%= @issue&.persisted? ? 'true' : 'false' %>) {
+      console.log('AI Helper Auto Completion: Notes completion requires an existing issue');
+    }
+  }
+  
+  // Mark as initialized to prevent duplicate execution
+  window.aiHelperAutoCompletionInitialized = true;
 });
 </script>
 <% else %>

@@ -270,7 +270,7 @@ class AiHelperController < ApplicationController
     end
 
     text = data["text"]
-    context_type = "description" # Description only for now
+    context_type = data["context_type"] || "description" # "description" or "note"
     cursor_position = data["cursor_position"]
 
     # Input validation
@@ -284,6 +284,11 @@ class AiHelperController < ApplicationController
 
     if cursor_position && (cursor_position < 0 || cursor_position > text.length)
       render json: { error: "Invalid cursor position" }, status: :bad_request and return
+    end
+
+    # Validate context_type
+    unless %w[description note].include?(context_type)
+      render json: { error: "Invalid context_type. Must be 'description' or 'note'" }, status: :bad_request and return
     end
 
     # Handle new issue case
@@ -305,8 +310,13 @@ class AiHelperController < ApplicationController
       end
     end
 
+    # Note completion requires an existing issue
+    if context_type == "note" && !issue
+      render json: { error: "Issue is required for note completion" }, status: :bad_request and return
+    end
+
     # Debug logging
-    ai_helper_logger.info "Auto-completion request: id=#{params[:id]}, project=#{project&.identifier}, user=#{User.current.id}"
+    ai_helper_logger.info "Auto-completion request: id=#{params[:id]}, context_type=#{context_type}, project=#{project&.identifier}, user=#{User.current.id}"
     
     # Check permissions
     unless project&.module_enabled?(:ai_helper) && User.current.allowed_to?(:view_ai_helper, project)

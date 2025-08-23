@@ -1179,6 +1179,67 @@ class AiHelperControllerTest < ActionController::TestCase
         assert json_response.key?('suggestion')
         assert_equal "completion text", json_response['suggestion']
       end
+
+      should "suggest completion for notes context type" do
+        issue = Issue.find(1)
+        RedmineAiHelper::Llm.any_instance.stubs(:generate_text_completion).returns("I have reviewed this issue.")
+        
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.id },
+             body: { text: "I have reviewed", cursor_position: 15, context_type: "note" }.to_json
+        
+        assert_response :success
+        json_response = JSON.parse(response.body)
+        assert json_response.key?('suggestion')
+        assert_equal "I have reviewed this issue.", json_response['suggestion']
+      end
+
+      should "return error for invalid context_type" do
+        issue = Issue.find(1)
+        
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.id },
+             body: { text: "Test text", cursor_position: 5, context_type: "invalid" }.to_json
+        
+        assert_response :bad_request
+        json_response = JSON.parse(response.body)
+        assert_equal "Invalid context_type. Must be 'description' or 'note'", json_response['error']
+      end
+
+      should "return error for note context_type without existing issue" do
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: 'new' },
+             body: { text: "Test note", cursor_position: 5, context_type: "note" }.to_json
+        
+        assert_response :bad_request
+        json_response = JSON.parse(response.body)
+        assert_equal "Issue is required for note completion", json_response['error']
+      end
+
+      should "handle note completion with issue context" do
+        issue = Issue.find(1)
+        
+        # Create a journal entry for context
+        journal = Journal.create!(
+          journalized: issue,
+          user: User.find(1),
+          notes: "This is a test note for context."
+        )
+        
+        RedmineAiHelper::Llm.any_instance.stubs(:generate_text_completion).returns(" and I agree with the analysis.")
+        
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.id },
+             body: { text: "Thank you for the feedback", cursor_position: 25, context_type: "note" }.to_json
+        
+        assert_response :success
+        json_response = JSON.parse(response.body)
+        assert json_response.key?('suggestion')
+        assert_equal " and I agree with the analysis.", json_response['suggestion']
+        
+        # Clean up
+        journal.destroy
+      end
     end
   end
 end
