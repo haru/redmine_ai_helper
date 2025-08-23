@@ -14,6 +14,7 @@
   </label>
 </div>
 
+<% if @issue&.persisted? && !@issue.new_record? %>
 <div id="ai-helper-notes-checkbox-container" class="ai-helper-autocompletion-controls">
   <input type="checkbox" id="ai-helper-autocompletion-notes-toggle" />
   <label for="ai-helper-autocompletion-notes-toggle">
@@ -21,6 +22,7 @@
     <%= t('ai_helper.autocompletion.common_toggle_label') %>
   </label>
 </div>
+<% end %>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -99,8 +101,8 @@ document.addEventListener('DOMContentLoaded', function() {
     window.aiHelperInstances.autoCompletion = autoCompletion;
   }
   
-  // Initialize autocompletion for notes field
-  if (notesTextarea && typeof AiHelperAutoCompletion !== 'undefined' && <%= @issue&.persisted? ? 'true' : 'false' %>) {
+  // Initialize autocompletion for notes field (only for existing issues, not for new issue creation)
+  if (notesTextarea && typeof AiHelperAutoCompletion !== 'undefined' && <%= (@issue&.persisted? && !@issue.new_record?) ? 'true' : 'false' %>) {
     
     const notesAutoCompletion = new AiHelperAutoCompletion(notesTextarea, {
       contextType: 'note',
