@@ -186,17 +186,28 @@ module RedmineAiHelper
       # @param cursor_position [Integer] The cursor position in the text
       # @param context [Hash] Context information
       # @return [String] The completion suggestion
-      def generate_text_completion(text:, cursor_position: nil, context: {})
+      def generate_text_completion(text:, cursor_position: nil, context_type: 'description', project: nil, issue: nil, context: nil)
         begin
+          # Build context if not provided (for backward compatibility)
+          if context.nil?
+            context = build_completion_context(text, context_type, project, issue)
+          end
+          
           # Use direct LLM call for simple text completion without tools
           # This is faster and more suitable for inline completion
           
           prefix_text = cursor_position ? text[0...cursor_position] : text
           suffix_text = (cursor_position && cursor_position < text.length) ? text[cursor_position..-1] : ""
           
-          # Load prompt template using the same pattern as other methods
-          prompt = load_prompt("issue_agent/inline_completion")
-          prompt_text = prompt.format(
+          # Determine which template to use based on context type
+          actual_context_type = context[:context_type] || context_type || 'description'
+          template_name = actual_context_type == 'note' ? 'issue_agent/note_inline_completion' : 'issue_agent/inline_completion'
+          
+          # Load prompt template using PromptLoader
+          prompt = load_prompt(template_name)
+          
+          # Prepare template variables
+          template_vars = {
             prefix_text: prefix_text,
             suffix_text: suffix_text,
             issue_title: context[:issue_title] || 'New Issue',
@@ -204,7 +215,30 @@ module RedmineAiHelper
             cursor_position: cursor_position.to_s,
             max_sentences: '3',
             format: Setting.text_formatting
-          )
+          }
+          
+          # Add note-specific variables
+          if actual_context_type == 'note'
+            template_vars.merge!({
+              issue_description: context[:issue_description] || '',
+              issue_status: context[:issue_status] || '',
+              issue_assigned_to: context[:issue_assigned_to] || 'None',
+              current_user_name: context[:current_user_name] || '',
+              user_role: context.dig(:user_role_context, :suggested_role) || 'participant'
+            })
+            
+            # Add recent notes
+            if context[:recent_notes]&.any?
+              recent_notes_text = context[:recent_notes][0..4].map do |note|
+                "#{note[:user_name]} (#{note[:created_on]}): #{note[:notes]}"
+              end.join("\n")
+              template_vars[:recent_notes] = recent_notes_text
+            else
+              template_vars[:recent_notes] = 'No recent notes available.'
+            end
+          end
+          
+          prompt_text = prompt.format(**template_vars)
           
           message = { role: "user", content: prompt_text }
           messages = [message]
@@ -213,9 +247,12 @@ module RedmineAiHelper
           completion = chat(messages, {})
           
           ai_helper_logger.debug "Generated text completion: #{completion.length} characters"
-          completion
+          
+          # Parse and clean the response
+          parse_completion_response(completion)
         rescue => e
           ai_helper_logger.error "Text completion error in IssueAgent: #{e.message}"
+          ai_helper_logger.error "Error backtrace: #{e.backtrace.join("\n")}"
           ""
         end
       end
@@ -223,6 +260,145 @@ module RedmineAiHelper
       private
 
       # Generate a available issue properties string
+      # Build context for completion based on project and issue information
+      # Moved from llm.rb to follow agent architecture
+      # @param text [String] The input text
+      # @param context_type [String] Type of context ('description' or 'note')
+      # @param project [Project] The project instance
+      # @param issue [Issue] The issue instance
+      # @return [Hash] Context information
+      def build_completion_context(text, context_type, project, issue)
+        context = {
+          context_type: context_type,
+          project_name: project&.name,
+          issue_title: issue&.subject,
+          text_length: text.length
+        }
+        
+        # Add project-specific context if available
+        if project
+          context[:project_description] = project.description if project.description.present?
+          context[:project_identifier] = project.identifier
+        end
+        
+        # Add note-specific context
+        if context_type == "note" && issue
+          context.merge!(build_note_specific_context(issue))
+        end
+        
+        context
+      end
+
+      # Build note-specific context using IssueJson
+      # Moved from llm.rb to follow agent architecture
+      # @param issue [Issue] The issue instance
+      # @return [Hash] Note-specific context information
+      def build_note_specific_context(issue)
+        # Current user
+        current_user = User.current
+        
+        # Use IssueJson to get comprehensive issue data
+        issue_json_util = RedmineAiHelper::Util::IssueJson.new
+        issue_data = issue_json_util.generate_issue_data(issue)
+        
+        # Extract and format data for note completion context
+        note_context = {
+          issue_id: issue_data[:id],
+          issue_subject: issue_data[:subject],
+          issue_description: issue_data[:description].present? ? issue_data[:description][0..500] : "", # First 500 characters only
+          issue_status: issue_data.dig(:status, :name) || '',
+          issue_priority: issue_data.dig(:priority, :name) || '',
+          issue_tracker: issue_data.dig(:tracker, :name) || '',
+          issue_assigned_to: issue_data.dig(:assigned_to, :name) || 'None',
+          issue_author: issue_data.dig(:author, :name) || '',
+          issue_created_on: issue_data[:created_on],
+          current_user_name: current_user.name,
+          current_user_id: current_user.id
+        }
+        
+        # Extract recent notes from journals (limit to latest 20 with notes)
+        journals_with_notes = issue_data[:journals]
+          .select { |journal| journal[:notes].present? && !journal[:private_notes] }
+          .first(20) # Already sorted by created_on desc in generate_issue_data
+        
+        note_context[:recent_notes] = journals_with_notes.map do |journal|
+          {
+            user_name: journal.dig(:user, :name) || 'Unknown',
+            user_id: journal.dig(:user, :id),
+            notes: journal[:notes][0..300], # First 300 characters only
+            created_on: journal[:created_on],
+            is_current_user: journal.dig(:user, :id) == current_user.id
+          }
+        end
+        
+        # User role analysis
+        user_roles = analyze_user_role_in_conversation(current_user, journals_with_notes, issue_data)
+        note_context[:user_role_context] = user_roles
+        
+        note_context
+      end
+
+      # Method to analyze user's role in conversation
+      # Moved from llm.rb to follow agent architecture
+      # @param current_user [User] Current user
+      # @param journals [Array] Journal entries
+      # @param issue_data [Hash] Issue data
+      # @return [Hash] User role analysis
+      def analyze_user_role_in_conversation(current_user, journals, issue_data)
+        role_info = {
+          is_issue_author: issue_data.dig(:author, :id) == current_user.id,
+          is_assignee: issue_data.dig(:assigned_to, :id) == current_user.id,
+          participation_count: journals.count { |j| j.dig(:user, :id) == current_user.id },
+          last_participation_date: journals.find { |j| j.dig(:user, :id) == current_user.id }&.dig(:created_on),
+          conversation_participants: journals.map { |j| j.dig(:user, :name) }.uniq.compact
+        }
+        
+        # User's role in the conversation flow
+        if role_info[:is_issue_author]
+          role_info[:suggested_role] = "issue_author"
+        elsif role_info[:is_assignee]
+          role_info[:suggested_role] = "assignee"
+        elsif role_info[:participation_count] > 0
+          role_info[:suggested_role] = "participant"
+        else
+          role_info[:suggested_role] = "new_participant"
+        end
+        
+        role_info
+      end
+
+      # Parse and clean completion response
+      # Moved from llm.rb parse_single_suggestion to follow agent architecture
+      # @param response [String] Raw LLM response
+      # @return [String] Cleaned completion suggestion
+      def parse_completion_response(response)
+        return "" if response.blank?
+        
+        # Remove any unwanted prefixes or suffixes
+        suggestion = response.strip
+        
+        # Remove any markdown code block markers
+        suggestion = suggestion.gsub(/^```.*?\n/, '').gsub(/\n```$/, '')
+        
+        # Remove any potential markdown formatting
+        suggestion = suggestion.gsub(/^\*+\s*/, '')  # Remove bullet points
+        suggestion = suggestion.gsub(/^#+\s*/, '')   # Remove headers
+        suggestion = suggestion.gsub(/\*\*(.*?)\*\*/, '\1')  # Remove bold
+        suggestion = suggestion.gsub(/\*(.*?)\*/, '\1')      # Remove italic
+        
+        # Normalize multiple spaces to single spaces
+        suggestion = suggestion.gsub(/\s+/, ' ')
+        
+        # Limit to reasonable length (max 3 sentences as per spec)
+        # Split on sentence-ending punctuation but preserve the punctuation
+        sentences = suggestion.split(/(?<=[.!?])\s+/)
+        if sentences.length > 3
+          suggestion = sentences[0..2].join(' ')
+        end
+        
+        suggestion
+      end
+
       def issue_properties
         return "" unless @project
         provider = RedmineAiHelper::Tools::IssueTools.new

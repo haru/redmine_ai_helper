@@ -436,22 +436,26 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
     end
 
     should "parse single suggestion correctly" do
+      # This functionality has been moved to IssueAgent#parse_completion_response
+      # Create an IssueAgent instance for testing
+      agent = RedmineAiHelper::Agents::IssueAgent.new
+
       # Test with normal text
-      result = @llm.send(:parse_single_suggestion, "This is a suggestion.")
+      result = agent.send(:parse_completion_response, "This is a suggestion.")
       assert_equal "This is a suggestion.", result
       
-      # Test with markdown formatting
-      result = @llm.send(:parse_single_suggestion, "**Bold** and *italic* text.")
+      # Test with markdown formatting  
+      result = agent.send(:parse_completion_response, "**Bold** and *italic* text.")
       assert_equal "Bold and italic text.", result
       
       # Test with too many sentences
       long_text = "First sentence. Second sentence. Third sentence. Fourth sentence."
-      result = @llm.send(:parse_single_suggestion, long_text)
+      result = agent.send(:parse_completion_response, long_text)
       assert_equal "First sentence. Second sentence. Third sentence.", result
       
       # Test with empty/nil
-      assert_equal "", @llm.send(:parse_single_suggestion, "")
-      assert_equal "", @llm.send(:parse_single_suggestion, nil)
+      assert_equal "", agent.send(:parse_completion_response, "")
+      assert_equal "", agent.send(:parse_completion_response, nil)
     end
   end
 
