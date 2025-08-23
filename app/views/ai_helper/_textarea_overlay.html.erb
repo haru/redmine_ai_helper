@@ -57,8 +57,6 @@ document.addEventListener('DOMContentLoaded', function() {
   // Initialize autocompletion for description field
   if (descriptionTextarea && typeof AiHelperAutoCompletion !== 'undefined') {
     
-    console.log('Initializing AI Helper Auto Completion with config:', config);
-    
     const autoCompletion = new AiHelperAutoCompletion(descriptionTextarea, {
       contextType: 'description',
       endpoint: '<%= ai_helper_suggest_completion_path(@issue&.persisted? ? @issue.id : 'new') %>',
@@ -99,20 +97,10 @@ document.addEventListener('DOMContentLoaded', function() {
       window.aiHelperInstances = {};
     }
     window.aiHelperInstances.autoCompletion = autoCompletion;
-    
-    console.log('AI Helper Auto Completion initialized successfully for description field');
-  } else {
-    if (!descriptionTextarea) {
-      console.log('AI Helper Auto Completion: Description textarea not found');
-    }
-    if (typeof AiHelperAutoCompletion === 'undefined') {
-      console.log('AI Helper Auto Completion: AiHelperAutoCompletion class not loaded');
-    }
   }
   
   // Initialize autocompletion for notes field
   if (notesTextarea && typeof AiHelperAutoCompletion !== 'undefined' && <%= @issue&.persisted? ? 'true' : 'false' %>) {
-    console.log('Initializing AI Helper Auto Completion for notes field');
     
     const notesAutoCompletion = new AiHelperAutoCompletion(notesTextarea, {
       contextType: 'note',
@@ -138,30 +126,17 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Move the notes checkbox to right below the notes textarea
     setTimeout(function() {
-      console.log('DEBUG: Starting notes checkbox move process');
-      
-      // Get the notes checkbox container directly by ID
       const notesContainer = document.getElementById('ai-helper-notes-checkbox-container');
       
-      console.log('DEBUG: Notes container found:', notesContainer);
-      console.log('DEBUG: Notes textarea:', notesTextarea);
-      
       if (notesContainer && notesTextarea) {
-        console.log('DEBUG: Notes container and textarea found, proceeding with move');
-        
-        // Insert the container right after the notes textarea
         const parent = notesTextarea.parentNode;
         const nextSibling = notesTextarea.nextSibling;
         
         if (nextSibling) {
           parent.insertBefore(notesContainer, nextSibling);
-          console.log('DEBUG: Inserted notes container after notes textarea');
         } else {
           parent.appendChild(notesContainer);
-          console.log('DEBUG: Appended notes container to notes textarea parent');
         }
-      } else {
-        console.log('DEBUG: Notes container or textarea not found');
       }
     }, 500);
     
@@ -170,15 +145,6 @@ document.addEventListener('DOMContentLoaded', function() {
       window.aiHelperInstances = {};
     }
     window.aiHelperInstances.notesAutoCompletion = notesAutoCompletion;
-    
-    console.log('AI Helper Auto Completion initialized successfully for notes field');
-  } else {
-    if (!notesTextarea) {
-      console.log('AI Helper Auto Completion: Notes textarea not found');
-    }
-    if (!<%= @issue&.persisted? ? 'true' : 'false' %>) {
-      console.log('AI Helper Auto Completion: Notes completion requires an existing issue');
-    }
   }
   
   // Mark as initialized to prevent duplicate execution
