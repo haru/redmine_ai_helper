@@ -67,7 +67,6 @@ module RedmineAiHelper
         format: Setting.text_formatting,
         project_description: context[:project_description] || '',
         existing_content: context[:existing_content] || '',
-        related_pages: context[:related_pages] || 'None',
         is_section_edit: editing_mode,
         full_page_context: context[:full_page_context] || ''
       }
@@ -124,21 +123,6 @@ module RedmineAiHelper
     if current_wiki_page&.content
       existing_text = current_wiki_page.content.text
       wiki_context[:existing_content] = existing_text.present? ? existing_text[0..999] : ''
-    end
-    
-    related_pages = project.wiki.pages
-                           .where.not(id: current_wiki_page&.id)
-                           .joins(:content)
-                           .where.not(wiki_contents: { text: ['', nil] })
-                           .order(updated_on: :desc)
-                           .limit(5)
-    
-    if related_pages.any?
-      pages_info = related_pages.map do |page|
-        content_preview = page.content.text[0..200]
-        "#{page.title}: #{content_preview}..."
-      end
-      wiki_context[:related_pages] = pages_info.join("\n\n")
     end
     
     wiki_context

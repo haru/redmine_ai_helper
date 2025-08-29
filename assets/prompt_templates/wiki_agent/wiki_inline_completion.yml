@@ -10,7 +10,6 @@ input_variables:
   - format
   - project_description
   - existing_content
-  - related_pages
   - is_section_edit
   - full_page_context
 template: |-
@@ -20,12 +19,6 @@ template: |-
   - Project: {project_name}
   - Description: {project_description}
   - Text Format: {format}
-
-  Existing Page Content:
-  {existing_content}
-
-  Related Wiki Pages in Project:
-  {related_pages}
 
   Current wiki content being written: "{prefix_text}"
   Text after cursor: "{suffix_text}"
@@ -41,7 +34,6 @@ template: |-
   Instructions:
   - Complete the wiki content from the cursor position
   - Write documentation that is consistent with existing wiki content and project context
-  - Consider related pages to maintain consistency across the project wiki
   - DO NOT repeat any part of "{prefix_text}"
   - Write ONLY the continuation that comes after the cursor
   - Maximum {max_sentences} sentences
@@ -51,5 +43,9 @@ template: |-
   - Focus on providing useful information that fits the context
 
   {full_page_context}
+
+  ===== EXISTING PAGE CONTENT =====
+  {existing_content}
+  ===== END EXISTING CONTENT =====
 
   Write the continuation:
