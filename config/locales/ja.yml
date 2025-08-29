@@ -43,6 +43,11 @@ ja:
       note_enabled_tooltip: "AIノート自動補完が有効です。Tabキーで提案を適用、Escキーで閉じます。"
       note_disabled_tooltip: "AIノート自動補完が無効です。チェックボックスをオンにして有効化してください。"
       common_toggle_label: "AIヘルパーで補完"
+      wiki_toggle_label: "Wiki AI補完"
+      wiki_loading: "Wiki AI提案を生成中..."
+      wiki_no_suggestions: "Wiki提案がありません"
+      wiki_enabled_tooltip: "Wiki AI自動補完が有効です。Tabキーで提案を適用、Escキーで閉じます。"
+      wiki_disabled_tooltip: "Wiki AI自動補完が無効です。チェックボックスをオンにして有効化してください。"
     model_profiles:
       create_profile_title: "新しいモデルプロファイル"
       edit_profile_title: "モデルプロファイルの編集"

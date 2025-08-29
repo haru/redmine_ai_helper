@@ -1,0 +1,90 @@
+<%
+  project = @wiki&.project || @project
+%>
+<% if project&.module_enabled?(:ai_helper) && User.current.allowed_to?(:view_ai_helper, project) && User.current.allowed_to?(:edit_wiki_pages, project) %>
+
+<div id="ai-helper-wiki-checkbox-container" class="ai-helper-autocompletion-controls" style="display: none;">
+  <p>
+    <input type="checkbox" id="ai-helper-autocompletion-wiki-toggle" />
+    <label for="ai-helper-autocompletion-wiki-toggle">
+      <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
+      <%= t('ai_helper.autocompletion.wiki_toggle_label') %>
+    </label>
+  </p>
+</div>
+
+<script>
+function initializeWikiCompletion() {
+  if (window.aiHelperWikiCompletionInitialized) {
+    return;
+  }
+
+  const wikiTextarea = document.getElementById('content_text');
+
+  <%
+    config_path = Rails.root.join('plugins', 'redmine_ai_helper', 'config', 'ai_helper', 'config.yml')
+    autocompletion_config = {}
+    if File.exist?(config_path)
+      begin
+        config_data = YAML.load_file(config_path)
+        autocompletion_config = config_data['autocompletion'] || {}
+      rescue => e
+        autocompletion_config = {}
+      end
+    end
+  %>
+  const config = {
+    debounce_delay: <%= autocompletion_config['debounce_delay'] || 300 %>,
+    min_length: <%= autocompletion_config['wiki_min_length'] || 5 %>,
+    suggestion_color: '<%= autocompletion_config['suggestion_color'] || '#888888' %>'
+  };
+
+  if (wikiTextarea && typeof AiHelperAutoCompletion !== 'undefined') {
+    const wikiAutoCompletion = new AiHelperAutoCompletion(wikiTextarea, {
+      contextType: 'wiki',
+      endpoint: '<%= ai_helper_suggest_wiki_completion_path(project.identifier) %>',
+      debounceDelay: config.debounce_delay,
+      minLength: config.min_length,
+      suggestionColor: config.suggestion_color,
+      labels: {
+        commonToggleLabel: '<%= t('ai_helper.autocompletion.wiki_toggle_label') %>',
+        loading: '<%= t('ai_helper.autocompletion.wiki_loading') %>',
+        noSuggestions: '<%= t('ai_helper.autocompletion.wiki_no_suggestions') %>',
+        acceptSuggestion: '<%= t('ai_helper.autocompletion.accept_suggestion') %>',
+        dismiss: '<%= t('ai_helper.autocompletion.dismiss') %>',
+        enabledTooltip: '<%= t('ai_helper.autocompletion.wiki_enabled_tooltip') %>',
+        disabledTooltip: '<%= t('ai_helper.autocompletion.wiki_disabled_tooltip') %>'
+      }
+    });
+
+    wikiAutoCompletion.init();
+
+    const wikiContainer = document.getElementById('ai-helper-wiki-checkbox-container');
+    if (wikiContainer && wikiTextarea) {
+      const parent = wikiTextarea.parentNode;
+      const nextSibling = wikiTextarea.nextSibling;
+      if (nextSibling) {
+        parent.insertBefore(wikiContainer, nextSibling);
+      } else {
+        parent.appendChild(wikiContainer);
+      }
+      wikiContainer.style.display = 'block';
+    }
+
+    if (!window.aiHelperInstances) {
+      window.aiHelperInstances = {};
+    }
+    window.aiHelperInstances.wikiAutoCompletion = wikiAutoCompletion;
+  }
+
+  window.aiHelperWikiCompletionInitialized = true;
+}
+
+setTimeout(function() {
+  initializeWikiCompletion();
+}, 500);
+
+</script>
+<% else %>
+<!-- AI Helper wiki auto-completion not available -->
+<% end %>

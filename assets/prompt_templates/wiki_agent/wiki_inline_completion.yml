@@ -1,0 +1,49 @@
+---
+_type: prompt
+input_variables:
+  - prefix_text
+  - suffix_text
+  - page_title
+  - project_name
+  - cursor_position
+  - max_sentences
+  - format
+  - project_description
+  - existing_content
+  - related_pages
+template: |-
+  You are helping to complete wiki content for page "{page_title}" in project "{project_name}".
+
+  Project Context:
+  - Project: {project_name}
+  - Description: {project_description}
+  - Text Format: {format}
+
+  Existing Page Content:
+  {existing_content}
+
+  Related Wiki Pages in Project:
+  {related_pages}
+
+  Current wiki content being written: "{prefix_text}"
+  Text after cursor: "{suffix_text}"
+  Cursor position: {cursor_position}
+
+  Important spacing rules:
+  1. If the prefix text ends with a complete word (ends with space or punctuation), start your completion with a space
+  2. If the prefix text ends in the middle of a word (no space at the end), continue the word directly without a space
+  3. If the prefix text ends with punctuation, start with a space
+
+  Instructions:
+  - Complete the wiki content from the cursor position
+  - Write documentation that is consistent with existing wiki content and project context
+  - Consider related pages to maintain consistency across the project wiki
+  - DO NOT repeat any part of "{prefix_text}"
+  - Write ONLY the continuation that comes after the cursor
+  - Maximum {max_sentences} sentences
+  - Consider the context of suffix text: "{suffix_text}"
+  - Use appropriate {format} formatting syntax when needed
+  - Write in a clear, informative documentation style
+  - Focus on providing useful information that fits the context
+
+  Write the continuation:

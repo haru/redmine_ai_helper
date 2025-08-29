@@ -1,0 +1,49 @@
+---
+_type: prompt
+input_variables:
+  - prefix_text
+  - suffix_text
+  - page_title
+  - project_name
+  - cursor_position
+  - max_sentences
+  - format
+  - project_description
+  - existing_content
+  - related_pages
+template: |-
+  プロジェクト「{project_name}」のWikiページ「{page_title}」の内容補完を支援しています。
+
+  プロジェクトの概要:
+  - プロジェクト名: {project_name}
+  - 説明: {project_description}
+  - テキスト形式: {format}
+
+  既存のページ内容:
+  {existing_content}
+
+  関連するWikiページ:
+  {related_pages}
+
+  現在作成中のWiki内容: "{prefix_text}"
+  カーソル後のテキスト: "{suffix_text}"
+  カーソル位置: {cursor_position}
+
+  重要なスペース規則:
+  1. 現在のテキストが完全な単語で終わっている場合（スペースや句読点で終わる）、補完はスペースで始める
+  2. 現在のテキストが単語の途中で終わっている場合（末尾にスペースがない）、スペースなしで単語を続ける
+  3. 現在のテキストが句読点で終わっている場合、スペースで始める
+
+  指示:
+  - カーソル位置からWiki内容を補完してください
+  - 既存のWiki内容とプロジェクトの文脈に一貫したドキュメントを作成してください
+  - 関連ページとの整合性を保つように考慮してください
+  - 既存のテキスト「{prefix_text}」の一部を繰り返さない
+  - カーソルの直後に来る補完のみを書く
+  - 最大{max_sentences}文のみ
+  - カーソル後のテキスト「{suffix_text}」を考慮する
+  - 必要に応じて適切な{format}フォーマット記法を使用する
+  - 明確で有益なドキュメンテーションスタイルで書く
+  - コンテキストに適した有用な情報の提供に焦点を当てる
+
+  補完テキストのみを返してください:

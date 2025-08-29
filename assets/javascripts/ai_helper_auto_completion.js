@@ -45,6 +45,9 @@ class AiHelperAutoCompletion {
     if (this.options.contextType === 'note') {
       this.checkbox = document.getElementById('ai-helper-autocompletion-notes-toggle');
       this.container = document.getElementById('ai-helper-notes-checkbox-container');
+    } else if (this.options.contextType === 'wiki') {
+      this.checkbox = document.getElementById('ai-helper-autocompletion-wiki-toggle');
+      this.container = document.getElementById('ai-helper-wiki-checkbox-container');
     } else {
       this.checkbox = document.getElementById('ai-helper-autocompletion-description-toggle');
       this.container = document.getElementById('ai-helper-description-checkbox-container');
@@ -150,14 +153,18 @@ class AiHelperAutoCompletion {
   loadSettings() {
     const saved = localStorage.getItem(this.storageKey);
     const enabled = saved ? JSON.parse(saved).enabled : true; // Default ON
-    this.checkbox.checked = enabled;
+    if (this.checkbox) {
+      this.checkbox.checked = enabled;
+    }
     this.isEnabled = enabled;
   }
 
   saveSettings() {
-    const settings = { enabled: this.checkbox.checked };
-    this.isEnabled = this.checkbox.checked;
-    localStorage.setItem(this.storageKey, JSON.stringify(settings));
+    if (this.checkbox) {
+      const settings = { enabled: this.checkbox.checked };
+      this.isEnabled = this.checkbox.checked;
+      localStorage.setItem(this.storageKey, JSON.stringify(settings));
+    }
   }
 
   onTextChange() {
@@ -283,22 +290,13 @@ class AiHelperAutoCompletion {
       return response.json();
     })
     .then(data => {
-      console.log('JavaScript received data:', data);
-      console.log('Suggestion value:', JSON.stringify(data.suggestion));
-      console.log('Suggestion length:', data.suggestion ? data.suggestion.length : 'undefined');
-      console.log('Suggestion type:', typeof data.suggestion);
-      
       // Check for race condition when receiving response
       if (this.isRequestStale(requestId, text, cursorPosition)) {
-        console.log('Suggestion discarded: text changed during generation');
         return;
       }
       
       if (data.suggestion && data.suggestion.trim()) {
-        console.log('Displaying suggestion:', data.suggestion);
         this.displayInlineSuggestion(data.suggestion, cursorPosition);
-      } else {
-        console.log('No suggestion to display - empty or null');
       }
     })
     .catch(error => {
