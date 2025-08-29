@@ -11,6 +11,8 @@ input_variables:
   - project_description
   - existing_content
   - related_pages
+  - is_section_edit
+  - full_page_context
 template: |-
   You are helping to complete wiki content for page "{page_title}" in project "{project_name}".
 
@@ -34,6 +36,8 @@ template: |-
   2. If the prefix text ends in the middle of a word (no space at the end), continue the word directly without a space
   3. If the prefix text ends with punctuation, start with a space
 
+  Editing Mode: {is_section_edit}
+
   Instructions:
   - Complete the wiki content from the cursor position
   - Write documentation that is consistent with existing wiki content and project context
@@ -45,5 +49,7 @@ template: |-
   - Use appropriate {format} formatting syntax when needed
   - Write in a clear, informative documentation style
   - Focus on providing useful information that fits the context
+
+  {full_page_context}
 
   Write the continuation:

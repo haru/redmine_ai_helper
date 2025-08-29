@@ -63,7 +63,9 @@ class LlmWikiTest < ActiveSupport::TestCase
       text: "test content",
       cursor_position: 12,
       project: @project,
-      wiki_page: @wiki_page
+      wiki_page: @wiki_page,
+      is_section_edit: false,
+      full_page_content: nil
     ).returns("completion")
     
     RedmineAiHelper::Agents::WikiAgent.stubs(:new).returns(mock_agent)
@@ -87,5 +89,31 @@ class LlmWikiTest < ActiveSupport::TestCase
     )
     
     assert result.is_a?(String)
+  end
+
+  test "generate_wiki_completion should handle section editing parameters" do
+    mock_agent = mock('wiki_agent')
+    
+    mock_agent.expects(:generate_wiki_completion).with(
+      text: "test content",
+      cursor_position: 12,
+      project: @project,
+      wiki_page: @wiki_page,
+      is_section_edit: true,
+      full_page_content: "full page content"
+    ).returns("section completion")
+    
+    RedmineAiHelper::Agents::WikiAgent.stubs(:new).returns(mock_agent)
+    
+    result = @llm.generate_wiki_completion(
+      text: "test content",
+      cursor_position: 12,
+      project: @project,
+      wiki_page: @wiki_page,
+      is_section_edit: true,
+      full_page_content: "full page content"
+    )
+    
+    assert_equal "section completion", result
   end
 end

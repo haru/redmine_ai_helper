@@ -410,6 +410,84 @@ class AiHelperController < ApplicationController
     end
   end
 
+  # Generate wiki completion suggestions via JSON API  
+  def suggest_wiki_completion
+    unless request.content_type == "application/json"
+      render json: { error: "Unsupported Media Type" }, status: :unsupported_media_type and return
+    end
+
+    begin
+      data = JSON.parse(request.body.read)
+    rescue JSON::ParserError
+      render json: { error: "Invalid JSON" }, status: :bad_request and return
+    end
+
+    text = data["text"]
+    context_type = "wiki"
+    cursor_position = data["cursor_position"]
+
+    if text.blank?
+      render json: { error: "Text is required" }, status: :bad_request and return
+    end
+
+    if text.length > 10000
+      render json: { error: "Text too long" }, status: :bad_request and return
+    end
+
+    if cursor_position && (cursor_position < 0 || cursor_position > text.length)
+      render json: { error: "Invalid cursor position" }, status: :bad_request and return
+    end
+
+    # Section edit detection (section number is not sent)
+    is_section_edit = data["is_section_edit"] || false
+
+    wiki_page = nil
+    project = nil
+
+    if params[:project_id].present?
+      project = Project.find_by(identifier: params[:project_id]) || Project.find_by(id: params[:project_id])
+    else
+      project = @project
+    end
+
+    if params[:page_name].present? && project
+      wiki_page = project.wiki&.find_page(params[:page_name])
+    end
+
+    unless project&.module_enabled?(:ai_helper) && User.current.allowed_to?(:view_ai_helper, project)
+      render json: { error: "Permission denied" }, status: :forbidden and return
+    end
+
+    unless User.current.allowed_to?(:edit_wiki_pages, project)
+      render json: { error: "Wiki edit permission required" }, status: :forbidden and return
+    end
+
+    # Get full page content for section editing if wiki_page exists and is section edit
+    full_page_content = nil
+    if wiki_page&.content && is_section_edit
+      full_page_content = wiki_page.content.text
+    end
+
+    begin
+      llm = RedmineAiHelper::Llm.new
+      suggestion = llm.generate_wiki_completion(
+        text: text,
+        cursor_position: cursor_position,
+        project: project,
+        wiki_page: wiki_page,
+        is_section_edit: is_section_edit,
+        full_page_content: full_page_content
+      )
+
+      response_data = { suggestion: suggestion }
+      render json: response_data
+    rescue => e
+      ai_helper_logger.error "Wiki auto-completion error: #{e.message}"
+      ai_helper_logger.error e.backtrace.join("\n")
+      render json: { error: "Failed to generate suggestion" }, status: :internal_server_error
+    end
+  end
+
   # Display project health report
   def project_health
     cache_key = "project_health_#{@project.id}_#{params[:version_id]}_#{params[:start_date]}_#{params[:end_date]}"

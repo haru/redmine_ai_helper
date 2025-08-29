@@ -11,6 +11,8 @@ input_variables:
   - project_description
   - existing_content
   - related_pages
+  - is_section_edit
+  - full_page_context
 template: |-
   プロジェクト「{project_name}」のWikiページ「{page_title}」の内容補完を支援しています。
 
@@ -34,6 +36,8 @@ template: |-
   2. 現在のテキストが単語の途中で終わっている場合（末尾にスペースがない）、スペースなしで単語を続ける
   3. 現在のテキストが句読点で終わっている場合、スペースで始める
 
+  編集モード: {is_section_edit}
+
   指示:
   - カーソル位置からWiki内容を補完してください
   - 既存のWiki内容とプロジェクトの文脈に一貫したドキュメントを作成してください
@@ -45,5 +49,7 @@ template: |-
   - 必要に応じて適切な{format}フォーマット記法を使用する
   - 明確で有益なドキュメンテーションスタイルで書く
   - コンテキストに適した有用な情報の提供に焦点を当てる
+
+  {full_page_context}
 
   補完テキストのみを返してください:

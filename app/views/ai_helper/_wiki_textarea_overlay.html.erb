@@ -40,12 +40,30 @@ function initializeWikiCompletion() {
   };
 
   if (wikiTextarea && typeof AiHelperAutoCompletion !== 'undefined') {
+    // Detect wiki page name from URL for proper endpoint
+    const pageMatch = window.location.pathname.match(/\/wiki\/([^\/]+)/);
+    let endpoint = '<%= ai_helper_suggest_wiki_completion_path(project.identifier) %>';
+    if (pageMatch) {
+      const pageName = pageMatch[1].replace(/\/edit.*$/, ''); // remove /edit suffix
+      endpoint = `/ai_helper/wiki/<%= project.identifier %>/${pageName}/suggest_completion`;
+    }
+    
     const wikiAutoCompletion = new AiHelperAutoCompletion(wikiTextarea, {
       contextType: 'wiki',
-      endpoint: '<%= ai_helper_suggest_wiki_completion_path(project.identifier) %>',
+      endpoint: endpoint,
       debounceDelay: config.debounce_delay,
       minLength: config.min_length,
       suggestionColor: config.suggestion_color,
+      // Section edit detection
+      customRequestData: function(text, cursorPosition) {
+        const sectionField = document.querySelector('input[name="section"]');
+        return {
+          text: text,
+          cursor_position: cursorPosition,
+          context_type: 'wiki',
+          is_section_edit: sectionField && sectionField.value ? true : false
+        };
+      },
       labels: {
         commonToggleLabel: '<%= t('ai_helper.autocompletion.wiki_toggle_label') %>',
         loading: '<%= t('ai_helper.autocompletion.wiki_loading') %>',

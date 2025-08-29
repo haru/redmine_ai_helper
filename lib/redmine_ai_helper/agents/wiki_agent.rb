@@ -38,15 +38,25 @@ module RedmineAiHelper
         chat(messages, {}, stream_proc)
       end
 
-  def generate_wiki_completion(text:, cursor_position: nil, project: nil, wiki_page: nil)
+  def generate_wiki_completion(text:, cursor_position: nil, project: nil, wiki_page: nil, 
+                           is_section_edit: false, full_page_content: nil)
     begin
-      context = build_wiki_completion_context(text, project, wiki_page)
+      context = build_wiki_completion_context(text, project, wiki_page,
+                                            is_section_edit: is_section_edit,
+                                            full_page_content: full_page_content)
       
       prompt = load_prompt("wiki_agent/wiki_inline_completion")
       
       prefix_text = cursor_position ? text[0...cursor_position] : text
       suffix_text = (cursor_position && cursor_position < text.length) ? text[cursor_position..-1] : ""
       
+      # Determine editing mode text based on locale
+      editing_mode = if I18n.locale == :ja
+                       is_section_edit ? 'Section Edit' : 'Full Page Edit'
+                     else
+                       is_section_edit ? 'Section Edit' : 'Full Page Edit'
+                     end
+
       template_vars = {
         prefix_text: prefix_text,
         suffix_text: suffix_text,
@@ -57,7 +67,9 @@ module RedmineAiHelper
         format: Setting.text_formatting,
         project_description: context[:project_description] || '',
         existing_content: context[:existing_content] || '',
-        related_pages: context[:related_pages] || 'None'
+        related_pages: context[:related_pages] || 'None',
+        is_section_edit: editing_mode,
+        full_page_context: context[:full_page_context] || ''
       }
       
       prompt_text = prompt.format(**template_vars)
@@ -79,11 +91,12 @@ module RedmineAiHelper
 
   private
 
-  def build_wiki_completion_context(text, project, wiki_page)
+  def build_wiki_completion_context(text, project, wiki_page, is_section_edit: false, full_page_content: nil)
     context = {
       page_title: wiki_page&.title || 'New Wiki Page',
       project_name: project&.name,
-      text_length: text.length
+      text_length: text.length,
+      is_section_edit: is_section_edit
     }
     
     if project
@@ -91,6 +104,13 @@ module RedmineAiHelper
       context[:project_identifier] = project.identifier
       
       context.merge!(build_existing_wiki_context(project, wiki_page))
+    end
+    
+    # Build additional context for section editing (LLM auto-determination)
+    if is_section_edit && full_page_content.present?
+      context[:full_page_context] = build_full_page_context(full_page_content, text)
+    else
+      context[:full_page_context] = ''
     end
     
     context
@@ -122,6 +142,38 @@ module RedmineAiHelper
     end
     
     wiki_context
+  end
+
+  def build_full_page_context(full_page_content, current_editing_text)
+    context_parts = []
+
+    begin
+      # Provide full page preview (max 1500 characters)
+      context_parts << "=== Section Editing Mode - Full Page Context ==="
+      context_parts << truncate_content(full_page_content, 1500)
+
+      # Add current editing text position analysis information
+      context_parts << "\n=== Current Editing Text Information ==="
+      context_parts << "Currently editing text: \"#{truncate_content(current_editing_text, 300)}\""
+      context_parts << "※Please analyze which part of the full page content corresponds to the above text,"
+      context_parts << "and provide appropriate completion for that section."
+
+    rescue => e
+      ai_helper_logger.error "Full page context building error: #{e.message}"
+      context_parts = [
+        "=== Section Editing Mode - Full Page Context (simplified) ===",
+        truncate_content(full_page_content, 1000),
+        "\n=== Current Editing Text ===",
+        "Editing: \"#{truncate_content(current_editing_text, 200)}\""
+      ]
+    end
+
+    context_parts.join("\n")
+  end
+
+  def truncate_content(content, max_length)
+    return content if content.length <= max_length
+    content[0...max_length] + "..."
   end
 
   def parse_wiki_completion_response(response)

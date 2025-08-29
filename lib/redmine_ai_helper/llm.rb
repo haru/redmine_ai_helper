@@ -187,9 +187,10 @@ module RedmineAiHelper
     # @param project [Project] The project object
     # @param issue [Issue] Optional issue object for context
     # @return [String] The completion suggestion
-    def generate_wiki_completion(text:, cursor_position: nil, project: nil, wiki_page: nil)
+    def generate_wiki_completion(text:, cursor_position: nil, project: nil, wiki_page: nil,
+                               is_section_edit: false, full_page_content: nil)
       begin
-        ai_helper_logger.info "Starting wiki completion: text='#{text[0..50]}...', cursor_position=#{cursor_position}"
+        ai_helper_logger.info "Starting wiki completion: text='#{text[0..50]}...', cursor_position=#{cursor_position}, section_edit=#{is_section_edit}"
         
         langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: text)
         options = { langfuse: langfuse, project: project }
@@ -201,7 +202,9 @@ module RedmineAiHelper
           text: text,
           cursor_position: cursor_position,
           project: project,
-          wiki_page: wiki_page
+          wiki_page: wiki_page,
+          is_section_edit: is_section_edit,
+          full_page_content: full_page_content
         )
         
         ai_helper_logger.info "WikiAgent returned completion: '#{completion}' (length: #{completion.length})"
