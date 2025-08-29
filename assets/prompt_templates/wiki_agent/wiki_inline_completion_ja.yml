@@ -11,7 +11,6 @@ input_variables:
   - project_description
   - existing_content
   - is_section_edit
-  - full_page_context
 template: |-
   プロジェクト「{project_name}」のWikiページ「{page_title}」の内容補完を支援しています。
 
@@ -41,12 +40,6 @@ template: |-
   - 必要に応じて適切な{format}フォーマット記法を使用する
   - 明確で有益なドキュメンテーションスタイルで書く
   - コンテキストに適した有用な情報の提供に焦点を当てる
-
-  ===============================================
-
-  {full_page_context}
-
-  ===============================================
 
   ===== 既存のページ内容 =====
   {existing_content}

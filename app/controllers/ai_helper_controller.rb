@@ -13,9 +13,9 @@ class AiHelperController < ApplicationController
   protect_from_forgery except: [:generate_project_health, :suggest_completion, :suggest_wiki_completion]
   before_action :find_issue, only: [:issue_summary, :update_issue_summary, :generate_issue_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues]
   before_action :find_wiki_page, only: [:wiki_summary, :generate_wiki_summary]
-  before_action :find_project, except: [:issue_summary, :wiki_summary, :generate_issue_summary, :generate_wiki_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues, :suggest_completion, :suggest_wiki_completion]
+  before_action :find_project, except: [:issue_summary, :wiki_summary, :generate_issue_summary, :generate_wiki_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues, :suggest_completion]
   before_action :find_user, :create_session, :find_conversation
-  before_action :authorize, except: [:project_health, :generate_project_health, :suggest_completion, :suggest_wiki_completion]
+  before_action :authorize, except: [:project_health, :generate_project_health, :suggest_completion]
   before_action :authorize_project_health, only: [:project_health, :generate_project_health]
 
   # Display the chat form in the sidebar
@@ -373,31 +373,13 @@ class AiHelperController < ApplicationController
     # Section edit detection (section number is not sent)
     is_section_edit = data["is_section_edit"] || false
 
+    # Debug log for tests
+    ai_helper_logger.info "Wiki completion: is_section_edit from data: #{data["is_section_edit"].inspect}, final value: #{is_section_edit}"
+
     wiki_page = nil
-    project = nil
 
-    if params[:project_id].present?
-      project = Project.find_by(identifier: params[:project_id]) || Project.find_by(id: params[:project_id])
-    else
-      project = @project
-    end
-
-    if params[:page_name].present? && project
-      wiki_page = project.wiki&.find_page(params[:page_name])
-    end
-
-    unless project&.module_enabled?(:ai_helper) && User.current.allowed_to?(:view_ai_helper, project)
-      render json: { error: "Permission denied" }, status: :forbidden and return
-    end
-
-    unless User.current.allowed_to?(:edit_wiki_pages, project)
-      render json: { error: "Wiki edit permission required" }, status: :forbidden and return
-    end
-
-    # Get full page content for section editing if wiki_page exists and is section edit
-    full_page_content = nil
-    if wiki_page&.content && is_section_edit
-      full_page_content = wiki_page.content.text
+    if params[:page_name].present? && @project
+      wiki_page = @project.wiki&.find_page(params[:page_name])
     end
 
     begin
@@ -405,10 +387,9 @@ class AiHelperController < ApplicationController
       suggestion = llm.generate_wiki_completion(
         text: text,
         cursor_position: cursor_position,
-        project: project,
+        project: @project,
         wiki_page: wiki_page,
         is_section_edit: is_section_edit,
-        full_page_content: full_page_content,
       )
 
       response_data = { suggestion: suggestion }

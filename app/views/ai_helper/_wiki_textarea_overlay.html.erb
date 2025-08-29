@@ -45,7 +45,7 @@ function initializeWikiCompletion() {
     let endpoint = '<%= ai_helper_suggest_wiki_completion_path(project.identifier) %>';
     if (pageMatch) {
       const pageName = pageMatch[1].replace(/\/edit.*$/, ''); // remove /edit suffix
-      endpoint = `/ai_helper/wiki/<%= project.identifier %>/${pageName}/suggest_completion`;
+      endpoint = `/projects/<%= project.identifier %>/ai_helper/wiki/${pageName}/suggest_completion`;
     }
 
     const wikiAutoCompletion = new AiHelperAutoCompletion(wikiTextarea, {
