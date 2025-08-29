@@ -19,8 +19,14 @@ template: |-
   - Description: {project_description}
   - Text Format: {format}
 
-  Current wiki content being written: "{prefix_text}"
-  Text after cursor: "{suffix_text}"
+  ===== CURRENT WIKI CONTENT BEING WRITTEN =====
+  {prefix_text}
+  ===== END CURRENT CONTENT =====
+
+  ===== TEXT AFTER CURSOR =====
+  {suffix_text}
+  ===== END CURSOR TEXT =====
+  
   Cursor position: {cursor_position}
 
   Important spacing rules:
@@ -33,10 +39,10 @@ template: |-
   Instructions:
   - Complete the wiki content from the cursor position
   - Write documentation that is consistent with existing wiki content and project context
-  - DO NOT repeat any part of "{prefix_text}"
+  - DO NOT repeat any part of the above "CURRENT WIKI CONTENT BEING WRITTEN"
   - Write ONLY the continuation that comes after the cursor
   - Maximum {max_sentences} sentences
-  - Consider the context of suffix text: "{suffix_text}"
+  - Consider the context of the above "TEXT AFTER CURSOR"
   - Use appropriate {format} formatting syntax when needed
   - Write in a clear, informative documentation style
   - Focus on providing useful information that fits the context
