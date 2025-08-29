@@ -188,30 +188,30 @@ module RedmineAiHelper
     # @param issue [Issue] Optional issue object for context
     # @return [String] The completion suggestion
     def generate_wiki_completion(text:, cursor_position: nil, project: nil, wiki_page: nil,
-                               is_section_edit: false, full_page_content: nil)
+                                 is_section_edit: false, full_page_content: nil)
       begin
         ai_helper_logger.info "Starting wiki completion: text='#{text[0..50]}...', cursor_position=#{cursor_position}, section_edit=#{is_section_edit}"
-        
+
         langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: text)
         options = { langfuse: langfuse, project: project }
         agent = RedmineAiHelper::Agents::WikiAgent.new(options)
-        
+
         langfuse.create_span(name: "wiki_completion", input: text)
-        
+
         completion = agent.generate_wiki_completion(
           text: text,
           cursor_position: cursor_position,
           project: project,
           wiki_page: wiki_page,
           is_section_edit: is_section_edit,
-          full_page_content: full_page_content
+          full_page_content: full_page_content,
         )
-        
+
         ai_helper_logger.info "WikiAgent returned completion: '#{completion}' (length: #{completion.length})"
-        
+
         langfuse.finish_current_span(output: completion)
         langfuse.flush
-        
+
         completion
       rescue => e
         ai_helper_logger.error "Wiki completion error: #{e.full_message}"
@@ -222,26 +222,26 @@ module RedmineAiHelper
     def generate_text_completion(text:, context_type:, cursor_position: nil, project: nil, issue: nil)
       begin
         ai_helper_logger.info "Starting text completion: text='#{text[0..50]}...', cursor_position=#{cursor_position}, context_type=#{context_type}"
-        
+
         langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: text)
         options = { langfuse: langfuse, project: project }
         agent = RedmineAiHelper::Agents::IssueAgent.new(options)
-        
+
         langfuse.create_span(name: "text_completion", input: text)
-        
+
         completion = agent.generate_text_completion(
           text: text,
           cursor_position: cursor_position,
           context_type: context_type,
           project: project,
-          issue: issue
+          issue: issue,
         )
-        
+
         ai_helper_logger.info "Agent returned completion: '#{completion}' (length: #{completion.length})"
-        
+
         langfuse.finish_current_span(output: completion)
         langfuse.flush
-        
+
         completion
       rescue => e
         ai_helper_logger.error "Text completion error: #{e.full_message}"
@@ -252,12 +252,5 @@ module RedmineAiHelper
     end
 
     private
-
-
-
-
-
-
-
   end
 end

@@ -248,79 +248,12 @@ class AiHelperController < ApplicationController
     begin
       llm = RedmineAiHelper::Llm.new
       similar_issues = llm.find_similar_issues(issue: @issue)
-      
+
       render partial: "ai_helper/similar_issues", locals: { similar_issues: similar_issues }
     rescue => e
       ai_helper_logger.error "Similar issues search error: #{e.message}"
       ai_helper_logger.error e.backtrace.join("\n")
       render json: { error: e.message }, status: :internal_server_error
-    end
-  end
-
-  # Suggest wiki auto-completion
-  def suggest_wiki_completion
-    unless request.content_type == "application/json"
-      render json: { error: "Unsupported Media Type" }, status: :unsupported_media_type and return
-    end
-
-    begin
-      data = JSON.parse(request.body.read)
-    rescue JSON::ParserError
-      render json: { error: "Invalid JSON" }, status: :bad_request and return
-    end
-
-    text = data["text"]
-    context_type = "wiki"
-    cursor_position = data["cursor_position"]
-
-    if text.blank?
-      render json: { error: "Text is required" }, status: :bad_request and return
-    end
-
-    if text.length > 10000
-      render json: { error: "Text too long" }, status: :bad_request and return
-    end
-
-    if cursor_position && (cursor_position < 0 || cursor_position > text.length)
-      render json: { error: "Invalid cursor position" }, status: :bad_request and return
-    end
-
-    wiki_page = nil
-    project = nil
-    
-    if params[:project_id].present?
-      project = Project.find_by(identifier: params[:project_id]) || Project.find_by(id: params[:project_id])
-    else
-      project = @project
-    end
-
-    if params[:page_name].present? && project
-      wiki_page = project.wiki&.find_page(params[:page_name])
-    end
-
-    unless project&.module_enabled?(:ai_helper) && User.current.allowed_to?(:view_ai_helper, project)
-      render json: { error: "Permission denied" }, status: :forbidden and return
-    end
-
-    unless User.current.allowed_to?(:edit_wiki_pages, project)
-      render json: { error: "Wiki edit permission required" }, status: :forbidden and return
-    end
-
-    begin
-      llm = RedmineAiHelper::Llm.new
-      suggestion = llm.generate_wiki_completion(
-        text: text,
-        cursor_position: cursor_position,
-        project: project,
-        wiki_page: wiki_page
-      )
-
-      response_data = { suggestion: suggestion }
-      render json: response_data
-    rescue => e
-      ai_helper_logger.error "Wiki auto-completion error: #{e.message}"
-      ai_helper_logger.error e.backtrace.join("\n")
-      render json: { error: "Failed to generate suggestion" }, status: :internal_server_error
     end
   end
 
@@ -361,8 +294,8 @@ class AiHelperController < ApplicationController
     # Handle new issue case
     issue = nil
     project = nil
-    
-    if params[:id] != 'new'
+
+    if params[:id] != "new"
       issue = Issue.find_by(id: params[:id])
       project = issue&.project
     else
@@ -384,7 +317,7 @@ class AiHelperController < ApplicationController
 
     # Debug logging
     ai_helper_logger.info "Auto-completion request: id=#{params[:id]}, context_type=#{context_type}, project=#{project&.identifier}, user=#{User.current.id}"
-    
+
     # Check permissions
     unless project&.module_enabled?(:ai_helper) && User.current.allowed_to?(:view_ai_helper, project)
       ai_helper_logger.warn "Permission denied: project=#{project&.identifier}, ai_helper_enabled=#{project&.module_enabled?(:ai_helper)}, user_allowed=#{project ? User.current.allowed_to?(:view_ai_helper, project) : false}"
@@ -398,7 +331,7 @@ class AiHelperController < ApplicationController
         context_type: context_type,
         cursor_position: cursor_position,
         project: project,
-        issue: issue
+        issue: issue,
       )
 
       response_data = { suggestion: suggestion }
@@ -410,7 +343,7 @@ class AiHelperController < ApplicationController
     end
   end
 
-  # Generate wiki completion suggestions via JSON API  
+  # Generate wiki completion suggestions via JSON API
   def suggest_wiki_completion
     unless request.content_type == "application/json"
       render json: { error: "Unsupported Media Type" }, status: :unsupported_media_type and return
@@ -423,7 +356,6 @@ class AiHelperController < ApplicationController
     end
 
     text = data["text"]
-    context_type = "wiki"
     cursor_position = data["cursor_position"]
 
     if text.blank?
@@ -476,7 +408,7 @@ class AiHelperController < ApplicationController
         project: project,
         wiki_page: wiki_page,
         is_section_edit: is_section_edit,
-        full_page_content: full_page_content
+        full_page_content: full_page_content,
       )
 
       response_data = { suggestion: suggestion }
@@ -499,10 +431,10 @@ class AiHelperController < ApplicationController
       format.html { render partial: "ai_helper/project_health", locals: { health_report: @health_report } }
       format.pdf do
         if @health_report && !@health_report.is_a?(Hash)
-          filename = "#{@project.identifier}-health-report-#{Date.current.strftime('%Y%m%d')}.pdf"
-          send_data(project_health_to_pdf(@project, @health_report), 
-                   type: 'application/pdf', 
-                   filename: filename)
+          filename = "#{@project.identifier}-health-report-#{Date.current.strftime("%Y%m%d")}.pdf"
+          send_data(project_health_to_pdf(@project, @health_report),
+                    type: "application/pdf",
+                    filename: filename)
         else
           redirect_to project_path(@project), alert: l(:label_ai_helper_no_report_available, default: "No health report available for PDF export")
         end
@@ -513,38 +445,38 @@ class AiHelperController < ApplicationController
   # Generate PDF from current health report content
   def project_health_pdf
     health_report_content = params[:health_report_content]
-    
+
     if health_report_content.present?
       # Validate and sanitize content - only allow Markdown, no HTML/JavaScript
       # Remove any potential script tags or dangerous HTML while preserving Markdown
-      sanitized_content = health_report_content.gsub(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/mi, '')
-                                               .gsub(/<[^>]*>/, '')
-      
-      filename = "#{@project.identifier}-health-report-#{Date.current.strftime('%Y%m%d')}.pdf"
-      send_data(project_health_to_pdf(@project, sanitized_content), 
-               type: 'application/pdf', 
-               filename: filename)
+      sanitized_content = health_report_content.gsub(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/mi, "")
+                                               .gsub(/<[^>]*>/, "")
+
+      filename = "#{@project.identifier}-health-report-#{Date.current.strftime("%Y%m%d")}.pdf"
+      send_data(project_health_to_pdf(@project, sanitized_content),
+                type: "application/pdf",
+                filename: filename)
     else
-      redirect_to project_path(@project), alert: t('ai_helper.project_health.no_report_available')
+      redirect_to project_path(@project), alert: t("ai_helper.project_health.no_report_available")
     end
   end
 
   # Generate Markdown from current health report content
   def project_health_markdown
     health_report_content = params[:health_report_content]
-    
+
     if health_report_content.present?
       # Validate and sanitize content - only allow Markdown, no HTML/JavaScript
       # Remove any potential script tags or dangerous HTML while preserving Markdown
-      sanitized_content = health_report_content.gsub(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/mi, '')
-                                               .gsub(/<[^>]*>/, '')
-      
-      filename = "#{@project.identifier}-health-report-#{Date.current.strftime('%Y%m%d')}.md"
-      send_data(sanitized_content, 
-               type: 'text/markdown', 
-               filename: filename)
+      sanitized_content = health_report_content.gsub(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/mi, "")
+                                               .gsub(/<[^>]*>/, "")
+
+      filename = "#{@project.identifier}-health-report-#{Date.current.strftime("%Y%m%d")}.md"
+      send_data(sanitized_content,
+                type: "text/markdown",
+                filename: filename)
     else
-      redirect_to project_path(@project), alert: t('ai_helper.project_health.no_report_available')
+      redirect_to project_path(@project), alert: t("ai_helper.project_health.no_report_available")
     end
   end
 
@@ -553,7 +485,7 @@ class AiHelperController < ApplicationController
     ai_helper_logger.info "Starting project health generation for project #{@project.id}"
     cache_key = "project_health_#{@project.id}_#{params[:version_id]}_#{params[:start_date]}_#{params[:end_date]}"
     Rails.cache.delete(cache_key)
-    
+
     begin
       llm = RedmineAiHelper::Llm.new
       full_content = ""
@@ -569,21 +501,20 @@ class AiHelperController < ApplicationController
           version_id: params[:version_id],
           start_date: params[:start_date],
           end_date: params[:end_date],
-          stream_proc: cache_proc
+          stream_proc: cache_proc,
         )
-        
+
         Rails.cache.write(cache_key, content, expires_in: 1.hour)
       end
-      
     rescue => e
       ai_helper_logger.error "Generate project health error: #{e.message}"
       ai_helper_logger.error e.backtrace.join("\n")
-      
+
       # Send error as streaming response
       response.headers["Content-Type"] = "text/event-stream"
       response.headers["Cache-Control"] = "no-cache"
       response.headers["Connection"] = "keep-alive"
-      
+
       write_chunk({
         id: "error-#{SecureRandom.hex(6)}",
         object: "chat.completion.chunk",
@@ -592,12 +523,12 @@ class AiHelperController < ApplicationController
         choices: [{
           index: 0,
           delta: {
-            content: "Error generating project health report: #{e.message}"
+            content: "Error generating project health report: #{e.message}",
           },
-          finish_reason: "stop"
-        }]
+          finish_reason: "stop",
+        }],
       })
-      
+
       response.stream.close
     end
   end
@@ -716,7 +647,7 @@ class AiHelperController < ApplicationController
       project: @project,
       version_id: params[:version_id],
       start_date: params[:start_date],
-      end_date: params[:end_date]
+      end_date: params[:end_date],
     )
   rescue => e
     ai_helper_logger.error "Project health report error: #{e.message}"

@@ -47,21 +47,20 @@ function initializeWikiCompletion() {
       const pageName = pageMatch[1].replace(/\/edit.*$/, ''); // remove /edit suffix
       endpoint = `/ai_helper/wiki/<%= project.identifier %>/${pageName}/suggest_completion`;
     }
-    
+
     const wikiAutoCompletion = new AiHelperAutoCompletion(wikiTextarea, {
       contextType: 'wiki',
       endpoint: endpoint,
       debounceDelay: config.debounce_delay,
       minLength: config.min_length,
       suggestionColor: config.suggestion_color,
-      // Section edit detection
+      // Section edit detection from ERB
       customRequestData: function(text, cursorPosition) {
-        const sectionField = document.querySelector('input[name="section"]');
         return {
           text: text,
           cursor_position: cursorPosition,
           context_type: 'wiki',
-          is_section_edit: sectionField && sectionField.value ? true : false
+          is_section_edit: <%= @section.present? ? 'true' : 'false' %>
         };
       },
       labels: {

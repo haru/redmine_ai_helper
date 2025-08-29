@@ -32,30 +32,27 @@ module RedmineAiHelper
           content: wiki_page.content.text,
           project_name: wiki_page.wiki.project.name
         )
-        
+
         message = { role: "user", content: prompt_text }
         messages = [message]
         chat(messages, {}, stream_proc)
       end
 
-  def generate_wiki_completion(text:, cursor_position: nil, project: nil, wiki_page: nil, 
+  def generate_wiki_completion(text:, cursor_position: nil, project: nil, wiki_page: nil,
                            is_section_edit: false, full_page_content: nil)
     begin
       context = build_wiki_completion_context(text, project, wiki_page,
                                             is_section_edit: is_section_edit,
                                             full_page_content: full_page_content)
-      
+
       prompt = load_prompt("wiki_agent/wiki_inline_completion")
-      
+
       prefix_text = cursor_position ? text[0...cursor_position] : text
       suffix_text = (cursor_position && cursor_position < text.length) ? text[cursor_position..-1] : ""
-      
+
       # Determine editing mode text based on locale
-      editing_mode = if I18n.locale == :ja
-                       is_section_edit ? 'Section Edit' : 'Full Page Edit'
-                     else
-                       is_section_edit ? 'Section Edit' : 'Full Page Edit'
-                     end
+      editing_mode = is_section_edit ? 'Section Edit' : 'Full Page Edit'
+
 
       template_vars = {
         prefix_text: prefix_text,
@@ -70,16 +67,16 @@ module RedmineAiHelper
         is_section_edit: editing_mode,
         full_page_context: context[:full_page_context] || ''
       }
-      
+
       prompt_text = prompt.format(**template_vars)
-      
+
       message = { role: "user", content: prompt_text }
       messages = [message]
-      
+
       completion = chat(messages, {})
-      
+
       ai_helper_logger.debug "Generated wiki completion: #{completion.length} characters"
-      
+
       parse_wiki_completion_response(completion)
     rescue => e
       ai_helper_logger.error "Wiki completion error in WikiAgent: #{e.message}"
@@ -97,34 +94,41 @@ module RedmineAiHelper
       text_length: text.length,
       is_section_edit: is_section_edit
     }
-    
+
     if project
       context[:project_description] = project.description if project.description.present?
       context[:project_identifier] = project.identifier
-      
-      context.merge!(build_existing_wiki_context(project, wiki_page))
     end
-    
+
+    # Only include existing wiki context for section editing
+    if is_section_edit
+      context.merge!(build_existing_wiki_context(project, wiki_page))
+    else
+      context[:existing_content] = ''
+    end
+
     # Build additional context for section editing (LLM auto-determination)
     if is_section_edit && full_page_content.present?
       context[:full_page_context] = build_full_page_context(full_page_content, text)
     else
       context[:full_page_context] = ''
     end
-    
+
     context
   end
 
   def build_existing_wiki_context(project, current_wiki_page)
-    wiki_context = {}
-    
-    return wiki_context unless project.wiki
-    
+    wiki_context = {
+      existing_content: ''
+    }
+
+    return wiki_context unless project&.wiki
+
     if current_wiki_page&.content
       existing_text = current_wiki_page.content.text
       wiki_context[:existing_content] = existing_text.present? ? existing_text[0..999] : ''
     end
-    
+
     wiki_context
   end
 
@@ -162,21 +166,21 @@ module RedmineAiHelper
 
   def parse_wiki_completion_response(response)
     return "" if response.blank?
-    
+
     cleaned_response = response.strip
-    
+
     cleaned_response = cleaned_response.gsub(/\n{3,}/, "\n\n")
-    
+
     cleaned_response = cleaned_response.gsub(/^[*-]+\s*/, '')
                                      .gsub(/\s*[*-]+$/, '')
-    
+
     sentences = cleaned_response.split(/[.!?。！？]\s+/)
     if sentences.length > 5
       cleaned_response = sentences[0..4].join('. ') + '.'
     end
-    
+
     cleaned_response = cleaned_response[0..499] if cleaned_response.length > 500
-    
+
     cleaned_response
   end
     end
