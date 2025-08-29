@@ -28,12 +28,12 @@ class RedmineAiHelper::LlmClient::GeminiProviderTest < ActiveSupport::TestCase
       ]
       chat_params = @provider.create_chat_param(system_prompt, messages)
 
-      assert_equal 2, chat_params[:contents].size
-      assert_equal "user", chat_params[:contents][0][:role]
-      assert_equal "Hello", chat_params[:contents][0][:parts][0][:text]
-      assert_equal "model", chat_params[:contents][1][:role]
-      assert_equal "Hi there!", chat_params[:contents][1][:parts][0][:text]
-      assert_equal "This is a system prompt", chat_params[:system_instruction][:parts][0][:text]
+      assert_equal 2, chat_params[:messages].size
+      assert_equal "user", chat_params[:messages][0][:role]
+      assert_equal "Hello", chat_params[:messages][0][:parts][0][:text]
+      assert_equal "model", chat_params[:messages][1][:role]
+      assert_equal "Hi there!", chat_params[:messages][1][:parts][0][:text]
+      assert_equal "This is a system prompt", chat_params[:system]
     end
 
     should "reset assistant messages correctly" do
