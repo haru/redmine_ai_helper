@@ -15,8 +15,7 @@ class AiHelperController < ApplicationController
   before_action :find_wiki_page, only: [:wiki_summary, :generate_wiki_summary]
   before_action :find_project, except: [:issue_summary, :wiki_summary, :generate_issue_summary, :generate_wiki_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues, :suggest_completion]
   before_action :find_user, :create_session, :find_conversation
-  before_action :authorize, except: [:project_health, :generate_project_health, :suggest_completion]
-  before_action :authorize_project_health, only: [:project_health, :generate_project_health]
+  before_action :authorize, except: [:suggest_completion]
 
   # Display the chat form in the sidebar
   def chat_form
@@ -634,14 +633,5 @@ class AiHelperController < ApplicationController
     ai_helper_logger.error "Project health report error: #{e.message}"
     ai_helper_logger.error e.backtrace.join("\n")
     { error: e.message }
-  end
-
-  # Authorize project health access
-  def authorize_project_health
-    unless @project&.visible? && User.current.allowed_to?(:view_ai_helper, @project)
-      render_403
-      return false
-    end
-    true
   end
 end
