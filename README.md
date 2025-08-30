@@ -82,9 +82,9 @@ You can search for similar issues using the AI Helper Plugin. This feature is on
 
 ![Image](https://github.com/user-attachments/assets/3217149b-4874-49b9-aa98-b35a7324bca3)
 
-## Inline Issue Description Completion
+## Inline Issue Description and Wiki Completion
 
-You can use the AI Helper Plugin to complete issue descriptions inline. This feature provides suggestions and completions as you type, helping you write more detailed and accurate issue descriptions.
+You can use the AI Helper Plugin to complete issue descriptions and wiki pages inline. This feature provides suggestions and completions as you type, helping you write more detailed and accurate issue descriptions and wiki pages.
 
 ![Image](https://github.com/user-attachments/assets/d8e5da82-a5bb-46bf-836b-b548a32e2ab0)
 
