@@ -45,7 +45,7 @@ The Redmine AI Helper Plugin adds AI chat functionality to Redmine, enhancing pr
   - Issue and Wiki content summarization
   - Repository source code explanation
   - Generate subtasks from issues
-  - Inline issue description completion
+  - Inline issue description and wiki completion
   - Other project and Redmine-related inquiries
 - Provides a project health report
 - Supports multiple AI models and services
