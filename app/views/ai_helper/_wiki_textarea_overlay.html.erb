@@ -1,7 +1,7 @@
 <%
   project = @wiki&.project || @project
 %>
-<% if project&.module_enabled?(:ai_helper) && User.current.allowed_to?(:view_ai_helper, project) && User.current.allowed_to?(:edit_wiki_pages, project) %>
+<% if params[:controller] == 'wiki' && params[:action] == 'edit' && project&.module_enabled?(:ai_helper) && User.current.allowed_to?(:view_ai_helper, project) && User.current.allowed_to?(:edit_wiki_pages, project) %>
 
 <div id="ai-helper-wiki-checkbox-container" class="ai-helper-autocompletion-controls" style="display: none;">
   <p>

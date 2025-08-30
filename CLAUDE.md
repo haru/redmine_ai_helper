@@ -166,3 +166,4 @@ bundle exec rake redmine:plugins:ai_helper:vector:regist RAILS_ENV=production
 - Comprehensive Langfuse integration for all LLM providers
 - LLM call tracking and monitoring
 - Provider-specific wrappers for detailed observability
+- Never modify the core Redmine code
