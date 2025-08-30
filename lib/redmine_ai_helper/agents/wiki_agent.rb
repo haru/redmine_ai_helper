@@ -116,8 +116,7 @@ module RedmineAiHelper
     return wiki_context unless project&.wiki
 
     if current_wiki_page&.content
-      existing_text = current_wiki_page.content.text
-      wiki_context[:existing_content] = existing_text.present? ? existing_text[0..999] : ''
+      wiki_context[:existing_content] = current_wiki_page.content.text || ''
     end
 
     wiki_context
