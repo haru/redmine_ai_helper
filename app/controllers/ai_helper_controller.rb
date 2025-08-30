@@ -13,9 +13,9 @@ class AiHelperController < ApplicationController
   protect_from_forgery except: [:generate_project_health, :suggest_completion, :suggest_wiki_completion]
   before_action :find_issue, only: [:issue_summary, :update_issue_summary, :generate_issue_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues]
   before_action :find_wiki_page, only: [:wiki_summary, :generate_wiki_summary]
-  before_action :find_project, except: [:issue_summary, :wiki_summary, :generate_issue_summary, :generate_wiki_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues, :suggest_completion]
+  before_action :find_project, except: [:issue_summary, :wiki_summary, :generate_issue_summary, :generate_wiki_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues]
   before_action :find_user, :create_session, :find_conversation
-  before_action :authorize, except: [:suggest_completion]
+  before_action :authorize
 
   # Display the chat form in the sidebar
   def chat_form
@@ -290,22 +290,13 @@ class AiHelperController < ApplicationController
       render json: { error: "Invalid context_type. Must be 'description' or 'note'" }, status: :bad_request and return
     end
 
-    # Handle new issue case
+    # Handle issue context
     issue = nil
-    project = nil
-
-    if params[:id] != "new"
-      issue = Issue.find_by(id: params[:id])
-      project = issue&.project
-    else
-      # For new issues, try to get project from various sources
-      if data["project_id"].present?
-        project = Project.find_by(id: data["project_id"])
-      elsif data["project_identifier"].present?
-        project = Project.find_by(identifier: data["project_identifier"])
-      else
-        # Try to get from URL or session
-        project = @project
+    if params[:issue_id] != "new"
+      issue = Issue.find_by(id: params[:issue_id])
+      # Verify issue belongs to the project
+      if issue && issue.project != @project
+        render json: { error: "Issue does not belong to the specified project" }, status: :bad_request and return
       end
     end
 
@@ -315,13 +306,7 @@ class AiHelperController < ApplicationController
     end
 
     # Debug logging
-    ai_helper_logger.info "Auto-completion request: id=#{params[:id]}, context_type=#{context_type}, project=#{project&.identifier}, user=#{User.current.id}"
-
-    # Check permissions
-    unless project&.module_enabled?(:ai_helper) && User.current.allowed_to?(:view_ai_helper, project)
-      ai_helper_logger.warn "Permission denied: project=#{project&.identifier}, ai_helper_enabled=#{project&.module_enabled?(:ai_helper)}, user_allowed=#{project ? User.current.allowed_to?(:view_ai_helper, project) : false}"
-      render json: { error: "Permission denied" }, status: :forbidden and return
-    end
+    ai_helper_logger.info "Auto-completion request: issue_id=#{params[:issue_id]}, context_type=#{context_type}, project=#{@project&.identifier}, user=#{User.current.id}"
 
     begin
       llm = RedmineAiHelper::Llm.new
@@ -329,7 +314,7 @@ class AiHelperController < ApplicationController
         text: text,
         context_type: context_type,
         cursor_position: cursor_position,
-        project: project,
+        project: @project,
         issue: issue,
       )
 
@@ -619,6 +604,7 @@ class AiHelperController < ApplicationController
   rescue ActiveRecord::RecordNotFound
     render_404
   end
+
 
   # Generate project health report data
   def generate_project_health_report
