@@ -1,0 +1,97 @@
+pt-BR:
+  project_module_ai_helper: "AI Helper"
+  label_ai_helper: "AI Helper"
+  label_chat_placeholder: "Digite sua mensagem aqui..."
+  label_ai_helper_input_newline: "Pressione Shift + Enter para uma nova linha."
+  label_ai_helper_start_new_chat: "Iniciar uma nova conversa"
+  ai_helper_summary: "Resumir com AI Helper"
+  ai_helper_similar_issues: "Encontrar Tarefas Semelhantes com AI Helper"
+  ai_helper_find_similar_issues: "Encontrar Tarefas Semelhantes"
+  ai_helper_similarity: "Similaridade"
+  ai_helper_no_similar_issues_found: "Nenhuma tarefa semelhante encontrada"
+  ai_helper_text_summary_generated_time: "Gerado em %{time}"
+  ai_helper_error_occurred: "Ocorreu um erro"
+  permission_view_ai_helper: "Visualizar AI Helper"
+  label_ai_helper_error: "Erro"
+  ai_helper:
+    project_health:
+      title: "Relatório de Saúde do Projeto"
+      pdf_title: "Relatório de Saúde do Projeto"
+      generate_report: "Gerar Relatório"
+      generating: "Gerando"
+      placeholder: "Clique em 'Gerar Relatório' para analisar as métricas do projeto e obter insights."
+      note: "O relatório analisará estatísticas de tarefas, métricas de tempo, distribuição de carga de trabalho e fornecerá recomendações práticas."
+      no_report_available: "Nenhum relatório de saúde disponível para exportação em PDF"
+      report_content: "Conteúdo do Relatório de Saúde"
+    generate_issue_reply:
+      title: "Criar um rascunho de comentário com AI Helper"
+      instructions: "Por favor, insira os pontos-chave ou instruções para a resposta."
+      generated_reply: "Notas geradas"
+      apply: "Aplicar"
+      copy_to_clipboard: "Copiar para a área de transferência"
+    generate_sub_issues:
+      title: "Criar subtarefas com AI Helper"
+      instructions: "Por favor, insira suas instruções."
+      generate_draft: "Gerar rascunho"
+    model_profiles:
+      create_profile_title: "Novo perfil de modelo"
+      edit_profile_title: "Editar perfil de modelo"
+      messages:
+        confirm_delete: "Você tem certeza que deseja excluir este perfil de modelo?"
+        must_be_valid_url: "deve ser uma URL válida"
+    prompts:
+      current_page_info:
+        project_page: "Esta é a página de informações do projeto '%{project_name}'."
+        issue_detail_page: "Esta é a página de detalhes da tarefa #%{issue_id}.\nSe o usuário se referir a 'tarefa' sem especificar um ID ou nome, ele se refere a esta tarefa."
+        issue_list_page: "Esta é a página de listagem de tarefas."
+        issue_with_action_page: "Esta é a página de %{action_name} para a tarefa."
+        wiki_page: "Esta é a página Wiki intitulada '%{page_title}'.\nSe o usuário se referir a 'página Wiki' ou 'página' sem especificar um título, ele se refere a esta página Wiki."
+        repository_page: "Esta é a página de informações do repositório '%{repo_name}'. O ID do repositório é %{repo_id}."
+        repository_file_page: "Esta é a página de informações de arquivo do repositório. O caminho do arquivo exibido é %{path}. A revisão é %{rev}. O repositório é '%{repo_name}'. O ID do repositório é %{repo_id}."
+        repository_diff:
+          page: "Esta é a página de comparação (diff) do repositório '%{repo_name}'. O ID do repositório é %{repo_id}."
+          rev: "A revisão é %{rev}."
+          rev_to: "A revisão é de %{rev} para %{rev_to}."
+          path: "O caminho do arquivo é %{path}."
+        repository_revision_page: "Esta é a página de informações da revisão do repositório '%{repo_name}'. A revisão é %{rev}. O ID do repositório é %{repo_id}."
+        repository_other_page: "Esta é a página de informações do repositório."
+        boards:
+          show: "Esta é a página do fórum '%{board_name}'. O ID do fórum é %{board_id}."
+          index: "Esta é a página de listagem de fóruns."
+          other: "Esta é a página do fórum."
+        messages:
+          show: "Esta é a página da mensagem '%{subject}'. O ID da mensagem é %{message_id}."
+          other: "Esta é a página da mensagem."
+        versions:
+          show: "Esta é a página da versão '%{version_name}'. O ID da versão é %{version_id}."
+          other: "Esta é a página da versão."
+        other_page: "Esta é a página de %{action_name} para %{controller_name}."
+      issue_agent:
+        search_answer_instruction: "Para tarefas como encontrar múltiplas tarefas que correspondam a certas condições, como 'Encontre tarefas que atendam a estas condições' ou 'Mostre-me tarefas com estes critérios', por favor, retorne a URL para a busca de tarefas."
+      leader_agent:
+        generate_final_response: "Todos os agentes concluíram suas tarefas. Por favor, crie a resposta final para o usuário."
+  activerecord:
+    models:
+      ai_helper_model_profile: "Perfil de Modelo"
+      ai_helper_setting: "Configuração do AI Helper"
+    attributes:
+      ai_helper_model_profile:
+        llm_type: "Tipo"
+        llm_model: "Nome do modelo"
+        access_key: "Chave de acesso"
+        temperature: "Temperatura"
+        organization_id: "ID da Organização"
+        base_uri: "URI Base"
+        max_tokens: "Tokens máximos"
+      ai_helper_setting:
+        model_profile_id: "Perfil de modelo"
+        additional_instructions: "Instruções adicionais"
+        vector_search_enabled: "Habilitar busca vetorial"
+        vector_search_uri: "URI"
+        vector_search_api_key: "Chave de API"
+        embedding_model: "Modelo de embedding"
+        dimension: "Dimensão"
+      ai_helper_project_setting:
+        issue_draft_instructions: "Instruções para geração de comentários de tarefas"
+        subtask_instructions: "Instruções para geração de subtarefas"
+        health_report_instructions: "Instruções para geração de relatório de saúde"

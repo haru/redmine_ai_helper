@@ -17,6 +17,10 @@ autocompletion:
   
   # Enable/disable auto-completion feature globally (can be overridden per user)
   enabled_by_default: true
+  
+  # Wiki-specific auto-completion settings
+  wiki_min_length: 10
+  wiki_max_sentences: 5
 
 # Model Context Protocol (MCP) server configurations
 # This section is for existing MCP functionality and should not be modified

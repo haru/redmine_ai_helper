@@ -27,9 +27,13 @@ module RedmineAiHelper
       # @param [Array] messages
       # @return [Hash] chat_params
       def create_chat_param(system_prompt, messages)
+        # Maps the messages to the "contents" format expected by Gemini
         new_messages = messages.map do |message|
+          # Ensure that the role "assistant" is converted to "model"
+          role = message[:role] == "assistant" ? "model" : message[:role]
+
           {
-            role: message[:role],
+            role: role,
             parts: [
               {
                 text: message[:content],
@@ -37,10 +41,12 @@ module RedmineAiHelper
             ],
           }
         end
+
         chat_params = {
           messages: new_messages,
           system: system_prompt[:content],
         }
+
         chat_params
       end
 

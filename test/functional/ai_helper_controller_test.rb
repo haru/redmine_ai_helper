@@ -1095,7 +1095,7 @@ class AiHelperControllerTest < ActionController::TestCase
         RedmineAiHelper::Llm.any_instance.stubs(:generate_text_completion).returns("This is a suggested completion.")
         
         @request.headers["Content-Type"] = "application/json"
-        post :suggest_completion, params: { id: issue.id }, 
+        post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id }, 
              body: { text: "Login page error", cursor_position: 16 }.to_json
         
         assert_response :success
@@ -1107,7 +1107,7 @@ class AiHelperControllerTest < ActionController::TestCase
       should "return error for non-JSON request in suggest_completion" do
         issue = Issue.find(1)
         
-        post :suggest_completion, params: { id: issue.id, text: "Some text" }
+        post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id, text: "Some text" }
         
         assert_response :unsupported_media_type
         json_response = JSON.parse(response.body)
@@ -1119,7 +1119,7 @@ class AiHelperControllerTest < ActionController::TestCase
         issue = Issue.find(1)
         
         @request.headers["Content-Type"] = "application/json"
-        post :suggest_completion, params: { id: issue.id },
+        post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id },
              body: { text: "", cursor_position: 0 }.to_json
         
         assert_response :bad_request
@@ -1132,7 +1132,7 @@ class AiHelperControllerTest < ActionController::TestCase
         long_text = "a" * 5001
         
         @request.headers["Content-Type"] = "application/json"
-        post :suggest_completion, params: { id: issue.id },
+        post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id },
              body: { text: long_text, cursor_position: 100 }.to_json
         
         assert_response :bad_request
@@ -1145,7 +1145,7 @@ class AiHelperControllerTest < ActionController::TestCase
         text = "Test text"
         
         @request.headers["Content-Type"] = "application/json"
-        post :suggest_completion, params: { id: issue.id },
+        post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id },
              body: { text: text, cursor_position: text.length + 1 }.to_json
         
         assert_response :bad_request
@@ -1158,7 +1158,7 @@ class AiHelperControllerTest < ActionController::TestCase
         RedmineAiHelper::Llm.any_instance.stubs(:generate_text_completion).raises(StandardError, "LLM error")
         
         @request.headers["Content-Type"] = "application/json"
-        post :suggest_completion, params: { id: issue.id },
+        post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id },
              body: { text: "Login page error", cursor_position: 16 }.to_json
         
         assert_response :internal_server_error
@@ -1171,7 +1171,7 @@ class AiHelperControllerTest < ActionController::TestCase
         RedmineAiHelper::Llm.any_instance.stubs(:generate_text_completion).returns("completion text")
         
         @request.headers["Content-Type"] = "application/json"
-        post :suggest_completion, params: { id: issue.id },
+        post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id },
              body: { text: "Login page error" }.to_json
         
         assert_response :success
@@ -1185,7 +1185,7 @@ class AiHelperControllerTest < ActionController::TestCase
         RedmineAiHelper::Llm.any_instance.stubs(:generate_text_completion).returns("I have reviewed this issue.")
         
         @request.headers["Content-Type"] = "application/json"
-        post :suggest_completion, params: { id: issue.id },
+        post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id },
              body: { text: "I have reviewed", cursor_position: 15, context_type: "note" }.to_json
         
         assert_response :success
@@ -1198,7 +1198,7 @@ class AiHelperControllerTest < ActionController::TestCase
         issue = Issue.find(1)
         
         @request.headers["Content-Type"] = "application/json"
-        post :suggest_completion, params: { id: issue.id },
+        post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id },
              body: { text: "Test text", cursor_position: 5, context_type: "invalid" }.to_json
         
         assert_response :bad_request
@@ -1207,8 +1207,9 @@ class AiHelperControllerTest < ActionController::TestCase
       end
 
       should "return error for note context_type without existing issue" do
+        issue = Issue.find(1)
         @request.headers["Content-Type"] = "application/json"
-        post :suggest_completion, params: { id: 'new' },
+        post :suggest_completion, params: { id: issue.project.id, issue_id: 'new' },
              body: { text: "Test note", cursor_position: 5, context_type: "note" }.to_json
         
         assert_response :bad_request
@@ -1229,7 +1230,7 @@ class AiHelperControllerTest < ActionController::TestCase
         RedmineAiHelper::Llm.any_instance.stubs(:generate_text_completion).returns(" and I agree with the analysis.")
         
         @request.headers["Content-Type"] = "application/json"
-        post :suggest_completion, params: { id: issue.id },
+        post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id },
              body: { text: "Thank you for the feedback", cursor_position: 25, context_type: "note" }.to_json
         
         assert_response :success
@@ -1249,7 +1250,7 @@ class AiHelperControllerTest < ActionController::TestCase
         # The controller should call llm.rb which delegates to IssueAgent
         @request.headers["Content-Type"] = "application/json"
         
-        post :suggest_completion, params: { id: issue.id },
+        post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id },
              body: { text: "This is a test issue", cursor_position: 17, context_type: "description" }.to_json
         
         assert_response :success
@@ -1274,7 +1275,7 @@ class AiHelperControllerTest < ActionController::TestCase
         RedmineAiHelper::Agents::IssueAgent.any_instance.stubs(:chat).returns("Mocked completion")
         
         @request.headers["Content-Type"] = "application/json"
-        post :suggest_completion, params: { id: issue.id },
+        post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id },
              body: { text: "Test prompt loading", cursor_position: 4, context_type: "description" }.to_json
         
         assert_response :success
@@ -1303,7 +1304,7 @@ class AiHelperControllerTest < ActionController::TestCase
         RedmineAiHelper::Agents::IssueAgent.any_instance.stubs(:chat).returns("Contextual note completion")
         
         @request.headers["Content-Type"] = "application/json"
-        post :suggest_completion, params: { id: issue.id },
+        post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id },
              body: { text: "I agree with", cursor_position: 12, context_type: "note" }.to_json
         
         assert_response :success

@@ -10,5 +10,6 @@ module RedmineAiHelper
     render_on :view_issues_form_details_bottom, :partial => "ai_helper/textarea_overlay"
     render_on :view_layouts_base_sidebar, :partial => "ai_helper/wiki_summary"
     render_on :view_projects_show_right, :partial => "ai_helper/project_health"
+    render_on :view_layouts_base_body_bottom, :partial => "ai_helper/wiki_textarea_overlay"
   end
 end

@@ -31,7 +31,7 @@ class RedmineAiHelper::LlmClient::GeminiProviderTest < ActiveSupport::TestCase
       assert_equal 2, chat_params[:messages].size
       assert_equal "user", chat_params[:messages][0][:role]
       assert_equal "Hello", chat_params[:messages][0][:parts][0][:text]
-      assert_equal "assistant", chat_params[:messages][1][:role]
+      assert_equal "model", chat_params[:messages][1][:role]
       assert_equal "Hi there!", chat_params[:messages][1][:parts][0][:text]
       assert_equal "This is a system prompt", chat_params[:system]
     end
