@@ -8,7 +8,7 @@
     <input type="checkbox" id="ai-helper-autocompletion-wiki-toggle" />
     <label for="ai-helper-autocompletion-wiki-toggle">
       <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
-      <%= t('ai_helper.autocompletion.wiki_toggle_label') %>
+      <%= t('ai_helper.autocompletion.common_toggle_label') %>
     </label>
   </p>
 </div>
@@ -64,13 +64,13 @@ function initializeWikiCompletion() {
         };
       },
       labels: {
-        commonToggleLabel: '<%= t('ai_helper.autocompletion.wiki_toggle_label') %>',
-        loading: '<%= t('ai_helper.autocompletion.wiki_loading') %>',
-        noSuggestions: '<%= t('ai_helper.autocompletion.wiki_no_suggestions') %>',
+        commonToggleLabel: '<%= t('ai_helper.autocompletion.common_toggle_label') %>',
+        loading: '<%= t('ai_helper.autocompletion.loading') %>',
+        noSuggestions: '<%= t('ai_helper.autocompletion.no_suggestions') %>',
         acceptSuggestion: '<%= t('ai_helper.autocompletion.accept_suggestion') %>',
         dismiss: '<%= t('ai_helper.autocompletion.dismiss') %>',
-        enabledTooltip: '<%= t('ai_helper.autocompletion.wiki_enabled_tooltip') %>',
-        disabledTooltip: '<%= t('ai_helper.autocompletion.wiki_disabled_tooltip') %>'
+        enabledTooltip: '<%= t('ai_helper.autocompletion.enabled_tooltip') %>',
+        disabledTooltip: '<%= t('ai_helper.autocompletion.disabled_tooltip') %>'
       }
     });
 
