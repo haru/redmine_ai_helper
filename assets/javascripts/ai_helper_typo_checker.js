@@ -14,6 +14,9 @@ class AiHelperTypoChecker {
     this.isEnabled = false;
     this.checkButton = null;
     this.currentDisplayedSuggestions = [];
+    this.isProcessingSuggestion = false;
+    this.isOverlayVisible = false;
+    this.isCheckingTypos = false;
   }
 
   init() {
@@ -110,29 +113,54 @@ class AiHelperTypoChecker {
 
   attachEventListeners() {
     if (this.checkButton) {
-      this.checkButton.addEventListener('click', () => {
+      // Remove any existing event listeners to prevent duplicates
+      this.checkButton.removeEventListener('click', this.checkTyposHandler);
+      
+      // Create bound handler for later removal
+      this.checkTyposHandler = () => {
+        console.log('Check button clicked');
         this.checkTypos();
-      });
+      };
+      
+      this.checkButton.addEventListener('click', this.checkTyposHandler);
     }
 
     // Hide overlay when user starts typing or clicks outside
     this.textarea.addEventListener('input', () => {
+      console.log('Input event triggered, isProcessingSuggestion:', this.isProcessingSuggestion, 'overlay display:', this.overlay ? this.overlay.style.display : 'no overlay');
+      if (this.isProcessingSuggestion) {
+        console.log('Ignoring input event during suggestion processing');
+        return;
+      }
       if (this.overlay && this.overlay.style.display === 'block') {
+        console.log('Hiding overlay due to input event');
         this.hideOverlay();
       }
     });
 
     document.addEventListener('keydown', (e) => {
+      console.log('Keydown event, key:', e.key, 'isProcessingSuggestion:', this.isProcessingSuggestion);
+      if (this.isProcessingSuggestion) {
+        console.log('Ignoring keydown during suggestion processing');
+        return;
+      }
       if (e.key === 'Escape' && this.overlay && this.overlay.style.display === 'block') {
+        console.log('Hiding overlay due to Escape key');
         this.hideOverlay();
       }
     });
 
     document.addEventListener('click', (e) => {
+      console.log('Document click event, target:', e.target, 'isProcessingSuggestion:', this.isProcessingSuggestion);
+      if (this.isProcessingSuggestion) {
+        console.log('Ignoring document click during suggestion processing');
+        return;
+      }
       if (this.overlay && this.overlay.style.display === 'block' && 
           !this.overlay.contains(e.target) && 
           e.target !== this.checkButton &&
           e.target !== this.textarea) {
+        console.log('Hiding overlay due to document click outside overlay');
         this.hideOverlay();
       }
     });
@@ -146,6 +174,7 @@ class AiHelperTypoChecker {
   }
 
   disableAutocompletion() {
+    console.log('disableAutocompletion called, isProcessingSuggestion:', this.isProcessingSuggestion);
     // Disable autocomplete functionality when typo overlay is active
     if (window.aiHelperInstances) {
       const instances = window.aiHelperInstances;
@@ -181,15 +210,27 @@ class AiHelperTypoChecker {
   }
 
   async checkTypos() {
+    console.log('checkTypos called, isCheckingTypos:', this.isCheckingTypos);
+    
+    // Prevent duplicate execution
+    if (this.isCheckingTypos) {
+      console.log('Already checking typos, skipping duplicate call');
+      return;
+    }
+    
     const text = this.textarea.value;
+    console.log('Text content being checked:', JSON.stringify(text));
+    
     if (!text || text.length < this.options.minLength) {
       return;
     }
 
+    this.isCheckingTypos = true;
     this.checkButton.disabled = true;
     this.checkButton.textContent = this.options.labels.checking || 'Checking...';
 
     try {
+      console.log('Making API request to:', this.options.endpoint);
       const response = await fetch(this.options.endpoint, {
         method: 'POST',
         headers: {
@@ -206,52 +247,63 @@ class AiHelperTypoChecker {
       }
 
       const data = await response.json();
+      console.log('Received suggestions:', data.suggestions);
       this.suggestions = data.suggestions || [];
       this.displayTypoOverlay();
     } catch (error) {
       console.error('Typo check failed:', error);
       this.showErrorMessage();
     } finally {
+      this.isCheckingTypos = false;
       this.checkButton.disabled = false;
       this.checkButton.textContent = this.options.labels.checkButton || 'Check';
     }
   }
 
   displayTypoOverlay() {
+    console.log('displayTypoOverlay called, isOverlayVisible:', this.isOverlayVisible, 'suggestions count:', this.suggestions.length);
+    console.trace('displayTypoOverlay call stack');
+    
     if (this.suggestions.length === 0) {
       this.showNoSuggestionsMessage();
       return;
     }
 
-    // Disable autocomplete
-    this.disableAutocompletion();
+    // Only set up overlay if not already visible
+    if (!this.isOverlayVisible) {
+      // Disable autocomplete
+      this.disableAutocompletion();
 
-    // Update overlay position
-    this.updateOverlayPosition();
+      // Update overlay position
+      this.updateOverlayPosition();
 
-    // Get textarea background color for overlay
-    const bgColor = this.getTextareaBackgroundColor();
-    this.overlay.style.backgroundColor = bgColor;
+      // Get textarea background color for overlay
+      const bgColor = this.getTextareaBackgroundColor();
+      this.overlay.style.backgroundColor = bgColor;
 
-    // Hide textarea text and show overlay content with suggestions
-    this.textarea.style.color = 'transparent';
+      // Hide textarea text and show overlay content with suggestions
+      this.textarea.style.color = 'transparent';
 
-    // Build overlay content with inline corrections
+      // Show overlay
+      this.overlay.style.display = 'block';
+      this.isOverlayVisible = true;
+
+      // Sync scroll position with textarea
+      this.overlay.scrollTop = this.textarea.scrollTop;
+      this.overlay.scrollLeft = this.textarea.scrollLeft;
+    }
+
+    // Always rebuild content (this is needed when suggestions change)
     this.buildOverlayContent();
-
-    // Sync scroll position with textarea
-    this.overlay.scrollTop = this.textarea.scrollTop;
-    this.overlay.scrollLeft = this.textarea.scrollLeft;
-
-    // Show overlay
-    this.overlay.style.display = 'block';
   }
 
   buildOverlayContent() {
+    console.log('buildOverlayContent called, suggestions count:', this.suggestions.length);
+    
     const text = this.textarea.value;
     this.overlay.innerHTML = '';
 
-    // Sort suggestions by position (reverse order for easier processing)
+    // Sort suggestions by position
     const sortedSuggestions = [...this.suggestions].sort((a, b) => a.position - b.position);
 
     let currentPosition = 0;
@@ -266,6 +318,8 @@ class AiHelperTypoChecker {
         s.original === suggestion.original &&
         s.corrected === suggestion.corrected
       );
+      
+      console.log('Building suggestion at sortedIndex:', sortedIndex, 'originalIndex:', originalIndex, 'suggestion:', suggestion);
 
       // Add text before the typo
       if (currentPosition < suggestion.position) {
@@ -318,7 +372,11 @@ class AiHelperTypoChecker {
         display: inline-block;
         vertical-align: middle;
       `;
-      acceptBtn.addEventListener('click', () => this.acceptSuggestion(originalIndex));
+      // Use a closure to capture the suggestion object itself instead of index
+      acceptBtn.addEventListener('click', () => {
+        console.log('ACCEPT button clicked for suggestion:', suggestion.original);
+        this.acceptSuggestionBySuggestion(suggestion);
+      });
 
       const rejectBtn = document.createElement('button');
       rejectBtn.className = 'ai-helper-typo-reject-btn';
@@ -336,7 +394,10 @@ class AiHelperTypoChecker {
         display: inline-block;
         vertical-align: middle;
       `;
-      rejectBtn.addEventListener('click', () => this.rejectSuggestion(originalIndex));
+      rejectBtn.addEventListener('click', () => {
+        console.log('REJECT button clicked for suggestion:', suggestion.original);
+        this.rejectSuggestionBySuggestion(suggestion);
+      });
 
       buttonsContainer.appendChild(acceptBtn);
       buttonsContainer.appendChild(rejectBtn);
@@ -358,8 +419,19 @@ class AiHelperTypoChecker {
   }
 
   acceptSuggestion(index) {
+    console.log('acceptSuggestion called with index:', index);
+    console.log('Current suggestions:', this.suggestions);
+    
     const suggestion = this.suggestions[index];
-    if (!suggestion) return;
+    if (!suggestion) {
+      console.log('No suggestion found at index:', index);
+      return;
+    }
+
+    console.log('Accepting suggestion:', suggestion);
+
+    // Set processing flag to prevent input event from hiding overlay
+    this.isProcessingSuggestion = true;
 
     const text = this.textarea.value;
     const newText = text.substring(0, suggestion.position) + 
@@ -373,16 +445,114 @@ class AiHelperTypoChecker {
     
     // Remove this suggestion
     this.suggestions.splice(index, 1);
+    
+    console.log('Remaining suggestions after removal:', this.suggestions);
 
     if (this.suggestions.length === 0) {
       this.hideOverlay();
     } else {
-      // Rebuild overlay with remaining suggestions
+      // Rebuild overlay with remaining suggestions - don't call displayTypoOverlay again
       this.buildOverlayContent();
     }
 
     // Trigger input event for any listeners
     this.textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    
+    // Clear processing flag after a short delay
+    setTimeout(() => {
+      this.isProcessingSuggestion = false;
+    }, 100);
+  }
+
+  acceptSuggestionBySuggestion(suggestion) {
+    console.log('*** ACCEPT SUGGESTION METHOD CALLED ***');
+    console.log('acceptSuggestionBySuggestion called with suggestion:', suggestion);
+    console.log('Current suggestions:', this.suggestions);
+    
+    // Find the index of this suggestion in the current array
+    const index = this.suggestions.findIndex(s => 
+      s.position === suggestion.position && 
+      s.original === suggestion.original &&
+      s.corrected === suggestion.corrected
+    );
+    
+    if (index === -1) {
+      console.log('Suggestion not found in current array:', suggestion);
+      return;
+    }
+    
+    console.log('Found suggestion at index:', index);
+    
+    // Set processing flag to prevent input event from hiding overlay
+    this.isProcessingSuggestion = true;
+
+    const text = this.textarea.value;
+    const newText = text.substring(0, suggestion.position) + 
+                   suggestion.corrected + 
+                   text.substring(suggestion.position + suggestion.original.length);
+    
+    this.textarea.value = newText;
+
+    // Update positions of remaining suggestions
+    this.updateSuggestionsAfterEdit(suggestion.position, suggestion.original.length, suggestion.corrected.length);
+    
+    // Remove this suggestion
+    this.suggestions.splice(index, 1);
+    
+    console.log('Remaining suggestions after removal:', this.suggestions);
+
+    if (this.suggestions.length === 0) {
+      this.hideOverlay();
+    } else {
+      // Rebuild overlay with remaining suggestions - don't call displayTypoOverlay again
+      this.buildOverlayContent();
+    }
+
+    // Trigger input event for any listeners
+    this.textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    
+    // Clear processing flag after a short delay
+    setTimeout(() => {
+      this.isProcessingSuggestion = false;
+    }, 100);
+  }
+
+  rejectSuggestionBySuggestion(suggestion) {
+    console.log('*** REJECT SUGGESTION METHOD CALLED ***');
+    console.log('rejectSuggestionBySuggestion called with suggestion:', suggestion);
+    
+    // Set processing flag to prevent events from hiding overlay
+    this.isProcessingSuggestion = true;
+    
+    // Find the index of this suggestion in the current array
+    const index = this.suggestions.findIndex(s => 
+      s.position === suggestion.position && 
+      s.original === suggestion.original &&
+      s.corrected === suggestion.corrected
+    );
+    
+    if (index === -1) {
+      console.log('Suggestion not found in current array:', suggestion);
+      this.isProcessingSuggestion = false;
+      return;
+    }
+    
+    console.log('Found suggestion at index:', index, 'removing it');
+    
+    // Simply remove the suggestion without applying it
+    this.suggestions.splice(index, 1);
+
+    if (this.suggestions.length === 0) {
+      this.hideOverlay();
+    } else {
+      // Rebuild overlay with remaining suggestions - don't call displayTypoOverlay again
+      this.buildOverlayContent();
+    }
+    
+    // Clear processing flag after a short delay
+    setTimeout(() => {
+      this.isProcessingSuggestion = false;
+    }, 100);
   }
 
   rejectSuggestion(index) {
@@ -392,7 +562,7 @@ class AiHelperTypoChecker {
     if (this.suggestions.length === 0) {
       this.hideOverlay();
     } else {
-      // Rebuild overlay with remaining suggestions
+      // Rebuild overlay with remaining suggestions - don't call displayTypoOverlay again
       this.buildOverlayContent();
     }
   }
@@ -408,6 +578,8 @@ class AiHelperTypoChecker {
   }
 
   hideOverlay() {
+    console.log('hideOverlay called');
+    console.trace('hideOverlay call stack');
     if (this.overlay) {
       this.overlay.style.display = 'none';
       this.overlay.innerHTML = '';
@@ -415,6 +587,7 @@ class AiHelperTypoChecker {
     }
     this.suggestions = [];
     this.textarea.style.color = '';
+    this.isOverlayVisible = false;
     
     // Re-enable autocomplete
     this.enableAutocompletion();
