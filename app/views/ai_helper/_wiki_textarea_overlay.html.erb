@@ -10,6 +10,12 @@
       <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
       <%= t('ai_helper.autocompletion.common_toggle_label') %>
     </label>
+    
+    <!-- Typo check button -->
+    <button type="button" id="ai-helper-typo-check-wiki-btn" class="ai-helper-typo-check-button" style="margin-left: 10px;">
+      <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
+      <%= t('ai_helper.typo_check.check_button') %>
+    </button>
   </p>
 </div>
 
@@ -97,8 +103,32 @@ function initializeWikiCompletion() {
   window.aiHelperWikiCompletionInitialized = true;
 }
 
+// Initialize wiki typo checking
+function initializeWikiTypoChecker() {
+  const wikiTextarea = document.getElementById('content_text');
+  
+  if (wikiTextarea && typeof AiHelperTypoChecker !== 'undefined') {
+    const wikiTypoChecker = new AiHelperTypoChecker(wikiTextarea, {
+      endpoint: '<%= ai_helper_check_typos_path(project) %>',
+      labels: {
+        suggestionsTitle: '<%= t('ai_helper.typo_check.suggestions_title') %>',
+        noSuggestions: '<%= t('ai_helper.typo_check.no_suggestions') %>',
+        checkButton: '<%= t('ai_helper.typo_check.check_button') %>',
+        checking: '<%= t('ai_helper.typo_check.checking') %>',
+        acceptSuggestion: '<%= t('ai_helper.typo_check.accept_suggestion') %>',
+        dismissSuggestion: '<%= t('ai_helper.typo_check.dismiss_suggestion') %>',
+        acceptAll: '<%= t('ai_helper.typo_check.accept_all') %>',
+        dismissAll: '<%= t('ai_helper.typo_check.dismiss_all') %>',
+        errorOccurred: '<%= t('ai_helper.typo_check.error_occurred') %>'
+      }
+    });
+    wikiTypoChecker.init();
+  }
+}
+
 setTimeout(function() {
   initializeWikiCompletion();
+  initializeWikiTypoChecker();
 }, 500);
 
 </script>

@@ -12,8 +12,7 @@ function initializeWikiTypoChecker() {
   
   if (wikiTextarea && typeof AiHelperTypoChecker !== 'undefined') {
     const wikiTypoChecker = new AiHelperTypoChecker(wikiTextarea, {
-      contextType: 'wiki',
-      endpoint: '<%= ai_helper_check_wiki_typos_path(project) %>',
+      endpoint: '<%= ai_helper_check_typos_path(project) %>',
       labels: {
         suggestionsTitle: '<%= t('ai_helper.typo_check.suggestions_title') %>',
         noSuggestions: '<%= t('ai_helper.typo_check.no_suggestions') %>',

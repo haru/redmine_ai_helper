@@ -60,7 +60,15 @@ module RedmineAiHelper
           format_instructions: parser.get_format_instructions
         )
 
-        response = chat(formatted_prompt, output_parser: parser)
+        # Create proper message array for BaseAgent#chat
+        messages = [
+          {
+            "role" => "user",
+            "content" => formatted_prompt
+          }
+        ]
+
+        response = chat(messages, output_parser: parser)
 
         fix_parser = Langchain::OutputParsers::OutputFixingParser.from_llm(
           llm: client,

@@ -13,6 +13,12 @@
     <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
     <%= t('ai_helper.autocompletion.common_toggle_label') %>
   </label>
+  
+  <!-- Typo check button -->
+  <button type="button" id="ai-helper-typo-check-description-btn" class="ai-helper-typo-check-button" style="margin-left: 10px;">
+    <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
+    <%= t('ai_helper.typo_check.check_button') %>
+  </button>
 </div>
 
 <script>
@@ -32,6 +38,12 @@
     <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
     <%= t('ai_helper.autocompletion.common_toggle_label') %>
   </label>
+  
+  <!-- Typo check button -->
+  <button type="button" id="ai-helper-typo-check-notes-btn" class="ai-helper-typo-check-button" style="margin-left: 10px;">
+    <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
+    <%= t('ai_helper.typo_check.check_button') %>
+  </button>
 </div>
 <% end %>
 
@@ -169,8 +181,53 @@ function initalizeIssueCompletion() {
 
 }
 
+// Initialize typo checking
+function initializeIssueTypoChecker() {
+  const issueDescTextarea = document.getElementById('issue_description');
+  const issueNotesTextarea = document.getElementById('issue_notes');
+  
+  if (typeof AiHelperTypoChecker !== 'undefined') {
+    if (issueDescTextarea) {
+      const descTypoChecker = new AiHelperTypoChecker(issueDescTextarea, {
+        endpoint: '<%= ai_helper_check_typos_path(project) %>',
+        labels: {
+          suggestionsTitle: '<%= t('ai_helper.typo_check.suggestions_title') %>',
+          noSuggestions: '<%= t('ai_helper.typo_check.no_suggestions') %>',
+          checkButton: '<%= t('ai_helper.typo_check.check_button') %>',
+          checking: '<%= t('ai_helper.typo_check.checking') %>',
+          acceptSuggestion: '<%= t('ai_helper.typo_check.accept_suggestion') %>',
+          dismissSuggestion: '<%= t('ai_helper.typo_check.dismiss_suggestion') %>',
+          acceptAll: '<%= t('ai_helper.typo_check.accept_all') %>',
+          dismissAll: '<%= t('ai_helper.typo_check.dismiss_all') %>',
+          errorOccurred: '<%= t('ai_helper.typo_check.error_occurred') %>'
+        }
+      });
+      descTypoChecker.init();
+    }
+    
+    if (issueNotesTextarea) {
+      const notesTypoChecker = new AiHelperTypoChecker(issueNotesTextarea, {
+        endpoint: '<%= ai_helper_check_typos_path(project) %>',
+        labels: {
+          suggestionsTitle: '<%= t('ai_helper.typo_check.suggestions_title') %>',
+          noSuggestions: '<%= t('ai_helper.typo_check.no_suggestions') %>',
+          checkButton: '<%= t('ai_helper.typo_check.check_button') %>',
+          checking: '<%= t('ai_helper.typo_check.checking') %>',
+          acceptSuggestion: '<%= t('ai_helper.typo_check.accept_suggestion') %>',
+          dismissSuggestion: '<%= t('ai_helper.typo_check.dismiss_suggestion') %>',
+          acceptAll: '<%= t('ai_helper.typo_check.accept_all') %>',
+          dismissAll: '<%= t('ai_helper.typo_check.dismiss_all') %>',
+          errorOccurred: '<%= t('ai_helper.typo_check.error_occurred') %>'
+        }
+      });
+      notesTypoChecker.init();
+    }
+  }
+}
+
 setTimeout( function() {
   initalizeIssueCompletion();
+  initializeIssueTypoChecker();
 }, 500); // Delay to ensure DOM is fully loaded
 
 </script>

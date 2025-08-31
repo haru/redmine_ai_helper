@@ -9,8 +9,7 @@ function initializeIssueTypoChecker() {
   if (typeof AiHelperTypoChecker !== 'undefined') {
     if (issueDescTextarea) {
       const descTypoChecker = new AiHelperTypoChecker(issueDescTextarea, {
-        contextType: 'issue',
-        endpoint: '<%= ai_helper_check_issue_typos_path(@project) %>',
+        endpoint: '<%= ai_helper_check_typos_path(@project) %>',
         labels: {
           suggestionsTitle: '<%= t('ai_helper.typo_check.suggestions_title') %>',
           noSuggestions: '<%= t('ai_helper.typo_check.no_suggestions') %>',
@@ -28,8 +27,7 @@ function initializeIssueTypoChecker() {
     
     if (issueNotesTextarea) {
       const notesTypoChecker = new AiHelperTypoChecker(issueNotesTextarea, {
-        contextType: 'issue',
-        endpoint: '<%= ai_helper_check_issue_typos_path(@project) %>',
+        endpoint: '<%= ai_helper_check_typos_path(@project) %>',
         labels: {
           suggestionsTitle: '<%= t('ai_helper.typo_check.suggestions_title') %>',
           noSuggestions: '<%= t('ai_helper.typo_check.no_suggestions') %>',
