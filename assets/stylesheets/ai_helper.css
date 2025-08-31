@@ -541,7 +541,7 @@ table.ai-helper-sub-issues-table td {
   padding: inherit;
   border: inherit;
   box-sizing: border-box;
-  overflow: hidden;
+  /* overflow controlled by JavaScript based on content */
   white-space: pre-wrap;
   word-wrap: break-word;
   color: transparent;
@@ -595,4 +595,35 @@ table.ai-helper-sub-issues-table td {
 /* Ensure overlay scrolling matches textarea */
 .ai-helper-textarea-overlay[data-scrolled] {
   overflow: hidden;
+}
+
+/* Scrollable overlay for long auto-completion content */
+.ai-helper-scrollable-overlay {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  /* Firefox用スクロールバー */
+  scrollbar-width: thin;
+  scrollbar-color: #888 #f1f1f1;
+}
+
+/* WebKit系ブラウザ用カスタムスクロールバー */
+.ai-helper-scrollable-overlay::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+
+.ai-helper-scrollable-overlay::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.ai-helper-scrollable-overlay::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.ai-helper-scrollable-overlay::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
