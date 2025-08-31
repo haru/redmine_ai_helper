@@ -103,11 +103,12 @@ function initializeWikiCompletion() {
   window.aiHelperWikiCompletionInitialized = true;
 }
 
-// Initialize wiki typo checking
+// Initialize wiki typo checking with direct button binding
 function initializeWikiTypoChecker() {
   const wikiTextarea = document.getElementById('content_text');
+  const wikiButton = document.getElementById('ai-helper-typo-check-wiki-btn');
   
-  if (wikiTextarea && typeof AiHelperTypoChecker !== 'undefined') {
+  if (wikiTextarea && wikiButton && typeof AiHelperTypoChecker !== 'undefined') {
     const wikiTypoChecker = new AiHelperTypoChecker(wikiTextarea, {
       endpoint: '<%= ai_helper_check_typos_path(project) %>',
       labels: {
@@ -123,6 +124,11 @@ function initializeWikiTypoChecker() {
       }
     });
     wikiTypoChecker.init();
+    
+    // Bind existing button directly
+    wikiButton.addEventListener('click', () => {
+      wikiTypoChecker.checkTypos();
+    });
   }
 }
 

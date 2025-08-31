@@ -10,42 +10,102 @@ class AiHelperTypoChecker {
     };
     
     this.suggestions = [];
-    this.overlayContainer = null;
+    this.overlay = null;
     this.isEnabled = false;
     this.checkButton = null;
+    this.currentDisplayedSuggestions = [];
   }
 
   init() {
     this.createOverlay();
-    this.createCheckButton();
+    this.findExistingButton();
     this.attachEventListeners();
   }
 
   createOverlay() {
-    this.overlayContainer = document.createElement('div');
-    this.overlayContainer.className = 'ai-helper-typo-overlay';
-    this.overlayContainer.style.display = 'none';
-    
-    const textareaContainer = this.textarea.parentNode;
-    textareaContainer.style.position = 'relative';
-    textareaContainer.appendChild(this.overlayContainer);
+    // Create overlay element with same position and size as textarea (same as autocomplete)
+    this.overlay = document.createElement('div');
+    this.overlay.className = 'ai-helper-typo-overlay';
+
+    // Copy styles from textarea (same as autocomplete)
+    const computedStyle = window.getComputedStyle(this.textarea);
+    this.overlay.style.font = computedStyle.font;
+    this.overlay.style.fontSize = computedStyle.fontSize;
+    this.overlay.style.fontFamily = computedStyle.fontFamily;
+    this.overlay.style.lineHeight = computedStyle.lineHeight;
+
+    // Copy padding but add extra right padding to prevent text overflow
+    const paddingTop = computedStyle.paddingTop;
+    const paddingRight = computedStyle.paddingRight;
+    const paddingBottom = computedStyle.paddingBottom;
+    const paddingLeft = computedStyle.paddingLeft;
+
+    // Copy padding normally since width is adjusted instead
+    this.overlay.style.paddingTop = paddingTop;
+    this.overlay.style.paddingRight = paddingRight;
+    this.overlay.style.paddingBottom = paddingBottom;
+    this.overlay.style.paddingLeft = paddingLeft;
+
+    this.overlay.style.border = computedStyle.border;
+    this.overlay.style.borderColor = 'transparent';
+    this.overlay.style.backgroundColor = 'transparent';
+    this.overlay.style.boxSizing = 'border-box'; // Ensure consistent sizing with textarea
+
+    // Position overlay to match textarea exactly (same as autocomplete)
+    this.overlay.style.position = 'absolute';
+    this.overlay.style.pointerEvents = 'auto'; // Enable interactions for buttons
+    this.overlay.style.zIndex = '15'; // Above textarea but below autocomplete
+    this.overlay.style.overflowY = 'hidden';
+    this.overlay.style.overflowX = 'hidden';
+    this.overlay.style.whiteSpace = 'pre-wrap';
+    this.overlay.style.wordWrap = 'break-word';
+
+    // Function to update overlay position and size to match textarea (same as autocomplete)
+    this.updateOverlayPosition = () => {
+      const rect = this.textarea.getBoundingClientRect();
+      const parentRect = this.textarea.parentNode.getBoundingClientRect();
+
+      this.overlay.style.top = (rect.top - parentRect.top) + 'px';
+      this.overlay.style.left = (rect.left - parentRect.left) + 'px';
+      this.overlay.style.width = rect.width + 'px';
+      this.overlay.style.height = rect.height + 'px';
+    };
+
+    // Ensure parent has relative positioning for overlay (same as autocomplete)
+    const parent = this.textarea.parentNode;
+    if (window.getComputedStyle(parent).position === 'static') {
+      parent.style.position = 'relative';
+    }
+
+    // Insert overlay after textarea (same as autocomplete)
+    parent.insertBefore(this.overlay, this.textarea.nextSibling);
+
+    // Set initial position
+    this.updateOverlayPosition();
+
+    // Ensure textarea is above overlay and can receive input (same as autocomplete)
+    this.textarea.style.position = 'relative';
+    this.textarea.style.zIndex = '10'; // Higher z-index to ensure textarea is on top
+    // Keep background transparent to show overlay suggestions
+    this.textarea.style.backgroundColor = 'transparent';
   }
 
-  createCheckButton() {
-    const buttonContainer = document.createElement('div');
-    buttonContainer.className = 'ai-helper-typo-controls';
-    buttonContainer.style.textAlign = 'right';
-    buttonContainer.style.marginTop = '5px';
+  findExistingButton() {
+    // Map textarea IDs to button IDs
+    const textareaToButtonMap = {
+      'issue_description': 'ai-helper-typo-check-description-btn',
+      'issue_notes': 'ai-helper-typo-check-notes-btn',
+      'content_text': 'ai-helper-typo-check-wiki-btn'
+    };
     
-    this.checkButton = document.createElement('button');
-    this.checkButton.type = 'button';
-    this.checkButton.className = 'typo-check-btn';
-    this.checkButton.textContent = this.options.labels.checkButton || 'Check';
+    const buttonId = textareaToButtonMap[this.textarea.id];
+    if (buttonId) {
+      this.checkButton = document.getElementById(buttonId);
+    }
     
-    buttonContainer.appendChild(this.checkButton);
-    
-    const textareaContainer = this.textarea.parentNode;
-    textareaContainer.appendChild(buttonContainer);
+    if (!this.checkButton) {
+      console.warn('Typo check button not found for textarea:', this.textarea.id);
+    }
   }
 
   attachEventListeners() {
@@ -55,25 +115,69 @@ class AiHelperTypoChecker {
       });
     }
 
+    // Hide overlay when user starts typing or clicks outside
+    this.textarea.addEventListener('input', () => {
+      if (this.overlay && this.overlay.style.display === 'block') {
+        this.hideOverlay();
+      }
+    });
+
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this.overlayContainer.style.display === 'block') {
+      if (e.key === 'Escape' && this.overlay && this.overlay.style.display === 'block') {
         this.hideOverlay();
       }
     });
 
     document.addEventListener('click', (e) => {
-      if (this.overlayContainer.style.display === 'block' && 
-          !this.overlayContainer.contains(e.target) && 
-          e.target !== this.checkButton) {
+      if (this.overlay && this.overlay.style.display === 'block' && 
+          !this.overlay.contains(e.target) && 
+          e.target !== this.checkButton &&
+          e.target !== this.textarea) {
         this.hideOverlay();
       }
     });
 
-    this.textarea.addEventListener('input', () => {
-      if (this.overlayContainer.style.display === 'block') {
-        this.hideOverlay();
+    // Disable autocomplete when typo overlay is active
+    this.textarea.addEventListener('focus', () => {
+      if (this.overlay && this.overlay.style.display === 'block') {
+        this.disableAutocompletion();
       }
     });
+  }
+
+  disableAutocompletion() {
+    // Disable autocomplete functionality when typo overlay is active
+    if (window.aiHelperInstances) {
+      const instances = window.aiHelperInstances;
+      if (instances.autoCompletion) {
+        instances.autoCompletion.clearSuggestion();
+        instances.autoCompletion.isEnabled = false;
+      }
+      if (instances.wikiAutoCompletion) {
+        instances.wikiAutoCompletion.clearSuggestion();
+        instances.wikiAutoCompletion.isEnabled = false;
+      }
+      if (instances.notesAutoCompletion) {
+        instances.notesAutoCompletion.clearSuggestion();
+        instances.notesAutoCompletion.isEnabled = false;
+      }
+    }
+  }
+
+  enableAutocompletion() {
+    // Re-enable autocomplete functionality when typo overlay is hidden
+    if (window.aiHelperInstances) {
+      const instances = window.aiHelperInstances;
+      if (instances.autoCompletion && instances.autoCompletion.checkbox && instances.autoCompletion.checkbox.checked) {
+        instances.autoCompletion.isEnabled = true;
+      }
+      if (instances.wikiAutoCompletion && instances.wikiAutoCompletion.checkbox && instances.wikiAutoCompletion.checkbox.checked) {
+        instances.wikiAutoCompletion.isEnabled = true;
+      }
+      if (instances.notesAutoCompletion && instances.notesAutoCompletion.checkbox && instances.notesAutoCompletion.checkbox.checked) {
+        instances.notesAutoCompletion.isEnabled = true;
+      }
+    }
   }
 
   async checkTypos() {
@@ -103,7 +207,7 @@ class AiHelperTypoChecker {
 
       const data = await response.json();
       this.suggestions = data.suggestions || [];
-      this.displaySuggestions();
+      this.displayTypoOverlay();
     } catch (error) {
       console.error('Typo check failed:', error);
       this.showErrorMessage();
@@ -113,79 +217,144 @@ class AiHelperTypoChecker {
     }
   }
 
-  displaySuggestions() {
+  displayTypoOverlay() {
     if (this.suggestions.length === 0) {
       this.showNoSuggestionsMessage();
       return;
     }
 
-    this.overlayContainer.innerHTML = this.buildSuggestionsHTML();
-    this.overlayContainer.style.display = 'block';
-    this.attachSuggestionEventListeners();
+    // Disable autocomplete
+    this.disableAutocompletion();
+
+    // Update overlay position
+    this.updateOverlayPosition();
+
+    // Get textarea background color for overlay
+    const bgColor = this.getTextareaBackgroundColor();
+    this.overlay.style.backgroundColor = bgColor;
+
+    // Hide textarea text and show overlay content with suggestions
+    this.textarea.style.color = 'transparent';
+
+    // Build overlay content with inline corrections
+    this.buildOverlayContent();
+
+    // Sync scroll position with textarea
+    this.overlay.scrollTop = this.textarea.scrollTop;
+    this.overlay.scrollLeft = this.textarea.scrollLeft;
+
+    // Show overlay
+    this.overlay.style.display = 'block';
   }
 
-  buildSuggestionsHTML() {
-    const html = `
-      <div class="ai-helper-typo-suggestions">
-        <div class="suggestions-header">
-          <h4>${this.options.labels.suggestionsTitle || 'Correction Suggestions'}</h4>
-          <button class="close-btn" data-action="close">&times;</button>
-        </div>
-        <div class="suggestions-list">
-          ${this.suggestions.map((suggestion, index) => this.buildSuggestionItem(suggestion, index)).join('')}
-        </div>
-        <div class="suggestions-footer">
-          <button class="accept-all-btn" data-action="accept-all">${this.options.labels.acceptAll || 'Accept All'}</button>
-          <button class="dismiss-all-btn" data-action="dismiss-all">${this.options.labels.dismissAll || 'Dismiss All'}</button>
-        </div>
-      </div>
-    `;
-    return html;
-  }
+  buildOverlayContent() {
+    const text = this.textarea.value;
+    this.overlay.innerHTML = '';
 
-  buildSuggestionItem(suggestion, index) {
-    return `
-      <div class="suggestion-item" data-index="${index}">
-        <div class="suggestion-content">
-          <span class="original-text">${this.escapeHTML(suggestion.original)}</span>
-          <span class="arrow">&rarr;</span>
-          <span class="corrected-text">${this.escapeHTML(suggestion.corrected)}</span>
-        </div>
-        <div class="suggestion-meta">
-          <span class="reason">${this.escapeHTML(suggestion.reason)}</span>
-          <span class="confidence confidence-${suggestion.confidence}">${suggestion.confidence}</span>
-        </div>
-        <div class="suggestion-actions">
-          <button class="accept-btn" data-action="accept" data-index="${index}">${this.options.labels.acceptSuggestion || 'Accept'}</button>
-          <button class="dismiss-btn" data-action="dismiss" data-index="${index}">${this.options.labels.dismissSuggestion || 'Dismiss'}</button>
-        </div>
-      </div>
-    `;
-  }
+    // Sort suggestions by position (reverse order for easier processing)
+    const sortedSuggestions = [...this.suggestions].sort((a, b) => a.position - b.position);
 
-  attachSuggestionEventListeners() {
-    this.overlayContainer.addEventListener('click', (e) => {
-      const action = e.target.dataset.action;
-      const index = e.target.dataset.index;
+    let currentPosition = 0;
+    let overlayContent = document.createElement('div');
+    overlayContent.style.position = 'relative';
+    overlayContent.style.lineHeight = window.getComputedStyle(this.textarea).lineHeight;
 
-      switch (action) {
-        case 'accept':
-          this.acceptSuggestion(parseInt(index));
-          break;
-        case 'dismiss':
-          this.dismissSuggestion(parseInt(index));
-          break;
-        case 'accept-all':
-          this.acceptAllSuggestions();
-          break;
-        case 'dismiss-all':
-          this.dismissAllSuggestions();
-          break;
-        case 'close':
-          this.hideOverlay();
-          break;
+    sortedSuggestions.forEach((suggestion, sortedIndex) => {
+      // Find the original index in this.suggestions array
+      const originalIndex = this.suggestions.findIndex(s => 
+        s.position === suggestion.position && 
+        s.original === suggestion.original &&
+        s.corrected === suggestion.corrected
+      );
+
+      // Add text before the typo
+      if (currentPosition < suggestion.position) {
+        const beforeText = text.substring(currentPosition, suggestion.position);
+        const beforeSpan = document.createElement('span');
+        beforeSpan.textContent = beforeText;
+        beforeSpan.style.color = '#000000';
+        overlayContent.appendChild(beforeSpan);
       }
+
+      // Add the typo with strikethrough
+      const typoSpan = document.createElement('span');
+      typoSpan.className = 'ai-helper-typo-original';
+      typoSpan.textContent = suggestion.original;
+      typoSpan.style.textDecoration = 'line-through';
+      typoSpan.style.color = '#ff6b6b';
+      typoSpan.style.backgroundColor = '#ffebee';
+      overlayContent.appendChild(typoSpan);
+
+      // Add the correction
+      const correctionSpan = document.createElement('span');
+      correctionSpan.className = 'ai-helper-typo-correction';
+      correctionSpan.textContent = suggestion.corrected;
+      correctionSpan.style.color = '#4caf50';
+      correctionSpan.style.backgroundColor = '#e8f5e8';
+      correctionSpan.style.fontWeight = 'bold';
+      overlayContent.appendChild(correctionSpan);
+
+      // Add accept/reject buttons
+      const buttonsContainer = document.createElement('span');
+      buttonsContainer.className = 'ai-helper-typo-buttons';
+      buttonsContainer.style.display = 'inline-block';
+      buttonsContainer.style.marginLeft = '4px';
+      buttonsContainer.style.verticalAlign = 'middle';
+
+      const acceptBtn = document.createElement('button');
+      acceptBtn.className = 'ai-helper-typo-accept-btn';
+      acceptBtn.innerHTML = '✓';
+      acceptBtn.title = this.options.labels.acceptSuggestion || 'Accept';
+      acceptBtn.style.cssText = `
+        background: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 3px;
+        width: 20px;
+        height: 20px;
+        font-size: 12px;
+        margin-right: 2px;
+        cursor: pointer;
+        display: inline-block;
+        vertical-align: middle;
+      `;
+      acceptBtn.addEventListener('click', () => this.acceptSuggestion(originalIndex));
+
+      const rejectBtn = document.createElement('button');
+      rejectBtn.className = 'ai-helper-typo-reject-btn';
+      rejectBtn.innerHTML = '✗';
+      rejectBtn.title = this.options.labels.dismissSuggestion || 'Reject';
+      rejectBtn.style.cssText = `
+        background: #f44336;
+        color: white;
+        border: none;
+        border-radius: 3px;
+        width: 20px;
+        height: 20px;
+        font-size: 12px;
+        cursor: pointer;
+        display: inline-block;
+        vertical-align: middle;
+      `;
+      rejectBtn.addEventListener('click', () => this.rejectSuggestion(originalIndex));
+
+      buttonsContainer.appendChild(acceptBtn);
+      buttonsContainer.appendChild(rejectBtn);
+      overlayContent.appendChild(buttonsContainer);
+
+      currentPosition = suggestion.position + suggestion.length;
     });
+
+    // Add remaining text after last suggestion
+    if (currentPosition < text.length) {
+      const remainingText = text.substring(currentPosition);
+      const remainingSpan = document.createElement('span');
+      remainingSpan.textContent = remainingText;
+      remainingSpan.style.color = '#000000';
+      overlayContent.appendChild(remainingSpan);
+    }
+
+    this.overlay.appendChild(overlayContent);
   }
 
   acceptSuggestion(index) {
@@ -195,42 +364,36 @@ class AiHelperTypoChecker {
     const text = this.textarea.value;
     const newText = text.substring(0, suggestion.position) + 
                    suggestion.corrected + 
-                   text.substring(suggestion.position + suggestion.length);
+                   text.substring(suggestion.position + suggestion.original.length);
     
     this.textarea.value = newText;
+
+    // Update positions of remaining suggestions
+    this.updateSuggestionsAfterEdit(suggestion.position, suggestion.original.length, suggestion.corrected.length);
     
-    this.updateSuggestionsAfterEdit(suggestion.position, suggestion.length, suggestion.corrected.length);
-    this.removeSuggestion(index);
-  }
-
-  dismissSuggestion(index) {
-    this.removeSuggestion(index);
-  }
-
-  acceptAllSuggestions() {
-    const sortedSuggestions = [...this.suggestions].sort((a, b) => b.position - a.position);
-    
-    let text = this.textarea.value;
-    sortedSuggestions.forEach(suggestion => {
-      text = text.substring(0, suggestion.position) + 
-             suggestion.corrected + 
-             text.substring(suggestion.position + suggestion.length);
-    });
-    
-    this.textarea.value = text;
-    this.hideOverlay();
-  }
-
-  dismissAllSuggestions() {
-    this.hideOverlay();
-  }
-
-  removeSuggestion(index) {
+    // Remove this suggestion
     this.suggestions.splice(index, 1);
+
     if (this.suggestions.length === 0) {
       this.hideOverlay();
     } else {
-      this.displaySuggestions();
+      // Rebuild overlay with remaining suggestions
+      this.buildOverlayContent();
+    }
+
+    // Trigger input event for any listeners
+    this.textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  rejectSuggestion(index) {
+    // Simply remove the suggestion without applying it
+    this.suggestions.splice(index, 1);
+
+    if (this.suggestions.length === 0) {
+      this.hideOverlay();
+    } else {
+      // Rebuild overlay with remaining suggestions
+      this.buildOverlayContent();
     }
   }
 
@@ -245,40 +408,87 @@ class AiHelperTypoChecker {
   }
 
   hideOverlay() {
-    this.overlayContainer.style.display = 'none';
+    if (this.overlay) {
+      this.overlay.style.display = 'none';
+      this.overlay.innerHTML = '';
+      this.overlay.style.backgroundColor = 'transparent';
+    }
     this.suggestions = [];
+    this.textarea.style.color = '';
+    
+    // Re-enable autocomplete
+    this.enableAutocompletion();
   }
 
   showNoSuggestionsMessage() {
-    this.overlayContainer.innerHTML = `
-      <div class="ai-helper-no-suggestions">
-        <div class="no-suggestions-content">
-          <h4>${this.options.labels.noSuggestions || 'No typos or errors found'}</h4>
-          <p>The text appears to be error-free.</p>
-        </div>
+    this.updateOverlayPosition();
+    const bgColor = this.getTextareaBackgroundColor();
+    this.overlay.style.backgroundColor = bgColor;
+    
+    this.overlay.innerHTML = `
+      <div class="ai-helper-no-suggestions" style="
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      ">
+        <h4 style="margin: 0 0 10px 0; color: #333;">${this.options.labels.noSuggestions || 'No typos or errors found'}</h4>
+        <p style="margin: 0; color: #666;">The text appears to be error-free.</p>
       </div>
     `;
-    this.overlayContainer.style.display = 'block';
+    this.overlay.style.display = 'block';
     setTimeout(() => this.hideOverlay(), 3000);
   }
 
   showErrorMessage() {
-    this.overlayContainer.innerHTML = `
-      <div class="ai-helper-typo-error">
-        <div class="error-content">
-          <h4>${this.options.labels.errorOccurred || 'An error occurred'}</h4>
-          <p>Please try again later.</p>
-        </div>
+    this.updateOverlayPosition();
+    const bgColor = this.getTextareaBackgroundColor();
+    this.overlay.style.backgroundColor = bgColor;
+    
+    this.overlay.innerHTML = `
+      <div class="ai-helper-typo-error" style="
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      ">
+        <h4 style="margin: 0 0 10px 0; color: #f44336;">${this.options.labels.errorOccurred || 'An error occurred'}</h4>
+        <p style="margin: 0; color: #666;">Please try again later.</p>
       </div>
     `;
-    this.overlayContainer.style.display = 'block';
+    this.overlay.style.display = 'block';
     setTimeout(() => this.hideOverlay(), 3000);
   }
 
-  escapeHTML(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+  getTextareaBackgroundColor() {
+    const computedStyle = window.getComputedStyle(this.textarea);
+    let bgColor = computedStyle.backgroundColor;
+
+    // If transparent or rgba(0,0,0,0), use parent background or default to white
+    if (bgColor === 'transparent' || bgColor === 'rgba(0, 0, 0, 0)') {
+      const parent = this.textarea.parentNode;
+      const parentStyle = window.getComputedStyle(parent);
+      bgColor = parentStyle.backgroundColor;
+
+      // If still transparent, default to white
+      if (bgColor === 'transparent' || bgColor === 'rgba(0, 0, 0, 0)') {
+        bgColor = '#ffffff';
+      }
+    }
+
+    return bgColor;
   }
 
   getCSRFToken() {

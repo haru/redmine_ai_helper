@@ -181,13 +181,15 @@ function initalizeIssueCompletion() {
 
 }
 
-// Initialize typo checking
+// Initialize typo checking with direct button binding
 function initializeIssueTypoChecker() {
   const issueDescTextarea = document.getElementById('issue_description');
   const issueNotesTextarea = document.getElementById('issue_notes');
+  const descButton = document.getElementById('ai-helper-typo-check-description-btn');
+  const notesButton = document.getElementById('ai-helper-typo-check-notes-btn');
   
   if (typeof AiHelperTypoChecker !== 'undefined') {
-    if (issueDescTextarea) {
+    if (issueDescTextarea && descButton) {
       const descTypoChecker = new AiHelperTypoChecker(issueDescTextarea, {
         endpoint: '<%= ai_helper_check_typos_path(project) %>',
         labels: {
@@ -203,9 +205,14 @@ function initializeIssueTypoChecker() {
         }
       });
       descTypoChecker.init();
+      
+      // Bind existing button directly
+      descButton.addEventListener('click', () => {
+        descTypoChecker.checkTypos();
+      });
     }
     
-    if (issueNotesTextarea) {
+    if (issueNotesTextarea && notesButton) {
       const notesTypoChecker = new AiHelperTypoChecker(issueNotesTextarea, {
         endpoint: '<%= ai_helper_check_typos_path(project) %>',
         labels: {
@@ -221,6 +228,11 @@ function initializeIssueTypoChecker() {
         }
       });
       notesTypoChecker.init();
+      
+      // Bind existing button directly
+      notesButton.addEventListener('click', () => {
+        notesTypoChecker.checkTypos();
+      });
     }
   }
 }

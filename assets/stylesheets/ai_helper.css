@@ -628,209 +628,110 @@ table.ai-helper-sub-issues-table td {
   background: #555;
 }
 
-/* Typo checking styles */
+/* Typo checking overlay - extends textarea-overlay base class */
 .ai-helper-typo-overlay {
+  /* Inherit base overlay styles from .ai-helper-textarea-overlay */
   position: absolute;
-  top: 100%;
+  top: 0;
   left: 0;
   right: 0;
-  z-index: 1000;
-  margin-top: 5px;
+  bottom: 0;
+  pointer-events: auto; /* Enable interactions for buttons (different from autocomplete) */
+  z-index: 15; /* Higher than autocomplete overlay */
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  padding: inherit;
+  border: inherit;
+  box-sizing: border-box;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow: hidden;
+  display: none;
 }
 
-.ai-helper-typo-suggestions {
-  background: #fff;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  max-height: 400px;
-  overflow-y: auto;
+/* Typo and correction highlighting - similar to inline-suggestion but for errors */
+.ai-helper-typo-original {
+  text-decoration: line-through;
+  color: #ff6b6b !important;
+  background-color: #ffebee !important;
+  padding: 0 2px;
+  border-radius: 2px;
+  position: relative;
+  display: inline;
 }
 
-.suggestions-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 15px;
-  border-bottom: 1px solid #eee;
-  background: #f8f8f8;
-}
-
-.suggestions-header h4 {
-  margin: 0;
-  font-size: 14px;
+.ai-helper-typo-correction {
+  color: #4caf50 !important;
+  background-color: #e8f5e8 !important;
   font-weight: bold;
+  padding: 0 2px;
+  border-radius: 2px;
+  position: relative;
+  display: inline;
 }
 
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 16px;
-  cursor: pointer;
-  color: #666;
-  padding: 0;
+/* Accept/Reject buttons - similar to inline-suggestion interaction */
+.ai-helper-typo-buttons {
+  display: inline;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.ai-helper-typo-accept-btn,
+.ai-helper-typo-reject-btn {
+  /* Similar to inline-suggestion styling but as buttons */
+  display: inline-block;
   width: 20px;
   height: 20px;
-}
-
-.close-btn:hover {
-  color: #000;
-}
-
-.suggestion-item {
-  padding: 10px 15px;
-  border-bottom: 1px solid #eee;
-}
-
-.suggestion-item:last-child {
-  border-bottom: none;
-}
-
-.suggestion-content {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 5px;
-}
-
-.original-text {
-  background: #ffebee;
-  color: #c62828;
-  padding: 2px 4px;
-  border-radius: 3px;
-  text-decoration: line-through;
-}
-
-.corrected-text {
-  background: #e8f5e8;
-  color: #2e7d32;
-  padding: 2px 4px;
-  border-radius: 3px;
-  font-weight: bold;
-}
-
-.arrow {
-  color: #666;
-  font-weight: bold;
-}
-
-.suggestion-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   font-size: 12px;
-  color: #666;
-  margin-bottom: 8px;
-}
-
-.confidence {
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-size: 10px;
-  text-transform: uppercase;
-}
-
-.confidence-high {
-  background: #c8e6c9;
-  color: #2e7d32;
-}
-
-.confidence-medium {
-  background: #fff3e0;
-  color: #ef6c00;
-}
-
-.confidence-low {
-  background: #ffcdd2;
-  color: #c62828;
-}
-
-.suggestion-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.suggestion-actions button {
-  padding: 4px 8px;
-  font-size: 12px;
-  border-radius: 3px;
-  cursor: pointer;
   border: none;
+  border-radius: 2px; /* Match inline-suggestion border-radius */
+  cursor: pointer;
+  vertical-align: middle;
+  text-align: center;
+  line-height: 18px;
+  margin-right: 2px;
+  pointer-events: auto;
+  position: relative;
 }
 
-.accept-btn {
+.ai-helper-typo-accept-btn {
   background: #4caf50;
   color: white;
 }
 
-.accept-btn:hover {
+.ai-helper-typo-accept-btn:hover {
   background: #45a049;
 }
 
-.dismiss-btn {
+.ai-helper-typo-reject-btn {
   background: #f44336;
   color: white;
 }
 
-.dismiss-btn:hover {
+.ai-helper-typo-reject-btn:hover {
   background: #da190b;
 }
 
-.suggestions-footer {
-  padding: 10px 15px;
-  border-top: 1px solid #eee;
-  background: #f8f8f8;
-  display: flex;
-  gap: 10px;
-}
-
-.accept-all-btn, .dismiss-all-btn {
-  padding: 6px 12px;
-  font-size: 12px;
-  border-radius: 3px;
-  cursor: pointer;
-  border: none;
-}
-
-.accept-all-btn {
-  background: #2196f3;
-  color: white;
-}
-
-.accept-all-btn:hover {
-  background: #1976d2;
-}
-
-.dismiss-all-btn {
-  background: #757575;
-  color: white;
-}
-
-.dismiss-all-btn:hover {
-  background: #616161;
-}
-
-.ai-helper-no-suggestions, .ai-helper-typo-error {
+/* Messages - similar to suggestion display patterns */
+.ai-helper-no-suggestions,
+.ai-helper-typo-error {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
   padding: 20px;
-  text-align: center;
-  background: #f8f8f8;
-  border: 1px solid #ccc;
+  border: 1px solid #ddd;
   border-radius: 4px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  pointer-events: auto;
 }
 
-.no-suggestions-content h4, .error-content h4 {
-  margin: 0 0 10px 0;
-  font-size: 14px;
-  font-weight: bold;
-}
-
-.no-suggestions-content p, .error-content p {
-  margin: 0;
-  color: #666;
-  font-size: 12px;
-}
-
-.typo-check-btn {
+/* Button styling - consistent with Redmine patterns */
+.ai-helper-typo-check-button {
   padding: 4px 8px;
   font-size: 12px;
   background: #2196f3;
@@ -840,11 +741,11 @@ table.ai-helper-sub-issues-table td {
   cursor: pointer;
 }
 
-.typo-check-btn:hover {
+.ai-helper-typo-check-button:hover {
   background: #1976d2;
 }
 
-.typo-check-btn:disabled {
+.ai-helper-typo-check-button:disabled {
   background: #ccc;
   cursor: not-allowed;
 }
