@@ -627,3 +627,224 @@ table.ai-helper-sub-issues-table td {
 .ai-helper-scrollable-overlay::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+/* Typo checking styles */
+.ai-helper-typo-overlay {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  margin-top: 5px;
+}
+
+.ai-helper-typo-suggestions {
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.suggestions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  border-bottom: 1px solid #eee;
+  background: #f8f8f8;
+}
+
+.suggestions-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.close-btn:hover {
+  color: #000;
+}
+
+.suggestion-item {
+  padding: 10px 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.suggestion-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+
+.original-text {
+  background: #ffebee;
+  color: #c62828;
+  padding: 2px 4px;
+  border-radius: 3px;
+  text-decoration: line-through;
+}
+
+.corrected-text {
+  background: #e8f5e8;
+  color: #2e7d32;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: bold;
+}
+
+.arrow {
+  color: #666;
+  font-weight: bold;
+}
+
+.suggestion-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.confidence {
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.confidence-high {
+  background: #c8e6c9;
+  color: #2e7d32;
+}
+
+.confidence-medium {
+  background: #fff3e0;
+  color: #ef6c00;
+}
+
+.confidence-low {
+  background: #ffcdd2;
+  color: #c62828;
+}
+
+.suggestion-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.suggestion-actions button {
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  border: none;
+}
+
+.accept-btn {
+  background: #4caf50;
+  color: white;
+}
+
+.accept-btn:hover {
+  background: #45a049;
+}
+
+.dismiss-btn {
+  background: #f44336;
+  color: white;
+}
+
+.dismiss-btn:hover {
+  background: #da190b;
+}
+
+.suggestions-footer {
+  padding: 10px 15px;
+  border-top: 1px solid #eee;
+  background: #f8f8f8;
+  display: flex;
+  gap: 10px;
+}
+
+.accept-all-btn, .dismiss-all-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  border: none;
+}
+
+.accept-all-btn {
+  background: #2196f3;
+  color: white;
+}
+
+.accept-all-btn:hover {
+  background: #1976d2;
+}
+
+.dismiss-all-btn {
+  background: #757575;
+  color: white;
+}
+
+.dismiss-all-btn:hover {
+  background: #616161;
+}
+
+.ai-helper-no-suggestions, .ai-helper-typo-error {
+  padding: 20px;
+  text-align: center;
+  background: #f8f8f8;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.no-suggestions-content h4, .error-content h4 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.no-suggestions-content p, .error-content p {
+  margin: 0;
+  color: #666;
+  font-size: 12px;
+}
+
+.typo-check-btn {
+  padding: 4px 8px;
+  font-size: 12px;
+  background: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.typo-check-btn:hover {
+  background: #1976d2;
+}
+
+.typo-check-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}

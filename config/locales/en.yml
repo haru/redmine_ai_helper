@@ -28,6 +28,17 @@ en:
       instructions: "Please enter the key points or instructions for the reply."
       generated_reply: "Generated notes"
       apply: "Apply"
+    typo_check:
+      toggle_label: "AI Typo Check"
+      check_button: "Check"
+      suggestions_title: "Correction Suggestions"
+      no_suggestions: "No typos or errors found"
+      accept_suggestion: "Accept"
+      dismiss_suggestion: "Dismiss"
+      accept_all: "Accept All"
+      dismiss_all: "Dismiss All"
+      checking: "Checking..."
+      error_occurred: "An error occurred"
       copy_to_clipboard: "Copy to clipboard"
     generate_sub_issues:
       title: "Create subtasks with AI Helper"

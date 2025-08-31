@@ -10,7 +10,7 @@ class AiHelperController < ApplicationController
   include AiHelperHelper
   include RedmineAiHelper::Export::PDF::ProjectHealthPdfHelper
 
-  protect_from_forgery except: [:generate_project_health, :suggest_completion, :suggest_wiki_completion]
+  protect_from_forgery except: [:generate_project_health, :suggest_completion, :suggest_wiki_completion, :check_typos]
   before_action :find_issue, only: [:issue_summary, :update_issue_summary, :generate_issue_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues]
   before_action :find_wiki_page, only: [:wiki_summary, :generate_wiki_summary]
   before_action :find_project, except: [:issue_summary, :wiki_summary, :generate_issue_summary, :generate_wiki_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues]
@@ -496,6 +496,23 @@ class AiHelperController < ApplicationController
 
       response.stream.close
     end
+  end
+
+  def check_typos
+    text = params[:text]
+    return render json: { suggestions: [] } if text.blank?
+    
+    context_type = params[:context_type] || 'general'
+    
+    llm = RedmineAiHelper::Llm.new
+    suggestions = llm.check_typos(
+      text: text,
+      context_type: context_type,
+      project: @project,
+      max_suggestions: 10
+    )
+    
+    render json: { suggestions: suggestions }
   end
 
   private

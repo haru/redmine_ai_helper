@@ -250,6 +250,34 @@ module RedmineAiHelper
       end
     end
 
+    def check_typos(text:, context_type: 'general', project: nil, max_suggestions: 10)
+      begin
+        ai_helper_logger.info "Starting typo check: context_type=#{context_type}, text_length=#{text.length}"
+        
+        langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: text)
+        options = { langfuse: langfuse, project: project }
+        agent = RedmineAiHelper::Agents::DocumentationAgent.new(options)
+        
+        langfuse.create_span(name: "typo_check", input: text)
+        
+        suggestions = agent.check_typos(
+          text: text,
+          context_type: context_type,
+          max_suggestions: max_suggestions
+        )
+        
+        ai_helper_logger.info "DocumentationAgent returned suggestions: #{suggestions}"
+        
+        langfuse.finish_current_span(output: suggestions)
+        langfuse.flush
+        
+        suggestions
+      rescue => e
+        ai_helper_logger.error "Typo check error: #{e.full_message}"
+        []
+      end
+    end
+
     private
   end
 end
