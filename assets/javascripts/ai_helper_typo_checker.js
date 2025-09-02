@@ -171,6 +171,11 @@ class AiHelperTypoChecker {
         this.disableAutocompletion();
       }
     });
+
+    // Sync overlay scroll with textarea scroll
+    this.textarea.addEventListener('scroll', () => {
+      this.syncScroll();
+    });
   }
 
   disableAutocompletion() {
@@ -314,6 +319,11 @@ class AiHelperTypoChecker {
 
     // Always rebuild content (this is needed when suggestions change)
     this.buildOverlayContent();
+    
+    // Check if scrolling is needed after content is built
+    setTimeout(() => {
+      this.checkAndEnableScrolling();
+    }, 10);
   }
 
   buildOverlayContent() {
@@ -691,6 +701,9 @@ class AiHelperTypoChecker {
       this.overlay.style.display = 'none';
       this.overlay.innerHTML = '';
       this.overlay.style.backgroundColor = 'transparent';
+      
+      // Reset scrolling settings
+      this.resetScrolling();
     }
     this.suggestions = [];
     this.textarea.style.color = '';
@@ -773,6 +786,116 @@ class AiHelperTypoChecker {
 
   getCSRFToken() {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+  }
+
+  // Sync overlay scroll with textarea scroll
+  syncScroll() {
+    if (this.overlay && this.textarea) {
+      this.overlay.scrollTop = this.textarea.scrollTop;
+      this.overlay.scrollLeft = this.textarea.scrollLeft;
+    }
+  }
+
+  // Check if scrolling is needed and enable it when content exceeds height
+  checkAndEnableScrolling() {
+    if (!this.overlay) return;
+    
+    const contentHeight = this.overlay.scrollHeight;
+    const overlayHeight = this.overlay.clientHeight;
+    
+    // Debug logging
+    console.log('TypoChecker Debug - contentHeight:', contentHeight, 'overlayHeight:', overlayHeight);
+    
+    if (contentHeight > overlayHeight) {
+      console.log('TypoChecker Debug - Enabling scrolling mode');
+      // Content exceeds height, enable scrolling
+      this.overlay.style.overflowY = 'auto';
+      this.overlay.style.overflowX = 'hidden';
+      
+      // Enable pointer events to allow scrolling interaction
+      this.overlay.style.pointerEvents = 'auto';
+      
+      // Move overlay above textarea to capture mouse events
+      this.overlay.style.zIndex = '20';
+      
+      // Show textarea border on overlay since it's now on top
+      const computedStyle = window.getComputedStyle(this.textarea);
+      this.overlay.style.borderColor = computedStyle.borderColor;
+      
+      // Add scrollable class for visual styling
+      this.overlay.classList.add('ai-helper-scrollable-overlay');
+      
+      // Add event listeners to forward events to textarea when needed
+      this.addScrollableEventListeners();
+      
+      console.log('TypoChecker Debug - Scrolling enabled, z-index:', this.overlay.style.zIndex, 'pointerEvents:', this.overlay.style.pointerEvents);
+    } else {
+      // Content fits within height, use default behavior
+      this.overlay.style.overflowY = 'hidden';
+      this.overlay.style.overflowX = 'hidden';
+      
+      // Restore original pointer events and z-index settings
+      this.overlay.style.pointerEvents = 'auto';
+      this.overlay.style.zIndex = '15';
+      this.overlay.style.borderColor = 'transparent';
+      this.overlay.classList.remove('ai-helper-scrollable-overlay');
+      
+      // Remove scrollable event listeners
+      this.removeScrollableEventListeners();
+    }
+  }
+
+  // Reset scrolling settings to default state
+  resetScrolling() {
+    if (!this.overlay) return;
+    
+    this.overlay.style.overflowY = 'hidden';
+    this.overlay.style.overflowX = 'hidden';
+    this.overlay.style.pointerEvents = 'auto';
+    this.overlay.style.zIndex = '15';
+    this.overlay.style.borderColor = 'transparent';
+    this.overlay.classList.remove('ai-helper-scrollable-overlay');
+    this.removeScrollableEventListeners();
+  }
+
+  // Add event listeners for scrollable overlay mode
+  addScrollableEventListeners() {
+    if (!this.overlay) return;
+    
+    // Store bound functions for later removal
+    this.scrollableClickHandler = (e) => {
+      // Allow clicks on typo correction buttons
+      if (e.target.classList.contains('ai-helper-typo-accept-btn') || 
+          e.target.classList.contains('ai-helper-typo-reject-btn')) {
+        return; // Let the button click handlers work normally
+      }
+      
+      // Forward other clicks to textarea
+      if (!e.target.closest('.ai-helper-typo-buttons')) {
+        this.textarea.focus();
+      }
+    };
+    
+    this.scrollableKeydownHandler = (e) => {
+      // Forward keyboard events to textarea except for scroll keys
+      if (!['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(e.key)) {
+        this.textarea.dispatchEvent(new KeyboardEvent(e.type, e));
+        this.textarea.focus();
+      }
+    };
+    
+    this.overlay.addEventListener('click', this.scrollableClickHandler);
+    this.overlay.addEventListener('keydown', this.scrollableKeydownHandler);
+  }
+
+  // Remove event listeners for scrollable overlay mode
+  removeScrollableEventListeners() {
+    if (!this.overlay || !this.scrollableClickHandler) return;
+    
+    this.overlay.removeEventListener('click', this.scrollableClickHandler);
+    this.overlay.removeEventListener('keydown', this.scrollableKeydownHandler);
+    this.scrollableClickHandler = null;
+    this.scrollableKeydownHandler = null;
   }
 }
 
