@@ -536,8 +536,8 @@ class AiHelperTypoChecker {
       
       // Style the tooltip (moved outside the if block)
       tooltip.style.display = 'none';
-      tooltip.style.position = 'absolute';
-      tooltip.style.bottom = '100%';
+      tooltip.style.position = 'fixed'; // Use fixed positioning to avoid overlay clipping
+      tooltip.style.top = '100%';
       tooltip.style.left = '50%';
       tooltip.style.transform = 'translateX(-50%)';
       tooltip.style.backgroundColor = '#333';
@@ -546,29 +546,69 @@ class AiHelperTypoChecker {
       tooltip.style.borderRadius = '4px';
       tooltip.style.fontSize = '12px';
       tooltip.style.lineHeight = '1.4';
-      tooltip.style.zIndex = '10000';
+      tooltip.style.zIndex = '10001'; // Higher than overlay
       tooltip.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
-      tooltip.style.marginBottom = '5px';
+      tooltip.style.marginTop = '5px';
       tooltip.style.maxWidth = '300px';
       tooltip.style.whiteSpace = 'normal';
       tooltip.style.textAlign = 'left';
       tooltip.style.overflowWrap = 'break-word';
+      tooltip.style.pointerEvents = 'none'; // Prevent interference with mouse events
       
-      // Add arrow pointing downward
+      // Add arrow pointing upward (since tooltip is now below)
       const arrow = document.createElement('div');
       arrow.style.position = 'absolute';
-      arrow.style.top = '100%';
+      arrow.style.bottom = '100%';
       arrow.style.left = '50%';
       arrow.style.marginLeft = '-5px';
       arrow.style.borderWidth = '5px';
       arrow.style.borderStyle = 'solid';
-      arrow.style.borderColor = '#333 transparent transparent transparent';
+      arrow.style.borderColor = 'transparent transparent #333 transparent';
       tooltip.appendChild(arrow);
       
       typoSpan.appendChild(tooltip);
       
       // Add hover event listeners for showing/hiding tooltip
       typoSpan.addEventListener('mouseenter', () => {
+        // Calculate tooltip position relative to the element
+        const spanRect = typoSpan.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        // Position tooltip below the span
+        tooltip.style.top = (spanRect.bottom + 5) + 'px';
+        
+        // Center horizontally, but adjust if it would go off-screen
+        let leftPos = spanRect.left + (spanRect.width / 2);
+        const tooltipWidth = 300; // Max width of tooltip
+        
+        if (leftPos - tooltipWidth/2 < 10) {
+          // Too far left, align to left edge
+          leftPos = 10 + tooltipWidth/2;
+        } else if (leftPos + tooltipWidth/2 > viewportWidth - 10) {
+          // Too far right, align to right edge
+          leftPos = viewportWidth - 10 - tooltipWidth/2;
+        }
+        
+        tooltip.style.left = leftPos + 'px';
+        tooltip.style.transform = 'translateX(-50%)';
+        
+        // Check if tooltip would go below viewport
+        const estimatedTooltipHeight = 60; // Rough estimate
+        if (spanRect.bottom + estimatedTooltipHeight > viewportHeight - 20) {
+          // Show above instead
+          tooltip.style.top = (spanRect.top - estimatedTooltipHeight - 5) + 'px';
+          // Change arrow direction
+          arrow.style.bottom = 'auto';
+          arrow.style.top = '100%';
+          arrow.style.borderColor = '#333 transparent transparent transparent';
+        } else {
+          // Show below (default)
+          arrow.style.top = 'auto';
+          arrow.style.bottom = '100%';
+          arrow.style.borderColor = 'transparent transparent #333 transparent';
+        }
+        
         tooltip.style.display = 'block';
       });
       

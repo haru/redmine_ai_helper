@@ -716,10 +716,7 @@ table.ai-helper-sub-issues-table td {
 
 /* Tooltip for typo correction reasons */
 .ai-helper-typo-tooltip {
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
+  position: fixed;
   background-color: #333;
   color: white;
   padding: 8px 12px;
@@ -729,29 +726,15 @@ table.ai-helper-sub-issues-table td {
   white-space: normal;
   text-align: left;
   overflow-wrap: break-word;
-  z-index: 10000;
+  z-index: 10001;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  margin-bottom: 5px;
   max-width: 300px;
   min-width: 100px;
   display: none;
   pointer-events: none;
 }
 
-.ai-helper-typo-tooltip::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  margin-left: -5px;
-  border-width: 5px;
-  border-style: solid;
-  border-color: #333 transparent transparent transparent;
-}
-
-.ai-helper-typo-original:hover .ai-helper-typo-tooltip {
-  display: block;
-}
+/* Arrow styles are now handled dynamically in JavaScript */
 
 /* Messages - similar to suggestion display patterns */
 .ai-helper-no-suggestions,
