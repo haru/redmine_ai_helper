@@ -18,10 +18,10 @@
     </span>
     
     <!-- Typo check button -->
-    <button type="button" id="ai-helper-typo-check-description-btn" class="ai-helper-typo-check-button">
+    <%= link_to "#", id: "ai-helper-typo-check-description-btn", class: "icon icon-edit" do %>
       <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
       <%= t('ai_helper.typo_check.check_button') %>
-    </button>
+    <% end %>
   </div>
 </div>
 
@@ -47,10 +47,10 @@
     </span>
     
     <!-- Typo check button -->
-    <button type="button" id="ai-helper-typo-check-notes-btn" class="ai-helper-typo-check-button">
+    <%= link_to "#", id: "ai-helper-typo-check-notes-btn", class: "icon icon-edit" do %>
       <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
       <%= t('ai_helper.typo_check.check_button') %>
-    </button>
+    <% end %>
   </div>
 </div>
 <% end %>

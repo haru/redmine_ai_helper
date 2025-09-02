@@ -730,22 +730,3 @@ table.ai-helper-sub-issues-table td {
   pointer-events: auto;
 }
 
-/* Button styling - consistent with Redmine patterns */
-.ai-helper-typo-check-button {
-  padding: 4px 8px;
-  font-size: 12px;
-  background: #2196f3;
-  color: white;
-  border: none;
-  border-radius: 3px;
-  cursor: pointer;
-}
-
-.ai-helper-typo-check-button:hover {
-  background: #1976d2;
-}
-
-.ai-helper-typo-check-button:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-}
