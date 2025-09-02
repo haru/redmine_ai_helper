@@ -4,15 +4,17 @@
 <% if params[:controller] == 'wiki' && params[:action] == 'edit' && project&.module_enabled?(:ai_helper) && User.current.allowed_to?(:view_ai_helper, project) && User.current.allowed_to?(:edit_wiki_pages, project) %>
 
 <div id="ai-helper-wiki-checkbox-container" class="ai-helper-autocompletion-controls" style="display: none;">
-  <p>
-    <input type="checkbox" id="ai-helper-autocompletion-wiki-toggle" />
-    <label for="ai-helper-autocompletion-wiki-toggle">
-      <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
-      <%= t('ai_helper.autocompletion.common_toggle_label') %>
-    </label>
+  <p style="display: flex; justify-content: space-between; align-items: center;">
+    <span>
+      <input type="checkbox" id="ai-helper-autocompletion-wiki-toggle" />
+      <label for="ai-helper-autocompletion-wiki-toggle">
+        <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
+        <%= t('ai_helper.autocompletion.common_toggle_label') %>
+      </label>
+    </span>
     
     <!-- Typo check button -->
-    <button type="button" id="ai-helper-typo-check-wiki-btn" class="ai-helper-typo-check-button" style="margin-left: 10px;">
+    <button type="button" id="ai-helper-typo-check-wiki-btn" class="ai-helper-typo-check-button">
       <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
       <%= t('ai_helper.typo_check.check_button') %>
     </button>

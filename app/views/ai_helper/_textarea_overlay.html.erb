@@ -7,18 +7,22 @@
 <% if project&.module_enabled?(:ai_helper) && User.current.allowed_to?(:view_ai_helper, project) %>
 
 <!-- Create checkboxes in ERB with proper Redmine sprite_icon -->
-<div id="ai-helper-description-checkbox-container" class="ai-helper-autocompletion-controls" display: none;">
-  <input type="checkbox" id="ai-helper-autocompletion-description-toggle" />
-  <label for="ai-helper-autocompletion-description-toggle">
-    <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
-    <%= t('ai_helper.autocompletion.common_toggle_label') %>
-  </label>
-  
-  <!-- Typo check button -->
-  <button type="button" id="ai-helper-typo-check-description-btn" class="ai-helper-typo-check-button" style="margin-left: 10px;">
-    <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
-    <%= t('ai_helper.typo_check.check_button') %>
-  </button>
+<div id="ai-helper-description-checkbox-container" class="ai-helper-autocompletion-controls" style="display: none;">
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <span>
+      <input type="checkbox" id="ai-helper-autocompletion-description-toggle" />
+      <label for="ai-helper-autocompletion-description-toggle">
+        <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
+        <%= t('ai_helper.autocompletion.common_toggle_label') %>
+      </label>
+    </span>
+    
+    <!-- Typo check button -->
+    <button type="button" id="ai-helper-typo-check-description-btn" class="ai-helper-typo-check-button">
+      <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
+      <%= t('ai_helper.typo_check.check_button') %>
+    </button>
+  </div>
 </div>
 
 <script>
@@ -32,18 +36,22 @@
 </script>
 
 <% if @issue&.persisted? && !@issue.new_record? %>
-<div id="ai-helper-notes-checkbox-container" class="ai-helper-autocompletion-controls" display: none;">
-  <input type="checkbox" id="ai-helper-autocompletion-notes-toggle" />
-  <label for="ai-helper-autocompletion-notes-toggle">
-    <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
-    <%= t('ai_helper.autocompletion.common_toggle_label') %>
-  </label>
-  
-  <!-- Typo check button -->
-  <button type="button" id="ai-helper-typo-check-notes-btn" class="ai-helper-typo-check-button" style="margin-left: 10px;">
-    <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
-    <%= t('ai_helper.typo_check.check_button') %>
-  </button>
+<div id="ai-helper-notes-checkbox-container" class="ai-helper-autocompletion-controls" style="display: none;">
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <span>
+      <input type="checkbox" id="ai-helper-autocompletion-notes-toggle" />
+      <label for="ai-helper-autocompletion-notes-toggle">
+        <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
+        <%= t('ai_helper.autocompletion.common_toggle_label') %>
+      </label>
+    </span>
+    
+    <!-- Typo check button -->
+    <button type="button" id="ai-helper-typo-check-notes-btn" class="ai-helper-typo-check-button">
+      <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
+      <%= t('ai_helper.typo_check.check_button') %>
+    </button>
+  </div>
 </div>
 <% end %>
 
