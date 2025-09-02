@@ -227,7 +227,20 @@ class AiHelperTypoChecker {
 
     this.isCheckingTypos = true;
     this.checkButton.disabled = true;
-    this.checkButton.textContent = this.options.labels.checking || 'Checking...';
+    
+    // Store original innerHTML to restore it later
+    if (!this.originalButtonHTML) {
+      this.originalButtonHTML = this.checkButton.innerHTML;
+    }
+    
+    // Replace only the text part while keeping the icon
+    const checkingText = this.options.labels.checking || 'Checking...';
+    const iconMatch = this.checkButton.innerHTML.match(/<svg[^>]*>.*?<\/svg>/);
+    if (iconMatch) {
+      this.checkButton.innerHTML = iconMatch[0] + ' ' + checkingText;
+    } else {
+      this.checkButton.textContent = checkingText;
+    }
 
     try {
       console.log('Making API request to:', this.options.endpoint);
@@ -256,7 +269,13 @@ class AiHelperTypoChecker {
     } finally {
       this.isCheckingTypos = false;
       this.checkButton.disabled = false;
-      this.checkButton.textContent = this.options.labels.checkButton || 'Check';
+      
+      // Restore original innerHTML instead of setting textContent
+      if (this.originalButtonHTML) {
+        this.checkButton.innerHTML = this.originalButtonHTML;
+      } else {
+        this.checkButton.textContent = this.options.labels.checkButton || 'Check';
+      }
     }
   }
 
@@ -299,12 +318,81 @@ class AiHelperTypoChecker {
 
   buildOverlayContent() {
     console.log('buildOverlayContent called, suggestions count:', this.suggestions.length);
+    console.log('All suggestions:', this.suggestions);
     
     const text = this.textarea.value;
+    console.log('Textarea text:', JSON.stringify(text), 'Length:', text.length);
     this.overlay.innerHTML = '';
 
-    // Sort suggestions by position
-    const sortedSuggestions = [...this.suggestions].sort((a, b) => a.position - b.position);
+    // Validate and correct suggestions by position 
+    const validatedSuggestions = this.suggestions.map(suggestion => {
+      const replacementLength = suggestion.length || suggestion.original.length;
+      const actualText = text.substring(suggestion.position, suggestion.position + replacementLength);
+      
+      console.log('Validating suggestion:', {
+        original: suggestion.original,
+        actualText: actualText,
+        position: suggestion.position,
+        length: replacementLength,
+        matches: actualText === suggestion.original
+      });
+      
+      // Basic validation - position should be valid
+      if (suggestion.position < 0 || 
+          suggestion.position >= text.length ||
+          !suggestion.original || 
+          !suggestion.corrected) {
+        console.warn('Invalid suggestion detected (basic validation failed):', suggestion);
+        return null;
+      }
+      
+      // If text doesn't match, try to find the correct position
+      if (actualText !== suggestion.original) {
+        console.log('Text mismatch, searching for correct position...');
+        
+        // Find all occurrences of the original text
+        const allPositions = [];
+        let searchPos = 0;
+        while (searchPos < text.length) {
+          const foundPos = text.indexOf(suggestion.original, searchPos);
+          if (foundPos === -1) break;
+          allPositions.push(foundPos);
+          searchPos = foundPos + 1;
+        }
+        
+        if (allPositions.length > 0) {
+          // Choose the position closest to the original suggestion
+          let bestPosition = allPositions[0];
+          let minDistance = Math.abs(allPositions[0] - suggestion.position);
+          
+          for (const pos of allPositions) {
+            const distance = Math.abs(pos - suggestion.position);
+            if (distance < minDistance) {
+              minDistance = distance;
+              bestPosition = pos;
+            }
+          }
+          
+          console.log('Found correct position for', suggestion.original, 'at', bestPosition, 'instead of', suggestion.position, '(all positions:', allPositions, ')');
+          // Create corrected suggestion
+          return {
+            ...suggestion,
+            position: bestPosition
+          };
+        } else {
+          console.warn('Could not find', suggestion.original, 'in text. Skipping suggestion.');
+          return null;
+        }
+      }
+      
+      return suggestion;
+    }).filter(s => s !== null);
+    
+    const sortedSuggestions = validatedSuggestions.sort((a, b) => a.position - b.position);
+    console.log('All suggestions after filtering:', sortedSuggestions.length, 'out of', this.suggestions.length);
+
+    // Update the main suggestions array with corrected positions
+    this.suggestions = validatedSuggestions;
 
     let currentPosition = 0;
     let overlayContent = document.createElement('div');
@@ -320,10 +408,12 @@ class AiHelperTypoChecker {
       );
       
       console.log('Building suggestion at sortedIndex:', sortedIndex, 'originalIndex:', originalIndex, 'suggestion:', suggestion);
+      console.log('Current position:', currentPosition, 'Suggestion position:', suggestion.position, 'Original text:', suggestion.original, 'Original length:', suggestion.original.length);
 
       // Add text before the typo
       if (currentPosition < suggestion.position) {
         const beforeText = text.substring(currentPosition, suggestion.position);
+        console.log('Before text:', JSON.stringify(beforeText), 'Length:', beforeText.length);
         const beforeSpan = document.createElement('span');
         beforeSpan.textContent = beforeText;
         beforeSpan.style.color = '#000000';
@@ -356,6 +446,7 @@ class AiHelperTypoChecker {
       buttonsContainer.style.verticalAlign = 'middle';
 
       const acceptBtn = document.createElement('button');
+      acceptBtn.type = 'button'; // Explicitly set type to prevent form submission
       acceptBtn.className = 'ai-helper-typo-accept-btn';
       acceptBtn.innerHTML = '✓';
       acceptBtn.title = this.options.labels.acceptSuggestion || 'Accept';
@@ -373,12 +464,15 @@ class AiHelperTypoChecker {
         vertical-align: middle;
       `;
       // Use a closure to capture the suggestion object itself instead of index
-      acceptBtn.addEventListener('click', () => {
+      acceptBtn.addEventListener('click', (e) => {
+        e.preventDefault(); // Prevent any form submission
+        e.stopPropagation(); // Stop event bubbling
         console.log('ACCEPT button clicked for suggestion:', suggestion.original);
         this.acceptSuggestionBySuggestion(suggestion);
       });
 
       const rejectBtn = document.createElement('button');
+      rejectBtn.type = 'button'; // Explicitly set type to prevent form submission
       rejectBtn.className = 'ai-helper-typo-reject-btn';
       rejectBtn.innerHTML = '✗';
       rejectBtn.title = this.options.labels.dismissSuggestion || 'Reject';
@@ -394,7 +488,9 @@ class AiHelperTypoChecker {
         display: inline-block;
         vertical-align: middle;
       `;
-      rejectBtn.addEventListener('click', () => {
+      rejectBtn.addEventListener('click', (e) => {
+        e.preventDefault(); // Prevent any form submission
+        e.stopPropagation(); // Stop event bubbling
         console.log('REJECT button clicked for suggestion:', suggestion.original);
         this.rejectSuggestionBySuggestion(suggestion);
       });
@@ -403,7 +499,10 @@ class AiHelperTypoChecker {
       buttonsContainer.appendChild(rejectBtn);
       overlayContent.appendChild(buttonsContainer);
 
-      currentPosition = suggestion.position + suggestion.length;
+      // Use the length provided by server if available, otherwise calculate from original text
+      const replacementLength = suggestion.length || suggestion.original.length;
+      currentPosition = suggestion.position + replacementLength;
+      console.log('Replacement length:', replacementLength, 'Updated currentPosition to:', currentPosition);
     });
 
     // Add remaining text after last suggestion
@@ -434,14 +533,16 @@ class AiHelperTypoChecker {
     this.isProcessingSuggestion = true;
 
     const text = this.textarea.value;
+    // Use the length provided by server if available, otherwise calculate from original text
+    const replacementLength = suggestion.length || suggestion.original.length;
     const newText = text.substring(0, suggestion.position) + 
                    suggestion.corrected + 
-                   text.substring(suggestion.position + suggestion.original.length);
+                   text.substring(suggestion.position + replacementLength);
     
     this.textarea.value = newText;
 
     // Update positions of remaining suggestions
-    this.updateSuggestionsAfterEdit(suggestion.position, suggestion.original.length, suggestion.corrected.length);
+    this.updateSuggestionsAfterEdit(suggestion.position, replacementLength, suggestion.corrected.length);
     
     // Remove this suggestion
     this.suggestions.splice(index, 1);
@@ -470,14 +571,16 @@ class AiHelperTypoChecker {
     console.log('Current suggestions:', this.suggestions);
     
     // Find the index of this suggestion in the current array
+    // Use a more flexible matching approach
     const index = this.suggestions.findIndex(s => 
-      s.position === suggestion.position && 
       s.original === suggestion.original &&
-      s.corrected === suggestion.corrected
+      s.corrected === suggestion.corrected &&
+      Math.abs(s.position - suggestion.position) <= 5 // Allow small position differences
     );
     
     if (index === -1) {
-      console.log('Suggestion not found in current array:', suggestion);
+      console.error('Suggestion not found in current array:', suggestion);
+      console.error('Available suggestions:', this.suggestions);
       return;
     }
     
@@ -487,14 +590,16 @@ class AiHelperTypoChecker {
     this.isProcessingSuggestion = true;
 
     const text = this.textarea.value;
+    // Use the length provided by server if available, otherwise calculate from original text
+    const replacementLength = suggestion.length || suggestion.original.length;
     const newText = text.substring(0, suggestion.position) + 
                    suggestion.corrected + 
-                   text.substring(suggestion.position + suggestion.original.length);
+                   text.substring(suggestion.position + replacementLength);
     
     this.textarea.value = newText;
 
     // Update positions of remaining suggestions
-    this.updateSuggestionsAfterEdit(suggestion.position, suggestion.original.length, suggestion.corrected.length);
+    this.updateSuggestionsAfterEdit(suggestion.position, replacementLength, suggestion.corrected.length);
     
     // Remove this suggestion
     this.suggestions.splice(index, 1);
@@ -525,14 +630,16 @@ class AiHelperTypoChecker {
     this.isProcessingSuggestion = true;
     
     // Find the index of this suggestion in the current array
+    // Use a more flexible matching approach
     const index = this.suggestions.findIndex(s => 
-      s.position === suggestion.position && 
       s.original === suggestion.original &&
-      s.corrected === suggestion.corrected
+      s.corrected === suggestion.corrected &&
+      Math.abs(s.position - suggestion.position) <= 5 // Allow small position differences
     );
     
     if (index === -1) {
-      console.log('Suggestion not found in current array:', suggestion);
+      console.error('Suggestion not found in current array:', suggestion);
+      console.error('Available suggestions:', this.suggestions);
       this.isProcessingSuggestion = false;
       return;
     }
