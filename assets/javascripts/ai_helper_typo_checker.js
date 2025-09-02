@@ -503,19 +503,6 @@ class AiHelperTypoChecker {
       // Handle both original reason field and grouped reasons array
       const reasonsArray = suggestion.reasons || (suggestion.reason && suggestion.reason.trim() ? [suggestion.reason] : []);
       const hasReasons = reasonsArray && reasonsArray.length > 0;
-      let tooltipText;
-      
-      if (hasReasons) {
-        const combinedReasons = reasonsArray.join('\n• ');
-        tooltipText = reasonsArray.length > 1 ? 
-          '• ' + combinedReasons : 
-          combinedReasons;
-      } else {
-        // Show basic correction info when no reason is available
-        tooltipText = `修正候補: "${suggestion.original}" → "${suggestion.corrected}"`;
-      }
-      
-      typoSpan.title = tooltipText; // Fallback for basic tooltip
       
       // Create custom tooltip element
       const tooltip = document.createElement('div');
