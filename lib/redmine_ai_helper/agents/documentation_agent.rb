@@ -103,6 +103,18 @@ module RedmineAiHelper
           original = suggestion['original'].to_s
           corrected = suggestion['corrected'].to_s
           
+          # Skip if original and corrected are the same
+          if original == corrected
+            ai_helper_logger.warn "Skipping suggestion where original and corrected are identical: '#{original}'"
+            next
+          end
+          
+          # Skip if original or corrected are empty or only whitespace
+          if original.strip.empty? || corrected.strip.empty?
+            ai_helper_logger.warn "Skipping suggestion with empty original or corrected text: original='#{original}', corrected='#{corrected}'"
+            next
+          end
+          
           # Check if position is valid
           if position < 0 || position >= original_text.length
             ai_helper_logger.warn "Invalid position #{position} for suggestion: #{original}"

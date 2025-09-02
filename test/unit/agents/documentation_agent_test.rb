@@ -136,4 +136,48 @@ class DocumentationAgentTest < ActiveSupport::TestCase
     # Should skip the unfindable suggestion
     assert_equal 0, result.length
   end
+
+  def test_check_typos_skips_identical_original_and_corrected
+    # Simulate AI returning suggestion where original and corrected are the same
+    mock_response = [
+      {
+        "original" => "テスト",
+        "corrected" => "テスト",  # Same as original
+        "position" => 0,
+        "length" => 3,
+        "reason" => "No change needed",
+        "confidence" => "high"
+      },
+      {
+        "original" => "チェク",
+        "corrected" => "チェック",  # Different from original
+        "position" => 10,
+        "length" => 3,
+        "reason" => "Typo correction",
+        "confidence" => "high"
+      }
+    ]
+
+    @agent.stubs(:chat).returns("mock response")
+    
+    # Mock the StructuredOutputParser and OutputFixingParser
+    parser_mock = mock('parser')
+    parser_mock.stubs(:get_format_instructions).returns("format instructions")
+    Langchain::OutputParsers::StructuredOutputParser.stubs(:from_json_schema).returns(parser_mock)
+    
+    fix_parser_mock = mock('fix_parser')
+    fix_parser_mock.stubs(:parse).returns(mock_response)
+    Langchain::OutputParsers::OutputFixingParser.stubs(:from_llm).returns(fix_parser_mock)
+    
+    # Mock the client method
+    @agent.stubs(:client).returns(mock('client'))
+    
+    text = "これはtypoのチェクのテストです"
+    result = @agent.check_typos(text: text, context_type: "test")
+    
+    # Should only keep the suggestion where original != corrected
+    assert_equal 1, result.length
+    assert_equal "チェク", result[0]['original']
+    assert_equal "チェック", result[0]['corrected']
+  end
 end
