@@ -61,7 +61,7 @@ class AiHelperTypoChecker {
     this.overlay.style.overflowY = 'hidden';
     this.overlay.style.overflowX = 'hidden';
     this.overlay.style.whiteSpace = 'pre-wrap';
-    this.overlay.style.wordWrap = 'break-word';
+    this.overlay.style.overflowWrap = 'break-word';
 
     // Function to update overlay position and size to match textarea (same as autocomplete)
     this.updateOverlayPosition = () => {
@@ -266,6 +266,7 @@ class AiHelperTypoChecker {
 
       const data = await response.json();
       console.log('Received suggestions:', data.suggestions);
+      console.log('First suggestion detail:', data.suggestions && data.suggestions[0]);
       this.suggestions = data.suggestions || [];
       this.displayTypoOverlay();
     } catch (error) {
@@ -400,16 +401,64 @@ class AiHelperTypoChecker {
     
     const sortedSuggestions = validatedSuggestions.sort((a, b) => a.position - b.position);
     console.log('All suggestions after filtering:', sortedSuggestions.length, 'out of', this.suggestions.length);
+    console.log('Sample filtered suggestion:', sortedSuggestions[0]);
 
-    // Update the main suggestions array with corrected positions
-    this.suggestions = validatedSuggestions;
+    // Group suggestions by position and original text to handle duplicates
+    const groupedSuggestions = [];
+    sortedSuggestions.forEach(suggestion => {
+      console.log('Processing suggestion for grouping:', {
+        original: suggestion.original,
+        corrected: suggestion.corrected,
+        reason: suggestion.reason,
+        position: suggestion.position
+      });
+      
+      const existingGroup = groupedSuggestions.find(group => 
+        group.position === suggestion.position && 
+        group.original === suggestion.original
+      );
+      
+      if (existingGroup) {
+        // Add this suggestion to existing group
+        existingGroup.suggestions.push(suggestion);
+        // Combine reasons
+        if (suggestion.reason && suggestion.reason.trim() && !existingGroup.reasons.includes(suggestion.reason)) {
+          existingGroup.reasons.push(suggestion.reason);
+        }
+        // Use the highest confidence suggestion as the primary corrected text
+        if (suggestion.confidence === 'high' || 
+            (suggestion.confidence === 'medium' && existingGroup.corrected === existingGroup.suggestions[0].corrected)) {
+          existingGroup.corrected = suggestion.corrected;
+        }
+        console.log('Added to existing group, updated reasons:', existingGroup.reasons);
+      } else {
+        // Create new group
+        const newGroup = {
+          position: suggestion.position,
+          original: suggestion.original,
+          corrected: suggestion.corrected,
+          length: suggestion.length || suggestion.original.length,
+          reasons: (suggestion.reason && suggestion.reason.trim()) ? [suggestion.reason] : [],
+          suggestions: [suggestion],
+          confidence: suggestion.confidence
+        };
+        groupedSuggestions.push(newGroup);
+        console.log('Created new group with reasons:', newGroup.reasons);
+      }
+    });
+
+    console.log('Grouped suggestions:', groupedSuggestions.length, 'groups from', sortedSuggestions.length, 'suggestions');
+    console.log('Sample grouped suggestion:', groupedSuggestions[0]);
+
+    // Update the main suggestions array with grouped data
+    this.suggestions = groupedSuggestions;
 
     let currentPosition = 0;
     let overlayContent = document.createElement('div');
     overlayContent.style.position = 'relative';
     overlayContent.style.lineHeight = window.getComputedStyle(this.textarea).lineHeight;
 
-    sortedSuggestions.forEach((suggestion, sortedIndex) => {
+    groupedSuggestions.forEach((suggestion, sortedIndex) => {
       // Find the original index in this.suggestions array
       const originalIndex = this.suggestions.findIndex(s => 
         s.position === suggestion.position && 
@@ -440,55 +489,92 @@ class AiHelperTypoChecker {
       typoSpan.style.cursor = 'help';
       typoSpan.style.position = 'relative';
       
-      // Add tooltip functionality for showing correction reason
-      if (suggestion.reason) {
-        typoSpan.title = suggestion.reason; // Fallback for basic tooltip
-        
-        // Create custom tooltip element
-        const tooltip = document.createElement('div');
-        tooltip.className = 'ai-helper-typo-tooltip';
-        tooltip.textContent = suggestion.reason;
-        tooltip.style.display = 'none';
-        tooltip.style.position = 'absolute';
-        tooltip.style.bottom = '100%';
-        tooltip.style.left = '50%';
-        tooltip.style.transform = 'translateX(-50%)';
-        tooltip.style.backgroundColor = '#333';
-        tooltip.style.color = 'white';
-        tooltip.style.padding = '8px 12px';
-        tooltip.style.borderRadius = '4px';
-        tooltip.style.fontSize = '12px';
-        tooltip.style.lineHeight = '1.4';
-        tooltip.style.zIndex = '10000';
-        tooltip.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
-        tooltip.style.marginBottom = '5px';
-        tooltip.style.maxWidth = '300px';
-        tooltip.style.whiteSpace = 'normal';
-        tooltip.style.textAlign = 'left';
-        tooltip.style.wordWrap = 'break-word';
-        
-        // Add arrow pointing downward
-        const arrow = document.createElement('div');
-        arrow.style.position = 'absolute';
-        arrow.style.top = '100%';
-        arrow.style.left = '50%';
-        arrow.style.marginLeft = '-5px';
-        arrow.style.borderWidth = '5px';
-        arrow.style.borderStyle = 'solid';
-        arrow.style.borderColor = '#333 transparent transparent transparent';
-        tooltip.appendChild(arrow);
-        
-        typoSpan.appendChild(tooltip);
-        
-        // Add hover event listeners for showing/hiding tooltip
-        typoSpan.addEventListener('mouseenter', () => {
-          tooltip.style.display = 'block';
-        });
-        
-        typoSpan.addEventListener('mouseleave', () => {
-          tooltip.style.display = 'none';
-        });
+      // Add tooltip functionality for showing correction reasons
+      // Always show tooltip - with reasons if available, or basic info otherwise
+      console.log('Creating tooltip for suggestion:', {
+        original: suggestion.original,
+        corrected: suggestion.corrected,
+        reason: suggestion.reason,
+        reasons: suggestion.reasons,
+        hasOriginalReason: suggestion.reason && suggestion.reason.trim(),
+        hasReasonsArray: suggestion.reasons && suggestion.reasons.length > 0
+      });
+      
+      // Handle both original reason field and grouped reasons array
+      const reasonsArray = suggestion.reasons || (suggestion.reason && suggestion.reason.trim() ? [suggestion.reason] : []);
+      const hasReasons = reasonsArray && reasonsArray.length > 0;
+      let tooltipText;
+      
+      if (hasReasons) {
+        const combinedReasons = reasonsArray.join('\n• ');
+        tooltipText = reasonsArray.length > 1 ? 
+          '• ' + combinedReasons : 
+          combinedReasons;
+      } else {
+        // Show basic correction info when no reason is available
+        tooltipText = `修正候補: "${suggestion.original}" → "${suggestion.corrected}"`;
       }
+      
+      typoSpan.title = tooltipText; // Fallback for basic tooltip
+      
+      // Create custom tooltip element
+      const tooltip = document.createElement('div');
+      tooltip.className = 'ai-helper-typo-tooltip';
+      
+      if (hasReasons && reasonsArray.length > 1) {
+        // Multiple reasons - show as bullet list
+        tooltip.innerHTML = '• ' + reasonsArray.map(reason => 
+          reason.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        ).join('<br>• ');
+      } else if (hasReasons) {
+        // Single reason - show as plain text
+        tooltip.textContent = reasonsArray[0];
+      } else {
+        // No reasons - show basic correction info
+        tooltip.innerHTML = `修正候補:<br><strong>"${suggestion.original.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"</strong><br>↓<br><strong>"${suggestion.corrected.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"</strong>`;
+      }
+      
+      // Style the tooltip (moved outside the if block)
+      tooltip.style.display = 'none';
+      tooltip.style.position = 'absolute';
+      tooltip.style.bottom = '100%';
+      tooltip.style.left = '50%';
+      tooltip.style.transform = 'translateX(-50%)';
+      tooltip.style.backgroundColor = '#333';
+      tooltip.style.color = 'white';
+      tooltip.style.padding = '8px 12px';
+      tooltip.style.borderRadius = '4px';
+      tooltip.style.fontSize = '12px';
+      tooltip.style.lineHeight = '1.4';
+      tooltip.style.zIndex = '10000';
+      tooltip.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+      tooltip.style.marginBottom = '5px';
+      tooltip.style.maxWidth = '300px';
+      tooltip.style.whiteSpace = 'normal';
+      tooltip.style.textAlign = 'left';
+      tooltip.style.overflowWrap = 'break-word';
+      
+      // Add arrow pointing downward
+      const arrow = document.createElement('div');
+      arrow.style.position = 'absolute';
+      arrow.style.top = '100%';
+      arrow.style.left = '50%';
+      arrow.style.marginLeft = '-5px';
+      arrow.style.borderWidth = '5px';
+      arrow.style.borderStyle = 'solid';
+      arrow.style.borderColor = '#333 transparent transparent transparent';
+      tooltip.appendChild(arrow);
+      
+      typoSpan.appendChild(tooltip);
+      
+      // Add hover event listeners for showing/hiding tooltip
+      typoSpan.addEventListener('mouseenter', () => {
+        tooltip.style.display = 'block';
+      });
+      
+      typoSpan.addEventListener('mouseleave', () => {
+        tooltip.style.display = 'none';
+      });
       
       overlayContent.appendChild(typoSpan);
 
@@ -662,8 +748,8 @@ class AiHelperTypoChecker {
     console.log('acceptSuggestionBySuggestion called with suggestion:', suggestion);
     console.log('Current suggestions:', this.suggestions);
     
-    // Find the index of this suggestion in the current array
-    // Use a more flexible matching approach
+    // Find the index of this suggestion group in the current array
+    // Use a more flexible matching approach for grouped suggestions
     const index = this.suggestions.findIndex(s => 
       s.original === suggestion.original &&
       s.corrected === suggestion.corrected &&
@@ -751,8 +837,8 @@ class AiHelperTypoChecker {
     // Set processing flag to prevent events from hiding overlay
     this.isProcessingSuggestion = true;
     
-    // Find the index of this suggestion in the current array
-    // Use a more flexible matching approach
+    // Find the index of this suggestion group in the current array
+    // Use a more flexible matching approach for grouped suggestions
     const index = this.suggestions.findIndex(s => 
       s.original === suggestion.original &&
       s.corrected === suggestion.corrected &&

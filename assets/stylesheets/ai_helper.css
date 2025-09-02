@@ -728,7 +728,7 @@ table.ai-helper-sub-issues-table td {
   line-height: 1.4;
   white-space: normal;
   text-align: left;
-  word-wrap: break-word;
+  overflow-wrap: break-word;
   z-index: 10000;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   margin-bottom: 5px;
