@@ -509,10 +509,9 @@ class AiHelperTypoChecker {
       buttonsContainer.appendChild(rejectBtn);
       overlayContent.appendChild(buttonsContainer);
 
-      // Use the length provided by server if available, otherwise calculate from original text
-      const replacementLength = suggestion.length || suggestion.original.length;
-      currentPosition = suggestion.position + replacementLength;
-      console.log('Replacement length:', replacementLength, 'Updated currentPosition to:', currentPosition);
+      // Always use original.length for consistent position calculation
+      currentPosition = suggestion.position + suggestion.original.length;
+      console.log('Original length:', suggestion.original.length, 'Updated currentPosition to:', currentPosition);
     });
 
     // Add remaining text after last suggestion
@@ -543,16 +542,46 @@ class AiHelperTypoChecker {
     this.isProcessingSuggestion = true;
 
     const text = this.textarea.value;
-    // Use the length provided by server if available, otherwise calculate from original text
-    const replacementLength = suggestion.length || suggestion.original.length;
+    
+    // Verify the text matches what we expect at the position
+    const actualText = text.substring(suggestion.position, suggestion.position + suggestion.original.length);
+    console.log('Applying suggestion:', {
+      position: suggestion.position,
+      original: suggestion.original,
+      corrected: suggestion.corrected,
+      actualTextAtPosition: actualText,
+      serverLength: suggestion.length,
+      originalLength: suggestion.original.length
+    });
+    
+    // Validate that the text at the position matches what we expect
+    if (actualText !== suggestion.original) {
+      console.error('Text mismatch detected when applying suggestion!', {
+        expected: suggestion.original,
+        actual: actualText,
+        position: suggestion.position
+      });
+      // Try to find the correct position one more time
+      const correctPos = text.indexOf(suggestion.original);
+      if (correctPos !== -1 && correctPos !== suggestion.position) {
+        console.log('Found correct position, updating suggestion position from', suggestion.position, 'to', correctPos);
+        suggestion.position = correctPos;
+      } else {
+        alert('修正適用に失敗しました。テキストの位置が見つかりません: ' + suggestion.original);
+        this.isProcessingSuggestion = false;
+        return;
+      }
+    }
+    
+    // Use original.length for safety - it's always accurate
     const newText = text.substring(0, suggestion.position) + 
                    suggestion.corrected + 
-                   text.substring(suggestion.position + replacementLength);
+                   text.substring(suggestion.position + suggestion.original.length);
     
     this.textarea.value = newText;
 
     // Update positions of remaining suggestions
-    this.updateSuggestionsAfterEdit(suggestion.position, replacementLength, suggestion.corrected.length);
+    this.updateSuggestionsAfterEdit(suggestion.position, suggestion.original.length, suggestion.corrected.length);
     
     // Remove this suggestion
     this.suggestions.splice(index, 1);
@@ -600,16 +629,46 @@ class AiHelperTypoChecker {
     this.isProcessingSuggestion = true;
 
     const text = this.textarea.value;
-    // Use the length provided by server if available, otherwise calculate from original text
-    const replacementLength = suggestion.length || suggestion.original.length;
+    
+    // Verify the text matches what we expect at the position
+    const actualText = text.substring(suggestion.position, suggestion.position + suggestion.original.length);
+    console.log('Applying suggestion:', {
+      position: suggestion.position,
+      original: suggestion.original,
+      corrected: suggestion.corrected,
+      actualTextAtPosition: actualText,
+      serverLength: suggestion.length,
+      originalLength: suggestion.original.length
+    });
+    
+    // Validate that the text at the position matches what we expect
+    if (actualText !== suggestion.original) {
+      console.error('Text mismatch detected when applying suggestion!', {
+        expected: suggestion.original,
+        actual: actualText,
+        position: suggestion.position
+      });
+      // Try to find the correct position one more time
+      const correctPos = text.indexOf(suggestion.original);
+      if (correctPos !== -1 && correctPos !== suggestion.position) {
+        console.log('Found correct position, updating suggestion position from', suggestion.position, 'to', correctPos);
+        suggestion.position = correctPos;
+      } else {
+        alert('修正適用に失敗しました。テキストの位置が見つかりません: ' + suggestion.original);
+        this.isProcessingSuggestion = false;
+        return;
+      }
+    }
+    
+    // Use original.length for safety - it's always accurate
     const newText = text.substring(0, suggestion.position) + 
                    suggestion.corrected + 
-                   text.substring(suggestion.position + replacementLength);
+                   text.substring(suggestion.position + suggestion.original.length);
     
     this.textarea.value = newText;
 
     // Update positions of remaining suggestions
-    this.updateSuggestionsAfterEdit(suggestion.position, replacementLength, suggestion.corrected.length);
+    this.updateSuggestionsAfterEdit(suggestion.position, suggestion.original.length, suggestion.corrected.length);
     
     // Remove this suggestion
     this.suggestions.splice(index, 1);

@@ -75,11 +75,83 @@ module RedmineAiHelper
           parser: parser
         )
         
-        fix_parser.parse(response)
+        suggestions = fix_parser.parse(response)
+        
+        # Validate and fix suggestions data
+        validated_suggestions = validate_and_fix_suggestions(suggestions, text)
+        
+        validated_suggestions
       end
 
       def available_tools
         []
+      end
+
+      private
+
+      def validate_and_fix_suggestions(suggestions, original_text)
+        return [] unless suggestions.is_a?(Array)
+        
+        validated = []
+        
+        suggestions.each do |suggestion|
+          next unless suggestion.is_a?(Hash)
+          next unless suggestion['original'] && suggestion['corrected'] && suggestion['position']
+          
+          # Validate and fix position
+          position = suggestion['position'].to_i
+          original = suggestion['original'].to_s
+          corrected = suggestion['corrected'].to_s
+          
+          # Check if position is valid
+          if position < 0 || position >= original_text.length
+            ai_helper_logger.warn "Invalid position #{position} for suggestion: #{original}"
+            # Try to find the correct position
+            correct_position = original_text.index(original)
+            if correct_position
+              position = correct_position
+              ai_helper_logger.info "Found correct position #{correct_position} for: #{original}"
+            else
+              ai_helper_logger.warn "Could not find correct position for: #{original}, skipping"
+              next
+            end
+          end
+          
+          # Validate and fix length - always use the actual length of the original text
+          actual_length = original.length
+          ai_provided_length = suggestion['length'].to_i
+          
+          if ai_provided_length != actual_length
+            ai_helper_logger.warn "AI provided incorrect length #{ai_provided_length} for '#{original}' (actual: #{actual_length})"
+          end
+          
+          # Verify text at position matches
+          text_at_position = original_text[position, actual_length]
+          if text_at_position != original
+            ai_helper_logger.warn "Text mismatch at position #{position}: expected '#{original}', found '#{text_at_position}'"
+            # Try to find correct position
+            correct_position = original_text.index(original)
+            if correct_position
+              position = correct_position
+              ai_helper_logger.info "Corrected position to #{correct_position} for: #{original}"
+            else
+              ai_helper_logger.warn "Could not find text '#{original}' in original text, skipping"
+              next
+            end
+          end
+          
+          validated << {
+            'original' => original,
+            'corrected' => corrected,
+            'position' => position,
+            'length' => actual_length,  # Always use actual length
+            'reason' => suggestion['reason'].to_s,
+            'confidence' => suggestion['confidence'].to_s
+          }
+        end
+        
+        ai_helper_logger.info "Validated #{validated.length} out of #{suggestions.length} suggestions"
+        validated
       end
     end
   end
