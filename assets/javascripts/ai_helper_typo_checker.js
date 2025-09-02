@@ -437,6 +437,59 @@ class AiHelperTypoChecker {
       typoSpan.style.textDecoration = 'line-through';
       typoSpan.style.color = '#ff6b6b';
       typoSpan.style.backgroundColor = '#ffebee';
+      typoSpan.style.cursor = 'help';
+      typoSpan.style.position = 'relative';
+      
+      // Add tooltip functionality for showing correction reason
+      if (suggestion.reason) {
+        typoSpan.title = suggestion.reason; // Fallback for basic tooltip
+        
+        // Create custom tooltip element
+        const tooltip = document.createElement('div');
+        tooltip.className = 'ai-helper-typo-tooltip';
+        tooltip.textContent = suggestion.reason;
+        tooltip.style.display = 'none';
+        tooltip.style.position = 'absolute';
+        tooltip.style.bottom = '100%';
+        tooltip.style.left = '50%';
+        tooltip.style.transform = 'translateX(-50%)';
+        tooltip.style.backgroundColor = '#333';
+        tooltip.style.color = 'white';
+        tooltip.style.padding = '8px 12px';
+        tooltip.style.borderRadius = '4px';
+        tooltip.style.fontSize = '12px';
+        tooltip.style.lineHeight = '1.4';
+        tooltip.style.zIndex = '10000';
+        tooltip.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+        tooltip.style.marginBottom = '5px';
+        tooltip.style.maxWidth = '300px';
+        tooltip.style.whiteSpace = 'normal';
+        tooltip.style.textAlign = 'left';
+        tooltip.style.wordWrap = 'break-word';
+        
+        // Add arrow pointing downward
+        const arrow = document.createElement('div');
+        arrow.style.position = 'absolute';
+        arrow.style.top = '100%';
+        arrow.style.left = '50%';
+        arrow.style.marginLeft = '-5px';
+        arrow.style.borderWidth = '5px';
+        arrow.style.borderStyle = 'solid';
+        arrow.style.borderColor = '#333 transparent transparent transparent';
+        tooltip.appendChild(arrow);
+        
+        typoSpan.appendChild(tooltip);
+        
+        // Add hover event listeners for showing/hiding tooltip
+        typoSpan.addEventListener('mouseenter', () => {
+          tooltip.style.display = 'block';
+        });
+        
+        typoSpan.addEventListener('mouseleave', () => {
+          tooltip.style.display = 'none';
+        });
+      }
+      
       overlayContent.appendChild(typoSpan);
 
       // Add the correction

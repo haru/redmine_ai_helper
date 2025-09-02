@@ -714,6 +714,45 @@ table.ai-helper-sub-issues-table td {
   background: #da190b;
 }
 
+/* Tooltip for typo correction reasons */
+.ai-helper-typo-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: normal;
+  text-align: left;
+  word-wrap: break-word;
+  z-index: 10000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  margin-bottom: 5px;
+  max-width: 300px;
+  min-width: 100px;
+  display: none;
+  pointer-events: none;
+}
+
+.ai-helper-typo-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #333 transparent transparent transparent;
+}
+
+.ai-helper-typo-original:hover .ai-helper-typo-tooltip {
+  display: block;
+}
+
 /* Messages - similar to suggestion display patterns */
 .ai-helper-no-suggestions,
 .ai-helper-typo-error {
