@@ -30,7 +30,7 @@ en:
       apply: "Apply"
     typo_check:
       toggle_label: "AI Typo Check"
-      check_button: "Check"
+      check_button: "AI Helper Typo Check"
       suggestions_title: "Correction Suggestions"
       no_suggestions: "No typos or errors found"
       accept_suggestion: "Accept"

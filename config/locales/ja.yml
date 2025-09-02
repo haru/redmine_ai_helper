@@ -30,7 +30,7 @@ ja:
       apply: "適用"
     typo_check:
       toggle_label: "AI誤字脱字チェック"
-      check_button: "チェック実行"
+      check_button: "AIヘルパーで誤字脱字チェック"
       suggestions_title: "修正提案"
       no_suggestions: "修正すべき箇所は見つかりませんでした"
       accept_suggestion: "適用"
