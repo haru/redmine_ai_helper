@@ -1,3 +1,5 @@
+require 'set'
+
 module RedmineAiHelper
   module Agents
     class DocumentationAgent < BaseAgent
@@ -93,6 +95,7 @@ module RedmineAiHelper
         return [] unless suggestions.is_a?(Array)
         
         validated = []
+        used_positions = Set.new  # Track used positions to avoid duplicates
         
         suggestions.each do |suggestion|
           next unless suggestion.is_a?(Hash)
@@ -118,13 +121,19 @@ module RedmineAiHelper
           # Check if position is valid
           if position < 0 || position >= original_text.length
             ai_helper_logger.warn "Invalid position #{position} for suggestion: #{original}"
-            # Try to find the correct position
-            correct_position = original_text.index(original)
-            if correct_position
-              position = correct_position
-              ai_helper_logger.info "Found correct position #{correct_position} for: #{original}"
+            # Try to find all possible positions for this text
+            all_positions = []
+            start_pos = 0
+            while (found_pos = original_text.index(original, start_pos))
+              all_positions << found_pos unless used_positions.include?(found_pos)
+              start_pos = found_pos + 1
+            end
+            
+            if all_positions.any?
+              position = all_positions.first
+              ai_helper_logger.info "Found correct position #{position} for: #{original} (available positions: #{all_positions})"
             else
-              ai_helper_logger.warn "Could not find correct position for: #{original}, skipping"
+              ai_helper_logger.warn "Could not find unused position for: #{original}, skipping"
               next
             end
           end
@@ -141,16 +150,37 @@ module RedmineAiHelper
           text_at_position = original_text[position, actual_length]
           if text_at_position != original
             ai_helper_logger.warn "Text mismatch at position #{position}: expected '#{original}', found '#{text_at_position}'"
-            # Try to find correct position
-            correct_position = original_text.index(original)
-            if correct_position
-              position = correct_position
-              ai_helper_logger.info "Corrected position to #{correct_position} for: #{original}"
+            # Try to find all unused positions for this text
+            all_positions = []
+            start_pos = 0
+            while (found_pos = original_text.index(original, start_pos))
+              all_positions << found_pos unless used_positions.include?(found_pos)
+              start_pos = found_pos + 1
+            end
+            
+            if all_positions.any?
+              position = all_positions.first
+              ai_helper_logger.info "Corrected position to #{position} for: #{original} (available positions: #{all_positions})"
+              # Verify the corrected position
+              text_at_position = original_text[position, actual_length]
+              if text_at_position != original
+                ai_helper_logger.warn "Even corrected position #{position} doesn't match for: #{original}, skipping"
+                next
+              end
             else
-              ai_helper_logger.warn "Could not find text '#{original}' in original text, skipping"
+              ai_helper_logger.warn "Could not find unused position for text '#{original}' in original text, skipping"
               next
             end
           end
+          
+          # Skip if this position is already used (prevents duplicates)
+          if used_positions.include?(position)
+            ai_helper_logger.warn "Position #{position} already used for another suggestion, skipping duplicate for: #{original}"
+            next
+          end
+          
+          # Mark this position as used
+          used_positions.add(position)
           
           validated << {
             'original' => original,

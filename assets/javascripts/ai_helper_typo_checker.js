@@ -404,21 +404,26 @@ class AiHelperTypoChecker {
     console.log('Sample filtered suggestion:', sortedSuggestions[0]);
 
     // Group suggestions by position and original text to handle duplicates
+    // Only group suggestions that have EXACTLY the same position AND original text
     const groupedSuggestions = [];
     sortedSuggestions.forEach(suggestion => {
       console.log('Processing suggestion for grouping:', {
         original: suggestion.original,
         corrected: suggestion.corrected,
         reason: suggestion.reason,
-        position: suggestion.position
+        position: suggestion.position,
+        length: suggestion.length
       });
       
+      // Find existing group with EXACT same position and original text
       const existingGroup = groupedSuggestions.find(group => 
         group.position === suggestion.position && 
-        group.original === suggestion.original
+        group.original === suggestion.original &&
+        group.length === (suggestion.length || suggestion.original.length)
       );
       
       if (existingGroup) {
+        console.log('Found existing group at same position with same text, merging...');
         // Add this suggestion to existing group
         existingGroup.suggestions.push(suggestion);
         // Combine reasons
@@ -432,6 +437,7 @@ class AiHelperTypoChecker {
         }
         console.log('Added to existing group, updated reasons:', existingGroup.reasons);
       } else {
+        console.log('Creating new group for unique position/text combination');
         // Create new group
         const newGroup = {
           position: suggestion.position,
