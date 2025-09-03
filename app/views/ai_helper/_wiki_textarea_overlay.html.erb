@@ -21,6 +21,16 @@
   </p>
 </div>
 
+<!-- Typo Control Panel for Wiki -->
+<div id="ai-helper-typo-control-panel-wiki" class="ai-helper-typo-control-panel" style="display: none;">
+  <button type="button" class="ai-helper-typo-apply-all-btn">
+    <%= t('ai_helper.typo_check.accept_all') %>
+  </button>
+  <button type="button" class="ai-helper-typo-close-btn">
+    <%= t('ai_helper.typo_check.close') %>
+  </button>
+</div>
+
 <script>
 function initializeWikiCompletion() {
   if (window.aiHelperWikiCompletionInitialized) {

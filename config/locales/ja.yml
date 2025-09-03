@@ -37,6 +37,7 @@ ja:
       dismiss_suggestion: "却下"
       accept_all: "すべて適用"
       dismiss_all: "すべて却下"
+      close: "閉じる"
       checking: "チェック中..."
       error_occurred: "エラーが発生しました"
       copy_to_clipboard: "クリップボードにコピー"

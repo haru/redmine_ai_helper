@@ -752,3 +752,48 @@ table.ai-helper-sub-issues-table td {
   pointer-events: auto;
 }
 
+/* Typo Control Panel - Fixed position at textarea bottom-right */
+.ai-helper-typo-control-panel {
+  position: absolute;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 25; /* Above overlay to remain visible during scrolling */
+  display: none;
+  gap: 8px;
+}
+
+.ai-helper-typo-apply-all-btn,
+.ai-helper-typo-close-btn {
+  background: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1.2;
+  min-width: 60px;
+  text-align: center;
+  margin-right: 4px;
+}
+
+.ai-helper-typo-apply-all-btn:hover {
+  background: #1976d2;
+}
+
+.ai-helper-typo-close-btn {
+  background: #757575;
+}
+
+.ai-helper-typo-close-btn:hover {
+  background: #616161;
+}
+
+.ai-helper-typo-apply-all-btn:last-child,
+.ai-helper-typo-close-btn:last-child {
+  margin-right: 0;
+}
+

@@ -21,8 +21,59 @@ class AiHelperTypoChecker {
 
   init() {
     this.createOverlay();
+    this.findControlPanel();
     this.findExistingButton();
     this.attachEventListeners();
+  }
+
+  findControlPanel() {
+    // Map textarea IDs to control panel IDs
+    const textareaToControlPanelMap = {
+      'issue_description': 'ai-helper-typo-control-panel-description',
+      'issue_notes': 'ai-helper-typo-control-panel-notes', 
+      'content_text': 'ai-helper-typo-control-panel-wiki'
+    };
+    
+    const panelId = textareaToControlPanelMap[this.textarea.id];
+    if (panelId) {
+      this.controlPanel = document.getElementById(panelId);
+    }
+    
+    if (!this.controlPanel) {
+      console.warn('Typo control panel not found for textarea:', this.textarea.id);
+      return;
+    }
+
+    // Position panel at bottom-right of textarea
+    const parent = this.textarea.parentNode;
+    if (window.getComputedStyle(parent).position === 'static') {
+      parent.style.position = 'relative';
+    }
+    
+    // Move control panel to textarea's parent if not already there
+    if (this.controlPanel.parentNode !== parent) {
+      parent.appendChild(this.controlPanel);
+    }
+    
+    // Find buttons and attach event listeners
+    this.applyAllButton = this.controlPanel.querySelector('.ai-helper-typo-apply-all-btn');
+    this.closeButton = this.controlPanel.querySelector('.ai-helper-typo-close-btn');
+    
+    if (this.applyAllButton) {
+      this.applyAllButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.acceptAllSuggestions();
+      });
+    }
+    
+    if (this.closeButton) {
+      this.closeButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.hideOverlay();
+      });
+    }
   }
 
   createOverlay() {
@@ -72,6 +123,20 @@ class AiHelperTypoChecker {
       this.overlay.style.left = (rect.left - parentRect.left) + 'px';
       this.overlay.style.width = rect.width + 'px';
       this.overlay.style.height = rect.height + 'px';
+    };
+
+    // Function to update control panel position
+    this.updateControlPanelPosition = () => {
+      if (!this.controlPanel) return;
+      
+      const rect = this.textarea.getBoundingClientRect();
+      const parentRect = this.textarea.parentNode.getBoundingClientRect();
+
+      // Position at bottom-right of textarea
+      this.controlPanel.style.position = 'absolute';
+      this.controlPanel.style.top = (rect.bottom - parentRect.top - 40) + 'px'; // 40px from bottom
+      this.controlPanel.style.right = '10px'; // 10px from right edge of parent
+      this.controlPanel.style.zIndex = '25'; // Above overlay
     };
 
     // Ensure parent has relative positioning for overlay (same as autocomplete)
@@ -301,6 +366,10 @@ class AiHelperTypoChecker {
 
       // Update overlay position
       this.updateOverlayPosition();
+      
+      // Update control panel position and show it
+      this.updateControlPanelPosition();
+      this.controlPanel.style.display = 'block';
 
       // Get textarea background color for overlay
       const bgColor = this.getTextareaBackgroundColor();
@@ -915,6 +984,64 @@ class AiHelperTypoChecker {
     }
   }
 
+  acceptAllSuggestions() {
+    console.log('acceptAllSuggestions called, suggestions count:', this.suggestions.length);
+    
+    if (this.suggestions.length === 0) {
+      this.hideOverlay();
+      return;
+    }
+
+    // Set processing flag to prevent input event from hiding overlay
+    this.isProcessingSuggestion = true;
+
+    // Sort suggestions by position (descending) to apply from end to beginning
+    // This prevents position shifts from affecting subsequent applications
+    const sortedSuggestions = [...this.suggestions].sort((a, b) => b.position - a.position);
+    
+    let text = this.textarea.value;
+    let successfulApplications = 0;
+    
+    sortedSuggestions.forEach(suggestion => {
+      console.log('Applying suggestion:', suggestion);
+      
+      // Verify the text matches what we expect at the position
+      const actualText = text.substring(suggestion.position, suggestion.position + suggestion.original.length);
+      
+      if (actualText === suggestion.original) {
+        // Apply the suggestion
+        text = text.substring(0, suggestion.position) + 
+               suggestion.corrected + 
+               text.substring(suggestion.position + suggestion.original.length);
+        successfulApplications++;
+        console.log('Successfully applied suggestion:', suggestion.original, '->', suggestion.corrected);
+      } else {
+        console.warn('Skipping suggestion due to text mismatch:', {
+          expected: suggestion.original,
+          actual: actualText,
+          position: suggestion.position
+        });
+      }
+    });
+    
+    // Update textarea with all changes
+    this.textarea.value = text;
+    
+    console.log('Applied', successfulApplications, 'out of', sortedSuggestions.length, 'suggestions');
+    
+    // Clear all suggestions and hide overlay
+    this.suggestions = [];
+    this.hideOverlay();
+
+    // Trigger input event for any listeners
+    this.textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    
+    // Clear processing flag
+    setTimeout(() => {
+      this.isProcessingSuggestion = false;
+    }, 100);
+  }
+
   updateSuggestionsAfterEdit(editPosition, originalLength, newLength) {
     const lengthDiff = newLength - originalLength;
     
@@ -936,6 +1063,12 @@ class AiHelperTypoChecker {
       // Reset scrolling settings
       this.resetScrolling();
     }
+    
+    // Hide control panel
+    if (this.controlPanel) {
+      this.controlPanel.style.display = 'none';
+    }
+    
     this.suggestions = [];
     this.textarea.style.color = '';
     this.isOverlayVisible = false;

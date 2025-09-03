@@ -37,6 +37,7 @@ en:
       dismiss_suggestion: "Dismiss"
       accept_all: "Accept All"
       dismiss_all: "Dismiss All"
+      close: "Close"
       checking: "Checking..."
       error_occurred: "An error occurred"
       copy_to_clipboard: "Copy to clipboard"
