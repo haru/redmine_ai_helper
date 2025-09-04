@@ -627,3 +627,338 @@ table.ai-helper-sub-issues-table td {
 .ai-helper-scrollable-overlay::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+/* Typo checking overlay - extends textarea-overlay base class */
+.ai-helper-typo-overlay {
+  /* Inherit base overlay styles from .ai-helper-textarea-overlay */
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: auto; /* Enable interactions for buttons (different from autocomplete) */
+  z-index: 15; /* Higher than autocomplete overlay */
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  padding: inherit;
+  border: inherit;
+  box-sizing: border-box;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow: hidden;
+  display: none;
+}
+
+/* Typo and correction highlighting - similar to inline-suggestion but for errors */
+.ai-helper-typo-original {
+  text-decoration: line-through;
+  color: #ff6b6b !important;
+  background-color: #ffebee !important;
+  padding: 0 2px;
+  border-radius: 2px;
+  position: relative;
+  display: inline;
+}
+
+.ai-helper-typo-correction {
+  color: #4caf50 !important;
+  background-color: #e8f5e8 !important;
+  font-weight: bold;
+  padding: 0 2px;
+  border-radius: 2px;
+  position: relative;
+  display: inline;
+}
+
+/* Accept/Reject buttons - similar to inline-suggestion interaction */
+.ai-helper-typo-buttons {
+  display: inline;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.ai-helper-typo-accept-btn,
+.ai-helper-typo-reject-btn {
+  /* Similar to inline-suggestion styling but as buttons */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+  border: none;
+  border-radius: 2px; /* Match inline-suggestion border-radius */
+  cursor: pointer;
+  vertical-align: middle;
+  text-align: center;
+  margin-right: 2px;
+  pointer-events: auto;
+  position: relative;
+  padding: 0;
+}
+
+.ai-helper-typo-accept-btn {
+  background: #4caf50;
+  color: white;
+}
+
+.ai-helper-typo-accept-btn svg.icon-svg {
+  stroke: white;
+  stroke-width: 2;
+  width: 14px;
+  height: 14px;
+  vertical-align: middle;
+}
+
+.ai-helper-typo-accept-btn:hover {
+  background: #45a049;
+}
+
+.ai-helper-typo-reject-btn {
+  background: #f44336;
+  color: white;
+}
+
+.ai-helper-typo-reject-btn svg.icon-svg {
+  stroke: white;
+  stroke-width: 2;
+  width: 14px;
+  height: 14px;
+  vertical-align: middle;
+}
+
+.ai-helper-typo-reject-btn:hover {
+  background: #da190b;
+}
+
+/* Tooltip for typo correction reasons */
+.ai-helper-typo-tooltip {
+  position: fixed;
+  background-color: #333;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: normal;
+  text-align: left;
+  overflow-wrap: break-word;
+  z-index: 10001;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  max-width: 300px;
+  min-width: 100px;
+  display: none;
+  pointer-events: none;
+}
+
+/* Arrow styles are now handled dynamically in JavaScript */
+
+/* Messages - similar to suggestion display patterns */
+.ai-helper-no-suggestions,
+.ai-helper-typo-error {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  pointer-events: auto;
+}
+
+/* Typo Control Panel - Fixed position at textarea bottom-right */
+.ai-helper-typo-control-panel {
+  position: absolute;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 25; /* Above overlay to remain visible during scrolling */
+  display: none;
+  gap: 8px;
+}
+
+.ai-helper-typo-apply-all-btn,
+.ai-helper-typo-close-btn {
+  background: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1.2;
+  min-width: 60px;
+  text-align: center;
+  margin-right: 4px;
+}
+
+.ai-helper-typo-apply-all-btn:hover {
+  background: #1976d2;
+}
+
+.ai-helper-typo-close-btn {
+  background: #757575;
+}
+
+.ai-helper-typo-close-btn:hover {
+  background: #616161;
+}
+
+.ai-helper-typo-apply-all-btn:last-child,
+.ai-helper-typo-close-btn:last-child {
+  margin-right: 0;
+}
+
+/* Additional CSS classes for JavaScript-generated elements */
+
+/* Textarea and parent positioning */
+.ai-helper-textarea-parent-relative {
+  position: relative !important;
+}
+
+.ai-helper-textarea-positioned {
+  position: relative !important;
+  z-index: 10 !important;
+  background-color: transparent !important;
+}
+
+/* Overlay states */
+.ai-helper-typo-overlay-active {
+  display: block !important;
+  z-index: 15 !important;
+  overflow-y: hidden !important;
+  overflow-x: hidden !important;
+  pointer-events: auto !important;
+  border-color: transparent !important;
+}
+
+.ai-helper-typo-overlay-scrollable {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  z-index: 20 !important;
+  border-color: inherit !important;
+}
+
+/* Control panel positioning */
+.ai-helper-control-panel-positioned {
+  position: absolute !important;
+  z-index: 25 !important;
+  display: block !important;
+}
+
+/* Typo span styling */
+.ai-helper-typo-span {
+  text-decoration: line-through !important;
+  color: #ff6b6b !important;
+  background-color: #ffebee !important;
+  cursor: help !important;
+  position: relative !important;
+}
+
+/* Correction span styling */
+.ai-helper-correction-span {
+  color: #4caf50 !important;
+  background-color: #e8f5e8 !important;
+  font-weight: bold !important;
+}
+
+/* Button container styling */
+.ai-helper-buttons-container {
+  display: inline-block !important;
+  margin-left: 4px !important;
+  vertical-align: middle !important;
+}
+
+/* Text color utilities */
+.ai-helper-text-black {
+  color: #000000 !important;
+}
+
+.ai-helper-text-transparent {
+  color: transparent !important;
+}
+
+/* Tooltip styling */
+.ai-helper-tooltip {
+  display: none;
+  position: fixed;
+  background-color: #333;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  z-index: 10001;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  margin-top: 5px;
+  max-width: 300px;
+  white-space: normal;
+  text-align: left;
+  overflow-wrap: break-word;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.ai-helper-tooltip-visible {
+  display: block !important;
+}
+
+.ai-helper-tooltip-arrow {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent transparent #333 transparent;
+}
+
+.ai-helper-tooltip-arrow-up {
+  bottom: auto;
+  top: 100%;
+  border-color: #333 transparent transparent transparent;
+}
+
+/* Message styling for no suggestions and errors */
+.ai-helper-message-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  pointer-events: auto;
+}
+
+.ai-helper-message-title {
+  margin: 0 0 10px 0;
+}
+
+.ai-helper-message-title-normal {
+  color: #333;
+}
+
+.ai-helper-message-title-error {
+  color: #f44336;
+}
+
+.ai-helper-message-text {
+  margin: 0;
+  color: #666;
+}
+
+/* Overlay content positioning */
+.ai-helper-overlay-content {
+  position: relative;
+}
+
