@@ -12,7 +12,7 @@
         <%= t('ai_helper.autocompletion.common_toggle_label') %>
       </label>
     </span>
-    
+
     <!-- Typo check button -->
     <%= link_to "javascript:void(0)", id: "ai-helper-typo-check-wiki-btn", class: "icon icon-edit" do %>
       <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
@@ -119,7 +119,7 @@ function initializeWikiCompletion() {
 function initializeWikiTypoChecker() {
   const wikiTextarea = document.getElementById('content_text');
   const wikiButton = document.getElementById('ai-helper-typo-check-wiki-btn');
-  
+
   if (wikiTextarea && wikiButton && typeof AiHelperTypoChecker !== 'undefined') {
     const wikiTypoChecker = new AiHelperTypoChecker(wikiTextarea, {
       endpoint: '<%= ai_helper_check_typos_path(project) %>',
@@ -136,7 +136,7 @@ function initializeWikiTypoChecker() {
       }
     });
     wikiTypoChecker.init();
-    
+
     // Bind existing button directly
     wikiButton.addEventListener('click', () => {
       wikiTypoChecker.checkTypos();
@@ -153,3 +153,9 @@ setTimeout(function() {
 <% else %>
 <!-- AI Helper wiki auto-completion not available -->
 <% end %>
+
+<!-- Hidden templates for typo check buttons -->
+<div id="ai-helper-typo-button-templates" style="display: none;">
+  <button type="button" class="ai-helper-typo-accept-btn-template"><%= sprite_icon("ai-helper-check", plugin: :redmine_ai_helper) %></button>
+  <button type="button" class="ai-helper-typo-reject-btn-template"><%= sprite_icon("ai-helper-x", plugin: :redmine_ai_helper) %></button>
+</div>

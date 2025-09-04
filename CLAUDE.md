@@ -116,6 +116,12 @@ For external tool integration via Model Context Protocol:
 - Don't use jQuery, use vanilla JavaScript
 - Write comments in English
 
+### Error Handling Guidelines
+- **NEVER implement fallback error handling** - Fallbacks hide real problems and make debugging impossible
+- Let errors surface immediately so they can be properly diagnosed and fixed
+- If something is expected to exist (like DOM elements or templates), don't provide fallbacks - fix the root cause instead
+- Use proper error logging, but never silently continue with fallback behavior
+
 ### Testing
 - Always add tests for any new features you implement
 - Write tests using "shoulda", not "rspec"

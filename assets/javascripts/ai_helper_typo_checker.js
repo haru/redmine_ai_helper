@@ -698,21 +698,12 @@ class AiHelperTypoChecker {
 
       // Clone the accept button from ERB template
       const acceptBtnTemplate = document.querySelector('.ai-helper-typo-accept-btn-template');
-      const acceptBtn = acceptBtnTemplate ? acceptBtnTemplate.cloneNode(true) : this.createFallbackAcceptButton();
+      const acceptBtn = acceptBtnTemplate.cloneNode(true);
       acceptBtn.className = 'ai-helper-typo-accept-btn'; // Change class name
       acceptBtn.title = this.options.labels.acceptSuggestion || 'Accept';
       acceptBtn.style.cssText = `
-        background: #4caf50;
-        color: white;
-        border: none;
-        border-radius: 3px;
-        width: 20px;
-        height: 20px;
-        font-size: 12px;
         margin-right: 2px;
         cursor: pointer;
-        display: inline-block;
-        vertical-align: middle;
       `;
       // Use a closure to capture the suggestion object itself instead of index
       acceptBtn.addEventListener('click', (e) => {
@@ -724,20 +715,11 @@ class AiHelperTypoChecker {
 
       // Clone the reject button from ERB template
       const rejectBtnTemplate = document.querySelector('.ai-helper-typo-reject-btn-template');
-      const rejectBtn = rejectBtnTemplate ? rejectBtnTemplate.cloneNode(true) : this.createFallbackRejectButton();
+      const rejectBtn = rejectBtnTemplate.cloneNode(true);
       rejectBtn.className = 'ai-helper-typo-reject-btn'; // Change class name
       rejectBtn.title = this.options.labels.dismissSuggestion || 'Reject';
       rejectBtn.style.cssText = `
-        background: #f44336;
-        color: white;
-        border: none;
-        border-radius: 3px;
-        width: 20px;
-        height: 20px;
-        font-size: 12px;
         cursor: pointer;
-        display: inline-block;
-        vertical-align: middle;
       `;
       rejectBtn.addEventListener('click', (e) => {
         e.preventDefault(); // Prevent any form submission
@@ -1262,21 +1244,6 @@ class AiHelperTypoChecker {
     this.scrollableKeydownHandler = null;
   }
 
-  // Fallback method to create accept button if template is not found
-  createFallbackAcceptButton() {
-    const acceptBtn = document.createElement('button');
-    acceptBtn.type = 'button';
-    acceptBtn.innerHTML = '✓';
-    return acceptBtn;
-  }
-
-  // Fallback method to create reject button if template is not found
-  createFallbackRejectButton() {
-    const rejectBtn = document.createElement('button');
-    rejectBtn.type = 'button';
-    rejectBtn.innerHTML = '✗';
-    return rejectBtn;
-  }
 }
 
 window.AiHelperTypoChecker = AiHelperTypoChecker;

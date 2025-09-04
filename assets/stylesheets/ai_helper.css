@@ -681,7 +681,9 @@ table.ai-helper-sub-issues-table td {
 .ai-helper-typo-accept-btn,
 .ai-helper-typo-reject-btn {
   /* Similar to inline-suggestion styling but as buttons */
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 20px;
   height: 20px;
   font-size: 12px;
@@ -690,15 +692,23 @@ table.ai-helper-sub-issues-table td {
   cursor: pointer;
   vertical-align: middle;
   text-align: center;
-  line-height: 18px;
   margin-right: 2px;
   pointer-events: auto;
   position: relative;
+  padding: 0;
 }
 
 .ai-helper-typo-accept-btn {
   background: #4caf50;
   color: white;
+}
+
+.ai-helper-typo-accept-btn svg.icon-svg {
+  stroke: white;
+  stroke-width: 2;
+  width: 14px;
+  height: 14px;
+  vertical-align: middle;
 }
 
 .ai-helper-typo-accept-btn:hover {
@@ -708,6 +718,14 @@ table.ai-helper-sub-issues-table td {
 .ai-helper-typo-reject-btn {
   background: #f44336;
   color: white;
+}
+
+.ai-helper-typo-reject-btn svg.icon-svg {
+  stroke: white;
+  stroke-width: 2;
+  width: 14px;
+  height: 14px;
+  vertical-align: middle;
 }
 
 .ai-helper-typo-reject-btn:hover {

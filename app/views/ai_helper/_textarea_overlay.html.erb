@@ -16,7 +16,7 @@
         <%= t('ai_helper.autocompletion.common_toggle_label') %>
       </label>
     </span>
-    
+
     <!-- Typo check button -->
     <%= link_to "javascript:void(0)", id: "ai-helper-typo-check-description-btn", class: "icon icon-edit" do %>
       <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
@@ -45,7 +45,7 @@
         <%= t('ai_helper.autocompletion.common_toggle_label') %>
       </label>
     </span>
-    
+
     <!-- Typo check button -->
     <%= link_to "javascript:void(0)", id: "ai-helper-typo-check-notes-btn", class: "icon icon-edit" do %>
       <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
@@ -214,7 +214,7 @@ function initializeIssueTypoChecker() {
   const issueNotesTextarea = document.getElementById('issue_notes');
   const descButton = document.getElementById('ai-helper-typo-check-description-btn');
   const notesButton = document.getElementById('ai-helper-typo-check-notes-btn');
-  
+
   if (typeof AiHelperTypoChecker !== 'undefined') {
     if (issueDescTextarea && descButton) {
       const descTypoChecker = new AiHelperTypoChecker(issueDescTextarea, {
@@ -232,13 +232,13 @@ function initializeIssueTypoChecker() {
         }
       });
       descTypoChecker.init();
-      
+
       // Bind existing button directly
       descButton.addEventListener('click', () => {
         descTypoChecker.checkTypos();
       });
     }
-    
+
     if (issueNotesTextarea && notesButton) {
       const notesTypoChecker = new AiHelperTypoChecker(issueNotesTextarea, {
         endpoint: '<%= ai_helper_check_typos_path(project) %>',
@@ -255,7 +255,7 @@ function initializeIssueTypoChecker() {
         }
       });
       notesTypoChecker.init();
-      
+
       // Bind existing button directly
       notesButton.addEventListener('click', () => {
         notesTypoChecker.checkTypos();
@@ -273,3 +273,9 @@ setTimeout( function() {
 <% else %>
 <!-- AI Helper auto-completion not available (project module disabled or insufficient permissions) -->
 <% end %>
+
+<!-- Hidden templates for typo check buttons -->
+<div id="ai-helper-typo-button-templates" style="display: none;">
+  <button type="button" class="ai-helper-typo-accept-btn-template"><%= sprite_icon("ai-helper-check", plugin: :redmine_ai_helper) %></button>
+  <button type="button" class="ai-helper-typo-reject-btn-template"><%= sprite_icon("ai-helper-x", plugin: :redmine_ai_helper) %></button>
+</div>
