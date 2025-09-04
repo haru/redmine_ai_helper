@@ -593,7 +593,7 @@ class AiHelperTypoChecker {
         tooltip.textContent = reasonsArray[0];
       } else {
         // No reasons - show basic correction info
-        tooltip.innerHTML = `修正候補:<br><strong>"${suggestion.original.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"</strong><br>↓<br><strong>"${suggestion.corrected.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"</strong>`;
+        tooltip.innerHTML = `${this.options.labels.correctionTooltip}:<br><strong>"${suggestion.original.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"</strong><br>↓<br><strong>"${suggestion.corrected.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"</strong>`;
       }
       
       // Style the tooltip (moved outside the if block)
@@ -790,7 +790,7 @@ class AiHelperTypoChecker {
         console.log('Found correct position, updating suggestion position from', suggestion.position, 'to', correctPos);
         suggestion.position = correctPos;
       } else {
-        alert('修正適用に失敗しました。テキストの位置が見つかりません: ' + suggestion.original);
+        alert(this.options.labels.applyFailed + ': ' + suggestion.original);
         this.isProcessingSuggestion = false;
         return;
       }
@@ -877,7 +877,7 @@ class AiHelperTypoChecker {
         console.log('Found correct position, updating suggestion position from', suggestion.position, 'to', correctPos);
         suggestion.position = correctPos;
       } else {
-        alert('修正適用に失敗しました。テキストの位置が見つかりません: ' + suggestion.original);
+        alert(this.options.labels.applyFailed + ': ' + suggestion.original);
         this.isProcessingSuggestion = false;
         return;
       }

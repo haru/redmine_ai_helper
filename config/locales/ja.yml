@@ -41,6 +41,8 @@ ja:
       checking: "チェック中..."
       error_occurred: "エラーが発生しました"
       copy_to_clipboard: "クリップボードにコピー"
+      correction_tooltip: "修正候補"
+      apply_failed: "修正適用に失敗しました。テキストの位置が見つかりません"
     generate_sub_issues:
       title: "AIヘルパーで子チケットを作成"
       instructions: "指示を入力してください。"
