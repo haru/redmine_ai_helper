@@ -47,7 +47,7 @@ class AiHelperTypoChecker {
     // Position panel at bottom-right of textarea
     const parent = this.textarea.parentNode;
     if (window.getComputedStyle(parent).position === 'static') {
-      parent.style.position = 'relative';
+      parent.classList.add('ai-helper-textarea-parent-relative');
     }
     
     // Move control panel to textarea's parent if not already there
@@ -142,7 +142,7 @@ class AiHelperTypoChecker {
     // Ensure parent has relative positioning for overlay (same as autocomplete)
     const parent = this.textarea.parentNode;
     if (window.getComputedStyle(parent).position === 'static') {
-      parent.style.position = 'relative';
+      parent.classList.add('ai-helper-textarea-parent-relative');
     }
 
     // Insert overlay after textarea (same as autocomplete)
@@ -152,10 +152,7 @@ class AiHelperTypoChecker {
     this.updateOverlayPosition();
 
     // Ensure textarea is above overlay and can receive input (same as autocomplete)
-    this.textarea.style.position = 'relative';
-    this.textarea.style.zIndex = '10'; // Higher z-index to ensure textarea is on top
-    // Keep background transparent to show overlay suggestions
-    this.textarea.style.backgroundColor = 'transparent';
+    this.textarea.classList.add('ai-helper-textarea-positioned');
   }
 
   findExistingButton() {
@@ -197,7 +194,7 @@ class AiHelperTypoChecker {
         console.log('Ignoring input event during suggestion processing');
         return;
       }
-      if (this.overlay && this.overlay.style.display === 'block') {
+      if (this.overlay && this.isOverlayActive()) {
         console.log('Hiding overlay due to input event');
         this.hideOverlay();
       }
@@ -209,7 +206,7 @@ class AiHelperTypoChecker {
         console.log('Ignoring keydown during suggestion processing');
         return;
       }
-      if (e.key === 'Escape' && this.overlay && this.overlay.style.display === 'block') {
+      if (e.key === 'Escape' && this.overlay && this.isOverlayActive()) {
         console.log('Hiding overlay due to Escape key');
         this.hideOverlay();
       }
@@ -221,7 +218,7 @@ class AiHelperTypoChecker {
         console.log('Ignoring document click during suggestion processing');
         return;
       }
-      if (this.overlay && this.overlay.style.display === 'block' && 
+      if (this.overlay && this.isOverlayActive() && 
           !this.overlay.contains(e.target) && 
           e.target !== this.checkButton &&
           e.target !== this.textarea) {
@@ -232,7 +229,7 @@ class AiHelperTypoChecker {
 
     // Disable autocomplete when typo overlay is active
     this.textarea.addEventListener('focus', () => {
-      if (this.overlay && this.overlay.style.display === 'block') {
+      if (this.overlay && this.isOverlayActive()) {
         this.disableAutocompletion();
       }
     });
@@ -369,17 +366,17 @@ class AiHelperTypoChecker {
       
       // Update control panel position and show it
       this.updateControlPanelPosition();
-      this.controlPanel.style.display = 'block';
+      this.controlPanel.classList.add('ai-helper-control-panel-positioned');
 
       // Get textarea background color for overlay
       const bgColor = this.getTextareaBackgroundColor();
       this.overlay.style.backgroundColor = bgColor;
 
       // Hide textarea text and show overlay content with suggestions
-      this.textarea.style.color = 'transparent';
+      this.textarea.classList.add('ai-helper-text-transparent');
 
       // Show overlay
-      this.overlay.style.display = 'block';
+      this.overlay.classList.add('ai-helper-typo-overlay-active');
       this.isOverlayVisible = true;
 
       // Sync scroll position with textarea
@@ -530,7 +527,7 @@ class AiHelperTypoChecker {
 
     let currentPosition = 0;
     let overlayContent = document.createElement('div');
-    overlayContent.style.position = 'relative';
+    overlayContent.classList.add('ai-helper-overlay-content');
     overlayContent.style.lineHeight = window.getComputedStyle(this.textarea).lineHeight;
 
     groupedSuggestions.forEach((suggestion, sortedIndex) => {
@@ -550,7 +547,7 @@ class AiHelperTypoChecker {
         console.log('Before text:', JSON.stringify(beforeText), 'Length:', beforeText.length);
         const beforeSpan = document.createElement('span');
         beforeSpan.textContent = beforeText;
-        beforeSpan.style.color = '#000000';
+        beforeSpan.classList.add('ai-helper-text-black');
         overlayContent.appendChild(beforeSpan);
       }
 
@@ -558,11 +555,7 @@ class AiHelperTypoChecker {
       const typoSpan = document.createElement('span');
       typoSpan.className = 'ai-helper-typo-original';
       typoSpan.textContent = suggestion.original;
-      typoSpan.style.textDecoration = 'line-through';
-      typoSpan.style.color = '#ff6b6b';
-      typoSpan.style.backgroundColor = '#ffebee';
-      typoSpan.style.cursor = 'help';
-      typoSpan.style.position = 'relative';
+      typoSpan.classList.add('ai-helper-typo-span');
       
       // Add tooltip functionality for showing correction reasons
       // Always show tooltip - with reasons if available, or basic info otherwise
@@ -581,7 +574,7 @@ class AiHelperTypoChecker {
       
       // Create custom tooltip element
       const tooltip = document.createElement('div');
-      tooltip.className = 'ai-helper-typo-tooltip';
+      tooltip.className = 'ai-helper-tooltip';
       
       if (hasReasons && reasonsArray.length > 1) {
         // Multiple reasons - show as bullet list
@@ -596,36 +589,11 @@ class AiHelperTypoChecker {
         tooltip.innerHTML = `${this.options.labels.correctionTooltip}:<br><strong>"${suggestion.original.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"</strong><br>↓<br><strong>"${suggestion.corrected.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"</strong>`;
       }
       
-      // Style the tooltip (moved outside the if block)
-      tooltip.style.display = 'none';
-      tooltip.style.position = 'fixed'; // Use fixed positioning to avoid overlay clipping
-      tooltip.style.top = '100%';
-      tooltip.style.left = '50%';
-      tooltip.style.transform = 'translateX(-50%)';
-      tooltip.style.backgroundColor = '#333';
-      tooltip.style.color = 'white';
-      tooltip.style.padding = '8px 12px';
-      tooltip.style.borderRadius = '4px';
-      tooltip.style.fontSize = '12px';
-      tooltip.style.lineHeight = '1.4';
-      tooltip.style.zIndex = '10001'; // Higher than overlay
-      tooltip.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
-      tooltip.style.marginTop = '5px';
-      tooltip.style.maxWidth = '300px';
-      tooltip.style.whiteSpace = 'normal';
-      tooltip.style.textAlign = 'left';
-      tooltip.style.overflowWrap = 'break-word';
-      tooltip.style.pointerEvents = 'none'; // Prevent interference with mouse events
+      // Tooltip styling is now handled by CSS classes
       
       // Add arrow pointing upward (since tooltip is now below)
       const arrow = document.createElement('div');
-      arrow.style.position = 'absolute';
-      arrow.style.bottom = '100%';
-      arrow.style.left = '50%';
-      arrow.style.marginLeft = '-5px';
-      arrow.style.borderWidth = '5px';
-      arrow.style.borderStyle = 'solid';
-      arrow.style.borderColor = 'transparent transparent #333 transparent';
+      arrow.className = 'ai-helper-tooltip-arrow';
       tooltip.appendChild(arrow);
       
       typoSpan.appendChild(tooltip);
@@ -661,21 +629,17 @@ class AiHelperTypoChecker {
           // Show above instead
           tooltip.style.top = (spanRect.top - estimatedTooltipHeight - 5) + 'px';
           // Change arrow direction
-          arrow.style.bottom = 'auto';
-          arrow.style.top = '100%';
-          arrow.style.borderColor = '#333 transparent transparent transparent';
+          arrow.classList.add('ai-helper-tooltip-arrow-up');
         } else {
           // Show below (default)
-          arrow.style.top = 'auto';
-          arrow.style.bottom = '100%';
-          arrow.style.borderColor = 'transparent transparent #333 transparent';
+          // Default arrow direction (down) is handled by CSS class
         }
         
-        tooltip.style.display = 'block';
+        tooltip.classList.add('ai-helper-tooltip-visible');
       });
       
       typoSpan.addEventListener('mouseleave', () => {
-        tooltip.style.display = 'none';
+        tooltip.classList.remove('ai-helper-tooltip-visible');
       });
       
       overlayContent.appendChild(typoSpan);
@@ -684,27 +648,20 @@ class AiHelperTypoChecker {
       const correctionSpan = document.createElement('span');
       correctionSpan.className = 'ai-helper-typo-correction';
       correctionSpan.textContent = suggestion.corrected;
-      correctionSpan.style.color = '#4caf50';
-      correctionSpan.style.backgroundColor = '#e8f5e8';
-      correctionSpan.style.fontWeight = 'bold';
+      correctionSpan.classList.add('ai-helper-correction-span');
       overlayContent.appendChild(correctionSpan);
 
       // Add accept/reject buttons
       const buttonsContainer = document.createElement('span');
       buttonsContainer.className = 'ai-helper-typo-buttons';
-      buttonsContainer.style.display = 'inline-block';
-      buttonsContainer.style.marginLeft = '4px';
-      buttonsContainer.style.verticalAlign = 'middle';
+      buttonsContainer.classList.add('ai-helper-buttons-container');
 
       // Clone the accept button from ERB template
       const acceptBtnTemplate = document.querySelector('.ai-helper-typo-accept-btn-template');
       const acceptBtn = acceptBtnTemplate.cloneNode(true);
       acceptBtn.className = 'ai-helper-typo-accept-btn'; // Change class name
       acceptBtn.title = this.options.labels.acceptSuggestion || 'Accept';
-      acceptBtn.style.cssText = `
-        margin-right: 2px;
-        cursor: pointer;
-      `;
+      // Button styling handled by CSS classes
       // Use a closure to capture the suggestion object itself instead of index
       acceptBtn.addEventListener('click', (e) => {
         e.preventDefault(); // Prevent any form submission
@@ -718,9 +675,7 @@ class AiHelperTypoChecker {
       const rejectBtn = rejectBtnTemplate.cloneNode(true);
       rejectBtn.className = 'ai-helper-typo-reject-btn'; // Change class name
       rejectBtn.title = this.options.labels.dismissSuggestion || 'Reject';
-      rejectBtn.style.cssText = `
-        cursor: pointer;
-      `;
+      // Button styling handled by CSS classes
       rejectBtn.addEventListener('click', (e) => {
         e.preventDefault(); // Prevent any form submission
         e.stopPropagation(); // Stop event bubbling
@@ -742,7 +697,7 @@ class AiHelperTypoChecker {
       const remainingText = text.substring(currentPosition);
       const remainingSpan = document.createElement('span');
       remainingSpan.textContent = remainingText;
-      remainingSpan.style.color = '#000000';
+      remainingSpan.classList.add('ai-helper-text-black');
       overlayContent.appendChild(remainingSpan);
     }
 
@@ -1038,7 +993,7 @@ class AiHelperTypoChecker {
     console.log('hideOverlay called');
     console.trace('hideOverlay call stack');
     if (this.overlay) {
-      this.overlay.style.display = 'none';
+      this.overlay.classList.remove('ai-helper-typo-overlay-active', 'ai-helper-typo-overlay-scrollable');
       this.overlay.innerHTML = '';
       this.overlay.style.backgroundColor = 'transparent';
       
@@ -1048,11 +1003,11 @@ class AiHelperTypoChecker {
     
     // Hide control panel
     if (this.controlPanel) {
-      this.controlPanel.style.display = 'none';
+      this.controlPanel.classList.remove('ai-helper-control-panel-positioned');
     }
     
     this.suggestions = [];
-    this.textarea.style.color = '';
+    this.textarea.classList.remove('ai-helper-text-transparent');
     this.isOverlayVisible = false;
     
     // Re-enable autocomplete
@@ -1065,7 +1020,7 @@ class AiHelperTypoChecker {
     this.overlay.style.backgroundColor = bgColor;
     
     this.overlay.innerHTML = `
-      <div class="ai-helper-no-suggestions" style="
+      <div class="ai-helper-message-container" style="
         position: absolute;
         top: 50%;
         left: 50%;
@@ -1077,11 +1032,11 @@ class AiHelperTypoChecker {
         text-align: center;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       ">
-        <h4 style="margin: 0 0 10px 0; color: #333;">${this.options.labels.noSuggestions || 'No typos or errors found'}</h4>
-        <p style="margin: 0; color: #666;">The text appears to be error-free.</p>
+        <h4 class="ai-helper-message-title ai-helper-message-title-normal">${this.options.labels.noSuggestions || 'No typos or errors found'}</h4>
+        <p class="ai-helper-message-text">The text appears to be error-free.</p>
       </div>
     `;
-    this.overlay.style.display = 'block';
+    this.overlay.classList.add('ai-helper-typo-overlay-active');
     setTimeout(() => this.hideOverlay(), 3000);
   }
 
@@ -1103,11 +1058,11 @@ class AiHelperTypoChecker {
         text-align: center;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       ">
-        <h4 style="margin: 0 0 10px 0; color: #f44336;">${this.options.labels.errorOccurred || 'An error occurred'}</h4>
-        <p style="margin: 0; color: #666;">Please try again later.</p>
+        <h4 class="ai-helper-message-title ai-helper-message-title-error">${this.options.labels.errorOccurred || 'An error occurred'}</h4>
+        <p class="ai-helper-message-text">Please try again later.</p>
       </div>
     `;
-    this.overlay.style.display = 'block';
+    this.overlay.classList.add('ai-helper-typo-overlay-active');
     setTimeout(() => this.hideOverlay(), 3000);
   }
 
@@ -1134,6 +1089,11 @@ class AiHelperTypoChecker {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
   }
 
+  // Helper method to check if overlay is visible using CSS classes
+  isOverlayActive() {
+    return this.overlay && this.overlay.classList.contains('ai-helper-typo-overlay-active');
+  }
+
   // Sync overlay scroll with textarea scroll
   syncScroll() {
     if (this.overlay && this.textarea) {
@@ -1155,8 +1115,7 @@ class AiHelperTypoChecker {
     if (contentHeight > overlayHeight) {
       console.log('TypoChecker Debug - Enabling scrolling mode');
       // Content exceeds height, enable scrolling
-      this.overlay.style.overflowY = 'auto';
-      this.overlay.style.overflowX = 'hidden';
+      this.overlay.classList.add('ai-helper-typo-overlay-scrollable');
       
       // Enable pointer events to allow scrolling interaction
       this.overlay.style.pointerEvents = 'auto';
