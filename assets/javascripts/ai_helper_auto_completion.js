@@ -467,11 +467,7 @@ class AiHelperAutoCompletion {
     const contentHeight = this.overlay.scrollHeight;
     const overlayHeight = this.overlay.clientHeight;
     
-    // Debug logging
-    console.log('AutoCompletion Debug - contentHeight:', contentHeight, 'overlayHeight:', overlayHeight);
-    
     if (contentHeight > overlayHeight) {
-      console.log('AutoCompletion Debug - Enabling scrolling mode');
       // Content exceeds height, enable scrolling
       this.overlay.style.overflowY = 'auto';
       this.overlay.style.overflowX = 'hidden';
@@ -491,8 +487,6 @@ class AiHelperAutoCompletion {
       
       // Add event listeners to forward events to textarea when needed
       this.addScrollableEventListeners();
-      
-      console.log('AutoCompletion Debug - Scrolling enabled, z-index:', this.overlay.style.zIndex, 'pointerEvents:', this.overlay.style.pointerEvents);
     } else {
       // Content fits within height, use default behavior
       this.overlay.style.overflowY = 'hidden';

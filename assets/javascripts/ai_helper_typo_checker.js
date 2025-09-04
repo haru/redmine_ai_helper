@@ -40,7 +40,6 @@ class AiHelperTypoChecker {
     }
     
     if (!this.controlPanel) {
-      console.warn('Typo control panel not found for textarea:', this.textarea.id);
       return;
     }
 
@@ -169,7 +168,6 @@ class AiHelperTypoChecker {
     }
     
     if (!this.checkButton) {
-      console.warn('Typo check button not found for textarea:', this.textarea.id);
     }
   }
 
@@ -180,7 +178,6 @@ class AiHelperTypoChecker {
       
       // Create bound handler for later removal
       this.checkTyposHandler = () => {
-        console.log('Check button clicked');
         this.checkTypos();
       };
       
@@ -189,40 +186,31 @@ class AiHelperTypoChecker {
 
     // Hide overlay when user starts typing or clicks outside
     this.textarea.addEventListener('input', () => {
-      console.log('Input event triggered, isProcessingSuggestion:', this.isProcessingSuggestion, 'overlay display:', this.overlay ? this.overlay.style.display : 'no overlay');
       if (this.isProcessingSuggestion) {
-        console.log('Ignoring input event during suggestion processing');
         return;
       }
       if (this.overlay && this.isOverlayActive()) {
-        console.log('Hiding overlay due to input event');
         this.hideOverlay();
       }
     });
 
     document.addEventListener('keydown', (e) => {
-      console.log('Keydown event, key:', e.key, 'isProcessingSuggestion:', this.isProcessingSuggestion);
       if (this.isProcessingSuggestion) {
-        console.log('Ignoring keydown during suggestion processing');
         return;
       }
       if (e.key === 'Escape' && this.overlay && this.isOverlayActive()) {
-        console.log('Hiding overlay due to Escape key');
         this.hideOverlay();
       }
     });
 
     document.addEventListener('click', (e) => {
-      console.log('Document click event, target:', e.target, 'isProcessingSuggestion:', this.isProcessingSuggestion);
       if (this.isProcessingSuggestion) {
-        console.log('Ignoring document click during suggestion processing');
         return;
       }
       if (this.overlay && this.isOverlayActive() && 
           !this.overlay.contains(e.target) && 
           e.target !== this.checkButton &&
           e.target !== this.textarea) {
-        console.log('Hiding overlay due to document click outside overlay');
         this.hideOverlay();
       }
     });
@@ -241,7 +229,6 @@ class AiHelperTypoChecker {
   }
 
   disableAutocompletion() {
-    console.log('disableAutocompletion called, isProcessingSuggestion:', this.isProcessingSuggestion);
     // Disable autocomplete functionality when typo overlay is active
     if (window.aiHelperInstances) {
       const instances = window.aiHelperInstances;
@@ -277,16 +264,12 @@ class AiHelperTypoChecker {
   }
 
   async checkTypos() {
-    console.log('checkTypos called, isCheckingTypos:', this.isCheckingTypos);
-    
     // Prevent duplicate execution
     if (this.isCheckingTypos) {
-      console.log('Already checking typos, skipping duplicate call');
       return;
     }
     
     const text = this.textarea.value;
-    console.log('Text content being checked:', JSON.stringify(text));
     
     if (!text || text.length < this.options.minLength) {
       return;
@@ -310,7 +293,6 @@ class AiHelperTypoChecker {
     }
 
     try {
-      console.log('Making API request to:', this.options.endpoint);
       const response = await fetch(this.options.endpoint, {
         method: 'POST',
         headers: {
@@ -327,8 +309,6 @@ class AiHelperTypoChecker {
       }
 
       const data = await response.json();
-      console.log('Received suggestions:', data.suggestions);
-      console.log('First suggestion detail:', data.suggestions && data.suggestions[0]);
       this.suggestions = data.suggestions || [];
       this.displayTypoOverlay();
     } catch (error) {
@@ -348,8 +328,6 @@ class AiHelperTypoChecker {
   }
 
   displayTypoOverlay() {
-    console.log('displayTypoOverlay called, isOverlayVisible:', this.isOverlayVisible, 'suggestions count:', this.suggestions.length);
-    console.trace('displayTypoOverlay call stack');
     
     if (this.suggestions.length === 0) {
       this.showNoSuggestionsMessage();
@@ -394,11 +372,7 @@ class AiHelperTypoChecker {
   }
 
   buildOverlayContent() {
-    console.log('buildOverlayContent called, suggestions count:', this.suggestions.length);
-    console.log('All suggestions:', this.suggestions);
-    
     const text = this.textarea.value;
-    console.log('Textarea text:', JSON.stringify(text), 'Length:', text.length);
     this.overlay.innerHTML = '';
 
     // Validate and correct suggestions by position 
@@ -406,26 +380,17 @@ class AiHelperTypoChecker {
       const replacementLength = suggestion.length || suggestion.original.length;
       const actualText = text.substring(suggestion.position, suggestion.position + replacementLength);
       
-      console.log('Validating suggestion:', {
-        original: suggestion.original,
-        actualText: actualText,
-        position: suggestion.position,
-        length: replacementLength,
-        matches: actualText === suggestion.original
-      });
       
       // Basic validation - position should be valid
       if (suggestion.position < 0 || 
           suggestion.position >= text.length ||
           !suggestion.original || 
           !suggestion.corrected) {
-        console.warn('Invalid suggestion detected (basic validation failed):', suggestion);
         return null;
       }
       
       // If text doesn't match, try to find the correct position
       if (actualText !== suggestion.original) {
-        console.log('Text mismatch, searching for correct position...');
         
         // Find all occurrences of the original text
         const allPositions = [];
@@ -450,14 +415,12 @@ class AiHelperTypoChecker {
             }
           }
           
-          console.log('Found correct position for', suggestion.original, 'at', bestPosition, 'instead of', suggestion.position, '(all positions:', allPositions, ')');
           // Create corrected suggestion
           return {
             ...suggestion,
             position: bestPosition
           };
         } else {
-          console.warn('Could not find', suggestion.original, 'in text. Skipping suggestion.');
           return null;
         }
       }
@@ -466,20 +429,11 @@ class AiHelperTypoChecker {
     }).filter(s => s !== null);
     
     const sortedSuggestions = validatedSuggestions.sort((a, b) => a.position - b.position);
-    console.log('All suggestions after filtering:', sortedSuggestions.length, 'out of', this.suggestions.length);
-    console.log('Sample filtered suggestion:', sortedSuggestions[0]);
 
     // Group suggestions by position and original text to handle duplicates
     // Only group suggestions that have EXACTLY the same position AND original text
     const groupedSuggestions = [];
     sortedSuggestions.forEach(suggestion => {
-      console.log('Processing suggestion for grouping:', {
-        original: suggestion.original,
-        corrected: suggestion.corrected,
-        reason: suggestion.reason,
-        position: suggestion.position,
-        length: suggestion.length
-      });
       
       // Find existing group with EXACT same position and original text
       const existingGroup = groupedSuggestions.find(group => 
@@ -489,7 +443,6 @@ class AiHelperTypoChecker {
       );
       
       if (existingGroup) {
-        console.log('Found existing group at same position with same text, merging...');
         // Add this suggestion to existing group
         existingGroup.suggestions.push(suggestion);
         // Combine reasons
@@ -501,9 +454,7 @@ class AiHelperTypoChecker {
             (suggestion.confidence === 'medium' && existingGroup.corrected === existingGroup.suggestions[0].corrected)) {
           existingGroup.corrected = suggestion.corrected;
         }
-        console.log('Added to existing group, updated reasons:', existingGroup.reasons);
       } else {
-        console.log('Creating new group for unique position/text combination');
         // Create new group
         const newGroup = {
           position: suggestion.position,
@@ -515,12 +466,9 @@ class AiHelperTypoChecker {
           confidence: suggestion.confidence
         };
         groupedSuggestions.push(newGroup);
-        console.log('Created new group with reasons:', newGroup.reasons);
       }
     });
 
-    console.log('Grouped suggestions:', groupedSuggestions.length, 'groups from', sortedSuggestions.length, 'suggestions');
-    console.log('Sample grouped suggestion:', groupedSuggestions[0]);
 
     // Update the main suggestions array with grouped data
     this.suggestions = groupedSuggestions;
@@ -538,13 +486,10 @@ class AiHelperTypoChecker {
         s.corrected === suggestion.corrected
       );
       
-      console.log('Building suggestion at sortedIndex:', sortedIndex, 'originalIndex:', originalIndex, 'suggestion:', suggestion);
-      console.log('Current position:', currentPosition, 'Suggestion position:', suggestion.position, 'Original text:', suggestion.original, 'Original length:', suggestion.original.length);
 
       // Add text before the typo
       if (currentPosition < suggestion.position) {
         const beforeText = text.substring(currentPosition, suggestion.position);
-        console.log('Before text:', JSON.stringify(beforeText), 'Length:', beforeText.length);
         const beforeSpan = document.createElement('span');
         beforeSpan.textContent = beforeText;
         beforeSpan.classList.add('ai-helper-text-black');
@@ -559,14 +504,6 @@ class AiHelperTypoChecker {
       
       // Add tooltip functionality for showing correction reasons
       // Always show tooltip - with reasons if available, or basic info otherwise
-      console.log('Creating tooltip for suggestion:', {
-        original: suggestion.original,
-        corrected: suggestion.corrected,
-        reason: suggestion.reason,
-        reasons: suggestion.reasons,
-        hasOriginalReason: suggestion.reason && suggestion.reason.trim(),
-        hasReasonsArray: suggestion.reasons && suggestion.reasons.length > 0
-      });
       
       // Handle both original reason field and grouped reasons array
       const reasonsArray = suggestion.reasons || (suggestion.reason && suggestion.reason.trim() ? [suggestion.reason] : []);
@@ -666,7 +603,6 @@ class AiHelperTypoChecker {
       acceptBtn.addEventListener('click', (e) => {
         e.preventDefault(); // Prevent any form submission
         e.stopPropagation(); // Stop event bubbling
-        console.log('ACCEPT button clicked for suggestion:', suggestion.original);
         this.acceptSuggestionBySuggestion(suggestion);
       });
 
@@ -679,7 +615,6 @@ class AiHelperTypoChecker {
       rejectBtn.addEventListener('click', (e) => {
         e.preventDefault(); // Prevent any form submission
         e.stopPropagation(); // Stop event bubbling
-        console.log('REJECT button clicked for suggestion:', suggestion.original);
         this.rejectSuggestionBySuggestion(suggestion);
       });
 
@@ -689,7 +624,6 @@ class AiHelperTypoChecker {
 
       // Always use original.length for consistent position calculation
       currentPosition = suggestion.position + suggestion.original.length;
-      console.log('Original length:', suggestion.original.length, 'Updated currentPosition to:', currentPosition);
     });
 
     // Add remaining text after last suggestion
@@ -705,16 +639,10 @@ class AiHelperTypoChecker {
   }
 
   acceptSuggestion(index) {
-    console.log('acceptSuggestion called with index:', index);
-    console.log('Current suggestions:', this.suggestions);
-    
     const suggestion = this.suggestions[index];
     if (!suggestion) {
-      console.log('No suggestion found at index:', index);
       return;
     }
-
-    console.log('Accepting suggestion:', suggestion);
 
     // Set processing flag to prevent input event from hiding overlay
     this.isProcessingSuggestion = true;
@@ -723,14 +651,6 @@ class AiHelperTypoChecker {
     
     // Verify the text matches what we expect at the position
     const actualText = text.substring(suggestion.position, suggestion.position + suggestion.original.length);
-    console.log('Applying suggestion:', {
-      position: suggestion.position,
-      original: suggestion.original,
-      corrected: suggestion.corrected,
-      actualTextAtPosition: actualText,
-      serverLength: suggestion.length,
-      originalLength: suggestion.original.length
-    });
     
     // Validate that the text at the position matches what we expect
     if (actualText !== suggestion.original) {
@@ -742,7 +662,6 @@ class AiHelperTypoChecker {
       // Try to find the correct position one more time
       const correctPos = text.indexOf(suggestion.original);
       if (correctPos !== -1 && correctPos !== suggestion.position) {
-        console.log('Found correct position, updating suggestion position from', suggestion.position, 'to', correctPos);
         suggestion.position = correctPos;
       } else {
         alert(this.options.labels.applyFailed + ': ' + suggestion.original);
@@ -763,8 +682,6 @@ class AiHelperTypoChecker {
     
     // Remove this suggestion
     this.suggestions.splice(index, 1);
-    
-    console.log('Remaining suggestions after removal:', this.suggestions);
 
     if (this.suggestions.length === 0) {
       this.hideOverlay();
@@ -783,9 +700,6 @@ class AiHelperTypoChecker {
   }
 
   acceptSuggestionBySuggestion(suggestion) {
-    console.log('*** ACCEPT SUGGESTION METHOD CALLED ***');
-    console.log('acceptSuggestionBySuggestion called with suggestion:', suggestion);
-    console.log('Current suggestions:', this.suggestions);
     
     // Find the index of this suggestion group in the current array
     // Use a more flexible matching approach for grouped suggestions
@@ -801,8 +715,6 @@ class AiHelperTypoChecker {
       return;
     }
     
-    console.log('Found suggestion at index:', index);
-    
     // Set processing flag to prevent input event from hiding overlay
     this.isProcessingSuggestion = true;
 
@@ -810,14 +722,6 @@ class AiHelperTypoChecker {
     
     // Verify the text matches what we expect at the position
     const actualText = text.substring(suggestion.position, suggestion.position + suggestion.original.length);
-    console.log('Applying suggestion:', {
-      position: suggestion.position,
-      original: suggestion.original,
-      corrected: suggestion.corrected,
-      actualTextAtPosition: actualText,
-      serverLength: suggestion.length,
-      originalLength: suggestion.original.length
-    });
     
     // Validate that the text at the position matches what we expect
     if (actualText !== suggestion.original) {
@@ -829,7 +733,6 @@ class AiHelperTypoChecker {
       // Try to find the correct position one more time
       const correctPos = text.indexOf(suggestion.original);
       if (correctPos !== -1 && correctPos !== suggestion.position) {
-        console.log('Found correct position, updating suggestion position from', suggestion.position, 'to', correctPos);
         suggestion.position = correctPos;
       } else {
         alert(this.options.labels.applyFailed + ': ' + suggestion.original);
@@ -850,8 +753,6 @@ class AiHelperTypoChecker {
     
     // Remove this suggestion
     this.suggestions.splice(index, 1);
-    
-    console.log('Remaining suggestions after removal:', this.suggestions);
 
     if (this.suggestions.length === 0) {
       this.hideOverlay();
@@ -870,8 +771,6 @@ class AiHelperTypoChecker {
   }
 
   rejectSuggestionBySuggestion(suggestion) {
-    console.log('*** REJECT SUGGESTION METHOD CALLED ***');
-    console.log('rejectSuggestionBySuggestion called with suggestion:', suggestion);
     
     // Set processing flag to prevent events from hiding overlay
     this.isProcessingSuggestion = true;
@@ -890,8 +789,6 @@ class AiHelperTypoChecker {
       this.isProcessingSuggestion = false;
       return;
     }
-    
-    console.log('Found suggestion at index:', index, 'removing it');
     
     // Simply remove the suggestion without applying it
     this.suggestions.splice(index, 1);
@@ -922,7 +819,6 @@ class AiHelperTypoChecker {
   }
 
   acceptAllSuggestions() {
-    console.log('acceptAllSuggestions called, suggestions count:', this.suggestions.length);
     
     if (this.suggestions.length === 0) {
       this.hideOverlay();
@@ -940,7 +836,6 @@ class AiHelperTypoChecker {
     let successfulApplications = 0;
     
     sortedSuggestions.forEach(suggestion => {
-      console.log('Applying suggestion:', suggestion);
       
       // Verify the text matches what we expect at the position
       const actualText = text.substring(suggestion.position, suggestion.position + suggestion.original.length);
@@ -951,20 +846,12 @@ class AiHelperTypoChecker {
                suggestion.corrected + 
                text.substring(suggestion.position + suggestion.original.length);
         successfulApplications++;
-        console.log('Successfully applied suggestion:', suggestion.original, '->', suggestion.corrected);
       } else {
-        console.warn('Skipping suggestion due to text mismatch:', {
-          expected: suggestion.original,
-          actual: actualText,
-          position: suggestion.position
-        });
       }
     });
     
     // Update textarea with all changes
     this.textarea.value = text;
-    
-    console.log('Applied', successfulApplications, 'out of', sortedSuggestions.length, 'suggestions');
     
     // Clear all suggestions and hide overlay
     this.suggestions = [];
@@ -990,8 +877,6 @@ class AiHelperTypoChecker {
   }
 
   hideOverlay() {
-    console.log('hideOverlay called');
-    console.trace('hideOverlay call stack');
     if (this.overlay) {
       this.overlay.classList.remove('ai-helper-typo-overlay-active', 'ai-helper-typo-overlay-scrollable');
       this.overlay.innerHTML = '';
@@ -1109,11 +994,7 @@ class AiHelperTypoChecker {
     const contentHeight = this.overlay.scrollHeight;
     const overlayHeight = this.overlay.clientHeight;
     
-    // Debug logging
-    console.log('TypoChecker Debug - contentHeight:', contentHeight, 'overlayHeight:', overlayHeight);
-    
     if (contentHeight > overlayHeight) {
-      console.log('TypoChecker Debug - Enabling scrolling mode');
       // Content exceeds height, enable scrolling
       this.overlay.classList.add('ai-helper-typo-overlay-scrollable');
       
@@ -1132,8 +1013,6 @@ class AiHelperTypoChecker {
       
       // Add event listeners to forward events to textarea when needed
       this.addScrollableEventListeners();
-      
-      console.log('TypoChecker Debug - Scrolling enabled, z-index:', this.overlay.style.zIndex, 'pointerEvents:', this.overlay.style.pointerEvents);
     } else {
       // Content fits within height, use default behavior
       this.overlay.style.overflowY = 'hidden';
