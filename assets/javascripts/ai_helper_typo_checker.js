@@ -905,20 +905,8 @@ class AiHelperTypoChecker {
     this.overlay.style.backgroundColor = bgColor;
     
     this.overlay.innerHTML = `
-      <div class="ai-helper-message-container" style="
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: white;
-        padding: 20px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        text-align: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      ">
-        <h4 class="ai-helper-message-title ai-helper-message-title-normal">${this.options.labels.noSuggestions || 'No typos or errors found'}</h4>
-        <p class="ai-helper-message-text">The text appears to be error-free.</p>
+      <div class="box">
+        <p>${this.options.labels.noSuggestions || 'No typos or errors found'}</p>
       </div>
     `;
     this.overlay.classList.add('ai-helper-typo-overlay-active');
@@ -931,20 +919,10 @@ class AiHelperTypoChecker {
     this.overlay.style.backgroundColor = bgColor;
     
     this.overlay.innerHTML = `
-      <div class="ai-helper-typo-error" style="
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: white;
-        padding: 20px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        text-align: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      ">
-        <h4 class="ai-helper-message-title ai-helper-message-title-error">${this.options.labels.errorOccurred || 'An error occurred'}</h4>
-        <p class="ai-helper-message-text">Please try again later.</p>
+      <div class="box">
+        <div class="flash error">
+          ${this.options.labels.errorOccurred || 'An error occurred'}. Please try again later.
+        </div>
       </div>
     `;
     this.overlay.classList.add('ai-helper-typo-overlay-active');
