@@ -50,7 +50,8 @@ module RedmineAiHelper
           chat_room.send_task("leader", step["agent"], step["step"])
         end
 
-        newmessages = messages + chat_room.messages
+        newmessages = messages
+        newmessages += chat_room.messages if steps["steps"].any?
         newmessages << { role: "user", content: I18n.t("ai_helper.prompts.leader_agent.generate_final_response") }
         langfuse.create_span(name: "final_response", input: newmessages.last[:content])
         ai_helper_logger.debug "newmessages: #{newmessages}"
@@ -96,9 +97,11 @@ module RedmineAiHelper
                 },
                 required: ["agent", "step"],
               },
+              required: ["steps"],
             },
           },
         }
+
         parser = Langchain::OutputParsers::StructuredOutputParser.from_json_schema(json_schema)
         json_examples = <<~EOS
 
@@ -128,10 +131,6 @@ module RedmineAiHelper
           ```json
           {
             "steps": [
-              {
-                "agent": "leader",
-                "step": "Please create a response to the greeting 'Hello'."
-              }
             ]
           }
           ```
