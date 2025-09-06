@@ -47,6 +47,7 @@ The Redmine AI Helper Plugin adds AI chat functionality to Redmine, enhancing pr
   - Generate subtasks from issues
   - Inline issue description and wiki completion
   - Other project and Redmine-related inquiries
+  - Typo checking and correction suggestions
 - Provides a project health report
 - Supports multiple AI models and services
 - MCP server integration
@@ -87,6 +88,12 @@ You can search for similar issues using the AI Helper Plugin. This feature is on
 You can use the AI Helper Plugin to complete issue descriptions and wiki pages inline. This feature provides suggestions and completions as you type, helping you write more detailed and accurate issue descriptions and wiki pages.
 
 ![Image](https://github.com/user-attachments/assets/d8e5da82-a5bb-46bf-836b-b548a32e2ab0)
+
+## Typo Checking and Correction Suggestions
+
+You can use the AI Helper Plugin to check for typos and receive correction suggestions. This feature helps you maintain content in your issues and wiki pages by identifying and correcting spelling errors.
+
+![Image](https://github.com/user-attachments/assets/6a1e1963-f6ef-45fc-82a2-52dc377a35b1)
 
 ## Project Health Report
 
