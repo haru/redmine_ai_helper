@@ -22,7 +22,7 @@ jobs:
           echo ::set-output name=version::$VERSION
           echo ::set-output name=filename::$REPOSITORY-$VERSION
           echo ::set-output name=plugin::$REPOSITORY
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Archive
         run: |
           cd ..; zip -r ${{ steps.version.outputs.filename }}.zip ${{ steps.version.outputs.plugin }}/ -x "*.git*"; mv ${{ steps.version.outputs.filename }}.zip ${{ steps.version.outputs.plugin }}/
