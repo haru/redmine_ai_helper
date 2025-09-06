@@ -94,8 +94,12 @@ module RedmineAiHelper
                     type: "string",
                     description: "The content of the instruction",
                   },
+                  description_for_human: {
+                    type: "string",
+                    description: "Write a sentence in present progressive form to explain to the user what work is currently being done.",
+                  },
                 },
-                required: ["agent", "step"],
+                required: ["agent", "step", "description_for_human"],
               },
               required: ["steps"],
             },
@@ -114,11 +118,13 @@ module RedmineAiHelper
             "steps": [
               {
                 "agent": "project_agent",
-                "step": "Please provide the ID of the project named 'my_project'."
+                "step": "Please provide the ID of the project named 'my_project'.",
+                "description_for_human": "Retrieving the project ID for 'my_project'..."
               },
               {
                 "agent": "issue_agent",
-                "step": "Please provide the tickets related to the project ID obtained in the previous step."
+                "step": "Please provide the tickets related to the project ID obtained in the previous step.",
+                "description_for_human": "Fetching tickets related to the specified project..."
               }
             ]
           }
