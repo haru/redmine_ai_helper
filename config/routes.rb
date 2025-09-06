@@ -24,6 +24,7 @@ RedmineApp::Application.routes.draw do
   get "projects/:id/ai_helper/generate_project_health", to: "ai_helper#generate_project_health", as: "ai_helper_generate_project_health"
   post "projects/:id/ai_helper/project_health_pdf", to: "ai_helper#project_health_pdf", as: "ai_helper_project_health_pdf"
   post "projects/:id/ai_helper/project_health_markdown", to: "ai_helper#project_health_markdown", as: "ai_helper_project_health_markdown"
+  post "projects/:id/ai_helper/check_typos", to: "ai_helper#check_typos", as: "ai_helper_check_typos"
 
   get "ai_helper_settings/index", to: "ai_helper_settings#index", as: "ai_helper_setting"
   post "ai_helper_settings/index", to: "ai_helper_settings#update", as: "ai_helper_setting_update"

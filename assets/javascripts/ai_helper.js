@@ -155,14 +155,14 @@ class AiHelper {
         if (chatConversation) {
           chatConversation.scrollTop = chatConversation.scrollHeight;
         }
-
+      },
+      // onCompleteCallback
+      function(fullResponse) {
         const loaderArea = document.getElementById("ai-helper-loader-area");
         if (loaderArea) {
           loaderArea.style.display = "none";
         }
-      },
-      // onCompleteCallback
-      function(fullResponse) {
+        
         ai_helper.reload_chat();
       }
     );
@@ -236,12 +236,12 @@ class AiHelper {
       if (xhr.status === 200) {
         ai_helper.innerHTMLwithScripts(historyContainer, xhr.responseText);
       } else {
-        console.error("Failed to show chat history:", xhr.statusText);
+        console.error("Failed to reload chat conversation:", xhr.statusText);
       }
     };
 
     xhr.onerror = function () {
-      console.error("Failed to show chat history:", xhr.statusText);
+      console.error("Failed to reload chat conversation:", xhr.statusText);
     };
 
     xhr.send();
@@ -256,12 +256,12 @@ class AiHelper {
         ai_helper.close_dropdown_menu();
         ai_helper.reload_chat();
       } else {
-        console.error("Failed to clear chat conversation:", xhr.statusText);
+        console.error("Failed to reload chat conversation:", xhr.statusText);
       }
     };
 
     xhr.onerror = function () {
-      console.error("Failed to clear chat conversation:", xhr.statusText);
+      console.error("Failed to reload chat conversation:", xhr.statusText);
     };
 
     xhr.send();
@@ -367,12 +367,12 @@ class AiHelper {
         ai_helper.innerHTMLwithScripts(chatArea, xhr.responseText);
         chatArea.scrollTop = 0;
       } else {
-        console.error("Failed to jump to history:", xhr.statusText);
+        console.error("Failed to reload chat conversation:", xhr.statusText);
       }
     };
 
     xhr.onerror = function () {
-      console.error("Failed to jump to history:", xhr.statusText);
+      console.error("Failed to reload chat conversation:", xhr.statusText);
     };
 
     xhr.send();
@@ -401,12 +401,12 @@ class AiHelper {
           console.error("Failed to parse response:", e);
         }
       } else {
-        console.error("Failed to delete history:", xhr.statusText);
+        console.error("Failed to reload chat conversation:", xhr.statusText);
       }
     };
 
     xhr.onerror = function () {
-      console.error("Failed to delete history:", xhr.statusText);
+      console.error("Failed to reload chat conversation:", xhr.statusText);
     };
 
     xhr.send();

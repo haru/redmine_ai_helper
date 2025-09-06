@@ -28,8 +28,14 @@ module RedmineAiHelper
 
       # Perform a user request by generating a goal and steps for the agents to follow.
       def perform_user_request(messages, option = {}, callback = nil)
-        goal = generate_goal(messages)
+        goal_json = generate_goal(messages)
+        goal = goal_json["goal"]
+        generate_steps_required = goal_json["generate_steps_required"]
+
+        return chat(messages, option, callback) unless generate_steps_required
+
         ai_helper_logger.debug "goal: #{goal}"
+        callback.call(I18n.t("ai_helper.chat.planning") + "\n") if callback
         steps = generate_steps(goal, messages)
         ai_helper_logger.debug "steps: #{steps}"
 
@@ -47,10 +53,12 @@ module RedmineAiHelper
         chat_room.share_goal
 
         steps["steps"].each do |step|
+          callback.call("- " + step["description_for_human"] + "\n") if callback
           chat_room.send_task("leader", step["agent"], step["step"])
         end
 
-        newmessages = messages + chat_room.messages
+        newmessages = messages
+        newmessages += chat_room.messages if steps["steps"].any?
         newmessages << { role: "user", content: I18n.t("ai_helper.prompts.leader_agent.generate_final_response") }
         langfuse.create_span(name: "final_response", input: newmessages.last[:content])
         ai_helper_logger.debug "newmessages: #{newmessages}"
@@ -62,13 +70,38 @@ module RedmineAiHelper
       # Generate a goal for the agents to follow based on the user's request.
       def generate_goal(messages)
         prompt = load_prompt("leader_agent/goal")
+        json_schema = {
+          type: "object",
+          properties: {
+            goal: {
+              type: "string",
+              description: "A concise and clear goal derived from the user's request",
+            },
+            generate_steps_required: {
+              type: "boolean",
+              description: "Indicates whether step-by-step instructions are necessary to achieve the goal",
+              default: true,
+            },
+          },
+          required: ["goal", "generate_steps_required"],
+        }
+        parser = Langchain::OutputParsers::StructuredOutputParser.from_json_schema(json_schema)
+
+        prompt_text = prompt.format(
+          format_instructions: parser.get_format_instructions,
+        )
 
         newmessages = messages.dup
-        newmessages << { role: "user", content: prompt.format }
-        langfuse.create_span(name: "goal_generation", input: prompt.format)
-        answer = chat(newmessages)
-        langfuse.finish_current_span(output: answer)
-        answer
+        newmessages << { role: "user", content: prompt_text }
+        langfuse.create_span(name: "goal_generation", input: prompt_text)
+        json = chat(newmessages)
+        fix_parser = Langchain::OutputParsers::OutputFixingParser.from_llm(
+          llm: client,
+          parser: parser,
+        )
+        fixed_json = fix_parser.parse(json)
+        langfuse.finish_current_span(output: fixed_json)
+        fixed_json
       end
 
       # Generate steps for the agents to follow based on the goal.
@@ -93,12 +126,18 @@ module RedmineAiHelper
                     type: "string",
                     description: "The content of the instruction",
                   },
+                  description_for_human: {
+                    type: "string",
+                    description: "Write a sentence in present progressive form to explain to the user what work is currently being done.",
+                  },
                 },
-                required: ["agent", "step"],
+                required: ["agent", "step", "description_for_human"],
               },
+              required: ["steps"],
             },
           },
         }
+
         parser = Langchain::OutputParsers::StructuredOutputParser.from_json_schema(json_schema)
         json_examples = <<~EOS
 
@@ -111,11 +150,13 @@ module RedmineAiHelper
             "steps": [
               {
                 "agent": "project_agent",
-                "step": "Please provide the ID of the project named 'my_project'."
+                "step": "Please provide the ID of the project named 'my_project'.",
+                "description_for_human": "Retrieving the project ID for 'my_project'..."
               },
               {
                 "agent": "issue_agent",
-                "step": "Please provide the tickets related to the project ID obtained in the previous step."
+                "step": "Please provide the tickets related to the project ID obtained in the previous step.",
+                "description_for_human": "Fetching tickets related to the specified project..."
               }
             ]
           }
@@ -128,10 +169,6 @@ module RedmineAiHelper
           ```json
           {
             "steps": [
-              {
-                "agent": "leader",
-                "step": "Please create a response to the greeting 'Hello'."
-              }
             ]
           }
           ```

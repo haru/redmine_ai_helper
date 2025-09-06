@@ -1,16 +1,36 @@
 <%
   project = @wiki&.project || @project
 %>
-<% if params[:controller] == 'wiki' && params[:action] == 'edit' && project&.module_enabled?(:ai_helper) && User.current.allowed_to?(:view_ai_helper, project) && User.current.allowed_to?(:edit_wiki_pages, project) %>
+
+
+<% if params[:controller] == 'wiki' && (params[:action] == 'edit' || params[:action] == 'show') && project&.module_enabled?(:ai_helper) && User.current.allowed_to?(:view_ai_helper, project) && User.current.allowed_to?(:edit_wiki_pages, project) %>
 
 <div id="ai-helper-wiki-checkbox-container" class="ai-helper-autocompletion-controls" style="display: none;">
-  <p>
-    <input type="checkbox" id="ai-helper-autocompletion-wiki-toggle" />
-    <label for="ai-helper-autocompletion-wiki-toggle">
+  <p style="display: flex; justify-content: space-between; align-items: center;">
+    <span>
+      <input type="checkbox" id="ai-helper-autocompletion-wiki-toggle" />
+      <label for="ai-helper-autocompletion-wiki-toggle">
+        <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
+        <%= t('ai_helper.autocompletion.common_toggle_label') %>
+      </label>
+    </span>
+
+    <!-- Typo check button -->
+    <%= link_to "javascript:void(0)", id: "ai-helper-typo-check-wiki-btn", class: "icon icon-edit" do %>
       <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
-      <%= t('ai_helper.autocompletion.common_toggle_label') %>
-    </label>
+      <%= t('ai_helper.typo_check.check_button') %>
+    <% end %>
   </p>
+</div>
+
+<!-- Typo Control Panel for Wiki -->
+<div id="ai-helper-typo-control-panel-wiki" class="ai-helper-typo-control-panel" style="display: none;">
+  <button type="button" class="ai-helper-typo-apply-all-btn">
+    <%= t('ai_helper.typo_check.accept_all') %>
+  </button>
+  <button type="button" class="ai-helper-typo-close-btn">
+    <%= t('ai_helper.typo_check.close') %>
+  </button>
 </div>
 
 <script>
@@ -97,11 +117,49 @@ function initializeWikiCompletion() {
   window.aiHelperWikiCompletionInitialized = true;
 }
 
+// Initialize wiki typo checking with direct button binding
+function initializeWikiTypoChecker() {
+  const wikiTextarea = document.getElementById('content_text');
+  const wikiButton = document.getElementById('ai-helper-typo-check-wiki-btn');
+
+  if (wikiTextarea && wikiButton && typeof AiHelperTypoChecker !== 'undefined') {
+    const wikiTypoChecker = new AiHelperTypoChecker(wikiTextarea, {
+      endpoint: '<%= ai_helper_check_typos_path(project) %>',
+      labels: {
+        suggestionsTitle: '<%= t('ai_helper.typo_check.suggestions_title') %>',
+        noSuggestions: '<%= t('ai_helper.typo_check.no_suggestions') %>',
+        checkButton: '<%= t('ai_helper.typo_check.check_button') %>',
+        checking: '<%= t('ai_helper.typo_check.checking') %>',
+        acceptSuggestion: '<%= t('ai_helper.typo_check.accept_suggestion') %>',
+        dismissSuggestion: '<%= t('ai_helper.typo_check.dismiss_suggestion') %>',
+        acceptAll: '<%= t('ai_helper.typo_check.accept_all') %>',
+        dismissAll: '<%= t('ai_helper.typo_check.dismiss_all') %>',
+        errorOccurred: '<%= t('ai_helper.typo_check.error_occurred') %>',
+        correctionTooltip: '<%= t('ai_helper.typo_check.correction_tooltip') %>',
+        applyFailed: '<%= t('ai_helper.typo_check.apply_failed') %>'
+      }
+    });
+    wikiTypoChecker.init();
+
+    // Bind existing button directly
+    wikiButton.addEventListener('click', () => {
+      wikiTypoChecker.checkTypos();
+    });
+  }
+}
+
 setTimeout(function() {
   initializeWikiCompletion();
+  initializeWikiTypoChecker();
 }, 500);
 
 </script>
 <% else %>
 <!-- AI Helper wiki auto-completion not available -->
 <% end %>
+
+<!-- Hidden templates for typo check buttons -->
+<div id="ai-helper-typo-button-templates" style="display: none;">
+  <button type="button" class="ai-helper-typo-accept-btn-template"><%= sprite_icon("ai-helper-check", plugin: :redmine_ai_helper) %></button>
+  <button type="button" class="ai-helper-typo-reject-btn-template"><%= sprite_icon("ai-helper-x", plugin: :redmine_ai_helper) %></button>
+</div>

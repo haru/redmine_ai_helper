@@ -34,8 +34,8 @@ class LeaderAgentTest < ActiveSupport::TestCase
 
     should "generate goal correctly" do
       goal = @agent.generate_goal(@messages)
-      assert goal.is_a?(String)
-      assert_equal "test goal", goal
+      assert goal.is_a?(Hash)
+      assert_equal "test goal", goal["goal"]
     end
 
     should "generate steps correctly" do
@@ -85,13 +85,16 @@ module MyOpenAI
       answer = "test answer"
 
       if message.include?("clarify the user's request and set a clear goal")
-        answer = "test goal"
+        answer = {
+          "goal" => "test goal",
+          "generate_steps_required" => true
+        }.to_json
       elsif message.include?("Please create instructions for other agents")
         answer = {
-          "steps": [
-            { "agent": "project_agent", "step": "my_projectという名前のプロジェクトのIDを教えてください" },
-            { "agent": "project_agent", "step": "my_projectの情報を取得してください" },
-          ],
+          "steps" => [
+            { "agent" => "project_agent", "step" => "my_projectという名前のプロジェクトのIDを教えてください", "description_for_human" => "Retrieving project information..." },
+            { "agent" => "project_agent", "step" => "my_projectの情報を取得してください", "description_for_human" => "Getting project details..." }
+          ]
         }.to_json
       else
         answer = "test answer"

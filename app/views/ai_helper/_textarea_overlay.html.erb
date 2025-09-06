@@ -7,12 +7,22 @@
 <% if project&.module_enabled?(:ai_helper) && User.current.allowed_to?(:view_ai_helper, project) %>
 
 <!-- Create checkboxes in ERB with proper Redmine sprite_icon -->
-<div id="ai-helper-description-checkbox-container" class="ai-helper-autocompletion-controls" display: none;">
-  <input type="checkbox" id="ai-helper-autocompletion-description-toggle" />
-  <label for="ai-helper-autocompletion-description-toggle">
-    <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
-    <%= t('ai_helper.autocompletion.common_toggle_label') %>
-  </label>
+<div id="ai-helper-description-checkbox-container" class="ai-helper-autocompletion-controls" style="display: none;">
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <span>
+      <input type="checkbox" id="ai-helper-autocompletion-description-toggle" />
+      <label for="ai-helper-autocompletion-description-toggle">
+        <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
+        <%= t('ai_helper.autocompletion.common_toggle_label') %>
+      </label>
+    </span>
+
+    <!-- Typo check button -->
+    <%= link_to "javascript:void(0)", id: "ai-helper-typo-check-description-btn", class: "icon icon-edit" do %>
+      <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
+      <%= t('ai_helper.typo_check.check_button') %>
+    <% end %>
+  </div>
 </div>
 
 <script>
@@ -26,14 +36,43 @@
 </script>
 
 <% if @issue&.persisted? && !@issue.new_record? %>
-<div id="ai-helper-notes-checkbox-container" class="ai-helper-autocompletion-controls" display: none;">
-  <input type="checkbox" id="ai-helper-autocompletion-notes-toggle" />
-  <label for="ai-helper-autocompletion-notes-toggle">
-    <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
-    <%= t('ai_helper.autocompletion.common_toggle_label') %>
-  </label>
+<div id="ai-helper-notes-checkbox-container" class="ai-helper-autocompletion-controls" style="display: none;">
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <span>
+      <input type="checkbox" id="ai-helper-autocompletion-notes-toggle" />
+      <label for="ai-helper-autocompletion-notes-toggle">
+        <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
+        <%= t('ai_helper.autocompletion.common_toggle_label') %>
+      </label>
+    </span>
+
+    <!-- Typo check button -->
+    <%= link_to "javascript:void(0)", id: "ai-helper-typo-check-notes-btn", class: "icon icon-edit" do %>
+      <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
+      <%= t('ai_helper.typo_check.check_button') %>
+    <% end %>
+  </div>
 </div>
 <% end %>
+
+<!-- Typo Control Panels for Issue Description and Notes -->
+<div id="ai-helper-typo-control-panel-description" class="ai-helper-typo-control-panel" style="display: none;">
+  <button type="button" class="ai-helper-typo-apply-all-btn">
+    <%= t('ai_helper.typo_check.accept_all') %>
+  </button>
+  <button type="button" class="ai-helper-typo-close-btn">
+    <%= t('ai_helper.typo_check.close') %>
+  </button>
+</div>
+
+<div id="ai-helper-typo-control-panel-notes" class="ai-helper-typo-control-panel" style="display: none;">
+  <button type="button" class="ai-helper-typo-apply-all-btn">
+    <%= t('ai_helper.typo_check.accept_all') %>
+  </button>
+  <button type="button" class="ai-helper-typo-close-btn">
+    <%= t('ai_helper.typo_check.close') %>
+  </button>
+</div>
 
 <script>
 
@@ -169,11 +208,78 @@ function initalizeIssueCompletion() {
 
 }
 
+// Initialize typo checking with direct button binding
+function initializeIssueTypoChecker() {
+  const issueDescTextarea = document.getElementById('issue_description');
+  const issueNotesTextarea = document.getElementById('issue_notes');
+  const descButton = document.getElementById('ai-helper-typo-check-description-btn');
+  const notesButton = document.getElementById('ai-helper-typo-check-notes-btn');
+
+  if (typeof AiHelperTypoChecker !== 'undefined') {
+    if (issueDescTextarea && descButton) {
+      const descTypoChecker = new AiHelperTypoChecker(issueDescTextarea, {
+        endpoint: '<%= ai_helper_check_typos_path(project) %>',
+        labels: {
+          suggestionsTitle: '<%= t('ai_helper.typo_check.suggestions_title') %>',
+          noSuggestions: '<%= t('ai_helper.typo_check.no_suggestions') %>',
+          checkButton: '<%= t('ai_helper.typo_check.check_button') %>',
+          checking: '<%= t('ai_helper.typo_check.checking') %>',
+          acceptSuggestion: '<%= t('ai_helper.typo_check.accept_suggestion') %>',
+          dismissSuggestion: '<%= t('ai_helper.typo_check.dismiss_suggestion') %>',
+          acceptAll: '<%= t('ai_helper.typo_check.accept_all') %>',
+          dismissAll: '<%= t('ai_helper.typo_check.dismiss_all') %>',
+          errorOccurred: '<%= t('ai_helper.typo_check.error_occurred') %>',
+          correctionTooltip: '<%= t('ai_helper.typo_check.correction_tooltip') %>',
+          applyFailed: '<%= t('ai_helper.typo_check.apply_failed') %>'
+        }
+      });
+      descTypoChecker.init();
+
+      // Bind existing button directly
+      descButton.addEventListener('click', () => {
+        descTypoChecker.checkTypos();
+      });
+    }
+
+    if (issueNotesTextarea && notesButton) {
+      const notesTypoChecker = new AiHelperTypoChecker(issueNotesTextarea, {
+        endpoint: '<%= ai_helper_check_typos_path(project) %>',
+        labels: {
+          suggestionsTitle: '<%= t('ai_helper.typo_check.suggestions_title') %>',
+          noSuggestions: '<%= t('ai_helper.typo_check.no_suggestions') %>',
+          checkButton: '<%= t('ai_helper.typo_check.check_button') %>',
+          checking: '<%= t('ai_helper.typo_check.checking') %>',
+          acceptSuggestion: '<%= t('ai_helper.typo_check.accept_suggestion') %>',
+          dismissSuggestion: '<%= t('ai_helper.typo_check.dismiss_suggestion') %>',
+          acceptAll: '<%= t('ai_helper.typo_check.accept_all') %>',
+          dismissAll: '<%= t('ai_helper.typo_check.dismiss_all') %>',
+          errorOccurred: '<%= t('ai_helper.typo_check.error_occurred') %>',
+          correctionTooltip: '<%= t('ai_helper.typo_check.correction_tooltip') %>',
+          applyFailed: '<%= t('ai_helper.typo_check.apply_failed') %>'
+        }
+      });
+      notesTypoChecker.init();
+
+      // Bind existing button directly
+      notesButton.addEventListener('click', () => {
+        notesTypoChecker.checkTypos();
+      });
+    }
+  }
+}
+
 setTimeout( function() {
   initalizeIssueCompletion();
+  initializeIssueTypoChecker();
 }, 500); // Delay to ensure DOM is fully loaded
 
 </script>
 <% else %>
 <!-- AI Helper auto-completion not available (project module disabled or insufficient permissions) -->
 <% end %>
+
+<!-- Hidden templates for typo check buttons -->
+<div id="ai-helper-typo-button-templates" style="display: none;">
+  <button type="button" class="ai-helper-typo-accept-btn-template"><%= sprite_icon("ai-helper-check", plugin: :redmine_ai_helper) %></button>
+  <button type="button" class="ai-helper-typo-reject-btn-template"><%= sprite_icon("ai-helper-x", plugin: :redmine_ai_helper) %></button>
+</div>
