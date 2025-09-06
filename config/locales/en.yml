@@ -14,6 +14,8 @@ en:
   permission_view_ai_helper: "View AI Helper"
   label_ai_helper_error: "Error"
   ai_helper:
+    chat:
+      planning: "Creating execution plan..."
     project_health:
       title: "Project Health Report"
       pdf_title: "Project Health Report"

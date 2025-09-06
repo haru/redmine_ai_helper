@@ -155,14 +155,14 @@ class AiHelper {
         if (chatConversation) {
           chatConversation.scrollTop = chatConversation.scrollHeight;
         }
-
+      },
+      // onCompleteCallback
+      function(fullResponse) {
         const loaderArea = document.getElementById("ai-helper-loader-area");
         if (loaderArea) {
           loaderArea.style.display = "none";
         }
-      },
-      // onCompleteCallback
-      function(fullResponse) {
+        
         ai_helper.reload_chat();
       }
     );

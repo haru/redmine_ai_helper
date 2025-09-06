@@ -15,14 +15,28 @@ template: |-
 
     ----
 
-    Create the instructions step by step.
-    For each step, consider how to utilize the results obtained from the previous step.
-    Select the appropriate agent by considering the agent's backstory. If the backstory fits the goal, you may assign the agent even if the question is not directly related to Redmine.
+    CRITICAL DECISION POINT: Analyze the goal to determine if agent coordination is needed:
 
-    - Limit the steps to a maximum of 3.
-    - Write the instructions for the agents in JSON format.
-    - Write the instructions for the agents in {lang}.
-    - Select the agent from the agent_name in the list of agents. Do not use any other names.
+    **RETURN EMPTY STEPS ARRAY IF:**
+    - Goal contains phrases like "Respond directly to the user's [greeting/question/conversation]"
+    - Goal is about simple greetings, small talk, or casual conversation
+    - Goal can be accomplished with general knowledge without accessing Redmine data or external tools
+    - Goal is purely conversational in nature
+
+    **CREATE STEPS ONLY IF:**
+    - Goal requires accessing Redmine data (issues, projects, users, repositories, etc.)
+    - Goal involves creating, updating, or deleting data
+    - Goal requires specialized agent capabilities or external tools
+    - Goal involves complex task coordination
+
+    If you determine that steps ARE needed:
+    - Create the instructions step by step
+    - For each step, consider how to utilize the results obtained from the previous step
+    - Select the appropriate agent by considering the agent's backstory. If the backstory fits the goal, you may assign the agent even if the question is not directly related to Redmine
+    - Limit the steps to a maximum of 3
+    - Write the instructions for the agents in JSON format
+    - Write the instructions for the agents in {lang}
+    - Select the agent from the agent_name in the list of agents. Do not use any other names
 
     **If the goal is to confirm something with the user, do not give instructions to other agents to create or update data. In that case, you may only request other agents to retrieve information.**
 

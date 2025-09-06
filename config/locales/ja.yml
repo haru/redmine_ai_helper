@@ -14,6 +14,8 @@ ja:
   permission_view_ai_helper: "AIヘルパーの表示"
   label_ai_helper_error: "エラー"
   ai_helper:
+    chat:
+      planning: "実行計画を作成中..."
     project_health:
       title: "プロジェクト健全性レポート"
       pdf_title: "プロジェクト健全性レポート"
