@@ -445,26 +445,43 @@ class AiHelperTypoChecker {
       if (existingGroup) {
         // Add this suggestion to existing group
         existingGroup.suggestions.push(suggestion);
-        // Combine reasons
-        if (suggestion.reason && suggestion.reason.trim() && !existingGroup.reasons.includes(suggestion.reason)) {
-          existingGroup.reasons.push(suggestion.reason);
+        // Combine reasons - check both 'reason' and 'reasons' fields
+        const newReasons = [];
+        if (suggestion.reasons && suggestion.reasons.length > 0) {
+          newReasons.push(...suggestion.reasons);
+        } else if (suggestion.reason && suggestion.reason.trim()) {
+          newReasons.push(suggestion.reason);
         }
+        // Add new reasons that aren't already in the group
+        newReasons.forEach(reason => {
+          if (!existingGroup.reasons.includes(reason)) {
+            existingGroup.reasons.push(reason);
+          }
+        });
         // Use the highest confidence suggestion as the primary corrected text
         if (suggestion.confidence === 'high' || 
             (suggestion.confidence === 'medium' && existingGroup.corrected === existingGroup.suggestions[0].corrected)) {
           existingGroup.corrected = suggestion.corrected;
         }
       } else {
-        // Create new group
+        // Create new group - preserve both 'reason' and 'reasons' fields
         const newGroup = {
           position: suggestion.position,
           original: suggestion.original,
           corrected: suggestion.corrected,
           length: suggestion.length || suggestion.original.length,
-          reasons: (suggestion.reason && suggestion.reason.trim()) ? [suggestion.reason] : [],
+          reasons: [],
           suggestions: [suggestion],
           confidence: suggestion.confidence
         };
+        
+        // Preserve reason information from the original suggestion
+        if (suggestion.reasons && suggestion.reasons.length > 0) {
+          newGroup.reasons = [...suggestion.reasons];
+        } else if (suggestion.reason && suggestion.reason.trim()) {
+          newGroup.reasons = [suggestion.reason];
+        }
+        
         groupedSuggestions.push(newGroup);
       }
     });
