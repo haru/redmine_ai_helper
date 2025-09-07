@@ -8,6 +8,14 @@
         "@upstash/context7-mcp"
       ],
       "env": {}
+    },
+    "spec-workflow": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@pimzino/spec-workflow-mcp@latest",
+        "--AutoStartDashboard"
+      ]
     }
   }
 }
