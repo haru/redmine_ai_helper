@@ -14,6 +14,8 @@ pt-BR:
   permission_view_ai_helper: "Visualizar AI Helper"
   label_ai_helper_error: "Erro"
   ai_helper:
+    chat:
+      planning: "Criando plano de execução..."
     project_health:
       title: "Relatório de Saúde do Projeto"
       pdf_title: "Relatório de Saúde do Projeto"
@@ -29,10 +31,35 @@ pt-BR:
       generated_reply: "Notas geradas"
       apply: "Aplicar"
       copy_to_clipboard: "Copiar para a área de transferência"
+    typo_check:
+      toggle_label: "Corretor Ortográfico com IA"
+      check_button: "Corretor Ortográfico do AI Helper"
+      suggestions_title: "Sugestões de Correção"
+      no_suggestions: "Nenhum erro de digitação ou ortográfico encontrado"
+      accept_suggestion: "Aceitar"
+      dismiss_suggestion: "Ignorar"
+      accept_all: "Aceitar Todas"
+      dismiss_all: "Ignorar Todas"
+      close: "Fechar"
+      checking: "Verificando..."
+      error_occurred: "Ocorreu um erro"
+      copy_to_clipboard: "Copiar para a área de transferência"
+      correction_tooltip: "Sugestão de Correção"
+      apply_failed: "Falha ao aplicar a correção. Posição do texto não encontrada."
     generate_sub_issues:
       title: "Criar subtarefas com AI Helper"
       instructions: "Por favor, insira suas instruções."
       generate_draft: "Gerar rascunho"
+    autocompletion:
+      loading: "Gerando sugestões de IA..."
+      no_suggestions: "Nenhuma sugestão disponível"
+      accept_suggestion: "Aceitar sugestão"
+      dismiss: "Dispensar"
+      enabled_tooltip: "O preenchimento automático com IA está ativado. Pressione Tab para aceitar as sugestões ou Esc para dispensar."
+      disabled_tooltip: "O preenchimento automático com IA está desativado. Marque a caixa para ativar."
+      note_enabled_tooltip: "O preenchimento automático de notas com IA está ativado. Pressione Tab para aceitar as sugestões ou Esc para dispensar."
+      note_disabled_tooltip: "O preenchimento automático de notas com IA está desativado. Marque a caixa para ativar."
+      common_toggle_label: "Preenchimento Automático do AI Helper"      
     model_profiles:
       create_profile_title: "Novo perfil de modelo"
       edit_profile_title: "Editar perfil de modelo"
