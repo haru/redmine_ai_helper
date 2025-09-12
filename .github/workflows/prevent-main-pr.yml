@@ -1,13 +1,14 @@
 name: Prevent Direct Pull Requests to Main
 
 on:
-  pull_request:
+  pull_request_target:
+    types: [opened]
     branches:
       - main
 
 permissions:
-  issues: write
   pull-requests: write
+  issues: write
 
 jobs:
   prevent-main-pr:
@@ -17,7 +18,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const message = `## ⚠️Direct pull requests to main branch are not allowed. Please create a pull request to the develop branch instead.`;
+            const message = "## ⚠️ Direct pull requests to main branch are not allowed. Please create a pull request to the develop branch instead.";
 
             // Add comment
             await github.rest.issues.createComment({
