@@ -16,6 +16,10 @@
         "@pimzino/spec-workflow-mcp@latest",
         "--AutoStartDashboard"
       ]
+    },
+    "deepwiki": {
+      "type": "sse",
+      "url": "https://mcp.deepwiki.com/sse"
     }
   }
 }
