@@ -6,6 +6,7 @@ on:
       - main
 
 permissions:
+  contents: read
   issues: write
   pull-requests: write
 
@@ -16,6 +17,7 @@ jobs:
       - name: Comment and close PR
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const message = `## ⚠️Direct pull requests to main branch are not allowed. Please create a pull request to the develop branch instead.`;
 
