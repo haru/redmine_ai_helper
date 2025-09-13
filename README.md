@@ -86,6 +86,7 @@ You can search for similar issues using the AI Helper Plugin. This feature is on
 ## Inline Issue Description and Wiki Completion
 
 You can use the AI Helper Plugin to complete issue descriptions and wiki pages inline. This feature provides suggestions and completions as you type, helping you write more detailed and accurate issue descriptions and wiki pages.
+You can accept completion suggestions by pressing the TAB key.
 
 ![Image](https://github.com/user-attachments/assets/d8e5da82-a5bb-46bf-836b-b548a32e2ab0)
 
@@ -281,6 +282,7 @@ Please note that AI responses may not always be 100% accurate. Users should veri
 I welcome bug reports and feature improvement suggestions through GitHub Issues. Pull requests are also appreciated.
 
 ⚠️ When creating a pull request, always branch off from the `develop` branch.
+This project follows the [A successful Git branching model (git flow)](https://nvie.com/posts/a-successful-git-branching-model/) where the `develop` branch serves as the integration branch for new features and the `main` branch contains production-ready releases.
 
 Please make sure that all tests pass before pushing.
 
