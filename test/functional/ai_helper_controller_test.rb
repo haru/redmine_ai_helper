@@ -28,7 +28,7 @@ class AiHelperControllerTest < ActionController::TestCase
       should "render chat_form partial" do
         get :chat_form, params: { id: @project.id }
         assert_response :success
-        assert_template partial: "_chat_form"
+        assert_template partial: "ai_helper/chat/_chat_form"
       end
     end
 
@@ -36,7 +36,7 @@ class AiHelperControllerTest < ActionController::TestCase
       should "render chat partial" do
         get :reload, params: { id: @project.id }
         assert_response :success
-        assert_template partial: "_chat"
+        assert_template partial: "ai_helper/chat/_chat"
       end
     end
 
@@ -44,7 +44,7 @@ class AiHelperControllerTest < ActionController::TestCase
       should "create a message and render chat partial" do
         post :chat, params: { id: @project.id, ai_helper_message: { content: "Hello AI" } }
         assert_response :success
-        assert_template partial: "_chat"
+        assert_template partial: "ai_helper/chat/_chat"
         assert_not_nil assigns(:message)
         assert_equal "Hello AI", assigns(:message).content
       end
@@ -68,7 +68,7 @@ class AiHelperControllerTest < ActionController::TestCase
       should "render chat partial" do
         get :conversation, params: { id: @project.id, conversation_id: @conversation.id }
         assert_response :success
-        assert_template partial: "_chat"
+        assert_template partial: "ai_helper/chat/_chat"
       end
     end
 
@@ -76,7 +76,7 @@ class AiHelperControllerTest < ActionController::TestCase
       should "render history partial and assign conversations" do
         get :history, params: { id: @project.id }
         assert_response :success
-        assert_template partial: "_history"
+        assert_template partial: "ai_helper/chat/_history"
         assert_not_nil assigns(:conversations)
       end
     end
@@ -130,7 +130,7 @@ class AiHelperControllerTest < ActionController::TestCase
       should "clear conversation and render chat partial" do
         post :clear, params: { id: @project.id }
         assert_response :success
-        assert_template partial: "_chat"
+        assert_template partial: "ai_helper/chat/_chat"
         assert_nil session[:ai_helper][:conversation_id]
       end
     end
@@ -144,7 +144,7 @@ class AiHelperControllerTest < ActionController::TestCase
       should "render issue summary partial" do
         get :issue_summary, params: { id: @project.id, issue_id: @issue.id }
         assert_response :success
-        assert_template partial: "_issue_summary"
+        assert_template partial: "ai_helper/issues/_summary"
       end
 
       should "destroy existing summary when update=true" do
@@ -155,7 +155,7 @@ class AiHelperControllerTest < ActionController::TestCase
         
         get :issue_summary, params: { id: @project.id, issue_id: @issue.id, update: "true" }
         assert_response :success
-        assert_template partial: "_issue_summary"
+        assert_template partial: "ai_helper/issues/_summary"
       end
 
       should "deny access for non-visible issue" do
@@ -241,7 +241,7 @@ class AiHelperControllerTest < ActionController::TestCase
         @request.headers["Content-Type"] = "application/json"
         post :generate_sub_issues, params: json
         assert_response :success
-        assert_template partial: "ai_helper/subissue_gen/_issues"
+        assert_template partial: "ai_helper/issues/subissues/_issues"
       end
     end
 
@@ -280,7 +280,7 @@ class AiHelperControllerTest < ActionController::TestCase
         
         get :wiki_summary, params: { id: @wiki_page.id }
         assert_response :success
-        assert_template partial: "_wiki_summary_content"
+        assert_template partial: "ai_helper/wiki/_summary_content"
       end
 
       should "create summary when none exists" do
@@ -507,7 +507,7 @@ class AiHelperControllerTest < ActionController::TestCase
         
         get :project_health, params: { id: @project.id }
         assert_response :success
-        assert_template partial: "_project_health"
+        assert_template partial: "ai_helper/project/_health_report"
         assert_not_nil assigns(:health_report)
       end
 
@@ -779,7 +779,7 @@ class AiHelperControllerTest < ActionController::TestCase
         # Test reload
         get :reload, params: { id: @project.id }
         assert_response :success
-        assert_template partial: "_chat"
+        assert_template partial: "ai_helper/chat/_chat"
       end
 
       should "handle conversation switching" do
