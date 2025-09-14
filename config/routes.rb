@@ -39,4 +39,6 @@ RedmineApp::Application.routes.draw do
 
   # get "ai_helper_project_settings/:id", to: "ai_helper_project_settings#show", as: "ai_helper_project_settings"
   patch "projects/:id/ai_helper_project_settings", to: "ai_helper_project_settings#update", as: "ai_helper_project_settings_update"
+
+  get "projects/:id/ai_helper(/:tab)", to: "ai_helper_dashboard#index", as: "ai_helper_dashboard"
 end
