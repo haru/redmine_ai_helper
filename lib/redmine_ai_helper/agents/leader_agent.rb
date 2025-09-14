@@ -57,11 +57,14 @@ module RedmineAiHelper
           chat_room.send_task("leader", step["agent"], step["step"])
         end
 
+        callback.call(I18n.t("ai_helper.chat.generating_final_response") + "\n") if callback
+
         newmessages = messages
         newmessages += chat_room.messages if steps["steps"].any?
         newmessages << { role: "user", content: I18n.t("ai_helper.prompts.leader_agent.generate_final_response") }
         langfuse.create_span(name: "final_response", input: newmessages.last[:content])
         ai_helper_logger.debug "newmessages: #{newmessages}"
+
         answer = chat(newmessages, option, callback)
         langfuse.finish_current_span(output: answer)
         answer

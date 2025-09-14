@@ -16,6 +16,7 @@ ja:
   ai_helper:
     chat:
       planning: "実行計画を作成中..."
+      generating_final_response: "最終回答を作成しています..."
     project_health:
       title: "プロジェクト健全性レポート"
       pdf_title: "プロジェクト健全性レポート"
