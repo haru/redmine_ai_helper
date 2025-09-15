@@ -6,6 +6,10 @@
 <% if project and project.module_enabled?(:ai_helper) and User.current.allowed_to?(:view_ai_helper, project) %>
     <%= stylesheet_link_tag('ai_helper.css', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('ai_helper.js', plugin: :redmine_ai_helper) %>
+    <script>
+      // Update the existing instance with user ID for user-specific localStorage
+      ai_helper.setUserId('<%= User.current.id %>');
+    </script>
     <%= javascript_include_tag('ai_helper_markdown_parser.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('ai_helper_auto_completion.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('ai_helper_typo_checker.js', plugin: :redmine_ai_helper) %>

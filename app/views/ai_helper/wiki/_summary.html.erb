@@ -67,7 +67,7 @@
   function aiHelperSaveWikiSummaryState() {
     const fieldset = document.getElementById('ai-helper-wiki-summary-fields');
     const isOpen = !fieldset.classList.contains('collapsed');
-    localStorage.setItem('aiHelperWikiSummaryState', isOpen ? 'expanded' : 'collapsed');
+    localStorage.setItem('aiHelperWikiSummaryState_<%= User.current.id %>', isOpen ? 'expanded' : 'collapsed');
   };
 
   // Move wiki summary to top of wiki content and set up state
@@ -84,7 +84,7 @@
     }
 
     // Set up the saved state
-    const savedState = localStorage.getItem('aiHelperWikiSummaryState');
+    const savedState = localStorage.getItem('aiHelperWikiSummaryState_<%= User.current.id %>');
     if (savedState === 'expanded') {
       aiHelperSetWikiSummayExpanded(true);
     } else {
