@@ -61,12 +61,12 @@ module RedmineAiHelper
           one_week_ago = 1.week.ago.strftime("%Y-%m-%d")
           one_month_ago = 1.month.ago.strftime("%Y-%m-%d")
           today = Date.current.strftime("%Y-%m-%d")
-          
+
           analysis_instructions_prompt = load_prompt("project_agent/analysis_instructions_time_period")
           analysis_instructions = analysis_instructions_prompt.format(
             one_week_ago: one_week_ago,
             one_month_ago: one_month_ago,
-            today: today
+            today: today,
           )
 
           analysis_focus = "Time-period Analysis (Last Week & Last Month)"
@@ -152,7 +152,14 @@ module RedmineAiHelper
 
         messages = [{ role: "user", content: prompt_text }]
 
-        chat(messages, {}, stream_proc)
+        report_text = chat(messages, {}, stream_proc)
+        report = AiHelperHealthReport.new
+        report.project_id = project.id
+        report.user_id = User.current.id
+        report.health_report = report_text
+        report.metrics = JSON.pretty_generate(metrics_list)
+        report.save!
+        report_text
       end
     end
   end

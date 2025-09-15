@@ -1,0 +1,2 @@
+class AiHelperHealthReport < ApplicationRecord
+end
