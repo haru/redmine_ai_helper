@@ -11,7 +11,8 @@ class AiHelperAutoCompletion {
     this.lastTextSnapshot = '';
     this.lastCursorPosition = 0;
     this.checkbox = null; // ON/OFF checkbox
-    this.storageKey = 'aiHelperAutoCompletion';
+    this.userId = options.userId || 'anonymous';
+    this.storageKey = `aiHelperAutoCompletion_${this.userId}`;
     this.isEnabled = true;
     this.options = {
       debounceDelay: 500,
@@ -153,7 +154,7 @@ class AiHelperAutoCompletion {
 
   loadSettings() {
     const saved = localStorage.getItem(this.storageKey);
-    const enabled = saved ? JSON.parse(saved).enabled : true; // Default ON
+    const enabled = saved ? JSON.parse(saved).enabled : false; // Default OFF
     if (this.checkbox) {
       this.checkbox.checked = enabled;
     }

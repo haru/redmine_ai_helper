@@ -20,12 +20,12 @@ class AiHelperController < ApplicationController
   # Display the chat form in the sidebar
   def chat_form
     @message = AiHelperMessage.new
-    render partial: "ai_helper/chat_form"
+    render partial: "ai_helper/chat/chat_form"
   end
 
   # Redisplay the chat screen
   def reload
-    render partial: "ai_helper/chat"
+    render partial: "ai_helper/chat/chat"
   end
 
   # Reflect the message entered in the chat form on the chat screen
@@ -42,7 +42,7 @@ class AiHelperController < ApplicationController
     @message.save!
     @conversation = AiHelperConversation.find(@conversation.id)
     AiHelperConversation.cleanup_old_conversations
-    render partial: "ai_helper/chat"
+    render partial: "ai_helper/chat/chat"
   end
 
   # Load the specified conversation
@@ -63,7 +63,7 @@ class AiHelperController < ApplicationController
   # Display the conversation history
   def history
     @conversations = AiHelperConversation.where(user: @user).order(updated_at: :desc).limit(10)
-    render partial: "ai_helper/history"
+    render partial: "ai_helper/chat/history"
   end
 
   # Display the issue summary
@@ -74,7 +74,7 @@ class AiHelperController < ApplicationController
       summary = nil
     end
 
-    render partial: "ai_helper/issue_summary", locals: { summary: summary }
+    render partial: "ai_helper/issues/summary", locals: { summary: summary }
   end
 
   # Generate issue summary with streaming
@@ -112,7 +112,7 @@ class AiHelperController < ApplicationController
       summary = AiHelperSummaryCache.update_wiki_cache(wiki_page_id: @wiki_page.id, content: content)
     end
 
-    render partial: "ai_helper/wiki_summary_content", locals: { summary: summary }
+    render partial: "ai_helper/wiki/summary_content", locals: { summary: summary }
   end
 
   # Generate wiki summary with streaming
@@ -166,7 +166,7 @@ class AiHelperController < ApplicationController
   def clear
     session[:ai_helper] = {}
     find_conversation
-    render partial: "ai_helper/chat"
+    render partial: "ai_helper/chat/chat"
   end
 
   # Receives a POST message with application/json content to generate an issue reply with streaming
@@ -214,7 +214,7 @@ class AiHelperController < ApplicationController
     versions = @issue.assignable_versions || []
     versions_options_for_select = versions.collect { |v| [v.name, v.id] }
 
-    render partial: "ai_helper/subissue_gen/issues", locals: { issue: @issue, subissues: subissues, trackers_options_for_select: trackers_options_for_select, versions_options_for_select: versions_options_for_select }
+    render partial: "ai_helper/issues/subissues/issues", locals: { issue: @issue, subissues: subissues, trackers_options_for_select: trackers_options_for_select, versions_options_for_select: versions_options_for_select }
   end
 
   # Add sub-issues to the current issue
@@ -248,7 +248,7 @@ class AiHelperController < ApplicationController
       llm = RedmineAiHelper::Llm.new
       similar_issues = llm.find_similar_issues(issue: @issue)
 
-      render partial: "ai_helper/similar_issues", locals: { similar_issues: similar_issues }
+      render partial: "ai_helper/issues/similar_issues", locals: { similar_issues: similar_issues }
     rescue => e
       ai_helper_logger.error "Similar issues search error: #{e.message}"
       ai_helper_logger.error e.backtrace.join("\n")
@@ -393,7 +393,7 @@ class AiHelperController < ApplicationController
     end
 
     respond_to do |format|
-      format.html { render partial: "ai_helper/project_health", locals: { health_report: @health_report } }
+      format.html { render partial: "ai_helper/project/health_report", locals: { health_report: @health_report } }
       format.pdf do
         if @health_report && !@health_report.is_a?(Hash)
           filename = "#{@project.identifier}-health-report-#{Date.current.strftime("%Y%m%d")}.pdf"

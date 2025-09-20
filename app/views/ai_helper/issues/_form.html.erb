@@ -16,12 +16,12 @@
         const fieldset = document.getElementById('ai-helper-reply-fields');
         const isOpen = !fieldset.classList.contains('collapsed');
         const state = { replyExpanded: isOpen };
-        localStorage.setItem('aiHelperReplyState', JSON.stringify(state));
+        localStorage.setItem('aiHelperReplyState_<%= User.current.id %>', JSON.stringify(state));
     }
 
     // Load the saved state from localStorage when the page loads
     document.addEventListener('DOMContentLoaded', function() {
-        const state = localStorage.getItem('aiHelperReplyState');
+        const state = localStorage.getItem('aiHelperReplyState_<%= User.current.id %>');
         if (state) {
             const parsedState = JSON.parse(state);
             if (parsedState.replyExpanded) {

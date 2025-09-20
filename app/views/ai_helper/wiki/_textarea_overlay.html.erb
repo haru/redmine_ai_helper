@@ -71,6 +71,7 @@ function initializeWikiCompletion() {
     const wikiAutoCompletion = new AiHelperAutoCompletion(wikiTextarea, {
       contextType: 'wiki',
       endpoint: endpoint,
+      userId: '<%= User.current.id %>',
       debounceDelay: config.debounce_delay,
       minLength: config.min_length,
       suggestionColor: config.suggestion_color,

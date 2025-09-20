@@ -3,7 +3,14 @@ class AiHelper {
   page_info = {
     additional_info: {}
   };
-  local_storage_key = "aihelper-fold-flag";
+  userId = 'anonymous';
+  chat_fold_storage_key = 'aihelper-fold-flag_anonymous';
+
+  // Method to update user ID without recreating the instance
+  setUserId(userId) {
+    this.userId = userId;
+    this.chat_fold_storage_key = `aihelper-fold-flag_${userId}`;
+  }
 
   set_form_handlers = function () {
     // Prevent the default submit behavior of the form
@@ -463,11 +470,11 @@ class AiHelper {
       arrow_left.style.display = "none";
     }
     // Save the flag value to local storage
-    localStorage.setItem(this.local_storage_key, flag);
+    localStorage.setItem(this.chat_fold_storage_key, flag);
   };
 
   init_fold_flag = function () {
-    const flag = localStorage.getItem(this.local_storage_key);
+    const flag = localStorage.getItem(this.chat_fold_storage_key);
     if (flag === "true") {
       this.fold_chat(true, true);
     } else {
@@ -781,4 +788,5 @@ class AiHelper {
   }
 };
 
+// Default instance for backward compatibility
 var ai_helper = new AiHelper();

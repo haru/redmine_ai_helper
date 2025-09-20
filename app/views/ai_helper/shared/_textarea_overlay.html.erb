@@ -117,6 +117,7 @@ function initalizeIssueCompletion() {
     const autoCompletion = new AiHelperAutoCompletion(descriptionTextarea, {
       contextType: 'description',
       endpoint: '<%= ai_helper_suggest_completion_path(id: (@issue&.project&.id || @project&.id), issue_id: (@issue&.persisted? ? @issue.id : 'new')) %>',
+      userId: '<%= User.current.id %>',
       debounceDelay: config.debounce_delay,
       minLength: config.min_length,
       suggestionColor: config.suggestion_color,
@@ -163,6 +164,7 @@ function initalizeIssueCompletion() {
     const notesAutoCompletion = new AiHelperAutoCompletion(notesTextarea, {
       contextType: 'note',
       endpoint: '<%= @issue&.persisted? ? ai_helper_suggest_completion_path(id: @issue.project.id, issue_id: @issue.id) : '#' %>',
+      userId: '<%= User.current.id %>',
       debounceDelay: config.debounce_delay,
       minLength: config.min_length,
       suggestionColor: config.suggestion_color,

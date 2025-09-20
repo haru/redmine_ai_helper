@@ -16,6 +16,7 @@ en:
   ai_helper:
     chat:
       planning: "Creating execution plan..."
+      generating_final_response: "Generating final response..."
     project_health:
       title: "Project Health Report"
       pdf_title: "Project Health Report"

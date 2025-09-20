@@ -16,6 +16,7 @@ pt-BR:
   ai_helper:
     chat:
       planning: "Criando plano de execução..."
+      generating_final_response: "Gerando resposta final..."
     project_health:
       title: "Relatório de Saúde do Projeto"
       pdf_title: "Relatório de Saúde do Projeto"
