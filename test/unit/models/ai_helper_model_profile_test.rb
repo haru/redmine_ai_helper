@@ -67,17 +67,17 @@ class AiHelperModelProfileTest < ActiveSupport::TestCase
     test_cases = [
       "gpt-5-turbo",
       "GPT-5-TURBO",
-      "gpt-5-preview",
+      "gpt-5-preview", 
       "gpt-5-advanced"
     ]
 
-    test_cases.each do |model_name|
+    test_cases.each_with_index do |model_name, index|
       profile = AiHelperModelProfile.new(@valid_attributes.merge(
-        name: "Test #{model_name}",
+        name: "Test GPT5 Variant #{index} #{model_name}",
         llm_model: model_name,
         temperature: 0.8
       ))
-      assert profile.save, "Failed to save profile for model: #{model_name}"
+      assert profile.save, "Failed to save profile for model: #{model_name} - #{profile.errors.full_messages}"
       assert_equal 1.0, profile.temperature, "Temperature not set to 1.0 for model: #{model_name}"
     end
   end
