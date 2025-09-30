@@ -67,7 +67,7 @@
   function aiHelperSaveSummaryState() {
     const fieldset = document.getElementById('ai-helper-summary-fields');
     const isOpen = !fieldset.classList.contains('collapsed');
-    localStorage.setItem('aiHelperIssueSummaryState', isOpen ? 'expanded' : 'collapsed');
+    localStorage.setItem('aiHelperIssueSummaryState_<%= User.current.id %>', isOpen ? 'expanded' : 'collapsed');
   };
 
 
@@ -117,7 +117,7 @@
 
   // On page load, retrieve the state from localStorage and set the open/closed state of the fieldset
   document.addEventListener('DOMContentLoaded', function() {
-    const savedState = localStorage.getItem('aiHelperIssueSummaryState');
+    const savedState = localStorage.getItem('aiHelperIssueSummaryState_<%= User.current.id %>');
     if (savedState === 'expanded') {
       aiHelperSetSummayExpanded(true);
     } else {

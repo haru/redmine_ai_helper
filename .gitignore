@@ -76,3 +76,6 @@ GEMINI.md
 .serena/cache/
 .serena/cache/
 specs/
+.spec-workflow/session.json
+.spec-workflow/
+.DS_Store

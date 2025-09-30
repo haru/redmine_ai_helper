@@ -5,7 +5,7 @@
 [![Maintainability](https://qlty.sh/badges/a0cabed6-3c2d-4eb2-a7b0-2cd58e6fdf72/maintainability.svg)](https://qlty.sh/gh/haru/projects/redmine_ai_helper)
 [![codecov](https://codecov.io/gh/haru/redmine_ai_helper/graph/badge.svg?token=1HOSGRHVM9)](https://codecov.io/gh/haru/redmine_ai_helper)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/haru/redmine_ai_helper)
-![Redmine](https://img.shields.io/badge/redmine-6.0-blue?logo=redmine&logoColor=%23B32024&labelColor=f0f0f0&link=https%3A%2F%2Fwww.redmine.org)
+![Redmine](https://img.shields.io/badge/redmine->=6.0-blue?logo=redmine&logoColor=%23B32024&labelColor=f0f0f0&link=https%3A%2F%2Fwww.redmine.org)
 
 
 - [Redmine AI Helper Plugin](#redmine-ai-helper-plugin)
@@ -45,8 +45,9 @@ The Redmine AI Helper Plugin adds AI chat functionality to Redmine, enhancing pr
   - Issue and Wiki content summarization
   - Repository source code explanation
   - Generate subtasks from issues
-  - Inline issue description completion
+  - Inline issue description and wiki completion
   - Other project and Redmine-related inquiries
+  - Typo checking and correction suggestions
 - Provides a project health report
 - Supports multiple AI models and services
 - MCP server integration
@@ -82,11 +83,18 @@ You can search for similar issues using the AI Helper Plugin. This feature is on
 
 ![Image](https://github.com/user-attachments/assets/3217149b-4874-49b9-aa98-b35a7324bca3)
 
-## Inline Issue Description Completion
+## Inline Issue Description and Wiki Completion
 
-You can use the AI Helper Plugin to complete issue descriptions inline. This feature provides suggestions and completions as you type, helping you write more detailed and accurate issue descriptions.
+You can use the AI Helper Plugin to complete issue descriptions and wiki pages inline. This feature provides suggestions and completions as you type, helping you write more detailed and accurate issue descriptions and wiki pages.
+You can accept completion suggestions by pressing the TAB key.
 
 ![Image](https://github.com/user-attachments/assets/d8e5da82-a5bb-46bf-836b-b548a32e2ab0)
+
+## Typo Checking and Correction Suggestions
+
+You can use the AI Helper Plugin to check for typos and receive correction suggestions. This feature helps you maintain content in your issues and wiki pages by identifying and correcting spelling errors.
+
+![Image](https://github.com/user-attachments/assets/6a1e1963-f6ef-45fc-82a2-52dc377a35b1)
 
 ## Project Health Report
 
@@ -274,6 +282,7 @@ Please note that AI responses may not always be 100% accurate. Users should veri
 I welcome bug reports and feature improvement suggestions through GitHub Issues. Pull requests are also appreciated.
 
 ⚠️ When creating a pull request, always branch off from the `develop` branch.
+This project follows the [A successful Git branching model (git flow)](https://nvie.com/posts/a-successful-git-branching-model/) where the `develop` branch serves as the integration branch for new features and the `main` branch contains production-ready releases.
 
 Please make sure that all tests pass before pushing.
 

@@ -101,5 +101,127 @@ class WikiAgentTest < ActiveSupport::TestCase
         @agent.wiki_summary(wiki_page: @wiki_page)
       end
     end
+
+    context "#generate_wiki_completion" do
+      setup do
+        mock_prompt = mock('prompt')
+        mock_prompt.stubs(:format).returns("Formatted completion prompt")
+        @agent.stubs(:load_prompt).returns(mock_prompt)
+        @agent.stubs(:chat).returns("completion text here")
+      end
+
+      should "return completion text" do
+        completion = @agent.generate_wiki_completion(
+          text: "This project focuses on",
+          cursor_position: 21,
+          project: @project,
+          wiki_page: @wiki_page
+        )
+        
+        assert completion.is_a?(String)
+        assert completion.length > 0
+      end
+
+      should "handle new wiki page" do
+        completion = @agent.generate_wiki_completion(
+          text: "New page content",
+          cursor_position: 16,
+          project: @project,
+          wiki_page: nil
+        )
+        
+        assert completion.is_a?(String)
+      end
+
+      should "handle missing project" do
+        completion = @agent.generate_wiki_completion(
+          text: "Content without project",
+          cursor_position: 23,
+          project: nil,
+          wiki_page: nil
+        )
+        
+        assert completion.is_a?(String)
+      end
+
+      should "handle errors gracefully" do
+        @agent.stubs(:chat).raises(StandardError.new("Test error"))
+        
+        completion = @agent.generate_wiki_completion(
+          text: "Error test",
+          cursor_position: 10,
+          project: @project,
+          wiki_page: @wiki_page
+        )
+        
+        assert_equal "", completion
+      end
+
+      should "call load_prompt with correct template" do
+        @agent.expects(:load_prompt).with("wiki_agent/wiki_inline_completion").returns(mock('prompt').tap do |p|
+          p.stubs(:format).returns("Formatted text")
+        end)
+        
+        @agent.generate_wiki_completion(
+          text: "test text",
+          cursor_position: 9,
+          project: @project,
+          wiki_page: @wiki_page
+        )
+      end
+    end
+
+    context "#build_wiki_completion_context" do
+      should "include project and wiki info" do
+        context = @agent.send(:build_wiki_completion_context, "test text", @project, @wiki_page)
+        
+        assert_equal @wiki_page.title, context[:page_title]
+        assert_equal @project.name, context[:project_name]
+        assert context.has_key?(:text_length)
+      end
+
+      should "handle nil wiki page" do
+        context = @agent.send(:build_wiki_completion_context, "test text", @project, nil)
+        
+        assert_equal 'New Wiki Page', context[:page_title]
+        assert_equal @project.name, context[:project_name]
+      end
+
+      should "handle nil project" do
+        context = @agent.send(:build_wiki_completion_context, "test text", nil, @wiki_page)
+        
+        assert_equal @wiki_page.title, context[:page_title]
+        assert_nil context[:project_name]
+      end
+    end
+
+    context "#parse_wiki_completion_response" do
+      should "clean and limit text" do
+        long_text = "This is a very long response. " * 20
+        cleaned = @agent.send(:parse_wiki_completion_response, long_text)
+        
+        assert cleaned.length <= 500
+      end
+
+      should "remove leading and trailing markers" do
+        text_with_markers = "* Some completion text *"
+        cleaned = @agent.send(:parse_wiki_completion_response, text_with_markers)
+        
+        assert_equal "Some completion text", cleaned
+      end
+
+      should "limit sentences" do
+        many_sentences = "First sentence. Second sentence. Third sentence. Fourth sentence. Fifth sentence. Sixth sentence."
+        cleaned = @agent.send(:parse_wiki_completion_response, many_sentences)
+        
+        sentences = cleaned.split(/[.!?。！？]\s*/)
+        assert sentences.length <= 6
+      end
+
+      should "handle empty response" do
+        cleaned = @agent.send(:parse_wiki_completion_response, "")
+        assert_equal "", cleaned
+      end
+    end
   end
 end

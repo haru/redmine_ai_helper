@@ -1,2 +1,6 @@
 - name: ai-helper-robot
   svg: message-chatbot
+- name: ai-helper-check
+  svg: check
+- name: ai-helper-x
+  svg: x

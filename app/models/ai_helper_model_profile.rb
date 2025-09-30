@@ -15,6 +15,8 @@ class AiHelperModelProfile < ApplicationRecord
   AUTH_TYPE_BEARER = 0
   AUTH_TYPE_API_KEY = 1
 
+  before_validation :handle_gpt5_temperature
+
   # Replace all characters after the 4th with *
   def masked_access_key
     return access_key if access_key.blank? || access_key.length <= 4
@@ -72,5 +74,35 @@ class AiHelperModelProfile < ApplicationRecord
       ["Bearer", AUTH_TYPE_BEARER],
       ["API-Key", AUTH_TYPE_API_KEY],
     ]
+  end
+
+  private
+
+  # Handle GPT-5 series models that don't support temperature parameter
+  # Automatically set temperature to 1 for these models before validation
+  def handle_gpt5_temperature
+    if gpt5_model_requiring_fixed_temperature?
+      self.temperature = 1.0
+    end
+  end
+
+  # Check if the model is a GPT-5 series model that requires temperature=1
+  # Returns true for:
+  # - Model name is exactly "gpt-5"
+  # - Model name starts with "gpt-5-" but does not contain "chat"
+  def gpt5_model_requiring_fixed_temperature?
+    return false if llm_model.blank?
+
+    model_name = llm_model.downcase.strip
+
+    # Exact match for "gpt-5"
+    return true if model_name == "gpt-5"
+
+    # Starts with "gpt-5-" but doesn't contain "chat"
+    if model_name.start_with?("gpt-5-")
+      return !model_name.include?("chat")
+    end
+
+    false
   end
 end

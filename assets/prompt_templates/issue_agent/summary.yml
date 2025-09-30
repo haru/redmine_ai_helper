@@ -9,6 +9,8 @@ template: |-
 
   - Summarize only the content, comments, and update history of the issue.
   - Write an overall summary in one line, then use bullet points to make it easy to understand.
+  - **IMPORTANT**: Pay special attention to any tasks, action items, or pending work mentioned in the issue. If present, clearly highlight them in a separate "TODOs" section using bullet points prefixed with "TODO:".
+  - When tasks or action items exist, structure your response as: overall summary line, general bullet points, then a dedicated "**TODOs:**" section.
   - Include only the summary text in your answer. Do not add explanations such as "Here is the summary".
 
   ----

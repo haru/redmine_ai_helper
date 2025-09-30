@@ -3,7 +3,14 @@ class AiHelper {
   page_info = {
     additional_info: {}
   };
-  local_storage_key = "aihelper-fold-flag";
+  userId = 'anonymous';
+  chat_fold_storage_key = 'aihelper-fold-flag_anonymous';
+
+  // Method to update user ID without recreating the instance
+  setUserId(userId) {
+    this.userId = userId;
+    this.chat_fold_storage_key = `aihelper-fold-flag_${userId}`;
+  }
 
   set_form_handlers = function () {
     // Prevent the default submit behavior of the form
@@ -155,14 +162,14 @@ class AiHelper {
         if (chatConversation) {
           chatConversation.scrollTop = chatConversation.scrollHeight;
         }
-
+      },
+      // onCompleteCallback
+      function(fullResponse) {
         const loaderArea = document.getElementById("ai-helper-loader-area");
         if (loaderArea) {
           loaderArea.style.display = "none";
         }
-      },
-      // onCompleteCallback
-      function(fullResponse) {
+        
         ai_helper.reload_chat();
       }
     );
@@ -236,12 +243,12 @@ class AiHelper {
       if (xhr.status === 200) {
         ai_helper.innerHTMLwithScripts(historyContainer, xhr.responseText);
       } else {
-        console.error("Failed to show chat history:", xhr.statusText);
+        console.error("Failed to reload chat conversation:", xhr.statusText);
       }
     };
 
     xhr.onerror = function () {
-      console.error("Failed to show chat history:", xhr.statusText);
+      console.error("Failed to reload chat conversation:", xhr.statusText);
     };
 
     xhr.send();
@@ -256,12 +263,12 @@ class AiHelper {
         ai_helper.close_dropdown_menu();
         ai_helper.reload_chat();
       } else {
-        console.error("Failed to clear chat conversation:", xhr.statusText);
+        console.error("Failed to reload chat conversation:", xhr.statusText);
       }
     };
 
     xhr.onerror = function () {
-      console.error("Failed to clear chat conversation:", xhr.statusText);
+      console.error("Failed to reload chat conversation:", xhr.statusText);
     };
 
     xhr.send();
@@ -367,12 +374,12 @@ class AiHelper {
         ai_helper.innerHTMLwithScripts(chatArea, xhr.responseText);
         chatArea.scrollTop = 0;
       } else {
-        console.error("Failed to jump to history:", xhr.statusText);
+        console.error("Failed to reload chat conversation:", xhr.statusText);
       }
     };
 
     xhr.onerror = function () {
-      console.error("Failed to jump to history:", xhr.statusText);
+      console.error("Failed to reload chat conversation:", xhr.statusText);
     };
 
     xhr.send();
@@ -401,12 +408,12 @@ class AiHelper {
           console.error("Failed to parse response:", e);
         }
       } else {
-        console.error("Failed to delete history:", xhr.statusText);
+        console.error("Failed to reload chat conversation:", xhr.statusText);
       }
     };
 
     xhr.onerror = function () {
-      console.error("Failed to delete history:", xhr.statusText);
+      console.error("Failed to reload chat conversation:", xhr.statusText);
     };
 
     xhr.send();
@@ -463,11 +470,11 @@ class AiHelper {
       arrow_left.style.display = "none";
     }
     // Save the flag value to local storage
-    localStorage.setItem(this.local_storage_key, flag);
+    localStorage.setItem(this.chat_fold_storage_key, flag);
   };
 
   init_fold_flag = function () {
-    const flag = localStorage.getItem(this.local_storage_key);
+    const flag = localStorage.getItem(this.chat_fold_storage_key);
     if (flag === "true") {
       this.fold_chat(true, true);
     } else {
@@ -781,4 +788,5 @@ class AiHelper {
   }
 };
 
+// Default instance for backward compatibility
 var ai_helper = new AiHelper();

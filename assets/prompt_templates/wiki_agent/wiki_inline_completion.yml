@@ -1,0 +1,54 @@
+---
+_type: prompt
+input_variables:
+  - prefix_text
+  - suffix_text
+  - page_title
+  - project_name
+  - cursor_position
+  - max_sentences
+  - format
+  - project_description
+  - existing_content
+  - is_section_edit
+template: |-
+  You are helping to complete wiki content for page "{page_title}" in project "{project_name}".
+
+  Project Context:
+  - Project: {project_name}
+  - Description: {project_description}
+  - Text Format: {format}
+
+  ===== CURRENT WIKI CONTENT BEING WRITTEN =====
+  {prefix_text}
+  ===== END CURRENT CONTENT =====
+
+  ===== TEXT AFTER CURSOR =====
+  {suffix_text}
+  ===== END CURSOR TEXT =====
+  
+  Cursor position: {cursor_position}
+
+  Important spacing rules:
+  1. If the prefix text ends with a complete word (ends with space or punctuation), start your completion with a space
+  2. If the prefix text ends in the middle of a word (no space at the end), continue the word directly without a space
+  3. If the prefix text ends with punctuation, start with a space
+
+  Editing Mode: {is_section_edit}
+
+  Instructions:
+  - Complete the wiki content from the cursor position
+  - Write documentation that is consistent with existing wiki content and project context
+  - DO NOT repeat any part of the above "CURRENT WIKI CONTENT BEING WRITTEN"
+  - Write ONLY the continuation that comes after the cursor
+  - Maximum {max_sentences} sentences
+  - Consider the context of the above "TEXT AFTER CURSOR"
+  - Use appropriate {format} formatting syntax when needed
+  - Write in a clear, informative documentation style
+  - Focus on providing useful information that fits the context
+
+  ===== EXISTING PAGE CONTENT =====
+  {existing_content}
+  ===== END EXISTING CONTENT =====
+
+  Write the continuation:
