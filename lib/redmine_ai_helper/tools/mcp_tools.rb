@@ -1,5 +1,7 @@
 module RedmineAiHelper
+  # Tools namespace for agent capabilities
   module Tools
+    # MCP (Model Context Protocol) tools for dynamic server integration
     class McpTools < RedmineAiHelper::BaseTools
       using RedmineAiHelper::Util::LangchainPatch
       include RedmineAiHelper::Logger

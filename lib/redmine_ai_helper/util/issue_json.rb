@@ -1,6 +1,9 @@
 # This file is part of Redmine AI Helper plugin for Redmine.
 module RedmineAiHelper
   module Util
+    # Utility module for converting Redmine issues to JSON format.
+    # Provides methods to generate comprehensive JSON representations of issues
+    # including related data like project, tracker, status, priority, assignees, attachments, etc.
     module IssueJson
       # Generates a JSON representation of an issue.
       # @param issue [Issue] The issue to be represented in JSON.

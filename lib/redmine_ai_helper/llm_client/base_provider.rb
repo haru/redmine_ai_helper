@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 module RedmineAiHelper
+  # LLM client implementations
   module LlmClient
     # BaseProvider is an abstract class that defines the interface for LLM providers.
     class BaseProvider

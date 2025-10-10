@@ -1,13 +1,13 @@
 module RedmineAiHelper
+  # Utilities for Langfuse integration
   module LangfuseUtil
     # Wrapper for GoogleGemini.
     class Gemini < Langchain::LLM::GoogleGemini
       attr_accessor :langfuse
 
-      # Override the chat method to handle tool calls.
-      # @param [Hash] params Parameters for the chat request.
-      # @param [Proc] block Block to handle the response.
-      # @return The response from the chat.
+      # Override the chat method to handle tool calls
+      # @param params [Hash] Parameters for the chat request
+      # @return [Object] The response from the chat
       def chat(params = {})
         generation = nil
         if @langfuse&.current_span

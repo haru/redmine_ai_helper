@@ -4,6 +4,8 @@ require "redmine_ai_helper/llm"
 require "redmine_ai_helper/logger"
 require "redmine_ai_helper/export/pdf/project_health_pdf_helper"
 
+# Controller for AI Helper plugin's main functionality
+# Handles chat interactions, project health reports, issue summaries, and wiki completions
 class AiHelperController < ApplicationController
   include ActionController::Live
   include RedmineAiHelper::Logger
@@ -18,12 +20,14 @@ class AiHelperController < ApplicationController
   before_action :authorize
 
   # Display the chat form in the sidebar
+  # @return [void]
   def chat_form
     @message = AiHelperMessage.new
     render partial: "ai_helper/chat/chat_form"
   end
 
   # Redisplay the chat screen
+  # @return [void]
   def reload
     render partial: "ai_helper/chat/chat"
   end
@@ -328,6 +332,7 @@ class AiHelperController < ApplicationController
   end
 
   # Generate wiki completion suggestions via JSON API
+  # @return [void]
   def suggest_wiki_completion
     unless request.content_type == "application/json"
       render json: { error: "Unsupported Media Type" }, status: :unsupported_media_type and return
@@ -386,6 +391,7 @@ class AiHelperController < ApplicationController
   end
 
   # Display project health report
+  # @return [void]
   def project_health
     cache_key = "project_health_#{@project.id}_#{params[:version_id]}_#{params[:start_date]}_#{params[:end_date]}"
     @health_report = Rails.cache.fetch(cache_key, expires_in: 1.hour) do
@@ -408,6 +414,7 @@ class AiHelperController < ApplicationController
   end
 
   # Generate PDF from current health report content
+  # @return [void]
   def project_health_pdf
     health_report_content = params[:health_report_content]
 
@@ -427,6 +434,7 @@ class AiHelperController < ApplicationController
   end
 
   # Generate Markdown from current health report content
+  # @return [void]
   def project_health_markdown
     health_report_content = params[:health_report_content]
 
@@ -446,6 +454,7 @@ class AiHelperController < ApplicationController
   end
 
   # Generate project health report with streaming
+  # @return [void]
   def generate_project_health
     ai_helper_logger.info "Starting project health generation for project #{@project.id}"
     cache_key = "project_health_#{@project.id}_#{params[:version_id]}_#{params[:start_date]}_#{params[:end_date]}"
@@ -498,12 +507,14 @@ class AiHelperController < ApplicationController
     end
   end
 
+  # Check text for typos
+  # @return [void]
   def check_typos
     text = params[:text]
     return render json: { suggestions: [] } if text.blank?
-    
+
     context_type = params[:context_type] || 'general'
-    
+
     llm = RedmineAiHelper::Llm.new
     suggestions = llm.check_typos(
       text: text,

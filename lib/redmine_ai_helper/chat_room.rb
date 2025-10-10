@@ -41,10 +41,11 @@ module RedmineAiHelper
     end
 
     # Add a message to the chat room.
-    # @param role [String] The role of the agent sending the message.
-    # @param message [String] The message content.
-    # @param to [String] The recipient of the message.
-    # @return [Array] The list of messages in the chat room.
+    # @param llm_role [String] The role for the LLM (user/assistant)
+    # @param from [String] The sender of the message
+    # @param message [String] The message content
+    # @param to [String] The recipient of the message
+    # @return [Array] The list of messages in the chat room
     def add_message(llm_role, from, message, to)
       ai_helper_logger.debug "from: #{from}\n @#{to}, #{message}"
       @messages ||= []

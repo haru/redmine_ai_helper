@@ -2,16 +2,24 @@ require 'set'
 
 module RedmineAiHelper
   module Agents
+    # Agent for documentation-related tasks like typo checking
     class DocumentationAgent < BaseAgent
       def initialize(options = {})
         super
         @project = options[:project]
       end
 
+      # Get the agent's backstory
+      # @return [String] The backstory prompt
       def backstory
         load_prompt("documentation_agent/backstory")
       end
 
+      # Check text for typos and return suggestions
+      # @param text [String] The text to check
+      # @param context_type [String] The context type (general, code, etc.)
+      # @param options [Hash] Additional options
+      # @return [Array<Hash>] Array of typo correction suggestions
       def check_typos(text:, context_type: 'general', **options)
         json_schema = {
           type: "array",
@@ -85,6 +93,8 @@ module RedmineAiHelper
         validated_suggestions
       end
 
+      # Get available tools for this agent
+      # @return [Array] Empty array (no tools needed)
       def available_tools
         []
       end

@@ -1,12 +1,18 @@
 module RedmineAiHelper
+  # Namespace for AI agents
   module Agents
+    # Base MCP agent for Model Context Protocol integration
     class McpAgent < RedmineAiHelper::BaseAgent
       include RedmineAiHelper::Logger
 
+      # Get the agent's role
+      # @return [String] The role identifier
       def role
         "mcp_agent"
       end
 
+      # Get the agent's backstory
+      # @return [String] The backstory prompt
       def backstory
         # Base (abstract) McpAgent: supply only variables required by the template.
         prompt = load_prompt("mcp_agent/backstory")

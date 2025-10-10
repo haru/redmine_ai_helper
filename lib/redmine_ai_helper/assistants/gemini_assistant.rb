@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 module RedmineAiHelper
+  # Assistant implementations for different LLM providers
   module Assistants
     # GeminiAssistant is a specialized assistant for handling Gemini messages.
     class GeminiAssistant < RedmineAiHelper::Assistant

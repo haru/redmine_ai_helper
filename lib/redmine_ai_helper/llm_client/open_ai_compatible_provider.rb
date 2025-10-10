@@ -162,6 +162,11 @@ module RedmineAiHelper
           Langchain::LLM::OpenAIResponse.new(new_response)
         end
 
+        # Process tool results from messages and generate a final response.
+        # This method handles the conversion of tool execution results into a format
+        # the LLM can understand and generates a response based on those results.
+        # @param [Array<Hash>] messages Array of messages containing tool calls and results.
+        # @return [Langchain::LLM::OpenAIResponse] The final response incorporating tool results.
         def send_tool_result(messages:)
           new_messages = []
           tool_results = []

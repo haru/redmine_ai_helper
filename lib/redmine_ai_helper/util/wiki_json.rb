@@ -1,4 +1,5 @@
 module RedmineAiHelper
+  # Utility modules
   module Util
     # This module provides methods to generate JSON data for wiki pages.
     module WikiJson
