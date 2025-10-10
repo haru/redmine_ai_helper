@@ -79,3 +79,4 @@ specs/
 .spec-workflow/session.json
 .spec-workflow/
 .DS_Store
+.yardoc/

@@ -17,10 +17,10 @@ module RedmineAiHelper
         WikiPage.exists?(id: object_id)
       end
 
-      # A method to generate content and payload for registering an issue into the vector database
-      # @param issue [Issue] The issue to be registered.
-      # @return [Hash] A hash containing the content and payload for the issue.
-      # @note This method is used to prepare the data for vector database registration.
+      # A method to generate content and payload for registering a wiki page into the vector database
+      # @param wiki [WikiPage] The wiki page to be registered
+      # @return [Hash] A hash containing the content and payload for the wiki page
+      # @note This method is used to prepare the data for vector database registration
       def data_to_json(wiki)
         payload = {
           wiki_id: wiki.id,

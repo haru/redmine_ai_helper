@@ -182,10 +182,10 @@ module RedmineAiHelper
 
     # Generate text completion for inline auto-completion
     # @param text [String] The current text content
-    # @param context_type [String] The context type (description, etc.)
     # @param cursor_position [Integer] The cursor position in the text
     # @param project [Project] The project object
-    # @param issue [Issue] Optional issue object for context
+    # @param wiki_page [WikiPage] Optional wiki page object for context
+    # @param is_section_edit [Boolean] Whether this is a section edit
     # @return [String] The completion suggestion
     def generate_wiki_completion(text:, cursor_position: nil, project: nil, wiki_page: nil,
                                  is_section_edit: false)
@@ -218,6 +218,13 @@ module RedmineAiHelper
       end
     end
 
+    # Generate text completion for inline auto-completion
+    # @param text [String] The current text content
+    # @param context_type [String] The context type (description, etc.)
+    # @param cursor_position [Integer, nil] The cursor position in the text
+    # @param project [Project, nil] The project object
+    # @param issue [Issue, nil] Optional issue object for context
+    # @return [String] The completion suggestion
     def generate_text_completion(text:, context_type:, cursor_position: nil, project: nil, issue: nil)
       begin
         ai_helper_logger.info "Starting text completion: text='#{text[0..50]}...', cursor_position=#{cursor_position}, context_type=#{context_type}"
@@ -250,14 +257,20 @@ module RedmineAiHelper
       end
     end
 
+    # Check text for typos using DocumentationAgent
+    # @param text [String] The text to check
+    # @param context_type [String] The context type
+    # @param project [Project, nil] The project object
+    # @param max_suggestions [Integer] Maximum number of suggestions to return
+    # @return [Array<Hash>] Array of typo suggestions
     def check_typos(text:, context_type: 'general', project: nil, max_suggestions: 10)
       begin
         ai_helper_logger.info "Starting typo check: context_type=#{context_type}, text_length=#{text.length}"
-        
+
         langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: text)
         options = { langfuse: langfuse, project: project }
         agent = RedmineAiHelper::Agents::DocumentationAgent.new(options)
-        
+
         langfuse.create_span(name: "typo_check", input: text)
         
         suggestions = agent.check_typos(

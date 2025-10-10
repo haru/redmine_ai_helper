@@ -5,10 +5,15 @@ require_relative "llm_client/anthropic_provider"
 module RedmineAiHelper
   # This class is responsible for providing the appropriate LLM client based on the LLM type.
   class LlmProvider
+    # OpenAI provider constant
     LLM_OPENAI = "OpenAI".freeze
+    # OpenAI Compatible provider constant
     LLM_OPENAI_COMPATIBLE = "OpenAICompatible".freeze
+    # Gemini provider constant
     LLM_GEMINI = "Gemini".freeze
+    # Anthropic provider constant
     LLM_ANTHROPIC = "Anthropic".freeze
+    # Azure OpenAI provider constant
     LLM_AZURE_OPENAI = "AzureOpenAi".freeze
     class << self
       # Returns an instance of the appropriate LLM client based on the system settings.

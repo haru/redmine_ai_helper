@@ -2,6 +2,7 @@
 require "langchain"
 
 module RedmineAiHelper
+  # Vector search functionality
   module Vector
     # Langchainrb's Qdrant does not support payload filtering,
     # so it is implemented independently by inheritance

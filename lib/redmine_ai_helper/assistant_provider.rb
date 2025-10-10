@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 module RedmineAiHelper
+  # Provides the appropriate assistant instance based on the LLM type
   class AssistantProvider
     # This class is responsible for providing the appropriate assistant based on the LLM type.
     class << self

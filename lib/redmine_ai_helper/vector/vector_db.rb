@@ -143,11 +143,10 @@ module RedmineAiHelper
         client.similarity_search(query: question, k: k)
       end
 
-      # Searches for similar data in the vector database with a filter.
-      # @param question [String] The query string to search for.
-      # @param filter [Hash] The filter to apply to the search.
-      # @param k [Integer] The number of results to return.
-      # @return [Array] An array of similar data that match the query and filter.
+      # Searches for similar data in the vector database
+      # @param question [String] The query string to search for
+      # @param k [Integer] The number of results to return
+      # @return [String] The chat completion response
       def ask(question:, k: 10)
         client.ask(question: question, k: k).chat_completion
       end

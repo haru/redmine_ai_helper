@@ -5,12 +5,16 @@ module RedmineAiHelper
   module Agents
     # IssueUpdateAgent is a specialized agent for handling Redmine issue updates.
     class IssueUpdateAgent < RedmineAiHelper::BaseAgent
+      # Get the agent's backstory
+      # @return [String] The backstory prompt
       def backstory
         prompt = load_prompt("issue_update_agent/backstory")
         content = prompt.format(issue_properties: issue_properties)
         content
       end
 
+      # Get available tool providers for this agent
+      # @return [Array<Class>] Array of tool provider classes
       def available_tool_providers
         [
           RedmineAiHelper::Tools::IssueTools,

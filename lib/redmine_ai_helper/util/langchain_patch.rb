@@ -3,6 +3,10 @@ require "langchain"
 
 module RedmineAiHelper
   module Util
+    # Patch module for extending Langchain functionality.
+    # This module provides refinements to Langchain classes to support
+    # recursive tool definition generation, particularly for MCP tools
+    # that require nested object and array properties.
     module LangchainPatch
       # A patch to enable recursive calls for creating Object properties when automatically
       # generating Tool definitions in MCPTools
