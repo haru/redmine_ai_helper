@@ -149,12 +149,9 @@ module RedmineAiHelper
 
     # Generate project health report using ProjectAgent with streaming support
     # @param project [Project] The project object
-    # @param version_id [Integer] Optional version ID to filter metrics
-    # @param start_date [String] Optional start date for metrics
-    # @param end_date [String] Optional end date for metrics
     # @param stream_proc [Proc] Optional callback proc for streaming content
     # @return [String] The project health report
-    def project_health_report(project:, version_id: nil, start_date: nil, end_date: nil, stream_proc: nil)
+    def project_health_report(project:, stream_proc: nil)
       begin
         prompt = "project_health_report"
 
@@ -162,9 +159,6 @@ module RedmineAiHelper
         options = {}
         options[:langfuse] = langfuse
         options[:project_id] = project.id
-        options[:version_id] = version_id
-        options[:start_date] = start_date
-        options[:end_date] = end_date
         agent = RedmineAiHelper::Agents::ProjectAgent.new(options)
         langfuse.create_span(name: "user_request", input: prompt)
         answer = agent.project_health_report(

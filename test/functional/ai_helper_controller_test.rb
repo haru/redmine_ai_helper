@@ -1004,10 +1004,10 @@ class AiHelperControllerTest < ActionController::TestCase
       
       should "handle Rails cache operations in generate_project_health" do
         # Test cache delete and write operations
-        cache_key = "project_health_#{@project.id}___"
+        cache_key = "project_health_#{@project.id}"
         Rails.cache.expects(:delete).with(cache_key)
         Rails.cache.expects(:write).with(cache_key, anything, expires_in: 1.hour)
-        
+
         get :generate_project_health, params: { id: @project.id }
         assert_response :success
       end

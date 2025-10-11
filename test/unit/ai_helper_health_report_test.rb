@@ -24,11 +24,6 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       assert_respond_to report, :user
     end
 
-    should "belong to version optionally" do
-      report = AiHelperHealthReport.new
-      assert_respond_to report, :version
-    end
-
     should "validate presence of project_id" do
       report = AiHelperHealthReport.new(
         user_id: @user.id,
@@ -66,21 +61,6 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       assert report.save
     end
 
-    should "store and retrieve report_parameters as hash" do
-      report = AiHelperHealthReport.create!(
-        project_id: @project.id,
-        user_id: @user.id,
-        health_report: "Test report"
-      )
-
-      params = { 'version_id' => 1, 'start_date' => '2025-01-01', 'end_date' => '2025-01-31' }
-      report.report_parameters_hash = params
-      report.save!
-
-      report.reload
-      assert_equal params, report.report_parameters_hash
-    end
-
     should "store and retrieve metrics as hash" do
       report = AiHelperHealthReport.create!(
         project_id: @project.id,
@@ -94,15 +74,6 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
 
       report.reload
       assert_equal metrics, report.metrics_hash
-    end
-
-    should "return empty hash when report_parameters is blank" do
-      report = AiHelperHealthReport.create!(
-        project_id: @project.id,
-        user_id: @user.id,
-        health_report: "Test report"
-      )
-      assert_equal({}, report.report_parameters_hash)
     end
 
     should "return empty hash when metrics is blank" do
@@ -238,39 +209,6 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       end
 
       assert report.deletable?(@user)
-    end
-
-    should "return period string with dates" do
-      report = AiHelperHealthReport.create!(
-        project_id: @project.id,
-        user_id: @user.id,
-        health_report: "Test report",
-        start_date: Date.new(2025, 1, 1),
-        end_date: Date.new(2025, 1, 31)
-      )
-
-      assert_equal "2025/01/01 - 2025/01/31", report.period_string
-    end
-
-    should "return period string with version" do
-      report = AiHelperHealthReport.create!(
-        project_id: @project.id,
-        user_id: @user.id,
-        health_report: "Test report",
-        version_id: @version.id
-      )
-
-      assert_equal @version.name, report.period_string
-    end
-
-    should "return period string as 'all' when no date or version" do
-      report = AiHelperHealthReport.create!(
-        project_id: @project.id,
-        user_id: @user.id,
-        health_report: "Test report"
-      )
-
-      assert_equal I18n.t('label_all'), report.period_string
     end
   end
 end

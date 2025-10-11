@@ -6,7 +6,6 @@
       <thead>
         <tr>
           <th><%= l(:field_created_on) %></th>
-          <th><%= l(:label_ai_helper_report_period) %></th>
           <th><%= l(:field_author) %></th>
           <th></th>
         </tr>
@@ -17,9 +16,6 @@
             <td class="created_on">
               <%= link_to format_time(report.created_at),
                           ai_helper_health_report_show_path(@project, report_id: report.id) %>
-            </td>
-            <td class="period">
-              <%= report.period_string %>
             </td>
             <td class="author">
               <%= link_to_user report.user %>

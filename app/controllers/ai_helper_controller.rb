@@ -458,7 +458,7 @@ class AiHelperController < ApplicationController
   # @return [void]
   def generate_project_health
     ai_helper_logger.info "Starting project health generation for project #{@project.id}"
-    cache_key = "project_health_#{@project.id}_#{params[:version_id]}_#{params[:start_date]}_#{params[:end_date]}"
+    cache_key = "project_health_#{@project.id}"
     Rails.cache.delete(cache_key)
 
     begin
@@ -473,9 +473,6 @@ class AiHelperController < ApplicationController
 
         content = llm.project_health_report(
           project: @project,
-          version_id: params[:version_id],
-          start_date: params[:start_date],
-          end_date: params[:end_date],
           stream_proc: cache_proc,
         )
 
