@@ -1,7 +1,6 @@
 require "langfuse"
 $LOAD_PATH.unshift "#{File.dirname(__FILE__)}/lib"
 require "redmine_ai_helper/util/config_file"
-require "redmine_ai_helper/projects_helper_patch"
 require "redmine_ai_helper/user_patch"
 require_dependency "redmine_ai_helper/view_hook"
 Dir[File.join(File.dirname(__FILE__), "lib/redmine_ai_helper/agents", "*_agent.rb")].each do |file|
