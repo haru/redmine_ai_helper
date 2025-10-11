@@ -559,7 +559,7 @@ class AiHelperController < ApplicationController
     end
 
     respond_to do |format|
-      format.html { render partial: "ai_helper/project/health_report_show" }
+      format.html { render template: "ai_helper/project/health_report_show", layout: "base" }
       format.pdf do
         filename = "#{@project.identifier}-health-report-#{@health_report.created_at.strftime("%Y%m%d")}.pdf"
         send_data(project_health_to_pdf(@project, @health_report.health_report),

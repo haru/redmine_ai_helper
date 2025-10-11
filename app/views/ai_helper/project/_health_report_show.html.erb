@@ -1,5 +1,11 @@
-<div class="ai-helper-health-report-detail">
-  <h3><%= l(:label_ai_helper_health_report_detail) %></h3>
+<div class="ai-helper-project-health ai-helper-health-report-detail box"<%= ' dir="rtl"'.html_safe if l(:direction) == 'rtl' %>>
+  <div class="contextual">
+    <%= link_to l(:button_back),
+                ai_helper_dashboard_path(@project, tab: 'health_report'),
+                class: 'icon icon-cancel' %>
+  </div>
+
+  <h3><%= sprite_icon('ai-helper-robot', l(:label_ai_helper_health_report_detail), plugin: :redmine_ai_helper) %></h3>
 
   <div class="ai-helper-health-report-meta">
     <p>
@@ -12,8 +18,11 @@
     </p>
   </div>
 
-  <div class="ai-helper-health-report-content box">
-    <%= raw textilizable(@health_report.health_report.to_s, object: @project) %>
+  <div class="ai-helper-project-health-content">
+    <div id="ai-helper-project-health-result" class="ai-helper-final-content">
+      <%= raw textilizable(@health_report.health_report.to_s, object: @project) %>
+    </div>
+    <input type="hidden" id="ai-helper-health-report-content" value="<%= html_escape(@health_report.health_report.to_s) %>" />
   </div>
 
   <p class="other-formats">
@@ -24,10 +33,21 @@
                                                        format: :pdf),
                       class: 'pdf' %></span>
   </p>
-
-  <p>
-    <%= link_to l(:button_back),
-                ai_helper_dashboard_path(@project, tab: 'health_report'),
-                class: 'icon icon-cancel' %>
-  </p>
 </div>
+
+<% content_for :header_tags do %>
+  <%= stylesheet_link_tag 'ai_helper_rtl', plugin: 'redmine_ai_helper' if l(:direction) == 'rtl' %>
+  <%= javascript_tag do %>
+    document.addEventListener('DOMContentLoaded', function() {
+      var hiddenField = document.getElementById('ai-helper-health-report-content');
+      var resultDiv = document.getElementById('ai-helper-project-health-result');
+      if (!hiddenField || !resultDiv) { return; }
+      if (typeof AiHelperMarkdownParser === 'undefined') { return; }
+      var content = hiddenField.value;
+      if (!content) { return; }
+      var parser = new AiHelperMarkdownParser();
+      var formattedContent = parser.parse(content);
+      resultDiv.innerHTML = '<div class="ai-helper-final-content">' + formattedContent + '</div>';
+    });
+  <% end %>
+<% end %>
