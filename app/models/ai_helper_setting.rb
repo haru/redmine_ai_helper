@@ -17,6 +17,8 @@ class AiHelperSetting < ApplicationRecord
       data || AiHelperSetting.create!
     end
 
+    # Get the current AI Helper settings
+    # @return [AiHelperSetting] The global settings
     def setting
       find_or_create
     end
@@ -26,11 +28,14 @@ class AiHelperSetting < ApplicationRecord
     end
   end
 
-  # returns true if embedding_url is required.
+  # Returns true if embedding_url is required
+  # @return [Boolean] Whether embedding URL is enabled
   def embedding_url_enabled?
     model_profile&.llm_type == RedmineAiHelper::LlmProvider::LLM_AZURE_OPENAI
   end
 
+  # Get the maximum tokens from the model profile
+  # @return [Integer, nil] The maximum tokens or nil if not configured
   def max_tokens
     return nil unless model_profile&.max_tokens
     return nil if model_profile.max_tokens <= 0

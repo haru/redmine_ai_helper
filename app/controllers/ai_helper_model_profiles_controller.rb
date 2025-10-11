@@ -6,6 +6,9 @@ class AiHelperModelProfilesController < ApplicationController
   before_action :find_model_profile, only: [:show, :edit, :update, :destroy]
   self.main_menu = false
 
+  # Placeholder value used to mask the actual access key in forms
+  # to prevent accidental exposure of sensitive API keys.
+  # When this value is submitted, the original access key is preserved.
   DUMMY_ACCESS_KEY = "___DUMMY_ACCESS_KEY___"
 
   # Display the model profile

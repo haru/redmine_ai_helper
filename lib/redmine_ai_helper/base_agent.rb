@@ -189,10 +189,12 @@ module RedmineAiHelper
       RedmineAiHelper::Util::PromptLoader.load_template(name)
     end
 
+    # Response class for agent tasks
     class TaskResponse < RedmineAiHelper::ToolResponse
     end
   end
 
+  # Singleton list manager for all registered agents
   class AgentList
     include Singleton
 
@@ -200,6 +202,9 @@ module RedmineAiHelper
       @agents = []
     end
 
+    # Add an agent to the list
+    # @param name [String] The agent name
+    # @param class_name [String] The agent class name
     def add_agent(name, class_name)
       agent = {
         name: name,
@@ -209,6 +214,10 @@ module RedmineAiHelper
       @agents << agent
     end
 
+    # Get an agent instance by name
+    # @param name [String] The agent name
+    # @param option [Hash] Options to pass to the agent constructor
+    # @return [BaseAgent] The agent instance
     def get_agent_instance(name, option = {})
       agent_name = name
       agent_name = "leader_agent" if name == "leader"
@@ -218,6 +227,8 @@ module RedmineAiHelper
       agent_class.new(option)
     end
 
+    # List all enabled agents
+    # @return [Array<Hash>] Array of agent information
     def list_agents
       @agents.filter_map { |a|
         # Skip if class name is nil or empty
@@ -238,14 +249,21 @@ module RedmineAiHelper
       }
     end
 
+    # Find an agent by name
+    # @param name [String] The agent name
+    # @return [Hash, nil] The agent information or nil
     def find_agent(name)
       @agents.find { |a| a[:name] == name }
     end
 
+    # Remove an agent from the list
+    # @param name [String] The agent name
     def remove_agent(name)
       @agents.delete_if { |a| a[:name] == name }
     end
 
+    # Get debug information about all agents
+    # @return [Array<Hash>] Array of agent debug information
     def debug_agents
       RedmineAiHelper::CustomLogger.instance.info("Registered agents: #{@agents.map { |a| "#{a[:name]} (#{a[:class]})" }.join(', ')}")
     end

@@ -12,16 +12,22 @@ module RedmineAiHelper
         @system_prompt = RedmineAiHelper::Util::SystemPrompt.new(params)
       end
 
+      # Get the agent's backstory
+      # @return [String] The backstory prompt
       def backstory
         prompt = load_prompt("leader_agent/backstory")
         content = prompt.format
         content
       end
 
+      # Get the agent's role
+      # @return [String] The role identifier
       def role
         "leader"
       end
 
+      # Get the complete system prompt including backstory
+      # @return [String] The system prompt
       def system_prompt
         "#{@system_prompt.prompt}\n\n#{backstory}"
       end

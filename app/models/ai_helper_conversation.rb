@@ -16,6 +16,8 @@ class AiHelperConversation < ApplicationRecord
     end
   end
 
+  # Clean up old conversations older than 6 months
+  # @return [Array<AiHelperConversation>] The destroyed conversations
   def self.cleanup_old_conversations
     where("created_at < ?", 6.months.ago).destroy_all
   end

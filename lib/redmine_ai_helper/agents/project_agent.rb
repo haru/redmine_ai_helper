@@ -5,12 +5,16 @@ module RedmineAiHelper
   module Agents
     # ProjectAgent is a specialized agent for handling Redmine project-related queries.
     class ProjectAgent < RedmineAiHelper::BaseAgent
+      # Get the agent's backstory
+      # @return [String] The backstory prompt
       def backstory
         prompt = load_prompt("project_agent/backstory")
         content = prompt.format
         content
       end
 
+      # Get available tool providers for this agent
+      # @return [Array<Class>] Array of tool provider classes
       def available_tool_providers
         [RedmineAiHelper::Tools::ProjectTools]
       end

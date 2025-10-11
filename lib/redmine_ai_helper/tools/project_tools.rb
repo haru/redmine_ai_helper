@@ -197,6 +197,17 @@ module RedmineAiHelper
         property :end_date, type: "string", description: "End date for metrics collection in YYYY-MM-DD format. If not specified, uses today.", required: false
       end
 
+      # Retrieve comprehensive project health metrics for a specific project.
+      # This method aggregates various statistics including issue counts, timing,
+      # workload distribution, quality indicators, progress tracking, and team metrics.
+      # Should be called before generating any project health report.
+      # @param project_id [Integer] The project ID to get health metrics for.
+      # @param version_id [Integer, nil] The version ID to filter metrics by.
+      # @param start_date [String, nil] Start date in YYYY-MM-DD format (defaults to 30 days ago).
+      # @param end_date [String, nil] End date in YYYY-MM-DD format (defaults to today).
+      # @return [Hash] A hash containing comprehensive project metrics including issue statistics,
+      #   timing metrics, workload metrics, quality metrics, progress metrics, member metrics,
+      #   update frequency metrics, estimation accuracy metrics, attachment metrics, and issue list.
       def get_metrics(project_id:, version_id: nil, start_date: nil, end_date: nil)
         ai_helper_logger.info "get_metrics called with args: project_id=#{project_id}, version_id=#{version_id}, start_date=#{start_date}, end_date=#{end_date}"
 
@@ -242,7 +253,6 @@ module RedmineAiHelper
             update_frequency_metrics: calculate_update_frequency_metrics(issues),
             estimation_accuracy_metrics: calculate_estimation_accuracy_metrics(issues),
             attachment_metrics: calculate_attachment_metrics(issues),
-            issue_list: extract_issue_list(issues),
           }
 
           ai_helper_logger.info "get_metrics returning: #{metrics.to_json}"

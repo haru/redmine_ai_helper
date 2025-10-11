@@ -2,8 +2,11 @@
 
 
 module RedmineAiHelper
+  # Export functionality
   module Export
+    # PDF export functionality
     module PDF
+      # Helper module for generating project health report PDFs
       module ProjectHealthPdfHelper
         include Redmine::I18n
         include ApplicationHelper
@@ -122,10 +125,6 @@ module RedmineAiHelper
 
         private
 
-        # Process HTML content for PDF with table support
-        # @param pdf [Redmine::Export::PDF::ITCPDF] The PDF object
-        # @param html_content [String] The HTML content to process
-        # @param left_margin [Integer] The left margin for content
         # Process Markdown tables directly for PDF
         # @param pdf [Redmine::Export::PDF::ITCPDF] The PDF object
         # @param markdown_content [String] The markdown content to process

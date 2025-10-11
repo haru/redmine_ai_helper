@@ -19,4 +19,5 @@ group :test do
   gem "factory_bot_rails"
   gem "shoulda"
   gem "rails-controller-testing"
+  gem "rubocop-yard", require: false
 end

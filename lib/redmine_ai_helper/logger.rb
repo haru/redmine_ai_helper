@@ -1,55 +1,80 @@
 # frozen_string_literal: true
 module RedmineAiHelper
+  # Logger mixin for AI Helper plugin
   module Logger
+    # Hook to extend including class with ClassMethods
+    # @param base [Class] The class including this module
     def self.included(base)
       base.extend(ClassMethods)
     end
 
+    # Class methods for logging
     module ClassMethods
+      # Get the AI Helper logger instance
+      # @return [CustomLogger] The logger instance
       def ai_helper_logger
         @ai_helper_logger ||= begin
             RedmineAiHelper::CustomLogger.instance
           end
       end
 
+      # Log debug message
+      # @param message [String] The message to log
       def debug(message)
         ai_helper_logger.debug("[#{self.name}] #{message}")
       end
 
+      # Log info message
+      # @param message [String] The message to log
       def info(message)
         ai_helper_logger.info("[#{self.name}] #{message}")
       end
 
+      # Log warning message
+      # @param message [String] The message to log
       def warn(message)
         ai_helper_logger.warn("[#{self.name}] #{message}")
       end
 
+      # Log error message
+      # @param message [String] The message to log
       def error(message)
         ai_helper_logger.error("[#{self.name}] #{message}")
       end
     end
 
+    # Get the AI Helper logger instance
+    # @return [CustomLogger] The logger instance
     def ai_helper_logger
       self.class.ai_helper_logger
     end
 
+    # Log debug message
+    # @param message [String] The message to log
     def debug(message)
       ai_helper_logger.debug("[#{self.class.name}] #{message}")
     end
 
+    # Log info message
+    # @param message [String] The message to log
     def info(message)
       ai_helper_logger.info("[#{self.class.name}] #{message}")
     end
 
+    # Log warning message
+    # @param message [String] The message to log
     def warn(message)
       ai_helper_logger.warn("[#{self.class.name}] #{message}")
     end
 
+    # Log error message
+    # @param message [String] The message to log
     def error(message)
       ai_helper_logger.error("[#{self.class.name}] #{message}")
     end
   end
 
+  # Custom logger implementation for AI Helper
   class CustomLogger
     include Singleton
 
@@ -73,22 +98,32 @@ module RedmineAiHelper
       set_log_level(log_level)
     end
 
+    # Log debug message
+    # @param message [String] The message to log
     def debug(message)
       @logger.debug(message)
     end
 
+    # Log info message
+    # @param message [String] The message to log
     def info(message)
       @logger.info(message)
     end
 
+    # Log warning message
+    # @param message [String] The message to log
     def warn(message)
       @logger.warn(message)
     end
 
+    # Log error message
+    # @param message [String] The message to log
     def error(message)
       @logger.error(message)
     end
 
+    # Set the log level
+    # @param log_level [String, Integer] The log level
     def set_log_level(log_level)
       level = case log_level.to_s
         when "debug"
