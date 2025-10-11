@@ -253,7 +253,6 @@ module RedmineAiHelper
             update_frequency_metrics: calculate_update_frequency_metrics(issues),
             estimation_accuracy_metrics: calculate_estimation_accuracy_metrics(issues),
             attachment_metrics: calculate_attachment_metrics(issues),
-            issue_list: extract_issue_list(issues),
           }
 
           ai_helper_logger.info "get_metrics returning: #{metrics.to_json}"
