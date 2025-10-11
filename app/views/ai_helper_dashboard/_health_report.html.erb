@@ -1,1 +1,25 @@
-<h2>overview</h2>
+<!-- Existing health report generation section -->
+<%= render partial: 'ai_helper/project/health_report', locals: { project: @project } %>
+
+<!-- Health report history section -->
+<div class="ai-helper-history-section" style="margin-top: 2em;">
+  <div id="ai-helper-health-report-history-container">
+    <%
+      @limit = 10
+      @health_report_count = AiHelperHealthReport
+        .for_project(@project.id)
+        .visible
+        .count
+      @health_report_pages = Redmine::Pagination::Paginator.new @health_report_count, @limit, params[:page]
+      @offset = @health_report_pages.offset
+      @health_reports = AiHelperHealthReport
+        .for_project(@project.id)
+        .visible
+        .sorted
+        .limit(@limit)
+        .offset(@offset)
+        .to_a
+    %>
+    <%= render partial: 'ai_helper/project/health_report_history' %>
+  </div>
+</div>

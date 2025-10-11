@@ -162,6 +162,9 @@ module RedmineAiHelper
         options = {}
         options[:langfuse] = langfuse
         options[:project_id] = project.id
+        options[:version_id] = version_id
+        options[:start_date] = start_date
+        options[:end_date] = end_date
         agent = RedmineAiHelper::Agents::ProjectAgent.new(options)
         langfuse.create_span(name: "user_request", input: prompt)
         answer = agent.project_health_report(

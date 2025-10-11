@@ -15,7 +15,8 @@ class AiHelperController < ApplicationController
   protect_from_forgery except: [:generate_project_health, :suggest_completion, :suggest_wiki_completion, :check_typos]
   before_action :find_issue, only: [:issue_summary, :update_issue_summary, :generate_issue_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues]
   before_action :find_wiki_page, only: [:wiki_summary, :generate_wiki_summary]
-  before_action :find_project, except: [:issue_summary, :wiki_summary, :generate_issue_summary, :generate_wiki_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues]
+  before_action :find_health_report_and_project, only: [:health_report_show, :health_report_destroy]
+  before_action :find_project, except: [:issue_summary, :wiki_summary, :generate_issue_summary, :generate_wiki_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues, :health_report_show, :health_report_destroy]
   before_action :find_user, :create_session, :find_conversation
   before_action :authorize
 
@@ -522,8 +523,71 @@ class AiHelperController < ApplicationController
       project: @project,
       max_suggestions: 10
     )
-    
+
     render json: { suggestions: suggestions }
+  end
+
+  # Display health report history
+  # @return [void]
+  def health_report_history
+    @limit = 10 # Fixed page size for health reports
+    @health_report_count = AiHelperHealthReport
+      .for_project(@project.id)
+      .visible
+      .count
+    @health_report_pages = Redmine::Pagination::Paginator.new @health_report_count, @limit, params[:page]
+    @offset = @health_report_pages.offset
+    @health_reports = AiHelperHealthReport
+      .for_project(@project.id)
+      .visible
+      .sorted
+      .limit(@limit)
+      .offset(@offset)
+      .to_a
+
+    respond_to do |format|
+      format.html { render partial: "ai_helper/project/health_report_history" }
+      format.json { render json: @health_reports }
+    end
+  end
+
+  # Show specific health report detail
+  # @return [void]
+  def health_report_show
+    @health_report = AiHelperHealthReport.find(params[:report_id])
+
+    unless @health_report.visible?
+      render_403
+      return
+    end
+
+    respond_to do |format|
+      format.html { render partial: "ai_helper/project/health_report_show" }
+      format.pdf do
+        filename = "#{@project.identifier}-health-report-#{@health_report.created_at.strftime("%Y%m%d")}.pdf"
+        send_data(project_health_to_pdf(@project, @health_report.health_report),
+                  type: "application/pdf",
+                  filename: filename)
+      end
+    end
+  end
+
+  # Delete health report
+  # @return [void]
+  def health_report_destroy
+    @health_report = AiHelperHealthReport.find(params[:report_id])
+
+    unless @health_report.deletable?
+      render_403
+      return
+    end
+
+    @health_report.destroy
+
+    respond_to do |format|
+      format.html { redirect_to ai_helper_dashboard_path(@project, tab: 'health_report'), notice: l(:notice_successful_delete) }
+      format.json { render json: { status: 'ok' } }
+    end
   end
 
   private
@@ -633,6 +697,14 @@ class AiHelperController < ApplicationController
     render_404
   end
 
+  # Find health report and its project
+  def find_health_report_and_project
+    @health_report = AiHelperHealthReport.find(params[:report_id])
+    @project = @health_report.project
+  rescue ActiveRecord::RecordNotFound
+    render_404
+  end
+
 
   # Generate project health report data
   def generate_project_health_report
@@ -648,4 +720,5 @@ class AiHelperController < ApplicationController
     ai_helper_logger.error e.backtrace.join("\n")
     { error: e.message }
   end
+
 end

@@ -1,0 +1,37 @@
+<div class="ai-helper-health-report-detail">
+  <h3><%= l(:label_ai_helper_health_report_detail) %></h3>
+
+  <div class="ai-helper-health-report-meta">
+    <p>
+      <strong><%= l(:field_created_on) %>:</strong>
+      <%= format_time(@health_report.created_at) %>
+    </p>
+    <p>
+      <strong><%= l(:field_author) %>:</strong>
+      <%= link_to_user @health_report.user %>
+    </p>
+    <p>
+      <strong><%= l(:label_ai_helper_report_period) %>:</strong>
+      <%= @health_report.period_string %>
+    </p>
+  </div>
+
+  <div class="ai-helper-health-report-content box">
+    <%= raw textilizable(@health_report.health_report.to_s, object: @project) %>
+  </div>
+
+  <p class="other-formats">
+    <%= l(:label_export_to) %>
+    <span><%= link_to 'PDF',
+                      ai_helper_health_report_show_path(@project,
+                                                       report_id: @health_report.id,
+                                                       format: :pdf),
+                      class: 'pdf' %></span>
+  </p>
+
+  <p>
+    <%= link_to l(:button_back),
+                ai_helper_dashboard_path(@project, tab: 'health_report'),
+                class: 'icon icon-cancel' %>
+  </p>
+</div>

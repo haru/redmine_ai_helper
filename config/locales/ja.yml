@@ -12,7 +12,12 @@ ja:
   ai_helper_text_summary_generated_time: "%{time} に生成"
   ai_helper_error_occurred: "エラーが発生しました"
   permission_view_ai_helper: "AIヘルパーの表示"
+  permission_view_ai_helper_health_reports: "健全性レポート履歴の閲覧"
+  permission_delete_ai_helper_health_reports: "健全性レポートの削除"
   label_ai_helper_error: "エラー"
+  label_ai_helper_health_report_history: "レポート履歴"
+  label_ai_helper_health_report_detail: "レポート詳細"
+  label_ai_helper_report_period: "対象期間"
   ai_helper:
     chat:
       planning: "実行計画を作成中..."

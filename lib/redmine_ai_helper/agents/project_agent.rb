@@ -153,12 +153,25 @@ module RedmineAiHelper
         messages = [{ role: "user", content: prompt_text }]
 
         report_text = chat(messages, {}, stream_proc)
+
+        # Save health report to database
+        report_params = {
+          version_id: options[:version_id],
+          start_date: options[:start_date],
+          end_date: options[:end_date],
+        }.compact
+
         report = AiHelperHealthReport.new
         report.project_id = project.id
         report.user_id = User.current.id
         report.health_report = report_text
         report.metrics = JSON.pretty_generate(metrics_list)
+        report.report_parameters = report_params.to_json
+        report.version_id = options[:version_id]
+        report.start_date = options[:start_date]
+        report.end_date = options[:end_date]
         report.save!
+
         report_text
       end
     end

@@ -26,6 +26,11 @@ RedmineApp::Application.routes.draw do
   post "projects/:id/ai_helper/project_health_markdown", to: "ai_helper#project_health_markdown", as: "ai_helper_project_health_markdown"
   post "projects/:id/ai_helper/check_typos", to: "ai_helper#check_typos", as: "ai_helper_check_typos"
 
+  # Health report history routes
+  get "projects/:id/ai_helper/health_reports", to: "ai_helper#health_report_history", as: "ai_helper_health_report_history"
+  get "projects/:id/ai_helper/health_reports/:report_id", to: "ai_helper#health_report_show", as: "ai_helper_health_report_show"
+  delete "projects/:id/ai_helper/health_reports/:report_id", to: "ai_helper#health_report_destroy", as: "ai_helper_health_report_destroy"
+
   get "ai_helper_settings/index", to: "ai_helper_settings#index", as: "ai_helper_setting"
   post "ai_helper_settings/index", to: "ai_helper_settings#update", as: "ai_helper_setting_update"
 
