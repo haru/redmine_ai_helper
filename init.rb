@@ -42,12 +42,12 @@ Redmine::Plugin.register :redmine_ai_helper do
                }
     permission :view_ai_helper_health_reports,
                {
-                 ai_helper: [:health_report_history, :health_report_show],
+                 ai_helper_dashboard: [:health_report_history, :health_report_show],
                },
                read: true
     permission :delete_ai_helper_health_reports,
                {
-                 ai_helper: [:health_report_destroy],
+                 ai_helper_dashboard: [:health_report_destroy],
                },
                require: :member
     permission :manage_ai_helper_settings, { ai_helper_project_settings: [:show, :update] }

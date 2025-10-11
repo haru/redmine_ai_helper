@@ -94,5 +94,153 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
         assert_select 'p.nodata', 1
       end
     end
+
+    context "#health_report_history" do
+      setup do
+        @report1 = AiHelperHealthReport.create!(
+          project: @project,
+          user: @user,
+          health_report: "Test report 1",
+          created_at: 2.days.ago
+        )
+
+        @report2 = AiHelperHealthReport.create!(
+          project: @project,
+          user: @user,
+          health_report: "Test report 2",
+          created_at: 1.day.ago
+        )
+      end
+
+      should "display health report history for project" do
+        role = Role.find(1)
+        role.add_permission! :view_ai_helper_health_reports
+
+        get :health_report_history, params: { id: @project.id }
+
+        assert_response :success
+        assert_template partial: "ai_helper/project/_health_report_history"
+        assert_not_nil assigns(:health_reports)
+        assert_equal 2, assigns(:health_reports).count
+      end
+
+      should "paginate results" do
+        AiHelperHealthReport.where(project: @project).destroy_all
+
+        15.times do |i|
+          AiHelperHealthReport.create!(
+            project: @project,
+            user: @user,
+            health_report: "Test report #{i}",
+            created_at: (i + 3).days.ago
+          )
+        end
+
+        get :health_report_history, params: { id: @project.id, page: 1 }
+
+        assert_response :success
+        assert_equal 10, assigns(:health_reports).count
+      end
+    end
+
+    context "#health_report_show" do
+      setup do
+        @report = AiHelperHealthReport.create!(
+          project: @project,
+          user: @user,
+          health_report: "# Test Report
+
+This is a test report."
+        )
+      end
+
+      should "display health report detail" do
+        role = Role.find(1)
+        role.add_permission! :view_ai_helper_health_reports
+
+        get :health_report_show, params: { id: @project.id, report_id: @report.id }
+
+        assert_response :success
+        assert_template "ai_helper/project/health_report_show"
+        assert_not_nil assigns(:health_report)
+        assert_equal @report.id, assigns(:health_report).id
+      end
+
+      should "generate PDF export" do
+        role = Role.find(1)
+        role.add_permission! :view_ai_helper_health_reports
+
+        get :health_report_show, params: {
+          id: @project.id,
+          report_id: @report.id,
+          format: :pdf
+        }
+
+        assert_response :success
+        assert_equal 'application/pdf', response.media_type
+      end
+
+      should "return 403 when user does not have permission" do
+        non_member_user = User.find(4)
+        @request.session[:user_id] = non_member_user.id
+
+        get :health_report_show, params: { id: @project.id, report_id: @report.id }
+
+        assert_response :forbidden
+      end
+    end
+
+    context "#health_report_destroy" do
+      setup do
+        @report = AiHelperHealthReport.create!(
+          project: @project,
+          user: @user,
+          health_report: "Test report"
+        )
+      end
+
+      should "delete own report" do
+        assert_difference 'AiHelperHealthReport.count', -1 do
+          delete :health_report_destroy, params: {
+            id: @project.id,
+            report_id: @report.id
+          }
+        end
+
+        assert_redirected_to ai_helper_dashboard_path(@project, tab: 'health_report')
+      end
+
+      should "not delete report without permission" do
+        non_member_user = User.find(4)
+        @request.session[:user_id] = non_member_user.id
+
+        assert_no_difference 'AiHelperHealthReport.count' do
+          delete :health_report_destroy, params: {
+            id: @project.id,
+            report_id: @report.id
+          }
+        end
+
+        assert_response :forbidden
+      end
+
+      should "not delete other user's report without permission" do
+        other_user = User.find(2)
+        @request.session[:user_id] = other_user.id
+
+        role = Role.find(1)
+        role.add_permission! :delete_ai_helper_health_reports
+
+        assert_no_difference 'AiHelperHealthReport.count' do
+          delete :health_report_destroy, params: {
+            id: @project.id,
+            report_id: @report.id
+          }
+        end
+
+        assert_response :forbidden
+      end
+    end
+
   end
 end
