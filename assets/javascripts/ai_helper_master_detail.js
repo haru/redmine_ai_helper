@@ -166,10 +166,6 @@ class AiHelperMasterDetail {
 
     return `
       <div class="ai-helper-health-report-detail" data-report-id="${reportId}">
-        <h3>
-          <span class="icon-svg icon-ai-helper-robot"></span>
-          ${reportDetailLabel}
-        </h3>
 
         <div class="ai-helper-health-report-meta">
           <p>

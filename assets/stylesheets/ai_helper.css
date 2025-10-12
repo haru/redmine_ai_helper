@@ -992,6 +992,22 @@ table.ai-helper-sub-issues-table td {
   float: right;
 }
 
+/* Detail pane header with generate button */
+.ai-helper-detail-header {
+  margin-bottom: 1em;
+  padding: 0.8em;
+}
+
+.ai-helper-detail-header h3 {
+  margin: 0;
+  padding: 0;
+  float: left;
+}
+
+.ai-helper-detail-header .contextual {
+  float: right;
+}
+
 /* Container layout */
 .ai-helper-master-detail-layout {
   display: flex;
