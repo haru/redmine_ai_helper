@@ -574,7 +574,7 @@ This is a test report.",
         other_report = AiHelperHealthReport.create!(
           project: other_project,
           user: @user,
-          health_report: "Other project report"
+          health_report: "Other project report",
         )
 
         get :health_report_show, params: { id: @project.id, report_id: other_report.id }
@@ -586,7 +586,7 @@ This is a test report.",
         report = AiHelperHealthReport.create!(
           project: @project,
           user: @user,
-          health_report: "Test report"
+          health_report: "Test report",
         )
 
         # Remove permission
@@ -605,7 +605,7 @@ This is a test report.",
         report = AiHelperHealthReport.create!(
           project: @project,
           user: @user,
-          health_report: "Test report"
+          health_report: "Test report",
         )
 
         non_member_user = User.find(4)
@@ -624,7 +624,7 @@ This is a test report.",
           user: @user,
           health_report: "# Old Report\n\nOld content",
           metrics: { issue_statistics: { total_issues: 40 } }.to_json,
-          created_at: 5.days.ago
+          created_at: 5.days.ago,
         )
 
         @new_report = AiHelperHealthReport.create!(
@@ -632,14 +632,14 @@ This is a test report.",
           user: @user,
           health_report: "# New Report\n\nNew content",
           metrics: { issue_statistics: { total_issues: 50 } }.to_json,
-          created_at: 1.day.ago
+          created_at: 1.day.ago,
         )
 
         role = Role.find(1)
         role.add_permission! :view_ai_helper_health_reports
 
         # Mock the LLM class to avoid actual API calls
-        @llm_mock = mock('llm')
+        @llm_mock = mock("llm")
         RedmineAiHelper::Llm.stubs(:new).returns(@llm_mock)
         @llm_mock.stubs(:compare_health_reports).yields("Comparison content")
       end
@@ -658,24 +658,24 @@ This is a test report.",
         other_report = AiHelperHealthReport.create!(
           project: other_project,
           user: @user,
-          health_report: "Other project report"
+          health_report: "Other project report",
         )
 
         post :compare_health_reports, params: {
-          id: @project.id,
-          old_report_id: @old_report.id,
-          new_report_id: other_report.id
-        }
+                                   id: @project.id,
+                                   old_report_id: @old_report.id,
+                                   new_report_id: other_report.id,
+                                 }
 
         assert_response :forbidden
       end
 
       should "return 404 for non-existent report in streaming comparison" do
         post :compare_health_reports, params: {
-          id: @project.id,
-          old_report_id: 99999,
-          new_report_id: @new_report.id
-        }
+                                   id: @project.id,
+                                   old_report_id: 99999,
+                                   new_report_id: @new_report.id,
+                                 }
 
         assert_response :not_found
       end
@@ -693,14 +693,14 @@ This is a test report.",
           project: @project,
           user: @user,
           health_report: "Report 1",
-          created_at: 1.day.ago
+          created_at: 1.day.ago,
         )
 
         AiHelperHealthReport.create!(
           project: @project,
           user: @user,
           health_report: "Report 2",
-          created_at: 2.days.ago
+          created_at: 2.days.ago,
         )
 
         # Test with invalid report_id - should result in nil selected_report
@@ -719,16 +719,16 @@ This is a test report.",
             project: @project,
             user: @user,
             health_report: "Report #{i}",
-            created_at: (i + 1).days.ago
+            created_at: (i + 1).days.ago,
           )
         end
 
         # Request page 2 with report_id from page 1
         get :health_report_history, params: {
-          id: @project.id,
-          page: 2,
-          report_id: reports.first.id.to_s
-        }
+                                  id: @project.id,
+                                  page: 2,
+                                  report_id: reports.first.id.to_s,
+                                }
 
         assert_response :success
         # When report_id is not in current page, selected_report should be nil
@@ -751,22 +751,22 @@ This is a test report.",
           project: @project,
           user: @user,
           health_report: "Newer report",
-          created_at: 1.day.ago
+          created_at: 1.day.ago,
         )
 
         older_report = AiHelperHealthReport.create!(
           project: @project,
           user: @user,
           health_report: "Older report",
-          created_at: 5.days.ago
+          created_at: 5.days.ago,
         )
 
         # Pass newer report as old_id and older as new_id
         get :compare_health_reports, params: {
-          id: @project.id,
-          old_id: newer_report.id,
-          new_id: older_report.id
-        }
+                                   id: @project.id,
+                                   old_id: newer_report.id,
+                                   new_id: older_report.id,
+                                 }
 
         assert_response :success
         # Should swap them to ensure chronological order
