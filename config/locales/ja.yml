@@ -130,3 +130,5 @@ ja:
         issue_draft_instructions: "チケットのコメントを生成する際の指示"
         subtask_instructions: "子チケットを生成する際の指示"
         health_report_instructions: "健全性レポートを生成する際の指示"
+
+  field_id: "ID"

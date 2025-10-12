@@ -32,12 +32,12 @@ class AiHelperMasterDetail {
   }
 
   attachEventListeners() {
-    // Show button click events
-    const showLinks = document.querySelectorAll('.ai-helper-show-report');
-    showLinks.forEach(link => {
-      link.addEventListener('click', (e) => {
+    // Clickable cell events (ID and created_on columns)
+    const clickableCells = document.querySelectorAll('.ai-helper-clickable-cell');
+    clickableCells.forEach(cell => {
+      cell.addEventListener('click', (e) => {
         e.preventDefault();
-        const row = link.closest('.ai-helper-report-row');
+        const row = cell.closest('.ai-helper-report-row');
         this.selectReport(row);
       });
     });

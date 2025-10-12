@@ -130,3 +130,5 @@ en:
         issue_draft_instructions: "Instructions for issue comment generation"
         subtask_instructions: "Instructions for subtask generation"
         health_report_instructions: "Instructions for health report generation"
+
+  field_id: "ID"

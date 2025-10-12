@@ -5,6 +5,7 @@
     <table class="list ai-helper-report-list">
       <thead>
         <tr>
+          <th><%= l(:field_id) %></th>
           <th><%= l(:field_created_on) %></th>
           <th><%= l(:field_author) %></th>
           <th></th>
@@ -18,17 +19,16 @@
               data-report-content="<%= html_escape(report.health_report.to_s) %>"
               data-report-created-at="<%= report.created_at.iso8601 %>"
               data-report-user-name="<%= html_escape(report.user.name) %>">
-            <td class="created_on">
+            <td class="id ai-helper-clickable-cell">
+              <%= report.id %>
+            </td>
+            <td class="created_on ai-helper-clickable-cell">
               <%= format_time(report.created_at) %>
             </td>
             <td class="author">
               <%= link_to_user report.user %>
             </td>
             <td class="buttons">
-              <%= link_to l(:button_show),
-                          '#',
-                          class: 'icon icon-zoom-in ai-helper-show-report',
-                          data: { report_id: report.id } %>
               <% if report.deletable? %>
                 <%= link_to l(:button_delete),
                             ai_helper_health_report_destroy_path(@project, report_id: report.id),

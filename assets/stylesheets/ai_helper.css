@@ -1021,8 +1021,19 @@ table.ai-helper-sub-issues-table td {
 }
 
 .ai-helper-report-row.selected {
-  background-color: #ffc !important;
+  background-color: #507AAA !important;
+  color: #f8f8f8 !important;
   font-weight: bold;
+}
+
+.ai-helper-report-row.selected a,
+.ai-helper-report-row.selected a:hover {
+  color: #f8f8f8 !important;
+}
+
+/* Clickable cell styling */
+.ai-helper-clickable-cell {
+  cursor: pointer;
 }
 
 /* Placeholder styling */
@@ -1087,4 +1098,9 @@ table.ai-helper-sub-issues-table td {
 /* RTL support */
 [dir="rtl"] .ai-helper-master-detail-layout {
   flex-direction: row-reverse;
+}
+
+/* Report history table ID column alignment */
+table.list.ai-helper-report-list td.id {
+  text-align: right !important;
 }
