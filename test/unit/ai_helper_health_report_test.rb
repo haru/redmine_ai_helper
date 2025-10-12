@@ -87,6 +87,8 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
     end
 
     should "return sorted reports" do
+      AiHelperHealthReport.destroy_all
+
       older_report = AiHelperHealthReport.create!(
         project_id: @project.id,
         user_id: @user.id,
@@ -102,11 +104,13 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       )
 
       reports = AiHelperHealthReport.sorted
+      assert_equal 2, reports.count
       assert_equal newer_report.id, reports.first.id
       assert_equal older_report.id, reports.last.id
     end
 
     should "return reports for specific project" do
+      AiHelperHealthReport.destroy_all
       project2 = Project.find(2)
 
       report1 = AiHelperHealthReport.create!(
@@ -127,6 +131,7 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
     end
 
     should "return reports by specific user" do
+      AiHelperHealthReport.destroy_all
       user2 = User.find(3)
 
       report1 = AiHelperHealthReport.create!(

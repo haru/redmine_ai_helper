@@ -97,6 +97,9 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
 
     context "#health_report_history" do
       setup do
+        # Clean up any existing reports to ensure consistent test state
+        AiHelperHealthReport.where(project: @project).destroy_all
+
         @report1 = AiHelperHealthReport.create!(
           project: @project,
           user: @user,
@@ -244,6 +247,9 @@ This is a test report.",
 
     context "Master-Detail Layout" do
       setup do
+        # Clean up any existing reports to ensure consistent test state
+        AiHelperHealthReport.where(project: @project).destroy_all
+
         @report1 = AiHelperHealthReport.create!(
           project: @project,
           user: @user,
