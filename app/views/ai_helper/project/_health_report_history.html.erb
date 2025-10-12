@@ -2,48 +2,74 @@
   <h4><%= l(:label_ai_helper_health_report_history) %></h4>
 
   <% if @health_reports.any? %>
-    <table class="list ai-helper-report-list">
-      <thead>
-        <tr>
-          <th><%= l(:field_id) %></th>
-          <th><%= l(:field_created_on) %></th>
-          <th><%= l(:field_author) %></th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @health_reports.each do |report| %>
-          <tr class="ai-helper-report-row <%= cycle('odd', 'even') %> <%= 'selected' if @selected_report&.id == report.id %>"
-              data-report-id="<%= report.id %>"
-              data-report-url="<%= ai_helper_dashboard_path(@project, tab: 'health_report', report_id: report.id, format: :html) %>"
-              data-report-content="<%= html_escape(report.health_report.to_s) %>"
-              data-report-created-at="<%= report.created_at.iso8601 %>"
-              data-report-user-name="<%= html_escape(report.user.name) %>">
-            <td class="id ai-helper-clickable-cell">
-              <%= report.id %>
-            </td>
-            <td class="created_on ai-helper-clickable-cell">
-              <%= format_time(report.created_at) %>
-            </td>
-            <td class="author">
-              <%= link_to_user report.user %>
-            </td>
-            <td class="buttons">
-              <% if report.deletable? %>
-                <%= link_to sprite_icon('del', l(:button_delete)),
-                            ai_helper_health_report_destroy_path(@project, report_id: report.id),
-                            method: :delete,
-                            data: { confirm: l(:text_are_you_sure) },
-                            class: 'icon icon-del',
-                            onclick: 'event.stopPropagation();' %>
-              <% end %>
-            </td>
-          </tr>
-        <% end %>
-      </tbody>
-    </table>
+    <%= form_tag ai_helper_health_report_compare_path(@project), method: :get, id: 'health-report-compare-form' do %>
+      <p>
+        <%= submit_tag l('ai_helper.health_report_comparison.compare_button'),
+                       class: 'btn-compare',
+                       disabled: true,
+                       id: 'compare-reports-button' %>
+      </p>
 
-    <span class="pagination"><%= pagination_links_full @health_report_pages, @health_report_count %></span>
+      <table class="list ai-helper-report-list">
+        <thead>
+          <tr>
+            <th colspan="2"><%= l('ai_helper.health_report_comparison.comparison_column') %></th>
+            <th><%= l(:field_id) %></th>
+            <th><%= l(:field_created_on) %></th>
+            <th><%= l(:field_author) %></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @health_reports.each_with_index do |report, index| %>
+            <tr class="ai-helper-report-row <%= cycle('odd', 'even') %> <%= 'selected' if @selected_report&.id == report.id %>"
+                data-report-id="<%= report.id %>"
+                data-report-url="<%= ai_helper_dashboard_path(@project, tab: 'health_report', report_id: report.id, format: :html) %>"
+                data-report-content="<%= html_escape(report.health_report.to_s) %>"
+                data-report-created-at="<%= report.created_at.iso8601 %>"
+                data-report-user-name="<%= html_escape(report.user.name) %>">
+
+              <!-- Radio button for old report selection -->
+              <td class="radio">
+                <%= radio_button_tag 'old_id', report.id,
+                                     index == 1,
+                                     class: 'comparison-radio old-radio',
+                                     onclick: 'updateComparisonButton()' %>
+              </td>
+              <!-- Radio button for new report selection -->
+              <td class="radio">
+                <%= radio_button_tag 'new_id', report.id,
+                                     index == 0,
+                                     class: 'comparison-radio new-radio',
+                                     onclick: 'updateComparisonButton()' %>
+              </td>
+
+              <td class="id ai-helper-clickable-cell">
+                <%= report.id %>
+              </td>
+              <td class="created_on ai-helper-clickable-cell">
+                <%= format_time(report.created_at) %>
+              </td>
+              <td class="author">
+                <%= link_to_user report.user %>
+              </td>
+              <td class="buttons">
+                <% if report.deletable? %>
+                  <%= link_to sprite_icon('del', l(:button_delete)),
+                              ai_helper_health_report_destroy_path(@project, report_id: report.id),
+                              method: :delete,
+                              data: { confirm: l(:text_are_you_sure) },
+                              class: 'icon icon-del',
+                              onclick: 'event.stopPropagation();' %>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+
+      <span class="pagination"><%= pagination_links_full @health_report_pages, @health_report_count %></span>
+    <% end %>
   <% else %>
     <p class="nodata"><%= l(:label_no_data) %></p>
   <% end %>

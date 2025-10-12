@@ -34,6 +34,16 @@ en:
       note: "The report will analyze issue statistics, timing metrics, workload distribution, and provide actionable recommendations."
       no_report_available: "No health report available for PDF export"
       report_content: "Health Report Content"
+    health_report_comparison:
+      compare_button: "Compare Reports"
+      comparison_column: "Comparison"
+      page_title: "Health Report Comparison"
+      old_report: "Old Report"
+      new_report: "New Report"
+      analyze_button: "Analyze Changes"
+      placeholder: "Click 'Analyze Changes' to generate AI-powered comparison analysis"
+      analysis_title: "Comparison Analysis"
+      error_select_two_reports: "Please select two different reports to compare"
     generate_issue_reply:
       title: "Create a comment draft with AI Helper"
       instructions: "Please enter the key points or instructions for the reply."

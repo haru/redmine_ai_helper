@@ -31,6 +31,10 @@ RedmineApp::Application.routes.draw do
   get "projects/:id/ai_helper/health_reports/:report_id", to: "ai_helper_dashboard#health_report_show", as: "ai_helper_health_report_show"
   delete "projects/:id/ai_helper/health_reports/:report_id", to: "ai_helper_dashboard#health_report_destroy", as: "ai_helper_health_report_destroy"
 
+  # Health report comparison routes
+  get "projects/:id/ai_helper/health_reports/compare", to: "ai_helper_dashboard#compare_health_reports", as: "ai_helper_health_report_compare"
+  post "projects/:id/ai_helper/health_reports/compare", to: "ai_helper_dashboard#compare_health_reports", as: "ai_helper_health_report_compare_analyze"
+
   get "ai_helper_settings/index", to: "ai_helper_settings#index", as: "ai_helper_setting"
   post "ai_helper_settings/index", to: "ai_helper_settings#update", as: "ai_helper_setting_update"
 

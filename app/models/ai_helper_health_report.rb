@@ -20,7 +20,7 @@ class AiHelperHealthReport < ApplicationRecord
   # Accessor for metrics
   def metrics_hash
     return {} if metrics.blank?
-    JSON.parse(metrics) rescue {}
+    JSON.parse(metrics, symbolize_names: true) rescue {}
   end
 
   # Store metrics information as JSON on the report record.
@@ -42,5 +42,26 @@ class AiHelperHealthReport < ApplicationRecord
     # Report creator or admin can delete if they have AI Helper access
     (user.id == user_id || user.admin?) &&
       user.allowed_to?(:view_ai_helper, project)
+  end
+
+  # Check if this report can be compared with another report
+  # @param other_report [AiHelperHealthReport] The report to compare against
+  # @return [Boolean] true if comparable
+  def comparable_with?(other_report)
+    return false unless other_report.is_a?(AiHelperHealthReport)
+    return false unless other_report.project_id == project_id
+    return false if other_report.id == id
+    true
+  end
+
+  # Get summary information for the report
+  # @return [Hash] Summary information
+  def summary_info
+    {
+      id: id,
+      created_at: created_at,
+      user_name: user.name,
+      total_issues: metrics_hash.dig(:issue_statistics, :total_issues) || 0,
+    }
   end
 end

@@ -34,6 +34,16 @@ ja:
       note: "レポートでは、チケット統計、タイミングメトリクス、作業負荷分布を分析し、実行可能な推奨事項を提供します。"
       no_report_available: "PDF出力可能な健全性レポートがありません"
       report_content: "健全性レポート内容"
+    health_report_comparison:
+      compare_button: "レポート比較"
+      comparison_column: "比較"
+      page_title: "ヘルスレポート比較"
+      old_report: "旧レポート"
+      new_report: "新レポート"
+      analyze_button: "変化を分析"
+      placeholder: "'変化を分析'をクリックしてAI比較分析を生成"
+      analysis_title: "比較分析"
+      error_select_two_reports: "比較する2つの異なるレポートを選択してください"
     generate_issue_reply:
       title: "AIヘルパーでコメント案を作成"
       instructions: "回答内容の要点や指示を記入してください。"

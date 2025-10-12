@@ -381,4 +381,27 @@ window.updateHealthReportHistory = function(callback) {
 // Store class in global scope
 window.AiHelperMasterDetail = AiHelperMasterDetail;
 
+// Enable comparison button only when two different reports are selected
+function updateComparisonButton() {
+  const oldRadio = document.querySelector('.old-radio:checked');
+  const newRadio = document.querySelector('.new-radio:checked');
+  const compareButton = document.getElementById('compare-reports-button');
+
+  if (!compareButton) return;
+
+  if (oldRadio && newRadio && oldRadio.value !== newRadio.value) {
+    compareButton.disabled = false;
+  } else {
+    compareButton.disabled = true;
+  }
+}
+
+// Initialize comparison button state on page load
+document.addEventListener('DOMContentLoaded', function() {
+  updateComparisonButton();
+});
+
+// Make function globally available
+window.updateComparisonButton = updateComparisonButton;
+
 } // End guard against multiple script loading

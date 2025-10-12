@@ -1124,3 +1124,95 @@ table.ai-helper-sub-issues-table td {
 table.list.ai-helper-report-list td.id {
   text-align: right !important;
 }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Health Report Comparison Styles
+   Layout only - follows Redmine theme
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* Comparison header - layout only */
+.ai-helper-comparison-header {
+  margin-bottom: 1em;
+  padding-bottom: 1em;
+}
+
+/* Report info display area - flex layout */
+.ai-helper-comparison-report-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1em;
+  gap: 1em;
+}
+
+/* Old/new report info boxes - sizing only */
+.old-report-info,
+.new-report-info {
+  flex: 1;
+  padding: 0.8em;
+}
+
+/* Comparison arrow - sizing and alignment only */
+.comparison-arrow {
+  flex: 0 0 60px;
+  text-align: center;
+}
+
+/* Action button area - alignment only */
+.ai-helper-comparison-actions {
+  text-align: right;
+  margin-top: 0.5em;
+}
+
+/* Analysis result area - spacing only */
+.ai-helper-comparison-result {
+  margin-top: 1em;
+}
+
+/* Comparison content - sizing and layout only */
+.ai-helper-comparison-content {
+  min-height: 300px;
+  padding: 15px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+/* Placeholder - alignment only */
+.ai-helper-comparison-placeholder {
+  text-align: center;
+  padding: 2em;
+}
+
+/* Radio button column in comparison table - sizing and alignment only */
+table.list.ai-helper-report-list td.radio {
+  width: 30px;
+  text-align: center;
+}
+
+/* Disabled compare button - opacity only */
+.btn-compare:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive layout - layout changes only */
+@media screen and (max-width: 900px) {
+  .ai-helper-comparison-report-info {
+    flex-direction: column;
+  }
+
+  .comparison-arrow {
+    transform: rotate(90deg);
+    margin: 0.5em 0;
+  }
+
+  .old-report-info,
+  .new-report-info {
+    width: 100%;
+  }
+}
+
+/* RTL support - layout direction only */
+[dir="rtl"] .ai-helper-comparison-report-info {
+  flex-direction: row-reverse;
+}

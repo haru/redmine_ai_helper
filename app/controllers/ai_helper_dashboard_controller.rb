@@ -1,6 +1,7 @@
 # Controller for the AI Helper dashboard area, including health report history
 # management and report exports.
 class AiHelperDashboardController < ApplicationController
+  include ActionController::Live
   include RedmineAiHelper::Logger
   include RedmineAiHelper::Export::PDF::ProjectHealthPdfHelper
 
@@ -91,6 +92,174 @@ class AiHelperDashboardController < ApplicationController
         }
       end
     end
+  end
+
+  # Health report comparison feature
+  # GET  - Show comparison UI
+  # POST - Execute streaming analysis
+  def compare_health_reports
+    if request.post?
+      perform_streaming_comparison
+    else
+      show_comparison_ui
+    end
+  end
+
+  private
+
+  # Show comparison UI
+  def show_comparison_ui
+    @old_report_id = params[:old_id]
+    @new_report_id = params[:new_id]
+
+    # Validate parameters
+    if @old_report_id.blank? || @new_report_id.blank?
+      flash[:error] = l('ai_helper.health_report_comparison.error_select_two_reports')
+      redirect_to ai_helper_dashboard_path(@project, tab: 'health_report')
+      return
+    end
+
+    # Fetch reports
+    @old_report = AiHelperHealthReport.find(@old_report_id)
+    @new_report = AiHelperHealthReport.find(@new_report_id)
+
+    # Check permissions
+    unless @old_report.project_id == @project.id && @old_report.visible?(@user)
+      render_403
+      return
+    end
+
+    unless @new_report.project_id == @project.id && @new_report.visible?(@user)
+      render_403
+      return
+    end
+
+    # Ensure chronological order (old first)
+    if @old_report.created_at > @new_report.created_at
+      @old_report, @new_report = @new_report, @old_report
+    end
+
+    render template: 'ai_helper/project/health_report_comparison'
+  rescue ActiveRecord::RecordNotFound
+    render_404
+  end
+
+  # Execute streaming comparison analysis
+  def perform_streaming_comparison
+    old_report_id = params[:old_report_id]
+    new_report_id = params[:new_report_id]
+
+    old_report = AiHelperHealthReport.find(old_report_id)
+    new_report = AiHelperHealthReport.find(new_report_id)
+
+    # Check permissions
+    unless old_report.visible?(@user) && new_report.visible?(@user)
+      render_403
+      return
+    end
+
+    unless old_report.project_id == @project.id && new_report.project_id == @project.id
+      render_403
+      return
+    end
+
+    # Stream via Server-Sent Events
+    response.headers['Content-Type'] = 'text/event-stream'
+    response.headers['Cache-Control'] = 'no-cache'
+    response.headers['Connection'] = 'keep-alive'
+
+    begin
+      llm = RedmineAiHelper::Llm.new
+
+      stream_llm_response do |stream_proc|
+        llm.compare_health_reports(
+          old_report: old_report,
+          new_report: new_report,
+          project: @project,
+          stream_proc: stream_proc
+        )
+      end
+    rescue => e
+      ai_helper_logger.error "Health report comparison error: #{e.message}"
+      ai_helper_logger.error e.backtrace.join("\n")
+
+      write_chunk({
+        id: "error-#{SecureRandom.hex(6)}",
+        object: "chat.completion.chunk",
+        created: Time.now.to_i,
+        model: "error",
+        choices: [{
+          index: 0,
+          delta: { content: "Error: #{e.message}" },
+          finish_reason: "stop"
+        }]
+      })
+    ensure
+      response.stream.close
+    end
+  rescue ActiveRecord::RecordNotFound
+    render_404
+  end
+
+  def write_chunk(data)
+    response.stream.write("data: #{data.to_json}\n\n")
+  end
+
+  def stream_llm_response(&block)
+    # Set up streaming response headers
+    response.headers["Content-Type"] = "text/event-stream"
+    response.headers["Cache-Control"] = "no-cache"
+    response.headers["Connection"] = "keep-alive"
+
+    response_id = "chatcmpl-#{SecureRandom.hex(12)}"
+
+    # Send initial chunk
+    write_chunk({
+      id: response_id,
+      object: "chat.completion.chunk",
+      created: Time.now.to_i,
+      model: "gpt-3.5-turbo-0613",
+      choices: [{
+        index: 0,
+        delta: {
+          role: "assistant",
+        },
+        finish_reason: nil,
+      }],
+    })
+
+    # Define streaming callback
+    stream_proc = Proc.new do |content|
+      write_chunk({
+        id: response_id,
+        object: "chat.completion.chunk",
+        created: Time.now.to_i,
+        model: "gpt-3.5-turbo-0613",
+        choices: [{
+          index: 0,
+          delta: {
+            content: content,
+          },
+          finish_reason: nil,
+        }],
+      })
+    end
+
+    # Execute the provided block with the streaming proc
+    block.call(stream_proc)
+
+    # Send completion chunk
+    write_chunk({
+      id: response_id,
+      object: "chat.completion.chunk",
+      created: Time.now.to_i,
+      model: "gpt-3.5-turbo-0613",
+      choices: [{
+        index: 0,
+        delta: {},
+        finish_reason: "stop",
+      }],
+    })
   end
 
   private

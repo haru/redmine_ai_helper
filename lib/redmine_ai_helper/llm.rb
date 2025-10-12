@@ -269,22 +269,59 @@ module RedmineAiHelper
         agent = RedmineAiHelper::Agents::DocumentationAgent.new(options)
 
         langfuse.create_span(name: "typo_check", input: text)
-        
+
         suggestions = agent.check_typos(
           text: text,
           context_type: context_type,
           max_suggestions: max_suggestions
         )
-        
+
         ai_helper_logger.info "DocumentationAgent returned suggestions: #{suggestions}"
-        
+
         langfuse.finish_current_span(output: suggestions)
         langfuse.flush
-        
+
         suggestions
       rescue => e
         ai_helper_logger.error "Typo check error: #{e.full_message}"
         []
+      end
+    end
+
+    # Compare two health reports and analyze changes
+    # @param old_report [AiHelperHealthReport] The older report
+    # @param new_report [AiHelperHealthReport] The newer report
+    # @param project [Project] The project object
+    # @param stream_proc [Proc] Optional callback for streaming
+    # @return [String] Comparison analysis result
+    def compare_health_reports(old_report:, new_report:, project:, stream_proc: nil)
+      begin
+        prompt = "compare_health_reports: #{old_report.id} vs #{new_report.id}"
+
+        langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: prompt)
+        options = {
+          langfuse: langfuse,
+          project_id: project.id
+        }
+
+        agent = RedmineAiHelper::Agents::ProjectAgent.new(options)
+        langfuse.create_span(name: "compare_health_reports", input: prompt)
+
+        answer = agent.health_report_comparison(
+          old_report: old_report,
+          new_report: new_report,
+          stream_proc: stream_proc
+        )
+
+        langfuse.finish_current_span(output: answer)
+        langfuse.flush
+
+        answer
+      rescue => e
+        ai_helper_logger.error "Health report comparison error: #{e.full_message}"
+        error_message = "Error comparing health reports: #{e.message}"
+        stream_proc.call(error_message) if stream_proc
+        error_message
       end
     end
 
