@@ -2,7 +2,7 @@
   <h4><%= l(:label_ai_helper_health_report_history) %></h4>
 
   <% if @health_reports.any? %>
-    <table class="list">
+    <table class="list ai-helper-report-list">
       <thead>
         <tr>
           <th><%= l(:field_created_on) %></th>
@@ -12,24 +12,30 @@
       </thead>
       <tbody>
         <% @health_reports.each do |report| %>
-          <tr class="<%= cycle('odd', 'even') %>">
+          <tr class="ai-helper-report-row <%= cycle('odd', 'even') %> <%= 'selected' if @selected_report&.id == report.id %>"
+              data-report-id="<%= report.id %>"
+              data-report-url="<%= ai_helper_dashboard_path(@project, tab: 'health_report', report_id: report.id, format: :html) %>"
+              data-report-content="<%= html_escape(report.health_report.to_s) %>"
+              data-report-created-at="<%= report.created_at.iso8601 %>"
+              data-report-user-name="<%= html_escape(report.user.name) %>">
             <td class="created_on">
-              <%= link_to format_time(report.created_at),
-                          ai_helper_health_report_show_path(@project, report_id: report.id) %>
+              <%= format_time(report.created_at) %>
             </td>
             <td class="author">
               <%= link_to_user report.user %>
             </td>
             <td class="buttons">
-              <%= link_to l(:button_view),
-                          ai_helper_health_report_show_path(@project, report_id: report.id),
-                          class: 'icon icon-magnifier' %>
+              <%= link_to l(:button_show),
+                          '#',
+                          class: 'icon icon-zoom-in ai-helper-show-report',
+                          data: { report_id: report.id } %>
               <% if report.deletable? %>
                 <%= link_to l(:button_delete),
                             ai_helper_health_report_destroy_path(@project, report_id: report.id),
                             method: :delete,
                             data: { confirm: l(:text_are_you_sure) },
-                            class: 'icon icon-del' %>
+                            class: 'icon icon-del',
+                            onclick: 'event.stopPropagation();' %>
               <% end %>
             </td>
           </tr>

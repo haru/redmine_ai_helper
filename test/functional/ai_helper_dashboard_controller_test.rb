@@ -242,5 +242,138 @@ This is a test report."
       end
     end
 
+    context "Master-Detail Layout" do
+      setup do
+        @report1 = AiHelperHealthReport.create!(
+          project: @project,
+          user: @user,
+          health_report: "# Report 1\n\nFirst report content",
+          created_at: 2.days.ago
+        )
+
+        @report2 = AiHelperHealthReport.create!(
+          project: @project,
+          user: @user,
+          health_report: "# Report 2\n\nSecond report content",
+          created_at: 1.day.ago
+        )
+      end
+
+      should "render master-detail layout with initial selection" do
+        role = Role.find(1)
+        role.add_permission! :view_ai_helper_health_reports
+
+        get :index, params: { id: @project.id, tab: 'health_report' }
+
+        assert_response :success
+        assert_select '.ai-helper-master-detail-layout', 1
+        assert_select '.ai-helper-master-pane', 1
+        assert_select '.ai-helper-detail-pane', 1
+
+        # Most recent report should be selected
+        assert_select '.ai-helper-report-row.selected[data-report-id=?]', @report2.id.to_s, 1
+      end
+
+      should "select specific report via report_id param" do
+        role = Role.find(1)
+        role.add_permission! :view_ai_helper_health_reports
+
+        get :index, params: { id: @project.id, tab: 'health_report', report_id: @report1.id }
+
+        assert_response :success
+        assert_select '.ai-helper-report-row.selected[data-report-id=?]', @report1.id.to_s, 1
+      end
+
+      should "display placeholder when no reports exist" do
+        AiHelperHealthReport.where(project: @project).destroy_all
+
+        get :index, params: { id: @project.id, tab: 'health_report' }
+
+        assert_response :success
+        assert_select '.ai-helper-detail-placeholder', 1
+      end
+
+      should "include data attributes for Ajax interactions in report rows" do
+        role = Role.find(1)
+        role.add_permission! :view_ai_helper_health_reports
+
+        get :index, params: { id: @project.id, tab: 'health_report' }
+
+        assert_response :success
+        assert_select '.ai-helper-report-row[data-report-id]', 2
+        assert_select ".ai-helper-report-row[data-report-id='#{@report1.id}'][data-report-url]", 1
+        assert_select ".ai-helper-report-row[data-report-id='#{@report2.id}'][data-report-url]", 1
+      end
+
+      should "set selected_report from URL params" do
+        role = Role.find(1)
+        role.add_permission! :view_ai_helper_health_reports
+
+        get :health_report_history, params: {
+          id: @project.id,
+          report_id: @report1.id
+        }
+
+        assert_response :success
+        assert_not_nil assigns(:selected_report)
+        assert_equal @report1.id, assigns(:selected_report).id
+      end
+
+      should "default to most recent report when no report_id specified" do
+        role = Role.find(1)
+        role.add_permission! :view_ai_helper_health_reports
+
+        get :health_report_history, params: { id: @project.id }
+
+        assert_response :success
+        assert_not_nil assigns(:selected_report)
+        assert_equal @report2.id, assigns(:selected_report).id
+      end
+
+      should "render health_report_detail_pane partial with report data" do
+        role = Role.find(1)
+        role.add_permission! :view_ai_helper_health_reports
+
+        get :index, params: { id: @project.id, tab: 'health_report' }
+
+        assert_response :success
+        assert_select '.ai-helper-health-report-detail[data-report-id=?]', @report2.id.to_s, 1
+        assert_select '.ai-helper-health-report-meta', 1
+        assert_select '#ai-helper-markdown-export-detail', 1
+        assert_select '#ai-helper-pdf-export-detail', 1
+      end
+
+      should "include clickable report rows with proper onclick handling" do
+        role = Role.find(1)
+        role.add_permission! :view_ai_helper_health_reports
+
+        get :index, params: { id: @project.id, tab: 'health_report' }
+
+        assert_response :success
+        # Check that delete links have onclick to stop propagation
+        assert_select '.ai-helper-report-row .icon-del[onclick]', count: 2
+      end
+
+      should "maintain selection across pagination" do
+        AiHelperHealthReport.where(project: @project).destroy_all
+
+        15.times do |i|
+          AiHelperHealthReport.create!(
+            project: @project,
+            user: @user,
+            health_report: "Test report #{i}",
+            created_at: (i + 1).days.ago
+          )
+        end
+
+        get :index, params: { id: @project.id, tab: 'health_report', page: 2 }
+
+        assert_response :success
+        assert_select '.ai-helper-report-row', 5
+        # Should select first report on current page if selected report not visible
+        assert_select '.ai-helper-report-row.selected', 1
+      end
+    end
+
   end
 end

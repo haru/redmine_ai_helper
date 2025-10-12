@@ -18,6 +18,9 @@ en:
   label_ai_helper_health_report_history: "Report History"
   label_ai_helper_health_report_detail: "Report Detail"
   label_ai_helper_report_period: "Period"
+  label_ai_helper_select_report_to_view: "Generate a report or select one from the history on the left"
+  label_ai_helper_report_detail_mobile: "Report Detail"
+  label_ai_helper_close_detail: "Close Detail"
   ai_helper:
     chat:
       planning: "Creating execution plan..."

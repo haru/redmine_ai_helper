@@ -1,25 +1,78 @@
-<!-- Existing health report generation section -->
-<%= render partial: 'ai_helper/project/health_report', locals: { project: @project } %>
+<% if @project&.id %>
+<%
+  # Skip rendering if no project is available or user doesn't have permission
+  if @project.module_enabled?(:ai_helper) && User.current.allowed_to?({ controller: :ai_helper, action: :project_health }, @project) && AiHelperSetting.find_or_create.model_profile
+%>
 
-<!-- Health report history section -->
-<div class="ai-helper-history-section" style="margin-top: 2em;">
-  <div id="ai-helper-health-report-history-container">
-    <%
-      @limit = 10
-      @health_report_count = AiHelperHealthReport
-        .for_project(@project.id)
-        .visible
-        .count
-      @health_report_pages = Redmine::Pagination::Paginator.new @health_report_count, @limit, params[:page]
-      @offset = @health_report_pages.offset
-      @health_reports = AiHelperHealthReport
-        .for_project(@project.id)
-        .visible
-        .sorted
-        .limit(@limit)
-        .offset(@offset)
-        .to_a
-    %>
-    <%= render partial: 'ai_helper/project/health_report_history' %>
+<!-- Header Section with Generate Button -->
+<div class="ai-helper-health-report-header box">
+  <h3><%= sprite_icon("ai-helper-robot", t('ai_helper.project_health.title'), plugin: :redmine_ai_helper) %></h3>
+  <div class="contextual">
+    <%= link_to t('ai_helper.project_health.generate_report'),
+                ai_helper_generate_project_health_path(@project),
+                class: "icon icon-loading-action",
+                id: "ai-helper-generate-project-health-link" %>
+  </div>
+  <div style="clear: both;"></div>
+</div>
+
+<!-- Master-Detail Layout Section -->
+<div class="ai-helper-master-detail-layout">
+  <!-- Master Pane (Left - Report History) -->
+  <div class="ai-helper-master-pane box">
+    <div id="ai-helper-health-report-history-container">
+      <%
+        @limit = 10
+        @health_report_count = AiHelperHealthReport
+          .for_project(@project.id)
+          .visible
+          .count
+        @health_report_pages = Redmine::Pagination::Paginator.new @health_report_count, @limit, params[:page]
+        @offset = @health_report_pages.offset
+        @health_reports = AiHelperHealthReport
+          .for_project(@project.id)
+          .visible
+          .sorted
+          .limit(@limit)
+          .offset(@offset)
+          .to_a
+
+        # Determine which report to display (from URL params or default to most recent)
+        @selected_report = if params[:report_id]
+          @health_reports.find { |r| r.id.to_s == params[:report_id].to_s }
+        else
+          @health_reports.first
+        end
+      %>
+      <%= render partial: 'ai_helper/project/health_report_history' %>
+    </div>
+  </div>
+
+  <!-- Detail Pane (Right - Report Detail) -->
+  <div class="ai-helper-detail-pane box">
+    <div id="ai-helper-health-report-detail-container">
+      <% if @selected_report %>
+        <%= render partial: 'ai_helper/project/health_report_detail_pane',
+                   locals: { health_report: @selected_report } %>
+      <% else %>
+        <div class="ai-helper-detail-placeholder">
+          <p><%= l(:label_ai_helper_select_report_to_view) %></p>
+        </div>
+      <% end %>
+    </div>
   </div>
 </div>
+
+<!-- Meta tags for JavaScript configuration -->
+<meta name="error-message" content="<%= l(:label_ai_helper_error) %>" />
+<meta name="export-label" content="<%= l(:label_export_to) %>" />
+<meta name="markdown-export-url" content="<%= ai_helper_project_health_markdown_path(@project) %>" />
+<meta name="pdf-export-url" content="<%= ai_helper_project_health_pdf_path(@project) %>" />
+
+<% content_for :header_tags do %>
+  <%= javascript_include_tag 'ai_helper_project_health', plugin: 'redmine_ai_helper' %>
+  <%= stylesheet_link_tag 'ai_helper_rtl', plugin: 'redmine_ai_helper' if l(:direction) == 'rtl' %>
+<% end %>
+
+<% end # if project %>
+<% end %>

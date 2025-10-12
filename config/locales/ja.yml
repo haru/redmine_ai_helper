@@ -18,6 +18,9 @@ ja:
   label_ai_helper_health_report_history: "レポート履歴"
   label_ai_helper_health_report_detail: "レポート詳細"
   label_ai_helper_report_period: "対象期間"
+  label_ai_helper_select_report_to_view: "レポートを生成するか、左の履歴から選択してください"
+  label_ai_helper_report_detail_mobile: "レポート詳細"
+  label_ai_helper_close_detail: "詳細を閉じる"
   ai_helper:
     chat:
       planning: "実行計画を作成中..."

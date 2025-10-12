@@ -139,6 +139,13 @@ document.addEventListener('DOMContentLoaded', function() {
               // Store the markdown content in hidden field for PDF generation
               updateHiddenReportContent(content);
 
+              // Update health report history in master-detail layout
+              if (typeof window.updateHealthReportHistory === 'function') {
+                setTimeout(() => {
+                  window.updateHealthReportHistory();
+                }, 1000);
+              }
+
               // Final scroll to bottom
               const scrollableContainer = document.querySelector('.ai-helper-project-health-content.has-report');
               if (scrollableContainer) {

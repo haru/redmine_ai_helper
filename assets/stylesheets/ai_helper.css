@@ -311,14 +311,8 @@ table.ai-helper-sub-issues-table td {
   margin-top: 10px;
   padding: 15px;
   box-sizing: border-box;
-  border: 1px solid #ddd;
   width: 100%;
   display: block;
-}
-
-.ai-helper-project-health-content.has-report {
-  height: 480px !important;
-  overflow-y: scroll !important;
 }
 
 .ai-helper-project-health-placeholder {
@@ -495,31 +489,6 @@ table.ai-helper-sub-issues-table td {
 .ai-helper-note {
   font-size: 0.9em;
   margin-top: 10px;
-}
-
-/* Force scrollbar visibility */
-.ai-helper-project-health-content {
-  scrollbar-width: thin;
-  scrollbar-color: auto;
-}
-
-/* Custom scrollbar styling for webkit browsers */
-.ai-helper-project-health-content::-webkit-scrollbar {
-  width: 12px;
-  background: transparent;
-}
-
-.ai-helper-project-health-content::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-.ai-helper-project-health-content::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 6px;
-}
-
-.ai-helper-project-health-content::-webkit-scrollbar-thumb:hover {
-  background: #555;
 }
 
 /* Auto-completion styles */
@@ -962,3 +931,120 @@ table.ai-helper-sub-issues-table td {
   position: relative;
 }
 
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Master-Detail Layout for Health Report History
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* Header section with generate button */
+.ai-helper-health-report-header {
+  margin-bottom: 1em;
+  padding: 0.8em;
+}
+
+.ai-helper-health-report-header h3 {
+  margin: 0;
+  padding: 0;
+  float: left;
+}
+
+.ai-helper-health-report-header .contextual {
+  float: right;
+}
+
+/* Container layout */
+.ai-helper-master-detail-layout {
+  display: flex;
+  gap: 1em;
+  margin-top: 0;
+}
+
+/* Master pane (left side - report list) */
+.ai-helper-master-pane {
+  flex: 0 0 40%;
+}
+
+/* Detail pane (right side - report detail) */
+.ai-helper-detail-pane {
+  flex: 1;
+}
+
+/* Detail container transition effects */
+#ai-helper-health-report-detail-container {
+  opacity: 1;
+  transition: opacity 0.3s ease-in-out;
+}
+
+/* Report row styling */
+.ai-helper-report-row {
+  transition: background-color 0.2s ease;
+}
+
+.ai-helper-report-row.selected {
+  background-color: #ffc !important;
+  font-weight: bold;
+}
+
+/* Placeholder styling */
+.ai-helper-detail-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2em;
+}
+
+.ai-helper-detail-placeholder p {
+  font-style: italic;
+  color: #666;
+}
+
+/* Health report detail styling */
+.ai-helper-health-report-detail {
+  padding: 1em;
+}
+
+.ai-helper-health-report-meta {
+  margin-bottom: 1.5em;
+  padding: 0.5em 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.ai-helper-health-report-meta p {
+  margin: 0.5em 0;
+}
+
+
+/* Loading state in detail pane */
+.ai-helper-detail-pane .ai-helper-loader {
+  margin: 2em auto;
+}
+
+/* Error display in detail pane */
+.ai-helper-detail-pane .ai-helper-error {
+  margin: 2em;
+  padding: 1em;
+  text-align: center;
+}
+
+/* Mobile responsive layout (≤ 900px) */
+@media screen and (max-width: 900px) {
+  .ai-helper-master-detail-layout {
+    flex-direction: column-reverse;
+    /* Detail on top, master on bottom */
+  }
+
+  .ai-helper-master-pane {
+    flex: 0 0 auto;
+  }
+
+  .ai-helper-detail-pane {
+    flex: 0 0 auto;
+    margin-bottom: 1em;
+  }
+}
+
+/* RTL support */
+[dir="rtl"] .ai-helper-master-detail-layout {
+  flex-direction: row-reverse;
+}
