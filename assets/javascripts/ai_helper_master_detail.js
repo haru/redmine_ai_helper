@@ -166,15 +166,6 @@ class AiHelperMasterDetail {
 
     return `
       <div class="ai-helper-health-report-detail" data-report-id="${reportId}">
-        <div class="contextual">
-          <a href="#" class="icon icon-text" id="ai-helper-markdown-export-detail">
-            ${exportLabel} Markdown
-          </a>
-          <a href="/projects/${projectId}/ai_helper/health_reports/${reportId}.pdf" class="icon icon-pdf" id="ai-helper-pdf-export-detail">
-            ${exportLabel} PDF
-          </a>
-        </div>
-
         <h3>
           <span class="icon-svg icon-ai-helper-robot"></span>
           ${reportDetailLabel}
@@ -197,6 +188,12 @@ class AiHelperMasterDetail {
           </div>
           <input type="hidden" id="ai-helper-health-report-content" value="${this.escapeHtml(data.health_report)}" />
         </div>
+
+        <p class="other-formats">
+          ${exportLabel}
+          <span><a href="#" class="text" id="ai-helper-markdown-export-detail">Markdown</a></span>
+          <span><a href="/projects/${projectId}/ai_helper/health_reports/${reportId}.pdf" class="pdf" id="ai-helper-pdf-export-detail">PDF</a></span>
+        </p>
       </div>
     `;
   }

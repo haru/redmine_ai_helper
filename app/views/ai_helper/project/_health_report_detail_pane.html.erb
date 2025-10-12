@@ -1,17 +1,4 @@
 <div class="ai-helper-health-report-detail" data-report-id="<%= health_report.id %>"<%= ' dir="rtl"'.html_safe if l(:direction) == 'rtl' %>>
-  <div class="contextual">
-    <%= link_to l(:label_export_to) + ' Markdown',
-                '#',
-                class: 'icon icon-text',
-                id: 'ai-helper-markdown-export-detail' %>
-    <%= link_to l(:label_export_to) + ' PDF',
-                ai_helper_health_report_show_path(@project,
-                                                   report_id: health_report.id,
-                                                   format: :pdf),
-                class: 'icon icon-pdf',
-                id: 'ai-helper-pdf-export-detail' %>
-  </div>
-
   <h3><%= sprite_icon('ai-helper-robot', l(:label_ai_helper_health_report_detail), plugin: :redmine_ai_helper) %></h3>
 
   <div class="ai-helper-health-report-meta">
@@ -31,6 +18,17 @@
     </div>
     <input type="hidden" id="ai-helper-health-report-content" value="<%= html_escape(health_report.health_report.to_s) %>" />
   </div>
+
+  <p class="other-formats">
+    <%= l(:label_export_to) %>
+    <span><a href="#" id="ai-helper-markdown-export-detail" class="text">Markdown</a></span>
+    <span><%= link_to 'PDF',
+                      ai_helper_health_report_show_path(@project,
+                                                       report_id: health_report.id,
+                                                       format: :pdf),
+                      class: 'pdf',
+                      id: 'ai-helper-pdf-export-detail' %></span>
+  </p>
 </div>
 
 <% content_for :header_tags do %>
@@ -45,6 +43,38 @@
       var parser = new AiHelperMarkdownParser();
       var formattedContent = parser.parse(content);
       resultDiv.innerHTML = '<div class="ai-helper-final-content">' + formattedContent + '</div>';
+
+      var exportLink = document.getElementById('ai-helper-markdown-export-detail');
+      if (exportLink) {
+        exportLink.addEventListener('click', function(e) {
+          e.preventDefault();
+          var markdownContent = hiddenField ? hiddenField.value : '';
+          if (!markdownContent) { return; }
+
+          var form = document.createElement('form');
+          form.method = 'POST';
+          form.action = '<%= ai_helper_project_health_markdown_path(@project) %>';
+
+          var contentField = document.createElement('input');
+          contentField.type = 'hidden';
+          contentField.name = 'health_report_content';
+          contentField.value = markdownContent;
+
+          var csrfToken = document.querySelector('meta[name="csrf-token"]');
+          if (csrfToken) {
+            var tokenField = document.createElement('input');
+            tokenField.type = 'hidden';
+            tokenField.name = 'authenticity_token';
+            tokenField.value = csrfToken.getAttribute('content');
+            form.appendChild(tokenField);
+          }
+
+          form.appendChild(contentField);
+          document.body.appendChild(form);
+          form.submit();
+          document.body.removeChild(form);
+        });
+      }
     });
   <% end %>
 <% end %>
