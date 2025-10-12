@@ -30,18 +30,21 @@ class AiHelperHealthReport < ApplicationRecord
   end
 
   # Check if the report is visible to the user
+  # @param user [User] The user to check visibility for
+  # @return [Boolean] true if user is admin or a member of the project
   def visible?(user = User.current)
     return false unless project.present? && user.present?
-    # User can view report if they have AI Helper access to the project
-    user.allowed_to?(:view_ai_helper, project)
+    # Admin can view all reports, or user must be a member of the project
+    user.admin? || user.member_of?(project)
   end
 
   # Check if the report can be deleted by the user
+  # @param user [User] The user to check deletion rights for
+  # @return [Boolean] true if user is admin or a member of the project
   def deletable?(user = User.current)
     return false unless project.present? && user.present?
-    # Report creator or admin can delete if they have AI Helper access
-    (user.id == user_id || user.admin?) &&
-      user.allowed_to?(:view_ai_helper, project)
+    # Admin can delete all reports, or any project member can delete
+    user.admin? || user.member_of?(project)
   end
 
   # Check if this report can be compared with another report

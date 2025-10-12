@@ -174,10 +174,10 @@ This is a test report.",
         role.add_permission! :view_ai_helper_health_reports
 
         get :health_report_show, params: {
-                               id: @project.id,
-                               report_id: @report.id,
-                               format: :pdf,
-                             }
+                                   id: @project.id,
+                                   report_id: @report.id,
+                                   format: :pdf,
+                                 }
 
         assert_response :success
         assert_equal "application/pdf", response.media_type
@@ -205,9 +205,9 @@ This is a test report.",
       should "delete own report" do
         assert_difference "AiHelperHealthReport.count", -1 do
           delete :health_report_destroy, params: {
-                                    id: @project.id,
-                                    report_id: @report.id,
-                                  }
+                                           id: @project.id,
+                                           report_id: @report.id,
+                                         }
         end
 
         assert_redirected_to ai_helper_dashboard_path(@project, tab: "health_report")
@@ -219,29 +219,31 @@ This is a test report.",
 
         assert_no_difference "AiHelperHealthReport.count" do
           delete :health_report_destroy, params: {
-                                    id: @project.id,
-                                    report_id: @report.id,
-                                  }
+                                           id: @project.id,
+                                           report_id: @report.id,
+                                         }
         end
 
         assert_response :forbidden
       end
 
-      should "not delete other user's report without permission" do
+      should "allow project member to delete other user's report" do
         other_user = User.find(2)
         @request.session[:user_id] = other_user.id
 
+        # Ensure the role has delete permission
         role = Role.find(1)
         role.add_permission! :delete_ai_helper_health_reports
 
-        assert_no_difference "AiHelperHealthReport.count" do
+        # other_user is a member of the project with delete permission, so they can delete the report
+        assert_difference "AiHelperHealthReport.count", -1 do
           delete :health_report_destroy, params: {
-                                    id: @project.id,
-                                    report_id: @report.id,
-                                  }
+                                           id: @project.id,
+                                           report_id: @report.id,
+                                         }
         end
 
-        assert_response :forbidden
+        assert_redirected_to ai_helper_dashboard_path(@project, tab: "health_report")
       end
     end
 
@@ -316,9 +318,9 @@ This is a test report.",
         role.add_permission! :view_ai_helper_health_reports
 
         get :health_report_history, params: {
-                                  id: @project.id,
-                                  report_id: @report1.id,
-                                }
+                                      id: @project.id,
+                                      report_id: @report1.id,
+                                    }
 
         assert_response :success
         assert_not_nil assigns(:selected_report)
@@ -408,10 +410,10 @@ This is a test report.",
         role.add_permission! :view_ai_helper_health_reports
 
         get :compare_health_reports, params: {
-                                   id: @project.id,
-                                   old_id: @old_report.id,
-                                   new_id: @new_report.id,
-                                 }
+                                       id: @project.id,
+                                       old_id: @old_report.id,
+                                       new_id: @new_report.id,
+                                     }
 
         assert_response :success
         assert_template "ai_helper/project/health_report_comparison"
@@ -436,9 +438,9 @@ This is a test report.",
         role.add_permission! :view_ai_helper_health_reports
 
         get :compare_health_reports, params: {
-                                   id: @project.id,
-                                   new_id: @new_report.id,
-                                 }
+                                       id: @project.id,
+                                       new_id: @new_report.id,
+                                     }
 
         assert_redirected_to ai_helper_dashboard_path(@project, tab: "health_report")
         assert_not_nil flash[:error]
@@ -449,9 +451,9 @@ This is a test report.",
         role.add_permission! :view_ai_helper_health_reports
 
         get :compare_health_reports, params: {
-                                   id: @project.id,
-                                   old_id: @old_report.id,
-                                 }
+                                       id: @project.id,
+                                       old_id: @old_report.id,
+                                     }
 
         assert_redirected_to ai_helper_dashboard_path(@project, tab: "health_report")
         assert_not_nil flash[:error]
@@ -463,10 +465,10 @@ This is a test report.",
 
         # Pass newer report as old_id and older as new_id
         get :compare_health_reports, params: {
-                                   id: @project.id,
-                                   old_id: @new_report.id,
-                                   new_id: @old_report.id,
-                                 }
+                                       id: @project.id,
+                                       old_id: @new_report.id,
+                                       new_id: @old_report.id,
+                                     }
 
         assert_response :success
         assert_equal @old_report.id, assigns(:old_report).id
@@ -478,10 +480,10 @@ This is a test report.",
         role.add_permission! :view_ai_helper_health_reports
 
         get :compare_health_reports, params: {
-                                   id: @project.id,
-                                   old_id: 99999,
-                                   new_id: @new_report.id,
-                                 }
+                                       id: @project.id,
+                                       old_id: 99999,
+                                       new_id: @new_report.id,
+                                     }
 
         assert_response :not_found
       end
@@ -491,10 +493,10 @@ This is a test report.",
         @request.session[:user_id] = non_member_user.id
 
         get :compare_health_reports, params: {
-                                   id: @project.id,
-                                   old_id: @old_report.id,
-                                   new_id: @new_report.id,
-                                 }
+                                       id: @project.id,
+                                       old_id: @old_report.id,
+                                       new_id: @new_report.id,
+                                     }
 
         assert_response :forbidden
       end
@@ -515,10 +517,10 @@ This is a test report.",
         role.add_permission! :view_ai_helper
 
         get :compare_health_reports, params: {
-                                   id: @project.id,
-                                   old_id: @old_report.id,
-                                   new_id: other_report.id,
-                                 }
+                                       id: @project.id,
+                                       old_id: @old_report.id,
+                                       new_id: other_report.id,
+                                     }
 
         assert_response :forbidden
       end
