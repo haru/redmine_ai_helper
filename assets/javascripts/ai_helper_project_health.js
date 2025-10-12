@@ -169,7 +169,16 @@ document.addEventListener('DOMContentLoaded', function() {
               // Update health report history in master-detail layout
               if (typeof window.updateHealthReportHistory === 'function') {
                 setTimeout(() => {
-                  window.updateHealthReportHistory();
+                  window.updateHealthReportHistory((masterDetailInstance) => {
+                    if (masterDetailInstance) {
+                      const firstReportRow = document.querySelector('.ai-helper-report-row');
+                      if (firstReportRow) {
+                        firstReportRow.classList.remove('selected');
+                        masterDetailInstance.selectedReportId = null;
+                        masterDetailInstance.selectReport(firstReportRow, true);
+                      }
+                    }
+                  });
                 }, 1000);
               }
 

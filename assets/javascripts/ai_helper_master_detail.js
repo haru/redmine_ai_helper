@@ -61,13 +61,13 @@ class AiHelperMasterDetail {
     }
   }
 
-  selectReport(row) {
+  selectReport(row, force = false) {
     const reportId = row.dataset.reportId;
     const reportContent = row.dataset.reportContent;
     const createdAt = row.dataset.reportCreatedAt;
     const userName = row.dataset.reportUserName;
 
-    if (this.selectedReportId === reportId) {
+    if (!force && this.selectedReportId === reportId) {
       return; // Already selected
     }
 
@@ -182,7 +182,7 @@ class AiHelperMasterDetail {
           </p>
         </div>
 
-        <div class="ai-helper-project-health-content">
+        <div class="ai-helper-project-health-content has-report">
           <div id="ai-helper-project-health-result" class="ai-helper-final-content">
             ${formattedContent}
           </div>
@@ -346,7 +346,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Global function to update health report history after generation
-window.updateHealthReportHistory = function() {
+window.updateHealthReportHistory = function(callback) {
   // Reload health report history
   const historyContainer = document.getElementById('ai-helper-health-report-history-container');
   if (!historyContainer) return;
@@ -364,13 +364,17 @@ window.updateHealthReportHistory = function() {
       // Re-initialize master-detail after updating history
       const masterDetail = new AiHelperMasterDetail();
 
-      // Auto-select and display the first report (most recent)
-      setTimeout(() => {
-        const firstReportRow = document.querySelector('.ai-helper-report-row');
-        if (firstReportRow && masterDetail) {
-          masterDetail.selectReport(firstReportRow);
-        }
-      }, 100);
+      if (typeof callback === 'function') {
+        callback(masterDetail);
+      } else {
+        // Auto-select and display the first report (most recent)
+        setTimeout(() => {
+          const firstReportRow = document.querySelector('.ai-helper-report-row');
+          if (firstReportRow && masterDetail) {
+            masterDetail.selectReport(firstReportRow, true);
+          }
+        }, 100);
+      }
     }
   };
 
