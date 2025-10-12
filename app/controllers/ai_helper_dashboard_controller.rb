@@ -1,3 +1,5 @@
+# Controller for the AI Helper dashboard area, including health report history
+# management and report exports.
 class AiHelperDashboardController < ApplicationController
   include RedmineAiHelper::Logger
   include RedmineAiHelper::Export::PDF::ProjectHealthPdfHelper
@@ -5,9 +7,11 @@ class AiHelperDashboardController < ApplicationController
   before_action :find_project, :authorize, :find_user
   before_action :find_health_report_and_project, only: [:health_report_show, :health_report_destroy]
 
+  # Render the dashboard landing page for the current project.
   def index
   end
 
+  # Display paginated health report history for the current project.
   def health_report_history
     @limit = 10 # Fixed page size for health reports
     @health_report_count = AiHelperHealthReport
@@ -30,6 +34,7 @@ class AiHelperDashboardController < ApplicationController
     end
   end
 
+  # Show a specific health report and provide PDF export.
   def health_report_show
     unless @health_report.visible?
       render_403
@@ -47,6 +52,7 @@ class AiHelperDashboardController < ApplicationController
     end
   end
 
+  # Delete a stored health report if the current user has permission.
   def health_report_destroy
     unless @health_report.deletable?
       render_403

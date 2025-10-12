@@ -3,10 +3,14 @@ require "json"
 
 module RedmineAiHelper
   module Vector
+    # @!visibility private
+    ROUTE_HELPERS = Rails.application.routes.url_helpers unless const_defined?(:ROUTE_HELPERS)
     # This class is responsible for managing the vector database for issues in Redmine.
     class IssueVectorDb < VectorDb
-      include Rails.application.routes.url_helpers
+      include ROUTE_HELPERS
 
+      # Return the name of the vector index used for this store.
+      # @return [String] the canonical index identifier for the issue embedding index.
       def index_name
         "RedmineIssue"
       end
