@@ -55,8 +55,17 @@
         <%= render partial: 'ai_helper/project/health_report_detail_pane',
                    locals: { health_report: @selected_report } %>
       <% else %>
+        <!-- Placeholder when no report is selected -->
         <div class="ai-helper-detail-placeholder">
           <p><%= l(:label_ai_helper_select_report_to_view) %></p>
+        </div>
+        <!-- Always include report container for generation (hidden by default) -->
+        <div class="ai-helper-health-report-detail" style="display: none;">
+          <h3><%= sprite_icon('ai-helper-robot', l(:label_ai_helper_health_report_detail), plugin: :redmine_ai_helper) %></h3>
+          <div class="ai-helper-project-health-content">
+            <div id="ai-helper-project-health-result"></div>
+            <input type="hidden" id="ai-helper-health-report-content" value="" />
+          </div>
         </div>
       <% end %>
     </div>
@@ -69,10 +78,12 @@
 <meta name="markdown-export-url" content="<%= ai_helper_project_health_markdown_path(@project) %>" />
 <meta name="pdf-export-url" content="<%= ai_helper_project_health_pdf_path(@project) %>" />
 
-<% content_for :header_tags do %>
-  <%= javascript_include_tag 'ai_helper_project_health', plugin: 'redmine_ai_helper' %>
-  <%= stylesheet_link_tag 'ai_helper_rtl', plugin: 'redmine_ai_helper' if l(:direction) == 'rtl' %>
+<% end # if project %>
 <% end %>
 
-<% end # if project %>
+<% content_for :header_tags do %>
+  <%= javascript_include_tag 'ai_helper_markdown_parser', plugin: 'redmine_ai_helper' %>
+  <%= javascript_include_tag 'ai_helper_project_health', plugin: 'redmine_ai_helper' %>
+  <%= javascript_include_tag 'ai_helper_master_detail', plugin: 'redmine_ai_helper' %>
+  <%= stylesheet_link_tag 'ai_helper_rtl', plugin: 'redmine_ai_helper' if l(:direction) == 'rtl' %>
 <% end %>

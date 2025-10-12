@@ -1,3 +1,7 @@
+// Guard against multiple script loading
+if (!window.aiHelperProjectHealthInitialized) {
+  window.aiHelperProjectHealthInitialized = true;
+
 document.addEventListener('DOMContentLoaded', function() {
 
   // Set flag to indicate main script is loaded
@@ -83,11 +87,34 @@ document.addEventListener('DOMContentLoaded', function() {
       }
 
       // Get the result div that should already exist in the scrollable container
-      const resultDiv = document.getElementById('ai-helper-project-health-result');
+      let resultDiv = document.getElementById('ai-helper-project-health-result');
+
+      // If no result div exists, something is wrong with the DOM structure
+      if (!resultDiv) {
+        console.error('No result div found for report generation. Please check the page structure.');
+        alert('Error: Cannot find report display area. Please refresh the page.');
+        return;
+      }
+
+      // Hide placeholder if it exists
+      const placeholder = document.querySelector('.ai-helper-detail-placeholder');
+      if (placeholder) {
+        placeholder.style.display = 'none';
+      }
+
+      // Show the report detail container if it's hidden
+      const reportDetail = document.querySelector('.ai-helper-health-report-detail');
+      if (reportDetail && reportDetail.style.display === 'none') {
+        reportDetail.style.display = 'block';
+      }
 
       // Show loading state and add has-report class
-      if (resultDiv) {
-        resultDiv.innerHTML = '<div class="ai-helper-loader"></div>';
+      const contentContainer = resultDiv.closest('.ai-helper-project-health-content');
+      resultDiv.innerHTML = '<div class="ai-helper-loader"></div>';
+      if (contentContainer) {
+        contentContainer.classList.add('has-report');
+      }
+      if (resultDiv.parentElement) {
         resultDiv.parentElement.classList.add('has-report');
       }
 
@@ -168,6 +195,12 @@ document.addEventListener('DOMContentLoaded', function() {
           const errorMessage = document.querySelector('meta[name="error-message"]');
           const errorText = errorMessage ? errorMessage.getAttribute('content') : 'Error';
           resultDiv.innerHTML = '<div class="ai-helper-error">' + errorText + '</div>';
+
+          // Ensure content container is visible even on error
+          const contentContainer = resultDiv.closest('.ai-helper-project-health-content');
+          if (contentContainer) {
+            contentContainer.style.display = 'block';
+          }
         }
         // Remove PDF button if it exists on error
         removePdfExportButton();
@@ -293,3 +326,5 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 });
+
+} // End guard against multiple script loading

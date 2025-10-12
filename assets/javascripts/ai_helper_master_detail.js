@@ -1,6 +1,9 @@
 // Master-Detail Layout Management for Health Report History
 // Handles report selection, Ajax loading, and dynamic interactions
 
+// Guard against multiple script loading
+if (typeof window.AiHelperMasterDetail === 'undefined') {
+
 class AiHelperMasterDetail {
   constructor() {
     this.selectedReportId = null;
@@ -362,9 +365,22 @@ window.updateHealthReportHistory = function() {
     if (xhr.status === 200) {
       historyContainer.innerHTML = xhr.responseText;
       // Re-initialize master-detail after updating history
-      new AiHelperMasterDetail();
+      const masterDetail = new AiHelperMasterDetail();
+
+      // Auto-select and display the first report (most recent)
+      setTimeout(() => {
+        const firstReportRow = document.querySelector('.ai-helper-report-row');
+        if (firstReportRow && masterDetail) {
+          masterDetail.selectReport(firstReportRow);
+        }
+      }, 100);
     }
   };
 
   xhr.send();
 };
+
+// Store class in global scope
+window.AiHelperMasterDetail = AiHelperMasterDetail;
+
+} // End guard against multiple script loading
