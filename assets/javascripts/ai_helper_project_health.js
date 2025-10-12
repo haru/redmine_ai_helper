@@ -171,12 +171,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 setTimeout(() => {
                   window.updateHealthReportHistory((masterDetailInstance) => {
                     if (masterDetailInstance) {
-                      const firstReportRow = document.querySelector('.ai-helper-report-row');
-                      if (firstReportRow) {
-                        firstReportRow.classList.remove('selected');
-                        masterDetailInstance.selectedReportId = null;
-                        masterDetailInstance.selectReport(firstReportRow, true);
-                      }
+                      setTimeout(() => {
+                        const firstReportRow = document.querySelector('.ai-helper-report-row');
+                        if (firstReportRow) {
+                          masterDetailInstance.selectedReportId = null;
+                          masterDetailInstance.selectReport(firstReportRow);
+                        }
+                      }, 100);
                     }
                   });
                 }, 1000);

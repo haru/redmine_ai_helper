@@ -61,13 +61,13 @@ class AiHelperMasterDetail {
     }
   }
 
-  selectReport(row, force = false) {
+  selectReport(row) {
     const reportId = row.dataset.reportId;
     const reportContent = row.dataset.reportContent;
     const createdAt = row.dataset.reportCreatedAt;
     const userName = row.dataset.reportUserName;
 
-    if (!force && this.selectedReportId === reportId) {
+    if (this.selectedReportId === reportId) {
       return; // Already selected
     }
 
@@ -371,7 +371,8 @@ window.updateHealthReportHistory = function(callback) {
         setTimeout(() => {
           const firstReportRow = document.querySelector('.ai-helper-report-row');
           if (firstReportRow && masterDetail) {
-            masterDetail.selectReport(firstReportRow, true);
+            masterDetail.selectedReportId = null;
+            masterDetail.selectReport(firstReportRow);
           }
         }, 100);
       }
