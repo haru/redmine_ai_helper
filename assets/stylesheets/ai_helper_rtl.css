@@ -96,7 +96,8 @@
 
 /* Loading message alignment for RTL */
 .ai-helper-project-health[dir="rtl"] .ai-helper-loading {
-  text-align: center; /* Keep centered for loading message */
+  text-align: center;
+  /* Keep centered for loading message */
 }
 
 /* Error message alignment for RTL */

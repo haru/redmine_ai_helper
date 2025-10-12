@@ -1047,6 +1047,10 @@ table.ai-helper-sub-issues-table td {
   color: #f8f8f8 !important;
 }
 
+.ai-helper-report-row.selected svg.icon-svg {
+  stroke: #f8f8f8 !important;
+}
+
 /* Clickable cell styling */
 .ai-helper-clickable-cell {
   cursor: pointer;

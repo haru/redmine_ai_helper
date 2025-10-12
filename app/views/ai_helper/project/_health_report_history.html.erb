@@ -30,7 +30,7 @@
             </td>
             <td class="buttons">
               <% if report.deletable? %>
-                <%= link_to l(:button_delete),
+                <%= link_to sprite_icon('del', l(:button_delete)),
                             ai_helper_health_report_destroy_path(@project, report_id: report.id),
                             method: :delete,
                             data: { confirm: l(:text_are_you_sure) },
