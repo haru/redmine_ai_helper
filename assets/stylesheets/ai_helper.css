@@ -286,17 +286,13 @@ table.ai-helper-sub-issues-table td {
   text-align: right;
 }
 
-.ai-helper-issue-subject {
-}
+.ai-helper-issue-subject {}
 
-.ai-helper-project {
-}
+.ai-helper-project {}
 
-.ai-helper-status {
-}
+.ai-helper-status {}
 
-.ai-helper-priority {
-}
+.ai-helper-priority {}
 
 .ai-helper-assigned {
   text-align: center;
@@ -311,8 +307,14 @@ table.ai-helper-sub-issues-table td {
   margin-top: 10px;
   padding: 15px;
   box-sizing: border-box;
+  border: 1px solid #ddd;
   width: 100%;
   display: block;
+}
+
+.ai-helper-project-health-content.has-report {
+  height: 480px !important;
+  overflow-y: scroll !important;
 }
 
 .ai-helper-project-health-placeholder {
@@ -473,8 +475,16 @@ table.ai-helper-sub-issues-table td {
 }
 
 @keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
+
+  0%,
+  50% {
+    opacity: 1;
+  }
+
+  51%,
+  100% {
+    opacity: 0;
+  }
 }
 
 .ai-helper-error {
@@ -489,6 +499,31 @@ table.ai-helper-sub-issues-table td {
 .ai-helper-note {
   font-size: 0.9em;
   margin-top: 10px;
+}
+
+/* Force scrollbar visibility */
+.ai-helper-project-health-content {
+  scrollbar-width: thin;
+  scrollbar-color: auto;
+}
+
+/* Custom scrollbar styling for webkit browsers */
+.ai-helper-project-health-content::-webkit-scrollbar {
+  width: 12px;
+  background: transparent;
+}
+
+.ai-helper-project-health-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.ai-helper-project-health-content::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 6px;
+}
+
+.ai-helper-project-health-content::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 
 /* Auto-completion styles */
@@ -532,8 +567,10 @@ table.ai-helper-sub-issues-table td {
 
 /* Active suggestion with solid background to hide underlying text */
 .ai-helper-suggestion-active {
-  background-color: #ffff99 !important; /* Light yellow background for visibility */
-  color: #666666 !important; /* Darker gray text for suggestion */
+  background-color: #ffff99 !important;
+  /* Light yellow background for visibility */
+  color: #666666 !important;
+  /* Darker gray text for suggestion */
   padding: 0 2px !important;
   border-radius: 2px !important;
 }
@@ -605,8 +642,10 @@ table.ai-helper-sub-issues-table td {
   left: 0;
   right: 0;
   bottom: 0;
-  pointer-events: auto; /* Enable interactions for buttons (different from autocomplete) */
-  z-index: 15; /* Higher than autocomplete overlay */
+  pointer-events: auto;
+  /* Enable interactions for buttons (different from autocomplete) */
+  z-index: 15;
+  /* Higher than autocomplete overlay */
   font-family: inherit;
   font-size: inherit;
   line-height: inherit;
@@ -657,7 +696,8 @@ table.ai-helper-sub-issues-table td {
   height: 20px;
   font-size: 12px;
   border: none;
-  border-radius: 2px; /* Match inline-suggestion border-radius */
+  border-radius: 2px;
+  /* Match inline-suggestion border-radius */
   cursor: pointer;
   vertical-align: middle;
   text-align: center;
@@ -714,7 +754,7 @@ table.ai-helper-sub-issues-table td {
   text-align: left;
   overflow-wrap: break-word;
   z-index: 10001;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   max-width: 300px;
   min-width: 100px;
   display: none;
@@ -735,7 +775,7 @@ table.ai-helper-sub-issues-table td {
   border: 1px solid #ddd;
   border-radius: 4px;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   pointer-events: auto;
 }
 
@@ -746,8 +786,9 @@ table.ai-helper-sub-issues-table td {
   border: 1px solid #ddd;
   border-radius: 4px;
   padding: 8px 10px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  z-index: 25; /* Above overlay to remain visible during scrolling */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 25;
+  /* Above overlay to remain visible during scrolling */
   display: none;
   gap: 8px;
 }
@@ -864,7 +905,7 @@ table.ai-helper-sub-issues-table td {
   font-size: 12px;
   line-height: 1.4;
   z-index: 10001;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   margin-top: 5px;
   max-width: 300px;
   white-space: normal;
@@ -905,7 +946,7 @@ table.ai-helper-sub-issues-table td {
   border: 1px solid #ddd;
   border-radius: 4px;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   pointer-events: auto;
 }
 
@@ -930,7 +971,6 @@ table.ai-helper-sub-issues-table td {
 .ai-helper-overlay-content {
   position: relative;
 }
-
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    Master-Detail Layout for Health Report History
