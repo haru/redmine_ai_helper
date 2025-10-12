@@ -27,12 +27,17 @@
 
   <p class="other-formats">
     <%= l(:label_export_to) %>
+    <span><a href="#" id="export-markdown-link" class="text">Markdown</a></span>
     <span><%= link_to 'PDF',
                       ai_helper_health_report_show_path(@project,
                                                        report_id: @health_report.id,
                                                        format: :pdf),
                       class: 'pdf' %></span>
   </p>
+
+  <%= form_tag ai_helper_project_health_markdown_path(@project), method: :post, id: 'markdown-export-form', style: 'display:none;' do %>
+    <%= hidden_field_tag 'health_report_content', @health_report.health_report.to_s %>
+  <% end %>
 </div>
 
 <% content_for :header_tags do %>
@@ -48,6 +53,16 @@
       var parser = new AiHelperMarkdownParser();
       var formattedContent = parser.parse(content);
       resultDiv.innerHTML = '<div class="ai-helper-final-content">' + formattedContent + '</div>';
+
+      // Handle Markdown export
+      var exportLink = document.getElementById('export-markdown-link');
+      var exportForm = document.getElementById('markdown-export-form');
+      if (exportLink && exportForm) {
+        exportLink.addEventListener('click', function(e) {
+          e.preventDefault();
+          exportForm.submit();
+        });
+      }
     });
   <% end %>
 <% end %>

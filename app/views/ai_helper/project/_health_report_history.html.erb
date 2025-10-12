@@ -24,9 +24,6 @@
               <%= link_to l(:button_view),
                           ai_helper_health_report_show_path(@project, report_id: report.id),
                           class: 'icon icon-magnifier' %>
-              <%= link_to 'PDF',
-                          ai_helper_health_report_show_path(@project, report_id: report.id, format: :pdf),
-                          class: 'icon icon-pdf' %>
               <% if report.deletable? %>
                 <%= link_to l(:button_delete),
                             ai_helper_health_report_destroy_path(@project, report_id: report.id),
