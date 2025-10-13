@@ -41,7 +41,7 @@ en:
       old_report: "Old Report"
       new_report: "New Report"
       analyze_button: "Analyze Changes"
-      placeholder: "Click 'Analyze Changes' to generate AI-powered comparison analysis"
+      placeholder: "Comparison analysis starts automatically"
       analysis_title: "Comparison Analysis"
       error_select_two_reports: "Please select two different reports to compare"
     generate_issue_reply:

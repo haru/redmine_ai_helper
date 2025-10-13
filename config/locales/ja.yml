@@ -41,7 +41,7 @@ ja:
       old_report: "旧レポート"
       new_report: "新レポート"
       analyze_button: "変化を分析"
-      placeholder: "'変化を分析'をクリックしてAI比較分析を生成"
+      placeholder: "AI比較分析を自動で生成しています"
       analysis_title: "比較分析"
       error_select_two_reports: "比較する2つの異なるレポートを選択してください"
     generate_issue_reply:
