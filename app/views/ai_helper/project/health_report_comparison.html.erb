@@ -37,14 +37,13 @@
     </div>
 
     <div class="ai-helper-comparison-actions">
-      <%= link_to l(:button_back),
-                  ai_helper_dashboard_path(@project, tab: 'health_report'),
-                  class: 'icon icon-cancel' %>
+      <%= link_to sprite_icon('cancel', l(:button_back)),
+                  ai_helper_dashboard_path(@project, tab: 'health_report') %>
     </div>
   </div>
 
   <!-- Analysis result display area -->
-  <div class="ai-helper-comparison-result">
+  <div class="ai-helper-comparison-result box">
     <div id="ai-helper-comparison-analysis"
          class="ai-helper-comparison-content"
          data-analysis-url="<%= ai_helper_health_report_compare_analyze_path(@project,

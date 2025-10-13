@@ -1190,7 +1190,7 @@ table.list.ai-helper-report-list td.id {
 
 /* Analysis result area - spacing only */
 .ai-helper-comparison-result {
-  margin-top: 1em;
+  margin: 1em;
 }
 
 /* Comparison content - sizing and layout only */
