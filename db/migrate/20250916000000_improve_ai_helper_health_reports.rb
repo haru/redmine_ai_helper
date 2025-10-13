@@ -1,8 +1,5 @@
 class ImproveAiHelperHealthReports < ActiveRecord::Migration[7.2]
   def change
-    # Change column type from time to datetime for created_at and updated_at
-    change_column :ai_helper_health_reports, :created_at, :datetime, null: false
-    change_column :ai_helper_health_reports, :updated_at, :datetime, null: false
 
     # Add indexes
     add_index :ai_helper_health_reports, :project_id unless index_exists?(:ai_helper_health_reports, :project_id)

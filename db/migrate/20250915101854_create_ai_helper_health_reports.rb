@@ -5,8 +5,8 @@ class CreateAiHelperHealthReports < ActiveRecord::Migration[7.2]
       t.integer :user_id
       t.text :health_report
       t.text :metrics
-      t.time :created_at
-      t.time :updated_at
+      t.datetime :created_at
+      t.datetime :updated_at
     end
   end
 end
