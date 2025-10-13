@@ -3,6 +3,7 @@
 class AiHelperDashboardController < ApplicationController
   include ActionController::Live
   include RedmineAiHelper::Logger
+  include AiHelper::Streaming
   include RedmineAiHelper::Export::PDF::ProjectHealthPdfHelper
 
   before_action :find_project, :authorize, :find_user
@@ -150,15 +151,10 @@ class AiHelperDashboardController < ApplicationController
       return
     end
 
-    # Stream via Server-Sent Events
-    response.headers["Content-Type"] = "text/event-stream"
-    response.headers["Cache-Control"] = "no-cache"
-    response.headers["Connection"] = "keep-alive"
-
     begin
       llm = RedmineAiHelper::Llm.new
 
-      stream_llm_response do |stream_proc|
+      stream_llm_response(close_stream: false) do |stream_proc|
         llm.compare_health_reports(
           old_report: old_report,
           new_report: new_report,
@@ -169,6 +165,8 @@ class AiHelperDashboardController < ApplicationController
     rescue => e
       ai_helper_logger.error "Health report comparison error: #{e.message}"
       ai_helper_logger.error e.backtrace.join("\n")
+
+      prepare_streaming_headers
 
       write_chunk({
         id: "error-#{SecureRandom.hex(6)}",
@@ -187,68 +185,6 @@ class AiHelperDashboardController < ApplicationController
   rescue ActiveRecord::RecordNotFound
     render_404
   end
-
-  def write_chunk(data)
-    response.stream.write("data: #{data.to_json}\n\n")
-  end
-
-  def stream_llm_response(&block)
-    # Set up streaming response headers
-    response.headers["Content-Type"] = "text/event-stream"
-    response.headers["Cache-Control"] = "no-cache"
-    response.headers["Connection"] = "keep-alive"
-
-    response_id = "chatcmpl-#{SecureRandom.hex(12)}"
-
-    # Send initial chunk
-    write_chunk({
-      id: response_id,
-      object: "chat.completion.chunk",
-      created: Time.now.to_i,
-      model: "gpt-3.5-turbo-0613",
-      choices: [{
-        index: 0,
-        delta: {
-          role: "assistant",
-        },
-        finish_reason: nil,
-      }],
-    })
-
-    # Define streaming callback
-    stream_proc = Proc.new do |content|
-      write_chunk({
-        id: response_id,
-        object: "chat.completion.chunk",
-        created: Time.now.to_i,
-        model: "gpt-3.5-turbo-0613",
-        choices: [{
-          index: 0,
-          delta: {
-            content: content,
-          },
-          finish_reason: nil,
-        }],
-      })
-    end
-
-    # Execute the provided block with the streaming proc
-    block.call(stream_proc)
-
-    # Send completion chunk
-    write_chunk({
-      id: response_id,
-      object: "chat.completion.chunk",
-      created: Time.now.to_i,
-      model: "gpt-3.5-turbo-0613",
-      choices: [{
-        index: 0,
-        delta: {},
-        finish_reason: "stop",
-      }],
-    })
-  end
-
   private
 
   def streaming_request?

@@ -9,6 +9,7 @@ require "redmine_ai_helper/export/pdf/project_health_pdf_helper"
 class AiHelperController < ApplicationController
   include ActionController::Live
   include RedmineAiHelper::Logger
+  include AiHelper::Streaming
   include AiHelperHelper
   include RedmineAiHelper::Export::PDF::ProjectHealthPdfHelper
 
@@ -482,9 +483,7 @@ class AiHelperController < ApplicationController
       ai_helper_logger.error e.backtrace.join("\n")
 
       # Send error as streaming response
-      response.headers["Content-Type"] = "text/event-stream"
-      response.headers["Cache-Control"] = "no-cache"
-      response.headers["Connection"] = "keep-alive"
+      prepare_streaming_headers
 
       write_chunk({
         id: "error-#{SecureRandom.hex(6)}",
@@ -554,72 +553,6 @@ class AiHelperController < ApplicationController
     end
     @conversation = AiHelperConversation.new
     @conversation.user = @user
-  end
-
-  # Write a chunk of data to the response stream
-  def write_chunk(data)
-    response.stream.write("data: #{data.to_json}\n\n")
-  end
-
-  # Common method for streaming LLM responses
-  # @param block [Block] The block to execute with the streaming proc
-  def stream_llm_response(&block)
-    # Set up streaming response headers
-    response.headers["Content-Type"] = "text/event-stream"
-    response.headers["Cache-Control"] = "no-cache"
-    response.headers["Connection"] = "keep-alive"
-
-    response_id = "chatcmpl-#{SecureRandom.hex(12)}"
-
-    # Send initial chunk
-    write_chunk({
-      id: response_id,
-      object: "chat.completion.chunk",
-      created: Time.now.to_i,
-      model: "gpt-3.5-turbo-0613",
-      choices: [{
-        index: 0,
-        delta: {
-          role: "assistant",
-        },
-        finish_reason: nil,
-      }],
-    })
-
-    # Define streaming callback
-    stream_proc = Proc.new do |content|
-      write_chunk({
-        id: response_id,
-        object: "chat.completion.chunk",
-        created: Time.now.to_i,
-        model: "gpt-3.5-turbo-0613",
-        choices: [{
-          index: 0,
-          delta: {
-            content: content,
-          },
-          finish_reason: nil,
-        }],
-      })
-    end
-
-    # Execute the provided block with the streaming proc
-    block.call(stream_proc)
-
-    # Send completion chunk
-    write_chunk({
-      id: response_id,
-      object: "chat.completion.chunk",
-      created: Time.now.to_i,
-      model: "gpt-3.5-turbo-0613",
-      choices: [{
-        index: 0,
-        delta: {},
-        finish_reason: "stop",
-      }],
-    })
-  ensure
-    response.stream.close
   end
 
   # Find wiki page for wiki summary
