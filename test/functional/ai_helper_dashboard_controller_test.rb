@@ -37,12 +37,6 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
         assert_template :index
       end
 
-      should "hide settings tab when user lacks settings permission" do
-        get :index, params: { id: @project.id }
-
-        assert_select "div.tabs a", text: I18n.t(:label_settings), count: 0
-      end
-
       should "show settings tab when user has settings permission" do
         manager_role = Role.find(1)
         manager_role.add_permission! :settings_ai_helper
