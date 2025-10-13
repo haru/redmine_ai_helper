@@ -1,21 +1,35 @@
 # frozen_string_literal: true
 
+# Namespace for concerns shared by AI helper controllers.
 module AiHelper
+  # Mixin that encapsulates Server-Sent Events (SSE) helpers for streaming LLM responses.
   module Streaming
     extend ActiveSupport::Concern
 
     private
 
+    # Prepare headers required for SSE streaming.
+    #
+    # @return [void]
     def prepare_streaming_headers
       response.headers["Content-Type"] = "text/event-stream"
       response.headers["Cache-Control"] = "no-cache"
       response.headers["Connection"] = "keep-alive"
     end
 
+    # Emit a JSON payload chunk over the SSE stream.
+    #
+    # @param data [Hash] payload to serialize and write.
+    # @return [void]
     def write_chunk(data)
       response.stream.write("data: #{data.to_json}\n\n")
     end
 
+    # Stream a full LLM response using SSE, yielding a proc to the caller for incremental content.
+    #
+    # @param close_stream [Boolean] whether to close the SSE stream after completion.
+    # @yieldparam stream_proc [Proc] block to call with incremental response fragments.
+    # @return [void]
     def stream_llm_response(close_stream: true, &block)
       prepare_streaming_headers
 
