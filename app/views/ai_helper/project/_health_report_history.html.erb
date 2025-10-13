@@ -13,15 +13,32 @@
       <table class="list ai-helper-report-list">
         <thead>
           <tr>
+            <th>#</th>
             <th colspan="2"><%= l('ai_helper.health_report_comparison.comparison_column') %></th>
-            <th><%= l(:field_id) %></th>
             <th><%= l(:field_created_on) %></th>
             <th><%= l(:field_author) %></th>
             <th></th>
           </tr>
         </thead>
         <tbody>
+          <% report_count = @health_reports.size %>
           <% @health_reports.each_with_index do |report, index| %>
+            <% is_first = index.zero? %>
+            <% is_last = index == report_count - 1 %>
+            <% show_new_radio = report_count > 1 && !is_last %>
+            <% show_old_radio = report_count > 1 && !is_first %>
+            <% default_new_selected = params[:new_id].blank? && index.zero? %>
+            <% default_old_selected = params[:old_id].blank? && report_count > 1 && index == 1 %>
+            <% new_selected = if params[:new_id].present?
+                                params[:new_id].to_s == report.id.to_s
+                              else
+                                default_new_selected
+                              end %>
+            <% old_selected = if params[:old_id].present?
+                                params[:old_id].to_s == report.id.to_s
+                              else
+                                default_old_selected
+                              end %>
             <tr class="ai-helper-report-row <%= cycle('odd', 'even') %> <%= 'selected' if @selected_report&.id == report.id %>"
                 data-report-id="<%= report.id %>"
                 data-report-url="<%= ai_helper_dashboard_path(@project, tab: 'health_report', report_id: report.id, format: :html) %>"
@@ -29,24 +46,32 @@
                 data-report-created-at="<%= report.created_at.iso8601 %>"
                 data-report-user-name="<%= html_escape(report.user.name) %>">
 
-              <!-- Radio button for old report selection -->
-              <td class="radio">
-                <%= radio_button_tag 'old_id', report.id,
-                                     index == 1,
-                                     class: 'comparison-radio old-radio',
-                                     onclick: 'updateComparisonButton()' %>
-              </td>
-              <!-- Radio button for new report selection -->
-              <td class="radio">
-                <%= radio_button_tag 'new_id', report.id,
-                                     index == 0,
-                                     class: 'comparison-radio new-radio',
-                                     onclick: 'updateComparisonButton()' %>
-              </td>
-
               <td class="id ai-helper-clickable-cell">
                 <%= report.id %>
               </td>
+              <!-- Radio button for selecting the newer report -->
+              <td class="radio">
+                <% if show_new_radio %>
+                  <%= radio_button_tag 'new_id', report.id,
+                                       new_selected,
+                                       class: 'comparison-radio new-radio',
+                                       onclick: 'updateComparisonButton()' %>
+                <% else %>
+                  <span class="radio-placeholder" aria-hidden="true"></span>
+                <% end %>
+              </td>
+              <!-- Radio button for selecting the older report -->
+              <td class="radio">
+                <% if show_old_radio %>
+                  <%= radio_button_tag 'old_id', report.id,
+                                       old_selected,
+                                       class: 'comparison-radio old-radio',
+                                       onclick: 'updateComparisonButton()' %>
+                <% else %>
+                  <span class="radio-placeholder" aria-hidden="true"></span>
+                <% end %>
+              </td>
+
               <td class="created_on ai-helper-clickable-cell">
                 <%= format_time(report.created_at) %>
               </td>

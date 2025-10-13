@@ -1185,8 +1185,19 @@ table.list.ai-helper-report-list td.id {
 
 /* Radio button column in comparison table - sizing and alignment only */
 table.list.ai-helper-report-list td.radio {
-  width: 30px;
+  width: 22px;
+  padding: 0 2px;
   text-align: center;
+}
+
+table.list.ai-helper-report-list td.radio input[type="radio"] {
+  margin: 0;
+}
+
+table.list.ai-helper-report-list td.radio .radio-placeholder {
+  display: inline-block;
+  width: 12px;
+  height: 1px;
 }
 
 /* Disabled compare button - opacity only */

@@ -681,6 +681,34 @@ This is a test report.",
 
         assert_response :not_found
       end
+
+      should "use streaming comparison when GET request includes event-stream accept header" do
+        other_project = Project.find(2)
+        other_project.enabled_module_names = other_project.enabled_module_names + ["ai_helper"]
+        other_project.save!
+
+        other_report = AiHelperHealthReport.create!(
+          project: other_project,
+          user: @user,
+          health_report: "Other project report",
+        )
+
+        original_accept = @request.headers["Accept"]
+        @request.headers["Accept"] = "text/event-stream"
+
+        get :compare_health_reports, params: {
+                                       id: @project.id,
+                                       old_report_id: @old_report.id,
+                                       new_report_id: other_report.id,
+                                     }
+
+        assert_response :forbidden
+        if original_accept
+          @request.headers["Accept"] = original_accept
+        else
+          @request.headers["Accept"] = nil
+        end
+      end
     end
 
     context "Edge cases" do

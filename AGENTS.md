@@ -1,32 +1,22 @@
 # Repository Guidelines
 
-## Project Structure & Architecture
-- Plugin code follows Rails conventions: controllers/views in `app/`, models in `app/models/`, shared helpers in `app/helpers/`.
-- Core engine, agents, tools, transports, and vector utilities live under `lib/redmine_ai_helper/`. Key classes include `BaseAgent`, `LeaderAgent`, and auto-generated MCP agents.
-- Frontend assets are split into `assets/javascripts/` (Markdown streaming, health UI) and `assets/stylesheets/` (extends Redmine themes). Prompt templates reside in `assets/prompt_templates/`.
-- Tests use Redmine’s minitest layout in `test/functional/` and `test/unit/`; architectural specs and plans sit in `specs/`.
+## Project Structure & Module Organization
+Core Rails plugin code lives under `app/`, following standard MVC groupings (`app/controllers`, `app/models`, `app/helpers`). Engine internals, agents, transports, and utilities are in `lib/redmine_ai_helper/`—key entry points include `BaseAgent`, `LeaderAgent`, and generated `SubMcpAgent` variants. Frontend assets reside in `assets/javascripts/` and `assets/stylesheets/`, while prompt templates are kept in `assets/prompt_templates/`. Tests follow Redmine’s minitest layout: controller flows in `test/functional/`, business logic in `test/unit/`, and architectural plans in `specs/`.
 
 ## Build, Test, and Development Commands
-- `bundle install` — install plugin dependencies (run in Redmine root).
-- `bundle exec rake redmine:plugins:migrate RAILS_ENV=test` — prepare the test database; pair with `bundle exec rake redmine:plugins:ai_helper:setup_scm` for SCM fixtures.
-- `bundle exec rake redmine:plugins:test NAME=redmine_ai_helper` — execute unit and functional suites; coverage outputs to `coverage/`.
-- Vector maintenance: `bundle exec rake redmine:plugins:ai_helper:vector:generate`, `:regist`, `:destroy` (set `RAILS_ENV=production` when operating on live data).
+- `bundle install` — install plugin gems. Run from the Redmine root.
+- `bundle exec rake redmine:plugins:migrate RAILS_ENV=test` — prep the test DB (pair with `bundle exec rake redmine:plugins:ai_helper:setup_scm` for SCM fixtures).
+- `bundle exec rake redmine:plugins:test NAME=redmine_ai_helper` — execute unit and functional suites with coverage to `coverage/`.
+- Vector maintenance (production only): `bundle exec rake redmine:plugins:ai_helper:vector:generate`, `:regist`, `:destroy`.
 
 ## Coding Style & Naming Conventions
-- Ruby: two-space indent, snake_case methods, CamelCase classes, comments in English. Never fall back silently—surface errors promptly.
-- JavaScript: ES6 modules, `const`/`let`, no jQuery; target DOM elements defined by Redmine’s layout. CSS should reuse `.box` and other Redmine tokens—avoid custom color palettes.
-- Logging must use `ai_helper_logger`; direct `Rails.logger` usage is prohibited.
+Use two-space indentation for Ruby, snake_case methods, and CamelCase classes. JavaScript should use ES6 modules with `const`/`let`, targeting DOM hooks provided by Redmine. Reuse Redmine styles such as `.box`; avoid introducing new color palettes. All logging must go through `ai_helper_logger`, never `Rails.logger`. Stick to ASCII unless the existing file justifies Unicode.
 
-## Testing Expectations
-- Follow `shoulda`-style minitest helpers; mock external services sparingly.
-- Aim for ≥95% line coverage. Place controller flows in `test/functional/`, business logic in `test/unit/`, and agent-specific fixtures alongside their targets.
-- Before PRs, run the full plugin suite and document results.
-
-## Configuration & Setup Notes
-- Global settings come from `AiHelperSetting`; per-project overrides use `AiHelperProjectSetting`.
-- MCP endpoints are defined in `config/ai_helper/config.json`, which triggers dynamic `SubMcpAgent` generation for STDIO/HTTP/SSE transports.
-- Langfuse integration is configured via `config/ai_helper/config.yml`; prompt files support English and Japanese locales.
+## Testing Guidelines
+Tests rely on shoulda-style minitest helpers. Aim for ≥95% line coverage and keep controller specs in `test/functional/` with logic-focused cases in `test/unit/`. Place agent fixtures beside their targets. Run `bundle exec rake redmine:plugins:test NAME=redmine_ai_helper` before submitting changes and capture the command output for PR notes.
 
 ## Commit & Pull Request Guidelines
-- Commit messages should be concise imperatives (e.g., “Add health report history actions”). Avoid references to external coding assistants.
-- PRs must summarize the change set, list executed commands/tests, and link related Redmine issues. Include UI screenshots when altering frontend behavior.
+Write concise imperative commit messages (e.g., “Add health report history actions”). Pull requests must summarize the change set, list commands/tests executed, reference related Redmine issues, and include UI screenshots when frontend behavior changes. Mention any vector maintenance or configuration impacts in the PR body.
+
+## Configuration & Agent Notes
+Global settings are managed via `AiHelperSetting`; per-project overrides use `AiHelperProjectSetting`. MCP endpoints live in `config/ai_helper/config.json`, which drives dynamic agent generation for STDIO/HTTP/SSE transports. Langfuse logging is configured through `config/ai_helper/config.yml`; prompt templates support English and Japanese locales.

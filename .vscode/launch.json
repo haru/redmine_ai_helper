@@ -1,0 +1,114 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Rails server",
+            "type": "rdbg",
+            "request": "launch",
+            "command": "${workspaceRoot}/bin/rails",
+            "script": "server",
+            "useBundler": true,
+            "args": [
+                "-b",
+                "0.0.0.0"
+            ]
+        },
+        {
+            "name": "Rails server(postgres)",
+            "type": "rdbg",
+            "request": "launch",
+            "command": "${workspaceRoot}/bin/rails",
+            "script": "server",
+            "useBundler": true,
+            "args": [
+                "-b",
+                "0.0.0.0"
+            ],
+            "env": {
+                "DB": "postgresql",
+                "DB_NAME": "redmine",
+                "DB_USERNAME": "postgres",
+                "DB_PASSWORD": "postgres",
+                "DB_HOST": "postgres",
+                "DB_PORT": 5432
+            }
+        },
+        {
+            "name": "Rails server(mysql)",
+            "type": "rdbg",
+            "request": "launch",
+            "command": "${workspaceRoot}/bin/rails",
+            "script": "server",
+            "useBundler": true,
+            "args": [
+                "-b",
+                "0.0.0.0"
+            ],
+            "env": {
+                "DB": "mysql2",
+                "DB_NAME": "redmine",
+                "DB_USERNAME": "root",
+                "DB_PASSWORD": "root",
+                "DB_HOST": "mysql",
+                "DB_PORT": 3306
+            }
+        },
+        {
+            "name": "Plugin Test",
+            "type": "rdbg",
+            "request": "launch",
+            "command": "${workspaceRoot}/bin/rake",
+            "script": "redmine:plugins:test",
+            "useBundler": true,
+            "cwd": "${workspaceRoot}",
+            "args": [
+                "redmine:plugins:test"
+            ],
+            "env": {
+                "RAILS_ENV": "test"
+            }
+        },
+        {
+            "name": "Plugin Test(postgres)",
+            "type": "rdbg",
+            "request": "launch",
+            "command": "${workspaceRoot}/bin/rake",
+            "script": "redmine:plugins:test",
+            "useBundler": true,
+            "cwd": "${workspaceRoot}",
+            "args": [
+                "redmine:plugins:test"
+            ],
+            "env": {
+                "RAILS_ENV": "test",
+                "DB": "postgresql",
+                "DB_NAME": "redmine",
+                "DB_USERNAME": "postgres",
+                "DB_PASSWORD": "postgres",
+                "DB_HOST": "postgres",
+                "DB_PORT": 5432
+            }
+        },
+        {
+            "name": "Plugin Test(mysql)",
+            "type": "rdbg",
+            "request": "launch",
+            "command": "${workspaceRoot}/bin/rake",
+            "script": "redmine:plugins:test",
+            "useBundler": true,
+            "cwd": "${workspaceRoot}",
+            "args": [
+                "redmine:plugins:test"
+            ],
+            "env": {
+                "RAILS_ENV": "test",
+                "DB": "mysql2",
+                "DB_NAME": "redmine",
+                "DB_USERNAME": "root",
+                "DB_PASSWORD": "root",
+                "DB_HOST": "mysql",
+                "DB_PORT": 3306
+            }
+        }
+    ]
+}

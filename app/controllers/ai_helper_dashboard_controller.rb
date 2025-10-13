@@ -85,7 +85,7 @@ class AiHelperDashboardController < ApplicationController
   # GET  - Show comparison UI
   # POST - Execute streaming analysis
   def compare_health_reports
-    if request.post?
+    if streaming_request?
       perform_streaming_comparison
     else
       show_comparison_ui
@@ -250,6 +250,10 @@ class AiHelperDashboardController < ApplicationController
   end
 
   private
+
+  def streaming_request?
+    request.post? || request.headers["Accept"].to_s.include?("text/event-stream")
+  end
 
   def find_user
     @user = User.current
