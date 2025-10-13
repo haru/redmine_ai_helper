@@ -38,19 +38,9 @@ Redmine::Plugin.register :redmine_ai_helper do
                    :generate_sub_issues, :add_sub_issues, :similar_issues, :project_health, :generate_project_health, :project_health_pdf, :project_health_markdown,
                    :suggest_completion, :suggest_wiki_completion, :check_typos,
                  ],
-                 ai_helper_dashboard: [:index],
+                 ai_helper_dashboard: [:index, :health_report_history, :health_report_show, :compare_health_reports, :health_report_destroy],
+                 ai_helper_project_settings: [:show, :update],
                }
-    permission :view_ai_helper_health_reports,
-               {
-                 ai_helper_dashboard: [:health_report_history, :health_report_show, :compare_health_reports],
-               },
-               read: true
-    permission :delete_ai_helper_health_reports,
-               {
-                 ai_helper_dashboard: [:health_report_destroy],
-               },
-               require: :member
-    permission :manage_ai_helper_settings, { ai_helper_project_settings: [:show, :update] }
   end
 
   menu :admin_menu, "icon ah_helper", {

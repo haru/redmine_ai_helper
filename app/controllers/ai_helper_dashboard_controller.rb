@@ -31,14 +31,13 @@ class AiHelperDashboardController < ApplicationController
 
     # Determine which report should be selected (from URL params or default to most recent)
     @selected_report = if params[:report_id]
-      @health_reports.find { |r| r.id.to_s == params[:report_id].to_s }
-    else
-      @health_reports.first
-    end
+        @health_reports.find { |r| r.id.to_s == params[:report_id].to_s }
+      else
+        @health_reports.first
+      end
 
     respond_to do |format|
       format.html { render partial: "ai_helper/project/health_report_history" }
-      format.json { render json: @health_reports }
     end
   end
 
@@ -51,20 +50,8 @@ class AiHelperDashboardController < ApplicationController
 
     respond_to do |format|
       format.html { render template: "ai_helper/project/health_report_show", layout: "base" }
-      format.json do
-        render json: {
-          id: @health_report.id,
-          created_at: @health_report.created_at,
-          user: {
-            id: @health_report.user.id,
-            name: @health_report.user.name
-          },
-          health_report: @health_report.health_report,
-          formatted_html: view_context.textilizable(@health_report.health_report.to_s, object: @project)
-        }
-      end
       format.pdf do
-        filename = "#{@project.identifier}-health-report-#{@health_report.created_at.strftime('%Y%m%d')}.pdf"
+        filename = "#{@project.identifier}-health-report-#{@health_report.created_at.strftime("%Y%m%d")}.pdf"
         send_data(project_health_to_pdf(@project, @health_report.health_report),
                   type: "application/pdf",
                   filename: filename)
@@ -83,12 +70,12 @@ class AiHelperDashboardController < ApplicationController
     @health_report.destroy
 
     respond_to do |format|
-      format.html { redirect_to ai_helper_dashboard_path(@project, tab: 'health_report'), notice: l(:notice_successful_delete) }
+      format.html { redirect_to ai_helper_dashboard_path(@project, tab: "health_report"), notice: l(:notice_successful_delete) }
       format.json do
         render json: {
-          status: 'ok',
+          status: "ok",
           deleted_report_id: report_id,
-          message: l(:notice_successful_delete)
+          message: l(:notice_successful_delete),
         }
       end
     end
@@ -114,8 +101,8 @@ class AiHelperDashboardController < ApplicationController
 
     # Validate parameters
     if @old_report_id.blank? || @new_report_id.blank?
-      flash[:error] = l('ai_helper.health_report_comparison.error_select_two_reports')
-      redirect_to ai_helper_dashboard_path(@project, tab: 'health_report')
+      flash[:error] = l("ai_helper.health_report_comparison.error_select_two_reports")
+      redirect_to ai_helper_dashboard_path(@project, tab: "health_report")
       return
     end
 
@@ -139,7 +126,7 @@ class AiHelperDashboardController < ApplicationController
       @old_report, @new_report = @new_report, @old_report
     end
 
-    render template: 'ai_helper/project/health_report_comparison'
+    render template: "ai_helper/project/health_report_comparison"
   rescue ActiveRecord::RecordNotFound
     render_404
   end
@@ -164,9 +151,9 @@ class AiHelperDashboardController < ApplicationController
     end
 
     # Stream via Server-Sent Events
-    response.headers['Content-Type'] = 'text/event-stream'
-    response.headers['Cache-Control'] = 'no-cache'
-    response.headers['Connection'] = 'keep-alive'
+    response.headers["Content-Type"] = "text/event-stream"
+    response.headers["Cache-Control"] = "no-cache"
+    response.headers["Connection"] = "keep-alive"
 
     begin
       llm = RedmineAiHelper::Llm.new
@@ -176,7 +163,7 @@ class AiHelperDashboardController < ApplicationController
           old_report: old_report,
           new_report: new_report,
           project: @project,
-          stream_proc: stream_proc
+          stream_proc: stream_proc,
         )
       end
     rescue => e
@@ -191,8 +178,8 @@ class AiHelperDashboardController < ApplicationController
         choices: [{
           index: 0,
           delta: { content: "Error: #{e.message}" },
-          finish_reason: "stop"
-        }]
+          finish_reason: "stop",
+        }],
       })
     ensure
       response.stream.close

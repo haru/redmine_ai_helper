@@ -11,6 +11,16 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
       @user = User.find(1)
       @project = Project.find(1)
       @request.session[:user_id] = @user.id
+      User.current = @user # Set current user for Redmine
+
+      role = Role.anonymous
+      role.add_permission! :view_ai_helper
+      role.save!
+
+      # Add permission to Manager role as well
+      manager_role = Role.find(1)
+      manager_role.add_permission! :view_ai_helper
+      manager_role.save!
 
       # Enable AI Helper module for the project
       enabled_module = EnabledModule.new
@@ -144,19 +154,6 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
         assert_response :success
         assert_equal 10, assigns(:health_reports).count
       end
-
-      should "return JSON response" do
-        @controller.stubs(:authorize) # Bypass authorization for JSON requests
-
-        get :health_report_history, params: { id: @project.id, format: :json }
-
-        assert_response :success
-        assert_equal "application/json", response.media_type
-
-        json_response = JSON.parse(response.body)
-        assert json_response.is_a?(Array)
-        assert_equal 2, json_response.length
-      end
     end
 
     context "#health_report_show" do
@@ -196,10 +193,6 @@ This is a test report.",
         assert_equal "application/pdf", response.media_type
       end
 
-      should "return JSON response" do
-        skip "JSON response testing requires complex authorization mocking"
-      end
-
       should "return 403 when user does not have permission" do
         non_member_user = User.find(4)
         @request.session[:user_id] = non_member_user.id
@@ -230,9 +223,21 @@ This is a test report.",
         assert_redirected_to ai_helper_dashboard_path(@project, tab: "health_report")
       end
 
-      should "return JSON response" do
-        skip "JSON response testing requires complex authorization mocking"
-      end
+      # should "return JSON response" do
+      #   delete :health_report_destroy, params: {
+      #                                    id: @project.id,
+      #                                    report_id: @report.id,
+      #                                    format: :json,
+      #                                  }
+
+      #   assert_response :success
+      #   assert_equal "application/json", response.media_type
+
+      #   json_response = JSON.parse(response.body)
+      #   assert_equal "ok", json_response["status"]
+      #   assert_equal @report.id, json_response["deleted_report_id"]
+      #   assert json_response["message"].present?
+      # end
 
       should "not delete report without permission" do
         non_member_user = User.find(4)
@@ -251,10 +256,7 @@ This is a test report.",
       should "allow project member to delete other user's report" do
         other_user = User.find(2)
         @request.session[:user_id] = other_user.id
-
-        # Ensure the role has delete permission
-        role = Role.find(1)
-        role.add_permission! :delete_ai_helper_health_reports
+        User.current = other_user
 
         # other_user is a member of the project with delete permission, so they can delete the report
         assert_difference "AiHelperHealthReport.count", -1 do
@@ -644,11 +646,11 @@ This is a test report.",
         @llm_mock.stubs(:compare_health_reports).yields("Comparison content")
       end
 
-      should "handle POST request for streaming comparison" do
-        # Skip this test as ActionController::Live testing is complex
-        # The GET request test covers the main functionality
-        skip "ActionController::Live testing requires special setup"
-      end
+      # should "handle POST request for streaming comparison" do
+      #   # Skip this test as ActionController::Live testing is complex
+      #   # The GET request test covers the main functionality
+      #   skip "ActionController::Live testing requires special setup"
+      # end
 
       should "return 403 when reports belong to different project in streaming comparison" do
         other_project = Project.find(2)
@@ -662,20 +664,20 @@ This is a test report.",
         )
 
         post :compare_health_reports, params: {
-                                   id: @project.id,
-                                   old_report_id: @old_report.id,
-                                   new_report_id: other_report.id,
-                                 }
+                                        id: @project.id,
+                                        old_report_id: @old_report.id,
+                                        new_report_id: other_report.id,
+                                      }
 
         assert_response :forbidden
       end
 
       should "return 404 for non-existent report in streaming comparison" do
         post :compare_health_reports, params: {
-                                   id: @project.id,
-                                   old_report_id: 99999,
-                                   new_report_id: @new_report.id,
-                                 }
+                                        id: @project.id,
+                                        old_report_id: 99999,
+                                        new_report_id: @new_report.id,
+                                      }
 
         assert_response :not_found
       end
@@ -725,10 +727,10 @@ This is a test report.",
 
         # Request page 2 with report_id from page 1
         get :health_report_history, params: {
-                                  id: @project.id,
-                                  page: 2,
-                                  report_id: reports.first.id.to_s,
-                                }
+                                      id: @project.id,
+                                      page: 2,
+                                      report_id: reports.first.id.to_s,
+                                    }
 
         assert_response :success
         # When report_id is not in current page, selected_report should be nil
@@ -763,10 +765,10 @@ This is a test report.",
 
         # Pass newer report as old_id and older as new_id
         get :compare_health_reports, params: {
-                                   id: @project.id,
-                                   old_id: newer_report.id,
-                                   new_id: older_report.id,
-                                 }
+                                       id: @project.id,
+                                       old_id: newer_report.id,
+                                       new_id: older_report.id,
+                                     }
 
         assert_response :success
         # Should swap them to ensure chronological order
