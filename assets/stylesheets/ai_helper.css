@@ -317,6 +317,53 @@ table.ai-helper-sub-issues-table td {
   overflow-y: scroll !important;
 }
 
+/* Dashboard-only: stretch report detail area with viewport height */
+body.controller-ai_helper_dashboard.action-index .ai-helper-detail-pane {
+  display: flex;
+  flex-direction: column;
+}
+
+body.controller-ai_helper_dashboard.action-index #ai-helper-health-report-detail-container {
+  flex: 1 1 auto;
+  display: flex;
+}
+
+body.controller-ai_helper_dashboard.action-index .ai-helper-health-report-detail {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+body.controller-ai_helper_dashboard.action-index .ai-helper-health-report-meta,
+body.controller-ai_helper_dashboard.action-index .ai-helper-health-report-detail .other-formats {
+  flex: 0 0 auto;
+}
+
+body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-content.has-report {
+  flex: 1 1 0%;
+  min-height: 360px;
+  max-height: calc(100vh - 520px);
+  overflow-y: auto !important;
+}
+
+@media screen and (max-width: 900px) {
+  body.controller-ai_helper_dashboard.action-index .ai-helper-detail-pane {
+    display: block;
+  }
+
+  body.controller-ai_helper_dashboard.action-index #ai-helper-health-report-detail-container {
+    display: block;
+  }
+
+  body.controller-ai_helper_dashboard.action-index .ai-helper-health-report-detail {
+    display: block;
+  }
+
+  body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-content.has-report {
+    height: auto !important;
+  }
+}
+
 .ai-helper-project-health-placeholder {
   color: #666;
   font-style: italic;
