@@ -443,7 +443,7 @@ This is a test report.",
         assert_select ".ai-helper-comparison-container", 1
         assert_select ".old-report-info", 1
         assert_select ".new-report-info", 1
-        assert_select "#analyze-changes-button", 1
+        assert_select "#ai-helper-comparison-analysis[data-analysis-url]", 1
       end
 
       should "redirect when report IDs are missing" do
