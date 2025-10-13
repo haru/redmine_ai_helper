@@ -63,15 +63,20 @@ template: |
 
   ## Output Requirements
 
-  ### Structure your analysis using the following Markdown sections:
+  Use emojis to enhance readability and clarity.
 
-  #### Executive Summary
-  - Overall health trajectory (improved/stable/declined)
-  - 2-3 key highlights (most significant changes)
-  - Primary risk factors (if any)
-  - Confidence level in the analysis (based on data completeness)
+  ---- Structure your analysis using the following Markdown sections:
 
-  #### Detailed Comparative Analysis
+  ## Executive Summary
+
+  Provide a concise overall summary in a few lines here. Also provide a health score out of 10 points.
+
+  ### Overall health trajectory (improved/stable/declined)
+  ### 2-3 key highlights (most significant changes)
+  ### Primary risk factors (if any)
+  ### Confidence level in the analysis (based on data completeness)
+
+  ## Detailed Comparative Analysis
   Create a structured comparison table showing key metrics changes:
 
   | Metric Category | Previous | Current | Change | Trend | Impact |
@@ -80,26 +85,28 @@ template: |
 
   Then provide detailed narrative analysis for each major category.
 
-  #### Key Improvements
-  - List specific improvements with supporting data
-  - Quantify the magnitude of positive changes
-  - Identify contributing factors where evident
+  ## Key Improvements
+  ### List specific improvements with supporting data
+  ### Quantify the magnitude of positive changes
+  ### Identify contributing factors where evident
 
-  #### Areas of Concern
-  - Highlight metrics that have declined or show warning signs
-  - Assess the severity and urgency of each concern
-  - Note any emerging risk patterns
+  ## Areas of Concern
+  ### Highlight metrics that have declined or show warning signs
+  ### Assess the severity and urgency of each concern
+  ### Note any emerging risk patterns
 
-  #### Trend Analysis
-  - Identify sustained trends
-  - Distinguish between normal variance and significant shifts
-  - Project likely future trajectory based on current trends
+  ## Trend Analysis
+  ### Identify sustained trends
+  ### Distinguish between normal variance and significant shifts
+  ### Project likely future trajectory based on current trends
 
-  #### Actionable Recommendations
-  - Provide specific, implementable recommendations
-  - Prioritize recommendations by impact and urgency
-  - Tailor recommendations to the Redmine environment
-  - Link recommendations to specific metric changes
+  ## Actionable Recommendations
+  ### Provide specific, implementable recommendations
+  ### Prioritize recommendations by impact and urgency
+  ### Tailor recommendations to the Redmine environment
+  ### Link recommendations to specific metric changes
+
+  ----
 
   ## Important Guidelines
 
