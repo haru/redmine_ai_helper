@@ -12,8 +12,7 @@ ja:
   ai_helper_text_summary_generated_time: "%{time} に生成"
   ai_helper_error_occurred: "エラーが発生しました"
   permission_view_ai_helper: "AIヘルパーの表示"
-  permission_view_ai_helper_health_reports: "健全性レポート履歴の閲覧"
-  permission_delete_ai_helper_health_reports: "健全性レポートの削除"
+  permission_settings_ai_helper: "プロジェクトの設定"
   label_ai_helper_error: "エラー"
   label_ai_helper_health_report_history: "レポート履歴"
   label_ai_helper_health_report_detail: "レポート詳細"
@@ -94,7 +93,7 @@ ja:
         repository_page: "リポジトリ「%{repo_name}」の情報ページです。リポジトリのIDは %{repo_id} です。"
         repository_file_page: "リポジトリのファイル情報のページです。表示しているファイルパスは %{path} です。リビジョンは %{rev} です。リポジトリは「 %{repo_name}」です。リポジトリのIDは %{repo_id} です。"
         repository_diff:
-          page:  "リポジトリ「%{repo_name}」の変更差分ページです。リポジトリのIDは %{repo_id} です。"
+          page: "リポジトリ「%{repo_name}」の変更差分ページです。リポジトリのIDは %{repo_id} です。"
           rev: "リビジョンは %{rev} です。"
           rev_to: "リビジョンは %{rev} から %{rev_to} です。"
           path: "ファイルパスは %{path} です。"
@@ -114,7 +113,7 @@ ja:
       issue_agent:
         search_answer_instruction: "なお、「条件に合ったチケットを探して」「こういう条件のチケット見せて」の様な複数のチケット探すタスクの場合には、チケット検索のURLを返してください。"
       leader_agent:
-          generate_final_response: "全てのエージェントがタスクを完了しました。ユーザーへの最終的な回答を作成してください。"
+        generate_final_response: "全てのエージェントがタスクを完了しました。ユーザーへの最終的な回答を作成してください。"
   activerecord:
     models:
       ai_helper_model_profile: "モデルプロファイル"

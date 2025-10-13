@@ -20,6 +20,7 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
       # Add permission to Manager role as well
       manager_role = Role.find(1)
       manager_role.add_permission! :view_ai_helper
+      manager_role.remove_permission! :settings_ai_helper
       manager_role.save!
 
       # Enable AI Helper module for the project
@@ -34,6 +35,21 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
         get :index, params: { id: @project.id }
         assert_response :success
         assert_template :index
+      end
+
+      should "hide settings tab when user lacks settings permission" do
+        get :index, params: { id: @project.id }
+
+        assert_select "div.tabs a", text: I18n.t(:label_settings), count: 0
+      end
+
+      should "show settings tab when user has settings permission" do
+        manager_role = Role.find(1)
+        manager_role.add_permission! :settings_ai_helper
+
+        get :index, params: { id: @project.id }
+
+        assert_select "div.tabs a", text: I18n.t(:label_settings)
       end
 
       should "display dashboard with health report tab" do

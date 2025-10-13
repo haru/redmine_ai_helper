@@ -38,12 +38,17 @@ Redmine::Plugin.register :redmine_ai_helper do
                    :generate_sub_issues, :add_sub_issues, :similar_issues, :project_health, :generate_project_health, :project_health_pdf, :project_health_markdown,
                    :suggest_completion, :suggest_wiki_completion, :check_typos,
                  ],
-                 ai_helper_dashboard: [:index, :health_report_history, :health_report_show, :compare_health_reports, :health_report_destroy],
-                 ai_helper_project_settings: [:show, :update],
+                 ai_helper_dashboard: [
+                  :index, :health_report_history, :health_report_show, :compare_health_reports, :health_report_destroy
+                ],
                }
+    permission :settings_ai_helper,
+                {
+                  ai_helper_project_settings: [:show, :update]
+                }, :require => :member
   end
 
-  menu :admin_menu, "icon ah_helper", {
+  menu :admin_menu, "icon ai_helper", {
          controller: "ai_helper_settings", action: "index",
        }, caption: :label_ai_helper, :icon => "ai-helper-robot",
           :plugin => :redmine_ai_helper
