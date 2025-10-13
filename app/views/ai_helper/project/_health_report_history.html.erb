@@ -3,12 +3,20 @@
 
   <% if @health_reports.any? %>
     <%= form_tag ai_helper_health_report_compare_path(@project), method: :get, id: 'health-report-compare-form' do %>
-      <p>
-        <%= submit_tag l('ai_helper.health_report_comparison.compare_button'),
-                       class: 'btn-compare',
-                       disabled: true,
-                       id: 'compare-reports-button' %>
-      </p>
+      <div class="ai-helper-health-report-actions">
+        <div class="ai-helper-health-report-actions-left">
+          <%= submit_tag l('ai_helper.health_report_comparison.compare_button'),
+                         class: 'btn-compare',
+                         disabled: true,
+                         id: 'compare-reports-button' %>
+        </div>
+        <div class="ai-helper-health-report-actions-right">
+          <%= link_to sprite_icon('add', t('ai_helper.project_health.generate_report')),
+                      ai_helper_generate_project_health_path(@project),
+                      class: 'icon icon-add ai-helper-generate-report-link',
+                      id: 'ai-helper-generate-project-health-link' %>
+        </div>
+      </div>
 
       <table class="list ai-helper-report-list">
         <thead>
@@ -96,6 +104,15 @@
       <span class="pagination"><%= pagination_links_full @health_report_pages, @health_report_count %></span>
     <% end %>
   <% else %>
+    <div class="ai-helper-health-report-actions">
+      <div class="ai-helper-health-report-actions-left"></div>
+      <div class="ai-helper-health-report-actions-right">
+        <%= link_to sprite_icon('add', t('ai_helper.project_health.generate_report')),
+                    ai_helper_generate_project_health_path(@project),
+                    class: 'icon icon-add ai-helper-generate-report-link',
+                    id: 'ai-helper-generate-project-health-link' %>
+      </div>
+    </div>
     <p class="nodata"><%= l(:label_no_data) %></p>
   <% end %>
 </div>

@@ -992,6 +992,30 @@ table.ai-helper-sub-issues-table td {
   float: right;
 }
 
+.ai-helper-health-report-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.ai-helper-health-report-actions-left,
+.ai-helper-health-report-actions-right {
+  display: flex;
+  align-items: center;
+}
+
+.ai-helper-generate-report-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+}
+
+.ai-helper-generate-report-link .icon-svg {
+  fill: currentColor;
+}
+
 /* Detail pane header with generate button */
 .ai-helper-detail-header {
   margin-bottom: 1em;

@@ -46,12 +46,6 @@
   <div class="ai-helper-detail-pane box">
     <div class="ai-helper-detail-header">
       <h3><%= sprite_icon('ai-helper-robot', l(:label_ai_helper_health_report_detail), plugin: :redmine_ai_helper) %></h3>
-      <div class="contextual">
-        <%= link_to t('ai_helper.project_health.generate_report'),
-                    ai_helper_generate_project_health_path(@project),
-                    class: "icon icon-loading-action",
-                    id: "ai-helper-generate-project-health-link" %>
-      </div>
       <div style="clear: both;"></div>
     </div>
     <div id="ai-helper-health-report-detail-container">
