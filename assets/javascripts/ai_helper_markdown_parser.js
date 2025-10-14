@@ -1,5 +1,5 @@
 // Prevent duplicate class declaration
-if (typeof AiHelperMarkdownParser === 'undefined') {
+if (typeof AiHelperMarkdownParser === "undefined") {
   window.AiHelperMarkdownParser = class {
     constructor() {
       this.rules = [
@@ -49,39 +49,40 @@ if (typeof AiHelperMarkdownParser === 'undefined') {
         // Paragraphs - exclude HTML tags and empty lines
         {
           pattern: /^(?!<[a-z\/])(?!$).+$/gm,
-          replacement: (match) => `<p>${match}</p>`
+          replacement: match => `<p>${match}</p>`
         }
       ];
     }
 
-  parse(markdown) {
-    let html = markdown;
+    parse(markdown) {
+      let html = markdown;
 
-    // Process tables first
-    html = this.processTables(html);
+      // Process tables first
+      html = this.processTables(html);
 
-    // Process lists
-    html = this.processLists(html);
+      // Process lists
+      html = this.processLists(html);
 
-    // Apply all other rules except list-related rules (already processed)
-    this.rules.forEach(rule => {
-      // Skip list-related patterns as they've already been processed
-      const isListPattern = rule.pattern.source &&
-                           (rule.pattern.source.includes('[-*+]\\s') ||
-                            rule.pattern.source.includes('\\d+\\.\\s'));
-      if (!isListPattern) {
-        html = html.replace(rule.pattern, rule.replacement);
-      }
-    });
+      // Apply all other rules except list-related rules (already processed)
+      this.rules.forEach(rule => {
+        // Skip list-related patterns as they've already been processed
+        const isListPattern =
+          rule.pattern.source &&
+          (rule.pattern.source.includes("[-*+]\\s") ||
+            rule.pattern.source.includes("\\d+\\.\\s"));
+        if (!isListPattern) {
+          html = html.replace(rule.pattern, rule.replacement);
+        }
+      });
 
-    return html;
-  }
+      return html;
+    }
 
-  processTables(markdown) {
+    processTables(markdown) {
       const tableRegex = /^\|(.+)\|$/;
       const headerSeparatorRegex = /^\|(\s*:?-+:?\s*\|)+$/;
 
-      const lines = markdown.split('\n');
+      const lines = markdown.split("\n");
       let html = [];
       let inTable = false;
       let tableData = [];
@@ -100,23 +101,25 @@ if (typeof AiHelperMarkdownParser === 'undefined') {
           }
 
           // Process the row data
-          const cells = line.split('|')
-            .filter(cell => cell.trim() !== '')
+          const cells = line
+            .split("|")
+            .filter(cell => cell.trim() !== "")
             .map(cell => cell.trim());
 
           tableData.push(cells);
 
           // If next line is a header separator, process alignment
           if (i + 1 < lines.length && headerSeparatorRegex.test(lines[i + 1])) {
-            const separators = lines[i + 1].split('|')
-              .filter(sep => sep.trim() !== '')
+            const separators = lines[i + 1]
+              .split("|")
+              .filter(sep => sep.trim() !== "")
               .map(sep => sep.trim());
 
             alignments = separators.map(sep => {
-              if (sep.startsWith(':') && sep.endsWith(':')) return 'center';
-              if (sep.endsWith(':')) return 'right';
-              if (sep.startsWith(':')) return 'left';
-              return 'left';
+              if (sep.startsWith(":") && sep.endsWith(":")) return "center";
+              if (sep.endsWith(":")) return "right";
+              if (sep.startsWith(":")) return "left";
+              return "left";
             });
             // Skip the separator line
             i++;
@@ -142,112 +145,153 @@ if (typeof AiHelperMarkdownParser === 'undefined') {
         html.push(this.convertTableToHtml(tableData, alignments));
       }
 
-      return html.join('\n');
+      return html.join("\n");
     }
 
     convertTableToHtml(tableData, alignments) {
-      if (tableData.length === 0) return '';
+      if (tableData.length === 0) return "";
 
       let html = ['<table class="list">'];
 
       // Add header row
-      html.push('<thead>');
-      html.push('<tr>');
+      html.push("<thead>");
+      html.push("<tr>");
       tableData[0].forEach((cell, index) => {
-        const alignment = alignments[index] || 'left';
-        const alignAttr = alignment !== 'left' ? ` align="${alignment}"` : '';
+        const alignment = alignments[index] || "left";
+        const alignAttr = alignment !== "left" ? ` align="${alignment}"` : "";
         html.push(`<th${alignAttr}>${cell}</th>`);
       });
-      html.push('</tr>');
-      html.push('</thead>');
+      html.push("</tr>");
+      html.push("</thead>");
 
       // Add body rows
       if (tableData.length > 1) {
-        html.push('<tbody>');
+        html.push("<tbody>");
         for (let i = 1; i < tableData.length; i++) {
-          html.push('<tr>');
+          html.push("<tr>");
           tableData[i].forEach((cell, index) => {
-            const alignment = alignments[index] || 'left';
-            const alignAttr = alignment !== 'left' ? ` align="${alignment}"` : '';
+            const alignment = alignments[index] || "left";
+            const alignAttr =
+              alignment !== "left" ? ` align="${alignment}"` : "";
             html.push(`<td${alignAttr}>${cell}</td>`);
           });
-          html.push('</tr>');
+          html.push("</tr>");
         }
-        html.push('</tbody>');
+        html.push("</tbody>");
       }
 
-      html.push('</table>');
-      return html.join('\n');
+      html.push("</table>");
+      return html.join("\n");
     }
 
     processLists(markdown) {
-      const lines = markdown.split('\n');
+      const lines = markdown.split("\n");
       let html = [];
-      let inList = false;
-      let listType = '';
+      let listStack = []; // Stack to manage nested lists: [{type: 'ol'|'ul', indent: number}]
       let emptyLineCount = 0;
 
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        const unorderedMatch = line.match(/^\s*[-*+]\s+(.+)$/);
-        const orderedMatch = line.match(/^\s*\d+\.\s+(.+)$/);
-        const isEmpty = line.trim() === '';
-        const isIndented = /^\s{2,}/.test(line) && !isEmpty; // Line starts with 2+ spaces and is not empty
+        const unorderedMatch = line.match(/^(\s*)[-*+]\s+(.+)$/);
+        const orderedMatch = line.match(/^(\s*)(\d+)\.\s+(.+)$/);
+        const isEmpty = line.trim() === "";
 
         if (unorderedMatch || orderedMatch) {
-          const currentListType = unorderedMatch ? 'ul' : 'ol';
+          const indent = (unorderedMatch || orderedMatch)[1].length;
+          const currentListType = unorderedMatch ? "ul" : "ol";
+          const content = unorderedMatch ? unorderedMatch[2] : orderedMatch[3];
 
-          // Close previous list if type changes
-          if (inList && listType !== currentListType) {
-            html.push(`</${listType}>`);
-            inList = false;
+          // Determine current indent level
+          let currentLevel = Math.floor(indent / 2); // Assume 2 spaces per level
+
+          // Close deeper nested lists if we're back at a shallower level
+          while (
+            listStack.length > 0 &&
+            listStack[listStack.length - 1].indent > currentLevel
+          ) {
+            const closingList = listStack.pop();
+            html.push(`</${closingList.type}>`);
+            // If we have a parent list, close the parent's li tag
+            if (listStack.length > 0) {
+              html.push("</li>");
+            }
           }
 
-          // Open new list if needed
-          if (!inList) {
-            inList = true;
-            listType = currentListType;
-            html.push(`<${listType}>`);
+          // Close same-level list if type changes
+          if (
+            listStack.length > 0 &&
+            listStack[listStack.length - 1].indent === currentLevel &&
+            listStack[listStack.length - 1].type !== currentListType
+          ) {
+            const closingList = listStack.pop();
+            html.push(`</${closingList.type}>`);
+            if (listStack.length > 0) {
+              html.push("</li>");
+            }
           }
 
-          html.push(`<li>${(unorderedMatch || orderedMatch)[1]}</li>`);
+          // Open new nested list if indent level increased
+          if (
+            listStack.length === 0 ||
+            listStack[listStack.length - 1].indent < currentLevel
+          ) {
+            html.push(`<${currentListType}>`);
+            listStack.push({ type: currentListType, indent: currentLevel });
+          } else if (
+            listStack.length > 0 &&
+            listStack[listStack.length - 1].indent === currentLevel
+          ) {
+            // Same level - close previous li if it exists
+            if (html[html.length - 1] !== `<${currentListType}>`) {
+              html.push("</li>");
+            }
+          }
+
+          html.push(`<li>${content}`);
           emptyLineCount = 0;
-        } else if (isIndented && inList) {
-          // Indented line within a list (description text) - keep it as part of the list context
-          html.push(line);
-          emptyLineCount = 0;
-        } else if (isEmpty && inList) {
+        } else if (isEmpty && listStack.length > 0) {
           // Count consecutive empty lines
           emptyLineCount++;
 
-          // Close list only after 2+ consecutive empty lines, or if it's the last line
+          // Close all lists after 2+ consecutive empty lines
           const isLastLine = i === lines.length - 1;
-          const nextLine = i + 1 < lines.length ? lines[i + 1] : '';
-          const nextIsListItem = /^\s*[-*+\d]+\.\s/.test(nextLine);
+          const nextLine = i + 1 < lines.length ? lines[i + 1] : "";
+          const nextIsListItem = /^\s*[-*+]|\d+\./.test(nextLine);
 
           if (emptyLineCount >= 2 || (isLastLine && !nextIsListItem)) {
-            html.push(`</${listType}>`);
-            inList = false;
+            // Close all open list items and lists
+            while (listStack.length > 0) {
+              html.push("</li>");
+              const closingList = listStack.pop();
+              html.push(`</${closingList.type}>`);
+            }
             emptyLineCount = 0;
             html.push(line);
           }
           // Skip adding empty lines while in list to prevent paragraph conversion
         } else {
           // Non-empty, non-list line
-          if (inList) {
-            html.push(`</${listType}>`);
-            inList = false;
+          if (listStack.length > 0) {
+            // Close all open lists
+            while (listStack.length > 0) {
+              html.push("</li>");
+              const closingList = listStack.pop();
+              html.push(`</${closingList.type}>`);
+            }
             emptyLineCount = 0;
           }
           html.push(line);
         }
       }
 
-      if (inList) {
-        html.push(`</${listType}>`);
+      // Close any remaining open lists
+      while (listStack.length > 0) {
+        html.push("</li>");
+        const closingList = listStack.pop();
+        html.push(`</${closingList.type}>`);
       }
 
-      return html.join('\n');
+      return html.join("\n");
     }
   };
 }
