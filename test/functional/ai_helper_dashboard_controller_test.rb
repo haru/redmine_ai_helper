@@ -11,6 +11,7 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
       @user = User.find(1)
       @project = Project.find(1)
       @request.session[:user_id] = @user.id
+      @request.session[:per_page] = 10  # Set default per_page for tests
       User.current = @user # Set current user for Redmine
 
       role = Role.anonymous
@@ -81,7 +82,7 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
           )
         end
 
-        get :index, params: { id: @project.id, tab: "health_report", page: 1 }
+        get :index, params: { id: @project.id, tab: "health_report", page: 1, per_page: 10 }
         assert_response :success
         assert_select ".ai-helper-health-report-history table.list tbody tr", 10
       end
@@ -100,7 +101,7 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
           )
         end
 
-        get :index, params: { id: @project.id, tab: "health_report", page: 2 }
+        get :index, params: { id: @project.id, tab: "health_report", page: 2, per_page: 10 }
         assert_response :success
         assert_select ".ai-helper-health-report-history table.list tbody tr", 5
       end
@@ -159,7 +160,7 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
           )
         end
 
-        get :health_report_history, params: { id: @project.id, page: 1 }
+        get :health_report_history, params: { id: @project.id, page: 1, per_page: 10 }
 
         assert_response :success
         assert_equal 10, assigns(:health_reports).count
@@ -407,7 +408,7 @@ This is a test report.",
           )
         end
 
-        get :index, params: { id: @project.id, tab: "health_report", page: 2 }
+        get :index, params: { id: @project.id, tab: "health_report", page: 2, per_page: 10 }
 
         assert_response :success
         assert_select ".ai-helper-report-row", 5

@@ -8,6 +8,7 @@ class AiHelperDashboardController < ApplicationController
 
   before_action :find_project, :authorize, :find_user
   before_action :find_health_report_and_project, only: [:health_report_show, :health_report_destroy]
+  before_action :set_per_page_limit, only: [:index]
 
   # Render the dashboard landing page for the current project.
   def index
@@ -15,7 +16,7 @@ class AiHelperDashboardController < ApplicationController
 
   # Display paginated health report history for the current project.
   def health_report_history
-    @limit = 10 # Fixed page size for health reports
+    @limit = per_page_option
     @health_report_count = AiHelperHealthReport
       .for_project(@project.id)
       .visible
@@ -185,10 +186,15 @@ class AiHelperDashboardController < ApplicationController
   rescue ActiveRecord::RecordNotFound
     render_404
   end
+
   private
 
   def streaming_request?
     request.post? || request.headers["Accept"].to_s.include?("text/event-stream")
+  end
+
+  def set_per_page_limit
+    @limit = per_page_option
   end
 
   def find_user

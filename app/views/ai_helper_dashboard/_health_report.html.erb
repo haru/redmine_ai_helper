@@ -16,7 +16,16 @@
   <div class="ai-helper-master-pane box">
     <div id="ai-helper-health-report-history-container">
       <%
-        @limit = 10
+        # Use @limit from controller if available, otherwise calculate it
+        unless @limit
+          @limit = if params[:per_page] && Setting.per_page_options_array.include?(params[:per_page].to_s.to_i)
+            params[:per_page].to_s.to_i
+          elsif session[:per_page]
+            session[:per_page]
+          else
+            Setting.per_page_options_array.first || 25
+          end
+        end
         @health_report_count = AiHelperHealthReport
           .for_project(@project.id)
           .visible
