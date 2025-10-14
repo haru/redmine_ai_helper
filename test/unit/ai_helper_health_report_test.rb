@@ -173,9 +173,10 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       )
 
       User.current = @user
-      # Add view_ai_helper permission
+      # Add view permission
       role = Role.find(1)
       role.add_permission! :view_ai_helper
+      role.add_permission! :delete_ai_helper_health_reports
 
       # Ensure user has the role for this project
       member = Member.find_by(project_id: @project.id, user_id: @user.id)
@@ -199,9 +200,10 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       )
 
       User.current = @user
-      # Add view_ai_helper permission
+      # Add view permission
       role = Role.find(1)
       role.add_permission! :view_ai_helper
+      role.add_permission! :delete_ai_helper_health_reports
 
       # Ensure user has the role for this project
       member = Member.find_by(project_id: @project.id, user_id: @user.id)

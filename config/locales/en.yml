@@ -13,6 +13,7 @@ en:
   ai_helper_error_occurred: "An error occurred"
   permission_view_ai_helper: "View AI Helper"
   permission_settings_ai_helper: "Project Settings"
+  permission_delete_ai_helper_health_reports: "Delete Health Reports"
   label_ai_helper_error: "Error"
   label_ai_helper_health_report_history: "Report History"
   label_ai_helper_health_report_detail: "Report Detail"

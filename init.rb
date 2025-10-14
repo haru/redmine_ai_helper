@@ -39,12 +39,16 @@ Redmine::Plugin.register :redmine_ai_helper do
                    :suggest_completion, :suggest_wiki_completion, :check_typos,
                  ],
                  ai_helper_dashboard: [
-                  :index, :health_report_history, :health_report_show, :compare_health_reports, :health_report_destroy, :comparison_pdf, :comparison_markdown
+                  :index, :health_report_history, :health_report_show, :compare_health_reports, :comparison_pdf, :comparison_markdown
                 ],
                }
     permission :settings_ai_helper,
                 {
                   ai_helper_project_settings: [:show, :update]
+                }, :require => :member
+    permission :delete_ai_helper_health_reports,
+                {
+                  ai_helper_dashboard: [:health_report_destroy]
                 }, :require => :member
   end
 

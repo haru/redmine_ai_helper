@@ -2,6 +2,7 @@
   <h4><%= l(:label_ai_helper_health_report_history) %></h4>
 
   <% if @health_reports.any? %>
+    <% can_delete_reports = User.current.allowed_to?(:delete_ai_helper_health_reports, @project) %>
     <%= form_tag ai_helper_health_report_compare_path(@project), method: :get, id: 'health-report-compare-form' do %>
       <div class="ai-helper-health-report-actions">
         <div class="ai-helper-health-report-actions-left">
@@ -87,7 +88,7 @@
                 <%= link_to_user report.user %>
               </td>
               <td class="buttons">
-                <% if report.deletable? %>
+                <% if can_delete_reports && report.deletable? %>
                   <%= link_to sprite_icon('del', l(:button_delete)),
                               ai_helper_health_report_destroy_path(@project, report_id: report.id),
                               method: :delete,

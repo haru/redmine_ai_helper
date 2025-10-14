@@ -13,6 +13,7 @@ ja:
   ai_helper_error_occurred: "エラーが発生しました"
   permission_view_ai_helper: "AIヘルパーの表示"
   permission_settings_ai_helper: "プロジェクトの設定"
+  permission_delete_ai_helper_health_reports: "健全性レポートの削除"
   label_ai_helper_error: "エラー"
   label_ai_helper_health_report_history: "レポート履歴"
   label_ai_helper_health_report_detail: "レポート詳細"

@@ -21,6 +21,7 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
       # Add permission to Manager role as well
       manager_role = Role.find(1)
       manager_role.add_permission! :view_ai_helper
+      manager_role.add_permission! :delete_ai_helper_health_reports
       manager_role.remove_permission! :settings_ai_helper
       manager_role.save!
 

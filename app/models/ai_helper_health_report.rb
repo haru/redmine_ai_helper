@@ -43,8 +43,8 @@ class AiHelperHealthReport < ApplicationRecord
   # @return [Boolean] true if user is admin or a member of the project
   def deletable?(user = User.current)
     return false unless project.present? && user.present?
-    # Admin can delete all reports, or any project member can delete
-    user.admin? || user.member_of?(project)
+    return true if user.admin?
+    user.allowed_to?(:delete_ai_helper_health_reports, project)
   end
 
   # Check if this report can be compared with another report
