@@ -94,6 +94,48 @@ class AiHelperDashboardController < ApplicationController
     end
   end
 
+  # Export comparison analysis as PDF
+  def comparison_pdf
+    comparison_content = params[:comparison_content]
+    old_report_id = params[:old_report_id]
+    new_report_id = params[:new_report_id]
+
+    if comparison_content.present?
+      # Sanitize content - only allow Markdown, no HTML/JavaScript
+      sanitized_content = comparison_content.gsub(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/mi, "")
+                                             .gsub(/<[^>]*>/, "")
+
+      filename = "#{@project.identifier}-health-report-comparison-#{Date.current.strftime("%Y%m%d")}.pdf"
+      send_data(project_health_to_pdf(@project, sanitized_content),
+                type: "application/pdf",
+                filename: filename)
+    else
+      redirect_to ai_helper_health_report_compare_path(@project, old_id: old_report_id, new_id: new_report_id),
+                  alert: t("ai_helper.project_health.no_report_available")
+    end
+  end
+
+  # Export comparison analysis as Markdown
+  def comparison_markdown
+    comparison_content = params[:comparison_content]
+    old_report_id = params[:old_report_id]
+    new_report_id = params[:new_report_id]
+
+    if comparison_content.present?
+      # Sanitize content - only allow Markdown, no HTML/JavaScript
+      sanitized_content = comparison_content.gsub(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/mi, "")
+                                             .gsub(/<[^>]*>/, "")
+
+      filename = "#{@project.identifier}-health-report-comparison-#{Date.current.strftime("%Y%m%d")}.md"
+      send_data(sanitized_content,
+                type: "text/markdown",
+                filename: filename)
+    else
+      redirect_to ai_helper_health_report_compare_path(@project, old_id: old_report_id, new_id: new_report_id),
+                  alert: t("ai_helper.project_health.no_report_available")
+    end
+  end
+
   private
 
   # Show comparison UI

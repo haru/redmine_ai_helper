@@ -815,5 +815,371 @@ This is a test report.",
         assert_equal newer_report.id, assigns(:new_report).id
       end
     end
+
+    context "#comparison_pdf" do
+      setup do
+        @old_report = AiHelperHealthReport.create!(
+          project: @project,
+          user: @user,
+          health_report: "# Old Report\n\nOld content",
+          created_at: 5.days.ago,
+        )
+
+        @new_report = AiHelperHealthReport.create!(
+          project: @project,
+          user: @user,
+          health_report: "# New Report\n\nNew content",
+          created_at: 1.day.ago,
+        )
+
+        role = Role.find(1)
+        role.add_permission! :view_ai_helper_health_reports
+      end
+
+      should "export comparison analysis as PDF with valid content" do
+        comparison_content = "# Comparison Analysis\n\nThis is the comparison result."
+
+        post :comparison_pdf, params: {
+                                id: @project.id,
+                                comparison_content: comparison_content,
+                                old_report_id: @old_report.id,
+                                new_report_id: @new_report.id,
+                              }
+
+        assert_response :success
+        assert_equal "application/pdf", response.media_type
+        assert_match(/#{@project.identifier}-health-report-comparison-\d{8}\.pdf/, response.headers["Content-Disposition"])
+      end
+
+      should "generate correct filename with project identifier and date" do
+        comparison_content = "# Comparison Analysis\n\nTest content"
+        expected_date = Date.current.strftime("%Y%m%d")
+
+        post :comparison_pdf, params: {
+                                id: @project.id,
+                                comparison_content: comparison_content,
+                                old_report_id: @old_report.id,
+                                new_report_id: @new_report.id,
+                              }
+
+        assert_response :success
+        expected_filename = "#{@project.identifier}-health-report-comparison-#{expected_date}.pdf"
+        assert_match(/filename="#{Regexp.escape(expected_filename)}"/, response.headers["Content-Disposition"])
+      end
+
+      should "sanitize HTML tags from content" do
+        comparison_content = "# Test\n\n<div>HTML content</div>\n\n<p>Paragraph</p>"
+
+        post :comparison_pdf, params: {
+                                id: @project.id,
+                                comparison_content: comparison_content,
+                                old_report_id: @old_report.id,
+                                new_report_id: @new_report.id,
+                              }
+
+        assert_response :success
+        assert_equal "application/pdf", response.media_type
+        # PDF should be generated with sanitized content (HTML tags removed)
+        assert response.body.present?
+      end
+
+      should "sanitize script tags from content" do
+        comparison_content = "# Test\n\n<script>alert('xss')</script>\n\nSafe content"
+
+        post :comparison_pdf, params: {
+                                id: @project.id,
+                                comparison_content: comparison_content,
+                                old_report_id: @old_report.id,
+                                new_report_id: @new_report.id,
+                              }
+
+        assert_response :success
+        assert_equal "application/pdf", response.media_type
+        # PDF should be generated with sanitized content (script tags removed)
+        assert response.body.present?
+      end
+
+      should "redirect with alert when no content is provided" do
+        post :comparison_pdf, params: {
+                                id: @project.id,
+                                comparison_content: "",
+                                old_report_id: @old_report.id,
+                                new_report_id: @new_report.id,
+                              }
+
+        assert_redirected_to ai_helper_health_report_compare_path(@project, old_id: @old_report.id, new_id: @new_report.id)
+        assert_not_nil flash[:alert]
+      end
+
+      should "redirect with alert when content is nil" do
+        post :comparison_pdf, params: {
+                                id: @project.id,
+                                old_report_id: @old_report.id,
+                                new_report_id: @new_report.id,
+                              }
+
+        assert_redirected_to ai_helper_health_report_compare_path(@project, old_id: @old_report.id, new_id: @new_report.id)
+        assert_not_nil flash[:alert]
+      end
+
+      should "handle multiline script tag sanitization" do
+        comparison_content = <<~CONTENT
+          # Test Report
+
+          <script>
+            var malicious = "code";
+            alert('xss');
+          </script>
+
+          Safe content here.
+        CONTENT
+
+        post :comparison_pdf, params: {
+                                id: @project.id,
+                                comparison_content: comparison_content,
+                                old_report_id: @old_report.id,
+                                new_report_id: @new_report.id,
+                              }
+
+        assert_response :success
+        assert_equal "application/pdf", response.media_type
+      end
+
+      should "preserve markdown formatting in content" do
+        comparison_content = <<~CONTENT
+          # Main Title
+
+          ## Subtitle
+
+          - Bullet point 1
+          - Bullet point 2
+
+          **Bold text** and *italic text*
+        CONTENT
+
+        post :comparison_pdf, params: {
+                                id: @project.id,
+                                comparison_content: comparison_content,
+                                old_report_id: @old_report.id,
+                                new_report_id: @new_report.id,
+                              }
+
+        assert_response :success
+        assert_equal "application/pdf", response.media_type
+        assert response.body.present?
+      end
+    end
+
+    context "#comparison_markdown" do
+      setup do
+        @old_report = AiHelperHealthReport.create!(
+          project: @project,
+          user: @user,
+          health_report: "# Old Report\n\nOld content",
+          created_at: 5.days.ago,
+        )
+
+        @new_report = AiHelperHealthReport.create!(
+          project: @project,
+          user: @user,
+          health_report: "# New Report\n\nNew content",
+          created_at: 1.day.ago,
+        )
+
+        role = Role.find(1)
+        role.add_permission! :view_ai_helper_health_reports
+      end
+
+      should "export comparison analysis as Markdown with valid content" do
+        comparison_content = "# Comparison Analysis\n\nThis is the comparison result."
+
+        post :comparison_markdown, params: {
+                                     id: @project.id,
+                                     comparison_content: comparison_content,
+                                     old_report_id: @old_report.id,
+                                     new_report_id: @new_report.id,
+                                   }
+
+        assert_response :success
+        assert_equal "text/markdown", response.media_type
+        assert_match(/#{@project.identifier}-health-report-comparison-\d{8}\.md/, response.headers["Content-Disposition"])
+      end
+
+      should "generate correct filename with project identifier and date" do
+        comparison_content = "# Comparison Analysis\n\nTest content"
+        expected_date = Date.current.strftime("%Y%m%d")
+
+        post :comparison_markdown, params: {
+                                     id: @project.id,
+                                     comparison_content: comparison_content,
+                                     old_report_id: @old_report.id,
+                                     new_report_id: @new_report.id,
+                                   }
+
+        assert_response :success
+        expected_filename = "#{@project.identifier}-health-report-comparison-#{expected_date}.md"
+        assert_match(/filename="#{Regexp.escape(expected_filename)}"/, response.headers["Content-Disposition"])
+      end
+
+      should "sanitize HTML tags from content" do
+        comparison_content = "# Test\n\n<div>HTML content</div>\n\n<p>Paragraph</p>"
+        expected_sanitized = "# Test\n\nHTML content\n\nParagraph"
+
+        post :comparison_markdown, params: {
+                                     id: @project.id,
+                                     comparison_content: comparison_content,
+                                     old_report_id: @old_report.id,
+                                     new_report_id: @new_report.id,
+                                   }
+
+        assert_response :success
+        assert_equal "text/markdown", response.media_type
+        assert_equal expected_sanitized, response.body
+      end
+
+      should "sanitize script tags from content" do
+        comparison_content = "# Test\n\n<script>alert('xss')</script>\n\nSafe content"
+        expected_sanitized = "# Test\n\n\n\nSafe content"
+
+        post :comparison_markdown, params: {
+                                     id: @project.id,
+                                     comparison_content: comparison_content,
+                                     old_report_id: @old_report.id,
+                                     new_report_id: @new_report.id,
+                                   }
+
+        assert_response :success
+        assert_equal "text/markdown", response.media_type
+        assert_equal expected_sanitized, response.body
+      end
+
+      should "redirect with alert when no content is provided" do
+        post :comparison_markdown, params: {
+                                     id: @project.id,
+                                     comparison_content: "",
+                                     old_report_id: @old_report.id,
+                                     new_report_id: @new_report.id,
+                                   }
+
+        assert_redirected_to ai_helper_health_report_compare_path(@project, old_id: @old_report.id, new_id: @new_report.id)
+        assert_not_nil flash[:alert]
+      end
+
+      should "redirect with alert when content is nil" do
+        post :comparison_markdown, params: {
+                                     id: @project.id,
+                                     old_report_id: @old_report.id,
+                                     new_report_id: @new_report.id,
+                                   }
+
+        assert_redirected_to ai_helper_health_report_compare_path(@project, old_id: @old_report.id, new_id: @new_report.id)
+        assert_not_nil flash[:alert]
+      end
+
+      should "handle multiline script tag sanitization" do
+        comparison_content = <<~CONTENT
+          # Test Report
+
+          <script>
+            var malicious = "code";
+            alert('xss');
+          </script>
+
+          Safe content here.
+        CONTENT
+
+        post :comparison_markdown, params: {
+                                     id: @project.id,
+                                     comparison_content: comparison_content,
+                                     old_report_id: @old_report.id,
+                                     new_report_id: @new_report.id,
+                                   }
+
+        assert_response :success
+        assert_equal "text/markdown", response.media_type
+        # Script tags should be removed
+        assert_no_match(/<script/, response.body)
+        assert_match(/Safe content here/, response.body)
+      end
+
+      should "preserve markdown formatting in content" do
+        comparison_content = <<~CONTENT
+          # Main Title
+
+          ## Subtitle
+
+          - Bullet point 1
+          - Bullet point 2
+
+          **Bold text** and *italic text*
+        CONTENT
+
+        post :comparison_markdown, params: {
+                                     id: @project.id,
+                                     comparison_content: comparison_content,
+                                     old_report_id: @old_report.id,
+                                     new_report_id: @new_report.id,
+                                   }
+
+        assert_response :success
+        assert_equal "text/markdown", response.media_type
+        # Check that markdown formatting is preserved
+        assert_match(/# Main Title/, response.body)
+        assert_match(/## Subtitle/, response.body)
+        assert_match(/- Bullet point 1/, response.body)
+        assert_match(/\*\*Bold text\*\*/, response.body)
+        assert_match(/\*italic text\*/, response.body)
+      end
+
+      should "return content as UTF-8 encoded text" do
+        comparison_content = "# Test\n\n日本語のテスト\n\nEnglish test"
+
+        post :comparison_markdown, params: {
+                                     id: @project.id,
+                                     comparison_content: comparison_content,
+                                     old_report_id: @old_report.id,
+                                     new_report_id: @new_report.id,
+                                   }
+
+        assert_response :success
+        assert_equal "text/markdown", response.media_type
+        # Check that UTF-8 characters are preserved
+        assert_match(/日本語のテスト/, response.body)
+      end
+
+      should "handle mixed HTML and markdown content" do
+        comparison_content = <<~CONTENT
+          # Report Header
+
+          <div class="container">
+            <p>HTML paragraph</p>
+          </div>
+
+          ## Markdown Section
+
+          This is **markdown** content.
+
+          <script>alert('test')</script>
+        CONTENT
+
+        post :comparison_markdown, params: {
+                                     id: @project.id,
+                                     comparison_content: comparison_content,
+                                     old_report_id: @old_report.id,
+                                     new_report_id: @new_report.id,
+                                   }
+
+        assert_response :success
+        assert_equal "text/markdown", response.media_type
+        # HTML tags should be removed
+        assert_no_match(/<div/, response.body)
+        assert_no_match(/<p>/, response.body)
+        assert_no_match(/<script/, response.body)
+        # Markdown should be preserved
+        assert_match(/# Report Header/, response.body)
+        assert_match(/## Markdown Section/, response.body)
+        assert_match(/\*\*markdown\*\*/, response.body)
+      end
+    end
   end
 end

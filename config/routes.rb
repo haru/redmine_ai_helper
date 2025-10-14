@@ -31,6 +31,8 @@ RedmineApp::Application.routes.draw do
   # Health report comparison routes (must precede :report_id route to avoid matches like 'compare')
   get "projects/:id/ai_helper/health_reports/compare", to: "ai_helper_dashboard#compare_health_reports", as: "ai_helper_health_report_compare"
   post "projects/:id/ai_helper/health_reports/compare", to: "ai_helper_dashboard#compare_health_reports", as: "ai_helper_health_report_compare_analyze"
+  post "projects/:id/ai_helper/health_reports/compare/pdf", to: "ai_helper_dashboard#comparison_pdf", as: "ai_helper_health_report_comparison_pdf"
+  post "projects/:id/ai_helper/health_reports/compare/markdown", to: "ai_helper_dashboard#comparison_markdown", as: "ai_helper_health_report_comparison_markdown"
   get "projects/:id/ai_helper/health_reports/:report_id", to: "ai_helper_dashboard#health_report_show", as: "ai_helper_health_report_show"
   delete "projects/:id/ai_helper/health_reports/:report_id", to: "ai_helper_dashboard#health_report_destroy", as: "ai_helper_health_report_destroy"
 
