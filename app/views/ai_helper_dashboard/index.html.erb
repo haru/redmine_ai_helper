@@ -1,0 +1,10 @@
+<h2><%= l(:label_ai_helper) %></h2>
+
+<%= render_tabs ai_helper_dashboard_tabs %>
+
+<% content_for :header_tags do %>
+  <%= javascript_include_tag 'ai_helper_markdown_parser', plugin: 'redmine_ai_helper' %>
+  <%= javascript_include_tag 'ai_helper_project_health', plugin: 'redmine_ai_helper' %>
+  <%= javascript_include_tag 'ai_helper_master_detail', plugin: 'redmine_ai_helper' %>
+  <%= stylesheet_link_tag 'ai_helper_rtl', plugin: 'redmine_ai_helper' if l(:direction) == 'rtl' %>
+<% end %>

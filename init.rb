@@ -1,7 +1,6 @@
 require "langfuse"
 $LOAD_PATH.unshift "#{File.dirname(__FILE__)}/lib"
 require "redmine_ai_helper/util/config_file"
-require "redmine_ai_helper/projects_helper_patch"
 require "redmine_ai_helper/user_patch"
 require_dependency "redmine_ai_helper/view_hook"
 Dir[File.join(File.dirname(__FILE__), "lib/redmine_ai_helper/agents", "*_agent.rb")].each do |file|
@@ -32,17 +31,34 @@ Redmine::Plugin.register :redmine_ai_helper do
 
   project_module :ai_helper do
     permission :view_ai_helper,
-               { ai_helper: [
-                 :chat, :chat_form, :reload, :clear, :call_llm,
-                 :history, :issue_summary, :generate_issue_summary, :wiki_summary, :generate_wiki_summary, :conversation, :generate_issue_reply,
-                 :generate_sub_issues, :add_sub_issues, :similar_issues, :project_health, :generate_project_health, :project_health_pdf, :project_health_markdown,
-                 :suggest_completion, :suggest_wiki_completion, :check_typos,
-               ] }
-    permission :manage_ai_helper_settings, { ai_helper_project_settings: [:show, :update] }
+               {
+                 ai_helper: [
+                   :chat, :chat_form, :reload, :clear, :call_llm,
+                   :history, :issue_summary, :generate_issue_summary, :wiki_summary, :generate_wiki_summary, :conversation, :generate_issue_reply,
+                   :generate_sub_issues, :add_sub_issues, :similar_issues, :project_health, :generate_project_health, :project_health_pdf, :project_health_markdown,
+                  :project_health_metadata,
+                   :suggest_completion, :suggest_wiki_completion, :check_typos,
+                 ],
+                 ai_helper_dashboard: [
+                  :index, :health_report_history, :health_report_show, :compare_health_reports, :comparison_pdf, :comparison_markdown
+                ],
+               }
+    permission :settings_ai_helper,
+                {
+                  ai_helper_project_settings: [:show, :update]
+                }, :require => :member
+    permission :delete_ai_helper_health_reports,
+                {
+                  ai_helper_dashboard: [:health_report_destroy]
+                }, :require => :member
   end
 
-  menu :admin_menu, "icon ah_helper", {
+  menu :admin_menu, "icon ai_helper", {
          controller: "ai_helper_settings", action: "index",
        }, caption: :label_ai_helper, :icon => "ai-helper-robot",
           :plugin => :redmine_ai_helper
+
+  menu :project_menu, :ai_helper_dashboard, {
+         controller: "ai_helper_dashboard", action: "index",
+       }, caption: :label_ai_helper
 end

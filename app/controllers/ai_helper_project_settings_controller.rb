@@ -16,7 +16,7 @@ class AiHelperProjectSettingsController < ApplicationController
     rescue ActiveRecord::StaleObjectError
       flash[:error] = l(:notice_locking_conflict)
     end
-    redirect_to :controller => "projects", :action => "settings", :id => @project, :tab => "ai_helper"
+    redirect_to ai_helper_dashboard_path(id: @project, tab: "settings")
   end
 
   private

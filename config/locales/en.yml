@@ -12,7 +12,15 @@ en:
   ai_helper_text_summary_generated_time: "Generated at %{time}"
   ai_helper_error_occurred: "An error occurred"
   permission_view_ai_helper: "View AI Helper"
+  permission_settings_ai_helper: "Project Settings"
+  permission_delete_ai_helper_health_reports: "Delete Health Reports"
   label_ai_helper_error: "Error"
+  label_ai_helper_health_report_history: "Report History"
+  label_ai_helper_health_report_detail: "Report Detail"
+  label_ai_helper_report_period: "Period"
+  label_ai_helper_select_report_to_view: "Generate a report or select one from the history on the left"
+  label_ai_helper_report_detail_mobile: "Report Detail"
+  label_ai_helper_close_detail: "Close Detail"
   ai_helper:
     chat:
       planning: "Creating execution plan..."
@@ -26,6 +34,16 @@ en:
       note: "The report will analyze issue statistics, timing metrics, workload distribution, and provide actionable recommendations."
       no_report_available: "No health report available for PDF export"
       report_content: "Health Report Content"
+    health_report_comparison:
+      compare_button: "Compare Reports"
+      comparison_column: "Comparison"
+      page_title: "Health Report Comparison"
+      old_report: "Old Report"
+      new_report: "New Report"
+      analyze_button: "Analyze Changes"
+      placeholder: "Comparison analysis starts automatically"
+      analysis_title: "Comparison Analysis"
+      error_select_two_reports: "Please select two different reports to compare"
     generate_issue_reply:
       title: "Create a comment draft with AI Helper"
       instructions: "Please enter the key points or instructions for the reply."
@@ -122,3 +140,5 @@ en:
         issue_draft_instructions: "Instructions for issue comment generation"
         subtask_instructions: "Instructions for subtask generation"
         health_report_instructions: "Instructions for health report generation"
+
+  field_id: "ID"

@@ -21,10 +21,21 @@ RedmineApp::Application.routes.draw do
   post "projects/:id/ai_helper/wiki/suggest_completion", to: "ai_helper#suggest_wiki_completion", as: "ai_helper_suggest_wiki_completion"
   post "projects/:id/ai_helper/wiki/:page_name/suggest_completion", to: "ai_helper#suggest_wiki_completion", as: "ai_helper_suggest_wiki_completion_with_page"
   get "projects/:id/ai_helper/project_health", to: "ai_helper#project_health", as: "ai_helper_project_health"
+  get "projects/:id/ai_helper/project_health_metadata", to: "ai_helper#project_health_metadata", as: "ai_helper_project_health_metadata"
   get "projects/:id/ai_helper/generate_project_health", to: "ai_helper#generate_project_health", as: "ai_helper_generate_project_health"
   post "projects/:id/ai_helper/project_health_pdf", to: "ai_helper#project_health_pdf", as: "ai_helper_project_health_pdf"
   post "projects/:id/ai_helper/project_health_markdown", to: "ai_helper#project_health_markdown", as: "ai_helper_project_health_markdown"
   post "projects/:id/ai_helper/check_typos", to: "ai_helper#check_typos", as: "ai_helper_check_typos"
+
+  # Health report history routes
+  get "projects/:id/ai_helper/health_reports", to: "ai_helper_dashboard#health_report_history", as: "ai_helper_health_report_history"
+  # Health report comparison routes (must precede :report_id route to avoid matches like 'compare')
+  get "projects/:id/ai_helper/health_reports/compare", to: "ai_helper_dashboard#compare_health_reports", as: "ai_helper_health_report_compare"
+  post "projects/:id/ai_helper/health_reports/compare", to: "ai_helper_dashboard#compare_health_reports", as: "ai_helper_health_report_compare_analyze"
+  post "projects/:id/ai_helper/health_reports/compare/pdf", to: "ai_helper_dashboard#comparison_pdf", as: "ai_helper_health_report_comparison_pdf"
+  post "projects/:id/ai_helper/health_reports/compare/markdown", to: "ai_helper_dashboard#comparison_markdown", as: "ai_helper_health_report_comparison_markdown"
+  get "projects/:id/ai_helper/health_reports/:report_id", to: "ai_helper_dashboard#health_report_show", as: "ai_helper_health_report_show"
+  delete "projects/:id/ai_helper/health_reports/:report_id", to: "ai_helper_dashboard#health_report_destroy", as: "ai_helper_health_report_destroy"
 
   get "ai_helper_settings/index", to: "ai_helper_settings#index", as: "ai_helper_setting"
   post "ai_helper_settings/index", to: "ai_helper_settings#update", as: "ai_helper_setting_update"
@@ -39,4 +50,6 @@ RedmineApp::Application.routes.draw do
 
   # get "ai_helper_project_settings/:id", to: "ai_helper_project_settings#show", as: "ai_helper_project_settings"
   patch "projects/:id/ai_helper_project_settings", to: "ai_helper_project_settings#update", as: "ai_helper_project_settings_update"
+
+  get "projects/:id/ai_helper(/:tab)", to: "ai_helper_dashboard#index", as: "ai_helper_dashboard"
 end

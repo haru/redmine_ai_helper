@@ -1,0 +1,95 @@
+<% if @project&.id %>
+<%
+  # Skip rendering if no project is available or user doesn't have permission
+  if @project.module_enabled?(:ai_helper) && User.current.allowed_to?({ controller: :ai_helper, action: :project_health }, @project) && AiHelperSetting.find_or_create.model_profile
+%>
+
+<!-- Header Section (without Generate Button) -->
+<div class="ai-helper-health-report-header box">
+  <h3><%= sprite_icon("ai-helper-robot", t('ai_helper.project_health.title'), plugin: :redmine_ai_helper) %></h3>
+  <div style="clear: both;"></div>
+</div>
+
+<!-- Master-Detail Layout Section -->
+<div class="ai-helper-master-detail-layout">
+  <!-- Master Pane (Left - Report History) -->
+  <div class="ai-helper-master-pane box">
+    <div id="ai-helper-health-report-history-container">
+      <%
+        # Use @limit from controller if available, otherwise calculate it
+        unless @limit
+          @limit = if params[:per_page] && Setting.per_page_options_array.include?(params[:per_page].to_s.to_i)
+            params[:per_page].to_s.to_i
+          elsif session[:per_page]
+            session[:per_page]
+          else
+            Setting.per_page_options_array.first || 25
+          end
+        end
+        @health_report_count = AiHelperHealthReport
+          .for_project(@project.id)
+          .visible
+          .count
+        @health_report_pages = Redmine::Pagination::Paginator.new @health_report_count, @limit, params[:page]
+        @offset = @health_report_pages.offset
+        @health_reports = AiHelperHealthReport
+          .for_project(@project.id)
+          .visible
+          .sorted
+          .limit(@limit)
+          .offset(@offset)
+          .to_a
+
+        # Determine which report to display (from URL params or default to most recent)
+        @selected_report = if params[:report_id]
+          @health_reports.find { |r| r.id.to_s == params[:report_id].to_s }
+        else
+          @health_reports.first
+        end
+      %>
+      <%= render partial: 'ai_helper/project/health_report_history' %>
+    </div>
+  </div>
+
+  <!-- Detail Pane (Right - Report Detail) -->
+  <div class="ai-helper-detail-pane box">
+    <div id="ai-helper-health-report-detail-container">
+      <% if @selected_report %>
+        <%= render partial: 'ai_helper/project/health_report_detail_pane',
+                   locals: { health_report: @selected_report } %>
+      <% else %>
+        <!-- Placeholder when no report is selected -->
+        <div class="ai-helper-detail-placeholder">
+          <p><%= l(:label_ai_helper_select_report_to_view) %></p>
+        </div>
+        <!-- Always include report container for generation (hidden by default) -->
+        <div class="ai-helper-health-report-detail" style="display: none;">
+          <div class="ai-helper-project-health-content">
+            <div id="ai-helper-project-health-result"></div>
+            <input type="hidden" id="ai-helper-health-report-content" value="" />
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<!-- Meta tags for JavaScript configuration -->
+<meta name="error-message" content="<%= l(:label_ai_helper_error) %>" />
+<meta name="export-label" content="<%= l(:label_export_to) %>" />
+<meta name="i18n-label_export_to" content="<%= l(:label_export_to) %>" />
+<meta name="i18n-label_ai_helper_health_report_detail" content="<%= l(:label_ai_helper_health_report_detail) %>" />
+<meta name="i18n-field_created_on" content="<%= l(:field_created_on) %>" />
+<meta name="i18n-field_author" content="<%= l(:field_author) %>" />
+<meta name="markdown-export-url" content="<%= ai_helper_project_health_markdown_path(@project) %>" />
+<meta name="pdf-export-url" content="<%= ai_helper_project_health_pdf_path(@project) %>" />
+
+<% end # if project %>
+<% end %>
+
+<% content_for :header_tags do %>
+  <%= javascript_include_tag 'ai_helper_markdown_parser', plugin: 'redmine_ai_helper' %>
+  <%= javascript_include_tag 'ai_helper_project_health', plugin: 'redmine_ai_helper' %>
+  <%= javascript_include_tag 'ai_helper_master_detail', plugin: 'redmine_ai_helper' %>
+  <%= stylesheet_link_tag 'ai_helper_rtl', plugin: 'redmine_ai_helper' if l(:direction) == 'rtl' %>
+<% end %>

@@ -3,10 +3,12 @@ require_relative "../base_agent"
 
 module RedmineAiHelper
   module Agents
+    # @!visibility private
+    ROUTE_HELPERS = Rails.application.routes.url_helpers unless const_defined?(:ROUTE_HELPERS)
     # IssueAgent is a specialized agent for handling Redmine issue-related queries.
     class IssueAgent < RedmineAiHelper::BaseAgent
       include RedmineAiHelper::Util::IssueJson
-      include Rails.application.routes.url_helpers
+      include ROUTE_HELPERS
 
       # Backstory for the IssueAgent
       def backstory

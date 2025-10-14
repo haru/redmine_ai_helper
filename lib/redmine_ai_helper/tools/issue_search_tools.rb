@@ -1,5 +1,7 @@
 module RedmineAiHelper
   module Tools
+    # @!visibility private
+    ROUTE_HELPERS = Rails.application.routes.url_helpers unless const_defined?(:ROUTE_HELPERS)
     # A class that provides functionality to the Agent for retrieving issue information
     class IssueSearchTools < RedmineAiHelper::BaseTools
       define_function :generate_url, description: "Generate a URL for searching issues based on the filter conditions. For search items with '_id', specify the ID instead of the name of the search target. If you do not know the ID, you need to call capable_issue_properties in advance to obtain the ID." do
@@ -188,7 +190,7 @@ module RedmineAiHelper
       # IssueQueryBuilder is a class that builds a query for searching issues in Redmine.
       #
       class IssueQueryBuilder
-        include Rails.application.routes.url_helpers
+        include ROUTE_HELPERS
 
         # Initializes a new IssueQueryBuilder instance.
         # @param params [Hash] The parameters for the query.

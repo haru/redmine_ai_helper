@@ -1,0 +1,81 @@
+<% content_for :header_tags do %>
+  <%= javascript_include_tag 'ai_helper_markdown_parser', plugin: 'redmine_ai_helper' %>
+  <%= javascript_include_tag 'ai_helper_comparison', plugin: 'redmine_ai_helper' %>
+  <%= stylesheet_link_tag 'ai_helper', plugin: 'redmine_ai_helper' %>
+
+  <meta name="i18n-error-message" content="<%= l(:label_ai_helper_error) %>" />
+  <meta name="i18n-generating" content="<%= l('ai_helper.project_health.generating') %>" />
+<% end %>
+
+<h2><%= l('ai_helper.health_report_comparison.page_title') %></h2>
+
+<div class="ai-helper-comparison-container box">
+  <!-- Comparison header: Two report information -->
+  <div class="ai-helper-comparison-header">
+    <div class="ai-helper-comparison-report-info">
+      <div class="old-report-info">
+        <h3><%= l('ai_helper.health_report_comparison.old_report') %></h3>
+        <p>
+          <strong><%= l(:field_created_on) %>:</strong> <%= format_time(@old_report.created_at) %><br/>
+          <strong><%= l(:field_author) %>:</strong> <%= link_to_user @old_report.user %><br/>
+          <strong><%= l(:field_id) %>:</strong> #<%= @old_report.id %>
+        </p>
+      </div>
+
+      <div class="comparison-arrow">
+        <span class="icon icon-move"></span>
+      </div>
+
+      <div class="new-report-info">
+        <h3><%= l('ai_helper.health_report_comparison.new_report') %></h3>
+        <p>
+          <strong><%= l(:field_created_on) %>:</strong> <%= format_time(@new_report.created_at) %><br/>
+          <strong><%= l(:field_author) %>:</strong> <%= link_to_user @new_report.user %><br/>
+          <strong><%= l(:field_id) %>:</strong> #<%= @new_report.id %>
+        </p>
+      </div>
+    </div>
+
+    <div class="ai-helper-comparison-actions">
+      <%= link_to sprite_icon('cancel', l(:button_back)),
+                  ai_helper_dashboard_path(@project, tab: 'health_report') %>
+    </div>
+  </div>
+
+  <!-- Analysis result display area -->
+  <div class="ai-helper-comparison-result">
+    <div class="box">
+      <div id="ai-helper-comparison-analysis"
+           class="ai-helper-comparison-content"
+           data-analysis-url="<%= ai_helper_health_report_compare_analyze_path(@project,
+             old_report_id: @old_report.id,
+             new_report_id: @new_report.id) %>">
+        <div class="ai-helper-comparison-placeholder">
+          <p><%= l('ai_helper.health_report_comparison.placeholder') %></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Export links (hidden by default, shown after analysis completes) -->
+    <p id="ai-helper-comparison-export" class="other-formats" style="display: none;">
+      <%= l(:label_export_to) %>
+      <span>
+        <%= link_to 'Markdown',
+                    ai_helper_health_report_comparison_markdown_path(@project),
+                    class: 'text',
+                    id: 'ai-helper-comparison-markdown-export-link' %>
+      </span>
+      <span>
+        <%= link_to 'PDF',
+                    ai_helper_health_report_comparison_pdf_path(@project),
+                    class: 'pdf',
+                    id: 'ai-helper-comparison-pdf-export-link' %>
+      </span>
+    </p>
+
+    <!-- Hidden field to store comparison content -->
+    <input type="hidden" id="ai-helper-comparison-content" value="" />
+    <input type="hidden" id="ai-helper-comparison-old-report-id" value="<%= @old_report.id %>" />
+    <input type="hidden" id="ai-helper-comparison-new-report-id" value="<%= @new_report.id %>" />
+  </div>
+</div>

@@ -3,13 +3,15 @@ require "langchain"
 require "redmine_ai_helper/logger"
 
 module RedmineAiHelper
+  # @!visibility private
+  ROUTE_HELPERS = Rails.application.routes.url_helpers unless const_defined?(:ROUTE_HELPERS)
 
   # Base class for all tools.
   class BaseTools
     extend Langchain::ToolDefinition
 
     include RedmineAiHelper::Logger
-    include Rails.application.routes.url_helpers
+    include ROUTE_HELPERS
 
     # Check if the specified project is accessible
     # @param project [Project] The project
