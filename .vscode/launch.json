@@ -5,7 +5,7 @@
             "name": "Rails server",
             "type": "rdbg",
             "request": "launch",
-            "command": "${workspaceRoot}/bin/rails",
+            "command": "${workspaceRoot:redmine}/bin/rails",
             "script": "server",
             "useBundler": true,
             "args": [
@@ -17,7 +17,7 @@
             "name": "Rails server(postgres)",
             "type": "rdbg",
             "request": "launch",
-            "command": "${workspaceRoot}/bin/rails",
+            "command": "${workspaceRoot:redmine}/bin/rails",
             "script": "server",
             "useBundler": true,
             "args": [
@@ -37,7 +37,7 @@
             "name": "Rails server(mysql)",
             "type": "rdbg",
             "request": "launch",
-            "command": "${workspaceRoot}/bin/rails",
+            "command": "${workspaceRoot:redmine}/bin/rails",
             "script": "server",
             "useBundler": true,
             "args": [
@@ -57,10 +57,10 @@
             "name": "Plugin Test",
             "type": "rdbg",
             "request": "launch",
-            "command": "${workspaceRoot}/bin/rake",
+            "command": "${workspaceRoot:redmine}/bin/rake",
             "script": "redmine:plugins:test",
             "useBundler": true,
-            "cwd": "${workspaceRoot}",
+            "cwd": "${workspaceRoot:redmine}",
             "args": [
                 "redmine:plugins:test"
             ],
@@ -72,10 +72,10 @@
             "name": "Plugin Test(postgres)",
             "type": "rdbg",
             "request": "launch",
-            "command": "${workspaceRoot}/bin/rake",
+            "command": "${workspaceRoot:redmine}/bin/rake",
             "script": "redmine:plugins:test",
             "useBundler": true,
-            "cwd": "${workspaceRoot}",
+            "cwd": "${workspaceRoot:redmine}",
             "args": [
                 "redmine:plugins:test"
             ],
@@ -93,10 +93,10 @@
             "name": "Plugin Test(mysql)",
             "type": "rdbg",
             "request": "launch",
-            "command": "${workspaceRoot}/bin/rake",
+            "command": "${workspaceRoot:redmine}/bin/rake",
             "script": "redmine:plugins:test",
             "useBundler": true,
-            "cwd": "${workspaceRoot}",
+            "cwd": "${workspaceRoot:redmine}",
             "args": [
                 "redmine:plugins:test"
             ],
