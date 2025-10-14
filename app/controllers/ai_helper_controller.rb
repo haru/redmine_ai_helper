@@ -420,6 +420,8 @@ class AiHelperController < ApplicationController
     end
   end
 
+  # Return metadata about the most recent health report for the current project.
+  # @return [void]
   def project_health_metadata
     latest_report = AiHelperHealthReport.for_project(@project.id).sorted.first
     latest_report = nil unless latest_report&.visible?(User.current)
