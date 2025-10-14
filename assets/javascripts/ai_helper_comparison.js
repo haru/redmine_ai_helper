@@ -54,6 +54,11 @@ if (!window.aiHelperComparisonInitialized) {
             resultDiv.innerHTML = '<div class="ai-helper-streaming-content">' +
               formattedContent +
               '<span class="ai-helper-cursor">|</span></div>';
+
+            // Auto-scroll to bottom to show new content
+            if (resultDiv) {
+              resultDiv.scrollTop = resultDiv.scrollHeight;
+            }
           }
 
           if (data.choices && data.choices[0] && data.choices[0].finish_reason === 'stop') {
@@ -64,6 +69,11 @@ if (!window.aiHelperComparisonInitialized) {
             const formattedContent = parser.parse(content);
             resultDiv.innerHTML = '<div class="ai-helper-final-content">' +
               formattedContent + '</div>';
+
+            // Final scroll to bottom
+            if (resultDiv) {
+              resultDiv.scrollTop = resultDiv.scrollHeight;
+            }
           }
         } catch (error) {
           // Error handling done in onerror

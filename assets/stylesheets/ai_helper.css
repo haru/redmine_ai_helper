@@ -1243,9 +1243,31 @@ table.list.ai-helper-report-list td.id {
 /* Comparison content - sizing and layout only */
 .ai-helper-comparison-content {
   min-height: 300px;
+  max-height: calc(100vh - 400px);
   padding: 15px;
   overflow-y: auto;
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: auto;
+}
+
+/* Custom scrollbar styling for comparison content (webkit browsers) */
+.ai-helper-comparison-content::-webkit-scrollbar {
+  width: 12px;
+  background: transparent;
+}
+
+.ai-helper-comparison-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.ai-helper-comparison-content::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 6px;
+}
+
+.ai-helper-comparison-content::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 
 /* Placeholder - alignment only */
@@ -1291,6 +1313,10 @@ table.list.ai-helper-report-list td.radio .radio-placeholder {
   .old-report-info,
   .new-report-info {
     width: 100%;
+  }
+
+  .ai-helper-comparison-content {
+    max-height: none;
   }
 }
 
