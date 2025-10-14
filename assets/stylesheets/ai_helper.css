@@ -321,17 +321,25 @@ table.ai-helper-sub-issues-table td {
 body.controller-ai_helper_dashboard.action-index .ai-helper-detail-pane {
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  max-height: calc(100vh - 340px);
+  overflow: hidden;
 }
 
 body.controller-ai_helper_dashboard.action-index #ai-helper-health-report-detail-container {
   flex: 1 1 auto;
   display: flex;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
 }
 
 body.controller-ai_helper_dashboard.action-index .ai-helper-health-report-detail {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
 }
 
 body.controller-ai_helper_dashboard.action-index .ai-helper-health-report-meta,
@@ -340,23 +348,33 @@ body.controller-ai_helper_dashboard.action-index .ai-helper-health-report-detail
 }
 
 body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-content.has-report {
-  flex: 1 1 0%;
+  flex: 1 1 auto;
   min-height: 360px;
-  max-height: calc(100vh - 520px);
+  height: auto !important;
+  max-height: 100%;
   overflow-y: auto !important;
 }
 
 @media screen and (max-width: 900px) {
   body.controller-ai_helper_dashboard.action-index .ai-helper-detail-pane {
     display: block;
+    max-height: none;
+    overflow: visible;
   }
 
   body.controller-ai_helper_dashboard.action-index #ai-helper-health-report-detail-container {
     display: block;
+    max-height: none;
+    overflow: visible;
   }
 
   body.controller-ai_helper_dashboard.action-index .ai-helper-health-report-detail {
     display: block;
+    max-height: none;
+  }
+
+  body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-content.has-report {
+    max-height: none;
   }
 
   body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-content.has-report {
