@@ -21,6 +21,82 @@ document.addEventListener('DOMContentLoaded', function() {
 
   const generateLink = document.getElementById('ai-helper-generate-project-health-link');
 
+  function getProjectHealthMetadataConfig() {
+    const urlMeta = document.querySelector('meta[name="ai-helper-project-health-metadata-url"]');
+    const labelMeta = document.querySelector('meta[name="ai-helper-project-health-created-label"]');
+    return {
+      url: urlMeta ? urlMeta.getAttribute('content') : null,
+      label: labelMeta ? labelMeta.getAttribute('content') : ''
+    };
+  }
+
+  function renderProjectHealthMetadata(label, formattedValue) {
+    const container = document.querySelector('.ai-helper-project-health');
+    if (!container) {
+      return;
+    }
+
+    let metaParagraph = document.getElementById('ai-helper-project-health-meta');
+
+    if (!formattedValue) {
+      if (metaParagraph) {
+        metaParagraph.remove();
+      }
+      return;
+    }
+
+    if (!metaParagraph) {
+      metaParagraph = document.createElement('p');
+      metaParagraph.id = 'ai-helper-project-health-meta';
+      metaParagraph.className = 'ai-helper-project-health-meta';
+      const contextual = container.querySelector('.contextual');
+      if (contextual) {
+        contextual.insertAdjacentElement('afterend', metaParagraph);
+      } else {
+        container.insertBefore(metaParagraph, container.firstChild);
+      }
+    }
+
+    while (metaParagraph.firstChild) {
+      metaParagraph.removeChild(metaParagraph.firstChild);
+    }
+    const strong = document.createElement('strong');
+    strong.textContent = label + ':';
+    metaParagraph.appendChild(strong);
+    metaParagraph.appendChild(document.createTextNode(' ' + formattedValue));
+  }
+
+  function refreshProjectHealthMetadata() {
+    const metadata = getProjectHealthMetadataConfig();
+    if (!metadata.url) {
+      return;
+    }
+
+    fetch(metadata.url, {
+      headers: { 'Accept': 'application/json' },
+      credentials: 'same-origin'
+    })
+      .then(function(response) {
+        if (response.status === 204) {
+          renderProjectHealthMetadata(metadata.label, null);
+          return null;
+        }
+        if (!response.ok) {
+          throw new Error('Failed to load metadata');
+        }
+        return response.json();
+      })
+      .then(function(data) {
+        if (!data) {
+          return;
+        }
+        renderProjectHealthMetadata(metadata.label, data.created_on_formatted);
+      })
+      .catch(function() {
+        // Ignore metadata refresh errors to avoid interrupting UX
+      });
+  }
+
   if (!generateLink) {
     return;
   }
@@ -177,10 +253,15 @@ document.addEventListener('DOMContentLoaded', function() {
                           masterDetailInstance.selectedReportId = null;
                           masterDetailInstance.selectReport(firstReportRow);
                         }
+                        refreshProjectHealthMetadata();
                       }, 100);
+                    } else {
+                      refreshProjectHealthMetadata();
                     }
                   });
                 }, 1000);
+              } else {
+                refreshProjectHealthMetadata();
               }
 
               // Final scroll to bottom
@@ -191,6 +272,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
               // Add PDF export button after generation completes
               addPdfExportButton();
+
+              // Refresh metadata (created timestamp) to reflect the regenerated report
+              refreshProjectHealthMetadata();
             }
           }
         } catch (error) {

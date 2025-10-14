@@ -395,13 +395,19 @@ class AiHelperController < ApplicationController
   # @return [void]
   def project_health
     cache_key = "project_health_#{@project.id}_#{params[:version_id]}_#{params[:start_date]}_#{params[:end_date]}"
-    @health_report = Rails.cache.fetch(cache_key, expires_in: 1.hour) do
-      generate_project_health_report
+    fetch_health_report = Proc.new do
+      Rails.cache.fetch(cache_key, expires_in: 1.hour) do
+        generate_project_health_report
+      end
     end
 
     respond_to do |format|
-      format.html { render partial: "ai_helper/project/health_report", locals: { health_report: @health_report } }
+      format.html do
+        @health_report = fetch_health_report.call
+        render partial: "ai_helper/project/health_report", locals: { health_report: @health_report }
+      end
       format.pdf do
+        @health_report = fetch_health_report.call
         if @health_report && !@health_report.is_a?(Hash)
           filename = "#{@project.identifier}-health-report-#{Date.current.strftime("%Y%m%d")}.pdf"
           send_data(project_health_to_pdf(@project, @health_report),
@@ -411,6 +417,22 @@ class AiHelperController < ApplicationController
           redirect_to project_path(@project), alert: l(:label_ai_helper_no_report_available, default: "No health report available for PDF export")
         end
       end
+    end
+  end
+
+  def project_health_metadata
+    latest_report = AiHelperHealthReport.for_project(@project.id).sorted.first
+    latest_report = nil unless latest_report&.visible?(User.current)
+
+    if latest_report
+      render json: {
+        id: latest_report.id,
+        created_at: latest_report.created_at,
+        created_at_iso8601: latest_report.created_at&.iso8601,
+        created_on_formatted: view_context.format_time(latest_report.created_at)
+      }
+    else
+      head :no_content
     end
   end
 

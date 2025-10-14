@@ -53,6 +53,7 @@
                 data-report-url="<%= ai_helper_dashboard_path(@project, tab: 'health_report', report_id: report.id, format: :html) %>"
                 data-report-content="<%= html_escape(report.health_report.to_s) %>"
                 data-report-created-at="<%= report.created_at.iso8601 %>"
+                data-report-created-on="<%= html_escape(format_time(report.created_at)) %>"
                 data-report-user-name="<%= html_escape(report.user.name) %>">
 
               <td class="id ai-helper-clickable-cell">
