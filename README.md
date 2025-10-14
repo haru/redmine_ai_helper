@@ -102,7 +102,16 @@ You can generate a project health report using the AI Helper Plugin. This featur
 
 ![Image](https://github.com/user-attachments/assets/8f01c6ef-6cee-4e79-b693-c17081566c78)
 
-Helth report can be exported to Markdown and PDF formats.
+Health reports can be exported to Markdown and PDF formats.
+
+### Health Report History
+
+Health reports are automatically saved and can be reviewed later. You can:
+- View past health reports to track project progress over time
+- Compare multiple health reports to analyze trends and changes in project health
+- Export comparison results to Markdown and PDF formats
+
+This historical tracking helps you understand how your project's health evolves and identify patterns or issues early.
 
 # 📦 Installation
 
