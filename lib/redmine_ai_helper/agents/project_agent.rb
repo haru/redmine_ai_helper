@@ -61,12 +61,12 @@ module RedmineAiHelper
           one_week_ago = 1.week.ago.strftime("%Y-%m-%d")
           one_month_ago = 1.month.ago.strftime("%Y-%m-%d")
           today = Date.current.strftime("%Y-%m-%d")
-          
+
           analysis_instructions_prompt = load_prompt("project_agent/analysis_instructions_time_period")
           analysis_instructions = analysis_instructions_prompt.format(
             one_week_ago: one_week_ago,
             one_month_ago: one_month_ago,
-            today: today
+            today: today,
           )
 
           analysis_focus = "Time-period Analysis (Last Week & Last Month)"
@@ -152,7 +152,61 @@ module RedmineAiHelper
 
         messages = [{ role: "user", content: prompt_text }]
 
-        chat(messages, {}, stream_proc)
+        report_text = chat(messages, {}, stream_proc)
+
+        # Save health report to database
+        report = AiHelperHealthReport.new
+        report.project_id = project.id
+        report.user_id = User.current.id
+        report.health_report = report_text
+        report.metrics = JSON.pretty_generate(metrics_list)
+        report.save!
+
+        report_text
+      end
+
+      # Generate comparative analysis of two health reports
+      # @param old_report [AiHelperHealthReport] The older report
+      # @param new_report [AiHelperHealthReport] The newer report
+      # @param stream_proc [Proc] Optional callback for streaming
+      # @return [String] Comparison analysis report
+      def health_report_comparison(old_report:, new_report:, stream_proc: nil)
+        ai_helper_logger.debug "Generating health report comparison for project: #{old_report.project.name}"
+
+        # Validate reports are from the same project
+        unless old_report.project_id == new_report.project_id
+          raise ArgumentError, "Reports must be from the same project"
+        end
+
+        # Ensure chronological order
+        if old_report.created_at > new_report.created_at
+          old_report, new_report = new_report, old_report
+        end
+
+        # Load prompt template based on locale
+        locale = User.current.language.to_sym rescue :en
+        prompt_key = locale == :ja ? "project_agent/health_report_comparison_ja" : "project_agent/health_report_comparison"
+        prompt = load_prompt(prompt_key)
+
+        # Calculate days between reports
+        time_span_days = ((new_report.created_at - old_report.created_at) / 1.day).round
+
+        # Set prompt variables
+        prompt_text = prompt.format(
+          project_id: old_report.project_id,
+          old_report_date: old_report.created_at.strftime("%Y-%m-%d %H:%M"),
+          new_report_date: new_report.created_at.strftime("%Y-%m-%d %H:%M"),
+          old_health_report: old_report.health_report,
+          new_health_report: new_report.health_report,
+          old_metrics: old_report.metrics,
+          new_metrics: new_report.metrics,
+          time_span_days: time_span_days
+        )
+
+        messages = [{ role: "user", content: prompt_text }]
+
+        comparison_text = chat(messages, {}, stream_proc)
+        comparison_text
       end
     end
   end

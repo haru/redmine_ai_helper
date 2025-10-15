@@ -286,17 +286,13 @@ table.ai-helper-sub-issues-table td {
   text-align: right;
 }
 
-.ai-helper-issue-subject {
-}
+.ai-helper-issue-subject {}
 
-.ai-helper-project {
-}
+.ai-helper-project {}
 
-.ai-helper-status {
-}
+.ai-helper-status {}
 
-.ai-helper-priority {
-}
+.ai-helper-priority {}
 
 .ai-helper-assigned {
   text-align: center;
@@ -319,6 +315,71 @@ table.ai-helper-sub-issues-table td {
 .ai-helper-project-health-content.has-report {
   height: 480px !important;
   overflow-y: scroll !important;
+}
+
+/* Dashboard-only: stretch report detail area with viewport height */
+body.controller-ai_helper_dashboard.action-index .ai-helper-detail-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: calc(100vh - 340px);
+  overflow: hidden;
+}
+
+body.controller-ai_helper_dashboard.action-index #ai-helper-health-report-detail-container {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+body.controller-ai_helper_dashboard.action-index .ai-helper-health-report-detail {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+}
+
+body.controller-ai_helper_dashboard.action-index .ai-helper-health-report-meta,
+body.controller-ai_helper_dashboard.action-index .ai-helper-health-report-detail .other-formats {
+  flex: 0 0 auto;
+}
+
+body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-content.has-report {
+  flex: 1 1 auto;
+  min-height: 360px;
+  height: auto !important;
+  max-height: 100%;
+  overflow-y: auto !important;
+}
+
+@media screen and (max-width: 900px) {
+  body.controller-ai_helper_dashboard.action-index .ai-helper-detail-pane {
+    display: block;
+    max-height: none;
+    overflow: visible;
+  }
+
+  body.controller-ai_helper_dashboard.action-index #ai-helper-health-report-detail-container {
+    display: block;
+    max-height: none;
+    overflow: visible;
+  }
+
+  body.controller-ai_helper_dashboard.action-index .ai-helper-health-report-detail {
+    display: block;
+    max-height: none;
+  }
+
+  body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-content.has-report {
+    max-height: none;
+  }
+
+  body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-content.has-report {
+    height: auto !important;
+  }
 }
 
 .ai-helper-project-health-placeholder {
@@ -479,8 +540,16 @@ table.ai-helper-sub-issues-table td {
 }
 
 @keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
+
+  0%,
+  50% {
+    opacity: 1;
+  }
+
+  51%,
+  100% {
+    opacity: 0;
+  }
 }
 
 .ai-helper-error {
@@ -563,8 +632,10 @@ table.ai-helper-sub-issues-table td {
 
 /* Active suggestion with solid background to hide underlying text */
 .ai-helper-suggestion-active {
-  background-color: #ffff99 !important; /* Light yellow background for visibility */
-  color: #666666 !important; /* Darker gray text for suggestion */
+  background-color: #ffff99 !important;
+  /* Light yellow background for visibility */
+  color: #666666 !important;
+  /* Darker gray text for suggestion */
   padding: 0 2px !important;
   border-radius: 2px !important;
 }
@@ -636,8 +707,10 @@ table.ai-helper-sub-issues-table td {
   left: 0;
   right: 0;
   bottom: 0;
-  pointer-events: auto; /* Enable interactions for buttons (different from autocomplete) */
-  z-index: 15; /* Higher than autocomplete overlay */
+  pointer-events: auto;
+  /* Enable interactions for buttons (different from autocomplete) */
+  z-index: 15;
+  /* Higher than autocomplete overlay */
   font-family: inherit;
   font-size: inherit;
   line-height: inherit;
@@ -688,7 +761,8 @@ table.ai-helper-sub-issues-table td {
   height: 20px;
   font-size: 12px;
   border: none;
-  border-radius: 2px; /* Match inline-suggestion border-radius */
+  border-radius: 2px;
+  /* Match inline-suggestion border-radius */
   cursor: pointer;
   vertical-align: middle;
   text-align: center;
@@ -745,7 +819,7 @@ table.ai-helper-sub-issues-table td {
   text-align: left;
   overflow-wrap: break-word;
   z-index: 10001;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   max-width: 300px;
   min-width: 100px;
   display: none;
@@ -766,7 +840,7 @@ table.ai-helper-sub-issues-table td {
   border: 1px solid #ddd;
   border-radius: 4px;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   pointer-events: auto;
 }
 
@@ -777,8 +851,9 @@ table.ai-helper-sub-issues-table td {
   border: 1px solid #ddd;
   border-radius: 4px;
   padding: 8px 10px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  z-index: 25; /* Above overlay to remain visible during scrolling */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 25;
+  /* Above overlay to remain visible during scrolling */
   display: none;
   gap: 8px;
 }
@@ -895,7 +970,7 @@ table.ai-helper-sub-issues-table td {
   font-size: 12px;
   line-height: 1.4;
   z-index: 10001;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   margin-top: 5px;
   max-width: 300px;
   white-space: normal;
@@ -936,7 +1011,7 @@ table.ai-helper-sub-issues-table td {
   border: 1px solid #ddd;
   border-radius: 4px;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   pointer-events: auto;
 }
 
@@ -962,3 +1037,304 @@ table.ai-helper-sub-issues-table td {
   position: relative;
 }
 
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Master-Detail Layout for Health Report History
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* Header section with generate button */
+.ai-helper-health-report-header {
+  margin-bottom: 1em;
+  padding: 0.8em;
+}
+
+.ai-helper-health-report-header h3 {
+  margin: 0;
+  padding: 0;
+  float: left;
+}
+
+.ai-helper-health-report-header .contextual {
+  float: right;
+}
+
+.ai-helper-health-report-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.ai-helper-health-report-actions-left,
+.ai-helper-health-report-actions-right {
+  display: flex;
+  align-items: center;
+}
+
+.ai-helper-generate-report-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+}
+
+/* Detail pane header with generate button */
+.ai-helper-detail-header {
+  margin-bottom: 1em;
+  padding: 0.8em;
+}
+
+.ai-helper-detail-header h3 {
+  margin: 0;
+  padding: 0;
+  float: left;
+}
+
+.ai-helper-detail-header .contextual {
+  float: right;
+}
+
+/* Container layout */
+.ai-helper-master-detail-layout {
+  display: flex;
+  gap: 1em;
+  margin-top: 0;
+}
+
+/* Master pane (left side - report list) */
+.ai-helper-master-pane {
+  flex: 0 0 40%;
+}
+
+/* Detail pane (right side - report detail) */
+.ai-helper-detail-pane {
+  flex: 1;
+}
+
+/* Detail container transition effects */
+#ai-helper-health-report-detail-container {
+  opacity: 1;
+  transition: opacity 0.3s ease-in-out;
+}
+
+/* Report row styling */
+.ai-helper-report-row {
+  transition: background-color 0.2s ease;
+}
+
+.ai-helper-report-row.selected {
+  background-color: #507AAA !important;
+  color: #f8f8f8 !important;
+  font-weight: bold;
+}
+
+.ai-helper-report-row.selected a,
+.ai-helper-report-row.selected a:hover {
+  color: #f8f8f8 !important;
+}
+
+.ai-helper-report-row.selected svg.icon-svg {
+  stroke: #f8f8f8 !important;
+}
+
+/* Clickable cell styling */
+.ai-helper-clickable-cell {
+  cursor: pointer;
+}
+
+/* Placeholder styling */
+.ai-helper-detail-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2em;
+}
+
+.ai-helper-detail-placeholder p {
+  font-style: italic;
+  color: #666;
+}
+
+/* Health report detail styling */
+.ai-helper-health-report-detail {
+  padding: 1em;
+}
+
+.ai-helper-health-report-meta {
+  margin-bottom: 1.5em;
+  padding: 0.5em 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.ai-helper-health-report-meta p {
+  margin: 0.5em 0;
+}
+
+
+/* Loading state in detail pane */
+.ai-helper-detail-pane .ai-helper-loader {
+  margin: 2em auto;
+}
+
+/* Error display in detail pane */
+.ai-helper-detail-pane .ai-helper-error {
+  margin: 2em;
+  padding: 1em;
+  text-align: center;
+}
+
+/* Mobile responsive layout (≤ 900px) */
+@media screen and (max-width: 900px) {
+  .ai-helper-master-detail-layout {
+    flex-direction: column-reverse;
+    /* Detail on top, master on bottom */
+  }
+
+  .ai-helper-master-pane {
+    flex: 0 0 auto;
+  }
+
+  .ai-helper-detail-pane {
+    flex: 0 0 auto;
+    margin-bottom: 1em;
+  }
+}
+
+/* RTL support */
+[dir="rtl"] .ai-helper-master-detail-layout {
+  flex-direction: row-reverse;
+}
+
+/* Report history table ID column alignment */
+table.list.ai-helper-report-list td.id {
+  text-align: right !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Health Report Comparison Styles
+   Layout only - follows Redmine theme
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* Comparison header - layout only */
+.ai-helper-comparison-header {
+  margin-bottom: 1em;
+  padding-bottom: 1em;
+}
+
+/* Report info display area - flex layout */
+.ai-helper-comparison-report-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1em;
+  gap: 1em;
+}
+
+/* Old/new report info boxes - sizing only */
+.old-report-info,
+.new-report-info {
+  flex: 1;
+  padding: 0.8em;
+}
+
+/* Comparison arrow - sizing and alignment only */
+.comparison-arrow {
+  flex: 0 0 60px;
+  text-align: center;
+}
+
+/* Action button area - alignment only */
+.ai-helper-comparison-actions {
+  text-align: right;
+  margin-top: 0.5em;
+}
+
+/* Analysis result area - spacing only */
+.ai-helper-comparison-result {
+  margin: 1em;
+}
+
+/* Comparison content - sizing and layout only */
+.ai-helper-comparison-content {
+  min-height: 300px;
+  max-height: calc(100vh - 400px);
+  padding: 15px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: auto;
+}
+
+/* Custom scrollbar styling for comparison content (webkit browsers) */
+.ai-helper-comparison-content::-webkit-scrollbar {
+  width: 12px;
+  background: transparent;
+}
+
+.ai-helper-comparison-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.ai-helper-comparison-content::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 6px;
+}
+
+.ai-helper-comparison-content::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Placeholder - alignment only */
+.ai-helper-comparison-placeholder {
+  text-align: center;
+  padding: 2em;
+}
+
+/* Radio button column in comparison table - sizing and alignment only */
+table.list.ai-helper-report-list td.radio {
+  width: 22px;
+  padding: 0 2px;
+  text-align: center;
+}
+
+table.list.ai-helper-report-list td.radio input[type="radio"] {
+  margin: 0;
+}
+
+table.list.ai-helper-report-list td.radio .radio-placeholder {
+  display: inline-block;
+  width: 12px;
+  height: 1px;
+}
+
+/* Disabled compare button - opacity only */
+.btn-compare:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive layout - layout changes only */
+@media screen and (max-width: 900px) {
+  .ai-helper-comparison-report-info {
+    flex-direction: column;
+  }
+
+  .comparison-arrow {
+    transform: rotate(90deg);
+    margin: 0.5em 0;
+  }
+
+  .old-report-info,
+  .new-report-info {
+    width: 100%;
+  }
+
+  .ai-helper-comparison-content {
+    max-height: none;
+  }
+}
+
+/* RTL support - layout direction only */
+[dir="rtl"] .ai-helper-comparison-report-info {
+  flex-direction: row-reverse;
+}

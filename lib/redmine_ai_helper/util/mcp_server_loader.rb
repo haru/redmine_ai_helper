@@ -3,6 +3,7 @@ require "json"
 
 module RedmineAiHelper
   module Util
+    # Loads MCP server definitions and generates dynamic agents.
     class McpServerLoader
       include Singleton
       include RedmineAiHelper::Logger

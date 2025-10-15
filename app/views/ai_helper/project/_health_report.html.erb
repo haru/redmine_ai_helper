@@ -13,6 +13,19 @@
     # Check for cached health report
     cache_key = "project_health_#{project.id}_#{version_id}_#{start_date}_#{end_date}"
     health_report = Rails.cache.read(cache_key)
+    latest_report_record = nil
+
+    if version_id.blank? && start_date.blank? && end_date.blank?
+      candidate_report = AiHelperHealthReport.for_project(project.id).sorted.first
+      latest_report_record = candidate_report if candidate_report&.visible?(User.current)
+    end
+
+    if (health_report.blank? || (health_report.is_a?(Hash) && health_report[:error])) && latest_report_record
+      if latest_report_record.health_report.present?
+        health_report = latest_report_record.health_report
+        Rails.cache.write(cache_key, health_report, expires_in: 1.hour)
+      end
+    end
 %>
 
 
@@ -28,6 +41,13 @@
                 class: "icon icon-loading-action",
                 id: "ai-helper-generate-project-health-link" %>
   </div>
+
+  <% if latest_report_record %>
+    <p id="ai-helper-project-health-meta" class="ai-helper-project-health-meta">
+      <strong><%= l(:field_created_on) %>:</strong>
+      <%= format_time(latest_report_record.created_at) %>
+    </p>
+  <% end %>
 
   <div class="ai-helper-project-health-content<% if health_report && !health_report.is_a?(Hash) %> has-report<% end %>">
     <% if health_report && !health_report.is_a?(Hash) %>
@@ -68,6 +88,8 @@
 <meta name="export-label" content="<%= l(:label_export_to) %>" />
 <meta name="markdown-export-url" content="<%= ai_helper_project_health_markdown_path(project) %>" />
 <meta name="pdf-export-url" content="<%= ai_helper_project_health_pdf_path(project) %>" />
+<meta name="ai-helper-project-health-metadata-url" content="<%= ai_helper_project_health_metadata_path(project) %>" />
+<meta name="ai-helper-project-health-created-label" content="<%= l(:field_created_on) %>" />
 
 <% content_for :header_tags do %>
   <%= javascript_include_tag 'ai_helper_project_health', plugin: 'redmine_ai_helper' %>

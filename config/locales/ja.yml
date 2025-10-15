@@ -1,6 +1,6 @@
 ja:
   project_module_ai_helper: "AIヘルパー"
-  label_ai_helper: "AI ヘルパー"
+  label_ai_helper: "AIヘルパー"
   label_chat_placeholder: "メッセージを入力してください..."
   label_ai_helper_input_newline: "Shift + Enter で改行します。"
   label_ai_helper_start_new_chat: "新しいチャットを開始"
@@ -12,7 +12,15 @@ ja:
   ai_helper_text_summary_generated_time: "%{time} に生成"
   ai_helper_error_occurred: "エラーが発生しました"
   permission_view_ai_helper: "AIヘルパーの表示"
+  permission_settings_ai_helper: "プロジェクトの設定"
+  permission_delete_ai_helper_health_reports: "健全性レポートの削除"
   label_ai_helper_error: "エラー"
+  label_ai_helper_health_report_history: "レポート履歴"
+  label_ai_helper_health_report_detail: "レポート詳細"
+  label_ai_helper_report_period: "対象期間"
+  label_ai_helper_select_report_to_view: "レポートを生成するか、左の履歴から選択してください"
+  label_ai_helper_report_detail_mobile: "レポート詳細"
+  label_ai_helper_close_detail: "詳細を閉じる"
   ai_helper:
     chat:
       planning: "実行計画を作成中..."
@@ -26,6 +34,16 @@ ja:
       note: "レポートでは、チケット統計、タイミングメトリクス、作業負荷分布を分析し、実行可能な推奨事項を提供します。"
       no_report_available: "PDF出力可能な健全性レポートがありません"
       report_content: "健全性レポート内容"
+    health_report_comparison:
+      compare_button: "レポート比較"
+      comparison_column: "比較"
+      page_title: "ヘルスレポート比較"
+      old_report: "旧レポート"
+      new_report: "新レポート"
+      analyze_button: "変化を分析"
+      placeholder: "AI比較分析を自動で生成しています"
+      analysis_title: "比較分析"
+      error_select_two_reports: "比較する2つの異なるレポートを選択してください"
     generate_issue_reply:
       title: "AIヘルパーでコメント案を作成"
       instructions: "回答内容の要点や指示を記入してください。"
@@ -76,7 +94,7 @@ ja:
         repository_page: "リポジトリ「%{repo_name}」の情報ページです。リポジトリのIDは %{repo_id} です。"
         repository_file_page: "リポジトリのファイル情報のページです。表示しているファイルパスは %{path} です。リビジョンは %{rev} です。リポジトリは「 %{repo_name}」です。リポジトリのIDは %{repo_id} です。"
         repository_diff:
-          page:  "リポジトリ「%{repo_name}」の変更差分ページです。リポジトリのIDは %{repo_id} です。"
+          page: "リポジトリ「%{repo_name}」の変更差分ページです。リポジトリのIDは %{repo_id} です。"
           rev: "リビジョンは %{rev} です。"
           rev_to: "リビジョンは %{rev} から %{rev_to} です。"
           path: "ファイルパスは %{path} です。"
@@ -96,7 +114,7 @@ ja:
       issue_agent:
         search_answer_instruction: "なお、「条件に合ったチケットを探して」「こういう条件のチケット見せて」の様な複数のチケット探すタスクの場合には、チケット検索のURLを返してください。"
       leader_agent:
-          generate_final_response: "全てのエージェントがタスクを完了しました。ユーザーへの最終的な回答を作成してください。"
+        generate_final_response: "全てのエージェントがタスクを完了しました。ユーザーへの最終的な回答を作成してください。"
   activerecord:
     models:
       ai_helper_model_profile: "モデルプロファイル"
@@ -122,3 +140,5 @@ ja:
         issue_draft_instructions: "チケットのコメントを生成する際の指示"
         subtask_instructions: "子チケットを生成する際の指示"
         health_report_instructions: "健全性レポートを生成する際の指示"
+
+  field_id: "ID"

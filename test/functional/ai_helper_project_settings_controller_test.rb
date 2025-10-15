@@ -25,7 +25,7 @@ class AiHelperProjectSettingsControllerTest < ActionController::TestCase
                          lock_version: @settings.lock_version,
                        },
                      }
-      assert_redirected_to controller: "projects", action: "settings", id: @project, tab: "ai_helper"
+      assert_redirected_to ai_helper_dashboard_path(id: @project, tab: "settings")
       assert_equal I18n.t(:notice_successful_update), flash[:notice]
       @settings.reload
       assert_equal "New instructions", @settings.issue_draft_instructions
@@ -48,7 +48,7 @@ class AiHelperProjectSettingsControllerTest < ActionController::TestCase
                          lock_version: lock_version,
                        },
                      }
-      assert_redirected_to controller: "projects", action: "settings", id: @project, tab: "ai_helper"
+      assert_redirected_to ai_helper_dashboard_path(id: @project, tab: "settings")
       assert_equal I18n.t(:notice_locking_conflict), flash[:error]
     end
 
@@ -64,7 +64,7 @@ class AiHelperProjectSettingsControllerTest < ActionController::TestCase
                          lock_version: @settings.lock_version,
                        },
                      }
-      assert_redirected_to controller: "projects", action: "settings", id: @project, tab: "ai_helper"
+      assert_redirected_to ai_helper_dashboard_path(id: @project, tab: "settings")
     end
   end
 end

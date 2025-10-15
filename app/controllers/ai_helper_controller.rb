@@ -9,6 +9,7 @@ require "redmine_ai_helper/export/pdf/project_health_pdf_helper"
 class AiHelperController < ApplicationController
   include ActionController::Live
   include RedmineAiHelper::Logger
+  include AiHelper::Streaming
   include AiHelperHelper
   include RedmineAiHelper::Export::PDF::ProjectHealthPdfHelper
 
@@ -394,13 +395,19 @@ class AiHelperController < ApplicationController
   # @return [void]
   def project_health
     cache_key = "project_health_#{@project.id}_#{params[:version_id]}_#{params[:start_date]}_#{params[:end_date]}"
-    @health_report = Rails.cache.fetch(cache_key, expires_in: 1.hour) do
-      generate_project_health_report
+    fetch_health_report = Proc.new do
+      Rails.cache.fetch(cache_key, expires_in: 1.hour) do
+        generate_project_health_report
+      end
     end
 
     respond_to do |format|
-      format.html { render partial: "ai_helper/project/health_report", locals: { health_report: @health_report } }
+      format.html do
+        @health_report = fetch_health_report.call
+        render partial: "ai_helper/project/health_report", locals: { health_report: @health_report }
+      end
       format.pdf do
+        @health_report = fetch_health_report.call
         if @health_report && !@health_report.is_a?(Hash)
           filename = "#{@project.identifier}-health-report-#{Date.current.strftime("%Y%m%d")}.pdf"
           send_data(project_health_to_pdf(@project, @health_report),
@@ -410,6 +417,24 @@ class AiHelperController < ApplicationController
           redirect_to project_path(@project), alert: l(:label_ai_helper_no_report_available, default: "No health report available for PDF export")
         end
       end
+    end
+  end
+
+  # Return metadata about the most recent health report for the current project.
+  # @return [void]
+  def project_health_metadata
+    latest_report = AiHelperHealthReport.for_project(@project.id).sorted.first
+    latest_report = nil unless latest_report&.visible?(User.current)
+
+    if latest_report
+      render json: {
+        id: latest_report.id,
+        created_at: latest_report.created_at,
+        created_at_iso8601: latest_report.created_at&.iso8601,
+        created_on_formatted: view_context.format_time(latest_report.created_at)
+      }
+    else
+      head :no_content
     end
   end
 
@@ -457,7 +482,7 @@ class AiHelperController < ApplicationController
   # @return [void]
   def generate_project_health
     ai_helper_logger.info "Starting project health generation for project #{@project.id}"
-    cache_key = "project_health_#{@project.id}_#{params[:version_id]}_#{params[:start_date]}_#{params[:end_date]}"
+    cache_key = "project_health_#{@project.id}"
     Rails.cache.delete(cache_key)
 
     begin
@@ -472,9 +497,6 @@ class AiHelperController < ApplicationController
 
         content = llm.project_health_report(
           project: @project,
-          version_id: params[:version_id],
-          start_date: params[:start_date],
-          end_date: params[:end_date],
           stream_proc: cache_proc,
         )
 
@@ -485,9 +507,7 @@ class AiHelperController < ApplicationController
       ai_helper_logger.error e.backtrace.join("\n")
 
       # Send error as streaming response
-      response.headers["Content-Type"] = "text/event-stream"
-      response.headers["Cache-Control"] = "no-cache"
-      response.headers["Connection"] = "keep-alive"
+      prepare_streaming_headers
 
       write_chunk({
         id: "error-#{SecureRandom.hex(6)}",
@@ -522,7 +542,7 @@ class AiHelperController < ApplicationController
       project: @project,
       max_suggestions: 10
     )
-    
+
     render json: { suggestions: suggestions }
   end
 
@@ -559,72 +579,6 @@ class AiHelperController < ApplicationController
     @conversation.user = @user
   end
 
-  # Write a chunk of data to the response stream
-  def write_chunk(data)
-    response.stream.write("data: #{data.to_json}\n\n")
-  end
-
-  # Common method for streaming LLM responses
-  # @param block [Block] The block to execute with the streaming proc
-  def stream_llm_response(&block)
-    # Set up streaming response headers
-    response.headers["Content-Type"] = "text/event-stream"
-    response.headers["Cache-Control"] = "no-cache"
-    response.headers["Connection"] = "keep-alive"
-
-    response_id = "chatcmpl-#{SecureRandom.hex(12)}"
-
-    # Send initial chunk
-    write_chunk({
-      id: response_id,
-      object: "chat.completion.chunk",
-      created: Time.now.to_i,
-      model: "gpt-3.5-turbo-0613",
-      choices: [{
-        index: 0,
-        delta: {
-          role: "assistant",
-        },
-        finish_reason: nil,
-      }],
-    })
-
-    # Define streaming callback
-    stream_proc = Proc.new do |content|
-      write_chunk({
-        id: response_id,
-        object: "chat.completion.chunk",
-        created: Time.now.to_i,
-        model: "gpt-3.5-turbo-0613",
-        choices: [{
-          index: 0,
-          delta: {
-            content: content,
-          },
-          finish_reason: nil,
-        }],
-      })
-    end
-
-    # Execute the provided block with the streaming proc
-    block.call(stream_proc)
-
-    # Send completion chunk
-    write_chunk({
-      id: response_id,
-      object: "chat.completion.chunk",
-      created: Time.now.to_i,
-      model: "gpt-3.5-turbo-0613",
-      choices: [{
-        index: 0,
-        delta: {},
-        finish_reason: "stop",
-      }],
-    })
-  ensure
-    response.stream.close
-  end
-
   # Find wiki page for wiki summary
   def find_wiki_page
     @wiki_page = WikiPage.find(params[:id])
@@ -632,7 +586,6 @@ class AiHelperController < ApplicationController
   rescue ActiveRecord::RecordNotFound
     render_404
   end
-
 
   # Generate project health report data
   def generate_project_health_report
@@ -648,4 +601,5 @@ class AiHelperController < ApplicationController
     ai_helper_logger.error e.backtrace.join("\n")
     { error: e.message }
   end
+
 end

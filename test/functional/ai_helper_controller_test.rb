@@ -530,6 +530,35 @@ class AiHelperControllerTest < ActionController::TestCase
         get :project_health, params: { id: @project.id, format: :pdf }
         assert_response :redirect
       end
+
+    end
+
+    context "#project_health_metadata" do
+      should "return latest report metadata without regeneration" do
+        AiHelperHealthReport.delete_all
+        report = AiHelperHealthReport.create!(
+          project: @project,
+          user: @user,
+          health_report: "Persisted report content"
+        )
+
+        @controller.expects(:generate_project_health_report).never
+
+        get :project_health_metadata, params: { id: @project.id }
+        assert_response :success
+
+        response_body = JSON.parse(@response.body)
+        assert_equal report.id, response_body["id"]
+        assert_equal report.created_at.iso8601, response_body["created_at_iso8601"]
+        assert_equal @controller.view_context.format_time(report.created_at), response_body["created_on_formatted"]
+      end
+
+      should "return no content when no report exists" do
+        AiHelperHealthReport.delete_all
+
+        get :project_health_metadata, params: { id: @project.id }
+        assert_response :no_content
+      end
     end
 
     context "#project_health_pdf" do
@@ -1004,10 +1033,10 @@ class AiHelperControllerTest < ActionController::TestCase
       
       should "handle Rails cache operations in generate_project_health" do
         # Test cache delete and write operations
-        cache_key = "project_health_#{@project.id}___"
+        cache_key = "project_health_#{@project.id}"
         Rails.cache.expects(:delete).with(cache_key)
         Rails.cache.expects(:write).with(cache_key, anything, expires_in: 1.hour)
-        
+
         get :generate_project_health, params: { id: @project.id }
         assert_response :success
       end
@@ -1315,5 +1344,7 @@ class AiHelperControllerTest < ActionController::TestCase
         journal.destroy
       end
     end
+
+
   end
 end
