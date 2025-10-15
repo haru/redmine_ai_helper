@@ -27,7 +27,7 @@ Redmine::Plugin.register :redmine_ai_helper do
   author_url "https://github.com/haru"
   requires_redmine :version_or_higher => "6.0.0"
 
-  version "1.8.4"
+  version "1.9.0"
 
   project_module :ai_helper do
     permission :view_ai_helper,
@@ -36,21 +36,21 @@ Redmine::Plugin.register :redmine_ai_helper do
                    :chat, :chat_form, :reload, :clear, :call_llm,
                    :history, :issue_summary, :generate_issue_summary, :wiki_summary, :generate_wiki_summary, :conversation, :generate_issue_reply,
                    :generate_sub_issues, :add_sub_issues, :similar_issues, :project_health, :generate_project_health, :project_health_pdf, :project_health_markdown,
-                  :project_health_metadata,
+                   :project_health_metadata,
                    :suggest_completion, :suggest_wiki_completion, :check_typos,
                  ],
                  ai_helper_dashboard: [
-                  :index, :health_report_history, :health_report_show, :compare_health_reports, :comparison_pdf, :comparison_markdown
-                ],
+                   :index, :health_report_history, :health_report_show, :compare_health_reports, :comparison_pdf, :comparison_markdown,
+                 ],
                }
     permission :settings_ai_helper,
-                {
-                  ai_helper_project_settings: [:show, :update]
-                }, :require => :member
+               {
+                 ai_helper_project_settings: [:show, :update],
+               }, :require => :member
     permission :delete_ai_helper_health_reports,
-                {
-                  ai_helper_dashboard: [:health_report_destroy]
-                }, :require => :member
+               {
+                 ai_helper_dashboard: [:health_report_destroy],
+               }, :require => :member
   end
 
   menu :admin_menu, "icon ai_helper", {
