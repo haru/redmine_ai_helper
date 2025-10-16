@@ -577,4 +577,208 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       ]
     end
   end
+
+  context "compare_health_reports" do
+    setup do
+      @project = Project.find(1)
+      @user = User.find(1)
+      @llm = RedmineAiHelper::Llm.new(@params)
+
+      @old_report = AiHelperHealthReport.create!(
+        project: @project,
+        user: @user,
+        health_report: "# Old Report\n\nOld content",
+        metrics: { issue_statistics: { total_issues: 40 } }.to_json,
+        created_at: 5.days.ago,
+      )
+
+      @new_report = AiHelperHealthReport.create!(
+        project: @project,
+        user: @user,
+        health_report: "# New Report\n\nNew content",
+        metrics: { issue_statistics: { total_issues: 50 } }.to_json,
+        created_at: 1.day.ago,
+      )
+    end
+
+    should "compare health reports successfully" do
+      # Mock langfuse wrapper
+      mock_langfuse = mock('langfuse_wrapper')
+      mock_langfuse.stubs(:create_span)
+      mock_langfuse.stubs(:finish_current_span)
+      mock_langfuse.stubs(:flush)
+      RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
+
+      # Mock ProjectAgent
+      comparison_result = "# Comparison Analysis\n\nThe project health has improved."
+      mock_agent = mock('project_agent')
+      mock_agent.stubs(:health_report_comparison).with(
+        old_report: @old_report,
+        new_report: @new_report,
+        stream_proc: nil
+      ).returns(comparison_result)
+      RedmineAiHelper::Agents::ProjectAgent.stubs(:new).returns(mock_agent)
+
+      result = @llm.compare_health_reports(
+        old_report: @old_report,
+        new_report: @new_report,
+        project: @project
+      )
+
+      assert_equal comparison_result, result
+    end
+
+    should "handle streaming comparison" do
+      # Mock langfuse wrapper
+      mock_langfuse = mock('langfuse_wrapper')
+      mock_langfuse.stubs(:create_span)
+      mock_langfuse.stubs(:finish_current_span)
+      mock_langfuse.stubs(:flush)
+      RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
+
+      # Mock ProjectAgent with streaming
+      comparison_result = "Streaming comparison result"
+      streamed_content = []
+      stream_proc = Proc.new { |content| streamed_content << content }
+
+      mock_agent = mock('project_agent')
+      mock_agent.stubs(:health_report_comparison).with(
+        old_report: @old_report,
+        new_report: @new_report,
+        stream_proc: stream_proc
+      ).returns(comparison_result)
+      RedmineAiHelper::Agents::ProjectAgent.stubs(:new).returns(mock_agent)
+
+      result = @llm.compare_health_reports(
+        old_report: @old_report,
+        new_report: @new_report,
+        project: @project,
+        stream_proc: stream_proc
+      )
+
+      assert_equal comparison_result, result
+    end
+
+    should "create langfuse trace for comparison" do
+      # Mock langfuse wrapper with expectations
+      mock_langfuse = mock('langfuse_wrapper')
+      mock_langfuse.expects(:create_span).with(
+        name: "compare_health_reports",
+        input: "compare_health_reports: #{@old_report.id} vs #{@new_report.id}"
+      )
+      mock_langfuse.expects(:finish_current_span).with(anything)
+      mock_langfuse.expects(:flush)
+      RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
+
+      # Mock ProjectAgent
+      mock_agent = mock('project_agent')
+      mock_agent.stubs(:health_report_comparison).returns("Comparison result")
+      RedmineAiHelper::Agents::ProjectAgent.stubs(:new).returns(mock_agent)
+
+      @llm.compare_health_reports(
+        old_report: @old_report,
+        new_report: @new_report,
+        project: @project
+      )
+    end
+
+    should "pass correct parameters to ProjectAgent" do
+      # Mock langfuse
+      mock_langfuse = mock('langfuse_wrapper')
+      mock_langfuse.stubs(:create_span)
+      mock_langfuse.stubs(:finish_current_span)
+      mock_langfuse.stubs(:flush)
+      RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
+
+      # Verify ProjectAgent is created with correct options
+      RedmineAiHelper::Agents::ProjectAgent.expects(:new).with(
+        langfuse: mock_langfuse,
+        project_id: @project.id
+      ).returns(mock('agent').tap do |agent|
+        agent.stubs(:health_report_comparison).returns("Result")
+      end)
+
+      @llm.compare_health_reports(
+        old_report: @old_report,
+        new_report: @new_report,
+        project: @project
+      )
+    end
+
+    should "handle errors during comparison" do
+      # Mock langfuse
+      mock_langfuse = mock('langfuse_wrapper')
+      mock_langfuse.stubs(:create_span)
+      mock_langfuse.stubs(:finish_current_span)
+      mock_langfuse.stubs(:flush)
+      RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
+
+      # Mock ProjectAgent to raise an error
+      mock_agent = mock('project_agent')
+      mock_agent.stubs(:health_report_comparison).raises(StandardError.new("Comparison failed"))
+      RedmineAiHelper::Agents::ProjectAgent.stubs(:new).returns(mock_agent)
+
+      result = @llm.compare_health_reports(
+        old_report: @old_report,
+        new_report: @new_report,
+        project: @project
+      )
+
+      assert_match(/Error comparing health reports/, result)
+    end
+
+    should "call stream_proc with error message on failure" do
+      # Mock langfuse
+      mock_langfuse = mock('langfuse_wrapper')
+      mock_langfuse.stubs(:create_span)
+      mock_langfuse.stubs(:finish_current_span)
+      mock_langfuse.stubs(:flush)
+      RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
+
+      # Mock ProjectAgent to raise an error
+      mock_agent = mock('project_agent')
+      mock_agent.stubs(:health_report_comparison).raises(StandardError.new("Test error"))
+      RedmineAiHelper::Agents::ProjectAgent.stubs(:new).returns(mock_agent)
+
+      # Capture stream_proc calls
+      streamed_content = []
+      stream_proc = Proc.new { |content| streamed_content << content }
+
+      result = @llm.compare_health_reports(
+        old_report: @old_report,
+        new_report: @new_report,
+        project: @project,
+        stream_proc: stream_proc
+      )
+
+      assert_match(/Error comparing health reports/, result)
+      assert_equal 1, streamed_content.length
+      assert_match(/Error comparing health reports/, streamed_content.first)
+    end
+
+    should "log errors when comparison fails" do
+      # Mock langfuse
+      mock_langfuse = mock('langfuse_wrapper')
+      mock_langfuse.stubs(:create_span)
+      mock_langfuse.stubs(:finish_current_span)
+      mock_langfuse.stubs(:flush)
+      RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
+
+      # Mock ProjectAgent to raise an error
+      mock_agent = mock('project_agent')
+      mock_agent.stubs(:health_report_comparison).raises(StandardError.new("Test error"))
+      RedmineAiHelper::Agents::ProjectAgent.stubs(:new).returns(mock_agent)
+
+      # Expect error logging
+      @llm.expects(:ai_helper_logger).returns(mock('logger').tap do |logger|
+        logger.expects(:error).with(regexp_matches(/Health report comparison error:/))
+      end).at_least_once
+
+      @llm.compare_health_reports(
+        old_report: @old_report,
+        new_report: @new_report,
+        project: @project
+      )
+    end
+  end
 end
