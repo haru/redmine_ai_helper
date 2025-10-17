@@ -17,4 +17,6 @@ template: |-
 
   Issue:
 
+  ```json
   {issue}
+  ```
