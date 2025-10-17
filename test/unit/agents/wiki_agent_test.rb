@@ -9,7 +9,7 @@ class WikiAgentTest < ActiveSupport::TestCase
     @wiki_page = wiki_pages(:wiki_pages_001)
     @user = users(:users_001)
     User.current = @user
-    
+
     # Create a simple wiki content for testing
     @wiki_content = WikiContent.new(
       page: @wiki_page,
@@ -59,7 +59,7 @@ class WikiAgentTest < ActiveSupport::TestCase
         mock_prompt = mock('prompt')
         mock_prompt.stubs(:format).returns("Formatted prompt text")
         @agent.stubs(:load_prompt).returns(mock_prompt)
-        
+
         # Mock the chat method to return a test summary
         @agent.stubs(:chat).returns("Test wiki summary")
       end
@@ -78,14 +78,16 @@ class WikiAgentTest < ActiveSupport::TestCase
 
       should "format prompt with wiki page data" do
         mock_prompt = mock('prompt')
-        mock_prompt.expects(:format).with(
+        # Expect JSON data structure
+        expected_data = {
           title: @wiki_page.title,
-          content: @wiki_content.text,
-          project_name: @project.name
-        ).returns("Formatted prompt")
+          content: @wiki_content.text
+        }
+        json_string = JSON.pretty_generate(expected_data)
+        mock_prompt.expects(:format).with(wiki_data: json_string).returns("Formatted prompt")
         @agent.stubs(:load_prompt).returns(mock_prompt)
         @agent.stubs(:chat).returns("Summary")
-        
+
         @agent.wiki_summary(wiki_page: @wiki_page)
       end
 
@@ -94,10 +96,10 @@ class WikiAgentTest < ActiveSupport::TestCase
         mock_prompt = mock('prompt')
         mock_prompt.stubs(:format).returns(formatted_text)
         @agent.stubs(:load_prompt).returns(mock_prompt)
-        
+
         expected_messages = [{ role: "user", content: formatted_text }]
         @agent.expects(:chat).with(expected_messages, {}, nil).returns("Summary")
-        
+
         @agent.wiki_summary(wiki_page: @wiki_page)
       end
     end
@@ -117,7 +119,7 @@ class WikiAgentTest < ActiveSupport::TestCase
           project: @project,
           wiki_page: @wiki_page
         )
-        
+
         assert completion.is_a?(String)
         assert completion.length > 0
       end
@@ -129,7 +131,7 @@ class WikiAgentTest < ActiveSupport::TestCase
           project: @project,
           wiki_page: nil
         )
-        
+
         assert completion.is_a?(String)
       end
 
@@ -140,20 +142,20 @@ class WikiAgentTest < ActiveSupport::TestCase
           project: nil,
           wiki_page: nil
         )
-        
+
         assert completion.is_a?(String)
       end
 
       should "handle errors gracefully" do
         @agent.stubs(:chat).raises(StandardError.new("Test error"))
-        
+
         completion = @agent.generate_wiki_completion(
           text: "Error test",
           cursor_position: 10,
           project: @project,
           wiki_page: @wiki_page
         )
-        
+
         assert_equal "", completion
       end
 
@@ -161,7 +163,7 @@ class WikiAgentTest < ActiveSupport::TestCase
         @agent.expects(:load_prompt).with("wiki_agent/wiki_inline_completion").returns(mock('prompt').tap do |p|
           p.stubs(:format).returns("Formatted text")
         end)
-        
+
         @agent.generate_wiki_completion(
           text: "test text",
           cursor_position: 9,
@@ -174,7 +176,7 @@ class WikiAgentTest < ActiveSupport::TestCase
     context "#build_wiki_completion_context" do
       should "include project and wiki info" do
         context = @agent.send(:build_wiki_completion_context, "test text", @project, @wiki_page)
-        
+
         assert_equal @wiki_page.title, context[:page_title]
         assert_equal @project.name, context[:project_name]
         assert context.has_key?(:text_length)
@@ -182,14 +184,14 @@ class WikiAgentTest < ActiveSupport::TestCase
 
       should "handle nil wiki page" do
         context = @agent.send(:build_wiki_completion_context, "test text", @project, nil)
-        
+
         assert_equal 'New Wiki Page', context[:page_title]
         assert_equal @project.name, context[:project_name]
       end
 
       should "handle nil project" do
         context = @agent.send(:build_wiki_completion_context, "test text", nil, @wiki_page)
-        
+
         assert_equal @wiki_page.title, context[:page_title]
         assert_nil context[:project_name]
       end
@@ -199,21 +201,21 @@ class WikiAgentTest < ActiveSupport::TestCase
       should "clean and limit text" do
         long_text = "This is a very long response. " * 20
         cleaned = @agent.send(:parse_wiki_completion_response, long_text)
-        
+
         assert cleaned.length <= 500
       end
 
       should "remove leading and trailing markers" do
         text_with_markers = "* Some completion text *"
         cleaned = @agent.send(:parse_wiki_completion_response, text_with_markers)
-        
+
         assert_equal "Some completion text", cleaned
       end
 
       should "limit sentences" do
         many_sentences = "First sentence. Second sentence. Third sentence. Fourth sentence. Fifth sentence. Sixth sentence."
         cleaned = @agent.send(:parse_wiki_completion_response, many_sentences)
-        
+
         sentences = cleaned.split(/[.!?。！？]\s*/)
         assert sentences.length <= 6
       end

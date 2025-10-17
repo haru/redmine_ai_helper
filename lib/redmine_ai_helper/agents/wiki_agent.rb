@@ -30,18 +30,23 @@ module RedmineAiHelper
       # @return [String] The summary content
       def wiki_summary(wiki_page:, stream_proc: nil)
         prompt = load_prompt("wiki_agent/summary")
-        prompt_text = prompt.format(
+
+        # Create wiki data structure
+        wiki_data = {
           title: wiki_page.title,
-          content: wiki_page.content.text,
-          project_name: wiki_page.wiki.project.name
-        )
+          content: wiki_page.content.text
+        }
+
+        # Convert to JSON string for the prompt
+        json_string = JSON.pretty_generate(wiki_data)
+
+        # Format the prompt with the JSON string
+        prompt_text = prompt.format(wiki_data: json_string)
 
         message = { role: "user", content: prompt_text }
         messages = [message]
         chat(messages, {}, stream_proc)
-      end
-
-      # Generate wiki completion suggestions
+      end      # Generate wiki completion suggestions
       # @param text [String] The current text
       # @param cursor_position [Integer] The cursor position
       # @param project [Project] The project
@@ -96,66 +101,66 @@ module RedmineAiHelper
       private
 
       def build_wiki_completion_context(text, project, wiki_page, is_section_edit: false)
-    context = {
-      page_title: wiki_page&.title || 'New Wiki Page',
-      project_name: project&.name,
-      text_length: text.length,
-      is_section_edit: is_section_edit
-    }
+        context = {
+          page_title: wiki_page&.title || 'New Wiki Page',
+          project_name: project&.name,
+          text_length: text.length,
+          is_section_edit: is_section_edit
+        }
 
-    if project
-      context[:project_description] = project.description if project.description.present?
-      context[:project_identifier] = project.identifier
-    end
+        if project
+          context[:project_description] = project.description if project.description.present?
+          context[:project_identifier] = project.identifier
+        end
 
-    # Only include existing wiki context for section editing
-    if is_section_edit
-      context.merge!(build_existing_wiki_context(project, wiki_page))
-    else
-      context[:existing_content] = ''
-    end
+        # Only include existing wiki context for section editing
+        if is_section_edit
+          context.merge!(build_existing_wiki_context(project, wiki_page))
+        else
+          context[:existing_content] = ''
+        end
 
-    context
-  end
+        context
+      end
 
-  def build_existing_wiki_context(project, current_wiki_page)
-    wiki_context = {
-      existing_content: ''
-    }
+      def build_existing_wiki_context(project, current_wiki_page)
+        wiki_context = {
+          existing_content: ''
+        }
 
-    return wiki_context unless project&.wiki
+        return wiki_context unless project&.wiki
 
-    if current_wiki_page&.content
-      wiki_context[:existing_content] = current_wiki_page.content.text || ''
-    end
+        if current_wiki_page&.content
+          wiki_context[:existing_content] = current_wiki_page.content.text || ''
+        end
 
-    wiki_context
-  end
+        wiki_context
+      end
 
-  def truncate_content(content, max_length)
-    return content if content.length <= max_length
-    content[0...max_length] + "..."
-  end
+      def truncate_content(content, max_length)
+        return content if content.length <= max_length
+        content[0...max_length] + "..."
+      end
 
-  def parse_wiki_completion_response(response)
-    return "" if response.blank?
+      def parse_wiki_completion_response(response)
+        return "" if response.blank?
 
-    cleaned_response = response.strip
+        cleaned_response = response.strip
 
-    cleaned_response = cleaned_response.gsub(/\n{3,}/, "\n\n")
+        cleaned_response = cleaned_response.gsub(/\n{3,}/, "\n\n")
 
-    cleaned_response = cleaned_response.gsub(/^[*-]+\s*/, '')
-                                     .gsub(/\s*[*-]+$/, '')
+        cleaned_response = cleaned_response.gsub(/^[*-]+\s*/, '')
+                                         .gsub(/\s*[*-]+$/, '')
 
-    sentences = cleaned_response.split(/[.!?。！？]\s+/)
-    if sentences.length > 5
-      cleaned_response = sentences[0..4].join('. ') + '.'
-    end
+        sentences = cleaned_response.split(/[.!?。！？]\s+/)
+        if sentences.length > 5
+          cleaned_response = sentences[0..4].join('. ') + '.'
+        end
 
-    cleaned_response = cleaned_response[0..499] if cleaned_response.length > 500
+        cleaned_response = cleaned_response[0..499] if cleaned_response.length > 500
 
-    cleaned_response
-  end
+        cleaned_response
+      end
     end
   end
 end
