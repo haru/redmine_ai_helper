@@ -43,10 +43,12 @@ module RedmineAiHelper
 
         prompt = load_prompt("issue_agent/summary")
         issue_json = generate_issue_data(issue)
-        prompt_text = prompt.format(issue: JSON.pretty_generate(issue_json))
+        # Convert issue data to JSON string for the prompt
+        json_string = JSON.pretty_generate(issue_json)
+        prompt_text = prompt.format(issue: json_string)
         message = { role: "user", content: prompt_text }
         messages = [message]
-        
+
         chat(messages, {}, stream_proc)
       end
 
@@ -71,7 +73,7 @@ module RedmineAiHelper
         )
         message = { role: "user", content: prompt_text }
         messages = [message]
-        
+
         chat(messages, {}, stream_proc)
       end
 
@@ -173,7 +175,7 @@ module RedmineAiHelper
         begin
           vector_tools = RedmineAiHelper::Tools::VectorTools.new
           similar_issues = vector_tools.find_similar_issues(issue_id: issue.id, k: 10)
-          
+
           ai_helper_logger.debug "Found #{similar_issues.length} similar issues for issue #{issue.id}"
           similar_issues
         rescue => e
@@ -188,47 +190,47 @@ module RedmineAiHelper
       # @param cursor_position [Integer] The cursor position in the text
       # @param context [Hash] Context information
       # @return [String] The completion suggestion
-      def generate_text_completion(text:, cursor_position: nil, context_type: 'description', project: nil, issue: nil, context: nil)
+      def generate_text_completion(text:, cursor_position: nil, context_type: "description", project: nil, issue: nil, context: nil)
         begin
           # Build context if not provided (for backward compatibility)
           if context.nil?
             context = build_completion_context(text, context_type, project, issue)
           end
-          
+
           # Use direct LLM call for simple text completion without tools
           # This is faster and more suitable for inline completion
-          
+
           prefix_text = cursor_position ? text[0...cursor_position] : text
           suffix_text = (cursor_position && cursor_position < text.length) ? text[cursor_position..-1] : ""
-          
+
           # Determine which template to use based on context type
-          actual_context_type = context[:context_type] || context_type || 'description'
-          template_name = actual_context_type == 'note' ? 'issue_agent/note_inline_completion' : 'issue_agent/inline_completion'
-          
+          actual_context_type = context[:context_type] || context_type || "description"
+          template_name = actual_context_type == "note" ? "issue_agent/note_inline_completion" : "issue_agent/inline_completion"
+
           # Load prompt template using PromptLoader
           prompt = load_prompt(template_name)
-          
+
           # Prepare template variables
           template_vars = {
             prefix_text: prefix_text,
             suffix_text: suffix_text,
-            issue_title: context[:issue_title] || 'New Issue',
-            project_name: context[:project_name] || 'Unknown Project',
+            issue_title: context[:issue_title] || "New Issue",
+            project_name: context[:project_name] || "Unknown Project",
             cursor_position: cursor_position.to_s,
-            max_sentences: '3',
-            format: Setting.text_formatting
+            max_sentences: "3",
+            format: Setting.text_formatting,
           }
-          
+
           # Add note-specific variables
-          if actual_context_type == 'note'
+          if actual_context_type == "note"
             template_vars.merge!({
-              issue_description: context[:issue_description] || '',
-              issue_status: context[:issue_status] || '',
-              issue_assigned_to: context[:issue_assigned_to] || 'None',
-              current_user_name: context[:current_user_name] || '',
-              user_role: context.dig(:user_role_context, :suggested_role) || 'participant'
+              issue_description: context[:issue_description] || "",
+              issue_status: context[:issue_status] || "",
+              issue_assigned_to: context[:issue_assigned_to] || "None",
+              current_user_name: context[:current_user_name] || "",
+              user_role: context.dig(:user_role_context, :suggested_role) || "participant",
             })
-            
+
             # Add recent notes
             if context[:recent_notes]&.any?
               recent_notes_text = context[:recent_notes][0..4].map do |note|
@@ -236,20 +238,20 @@ module RedmineAiHelper
               end.join("\n")
               template_vars[:recent_notes] = recent_notes_text
             else
-              template_vars[:recent_notes] = 'No recent notes available.'
+              template_vars[:recent_notes] = "No recent notes available."
             end
           end
-          
+
           prompt_text = prompt.format(**template_vars)
-          
+
           message = { role: "user", content: prompt_text }
           messages = [message]
-          
+
           # Use the base chat method without streaming for fast response
           completion = chat(messages, {})
-          
+
           ai_helper_logger.debug "Generated text completion: #{completion.length} characters"
-          
+
           # Parse and clean the response
           parse_completion_response(completion)
         rescue => e
@@ -274,20 +276,20 @@ module RedmineAiHelper
           context_type: context_type,
           project_name: project&.name,
           issue_title: issue&.subject,
-          text_length: text.length
+          text_length: text.length,
         }
-        
+
         # Add project-specific context if available
         if project
           context[:project_description] = project.description if project.description.present?
           context[:project_identifier] = project.identifier
         end
-        
+
         # Add note-specific context
         if context_type == "note" && issue
           context.merge!(build_note_specific_context(issue))
         end
-        
+
         context
       end
 
@@ -298,44 +300,44 @@ module RedmineAiHelper
       def build_note_specific_context(issue)
         # Current user
         current_user = User.current
-        
+
         # Use IssueJson to get comprehensive issue data (already included in this class)
         issue_data = generate_issue_data(issue)
-        
+
         # Extract and format data for note completion context
         note_context = {
           issue_id: issue_data[:id],
           issue_subject: issue_data[:subject],
           issue_description: issue_data[:description].present? ? issue_data[:description][0..500] : "", # First 500 characters only
-          issue_status: issue_data.dig(:status, :name) || '',
-          issue_priority: issue_data.dig(:priority, :name) || '',
-          issue_tracker: issue_data.dig(:tracker, :name) || '',
-          issue_assigned_to: issue_data.dig(:assigned_to, :name) || 'None',
-          issue_author: issue_data.dig(:author, :name) || '',
+          issue_status: issue_data.dig(:status, :name) || "",
+          issue_priority: issue_data.dig(:priority, :name) || "",
+          issue_tracker: issue_data.dig(:tracker, :name) || "",
+          issue_assigned_to: issue_data.dig(:assigned_to, :name) || "None",
+          issue_author: issue_data.dig(:author, :name) || "",
           issue_created_on: issue_data[:created_on],
           current_user_name: current_user.name,
-          current_user_id: current_user.id
+          current_user_id: current_user.id,
         }
-        
+
         # Extract recent notes from journals (limit to latest 20 with notes)
         journals_with_notes = issue_data[:journals]
           .select { |journal| journal[:notes].present? && !journal[:private_notes] }
           .first(20) # Already sorted by created_on desc in generate_issue_data
-        
+
         note_context[:recent_notes] = journals_with_notes.map do |journal|
           {
-            user_name: journal.dig(:user, :name) || 'Unknown',
+            user_name: journal.dig(:user, :name) || "Unknown",
             user_id: journal.dig(:user, :id),
             notes: journal[:notes][0..300], # First 300 characters only
             created_on: journal[:created_on],
-            is_current_user: journal.dig(:user, :id) == current_user.id
+            is_current_user: journal.dig(:user, :id) == current_user.id,
           }
         end
-        
+
         # User role analysis
         user_roles = analyze_user_role_in_conversation(current_user, journals_with_notes, issue_data)
         note_context[:user_role_context] = user_roles
-        
+
         note_context
       end
 
@@ -351,9 +353,9 @@ module RedmineAiHelper
           is_assignee: issue_data.dig(:assigned_to, :id) == current_user.id,
           participation_count: journals.count { |j| j.dig(:user, :id) == current_user.id },
           last_participation_date: journals.find { |j| j.dig(:user, :id) == current_user.id }&.dig(:created_on),
-          conversation_participants: journals.map { |j| j.dig(:user, :name) }.uniq.compact
+          conversation_participants: journals.map { |j| j.dig(:user, :name) }.uniq.compact,
         }
-        
+
         # User's role in the conversation flow
         if role_info[:is_issue_author]
           role_info[:suggested_role] = "issue_author"
@@ -364,7 +366,7 @@ module RedmineAiHelper
         else
           role_info[:suggested_role] = "new_participant"
         end
-        
+
         role_info
       end
 
@@ -374,32 +376,32 @@ module RedmineAiHelper
       # @return [String] Cleaned completion suggestion
       def parse_completion_response(response)
         return "" if response.blank?
-        
+
         # Remove any unwanted prefixes or suffixes
         suggestion = response.strip
-        
+
         # Remove any markdown code block markers (multiline)
-        suggestion = suggestion.gsub(/```[^\n]*\n.*?\n```/m, '')
-        
+        suggestion = suggestion.gsub(/```[^\n]*\n.*?\n```/m, "")
+
         # Remove any potential markdown formatting
-        suggestion = suggestion.gsub(/^\*+\s*/, '')  # Remove bullet points
-        suggestion = suggestion.gsub(/^#+\s*/, '')   # Remove headers
+        suggestion = suggestion.gsub(/^\*+\s*/, "")  # Remove bullet points
+        suggestion = suggestion.gsub(/^#+\s*/, "")   # Remove headers
         suggestion = suggestion.gsub(/\*\*(.*?)\*\*/, '\1')  # Remove bold
         suggestion = suggestion.gsub(/\*(.*?)\*/, '\1')      # Remove italic
-        
+
         # Normalize multiple spaces to single spaces
-        suggestion = suggestion.gsub(/\s+/, ' ')
-        
+        suggestion = suggestion.gsub(/\s+/, " ")
+
         # Clean up any leading/trailing whitespace after processing
         suggestion = suggestion.strip
-        
+
         # Limit to reasonable length (max 3 sentences as per spec)
         # Split on sentence-ending punctuation but preserve the punctuation
         sentences = suggestion.split(/(?<=[.!?])\s+/)
         if sentences.length > 3
-          suggestion = sentences[0..2].join(' ')
+          suggestion = sentences[0..2].join(" ")
         end
-        
+
         suggestion
       end
 
