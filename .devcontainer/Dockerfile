@@ -20,8 +20,4 @@ RUN (type -p wget >/dev/null || ( apt-get update &&  apt-get install wget -y)) \
     &&  apt-get update \
     &&  apt-get install gh -y
 
-    
-RUN apt-get update
-RUN apt-get install gh -y
-
 USER vscode
