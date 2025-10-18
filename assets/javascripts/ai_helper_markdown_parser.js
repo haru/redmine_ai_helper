@@ -272,15 +272,28 @@ if (typeof AiHelperMarkdownParser === "undefined") {
         } else {
           // Non-empty, non-list line
           if (listStack.length > 0) {
-            // Close all open lists
-            while (listStack.length > 0) {
-              html.push("</li>");
-              const closingList = listStack.pop();
-              html.push(`</${closingList.type}>`);
+            // Check if this is a continuation line (indented text following a list item)
+            const isIndented = line.match(/^\s+\S/);
+
+            if (isIndented) {
+              // This is a continuation of the previous list item
+              // Append to the current list item content (remove extra whitespace at beginning)
+              const trimmedContent = line.trim();
+              html.push(`<br>${trimmedContent}`);
+              emptyLineCount = 0;
+            } else {
+              // Close all open lists
+              while (listStack.length > 0) {
+                html.push("</li>");
+                const closingList = listStack.pop();
+                html.push(`</${closingList.type}>`);
+              }
+              emptyLineCount = 0;
+              html.push(line);
             }
-            emptyLineCount = 0;
+          } else {
+            html.push(line);
           }
-          html.push(line);
         }
       }
 
