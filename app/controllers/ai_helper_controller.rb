@@ -13,11 +13,12 @@ class AiHelperController < ApplicationController
   include AiHelperHelper
   include RedmineAiHelper::Export::PDF::ProjectHealthPdfHelper
 
-  protect_from_forgery except: [:generate_project_health, :suggest_completion, :suggest_wiki_completion, :check_typos]
+  protect_from_forgery except: [:generate_project_health, :suggest_completion, :suggest_wiki_completion, :check_typos, :api_create_health_report]
+  accept_api_auth :api_create_health_report
   before_action :find_issue, only: [:issue_summary, :update_issue_summary, :generate_issue_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues]
   before_action :find_wiki_page, only: [:wiki_summary, :generate_wiki_summary]
   before_action :find_project, except: [:issue_summary, :wiki_summary, :generate_issue_summary, :generate_wiki_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues]
-  before_action :find_user, :create_session, :find_conversation
+  before_action :find_user, :create_session, :find_conversation, except: [:api_create_health_report]
   before_action :authorize
 
   # Display the chat form in the sidebar
@@ -544,6 +545,55 @@ class AiHelperController < ApplicationController
     )
 
     render json: { suggestions: suggestions }
+  end
+
+  # REST API: Create project health report
+  # @return [void]
+  def api_create_health_report
+    # Limit response format to JSON only
+    respond_to do |format|
+      format.json do
+        begin
+          # Reuse existing Llm#project_health_report method
+          llm = RedmineAiHelper::Llm.new
+
+          # Generate health report without streaming
+          health_report_text = llm.project_health_report(
+            project: @project,
+            stream_proc: nil
+          )
+
+          # Get the latest saved report
+          latest_report = AiHelperHealthReport
+            .for_project(@project.id)
+            .sorted
+            .first
+
+          # Build JSON response
+          render json: {
+            id: latest_report.id,
+            project_id: @project.id,
+            project_identifier: @project.identifier,
+            health_report: latest_report.health_report,
+            created_at: latest_report.created_at.iso8601
+          }, status: :ok
+
+        rescue => e
+          ai_helper_logger.error "API health report generation error: #{e.message}"
+          ai_helper_logger.error e.backtrace.join("\n")
+
+          render json: {
+            error: "Failed to generate health report",
+            message: e.message
+          }, status: :internal_server_error
+        end
+      end
+
+      format.any do
+        render json: { error: "Only JSON format is supported" },
+               status: :not_acceptable
+      end
+    end
   end
 
   private

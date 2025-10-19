@@ -19,7 +19,9 @@ module RedmineAiHelper
         wiki = Wiki.find_by(project_id: project_id)
         raise("Wiki not found: project_id = #{project_id}") if !wiki || !wiki.visible?
 
-        page = wiki.pages.find_by(title: title)
+        pages = wiki.pages
+        ai_helper_logger.debug("Wiki pages: #{pages.inspect}")
+        page = pages.find_by(title: title)
         raise("Page not found: title = #{title}") if !page || !page.visible?
 
         generate_wiki_data(page)

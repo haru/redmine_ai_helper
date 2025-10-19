@@ -14,6 +14,12 @@
   - [Issue Summarization](#issue-summarization)
   - [Create a comment draft with AI Helper](#create-a-comment-draft-with-ai-helper)
   - [Generate subtasks from issues](#generate-subtasks-from-issues)
+  - [Similar Issues Search](#similar-issues-search)
+  - [Inline Issue Description and Wiki Completion](#inline-issue-description-and-wiki-completion)
+  - [Typo Checking and Correction Suggestions](#typo-checking-and-correction-suggestions)
+  - [Project Health Report](#project-health-report)
+    - [Health Report History](#health-report-history)
+    - [Health Report REST API](#health-report-rest-api)
 - [📦 Installation](#-installation)
 - [⚙️ Basic Configuration](#️-basic-configuration)
   - [Plugin Settings](#plugin-settings)
@@ -112,6 +118,48 @@ Health reports are automatically saved and can be reviewed later. You can:
 - Export comparison results to Markdown and PDF formats
 
 This historical tracking helps you understand how your project's health evolves and identify patterns or issues early.
+
+### Health Report REST API
+
+You can generate health reports programmatically using the REST API. This allows you to schedule automatic health report generation using cron or other task schedulers.
+
+**Endpoint:**
+```
+POST /projects/:project_id/ai_helper/health_report.json
+```
+
+**Authentication:**
+Use Redmine's standard API key authentication by including the `X-Redmine-API-Key` header.
+
+**Example Request:**
+```bash
+curl -X POST \
+  -H "X-Redmine-API-Key: your_api_key_here" \
+  -H "Content-Type: application/json" \
+  https://your-redmine-instance.com/projects/your-project/ai_helper/health_report.json
+```
+
+**Response:**
+```json
+{
+  "id": 123,
+  "project_id": 1,
+  "project_identifier": "your-project",
+  "health_report": "# Project Health Report\n\n...",
+  "created_at": "2025-01-15T10:30:00Z"
+}
+```
+
+**Requirements:**
+- The user associated with the API key must have the `view_ai_helper` permission for the project
+- The AI Helper module must be enabled for the project
+- REST API must be enabled in Redmine administration settings
+
+**Scheduling with cron:**
+To generate health reports automatically every Monday at 9:00 AM, add the following to your crontab:
+```bash
+0 9 * * 1 curl -X POST -H "X-Redmine-API-Key: your_api_key_here" -H "Content-Type: application/json" https://your-redmine-instance.com/projects/your-project/ai_helper/health_report.json
+```
 
 # 📦 Installation
 
