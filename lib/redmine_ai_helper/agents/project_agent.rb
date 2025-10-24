@@ -32,7 +32,7 @@ module RedmineAiHelper
         project_tools = RedmineAiHelper::Tools::ProjectTools.new
 
         # Check if there are any open versions in the project
-        open_versions = project.versions.open.order(created_on: :desc)
+        open_versions = project.shared_versions.open.order(created_on: :desc)
         metrics_list = []
 
         if open_versions.any?
@@ -49,11 +49,26 @@ module RedmineAiHelper
               project_id: project.id,
               version_id: version.id,
             )
-            metrics_list << {
+
+            # Determine if this is a shared version from another project
+            is_shared = version.project_id != project.id
+            version_info = {
               version_id: version.id,
               version_name: version.name,
               metrics: version_metrics,
             }
+
+            # Add sharing information if it's a shared version
+            if is_shared
+              version_info[:shared_from_project] = {
+                id: version.project_id,
+                name: version.project.name,
+                identifier: version.project.identifier,
+              }
+              version_info[:sharing_mode] = version.sharing
+            end
+
+            metrics_list << version_info
           end
         else
           # Generate time-period based reports (last 1 week and last 1 month)
