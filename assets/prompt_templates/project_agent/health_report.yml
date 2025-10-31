@@ -50,6 +50,13 @@ template: |
 
      {health_report_instructions}
 
+     Note about shared versions:
+
+     Some versions in the metrics may be shared from other projects. These shared versions are marked with 'shared_from_project' information, which includes the original project details. When analyzing shared versions, consider that:
+     - The version was created in another project but is available for use in this project
+     - Issues in this project can be assigned to shared versions
+     - The sharing_mode indicates how the version is shared (descendants, hierarchy, tree, or system)
+
      ---
 
      Metrics:
