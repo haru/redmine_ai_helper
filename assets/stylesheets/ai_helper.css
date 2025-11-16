@@ -431,6 +431,7 @@ body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-conte
 .ai-helper-streaming-content table.list th,
 .ai-helper-final-content table.list th {
   text-align: left !important;
+  white-space: collapse;
 }
 
 .ai-helper-streaming-content table.list td[align=left],
