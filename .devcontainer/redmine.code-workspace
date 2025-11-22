@@ -14,7 +14,7 @@
     "files.insertFinalNewline": true,
     "files.trimTrailingWhitespace": true,
     "git.ignoredRepositories": [
-      "/workspace/redmine_ai_helper"
+      "/usr/local/redmine"
     ],
     "liveServer.settings.multiRootWorkspaceName": "redmine_ai_helper",
     "[ruby]": {
