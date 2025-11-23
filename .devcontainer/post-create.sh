@@ -1,4 +1,16 @@
 #!/bin/sh
+
+cd `dirname $0`
+cd ..
+BASEDIR=`pwd`
+PLUGIN_NAME=`basename $BASEDIR`
+
+if [ ! -f ~/.bashrc ]; then
+    cd ~/
+    tar xfz /.home.tgz
+    cd $BASEDIR
+fi
+
 cd $REDMINE_ROOT
 
 git pull
