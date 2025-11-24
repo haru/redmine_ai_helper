@@ -70,6 +70,49 @@ module RedmineAiHelper
 
             metrics_list << version_info
           end
+
+          # Add separate repository activity sections for Pattern 1
+          # Since version-specific metrics don't include repository data (to avoid duplication),
+          # we add explicit repository analysis for the last 1 week and 1 month here.
+
+          # Get date variables
+          one_week_ago = 1.week.ago.strftime("%Y-%m-%d")
+          one_month_ago = 1.month.ago.strftime("%Y-%m-%d")
+          today = Date.current.strftime("%Y-%m-%d")
+
+          # 1. Last 1 Week Repository Activity
+          one_week_repo_metrics = project_tools.calculate_repository_metrics(
+            project,
+            start_date: Date.parse(one_week_ago),
+            end_date: Date.parse(today)
+          )
+
+          if one_week_repo_metrics[:repository_available]
+            metrics_list << {
+              period_name: "Repository Activity (Last 1 Week)",
+              period_description: "Repository activity analysis for the last 1 week",
+              start_date: one_week_ago,
+              end_date: today,
+              metrics: { repository_metrics: one_week_repo_metrics }
+            }
+          end
+
+          # 2. Last 1 Month Repository Activity
+          one_month_repo_metrics = project_tools.calculate_repository_metrics(
+            project,
+            start_date: Date.parse(one_month_ago),
+            end_date: Date.parse(today)
+          )
+
+          if one_month_repo_metrics[:repository_available]
+            metrics_list << {
+              period_name: "Repository Activity (Last 1 Month)",
+              period_description: "Repository activity analysis for the last 1 month",
+              start_date: one_month_ago,
+              end_date: today,
+              metrics: { repository_metrics: one_month_repo_metrics }
+            }
+          end
         else
           # Generate time-period based reports (last 1 week and last 1 month)
           # Get date variables first

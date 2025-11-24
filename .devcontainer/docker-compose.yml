@@ -27,11 +27,10 @@ services:
     # (Adding the "ports" property to this file will not forward from a Codespace.)
 
   postgres:
-    image: postgres:latest
+    image: postgres:14
     restart: unless-stopped
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./create-db-user.sql:/docker-entrypoint-initdb.d/create-db-user.sql
     environment:
       POSTGRES_USER: postgres
       POSTGRES_DB: redmine

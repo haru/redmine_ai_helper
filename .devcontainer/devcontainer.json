@@ -9,30 +9,6 @@
 	],
 	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
 	// Set *default* container specific settings.json values on container create.
-	"settings": {
-		"sqltools.connections": [
-			{
-				"name": "Rails Development Database",
-				"driver": "PostgreSQL",
-				"previewLimit": 50,
-				"server": "localhost",
-				"port": 5432,
-				// update this to match config/database.yml
-				"database": "app_development",
-				"username": "vscode"
-			},
-			{
-				"name": "Rails Test Database",
-				"driver": "PostgreSQL",
-				"previewLimit": 50,
-				"server": "localhost",
-				"port": 5432,
-				// update this to match config/database.yml
-				"database": "app_test",
-				"username": "vscode"
-			}
-		]
-	},
 	// Add the IDs of extensions you want installed when the container is created.
 	"extensions": [
 		"mtxr.sqltools",
@@ -57,7 +33,7 @@
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [3000, 5432],
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "sh -x /post-create.sh",
+	"postCreateCommand": "sh -x .devcontainer/post-create.sh",
 	// Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
 	"remoteUser": "vscode",
 	"features": {

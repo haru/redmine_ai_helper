@@ -1,19 +1,19 @@
 #!/bin/sh
+
+cd `dirname $0`
+cd ..
+BASEDIR=`pwd`
+PLUGIN_NAME=`basename $BASEDIR`
+
+if [ ! -f ~/.bashrc ]; then
+    cd ~/
+    tar xfz /.home.tgz
+    cd $BASEDIR
+fi
+
 cd $REDMINE_ROOT
 
-if [ -d .git.sv ]
-then
-    mv -s .git.sv .git
-    git pull
-    rm .git
-fi
-
-# ln -s /workspaces/${PLUGIN_NAME} plugins/${PLUGIN_NAME}
-if [ -f plugins/${PLUGIN_NAME}/Gemfile_for_test ]
-then
-    cp plugins/${PLUGIN_NAME}/Gemfile_for_test plugins/${PLUGIN_NAME}/Gemfile
-fi
-
+git pull
 
 bundle install
 bundle exec rake redmine:plugins:ai_helper:setup_scm

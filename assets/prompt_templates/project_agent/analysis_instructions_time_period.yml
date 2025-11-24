@@ -18,5 +18,16 @@ template: |
     - Progress Analysis: Work completion and productivity metrics
     - Quality Metrics: Bug rate, resolution quality, and issue patterns
     - Team Performance: Member activity levels and contribution patterns
+    - **Repository Activity** (integrated within this period):
+      - Commit frequency during this specific period
+      - Active contributors in this timeframe
+      - Development velocity for this period
+      - Comparison with issue activity (commits vs. issue updates)
     - Trend Analysis: Identify trends by comparing the two periods
     - Recommendations: Actionable suggestions based on recent activity patterns
+
+    **IMPORTANT - Repository Metrics in Period Analysis**:
+    Repository metrics are period-specific and filtered by the committed_on date.
+    - Include repository analysis WITHIN each period section
+    - Compare commit activity between the two periods
+    - Correlate repository activity with issue activity (e.g., high commits but low issue updates)
