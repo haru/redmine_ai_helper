@@ -11,3 +11,14 @@ template: |
     - Quality Focus: Bug tracking and resolution specific to this version.
     - Timeline Analysis: Deadline adherence and release risk assessment.
     - Version Recommendations: Specific actions to ensure a successful release.
+
+    **CRITICAL - Repository Metrics Handling**:
+    Repository commit data is NOT version-specific in Redmine (changesets are not linked to versions).
+    - DO NOT include repository activity in version-specific analysis
+    - After analyzing all versions, create a SEPARATE section titled "Repository Activity (Project-Wide)"
+    - In this section, analyze the overall project repository metrics:
+      - Overall commit frequency and development velocity
+      - Team collaboration patterns across all contributors
+      - Code contribution health indicators
+      - Active/inactive development periods
+    - Make it clear that repository data represents the entire project, not individual versions

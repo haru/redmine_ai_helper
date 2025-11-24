@@ -190,6 +190,74 @@ module RedmineAiHelper
         ToolResponse.create_success json # TODO: Should just return json?
       end
 
+      # Calculate repository metrics for a project within a specified date range.
+      # @param project [Project] The project to calculate metrics for.
+      # @param start_date [Date, nil] Start date for metrics calculation.
+      # @param end_date [Date, nil] End date for metrics calculation.
+      # @return [Hash] A hash containing repository metrics.
+      def calculate_repository_metrics(project, start_date: nil, end_date: nil)
+        repositories = project.repositories
+        if repositories.empty?
+          ai_helper_logger.info "calculate_repository_metrics: no repository for project #{project.id}"
+          return { repository_available: false }
+        end
+
+        changesets_scope = Changeset.joins(:repository).where(repositories: { project_id: project.id })
+        if start_date && end_date
+          changesets_scope = changesets_scope.where(committed_on: start_date.beginning_of_day..end_date.end_of_day)
+        end
+
+        changesets = changesets_scope
+          .includes(:user, :repository)
+          .order(committed_on: :desc)
+          .limit(10000)
+          .to_a
+
+        repository_metrics_defaults = {
+          commit_frequency: {},
+          committer_distribution: {},
+          commit_timeline: {},
+          commit_size_metrics: {},
+        }
+
+        base_metrics = {
+          repository_available: true,
+          repository_info: extract_repository_info(repositories),
+          period: {
+            start_date: start_date,
+            end_date: end_date,
+          },
+          total_commits: changesets.size,
+        }
+
+        if changesets.empty?
+          ai_helper_logger.info "calculate_repository_metrics: no changesets for project #{project.id}"
+          return base_metrics.merge(repository_metrics_defaults)
+        end
+
+        ai_helper_logger.info "calculate_repository_metrics: processing #{changesets.size} changesets for project #{project.id}"
+        base_metrics.merge(
+          commit_frequency: calculate_commit_frequency(changesets, start_date, end_date),
+          committer_distribution: calculate_committer_distribution(changesets),
+          commit_timeline: calculate_commit_timeline(changesets, start_date, end_date),
+          commit_size_metrics: calculate_commit_size_metrics(changesets),
+        )
+      rescue ActiveRecord::RecordNotFound => e
+        ai_helper_logger.error "calculate_repository_metrics record not found: #{e.message}"
+        ai_helper_logger.error e.backtrace.join("\n")
+        {
+          repository_available: true,
+          error: "Repository data not found",
+        }
+      rescue => e
+        ai_helper_logger.error "calculate_repository_metrics error: #{e.message}"
+        ai_helper_logger.error e.backtrace.join("\n")
+        {
+          repository_available: true,
+          error: e.message,
+        }
+      end
+
       define_function :get_metrics, description: "REQUIRED FIRST STEP: Get comprehensive project health metrics for a specific project. You MUST call this function BEFORE generating any project health report. Returns essential raw data including issue statistics, timing metrics, workload distribution, quality metrics, progress metrics, and team metrics that are absolutely necessary for accurate health analysis." do
         property :project_id, type: "integer", description: "The project ID to get health metrics for.", required: true
         property :version_id, type: "integer", description: "The version ID to filter metrics by. If not specified, returns metrics for all versions.", required: false
@@ -216,13 +284,16 @@ module RedmineAiHelper
           raise "Project not found" unless project
           raise "You don't have permission to view this project" unless accessible_project? project
 
-          if start_date || end_date
-            start_date = start_date ? Date.parse(start_date) : 30.days.ago.to_date
-            end_date = end_date ? Date.parse(end_date) : Date.current
-            issues_scope = project.issues.where(created_on: start_date.beginning_of_day..end_date.end_of_day)
+          start_date_obj = start_date ? Date.parse(start_date) : nil
+          end_date_obj = end_date ? Date.parse(end_date) : nil
+
+          if start_date_obj || end_date_obj
+            start_date_obj ||= 30.days.ago.to_date
+            end_date_obj ||= Date.current
+            issues_scope = project.issues.where(created_on: start_date_obj.beginning_of_day..end_date_obj.end_of_day)
           else
-            start_date = nil
-            end_date = nil
+            start_date_obj = nil
+            end_date_obj = nil
             issues_scope = project.issues
           end
           issues_scope = issues_scope.where(fixed_version_id: version_id) if version_id
@@ -230,6 +301,12 @@ module RedmineAiHelper
           # Limit the number of issues to prevent memory issues and long processing times
           # For health reports, we typically don't need more than 10,000 issues for meaningful analysis
           issues = issues_scope.includes(:status, :priority, :tracker, :assigned_to, :author, :fixed_version, :time_entries, :journals, :attachments).limit(10000)
+
+          repository_metrics = if version_id
+            {}
+          else
+            calculate_repository_metrics(project, start_date: start_date_obj, end_date: end_date_obj)
+          end
 
           metrics = {
             project_info: {
@@ -240,8 +317,8 @@ module RedmineAiHelper
               last_activity_date: project.last_activity_date,
             },
             period: {
-              start_date: start_date,
-              end_date: end_date,
+              start_date: start_date_obj,
+              end_date: end_date_obj,
               version_id: version_id,
             },
             issue_statistics: calculate_issue_statistics(issues),
@@ -253,6 +330,7 @@ module RedmineAiHelper
             update_frequency_metrics: calculate_update_frequency_metrics(issues),
             estimation_accuracy_metrics: calculate_estimation_accuracy_metrics(issues),
             attachment_metrics: calculate_attachment_metrics(issues),
+            repository_metrics: repository_metrics,
           }
 
           ai_helper_logger.info "get_metrics returning: #{metrics.to_json}"
@@ -266,6 +344,117 @@ module RedmineAiHelper
       end
 
       private
+
+      def extract_repository_info(repositories)
+        repositories.map do |repo|
+          {
+            id: repo.id,
+            identifier: repo.identifier,
+            type: repo.type,
+            url: repo.url,
+            is_default: repo.is_default,
+          }
+        end
+      end
+
+      def calculate_commit_frequency(changesets, start_date, end_date)
+        return {} if changesets.empty?
+
+        if start_date && end_date
+          total_days = (end_date - start_date).to_i + 1
+        else
+          oldest_commit = changesets.last.committed_on.to_date
+          newest_commit = changesets.first.committed_on.to_date
+          total_days = (newest_commit - oldest_commit).to_i + 1
+        end
+
+        total_days = 1 if total_days < 1
+        total_commits = changesets.size
+
+        {
+          total_commits: total_commits,
+          daily_average: (total_commits.to_f / total_days).round(2),
+          weekly_average: (total_commits.to_f / total_days * 7).round(2),
+          monthly_average: (total_commits.to_f / total_days * 30).round(2),
+          period_days: total_days,
+        }
+      end
+
+      def calculate_committer_distribution(changesets)
+        by_user = changesets
+          .select { |cs| cs.user }
+          .group_by { |cs| cs.user }
+          .transform_values(&:count)
+          .sort_by { |_, count| -count }
+          .to_h
+
+        by_committer = changesets
+          .select { |cs| cs.user.nil? && cs.committer.present? }
+          .group_by { |cs| cs.committer }
+          .transform_values(&:count)
+          .sort_by { |_, count| -count }
+          .to_h
+
+        mapped_users = changesets.count { |cs| cs.user.present? }
+        unmapped_commits = changesets.count { |cs| cs.user.nil? }
+
+        {
+          by_user: by_user.map { |user, count| { user_id: user.id, user_name: user.name, commit_count: count } },
+          by_committer_string: by_committer.map { |committer, count| { committer: committer, commit_count: count } },
+          unique_users: by_user.size,
+          unique_committers: by_committer.size,
+          mapped_commits: mapped_users,
+          unmapped_commits: unmapped_commits,
+          mapping_rate: changesets.empty? ? 0 : (mapped_users.to_f / changesets.size * 100).round(2),
+        }
+      end
+
+      def calculate_commit_timeline(changesets, start_date = nil, end_date = nil)
+        by_date = changesets
+          .group_by { |cs| cs.committed_on.to_date }
+          .transform_values(&:count)
+          .sort_by { |date, _| date }
+          .to_h
+
+        by_week = changesets
+          .group_by { |cs| cs.committed_on.to_date.cweek }
+          .transform_values(&:count)
+          .sort_by { |week, _| week }
+          .to_h
+
+        by_weekday = changesets
+          .group_by { |cs| cs.committed_on.strftime("%A") }
+          .transform_values(&:count)
+
+        by_hour = changesets
+          .group_by { |cs| cs.committed_on.hour }
+          .transform_values(&:count)
+          .sort_by { |hour, _| hour }
+          .to_h
+
+        {
+          by_date: by_date,
+          by_week: by_week,
+          by_weekday: by_weekday,
+          by_hour: by_hour,
+          most_active_date: by_date.max_by { |_, count| count }&.first,
+          least_active_date: by_date.min_by { |_, count| count }&.first,
+        }
+      end
+
+      def calculate_commit_size_metrics(changesets)
+        comment_lengths = changesets.map { |cs| cs.comments.to_s.length }
+        return {} if comment_lengths.empty?
+
+        {
+          average_comment_length: (comment_lengths.sum.to_f / comment_lengths.size).round(2),
+          median_comment_length: comment_lengths.sort[comment_lengths.size / 2],
+          min_comment_length: comment_lengths.min,
+          max_comment_length: comment_lengths.max,
+          empty_comments_count: changesets.count { |cs| cs.comments.blank? },
+          empty_comments_ratio: (changesets.count { |cs| cs.comments.blank? }.to_f / changesets.size * 100).round(2),
+        }
+      end
 
       def calculate_issue_statistics(issues)
         issue_list = issues.to_a
