@@ -28,7 +28,8 @@
 		"bysabi.prettier-vscode-standard",
 		"GitHub.copilot",
 		"Shunqian.prettier-plus",
-		"Gruntfuggly.todo-tree"
+		"Gruntfuggly.todo-tree",
+		"zoma.vscode-auto-open-workspace"
 	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [3000, 5432],
@@ -44,5 +45,12 @@
 	},
 	"forwardPorts": [
 		3000
-	]
+	],
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"autoOpenWorkspace.enableAutoOpenAlwaysFirst": true
+			}
+		}
+	}
 }
