@@ -44,7 +44,7 @@ module RedmineAiHelper
         prompt = load_prompt("issue_agent/summary")
         issue_json = generate_issue_data(issue)
         # Convert issue data to JSON string for the prompt
-        json_string = JSON.pretty_generate(issue_json)
+        json_string = safe_json_for_prompt(issue_json)
         prompt_text = prompt.format(issue: json_string)
         message = { role: "user", content: prompt_text }
         messages = [message]
@@ -66,7 +66,7 @@ module RedmineAiHelper
         project_setting = AiHelperProjectSetting.settings(issue.project)
         issue_json = generate_issue_data(issue)
         prompt_text = prompt.format(
-          issue: JSON.pretty_generate(issue_json),
+          issue: safe_json_for_prompt(issue_json),
           instructions: instructions,
           issue_draft_instructions: project_setting.issue_draft_instructions,
           format: Setting.text_formatting,
@@ -135,7 +135,7 @@ module RedmineAiHelper
         project_setting = AiHelperProjectSetting.settings(issue.project)
 
         prompt_text = prompt.format(
-          parent_issue: JSON.pretty_generate(issue_json),
+          parent_issue: safe_json_for_prompt(issue_json),
           instructions: instructions,
           subtask_instructions: project_setting.subtask_instructions,
           format_instructions: parser.get_format_instructions,
@@ -416,10 +416,21 @@ module RedmineAiHelper
           The following issue properties are available for Project ID: #{@project.id}.
 
           ```json
-          #{JSON.pretty_generate(properties)}
+          #{safe_json_for_prompt(properties)}
           ```
         EOS
         content
+      end
+
+      # Generate a JSON string safe for prompt interpolation.
+      # Escapes backslashes to prevent them from being consumed by the prompt formatter.
+      # @param data [Hash] The data to convert to JSON.
+      # @return [String] The safe JSON string.
+      def safe_json_for_prompt(data)
+        json = JSON.pretty_generate(data)
+        # Langchain's prompt format consumes one level of backslash escaping.
+        # We need to double-escape backslashes so they survive the formatting.
+        json.gsub(/\\/) { "\\\\" }
       end
     end
   end
