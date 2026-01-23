@@ -9,10 +9,10 @@ services:
         # Update 'VARIANT' to pick a version of Ruby: 3, 3.1, 3.2, 3.3, 3.4
         # Append -bullseye or -buster to pin to an OS version.
         # Use -bullseye variants on local arm64/Apple Silicon.
-        RUBY_VERSION: "3.4"
+        RUBY_VERSION: "${RUBY_VERSION:-3.4}"
         # Optional Node.js version to install
         NODE_VERSION: "lts/*"
-        REDMINE_VERSION: "6.1-stable"
+        REDMINE_VERSION: "${REDMINE_VERSION:-6.1-stable}"
 
     # Overrides default command so things don't shut down after the process ends.
     command: sleep infinity
