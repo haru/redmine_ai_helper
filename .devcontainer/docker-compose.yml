@@ -53,9 +53,26 @@ services:
   qdrant:
     image: qdrant/qdrant
     ports:
-    - 6333:6333
+      - 6333:6333
     volumes:
       - ./qdrant/storage:/qdrant/storage
+
+  browserless:
+    image: browserless/chrome
+    restart: unless-stopped
+    # ports:
+    #   - 3000:3000
+    environment:
+      # Maximum concurrent sessions
+      MAX_CONCURRENT_SESSIONS: 10
+      # Connection timeout in milliseconds
+      CONNECTION_TIMEOUT: 60000
+      # Maximum queue length
+      MAX_QUEUE_LENGTH: 10
+      # Enable debugger for Playwright
+      ENABLE_DEBUGGER: "false"
+      # Token for authentication (optional, set to empty for no auth)
+      TOKEN: ""
   # weaviate:
   #   command:
   #     - --host
