@@ -122,13 +122,41 @@ For external tool integration via Model Context Protocol:
 - If something is expected to exist (like DOM elements or templates), don't provide fallbacks - fix the root cause instead
 - Use proper error logging, but never silently continue with fallback behavior
 
-### Testing
-- Always add tests for any new features you implement
-- Write tests using "shoulda", not "rspec"
-- Use mocks only when absolutely necessary, such as when connecting to external servers
-- Aim for a test coverage of 95% or higher
-  - The coverage information files will be generated under the `coverage` directory, so please check there
-- Test structure includes functional (controllers), unit (models, agents, tools), and integration tests
+### Test-Driven Development (TDD)
+This project follows Test-Driven Development. **Always write tests BEFORE implementing features.**
+
+#### TDD Workflow
+1. **Red**: Write a failing test first that describes the expected behavior
+2. **Green**: Write the minimum code necessary to make the test pass
+3. **Refactor**: Improve the code while keeping tests green
+
+#### TDD Rules
+- **Never write production code without a failing test first**
+- When fixing a bug, first write a test that reproduces the bug, then fix it
+- When adding a feature, write tests for the feature first, then implement
+- Run tests frequently during development to ensure nothing breaks
+
+#### Running Tests
+```bash
+# Run all plugin tests
+bundle exec rake redmine:plugins:test NAME=redmine_ai_helper
+
+# Run a single test file
+bundle exec ruby -I"lib:test" plugins/redmine_ai_helper/test/unit/base_agent_test.rb
+
+# Run tests matching a pattern (using TESTOPTS)
+bundle exec rake redmine:plugins:test NAME=redmine_ai_helper TESTOPTS="--name=/test_name_pattern/"
+```
+
+#### Testing Guidelines
+- Write tests using `shoulda` (context/should blocks), not rspec
+- Use `mocha` for mocking - but only when connecting to external servers
+- Aim for test coverage of 95% or higher (check `coverage/` directory)
+- Test structure:
+  - `test/functional/` - Controller tests
+  - `test/unit/` - Model, agent, and tool tests
+  - `test/integration/` - API and integration tests
+- Use `model_factory.rb` for creating test fixtures
 
 ## Commit Guidelines
 - Do not include any information about Claude Code in commit messages
