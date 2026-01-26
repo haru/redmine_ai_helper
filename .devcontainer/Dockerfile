@@ -8,6 +8,8 @@ RUN gem install htmlbeautifier
 RUN gem install rubocop
 RUN gem install logger
 
+# Install uv (includes uvx) for Serena MCP server
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 RUN bash -x /install-ble.sh
 
