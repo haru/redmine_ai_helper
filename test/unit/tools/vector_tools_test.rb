@@ -120,6 +120,14 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         @vector_tools.stubs(:vector_db).with(target: "issue").returns(@mock_db)
         @mock_db.stubs(:client).returns(true)
         @mock_logger.stubs(:warn)
+
+        # Mock the IssueContentAnalyzer for hybrid query
+        @mock_analyzer = mock("issue_content_analyzer")
+        @mock_analyzer.stubs(:analyze).returns({
+          summary: "Test summary",
+          keywords: ["keyword1", "keyword2"]
+        })
+        RedmineAiHelper::Vector::IssueContentAnalyzer.stubs(:new).returns(@mock_analyzer)
       end
 
       should "raise error if vector search is not enabled" do
@@ -245,10 +253,82 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
 
       should "handle nil results from vector search" do
         @mock_db.expects(:similarity_search).returns(nil)
-        
+
         result = @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
-        
+
         assert_equal 0, result.length
+      end
+    end
+
+    context "find_similar_issues with hybrid query" do
+      setup do
+        @issue = Issue.find(1)
+        @issue.project.enable_module!(:ai_helper)
+        User.current = User.find(1)
+        @mock_db = mock("vector_db")
+        @vector_tools.stubs(:vector_db).with(target: "issue").returns(@mock_db)
+        @mock_db.stubs(:client).returns(true)
+        @mock_logger.stubs(:warn)
+
+        @mock_analyzer = mock("issue_content_analyzer")
+        @analysis_result = {
+          summary: "Test issue about login functionality",
+          keywords: ["authentication", "login", "session"]
+        }
+      end
+
+      should "perform similarity search with hybrid query" do
+        # Mock the IssueContentAnalyzer to return analysis result
+        RedmineAiHelper::Vector::IssueContentAnalyzer.expects(:new).returns(@mock_analyzer)
+        @mock_analyzer.expects(:analyze).with(@issue).returns(@analysis_result)
+
+        # Expect the query to be in hybrid format (Summary + Keywords + Title)
+        expected_query_pattern = /Summary:.*Keywords:.*Title:/m
+        @mock_db.expects(:similarity_search).with { |args|
+          args[:question].match?(expected_query_pattern) && args[:k] == 10
+        }.returns([])
+
+        @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
+      end
+
+      should "include summary and keywords in query" do
+        # Mock the IssueContentAnalyzer
+        RedmineAiHelper::Vector::IssueContentAnalyzer.expects(:new).returns(@mock_analyzer)
+        @mock_analyzer.expects(:analyze).with(@issue).returns(@analysis_result)
+
+        # Capture the query passed to similarity_search
+        captured_query = nil
+        @mock_db.expects(:similarity_search).with { |args|
+          captured_query = args[:question]
+          true
+        }.returns([])
+
+        @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
+
+        # Verify the query contains summary, keywords, and title
+        assert captured_query.include?("Summary: Test issue about login functionality"),
+               "Query should include the summary"
+        assert captured_query.include?("Keywords: authentication, login, session"),
+               "Query should include the keywords"
+        assert captured_query.include?("Title: #{@issue.subject}"),
+               "Query should include the issue title"
+      end
+
+      should "fallback to raw query when analyzer fails" do
+        # Mock the IssueContentAnalyzer to raise an error
+        mock_analyzer_that_fails = mock("failing_analyzer")
+        RedmineAiHelper::Vector::IssueContentAnalyzer.expects(:new).returns(mock_analyzer_that_fails)
+        mock_analyzer_that_fails.expects(:analyze).with(@issue).raises(StandardError.new("LLM connection failed"))
+
+        # Expect the fallback query (raw subject + description)
+        expected_raw_query = "#{@issue.subject} #{@issue.description}"
+        @mock_db.expects(:similarity_search).with { |args|
+          args[:question] == expected_raw_query && args[:k] == 10
+        }.returns([])
+
+        # Should not raise error, should fallback gracefully
+        result = @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
+        assert_equal [], result
       end
     end
   end

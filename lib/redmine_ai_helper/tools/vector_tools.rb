@@ -2,6 +2,7 @@
 require "redmine_ai_helper/base_tools"
 require "redmine_ai_helper/util/wiki_json"
 require "redmine_ai_helper/util/issue_json"
+require "redmine_ai_helper/vector/issue_content_analyzer"
 
 module RedmineAiHelper
   module Tools
@@ -122,7 +123,7 @@ module RedmineAiHelper
             raise("Vector search is not enabled or configured")
           end
           
-          query = "#{issue.subject} #{issue.description}"
+          query = build_hybrid_query(issue)
           ai_helper_logger.debug("Performing similarity search with query: #{query[0..100]}...")
           
           # Search for similar issues
@@ -173,6 +174,25 @@ module RedmineAiHelper
       end
 
       private
+
+      # Build a hybrid query for vector similarity search.
+      # Uses IssueContentAnalyzer to generate a structured query with summary, keywords, and title.
+      # Falls back to raw query (subject + description) if analysis fails.
+      # @param issue [Issue] The issue to build a query for.
+      # @return [String] The formatted query string.
+      def build_hybrid_query(issue)
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new
+        analysis = analyzer.analyze(issue)
+
+        <<~QUERY
+          Summary: #{analysis[:summary]}
+          Keywords: #{analysis[:keywords].join(", ")}
+          Title: #{issue.subject}
+        QUERY
+      rescue => e
+        ai_helper_logger.warn("Failed to build hybrid query: #{e.message}, falling back to raw query")
+        "#{issue.subject} #{issue.description}"
+      end
 
       # Create a filter for the Qdrant database query.
       # @param filter [Array<Hash>] The filter to create.
