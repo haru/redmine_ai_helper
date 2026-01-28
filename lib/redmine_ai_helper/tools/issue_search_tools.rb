@@ -229,9 +229,8 @@ module RedmineAiHelper
       class IssueQueryBuilder
         # Initializes a new IssueQueryBuilder instance.
         # @param params [Hash] The parameters for the query.
-        # @param defaults [Hash] The default parameters for the query.
         # @return [IssueQueryBuilder] The initialized IssueQueryBuilder instance.
-        def initialize(params, defaults = {})
+        def initialize(params)
           @query = IssueQuery.new(name: "_")
           @params = params
           @query.column_names = ["project", "tracker", "status", "subject", "priority", "assigned_to", "updated_on"]
