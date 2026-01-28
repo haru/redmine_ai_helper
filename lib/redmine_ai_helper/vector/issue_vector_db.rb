@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 require "json"
+require_relative "issue_content_analyzer"
 
 module RedmineAiHelper
   module Vector
@@ -8,6 +9,7 @@ module RedmineAiHelper
     # This class is responsible for managing the vector database for issues in Redmine.
     class IssueVectorDb < VectorDb
       include ROUTE_HELPERS
+      include RedmineAiHelper::Logger
 
       # Return the name of the vector index used for this store.
       # @return [String] the canonical index identifier for the issue embedding index.
@@ -50,10 +52,58 @@ module RedmineAiHelper
           category_name: issue.category&.name,
           issue_url: issue_url(issue, only_path: true),
         }
-        content = "#{issue.subject} #{issue.description}"
-        content += " " + issue.journals.map { |journal| journal.notes.to_s }.join(" ")
+        content = build_hybrid_content(issue)
 
         return { content: content, payload: payload }
+      end
+
+      private
+
+      # Build hybrid content using LLM analysis for improved vector search.
+      # Falls back to raw content if analysis fails.
+      # @param issue [Issue] The issue to build content for.
+      # @return [String] The structured content for vector embedding.
+      def build_hybrid_content(issue)
+        analyzer = IssueContentAnalyzer.new
+        analysis = analyzer.analyze(issue)
+        build_structured_content(issue, analysis)
+      rescue => e
+        ai_helper_logger.warn("Failed to analyze issue content: #{e.message}")
+        build_raw_content(issue)
+      end
+
+      # Build structured content from issue and analysis results.
+      # @param issue [Issue] The issue to build content for.
+      # @param analysis [Hash] The analysis result containing :summary and :keywords.
+      # @return [String] The formatted structured content.
+      def build_structured_content(issue, analysis)
+        <<~CONTENT
+          Summary: #{analysis[:summary]}
+
+          Keywords: #{analysis[:keywords].join(", ")}
+
+          Title: #{issue.subject}
+
+          Description: #{truncate_text(issue.description, 500)}
+        CONTENT
+      end
+
+      # Build raw content using the original approach (fallback).
+      # @param issue [Issue] The issue to build content for.
+      # @return [String] The raw concatenated content.
+      def build_raw_content(issue)
+        content = "#{issue.subject} #{issue.description}"
+        content += " " + issue.journals.map { |j| j.notes.to_s }.join(" ")
+        content
+      end
+
+      # Truncate text to a maximum length, adding ellipsis if truncated.
+      # @param text [String, nil] The text to truncate.
+      # @param max_length [Integer] The maximum length.
+      # @return [String] The truncated text.
+      def truncate_text(text, max_length)
+        return "" if text.nil?
+        text.length > max_length ? text[0...max_length] + "..." : text
       end
     end
   end
