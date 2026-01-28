@@ -96,6 +96,7 @@ pt-BR:
         other_page: "Esta é a página de %{action_name} para %{controller_name}."
       issue_agent:
         search_answer_instruction: "Para tarefas como encontrar múltiplas tarefas que correspondam a certas condições, como 'Encontre tarefas que atendam a estas condições' ou 'Mostre-me tarefas com estes critérios', por favor, use a ferramenta search_issues para recuperar e retornar uma lista de tarefas."
+        search_answer_instruction_with_vector: "Ao pesquisar tarefas, use a ferramenta apropriada: Para pesquisas conceituais/semânticas (ex: 'tarefas relacionadas a exceções', 'problemas de desempenho'), use a pesquisa vetorial (ask_with_filter). Para condições de filtro explícitas (ex: 'status fechado', 'atribuído a alguém'), use search_issues."
       leader_agent:
         generate_final_response: "Todos os agentes concluíram suas tarefas. Por favor, crie a resposta final para o usuário."
   activerecord:

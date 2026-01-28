@@ -12,8 +12,11 @@ module RedmineAiHelper
 
       # Backstory for the IssueAgent
       def backstory
-        search_answer_instruction = I18n.t("ai_helper.prompts.issue_agent.search_answer_instruction")
-        search_answer_instruction = "" if AiHelperSetting.vector_search_enabled?
+        if AiHelperSetting.vector_search_enabled?
+          search_answer_instruction = I18n.t("ai_helper.prompts.issue_agent.search_answer_instruction_with_vector")
+        else
+          search_answer_instruction = I18n.t("ai_helper.prompts.issue_agent.search_answer_instruction")
+        end
         prompt = load_prompt("issue_agent/backstory")
         prompt.format(issue_properties: issue_properties, search_answer_instruction: search_answer_instruction)
       end
