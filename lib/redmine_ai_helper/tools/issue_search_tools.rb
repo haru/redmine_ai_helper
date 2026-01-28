@@ -93,7 +93,7 @@ module RedmineAiHelper
           return { issues: format_issues(issues), total_count: total_count }
         end
 
-        validate_errors = validate_search_params(fields, date_fields, time_fields, number_fields, text_fields, status_field, custom_fields)
+        validate_errors = validate_search_params(fields, date_fields)
         raise(validate_errors.join("\n")) if validate_errors.length > 0
 
         params = { fields: [], operators: {}, values: {} }
@@ -183,7 +183,7 @@ module RedmineAiHelper
       end
 
       # Validate the parameters for the search_issues tool
-      def validate_search_params(fields, date_fields, time_fields, number_fields, text_fields, status_field, custom_fields)
+      def validate_search_params(fields, date_fields)
         errors = []
 
         fields.each do |field|
@@ -218,7 +218,7 @@ module RedmineAiHelper
             end
           else
             unless field[:values].length == 0
-              errors << "The #{field[:name]} and #{field[:operator]} does not require a value. But the value is specified."
+              errors << "The #{field[:field_name]} and #{field[:operator]} does not require a value. But the value is specified."
             end
           end
         end
