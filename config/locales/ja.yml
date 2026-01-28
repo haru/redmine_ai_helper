@@ -112,7 +112,8 @@ ja:
           other: "バージョンのページです。"
         other_page: "%{controller_name}の%{action_name}ページです"
       issue_agent:
-        search_answer_instruction: "なお、「条件に合ったチケットを探して」「こういう条件のチケット見せて」の様な複数のチケット探すタスクの場合には、チケット検索のURLを返してください。"
+        search_answer_instruction: "なお、「条件に合ったチケットを探して」「こういう条件のチケット見せて」の様な複数のチケットを探すタスクの場合には、search_issuesツールを使ってチケットの一覧を取得し、結果を返してください。"
+        search_answer_instruction_with_vector: "チケットを検索する際は、以下のように使い分けてください：概念的・意味的な検索（「例外に関するチケット」「パフォーマンス問題」「ログイン関連のバグ」など）にはベクトル検索（ask_with_filter）を使用し、明確なフィルタ条件（「ステータスが完了」「担当者が○○」「今月更新された」など属性値で絞り込む場合）にはsearch_issuesを使用してください。"
       leader_agent:
         generate_final_response: "全てのエージェントがタスクを完了しました。ユーザーへの最終的な回答を作成してください。"
   activerecord:
