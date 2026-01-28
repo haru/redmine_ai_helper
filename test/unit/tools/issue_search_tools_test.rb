@@ -66,7 +66,7 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
         identifier: "private-test-#{Time.now.to_i}-#{rand(10000)}",
         is_public: false
       )
-      # Use save to avoid unique constraint error
+      # Avoid adding the same tracker twice to prevent uniqueness violations on the join table
       unless private_project.trackers.include?(private_tracker)
         private_project.trackers << private_tracker
       end

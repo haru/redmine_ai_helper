@@ -81,17 +81,19 @@ module RedmineAiHelper
       # @param custom_fields [Array] Custom field search filters.
       # @return [Hash] A hash containing issues array and total_count.
       def search_issues(project_id:, limit: 50, fields: [], date_fields: [], time_fields: [], number_fields: [], text_fields: [], status_field: [], custom_fields: [])
+        limit = [limit.to_i, 1].max
         project = Project.find(project_id)
 
         if fields.empty? && date_fields.empty? && time_fields.empty? && number_fields.empty? && text_fields.empty? && status_field.empty? && custom_fields.empty?
           # No conditions: return open visible issues for the project (same as Redmine default)
           issues = Issue.visible(User.current).open.where(project_id: project_id)
+                        .includes(:status, :priority, :tracker, :assigned_to, :author, :custom_values)
                         .order(id: :desc).limit(limit)
           total_count = Issue.visible(User.current).open.where(project_id: project_id).count
           return { issues: format_issues(issues), total_count: total_count }
         end
 
-        validate_errors = generate_issue_search_url_validate(fields, date_fields, time_fields, number_fields, text_fields, status_field, custom_fields)
+        validate_errors = validate_search_params(fields, date_fields)
         raise(validate_errors.join("\n")) if validate_errors.length > 0
 
         params = { fields: [], operators: {}, values: {} }
@@ -180,8 +182,8 @@ module RedmineAiHelper
         end
       end
 
-      # Validate the parameters for generate_issue_search_url
-      def generate_issue_search_url_validate(fields, date_fields, time_fields, number_fields, text_fields, status_field, custom_fields)
+      # Validate the parameters for the search_issues tool
+      def validate_search_params(fields, date_fields)
         errors = []
 
         fields.each do |field|
@@ -216,7 +218,7 @@ module RedmineAiHelper
             end
           else
             unless field[:values].length == 0
-              errors << "The #{field[:name]} and #{field[:operator]} does not require a value. But the value is specified."
+              errors << "The #{field[:field_name]} and #{field[:operator]} does not require a value. But the value is specified."
             end
           end
         end
@@ -277,7 +279,8 @@ module RedmineAiHelper
         def execute(project, user: User.current, limit: 50)
           setup_query(project, user)
           scope = @query.base_scope
-          scope.order(id: :desc).limit(limit).to_a
+          scope.includes(:status, :priority, :tracker, :assigned_to, :author, :custom_values)
+               .order(id: :desc).limit(limit).to_a
         end
 
         # Returns the total count of matching issues
