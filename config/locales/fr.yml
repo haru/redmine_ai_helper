@@ -67,7 +67,7 @@ fr:
           other: "Ceci est la page de la version."
         other_page: "Ceci est la page %{action_name} pour %{controller_name}."
       issue_agent:
-        search_answer_instruction: "Pour des tâches telles que la recherche de plusieurs demandes correspondant à certaines conditions, comme 'Trouver les demandes qui remplissent ces conditions' ou 'Montrez-moi les demandes avec ces critères', veuillez retourner l'URL de la recherche de demandes."
+        search_answer_instruction: "Pour des tâches telles que la recherche de plusieurs demandes correspondant à certaines conditions, comme 'Trouver les demandes qui remplissent ces conditions' ou 'Montrez-moi les demandes avec ces critères', veuillez utiliser l'outil search_issues pour récupérer et retourner une liste de demandes."
       leader_agent:
         generate_final_response: "Tous les agents ont terminé leurs tâches. Veuillez créer la réponse finale pour l'utilisateur."
   activerecord:

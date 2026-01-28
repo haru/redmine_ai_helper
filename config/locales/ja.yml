@@ -112,7 +112,7 @@ ja:
           other: "バージョンのページです。"
         other_page: "%{controller_name}の%{action_name}ページです"
       issue_agent:
-        search_answer_instruction: "なお、「条件に合ったチケットを探して」「こういう条件のチケット見せて」の様な複数のチケット探すタスクの場合には、チケット検索のURLを返してください。"
+        search_answer_instruction: "なお、「条件に合ったチケットを探して」「こういう条件のチケット見せて」の様な複数のチケットを探すタスクの場合には、search_issuesツールを使ってチケットの一覧を取得し、結果を返してください。"
       leader_agent:
         generate_final_response: "全てのエージェントがタスクを完了しました。ユーザーへの最終的な回答を作成してください。"
   activerecord:

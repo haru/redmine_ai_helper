@@ -112,7 +112,7 @@ en:
           other: "This is the page for the version."
         other_page: "This is the %{action_name} page for %{controller_name}."
       issue_agent:
-        search_answer_instruction: "For tasks such as finding multiple issues that match certain conditions, like 'Find issues that meet these conditions' or 'Show me issues with these criteria,' please return the URL for the issue search."
+        search_answer_instruction: "For tasks such as finding multiple issues that match certain conditions, like 'Find issues that meet these conditions' or 'Show me issues with these criteria,' please use the search_issues tool to retrieve and return a list of issues."
       leader_agent:
         generate_final_response: "All agents have completed their tasks. Please create the final response for the user."
   activerecord:
