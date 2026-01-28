@@ -141,8 +141,9 @@ module RedmineAiHelper
         { url: url }
       end
 
-      define_function :search_issues, description: "Search issues based on the filter conditions and return matching issues. For search items with '_id', specify the ID instead of the name of the search target. If you do not know the ID, you need to call capable_issue_properties in advance to obtain the ID. Maximum 50 issues are returned." do
+      define_function :search_issues, description: "Search issues based on the filter conditions and return matching issues. For search items with '_id', specify the ID instead of the name of the search target. If you do not know the ID, you need to call capable_issue_properties in advance to obtain the ID. Default limit is 50 issues." do
         property :project_id, type: "integer", description: "The project ID of the project to search in.", required: true
+        property :limit, type: "integer", description: "Maximum number of issues to return. Default is 50.", required: false
         property :fields, type: "array", description: "Search fields for the issue." do
           item type: "object", description: "Search field for the issue." do
             property :field_name, type: "string", description: "The name of the field to search.", required: true
@@ -209,6 +210,7 @@ module RedmineAiHelper
       end
       # Search issues based on filter conditions and return matching issues
       # @param project_id [Integer] The project ID of the project to search in.
+      # @param limit [Integer] Maximum number of issues to return. Default is 50.
       # @param fields [Array] Search fields for the issue.
       # @param date_fields [Array] Date search fields for the issue.
       # @param time_fields [Array] Time search fields for the issue.
@@ -217,13 +219,13 @@ module RedmineAiHelper
       # @param status_field [Array] Status search fields for the issue.
       # @param custom_fields [Array] Custom field search filters.
       # @return [Hash] A hash containing issues array and total_count.
-      def search_issues(project_id:, fields: [], date_fields: [], time_fields: [], number_fields: [], text_fields: [], status_field: [], custom_fields: [])
+      def search_issues(project_id:, limit: 50, fields: [], date_fields: [], time_fields: [], number_fields: [], text_fields: [], status_field: [], custom_fields: [])
         project = Project.find(project_id)
 
         if fields.empty? && date_fields.empty? && time_fields.empty? && number_fields.empty? && text_fields.empty? && status_field.empty? && custom_fields.empty?
           # No conditions: return open visible issues for the project (same as Redmine default)
           issues = Issue.visible(User.current).open.where(project_id: project_id)
-                        .order(id: :desc).limit(50)
+                        .order(id: :desc).limit(limit)
           total_count = Issue.visible(User.current).open.where(project_id: project_id).count
           return { issues: format_issues(issues), total_count: total_count }
         end
@@ -277,7 +279,7 @@ module RedmineAiHelper
           builder.add_custom_field_filter(field[:field_id], field[:operator], field[:values].map(&:to_s))
         end
 
-        issues = builder.execute(project, user: User.current, limit: 50)
+        issues = builder.execute(project, user: User.current, limit: limit)
         total_count = builder.count(project, user: User.current)
 
         { issues: format_issues(issues), total_count: total_count }

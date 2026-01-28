@@ -75,7 +75,12 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       @project = Project.find(1)
       @tracker = Tracker.find(1)
       @user = User.find(2)
+      @previous_user = User.current
       User.current = @user
+    end
+
+    teardown do
+      User.current = @previous_user
     end
 
     should "return issues matching search conditions" do
@@ -191,6 +196,48 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       assert result[:issues].length > 0, "Should return at least one issue"
       assert result[:issues].all? { |i| i[:tracker][:id] == @tracker.id },
              "All returned issues should have tracker_id #{@tracker.id}"
+    end
+
+    should "respect custom limit parameter" do
+      # Create 10 issues
+      10.times do |i|
+        Issue.create!(
+          project: @project,
+          tracker: @tracker,
+          subject: "Limit Test Issue #{i}",
+          author: @user,
+          status: IssueStatus.first,
+          priority: IssuePriority.first
+        )
+      end
+
+      result = @provider.search_issues(project_id: @project.id, limit: 5)
+
+      assert result[:issues].length <= 5
+      assert result[:total_count] >= 10
+    end
+
+    should "respect custom limit parameter with filters" do
+      # Create 10 issues
+      10.times do |i|
+        Issue.create!(
+          project: @project,
+          tracker: @tracker,
+          subject: "Limit Filter Test Issue #{i}",
+          author: @user,
+          status: IssueStatus.first,
+          priority: IssuePriority.first
+        )
+      end
+
+      result = @provider.search_issues(
+        project_id: @project.id,
+        limit: 3,
+        fields: [{ field_name: "tracker_id", operator: "=", values: [@tracker.id.to_s] }]
+      )
+
+      assert result[:issues].length <= 3
+      assert result[:total_count] >= 10
     end
 
     should "return custom fields in correct format" do
