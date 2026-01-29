@@ -25,6 +25,27 @@
   </div>
 </div>
 
+<% if @issue&.new_record? && AiHelperSetting.vector_search_enabled? %>
+<!-- Duplicate check button for new issues -->
+<div id="ai-helper-duplicate-check-container" class="ai-helper-autocompletion-controls" style="display: none;">
+  <div style="display: flex; flex-direction: column; gap: 8px;">
+    <div style="display: flex; justify-content: flex-start; align-items: center;">
+      <%= link_to "javascript:void(0)", id: "ai-helper-duplicate-check-btn", class: "icon icon-edit" do %>
+        <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
+        <%= t('ai_helper.duplicate_check.button') %>
+      <% end %>
+    </div>
+    <div id="ai-helper-duplicate-check-results" class="ai-helper-duplicate-check-results" style="display: none;">
+      <!-- Results will be inserted here -->
+    </div>
+    <div id="ai-helper-duplicate-check-loading" class="ai-helper-duplicate-check-loading" style="display: none;">
+      <span class="ai-helper-spinner"></span>
+      <%= t('ai_helper.duplicate_check.loading') %>
+    </div>
+  </div>
+</div>
+<% end %>
+
 <script>
   function removeExistingNotesCheckbox() {
     const existingNotesCheckbox = document.getElementById('ai-helper-notes-checkbox-container');
@@ -156,6 +177,74 @@ function initalizeIssueCompletion() {
       window.aiHelperInstances = {};
     }
     window.aiHelperInstances.autoCompletion = autoCompletion;
+  }
+
+  // Initialize duplicate check for new issues
+  const duplicateCheckContainer = document.getElementById('ai-helper-duplicate-check-container');
+  if (duplicateCheckContainer && descriptionTextarea) {
+    // Move the duplicate check container below the description checkbox container
+    const descriptionContainer = document.getElementById('ai-helper-description-checkbox-container');
+    if (descriptionContainer && descriptionContainer.parentNode) {
+      descriptionContainer.parentNode.insertBefore(duplicateCheckContainer, descriptionContainer.nextSibling);
+    }
+    duplicateCheckContainer.style.display = 'block';
+
+    // Initialize duplicate check functionality
+    const duplicateCheckBtn = document.getElementById('ai-helper-duplicate-check-btn');
+    const duplicateCheckResults = document.getElementById('ai-helper-duplicate-check-results');
+    const duplicateCheckLoading = document.getElementById('ai-helper-duplicate-check-loading');
+    const subjectInput = document.getElementById('issue_subject');
+
+    if (duplicateCheckBtn) {
+      duplicateCheckBtn.addEventListener('click', async function() {
+        const subject = subjectInput ? subjectInput.value : '';
+        const description = descriptionTextarea ? descriptionTextarea.value : '';
+
+        if (!subject.trim() && !description.trim()) {
+          alert('<%= j t('ai_helper.duplicate_check.empty_content') %>');
+          return;
+        }
+
+        // Show loading, hide results
+        duplicateCheckLoading.style.display = 'flex';
+        duplicateCheckResults.style.display = 'none';
+        duplicateCheckBtn.classList.add('disabled');
+
+        try {
+          const response = await fetch('<%= ai_helper_check_duplicates_path(id: project.id) %>', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({
+              subject: subject,
+              description: description
+            })
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Unknown error');
+          }
+
+          const html = await response.text();
+          duplicateCheckResults.innerHTML = html;
+          duplicateCheckResults.style.display = 'block';
+        } catch (error) {
+          console.error('Duplicate check error:', error);
+          duplicateCheckResults.innerHTML = '';
+          const errorParagraph = document.createElement('p');
+          errorParagraph.className = 'ai-helper-error';
+          errorParagraph.textContent = error.message;
+          duplicateCheckResults.appendChild(errorParagraph);
+          duplicateCheckResults.style.display = 'block';
+        } finally {
+          duplicateCheckLoading.style.display = 'none';
+          duplicateCheckBtn.classList.remove('disabled');
+        }
+      });
+    }
   }
 
   // Initialize autocompletion for notes field (only for existing issues, not for new issue creation)

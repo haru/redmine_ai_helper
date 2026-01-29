@@ -35,7 +35,7 @@ Redmine::Plugin.register :redmine_ai_helper do
                  ai_helper: [
                    :chat, :chat_form, :reload, :clear, :call_llm,
                    :history, :issue_summary, :generate_issue_summary, :wiki_summary, :generate_wiki_summary, :conversation, :generate_issue_reply,
-                   :generate_sub_issues, :add_sub_issues, :similar_issues, :project_health, :generate_project_health, :project_health_pdf, :project_health_markdown,
+                   :generate_sub_issues, :add_sub_issues, :similar_issues, :check_duplicates, :project_health, :generate_project_health, :project_health_pdf, :project_health_markdown,
                    :project_health_metadata,
                    :suggest_completion, :suggest_wiki_completion, :check_typos,
                    :api_create_health_report,

@@ -13,7 +13,9 @@ class AiHelperController < ApplicationController
   include AiHelperHelper
   include RedmineAiHelper::Export::PDF::ProjectHealthPdfHelper
 
-  protect_from_forgery except: [:generate_project_health, :suggest_completion, :suggest_wiki_completion, :check_typos, :api_create_health_report]
+  rescue_from ActionDispatch::Http::Parameters::ParseError, with: :handle_parse_error
+
+  protect_from_forgery except: [:generate_project_health, :suggest_completion, :suggest_wiki_completion, :check_typos, :api_create_health_report, :check_duplicates]
   accept_api_auth :api_create_health_report
   before_action :find_issue, only: [:issue_summary, :update_issue_summary, :generate_issue_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues]
   before_action :find_wiki_page, only: [:wiki_summary, :generate_wiki_summary]
@@ -262,6 +264,45 @@ class AiHelperController < ApplicationController
     end
   end
 
+  # Check for duplicate issues by content (subject and description)
+  # This is used for duplicate checking when creating a new issue.
+  def check_duplicates
+    unless request.content_type == "application/json"
+      render json: { error: "Unsupported Media Type" },
+             status: :unsupported_media_type and return
+    end
+
+    begin
+      data = JSON.parse(request.body.read)
+    rescue JSON::ParserError
+      render json: { error: "Invalid JSON" }, status: :bad_request and return
+    end
+
+    subject = data["subject"] || ""
+    description = data["description"] || ""
+
+    # Check if subject and description are empty
+    if subject.blank? && description.blank?
+      render json: { error: I18n.t("ai_helper.duplicate_check.empty_content") },
+             status: :bad_request and return
+    end
+
+    begin
+      llm = RedmineAiHelper::Llm.new
+      similar_issues = llm.find_similar_issues_by_content(
+        subject: subject,
+        description: description,
+        project: @project,
+      )
+
+      render partial: "ai_helper/issues/similar_issues",
+             locals: { similar_issues: similar_issues }
+    rescue => e
+      ai_helper_logger.error "Duplicate check error: #{e.message}"
+      render json: { error: e.message }, status: :internal_server_error
+    end
+  end
+
   # Suggest auto-completion for textarea input
   def suggest_completion
     unless request.content_type == "application/json"
@@ -432,7 +473,7 @@ class AiHelperController < ApplicationController
         id: latest_report.id,
         created_at: latest_report.created_at,
         created_at_iso8601: latest_report.created_at&.iso8601,
-        created_on_formatted: view_context.format_time(latest_report.created_at)
+        created_on_formatted: view_context.format_time(latest_report.created_at),
       }
     else
       head :no_content
@@ -534,14 +575,14 @@ class AiHelperController < ApplicationController
     text = params[:text]
     return render json: { suggestions: [] } if text.blank?
 
-    context_type = params[:context_type] || 'general'
+    context_type = params[:context_type] || "general"
 
     llm = RedmineAiHelper::Llm.new
     suggestions = llm.check_typos(
       text: text,
       context_type: context_type,
       project: @project,
-      max_suggestions: 10
+      max_suggestions: 10,
     )
 
     render json: { suggestions: suggestions }
@@ -560,7 +601,7 @@ class AiHelperController < ApplicationController
           # Generate health report without streaming
           health_report_text = llm.project_health_report(
             project: @project,
-            stream_proc: nil
+            stream_proc: nil,
           )
 
           # Get the latest saved report
@@ -575,16 +616,15 @@ class AiHelperController < ApplicationController
             project_id: @project.id,
             project_identifier: @project.identifier,
             health_report: latest_report.health_report,
-            created_at: latest_report.created_at.iso8601
+            created_at: latest_report.created_at.iso8601,
           }, status: :ok
-
         rescue => e
           ai_helper_logger.error "API health report generation error: #{e.message}"
           ai_helper_logger.error e.backtrace.join("\n")
 
           render json: {
             error: "Failed to generate health report",
-            message: e.message
+            message: e.message,
           }, status: :internal_server_error
         end
       end
@@ -652,4 +692,7 @@ class AiHelperController < ApplicationController
     { error: e.message }
   end
 
+  def handle_parse_error
+    render json: { error: "Invalid JSON" }, status: :bad_request
+  end
 end

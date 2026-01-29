@@ -1339,3 +1339,58 @@ table.list.ai-helper-report-list td.radio .radio-placeholder {
 [dir="rtl"] .ai-helper-comparison-report-info {
   flex-direction: row-reverse;
 }
+
+/* Duplicate check styles */
+#ai-helper-duplicate-check-btn {
+  text-decoration: none;
+}
+
+#ai-helper-duplicate-check-btn:hover {
+  text-decoration: underline;
+}
+
+#ai-helper-duplicate-check-btn.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.ai-helper-duplicate-check-results {
+  margin-top: 8px;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.ai-helper-duplicate-check-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #666;
+  font-size: 13px;
+  padding: 8px 0;
+}
+
+.ai-helper-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ddd;
+  border-top-color: #628db6;
+  border-radius: 50%;
+  animation: ai-helper-spin 0.8s linear infinite;
+}
+
+@keyframes ai-helper-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ai-helper-error {
+  color: #c00;
+  padding: 8px;
+  margin: 0;
+}

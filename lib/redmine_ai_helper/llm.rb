@@ -125,6 +125,33 @@ module RedmineAiHelper
       end
     end
 
+    # Find similar issues by content (subject and description) using IssueAgent
+    # This is used for duplicate checking when creating a new issue.
+    # @param subject [String] The subject of the issue
+    # @param description [String] The description of the issue
+    # @param project [Project] The project object
+    # @return [Array<Hash>] Array of similar issues with metadata
+    def find_similar_issues_by_content(subject:, description:, project:)
+      begin
+        langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: "find similar issues by content")
+        agent = RedmineAiHelper::Agents::IssueAgent.new(project: project, langfuse: langfuse)
+        langfuse.create_span(
+          name: "find_similar_issues_by_content",
+          input: "subject: #{subject[0..50]}",
+        )
+        results = agent.find_similar_issues_by_content(
+          subject: subject,
+          description: description,
+        )
+        langfuse.finish_current_span(output: "found: #{results.length}")
+        langfuse.flush
+        results
+      rescue => e
+        ai_helper_logger.error "error: #{e.full_message}"
+        raise e
+      end
+    end
+
     # Get the summary of the wiki page using WikiAgent with streaming support
     # @param wiki_page [WikiPage] The wiki page object
     # @param stream_proc [Proc] Optional callback proc for streaming content
@@ -260,7 +287,7 @@ module RedmineAiHelper
     # @param project [Project, nil] The project object
     # @param max_suggestions [Integer] Maximum number of suggestions to return
     # @return [Array<Hash>] Array of typo suggestions
-    def check_typos(text:, context_type: 'general', project: nil, max_suggestions: 10)
+    def check_typos(text:, context_type: "general", project: nil, max_suggestions: 10)
       begin
         ai_helper_logger.info "Starting typo check: context_type=#{context_type}, text_length=#{text.length}"
 
@@ -273,7 +300,7 @@ module RedmineAiHelper
         suggestions = agent.check_typos(
           text: text,
           context_type: context_type,
-          max_suggestions: max_suggestions
+          max_suggestions: max_suggestions,
         )
 
         ai_helper_logger.info "DocumentationAgent returned suggestions: #{suggestions}"
@@ -301,7 +328,7 @@ module RedmineAiHelper
         langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: prompt)
         options = {
           langfuse: langfuse,
-          project_id: project.id
+          project_id: project.id,
         }
 
         agent = RedmineAiHelper::Agents::ProjectAgent.new(options)
@@ -310,7 +337,7 @@ module RedmineAiHelper
         answer = agent.health_report_comparison(
           old_report: old_report,
           new_report: new_report,
-          stream_proc: stream_proc
+          stream_proc: stream_proc,
         )
 
         langfuse.finish_current_span(output: answer)

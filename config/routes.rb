@@ -17,6 +17,7 @@ RedmineApp::Application.routes.draw do
   post "ai_helper/issue/:id/subissue_gen", to: "ai_helper#generate_sub_issues", as: "ai_helper_subissue_gen"
   post "ai_helper/issue/:id/add_sub_issues", to: "ai_helper#add_sub_issues", as: "ai_helper_add_sub_issues"
   get "ai_helper/issue/:id/similar_issues", to: "ai_helper#similar_issues", as: "ai_helper_similar_issues"
+  post "projects/:id/ai_helper/check_duplicates", to: "ai_helper#check_duplicates", as: "ai_helper_check_duplicates"
   post "projects/:id/ai_helper/issue/:issue_id/suggest_completion", to: "ai_helper#suggest_completion", as: "ai_helper_suggest_completion", constraints: { issue_id: /\d+|new/ }
   post "projects/:id/ai_helper/wiki/suggest_completion", to: "ai_helper#suggest_wiki_completion", as: "ai_helper_suggest_wiki_completion"
   post "projects/:id/ai_helper/wiki/:page_name/suggest_completion", to: "ai_helper#suggest_wiki_completion", as: "ai_helper_suggest_wiki_completion_with_page"

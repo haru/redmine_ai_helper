@@ -188,6 +188,27 @@ module RedmineAiHelper
         end
       end
 
+      # Find similar issues by content (subject and description) using VectorTools
+      # This is used for duplicate checking when creating a new issue.
+      # @param subject [String] The subject of the issue
+      # @param description [String] The description of the issue
+      # @return [Array<Hash>] Array of similar issues with formatted metadata
+      def find_similar_issues_by_content(subject:, description:)
+        unless AiHelperSetting.vector_search_enabled?
+          raise("Vector search is not enabled")
+        end
+
+        vector_tools = RedmineAiHelper::Tools::VectorTools.new
+        similar_issues = vector_tools.find_similar_issues_by_content(
+          subject: subject,
+          description: description,
+          k: 10,
+        )
+
+        ai_helper_logger.debug "Found #{similar_issues.length} similar issues by content"
+        similar_issues
+      end
+
       # Generate text completion for inline auto-completion
       # @param text [String] The current text content
       # @param cursor_position [Integer] The cursor position in the text
