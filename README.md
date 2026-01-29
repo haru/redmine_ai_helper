@@ -15,6 +15,7 @@
   - [Create a comment draft with AI Helper](#create-a-comment-draft-with-ai-helper)
   - [Generate subtasks from issues](#generate-subtasks-from-issues)
   - [Similar Issues Search](#similar-issues-search)
+  - [Duplicate Issue Check](#duplicate-issue-check)
   - [Inline Issue Description and Wiki Completion](#inline-issue-description-and-wiki-completion)
   - [Typo Checking and Correction Suggestions](#typo-checking-and-correction-suggestions)
   - [Project Health Report](#project-health-report)
@@ -88,6 +89,12 @@ You can generate subtasks from issues using the AI Helper Plugin. This feature a
 You can search for similar issues using the AI Helper Plugin. This feature is only available if vector search is set up. The AI Helper Plugin allows you to find issues similar to the current one based on its content, making it easier to discover related past issues and solutions.
 
 ![Image](https://github.com/user-attachments/assets/3217149b-4874-49b9-aa98-b35a7324bca3)
+
+## Duplicate Issue Check
+
+When creating a new issue, you can check for duplicate issues before submitting. This feature uses vector search to find similar existing issues based on the subject and description you enter. This helps prevent creating duplicate issues and encourages reusing or referencing existing issues.
+
+This feature is only available if vector search is set up.
 
 ## Inline Issue Description and Wiki Completion
 
