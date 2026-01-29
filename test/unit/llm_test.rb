@@ -120,6 +120,66 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       end
     end
 
+    context "find_similar_issues_by_content" do
+      setup do
+        @project = Project.find(1)
+        @llm = RedmineAiHelper::Llm.new(@params)
+      end
+
+      should "call IssueAgent with correct parameters" do
+        mock_agent = mock("IssueAgent")
+        RedmineAiHelper::Agents::IssueAgent.stubs(:new).returns(mock_agent)
+
+        expected_results = [{ id: 2, subject: "Similar issue", similarity_score: 85.0 }]
+        mock_agent.expects(:find_similar_issues_by_content)
+                  .with(subject: "Test subject", description: "Test description")
+                  .returns(expected_results)
+
+        result = @llm.find_similar_issues_by_content(
+          subject: "Test subject",
+          description: "Test description",
+          project: @project
+        )
+
+        assert_equal expected_results, result
+      end
+
+      should "return similar issues when found" do
+        mock_agent = mock("IssueAgent")
+        RedmineAiHelper::Agents::IssueAgent.stubs(:new).returns(mock_agent)
+
+        expected_results = [
+          { id: 2, subject: "Similar issue 1", similarity_score: 85.0 },
+          { id: 3, subject: "Similar issue 2", similarity_score: 72.0 }
+        ]
+        mock_agent.stubs(:find_similar_issues_by_content).returns(expected_results)
+
+        result = @llm.find_similar_issues_by_content(
+          subject: "Test",
+          description: "Test",
+          project: @project
+        )
+
+        assert_equal 2, result.length
+        assert_equal 85.0, result.first[:similarity_score]
+      end
+
+      should "handle errors gracefully" do
+        mock_agent = mock("IssueAgent")
+        RedmineAiHelper::Agents::IssueAgent.stubs(:new).returns(mock_agent)
+        mock_agent.stubs(:find_similar_issues_by_content)
+                  .raises(StandardError.new("Vector search failed"))
+
+        assert_raises(StandardError) do
+          @llm.find_similar_issues_by_content(
+            subject: "Test",
+            description: "Test",
+            project: @project
+          )
+        end
+      end
+    end
+
     context "error handling" do
       should "handle basic chat functionality" do
         message = AiHelperMessage.new(content: "test", role: "user")

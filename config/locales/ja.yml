@@ -78,6 +78,11 @@ ja:
       note_enabled_tooltip: "AIノート自動補完が有効です。Tabキーで提案を適用、Escキーで閉じます。"
       note_disabled_tooltip: "AIノート自動補完が無効です。チェックボックスをオンにして有効化してください。"
       common_toggle_label: "AIヘルパーで補完"
+    duplicate_check:
+      title: "AIヘルパーで重複チェック"
+      button: "AIヘルパーで重複チェック"
+      loading: "類似チケットを検索中..."
+      empty_content: "件名または説明を入力してから重複チェックを実行してください"
     model_profiles:
       create_profile_title: "新しいモデルプロファイル"
       edit_profile_title: "モデルプロファイルの編集"

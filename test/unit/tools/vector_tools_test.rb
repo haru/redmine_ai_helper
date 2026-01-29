@@ -125,7 +125,7 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         @mock_analyzer = mock("issue_content_analyzer")
         @mock_analyzer.stubs(:analyze).returns({
           summary: "Test summary",
-          keywords: ["keyword1", "keyword2"]
+          keywords: ["keyword1", "keyword2"],
         })
         RedmineAiHelper::Vector::IssueContentAnalyzer.stubs(:new).returns(@mock_analyzer)
       end
@@ -172,27 +172,27 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         # Create another issue for similar results
         other_issue = Issue.find(2)
         other_issue.project.enable_module!(:ai_helper)
-        
+
         # Mock vector search results
         mock_results = [
           {
             "payload" => {
-              "issue_id" => @issue.id  # Current issue - should be filtered out
+              "issue_id" => @issue.id,  # Current issue - should be filtered out
             },
-            "score" => 1.0
+            "score" => 1.0,
           },
           {
             "payload" => {
-              "issue_id" => other_issue.id
+              "issue_id" => other_issue.id,
             },
-            "score" => 0.85
-          }
+            "score" => 0.85,
+          },
         ]
-        
+
         @mock_db.expects(:similarity_search).returns(mock_results)
-        
+
         result = @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
-        
+
         assert_equal 1, result.length
         assert_equal other_issue.id, result.first[:id]
         assert_equal 85.0, result.first[:similarity_score]
@@ -202,52 +202,52 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         # Create issue in project without ai_helper module
         other_issue = Issue.find(2)
         other_issue.project.disable_module!(:ai_helper)
-        
+
         mock_results = [
           {
             "payload" => {
-              "issue_id" => other_issue.id
+              "issue_id" => other_issue.id,
             },
-            "score" => 0.85
-          }
+            "score" => 0.85,
+          },
         ]
-        
+
         @mock_db.expects(:similarity_search).returns(mock_results)
-        
+
         result = @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
-        
+
         assert_equal 0, result.length
       end
 
       should "handle issues that cause generate_issue_data to fail" do
         other_issue = Issue.find(2)
         other_issue.project.enable_module!(:ai_helper)
-        
+
         mock_results = [
           {
             "payload" => {
-              "issue_id" => other_issue.id
+              "issue_id" => other_issue.id,
             },
-            "score" => 0.85
-          }
+            "score" => 0.85,
+          },
         ]
-        
+
         @mock_db.expects(:similarity_search).returns(mock_results)
-        
+
         # Mock generate_issue_data to raise an error
         @vector_tools.stubs(:generate_issue_data).raises(NoMethodError.new("undefined method `id' for nil:NilClass"))
-        
+
         result = @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
-        
+
         # Should return empty array when generate_issue_data fails
         assert_equal 0, result.length
       end
 
       should "return empty array when no results from vector search" do
         @mock_db.expects(:similarity_search).returns([])
-        
+
         result = @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
-        
+
         assert_equal 0, result.length
       end
 
@@ -273,7 +273,7 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         @mock_analyzer = mock("issue_content_analyzer")
         @analysis_result = {
           summary: "Test issue about login functionality",
-          keywords: ["authentication", "login", "session"]
+          keywords: ["authentication", "login", "session"],
         }
       end
 
@@ -329,6 +329,201 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         # Should not raise error, should fallback gracefully
         result = @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
         assert_equal [], result
+      end
+    end
+
+    context "#find_similar_issues_by_content" do
+      setup do
+        @project = Project.find(1)
+        @project.enable_module!(:ai_helper)
+        User.current = User.find(1)
+        @mock_db = mock("vector_db")
+        @vector_tools.stubs(:vector_db).with(target: "issue").returns(@mock_db)
+        @mock_db.stubs(:client).returns(true)
+        @mock_logger.stubs(:warn)
+        @vector_tools.instance_variable_set(:@project, @project)
+      end
+
+      should "raise error if vector search is not enabled" do
+        @setting.stubs(:vector_search_enabled).returns(false)
+        assert_raises(RuntimeError, "Vector search is not enabled") do
+          @vector_tools.find_similar_issues_by_content(subject: "Test subject", description: "Test description", k: 10)
+        end
+      end
+
+      should "raise error if k is out of range" do
+        assert_raises(RuntimeError, "Limit must be between 1 and 50") do
+          @vector_tools.find_similar_issues_by_content(subject: "Test", description: "Test", k: 0)
+        end
+        assert_raises(RuntimeError, "Limit must be between 1 and 50") do
+          @vector_tools.find_similar_issues_by_content(subject: "Test", description: "Test", k: 51)
+        end
+      end
+
+      should "raise error if vector search client not available" do
+        @mock_db.stubs(:client).returns(false)
+        assert_raises(RuntimeError, "Vector search is not enabled or configured") do
+          @vector_tools.find_similar_issues_by_content(subject: "Test", description: "Test", k: 10)
+        end
+      end
+
+      should "return similar issues successfully" do
+        other_issue = Issue.find(2)
+        other_issue.project.enable_module!(:ai_helper)
+
+        mock_results = [
+          {
+            "payload" => {
+              "issue_id" => other_issue.id,
+            },
+            "score" => 0.85,
+          },
+        ]
+
+        @mock_db.expects(:similarity_search).returns(mock_results)
+
+        result = @vector_tools.find_similar_issues_by_content(
+          subject: "Test subject",
+          description: "Test description",
+          k: 10,
+        )
+
+        assert_equal 1, result.length
+        assert_equal other_issue.id, result.first[:id]
+        assert_equal 85.0, result.first[:similarity_score]
+      end
+
+      should "build content query correctly" do
+        other_issue = Issue.find(2)
+        other_issue.project.enable_module!(:ai_helper)
+
+        expected_query_pattern = /Title:.*Test subject.*Description:.*Test description/m
+        @mock_db.expects(:similarity_search).with { |args|
+          args[:question].match?(expected_query_pattern) && args[:k] == 10
+        }.returns([])
+
+        @vector_tools.find_similar_issues_by_content(
+          subject: "Test subject",
+          description: "Test description",
+          k: 10,
+        )
+      end
+
+      should "filter out issues from projects without ai_helper module" do
+        other_issue = Issue.find(2)
+        other_issue.project.disable_module!(:ai_helper)
+
+        mock_results = [
+          {
+            "payload" => {
+              "issue_id" => other_issue.id,
+            },
+            "score" => 0.85,
+          },
+        ]
+
+        @mock_db.expects(:similarity_search).returns(mock_results)
+
+        result = @vector_tools.find_similar_issues_by_content(
+          subject: "Test",
+          description: "Test",
+          k: 10,
+        )
+
+        assert_equal 0, result.length
+      end
+
+      should "filter out issues that are not visible" do
+        other_issue = Issue.find(2)
+        other_issue.project.enable_module!(:ai_helper)
+        Issue.any_instance.stubs(:visible?).returns(false)
+
+        mock_results = [
+          {
+            "payload" => {
+              "issue_id" => other_issue.id,
+            },
+            "score" => 0.85,
+          },
+        ]
+
+        @mock_db.expects(:similarity_search).returns(mock_results)
+
+        result = @vector_tools.find_similar_issues_by_content(
+          subject: "Test",
+          description: "Test",
+          k: 10,
+        )
+
+        assert_equal 0, result.length
+      end
+
+      should "return empty array when no results from vector search" do
+        @mock_db.expects(:similarity_search).returns([])
+
+        result = @vector_tools.find_similar_issues_by_content(
+          subject: "Test",
+          description: "Test",
+          k: 10,
+        )
+
+        assert_equal 0, result.length
+      end
+
+      should "handle nil results from vector search" do
+        @mock_db.expects(:similarity_search).returns(nil)
+
+        result = @vector_tools.find_similar_issues_by_content(
+          subject: "Test",
+          description: "Test",
+          k: 10,
+        )
+
+        assert_equal 0, result.length
+      end
+
+      should "work with only subject provided" do
+        other_issue = Issue.find(2)
+        other_issue.project.enable_module!(:ai_helper)
+
+        @mock_db.expects(:similarity_search).with { |args|
+          args[:question].include?("Title: Test subject") && args[:k] == 10
+        }.returns([
+          {
+            "payload" => { "issue_id" => other_issue.id },
+            "score" => 0.75,
+          },
+        ])
+
+        result = @vector_tools.find_similar_issues_by_content(
+          subject: "Test subject",
+          description: "",
+          k: 10,
+        )
+
+        assert_equal 1, result.length
+      end
+
+      should "work with only description provided" do
+        other_issue = Issue.find(2)
+        other_issue.project.enable_module!(:ai_helper)
+
+        @mock_db.expects(:similarity_search).with { |args|
+          args[:question].include?("Description: Test description") && args[:k] == 10
+        }.returns([
+          {
+            "payload" => { "issue_id" => other_issue.id },
+            "score" => 0.75,
+          },
+        ])
+
+        result = @vector_tools.find_similar_issues_by_content(
+          subject: "",
+          description: "Test description",
+          k: 10,
+        )
+
+        assert_equal 1, result.length
       end
     end
   end

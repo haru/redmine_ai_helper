@@ -201,6 +201,80 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
       end
     end
 
+    context "find_similar_issues_by_content" do
+      setup do
+        @mock_vector_tools = mock("VectorTools")
+        RedmineAiHelper::Tools::VectorTools.stubs(:new).returns(@mock_vector_tools)
+        @mock_setting = mock("AiHelperSetting")
+        @mock_setting.stubs(:vector_search_enabled).returns(true)
+        AiHelperSetting.stubs(:vector_search_enabled?).returns(true)
+      end
+
+      should "return similar issues when vector search is enabled" do
+        similar_issues_data = [
+          {
+            id: 2,
+            subject: "Similar issue",
+            similarity_score: 85.0
+          }
+        ]
+
+        @mock_vector_tools.expects(:find_similar_issues_by_content)
+                         .with(subject: "Test subject", description: "Test description", k: 10)
+                         .returns(similar_issues_data)
+
+        result = @agent.find_similar_issues_by_content(
+          subject: "Test subject",
+          description: "Test description"
+        )
+
+        assert_equal similar_issues_data, result
+      end
+
+      should "raise error if vector search not enabled" do
+        AiHelperSetting.stubs(:vector_search_enabled?).returns(false)
+
+        assert_raises(RuntimeError, "Vector search is not enabled") do
+          @agent.find_similar_issues_by_content(
+            subject: "Test",
+            description: "Test"
+          )
+        end
+      end
+
+      should "log debug message with results count" do
+        similar_issues_data = [{id: 2}, {id: 3}]
+        @mock_vector_tools.stubs(:find_similar_issues_by_content).returns(similar_issues_data)
+
+        mock_logger = mock("logger")
+        mock_logger.expects(:debug).with("Found 2 similar issues by content")
+        @agent.stubs(:ai_helper_logger).returns(mock_logger)
+
+        result = @agent.find_similar_issues_by_content(
+          subject: "Test",
+          description: "Test"
+        )
+
+        assert_equal similar_issues_data, result
+      end
+
+      should "handle errors from VectorTools gracefully" do
+        @mock_vector_tools.stubs(:find_similar_issues_by_content)
+                         .raises(StandardError.new("Vector search failed"))
+
+        mock_logger = mock("logger")
+        mock_logger.stubs(:error)
+        @agent.stubs(:ai_helper_logger).returns(mock_logger)
+
+        assert_raises(StandardError) do
+          @agent.find_similar_issues_by_content(
+            subject: "Test",
+            description: "Test"
+          )
+        end
+      end
+    end
+
     # Tests for refactoring - methods moved from llm.rb to IssueAgent
     context "text completion methods (refactored from llm.rb)" do
       setup do

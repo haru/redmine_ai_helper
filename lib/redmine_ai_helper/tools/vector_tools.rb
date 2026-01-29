@@ -108,7 +108,7 @@ module RedmineAiHelper
 
         begin
           ai_helper_logger.debug("Finding similar issues for issue_id: #{issue_id}, k: #{k}")
-          
+
           issue = Issue.find_by(id: issue_id)
           raise("Issue not found with ID: #{issue_id}") unless issue
           raise("Permission denied") unless issue.visible?
@@ -116,45 +116,45 @@ module RedmineAiHelper
           # Use vector database for similarity search
           ai_helper_logger.debug("Initializing vector database for issue target")
           db = vector_db(target: "issue")
-          
+
           # Check if vector search is enabled and client is available
           ai_helper_logger.debug("Checking if vector search client is available")
           unless db.client
             raise("Vector search is not enabled or configured")
           end
-          
+
           query = build_hybrid_query(issue)
           ai_helper_logger.debug("Performing similarity search with query: #{query[0..100]}...")
-          
+
           # Search for similar issues
           results = db.similarity_search(question: query, k: k)
           ai_helper_logger.debug("Raw similarity search results: #{results&.length || 0} items")
-          
+
           # Handle case where results is nil or empty
           results = [] if results.nil?
-          
+
           # Filter out current issue and check permissions for each result
           similar_issues = []
           results.each do |result|
             result_issue_id = result["payload"]["issue_id"]
-            
+
             # Skip current issue
             next if result_issue_id == issue_id
-            
+
             # Check if the issue exists and is visible
             result_issue = Issue.find_by(id: result_issue_id)
             next unless result_issue
             next unless result_issue.visible?
-            
+
             # Check if ai_helper module is enabled in the issue's project
             next unless result_issue.project&.module_enabled?(:ai_helper)
-            
+
             begin
               # Generate issue data using the same method as ask_with_filter
               issue_data = generate_issue_data(result_issue)
               # Add similarity score to the issue data
               issue_data[:similarity_score] = (result["score"] * 100).round(1)
-              
+
               similar_issues << issue_data
             rescue => e
               ai_helper_logger.warn("Failed to generate issue data for issue #{result_issue_id}: #{e.message}")
@@ -162,7 +162,7 @@ module RedmineAiHelper
               next
             end
           end
-          
+
           ai_helper_logger.debug("Similar issues found: #{similar_issues.length} items")
           similar_issues
         rescue => e
@@ -173,7 +173,69 @@ module RedmineAiHelper
         end
       end
 
+      # Find similar issues by content (subject and description) using vector similarity search.
+      # This is used for duplicate checking when creating a new issue.
+      # @param subject [String] The subject of the issue.
+      # @param description [String] The description of the issue.
+      # @param k [Integer] The number of similar issues to retrieve. Default is 10. Max is 50
+      # @return [Array<Hash>] An array of hashes containing similar issues with similarity scores.
+      def find_similar_issues_by_content(subject:, description:, k: 10)
+        raise("Vector search is not enabled") unless vector_db_enabled?
+        raise("Limit must be between 1 and 50") unless k.between?(1, 50)
+
+        begin
+          query = build_content_query(subject, description)
+          db = vector_db(target: "issue")
+
+          unless db.client
+            raise("Vector search is not enabled or configured")
+          end
+
+          ai_helper_logger.debug("Finding similar issues by content, k: #{k}")
+          results = db.similarity_search(question: query, k: k)
+          ai_helper_logger.debug("Raw similarity search results: #{results&.length || 0} items")
+
+          results ||= []
+
+          similar_issues = []
+          results.each do |result|
+            result_issue_id = result["payload"]["issue_id"]
+
+            result_issue = Issue.find_by(id: result_issue_id)
+            next unless result_issue
+            next unless result_issue.visible?
+            next unless result_issue.project&.module_enabled?(:ai_helper)
+
+            begin
+              issue_data = generate_issue_data(result_issue)
+              issue_data[:similarity_score] = (result["score"] * 100).round(1)
+              similar_issues << issue_data
+            rescue => e
+              ai_helper_logger.warn("Failed to generate issue data for issue #{result_issue_id}: #{e.message}")
+              next
+            end
+          end
+
+          ai_helper_logger.debug("Similar issues found by content: #{similar_issues.length} items")
+          similar_issues
+        rescue => e
+          ai_helper_logger.error("Error in find_similar_issues_by_content: #{e.message}")
+          raise("Error: #{e.message}")
+        end
+      end
+
       private
+
+      # Build a content query for vector similarity search from subject and description.
+      # @param subject [String] The subject of the issue.
+      # @param description [String] The description of the issue.
+      # @return [String] The formatted query string.
+      def build_content_query(subject, description)
+        <<~QUERY
+          Title: #{subject}
+          Description: #{description}
+        QUERY
+      end
 
       # Build a hybrid query for vector similarity search.
       # Uses IssueContentAnalyzer to generate a structured query with summary, keywords, and title.

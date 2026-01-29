@@ -29,6 +29,9 @@
     },
     "vscode-erb-beautify.useBundler": true,
     "github.copilot.nextEditSuggestions.enabled": false,
-    "rubyLsp.formatter": "auto"
+    "rubyLsp.formatter": "auto",
+    "chat.tools.terminal.autoApprove": {
+      "bundle": true
+    }
   }
 }
