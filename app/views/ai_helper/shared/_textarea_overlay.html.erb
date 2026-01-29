@@ -233,7 +233,11 @@ function initalizeIssueCompletion() {
           duplicateCheckResults.style.display = 'block';
         } catch (error) {
           console.error('Duplicate check error:', error);
-          duplicateCheckResults.innerHTML = '<p class="ai-helper-error">' + error.message + '</p>';
+          duplicateCheckResults.innerHTML = '';
+          const errorParagraph = document.createElement('p');
+          errorParagraph.className = 'ai-helper-error';
+          errorParagraph.textContent = error.message;
+          duplicateCheckResults.appendChild(errorParagraph);
           duplicateCheckResults.style.display = 'block';
         } finally {
           duplicateCheckLoading.style.display = 'none';

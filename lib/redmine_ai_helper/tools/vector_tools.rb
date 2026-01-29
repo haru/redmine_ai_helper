@@ -180,8 +180,8 @@ module RedmineAiHelper
       # @param k [Integer] The number of similar issues to retrieve. Default is 10. Max is 50
       # @return [Array<Hash>] An array of hashes containing similar issues with similarity scores.
       def find_similar_issues_by_content(subject:, description:, k: 10)
-        raise("Vector search is not enabled") unless vector_db_enabled?
-        raise("Limit must be between 1 and 50") unless k.between?(1, 50)
+        raise("The vector search functionality is not enabled.") unless vector_db_enabled?
+        raise("limit must be between 1 and 50.") unless k.between?(1, 50)
 
         begin
           query = build_content_query(subject, description)
