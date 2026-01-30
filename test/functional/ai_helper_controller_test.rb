@@ -576,7 +576,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
       should "sanitize malicious content" do
         malicious_content = "<script>alert('xss')</script># Test Report\n<div>Content</div>"
-        expected_sanitized = "# Test Report\nContent"
+        expected_sanitized = "# Test Report\n\nContent"
 
         # Mock PDF generation and verify sanitized content is passed
         @controller.expects(:project_health_to_pdf).with(@project, expected_sanitized).returns("PDF content")
