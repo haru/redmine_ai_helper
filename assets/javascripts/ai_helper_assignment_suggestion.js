@@ -263,7 +263,7 @@ class AiHelperAssignmentSuggestion {
       const issueUrl = this.getIssueUrl(issue.id);
       const score = Math.round(issue.similarity_score);
       html += '<li class="ai-helper-suggest-assignee-similar-issue">';
-      html += '<a href="' + issueUrl + '" target="_blank" class="ai-helper-similar-issue-link">';
+      html += '<a href="' + this.escapeHtml(issueUrl) + '" target="_blank" class="ai-helper-similar-issue-link">';
       html += '#' + issue.id + ' ' + this.escapeHtml(issue.subject || '');
       html += '</a>';
       html += ' <span class="ai-helper-similar-issue-score">(' + this.labels.historyScore + ': ' + score + '%)</span>';
