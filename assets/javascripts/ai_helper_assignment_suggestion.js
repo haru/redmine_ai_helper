@@ -219,7 +219,7 @@ class AiHelperAssignmentSuggestion {
     html += '<div class="ai-helper-suggest-assignee-category-title">' + this.escapeHtml(title) + '</div>';
 
     if (!suggestions || suggestions.length === 0) {
-      html += '<div class="ai-helper-suggest-assignee-no-results">' + this.labels.noSuggestions + '</div>';
+      html += '<div class="ai-helper-suggest-assignee-no-results">' + this.escapeHtml(this.labels.noSuggestions) + '</div>';
     } else {
       html += '<ul class="ai-helper-suggest-assignee-list ai-helper-suggest-assignee-history-list">';
       suggestions.forEach((s, index) => {
