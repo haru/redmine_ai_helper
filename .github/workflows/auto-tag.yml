@@ -7,15 +7,18 @@ on:
     types: [closed]
 
 jobs:
-  tag:
+  tag-and-backmerge:
     # Run only when "merged" and "source branch starts with release/"
     if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/')
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Extract version from init.rb
         id: get_version
@@ -31,9 +34,35 @@ jobs:
         run: |
           if git rev-parse "v${{ env.VERSION }}" >/dev/null 2>&1; then
             echo "Tag v${{ env.VERSION }} already exists, skipping"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag "v${{ env.VERSION }}"
+            git push origin "v${{ env.VERSION }}"
+          fi
+
+      - name: Create backmerge PR to develop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check if main is already merged into develop
+          if git merge-base --is-ancestor origin/main origin/develop; then
+            echo "main is already merged into develop, skipping PR creation"
             exit 0
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "v${{ env.VERSION }}"
-          git push origin "v${{ env.VERSION }}"
+
+          # Check if a backmerge PR already exists
+          EXISTING_PR=$(gh pr list --base develop --head main --state open --json number --jq '.[0].number')
+          if [ -n "$EXISTING_PR" ]; then
+            echo "Backmerge PR #$EXISTING_PR already exists, skipping"
+            exit 0
+          fi
+
+          # Create a new backmerge PR
+          gh pr create \
+            --base develop \
+            --head main \
+            --title "Backmerge main to develop (v${{ env.VERSION }})" \
+            --body "Automated backmerge of main to develop after release v${{ env.VERSION }}.
+
+This PR was created automatically by GitHub Actions."
