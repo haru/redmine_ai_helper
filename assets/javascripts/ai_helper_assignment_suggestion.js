@@ -280,8 +280,13 @@ class AiHelperAssignmentSuggestion {
    * @returns {string} Issue URL
    */
   getIssueUrl(issueId) {
+    // Validate that issueId is a number for security
+    const id = parseInt(issueId, 10);
+    if (isNaN(id) || id <= 0) {
+      return '#';
+    }
     // Use Redmine's standard issue path
-    return '/issues/' + issueId;
+    return '/issues/' + id;
   }
 
   /**
@@ -293,10 +298,10 @@ class AiHelperAssignmentSuggestion {
    */
   renderCategory(title, suggestions, detailFn) {
     let html = '<div class="ai-helper-suggest-assignee-category">';
-    html += '<div class="ai-helper-suggest-assignee-category-title">' + title + '</div>';
+    html += '<div class="ai-helper-suggest-assignee-category-title">' + this.escapeHtml(title) + '</div>';
 
     if (!suggestions || suggestions.length === 0) {
-      html += '<div class="ai-helper-suggest-assignee-no-results">' + this.labels.noSuggestions + '</div>';
+      html += '<div class="ai-helper-suggest-assignee-no-results">' + this.escapeHtml(this.labels.noSuggestions) + '</div>';
     } else {
       html += '<ul class="ai-helper-suggest-assignee-list">';
       suggestions.forEach((s, index) => {
