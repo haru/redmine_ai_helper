@@ -15,8 +15,10 @@
   - [Create a comment draft with AI Helper](#create-a-comment-draft-with-ai-helper)
   - [Generate subtasks from issues](#generate-subtasks-from-issues)
   - [Similar Issues Search](#similar-issues-search)
+  - [Duplicate Issue Check](#duplicate-issue-check)
   - [Inline Issue Description and Wiki Completion](#inline-issue-description-and-wiki-completion)
   - [Typo Checking and Correction Suggestions](#typo-checking-and-correction-suggestions)
+  - [Assignee Suggestion](#assignee-suggestion)
   - [Project Health Report](#project-health-report)
     - [Health Report History](#health-report-history)
     - [Health Report REST API](#health-report-rest-api)
@@ -89,6 +91,12 @@ You can search for similar issues using the AI Helper Plugin. This feature is on
 
 ![Image](https://github.com/user-attachments/assets/3217149b-4874-49b9-aa98-b35a7324bca3)
 
+## Duplicate Issue Check
+
+When creating a new issue, you can check for duplicate issues before submitting. This feature uses vector search to find similar existing issues based on the subject and description you enter. This helps prevent creating duplicate issues and encourages reusing or referencing existing issues.
+
+This feature is only available if vector search is set up.
+
 ## Inline Issue Description and Wiki Completion
 
 You can use the AI Helper Plugin to complete issue descriptions and wiki pages inline. This feature provides suggestions and completions as you type, helping you write more detailed and accurate issue descriptions and wiki pages.
@@ -101,6 +109,12 @@ You can accept completion suggestions by pressing the TAB key.
 You can use the AI Helper Plugin to check for typos and receive correction suggestions. This feature helps you maintain content in your issues and wiki pages by identifying and correcting spelling errors.
 
 ![Image](https://github.com/user-attachments/assets/6a1e1963-f6ef-45fc-82a2-52dc377a35b1)
+
+## Assignee Suggestion
+
+The AI Helper Plugin can suggest optimal assignees when creating or editing issues. This feature analyzes the issue content, past assignment history, current workload, and project context to recommend suitable team members. Click the "Suggest assignee with AI Helper" link next to the "Assign to me" link in the issue form to receive assignee recommendations.
+
+![Image](https://github.com/user-attachments/assets/922985fb-4ec9-4784-b757-56b5c87e5e5c)
 
 ## Project Health Report
 

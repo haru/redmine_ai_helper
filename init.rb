@@ -27,7 +27,7 @@ Redmine::Plugin.register :redmine_ai_helper do
   author_url "https://github.com/haru"
   requires_redmine :version_or_higher => "6.0.0"
 
-  version "1.11.0"
+  version "1.12.0"
 
   project_module :ai_helper do
     permission :view_ai_helper,
@@ -35,10 +35,10 @@ Redmine::Plugin.register :redmine_ai_helper do
                  ai_helper: [
                    :chat, :chat_form, :reload, :clear, :call_llm,
                    :history, :issue_summary, :generate_issue_summary, :wiki_summary, :generate_wiki_summary, :conversation, :generate_issue_reply,
-                   :generate_sub_issues, :add_sub_issues, :similar_issues, :project_health, :generate_project_health, :project_health_pdf, :project_health_markdown,
+                   :generate_sub_issues, :add_sub_issues, :similar_issues, :check_duplicates, :project_health, :generate_project_health, :project_health_pdf, :project_health_markdown,
                    :project_health_metadata,
                    :suggest_completion, :suggest_wiki_completion, :check_typos,
-                   :api_create_health_report,
+                   :api_create_health_report, :suggest_assignees,
                  ],
                  ai_helper_dashboard: [
                    :index, :health_report_history, :health_report_show, :compare_health_reports, :comparison_pdf, :comparison_markdown,

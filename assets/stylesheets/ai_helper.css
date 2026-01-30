@@ -1339,3 +1339,157 @@ table.list.ai-helper-report-list td.radio .radio-placeholder {
 [dir="rtl"] .ai-helper-comparison-report-info {
   flex-direction: row-reverse;
 }
+
+/* Duplicate check styles */
+#ai-helper-duplicate-check-btn {
+  text-decoration: none;
+}
+
+#ai-helper-duplicate-check-btn:hover {
+  text-decoration: underline;
+}
+
+#ai-helper-duplicate-check-btn.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.ai-helper-duplicate-check-results {
+  margin-top: 8px;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.ai-helper-duplicate-check-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #666;
+  font-size: 13px;
+  padding: 8px 0;
+}
+
+.ai-helper-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ddd;
+  border-top-color: #628db6;
+  border-radius: 50%;
+  animation: ai-helper-spin 0.8s linear infinite;
+}
+
+@keyframes ai-helper-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ai-helper-error {
+  color: #c00;
+  padding: 8px;
+  margin: 0;
+}
+
+/* Assignment suggestion styles */
+.ai-helper-suggest-assignee-link {
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+.ai-helper-suggest-assignee-link .s-ai-helper-robot {
+  vertical-align: middle;
+}
+
+.ai-helper-suggest-assignee-panel {
+  margin-top: 8px;
+  padding: 10px;
+}
+
+.ai-helper-suggest-assignee-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.ai-helper-suggest-assignee-category {
+  margin-bottom: 10px;
+}
+
+.ai-helper-suggest-assignee-category-title {
+  font-weight: bold;
+  margin-bottom: 4px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid #ddd;
+}
+
+.ai-helper-suggest-assignee-list {
+  list-style: none;
+  margin: 4px 0;
+  padding: 0;
+}
+
+.ai-helper-suggest-assignee-list li {
+  padding: 3px 0;
+}
+
+.ai-helper-suggest-assignee-detail {
+  font-size: 0.9em;
+}
+
+.ai-helper-suggest-assignee-no-results {
+  font-style: italic;
+  padding: 4px 0;
+}
+
+.ai-helper-suggest-assignee-close {
+  text-align: right;
+  margin-top: 8px;
+}
+
+.ai-helper-suggest-assignee-error {
+  padding: 8px 0;
+}
+
+/* Similar issues display for history-based suggestions */
+.ai-helper-suggest-assignee-history-item {
+  margin-bottom: 8px;
+}
+
+.ai-helper-suggest-assignee-user-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ai-helper-suggest-assignee-similar-issues {
+  list-style: none;
+  margin: 4px 0 0 16px;
+  padding: 0;
+  border-left: 2px solid #ddd;
+  padding-left: 8px;
+}
+
+.ai-helper-suggest-assignee-similar-issue {
+  padding: 2px 0;
+  font-size: 0.9em;
+}
+
+.ai-helper-similar-issue-link {
+  color: #555;
+}
+
+.ai-helper-similar-issue-link:hover {
+  color: #169;
+}
+
+.ai-helper-similar-issue-score {
+  color: #888;
+  font-size: 0.9em;
+}

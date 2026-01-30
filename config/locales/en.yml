@@ -78,6 +78,31 @@ en:
       note_enabled_tooltip: "AI note auto-completion is enabled. Press Tab to accept suggestions or Esc to dismiss."
       note_disabled_tooltip: "AI note auto-completion is disabled. Check the box to enable."
       common_toggle_label: "AI Helper Completion"
+    assignment_suggestion:
+      link_label: "Suggest assignee with AI Helper"
+      loading: "Analyzing assignees..."
+      close: "Close"
+      no_suggestions: "No suggestions"
+      history_based:
+        title: "Suggestions based on similar issue history"
+        score: "Similarity"
+        similar_count: "Similar issues"
+        similar_issues: "Similar issues used for suggestion"
+        more_issues: "%{count} more"
+      workload_based:
+        title: "Suggestions based on current workload"
+        open_issues: "Open issues"
+        issues_unit: ""
+      instruction_based:
+        title: "Suggestions based on user instructions"
+        reason: "Reason"
+      error: "An error occurred while fetching assignee suggestions"
+      empty_content: "Please enter a subject or description"
+    duplicate_check:
+      title: "Check Duplicates with AI Helper"
+      button: "Check Duplicates with AI Helper"
+      loading: "Searching for similar issues..."
+      empty_content: "Please enter subject or description before checking duplicates"
     model_profiles:
       create_profile_title: "New model profile"
       edit_profile_title: "Edit model profile"
@@ -112,7 +137,8 @@ en:
           other: "This is the page for the version."
         other_page: "This is the %{action_name} page for %{controller_name}."
       issue_agent:
-        search_answer_instruction: "For tasks such as finding multiple issues that match certain conditions, like 'Find issues that meet these conditions' or 'Show me issues with these criteria,' please return the URL for the issue search."
+        search_answer_instruction: "For tasks such as finding multiple issues that match certain conditions, like 'Find issues that meet these conditions' or 'Show me issues with these criteria,' please use the search_issues tool to retrieve and return a list of issues."
+        search_answer_instruction_with_vector: "When searching for issues, use the appropriate tool: For conceptual/semantic searches (e.g., 'issues related to exceptions', 'performance problems', 'login bugs'), use vector search (ask_with_filter). For explicit filter conditions (e.g., 'status is closed', 'assigned to someone', 'updated this month'), use search_issues."
       leader_agent:
         generate_final_response: "All agents have completed their tasks. Please create the final response for the user."
   activerecord:
@@ -140,5 +166,6 @@ en:
         issue_draft_instructions: "Instructions for issue comment generation"
         subtask_instructions: "Instructions for subtask generation"
         health_report_instructions: "Instructions for health report generation"
+        assignment_suggestion_instructions: "Assignment Suggestion Instructions"
 
   field_id: "ID"

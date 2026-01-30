@@ -11,6 +11,9 @@ if [ ! -f ~/.bashrc ]; then
     cd $BASEDIR
 fi
 
+curl -fsSL https://claude.ai/install.sh | bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> $HOME/.bashrc
+
 cd $REDMINE_ROOT
 
 git pull

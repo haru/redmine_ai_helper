@@ -35,6 +35,17 @@
         "/usr/local/redmine/plugins/redmine_ai_helper"
       ],
       "env": {}
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest",
+        "--cdp-endpoint",
+        "ws://browserless:3000"
+      ],
+      "env": {}
     }
   }
 }

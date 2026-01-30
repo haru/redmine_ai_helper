@@ -12,8 +12,11 @@ module RedmineAiHelper
 
       # Backstory for the IssueAgent
       def backstory
-        search_answer_instruction = I18n.t("ai_helper.prompts.issue_agent.search_answer_instruction")
-        search_answer_instruction = "" if AiHelperSetting.vector_search_enabled?
+        if AiHelperSetting.vector_search_enabled?
+          search_answer_instruction = I18n.t("ai_helper.prompts.issue_agent.search_answer_instruction_with_vector")
+        else
+          search_answer_instruction = I18n.t("ai_helper.prompts.issue_agent.search_answer_instruction")
+        end
         prompt = load_prompt("issue_agent/backstory")
         prompt.format(issue_properties: issue_properties, search_answer_instruction: search_answer_instruction)
       end
@@ -44,7 +47,7 @@ module RedmineAiHelper
         prompt = load_prompt("issue_agent/summary")
         issue_json = generate_issue_data(issue)
         # Convert issue data to JSON string for the prompt
-        json_string = JSON.pretty_generate(issue_json)
+        json_string = safe_json_for_prompt(issue_json)
         prompt_text = prompt.format(issue: json_string)
         message = { role: "user", content: prompt_text }
         messages = [message]
@@ -66,7 +69,7 @@ module RedmineAiHelper
         project_setting = AiHelperProjectSetting.settings(issue.project)
         issue_json = generate_issue_data(issue)
         prompt_text = prompt.format(
-          issue: JSON.pretty_generate(issue_json),
+          issue: safe_json_for_prompt(issue_json),
           instructions: instructions,
           issue_draft_instructions: project_setting.issue_draft_instructions,
           format: Setting.text_formatting,
@@ -135,7 +138,7 @@ module RedmineAiHelper
         project_setting = AiHelperProjectSetting.settings(issue.project)
 
         prompt_text = prompt.format(
-          parent_issue: JSON.pretty_generate(issue_json),
+          parent_issue: safe_json_for_prompt(issue_json),
           instructions: instructions,
           subtask_instructions: project_setting.subtask_instructions,
           format_instructions: parser.get_format_instructions,
@@ -183,6 +186,81 @@ module RedmineAiHelper
           ai_helper_logger.error e.backtrace.join("\n")
           raise e
         end
+      end
+
+      # Find similar issues by content (subject and description) using VectorTools
+      # This is used for duplicate checking when creating a new issue.
+      # @param subject [String] The subject of the issue
+      # @param description [String] The description of the issue
+      # @return [Array<Hash>] Array of similar issues with formatted metadata
+      def find_similar_issues_by_content(subject:, description:)
+        unless AiHelperSetting.vector_search_enabled?
+          raise("Vector search is not enabled")
+        end
+
+        vector_tools = RedmineAiHelper::Tools::VectorTools.new
+        similar_issues = vector_tools.find_similar_issues_by_content(
+          subject: subject,
+          description: description,
+          k: 10,
+        )
+
+        ai_helper_logger.debug "Found #{similar_issues.length} similar issues by content"
+        similar_issues
+      end
+
+      # Suggest assignees based on user instructions using structured LLM output
+      # @param assignable_users [Array<User>] Users who can be assigned
+      # @param instructions [String] User-defined instructions
+      # @param subject [String] Issue subject
+      # @param description [String] Issue description
+      # @param tracker_id [Integer, nil] Tracker ID
+      # @param category_id [Integer, nil] Category ID
+      # @return [Hash] Parsed JSON response with suggestions
+      def suggest_assignees_by_instructions(assignable_users:, instructions:, subject:, description:, tracker_id: nil, category_id: nil)
+        json_schema = {
+          type: "object",
+          properties: {
+            suggestions: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  user_id: { type: "integer" },
+                  reason: { type: "string" },
+                },
+                required: ["user_id", "reason"],
+              },
+            },
+          },
+          required: ["suggestions"],
+        }
+        parser = Langchain::OutputParsers::StructuredOutputParser.from_json_schema(json_schema)
+
+        users_text = assignable_users.map { |u| "- #{u.name} (ID: #{u.id})" }.join("\n")
+        tracker_name = tracker_id ? Tracker.find_by(id: tracker_id)&.name : ""
+        category_name = category_id ? IssueCategory.find_by(id: category_id)&.name : ""
+
+        prompt = load_prompt("assignment_suggestion_prompt")
+        prompt_text = prompt.format(
+          instructions: instructions,
+          assignable_users: users_text,
+          subject: subject || "",
+          description: description || "",
+          tracker: tracker_name || "",
+          category: category_name || "",
+          format_instructions: parser.get_format_instructions,
+        )
+
+        message = { role: "user", content: prompt_text }
+        messages = [message]
+        answer = chat(messages, output_parser: parser)
+
+        fix_parser = Langchain::OutputParsers::OutputFixingParser.from_llm(
+          llm: client,
+          parser: parser,
+        )
+        fix_parser.parse(answer)
       end
 
       # Generate text completion for inline auto-completion
@@ -416,10 +494,21 @@ module RedmineAiHelper
           The following issue properties are available for Project ID: #{@project.id}.
 
           ```json
-          #{JSON.pretty_generate(properties)}
+          #{safe_json_for_prompt(properties)}
           ```
         EOS
         content
+      end
+
+      # Generate a JSON string safe for prompt interpolation.
+      # Escapes backslashes to prevent them from being consumed by the prompt formatter.
+      # @param data [Hash] The data to convert to JSON.
+      # @return [String] The safe JSON string.
+      def safe_json_for_prompt(data)
+        json = JSON.pretty_generate(data)
+        # Langchain's prompt format consumes one level of backslash escaping.
+        # We need to double-escape backslashes so they survive the formatting.
+        json.gsub(/\\/) { "\\\\" }
       end
     end
   end

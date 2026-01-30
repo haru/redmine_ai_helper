@@ -34,6 +34,20 @@ McpAgent (generates SubMcpAgent classes per MCP server)
 - All user-facing text must support **i18n** (use `config/locales/*.yml`)
 - Git commit messages in **English**
 
+**Test-Driven Development (TDD):**
+This project follows Test-Driven Development. **Always write tests BEFORE implementing features.**
+
+TDD Workflow:
+1. **Red**: Write a failing test first that describes the expected behavior
+2. **Green**: Write the minimum code necessary to make the test pass
+3. **Refactor**: Improve the code while keeping tests green
+
+TDD Rules:
+- **Never write production code without a failing test first**
+- When fixing a bug, first write a test that reproduces the bug, then fix it
+- When adding a feature, write tests for the feature first, then implement
+- Run tests frequently during development to ensure nothing breaks
+
 **Testing with Shoulda:**
 ```ruby
 class SomeTest < ActiveSupport::TestCase
@@ -44,6 +58,27 @@ class SomeTest < ActiveSupport::TestCase
   end
 end
 ```
+
+**Running Tests:**
+```bash
+# Run all plugin tests
+bundle exec rake redmine:plugins:test NAME=redmine_ai_helper
+
+# Run a single test file
+bundle exec ruby -I"lib:test" plugins/redmine_ai_helper/test/unit/base_agent_test.rb
+
+# Run tests matching a pattern
+bundle exec rake redmine:plugins:test NAME=redmine_ai_helper TESTOPTS="--name=/test_name_pattern/"
+```
+
+**Testing Guidelines:**
+- Use `mocha` for mocking - but only when connecting to external servers
+- Aim for test coverage of 95% or higher (check `coverage/` directory)
+- Test structure:
+  - `test/functional/` - Controller tests
+  - `test/unit/` - Model, agent, and tool tests
+  - `test/integration/` - API and integration tests
+- Use `model_factory.rb` for creating test fixtures
 
 **File Structure Patterns:**
 - Controllers: `app/controllers/ai_helper_*.rb`

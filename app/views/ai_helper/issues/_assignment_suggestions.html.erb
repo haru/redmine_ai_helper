@@ -1,0 +1,37 @@
+<% if @error.present? %>
+  <%= render partial: 'ai_helper/issues/assignment_suggestion_error', locals: { error: @error } %>
+<% else %>
+  <% if history_based && history_based[:available] %>
+    <%= render partial: 'ai_helper/issues/assignment_suggestion_category',
+               locals: {
+                 category_type: 'history',
+                 title: l('ai_helper.assignment_suggestion.history_based.title'),
+                 suggestions: history_based[:suggestions],
+                 show_similar_issues: true
+               } %>
+  <% end %>
+
+  <% if workload_based && workload_based[:available] %>
+    <%= render partial: 'ai_helper/issues/assignment_suggestion_category',
+               locals: {
+                 category_type: 'workload',
+                 title: l('ai_helper.assignment_suggestion.workload_based.title'),
+                 suggestions: workload_based[:suggestions],
+                 show_similar_issues: false
+               } %>
+  <% end %>
+
+  <% if instruction_based && instruction_based[:available] %>
+    <%= render partial: 'ai_helper/issues/assignment_suggestion_category',
+               locals: {
+                 category_type: 'instruction',
+                 title: l('ai_helper.assignment_suggestion.instruction_based.title'),
+                 suggestions: instruction_based[:suggestions],
+                 show_similar_issues: false
+               } %>
+  <% end %>
+<% end %>
+
+<div class="ai-helper-suggest-assignee-close">
+  <a href="#" class="ai-helper-suggest-assignee-close-btn"><%= l('ai_helper.assignment_suggestion.close') %></a>
+</div>

@@ -3,9 +3,33 @@ on:
   push:
     branches:
       - '**'
+    paths-ignore:
+      - 'README.md'
+      - '.devcontainer/**'
+      - '.claude/**'
+      - '**/*.md'
+      - 'docs/**'
+      - '.agent/**'
+      - '.vscode/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/*.md'
   pull_request:
     branches:
       - '**'
+    paths-ignore:
+      - 'README.md'
+      - '.devcontainer/**'
+      - '.claude/**'
+      - '**/*.md'
+      - 'docs/**'
+      - '.agent/**'
+      - '.vscode/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/*.md'
   workflow_dispatch:
 env:
   SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -31,7 +55,7 @@ jobs:
             redmine_version: master
     services:
       mysql:
-        image: mysql:9.5
+        image: mysql:8.1
         options: --health-cmd "mysqladmin ping -h localhost" --health-interval 20s --health-timeout 10s --health-retries 10
         env:
           MYSQL_ROOT_PASSWORD: dbpassword

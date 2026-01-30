@@ -78,6 +78,31 @@ ja:
       note_enabled_tooltip: "AIノート自動補完が有効です。Tabキーで提案を適用、Escキーで閉じます。"
       note_disabled_tooltip: "AIノート自動補完が無効です。チェックボックスをオンにして有効化してください。"
       common_toggle_label: "AIヘルパーで補完"
+    assignment_suggestion:
+      link_label: "AIヘルパーで担当者を提案"
+      loading: "担当者を分析中..."
+      close: "閉じる"
+      no_suggestions: "該当なし"
+      history_based:
+        title: "過去の類似チケットの担当履歴からの提案"
+        score: "類似度"
+        similar_count: "類似チケット数"
+        similar_issues: "判断根拠となった類似チケット"
+        more_issues: "他%{count}件"
+      workload_based:
+        title: "現在の負荷状況からの提案"
+        open_issues: "担当中"
+        issues_unit: "件"
+      instruction_based:
+        title: "ユーザーインストラクションからの提案"
+        reason: "理由"
+      error: "担当者提案の取得中にエラーが発生しました"
+      empty_content: "題名または説明を入力してください"
+    duplicate_check:
+      title: "AIヘルパーで重複チェック"
+      button: "AIヘルパーで重複チェック"
+      loading: "類似チケットを検索中..."
+      empty_content: "件名または説明を入力してから重複チェックを実行してください"
     model_profiles:
       create_profile_title: "新しいモデルプロファイル"
       edit_profile_title: "モデルプロファイルの編集"
@@ -112,7 +137,8 @@ ja:
           other: "バージョンのページです。"
         other_page: "%{controller_name}の%{action_name}ページです"
       issue_agent:
-        search_answer_instruction: "なお、「条件に合ったチケットを探して」「こういう条件のチケット見せて」の様な複数のチケット探すタスクの場合には、チケット検索のURLを返してください。"
+        search_answer_instruction: "なお、「条件に合ったチケットを探して」「こういう条件のチケット見せて」の様な複数のチケットを探すタスクの場合には、search_issuesツールを使ってチケットの一覧を取得し、結果を返してください。"
+        search_answer_instruction_with_vector: "チケットを検索する際は、以下のように使い分けてください：概念的・意味的な検索（「例外に関するチケット」「パフォーマンス問題」「ログイン関連のバグ」など）にはベクトル検索（ask_with_filter）を使用し、明確なフィルタ条件（「ステータスが完了」「担当者が○○」「今月更新された」など属性値で絞り込む場合）にはsearch_issuesを使用してください。"
       leader_agent:
         generate_final_response: "全てのエージェントがタスクを完了しました。ユーザーへの最終的な回答を作成してください。"
   activerecord:
@@ -140,5 +166,6 @@ ja:
         issue_draft_instructions: "チケットのコメントを生成する際の指示"
         subtask_instructions: "子チケットを生成する際の指示"
         health_report_instructions: "健全性レポートを生成する際の指示"
+        assignment_suggestion_instructions: "担当者提案インストラクション"
 
   field_id: "ID"

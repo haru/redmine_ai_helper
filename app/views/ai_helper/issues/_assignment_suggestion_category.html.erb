@@ -1,0 +1,47 @@
+<div class="ai-helper-suggest-assignee-category ai-helper-suggest-assignee-category-<%= category_type %>">
+  <div class="ai-helper-suggest-assignee-category-title"><%= title %></div>
+
+  <% if suggestions.blank? %>
+    <div class="ai-helper-suggest-assignee-no-results"><%= l('ai_helper.assignment_suggestion.no_suggestions') %></div>
+  <% else %>
+    <ul class="ai-helper-suggest-assignee-list<%= ' ai-helper-suggest-assignee-history-list' if show_similar_issues %>">
+      <% suggestions.each_with_index do |suggestion, index| %>
+        <li class="<%= 'ai-helper-suggest-assignee-history-item' if show_similar_issues %>">
+          <div class="ai-helper-suggest-assignee-user-row">
+            <a href="#" class="ai-helper-suggest-assignee-user" data-user-id="<%= suggestion[:user_id] %>">
+              <%= index + 1 %>. <%= suggestion[:user_name] %>
+            </a>
+
+            <% case category_type %>
+            <% when 'history' %>
+              <span class="ai-helper-suggest-assignee-detail">
+                (<%= l('ai_helper.assignment_suggestion.history_based.score') %>: <%= suggestion[:score] %>%<% if suggestion[:similar_issue_count] %> / <%= l('ai_helper.assignment_suggestion.history_based.similar_count') %>: <%= suggestion[:similar_issue_count] %><% end %>)
+              </span>
+            <% when 'workload' %>
+              <span class="ai-helper-suggest-assignee-detail">
+                (<%= l('ai_helper.assignment_suggestion.workload_based.open_issues') %>: <%= suggestion[:open_issues_count] %><%= l('ai_helper.assignment_suggestion.workload_based.issues_unit') %>)
+              </span>
+            <% when 'instruction' %>
+              <% if suggestion[:reason].present? %>
+                <span class="ai-helper-suggest-assignee-detail">
+                  (<%= l('ai_helper.assignment_suggestion.instruction_based.reason') %>: <%= suggestion[:reason] %>)
+                </span>
+              <% end %>
+            <% end %>
+          </div>
+
+          <% if show_similar_issues && suggestion[:similar_issues].present? %>
+            <ul class="ai-helper-suggest-assignee-similar-issues">
+              <% suggestion[:similar_issues].each do |issue| %>
+                <li class="ai-helper-suggest-assignee-similar-issue">
+                  <%= link_to "##{issue[:id]} #{issue[:subject]}", issue_path(issue[:id]), target: '_blank', class: 'ai-helper-similar-issue-link' %>
+                  <span class="ai-helper-similar-issue-score">(<%= l('ai_helper.assignment_suggestion.history_based.score') %>: <%= issue[:similarity_score].round %>%)</span>
+                </li>
+              <% end %>
+            </ul>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</div>
