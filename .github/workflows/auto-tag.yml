@@ -1,0 +1,39 @@
+name: Auto Tag from init.rb on Release Merge
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [closed]
+
+jobs:
+  tag:
+    # Run only when "merged" and "source branch starts with release/"
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version from init.rb
+        id: get_version
+        run: |
+          VERSION=$(grep -oP '^\s*version\s+["\x27]\K[0-9.]+' init.rb)
+          if [ -z "$VERSION" ]; then
+            echo "Error: Could not extract version from init.rb"
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Create and Push Tag
+        run: |
+          if git rev-parse "v${{ env.VERSION }}" >/dev/null 2>&1; then
+            echo "Tag v${{ env.VERSION }} already exists, skipping"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v${{ env.VERSION }}"
+          git push origin "v${{ env.VERSION }}"
