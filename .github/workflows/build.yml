@@ -3,9 +3,33 @@ on:
   push:
     branches:
       - '**'
+    paths-ignore:
+      - 'README.md'
+      - '.devcontainer/**'
+      - '.claude/**'
+      - '**/*.md'
+      - 'docs/**'
+      - '.agent/**'
+      - '.vscode/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/*.md'
   pull_request:
     branches:
       - '**'
+    paths-ignore:
+      - 'README.md'
+      - '.devcontainer/**'
+      - '.claude/**'
+      - '**/*.md'
+      - 'docs/**'
+      - '.agent/**'
+      - '.vscode/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/*.md'
   workflow_dispatch:
 env:
   SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
