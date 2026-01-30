@@ -87,6 +87,8 @@ en:
         title: "Suggestions based on similar issue history"
         score: "Similarity"
         similar_count: "Similar issues"
+        similar_issues: "Similar issues used for suggestion"
+        more_issues: "%{count} more"
       workload_based:
         title: "Suggestions based on current workload"
         open_issues: "Open issues"

@@ -87,6 +87,8 @@ ja:
         title: "過去の類似チケットの担当履歴からの提案"
         score: "類似度"
         similar_count: "類似チケット数"
+        similar_issues: "判断根拠となった類似チケット"
+        more_issues: "他%{count}件"
       workload_based:
         title: "現在の負荷状況からの提案"
         open_issues: "担当中"

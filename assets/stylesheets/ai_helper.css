@@ -1455,3 +1455,41 @@ table.list.ai-helper-report-list td.radio .radio-placeholder {
 .ai-helper-suggest-assignee-error {
   padding: 8px 0;
 }
+
+/* Similar issues display for history-based suggestions */
+.ai-helper-suggest-assignee-history-item {
+  margin-bottom: 8px;
+}
+
+.ai-helper-suggest-assignee-user-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ai-helper-suggest-assignee-similar-issues {
+  list-style: none;
+  margin: 4px 0 0 16px;
+  padding: 0;
+  border-left: 2px solid #ddd;
+  padding-left: 8px;
+}
+
+.ai-helper-suggest-assignee-similar-issue {
+  padding: 2px 0;
+  font-size: 0.9em;
+}
+
+.ai-helper-similar-issue-link {
+  color: #555;
+}
+
+.ai-helper-similar-issue-link:hover {
+  color: #169;
+}
+
+.ai-helper-similar-issue-score {
+  color: #888;
+  font-size: 0.9em;
+}

@@ -156,18 +156,11 @@ class AiHelperAssignmentSuggestion {
 
     let html = '';
 
-    // History-based suggestions
+    // History-based suggestions (with similar issues display)
     if (data.history_based && data.history_based.available) {
-      html += this.renderCategory(
+      html += this.renderHistoryCategory(
         this.labels.historyTitle,
-        data.history_based.suggestions,
-        (s) => {
-          let detail = this.labels.historyScore + ': ' + s.score + '%';
-          if (s.similar_issue_count) {
-            detail += ' / ' + this.labels.historySimilarCount + ': ' + s.similar_issue_count;
-          }
-          return detail;
-        }
+        data.history_based.suggestions
       );
     }
 
@@ -213,6 +206,82 @@ class AiHelperAssignmentSuggestion {
         this.close();
       });
     }
+  }
+
+  /**
+   * Render the history-based category with similar issues.
+   * @param {string} title - Category title
+   * @param {Array} suggestions - Array of suggestion objects with similar_issues
+   * @returns {string} HTML string
+   */
+  renderHistoryCategory(title, suggestions) {
+    let html = '<div class="ai-helper-suggest-assignee-category">';
+    html += '<div class="ai-helper-suggest-assignee-category-title">' + this.escapeHtml(title) + '</div>';
+
+    if (!suggestions || suggestions.length === 0) {
+      html += '<div class="ai-helper-suggest-assignee-no-results">' + this.labels.noSuggestions + '</div>';
+    } else {
+      html += '<ul class="ai-helper-suggest-assignee-list ai-helper-suggest-assignee-history-list">';
+      suggestions.forEach((s, index) => {
+        html += '<li class="ai-helper-suggest-assignee-history-item">';
+        html += '<div class="ai-helper-suggest-assignee-user-row">';
+        html += '<a href="#" class="ai-helper-suggest-assignee-user" data-user-id="' + s.user_id + '">';
+        html += (index + 1) + '. ' + this.escapeHtml(s.user_name);
+        html += '</a>';
+
+        // Show score and count
+        let detail = this.labels.historyScore + ': ' + s.score + '%';
+        if (s.similar_issue_count) {
+          detail += ' / ' + this.labels.historySimilarCount + ': ' + s.similar_issue_count;
+        }
+        html += ' <span class="ai-helper-suggest-assignee-detail">(' + this.escapeHtml(detail) + ')</span>';
+        html += '</div>';
+
+        // Render similar issues
+        if (s.similar_issues && s.similar_issues.length > 0) {
+          html += this.renderSimilarIssues(s.similar_issues);
+        }
+
+        html += '</li>';
+      });
+      html += '</ul>';
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  /**
+   * Render the list of similar issues for a suggested user.
+   * @param {Array} similarIssues - Array of similar issue objects
+   * @returns {string} HTML string
+   */
+  renderSimilarIssues(similarIssues) {
+    let html = '<ul class="ai-helper-suggest-assignee-similar-issues">';
+
+    similarIssues.forEach((issue) => {
+      const issueUrl = this.getIssueUrl(issue.id);
+      const score = Math.round(issue.similarity_score);
+      html += '<li class="ai-helper-suggest-assignee-similar-issue">';
+      html += '<a href="' + issueUrl + '" target="_blank" class="ai-helper-similar-issue-link">';
+      html += '#' + issue.id + ' ' + this.escapeHtml(issue.subject || '');
+      html += '</a>';
+      html += ' <span class="ai-helper-similar-issue-score">(' + this.labels.historyScore + ': ' + score + '%)</span>';
+      html += '</li>';
+    });
+
+    html += '</ul>';
+    return html;
+  }
+
+  /**
+   * Get the URL for an issue.
+   * @param {number} issueId - The issue ID
+   * @returns {string} Issue URL
+   */
+  getIssueUrl(issueId) {
+    // Use Redmine's standard issue path
+    return '/issues/' + issueId;
   }
 
   /**

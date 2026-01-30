@@ -4,6 +4,7 @@ module RedmineAiHelper
     include RedmineAiHelper::Logger
 
     MAX_SUGGESTIONS = 3
+    MAX_SIMILAR_ISSUES_PER_USER = 5
 
     # @param project [Project] The project context
     # @param assignable_users [Array<User>] Users who can be assigned to issues
@@ -26,7 +27,7 @@ module RedmineAiHelper
         workload_based: suggest_from_workload,
         instruction_based: suggest_from_instructions(
           subject: subject, description: description,
-          tracker_id: tracker_id, category_id: category_id
+          tracker_id: tracker_id, category_id: category_id,
         ),
       }
     end
@@ -42,12 +43,12 @@ module RedmineAiHelper
       begin
         llm = RedmineAiHelper::Llm.new
         similar_issues = if issue
-                           llm.find_similar_issues(issue: issue)
-                         else
-                           llm.find_similar_issues_by_content(
-                             subject: subject, description: description, project: @project
-                           )
-                         end
+            llm.find_similar_issues(issue: issue)
+          else
+            llm.find_similar_issues_by_content(
+              subject: subject, description: description, project: @project,
+            )
+          end
 
         aggregate_history_suggestions(similar_issues)
       rescue => e
@@ -117,20 +118,33 @@ module RedmineAiHelper
         user_id = assigned_to[:id] || assigned_to["id"]
         user_name = assigned_to[:name] || assigned_to["name"]
         score = issue_data[:similarity_score] || issue_data["similarity_score"] || 0
+        issue_id = issue_data[:id] || issue_data["id"]
+        issue_subject = issue_data[:subject] || issue_data["subject"]
 
         next unless @assignable_user_ids.include?(user_id)
 
-        user_scores[user_id] ||= { user_name: user_name, total_score: 0, count: 0 }
+        user_scores[user_id] ||= { user_name: user_name, total_score: 0, count: 0, similar_issues: [] }
         user_scores[user_id][:total_score] += score
         user_scores[user_id][:count] += 1
+        user_scores[user_id][:similar_issues] << {
+          id: issue_id,
+          subject: issue_subject,
+          similarity_score: score,
+        }
       end
 
       suggestions = user_scores.map do |user_id, data|
+        # Sort similar_issues by similarity_score descending and limit to MAX_SIMILAR_ISSUES_PER_USER
+        sorted_similar_issues = data[:similar_issues]
+          .sort_by { |issue| -issue[:similarity_score] }
+          .first(MAX_SIMILAR_ISSUES_PER_USER)
+
         {
           user_id: user_id,
           user_name: data[:user_name],
           score: (data[:total_score] / data[:count]).round(1),
           similar_issue_count: data[:count],
+          similar_issues: sorted_similar_issues,
         }
       end
 
