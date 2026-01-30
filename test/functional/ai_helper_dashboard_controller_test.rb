@@ -1091,7 +1091,7 @@ This is a test report.",
 
       should "sanitize script tags from content" do
         comparison_content = "# Test\n\n<script>alert('xss')</script>\n\nSafe content"
-        expected_sanitized = "# Test\n\n\n\nSafe content"
+        expected_sanitized = "# Test\n\nSafe content"
 
         post :comparison_markdown, params: {
                                      id: @project.id,
