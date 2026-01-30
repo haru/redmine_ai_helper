@@ -42,36 +42,34 @@ class AiHelperControllerSuggestAssigneesTest < ActionController::TestCase
     end
 
     context "with valid permissions" do
-      should "return JSON response for new issue" do
+      should "return HTML response for new issue" do
         @request.headers["Content-Type"] = "application/json"
         post :suggest_assignees, params: { id: @project.id, issue_id: "new" },
              body: { subject: "Test issue", description: "Test description" }.to_json
         assert_response :success
-        json = JSON.parse(@response.body)
-        assert json.key?("workload_based")
-        assert_equal true, json["workload_based"]["available"]
-        assert_equal 2, json["workload_based"]["suggestions"].length
+        # Response is now HTML, not JSON
+        assert_includes @response.body, "ai-helper-suggest-assignee"
+        assert_includes @response.body, "John Smith"
+        assert_includes @response.body, "Dave Lopper"
       end
 
-      should "return JSON response for existing issue" do
+      should "return HTML response for existing issue" do
         issue = issues(:issues_001)
         @request.headers["Content-Type"] = "application/json"
         post :suggest_assignees, params: { id: @project.id, issue_id: issue.id.to_s },
              body: { subject: "Test issue", description: "Test description" }.to_json
         assert_response :success
-        json = JSON.parse(@response.body)
-        assert json.key?("history_based")
-        assert json.key?("workload_based")
-        assert json.key?("instruction_based")
+        # Response is HTML with workload-based suggestions
+        assert_includes @response.body, "ai-helper-suggest-assignee"
       end
 
-      should "return error when subject is missing" do
+      should "return error HTML when subject is missing" do
         @request.headers["Content-Type"] = "application/json"
         post :suggest_assignees, params: { id: @project.id, issue_id: "new" },
              body: { description: "Test description" }.to_json
         assert_response :bad_request
-        json = JSON.parse(@response.body)
-        assert json.key?("error")
+        # Response is HTML error, not JSON
+        assert_includes @response.body, "ai-helper-suggest-assignee-error"
       end
 
       should "return error for non-JSON content type" do
@@ -89,15 +87,13 @@ class AiHelperControllerSuggestAssigneesTest < ActionController::TestCase
         end
       end
 
-      should "return all three categories in response" do
+      should "return HTML with close button" do
         @request.headers["Content-Type"] = "application/json"
         post :suggest_assignees, params: { id: @project.id, issue_id: "new" },
              body: { subject: "Test issue" }.to_json
         assert_response :success
-        json = JSON.parse(@response.body)
-        assert json.key?("history_based")
-        assert json.key?("workload_based")
-        assert json.key?("instruction_based")
+        # HTML should contain close button
+        assert_includes @response.body, "ai-helper-suggest-assignee-close-btn"
       end
     end
 
