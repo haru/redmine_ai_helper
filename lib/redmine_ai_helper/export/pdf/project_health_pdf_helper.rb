@@ -220,9 +220,13 @@ module RedmineAiHelper
         def html_to_plain_text(html)
           return "" if html.blank?
 
-          # Use Rails built-in strip_tags to safely remove all HTML tags
+          # First, convert block-level elements to newlines to preserve structure
+          # This keeps paragraphs, headings and list items separated in the plain text
+          preprocessed_html = html.gsub(/<\/?(h[1-6]|p|div|br|ul|ol|li)\b[^>]*>/i, "\n")
+
+          # Use Rails built-in strip_tags to safely remove all remaining HTML tags
           # This avoids ReDoS vulnerabilities from regex-based HTML stripping
-          text = ActionController::Base.helpers.strip_tags(html)
+          text = strip_tags(preprocessed_html)
 
           # Clean up whitespace while preserving structure
           text = text.gsub(/\n\s*\n/, "\n\n") # Multiple newlines to double newline
@@ -453,8 +457,8 @@ module RedmineAiHelper
           plain_text = content.dup
 
           # Convert markdown headers to simple text
-          # Use non-greedy match with character class to avoid ReDoS
-          plain_text.gsub!(/^(\#{1,6})\s+([^\n]*)/, '\2')
+          # Use character class to avoid ReDoS
+          plain_text.gsub!(/^(\#{1,6})\s*([^\n]+)$/, '\2')
 
           # Convert markdown bold to simple text
           plain_text.gsub!(/\*\*([^*]+)\*\*/, '\1')
@@ -465,9 +469,9 @@ module RedmineAiHelper
           plain_text.gsub!(/_([^_]+)_/, '\1')
 
           # Convert markdown lists to simple format
-          # Use possessive quantifiers pattern to avoid ReDoS
-          plain_text.gsub!(/^[ \t]*[-*+]\s+([^\n]*)/, '• \1')
-          plain_text.gsub!(/^[ \t]*\d+\.\s+([^\n]*)/, '\1')
+          # Use character class pattern to avoid ReDoS
+          plain_text.gsub!(/^[ \t]*[-*+]\s+([^\n]+)$/, '• \1')
+          plain_text.gsub!(/^[ \t]*\d+\.\s+([^\n]+)$/, '\1')
 
           # Clean up code blocks
           plain_text.gsub!(/```[^`]*```/m, '[Code Block]')

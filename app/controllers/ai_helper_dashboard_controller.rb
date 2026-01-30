@@ -102,8 +102,9 @@ class AiHelperDashboardController < ApplicationController
 
     if comparison_content.present?
       # Sanitize content - only allow Markdown, no HTML/JavaScript
-      # Use Rails built-in strip_tags to safely remove all HTML tags
-      sanitized_content = ActionController::Base.helpers.strip_tags(comparison_content)
+      # First remove script/style tags with their content, then strip remaining HTML tags
+      sanitized_content = comparison_content.gsub(/<script\b[^>]*>.*?<\/script>/mi, '')
+                                            .then { |c| helpers.strip_tags(c) }
 
       filename = "#{@project.identifier}-health-report-comparison-#{Date.current.strftime("%Y%m%d")}.pdf"
       send_data(project_health_to_pdf(@project, sanitized_content),
@@ -123,8 +124,9 @@ class AiHelperDashboardController < ApplicationController
 
     if comparison_content.present?
       # Sanitize content - only allow Markdown, no HTML/JavaScript
-      # Use Rails built-in strip_tags to safely remove all HTML tags
-      sanitized_content = ActionController::Base.helpers.strip_tags(comparison_content)
+      # First remove script/style tags with their content, then strip remaining HTML tags
+      sanitized_content = comparison_content.gsub(/<script\b[^>]*>.*?<\/script>/mi, '')
+                                            .then { |c| helpers.strip_tags(c) }
 
       filename = "#{@project.identifier}-health-report-comparison-#{Date.current.strftime("%Y%m%d")}.md"
       send_data(sanitized_content,
