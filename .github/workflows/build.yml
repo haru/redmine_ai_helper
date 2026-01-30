@@ -78,7 +78,7 @@ jobs:
         DB_HOST: ${{ matrix.db }}
         REDMINE_VER: ${{ matrix.redmine_version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - name: Install
         run: bash -x ./.github/build-scripts/install.sh
       - name: Build

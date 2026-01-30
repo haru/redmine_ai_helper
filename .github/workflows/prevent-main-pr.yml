@@ -14,7 +14,7 @@ jobs:
   prevent-main-pr:
     runs-on: ubuntu-latest
     # Allow PRs from release branches
-    if: ${{ !startsWith(github.head_ref, 'release/') }}
+    if: !startsWith(github.head_ref, 'release/')
     steps:
       - name: Comment and close PR
         uses: actions/github-script@v8

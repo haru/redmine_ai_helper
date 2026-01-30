@@ -32,19 +32,23 @@ jobs:
 
       - name: Create and Push Tag
         run: |
+          git checkout main
           if git rev-parse "v${{ env.VERSION }}" >/dev/null 2>&1; then
             echo "Tag v${{ env.VERSION }} already exists, skipping"
           else
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git tag "v${{ env.VERSION }}"
-            git push origin "v${{ env.VERSION }}"
+            git push origin "v${{ env.VERSION }}" || echo "Tag push failed, possibly already exists"
           fi
 
       - name: Create backmerge PR to develop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Fetch develop to ensure it is available for comparison
+          git fetch origin develop
+
           # Check if main is already merged into develop
           if git merge-base --is-ancestor origin/main origin/develop; then
             echo "main is already merged into develop, skipping PR creation"
