@@ -80,3 +80,4 @@ specs/
 .spec-workflow/
 .DS_Store
 .yardoc/
+Gemfile.local
