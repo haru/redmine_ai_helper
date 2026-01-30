@@ -487,8 +487,9 @@ class AiHelperController < ApplicationController
 
     if health_report_content.present?
       # Validate and sanitize content - only allow Markdown, no HTML/JavaScript
+      # Remove \r to prevent Loofah from encoding it as &#13; in text output
       # Use Loofah to safely remove dangerous elements (script, style, etc.) with their content
-      sanitized_content = Loofah.fragment(health_report_content).scrub!(:prune).to_text.strip
+      sanitized_content = Loofah.fragment(health_report_content.delete("\r")).scrub!(:prune).to_text.strip
 
       filename = "#{@project.identifier}-health-report-#{Date.current.strftime("%Y%m%d")}.pdf"
       send_data(project_health_to_pdf(@project, sanitized_content),
@@ -506,8 +507,9 @@ class AiHelperController < ApplicationController
 
     if health_report_content.present?
       # Validate and sanitize content - only allow Markdown, no HTML/JavaScript
+      # Remove \r to prevent Loofah from encoding it as &#13; in text output
       # Use Loofah to safely remove dangerous elements (script, style, etc.) with their content
-      sanitized_content = Loofah.fragment(health_report_content).scrub!(:prune).to_text.strip
+      sanitized_content = Loofah.fragment(health_report_content.delete("\r")).scrub!(:prune).to_text.strip
 
       filename = "#{@project.identifier}-health-report-#{Date.current.strftime("%Y%m%d")}.md"
       send_data(sanitized_content,
