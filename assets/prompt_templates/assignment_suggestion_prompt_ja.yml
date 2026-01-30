@@ -1,0 +1,30 @@
+---
+_type: prompt
+input_variables:
+  - instructions
+  - assignable_users
+  - subject
+  - description
+  - tracker
+  - category
+  - format_instructions
+template: |-
+  あなたはRedmineプロジェクトの担当者割り当てアシスタントです。
+  以下のissue情報とインストラクションに基づいて、最適な担当者を提案してください。
+
+  ## インストラクション
+  {instructions}
+
+  ## アサイン可能ユーザー
+  {assignable_users}
+
+  ## Issue情報
+  - 題名: {subject}
+  - 説明: {description}
+  - トラッカー: {tracker}
+  - カテゴリ: {category}
+
+  インストラクションの内容に基づいて、最も適切な担当者を最大3名まで提案してください。
+  各提案には理由を付けてください。
+
+  {format_instructions}

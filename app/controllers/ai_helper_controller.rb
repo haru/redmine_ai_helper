@@ -588,6 +588,75 @@ class AiHelperController < ApplicationController
     render json: { suggestions: suggestions }
   end
 
+  # Suggest assignees for an issue based on multiple strategies
+  # POST /projects/:id/ai_helper/issue/:issue_id/suggest_assignees
+  def suggest_assignees
+    unless request.content_type == "application/json"
+      render partial: "ai_helper/issues/assignment_suggestion_error",
+             locals: { error: "Unsupported Media Type" },
+             status: :unsupported_media_type and return
+    end
+
+    begin
+      data = JSON.parse(request.body.read)
+    rescue JSON::ParserError
+      render partial: "ai_helper/issues/assignment_suggestion_error",
+             locals: { error: "Invalid JSON" },
+             status: :bad_request and return
+    end
+
+    subject = data["subject"]
+    description = data["description"] || ""
+    tracker_id = data["tracker_id"]
+    category_id = data["category_id"]
+
+    if subject.blank?
+      render partial: "ai_helper/issues/assignment_suggestion_error",
+             locals: { error: I18n.t("ai_helper.assignment_suggestion.empty_content") },
+             status: :bad_request and return
+    end
+
+    # Handle existing vs new issue
+    issue = nil
+    if params[:issue_id] != "new"
+      issue = Issue.find_by(id: params[:issue_id])
+      if issue && issue.project != @project
+        render partial: "ai_helper/issues/assignment_suggestion_error",
+               locals: { error: "Issue does not belong to the specified project" },
+               status: :bad_request and return
+      end
+    end
+
+    begin
+      assignable_users = issue ? issue.assignable_users : @project.assignable_users
+      suggestion_service = RedmineAiHelper::AssignmentSuggestion.new(
+        project: @project,
+        assignable_users: assignable_users
+      )
+
+      result = suggestion_service.suggest(
+        subject: subject,
+        description: description,
+        tracker_id: tracker_id,
+        category_id: category_id,
+        issue: issue,
+      )
+
+      render partial: "ai_helper/issues/assignment_suggestions",
+             locals: {
+               history_based: result[:history_based],
+               workload_based: result[:workload_based],
+               instruction_based: result[:instruction_based],
+             }
+    rescue => e
+      ai_helper_logger.error "Assignee suggestion error: #{e.message}"
+      ai_helper_logger.error e.backtrace.join("\n")
+      render partial: "ai_helper/issues/assignment_suggestion_error",
+             locals: { error: I18n.t("ai_helper.assignment_suggestion.error") },
+             status: :internal_server_error
+    end
+  end
+
   # REST API: Create project health report
   # @return [void]
   def api_create_health_report

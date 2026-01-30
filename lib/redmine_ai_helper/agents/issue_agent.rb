@@ -209,6 +209,60 @@ module RedmineAiHelper
         similar_issues
       end
 
+      # Suggest assignees based on user instructions using structured LLM output
+      # @param assignable_users [Array<User>] Users who can be assigned
+      # @param instructions [String] User-defined instructions
+      # @param subject [String] Issue subject
+      # @param description [String] Issue description
+      # @param tracker_id [Integer, nil] Tracker ID
+      # @param category_id [Integer, nil] Category ID
+      # @return [Hash] Parsed JSON response with suggestions
+      def suggest_assignees_by_instructions(assignable_users:, instructions:, subject:, description:, tracker_id: nil, category_id: nil)
+        json_schema = {
+          type: "object",
+          properties: {
+            suggestions: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  user_id: { type: "integer" },
+                  reason: { type: "string" },
+                },
+                required: ["user_id", "reason"],
+              },
+            },
+          },
+          required: ["suggestions"],
+        }
+        parser = Langchain::OutputParsers::StructuredOutputParser.from_json_schema(json_schema)
+
+        users_text = assignable_users.map { |u| "- #{u.name} (ID: #{u.id})" }.join("\n")
+        tracker_name = tracker_id ? Tracker.find_by(id: tracker_id)&.name : ""
+        category_name = category_id ? IssueCategory.find_by(id: category_id)&.name : ""
+
+        prompt = load_prompt("assignment_suggestion_prompt")
+        prompt_text = prompt.format(
+          instructions: instructions,
+          assignable_users: users_text,
+          subject: subject || "",
+          description: description || "",
+          tracker: tracker_name || "",
+          category: category_name || "",
+          format_instructions: parser.get_format_instructions,
+        )
+
+        message = { role: "user", content: prompt_text }
+        messages = [message]
+        answer = chat(messages, output_parser: parser)
+
+        fix_parser = Langchain::OutputParsers::OutputFixingParser.from_llm(
+          llm: client,
+          parser: parser,
+        )
+        fix_parser.parse(answer)
+      end
+
       # Generate text completion for inline auto-completion
       # @param text [String] The current text content
       # @param cursor_position [Integer] The cursor position in the text
