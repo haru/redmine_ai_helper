@@ -3,7 +3,14 @@ module RedmineAiHelper
   class AssignmentSuggestion
     include RedmineAiHelper::Logger
 
+    # Maximum number of assignment suggestions to return from any strategy.
+    # @return [Integer]
     MAX_SUGGESTIONS = 3
+
+    # Maximum number of similar issues to keep per user when aggregating
+    # history-based suggestions. This limits the per-user list of similar
+    # issues included in the suggestion payload.
+    # @return [Integer]
     MAX_SIMILAR_ISSUES_PER_USER = 5
 
     # @param project [Project] The project context
