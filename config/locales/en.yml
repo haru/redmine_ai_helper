@@ -78,6 +78,24 @@ en:
       note_enabled_tooltip: "AI note auto-completion is enabled. Press Tab to accept suggestions or Esc to dismiss."
       note_disabled_tooltip: "AI note auto-completion is disabled. Check the box to enable."
       common_toggle_label: "AI Helper Completion"
+    assignment_suggestion:
+      link_label: "Suggest assignee with AI Helper"
+      loading: "Analyzing assignees..."
+      close: "Close"
+      no_suggestions: "No suggestions"
+      history_based:
+        title: "Suggestions based on similar issue history"
+        score: "Similarity"
+        similar_count: "Similar issues"
+      workload_based:
+        title: "Suggestions based on current workload"
+        open_issues: "Open issues"
+        issues_unit: ""
+      instruction_based:
+        title: "Suggestions based on user instructions"
+        reason: "Reason"
+      error: "An error occurred while fetching assignee suggestions"
+      empty_content: "Please enter a subject or description"
     duplicate_check:
       title: "Check Duplicates with AI Helper"
       button: "Check Duplicates with AI Helper"
@@ -146,5 +164,6 @@ en:
         issue_draft_instructions: "Instructions for issue comment generation"
         subtask_instructions: "Instructions for subtask generation"
         health_report_instructions: "Instructions for health report generation"
+        assignment_suggestion_instructions: "Assignment Suggestion Instructions"
 
   field_id: "ID"

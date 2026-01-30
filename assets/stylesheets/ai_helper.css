@@ -1394,3 +1394,64 @@ table.list.ai-helper-report-list td.radio .radio-placeholder {
   padding: 8px;
   margin: 0;
 }
+
+/* Assignment suggestion styles */
+.ai-helper-suggest-assignee-link {
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+.ai-helper-suggest-assignee-link .s-ai-helper-robot {
+  vertical-align: middle;
+}
+
+.ai-helper-suggest-assignee-panel {
+  margin-top: 8px;
+  padding: 10px;
+}
+
+.ai-helper-suggest-assignee-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.ai-helper-suggest-assignee-category {
+  margin-bottom: 10px;
+}
+
+.ai-helper-suggest-assignee-category-title {
+  font-weight: bold;
+  margin-bottom: 4px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid #ddd;
+}
+
+.ai-helper-suggest-assignee-list {
+  list-style: none;
+  margin: 4px 0;
+  padding: 0;
+}
+
+.ai-helper-suggest-assignee-list li {
+  padding: 3px 0;
+}
+
+.ai-helper-suggest-assignee-detail {
+  font-size: 0.9em;
+}
+
+.ai-helper-suggest-assignee-no-results {
+  font-style: italic;
+  padding: 4px 0;
+}
+
+.ai-helper-suggest-assignee-close {
+  text-align: right;
+  margin-top: 8px;
+}
+
+.ai-helper-suggest-assignee-error {
+  padding: 8px 0;
+}

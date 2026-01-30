@@ -28,6 +28,12 @@ RedmineApp::Application.routes.draw do
   post "projects/:id/ai_helper/project_health_markdown", to: "ai_helper#project_health_markdown", as: "ai_helper_project_health_markdown"
   post "projects/:id/ai_helper/check_typos", to: "ai_helper#check_typos", as: "ai_helper_check_typos"
 
+  # Assignment suggestion routes
+  post "projects/:id/ai_helper/issue/:issue_id/suggest_assignees",
+       to: "ai_helper#suggest_assignees",
+       as: "ai_helper_suggest_assignees",
+       constraints: { issue_id: /\d+|new/ }
+
   # Health report API endpoint
   post "projects/:id/ai_helper/health_report", to: "ai_helper#api_create_health_report", as: "ai_helper_api_health_report"
 

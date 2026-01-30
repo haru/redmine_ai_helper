@@ -38,7 +38,7 @@ Redmine::Plugin.register :redmine_ai_helper do
                    :generate_sub_issues, :add_sub_issues, :similar_issues, :check_duplicates, :project_health, :generate_project_health, :project_health_pdf, :project_health_markdown,
                    :project_health_metadata,
                    :suggest_completion, :suggest_wiki_completion, :check_typos,
-                   :api_create_health_report,
+                   :api_create_health_report, :suggest_assignees,
                  ],
                  ai_helper_dashboard: [
                    :index, :health_report_history, :health_report_show, :compare_health_reports, :comparison_pdf, :comparison_markdown,

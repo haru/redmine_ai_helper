@@ -352,6 +352,40 @@ module RedmineAiHelper
       end
     end
 
+    # Suggest assignees based on user instructions using LLM
+    # @param project [Project] The project
+    # @param assignable_users [Array<User>] Assignable users
+    # @param instructions [String] User instructions for assignment
+    # @param subject [String] Issue subject
+    # @param description [String] Issue description
+    # @param tracker_id [Integer, nil] Tracker ID
+    # @param category_id [Integer, nil] Category ID
+    # @return [Hash] Parsed JSON with suggestions array
+    def suggest_assignees_by_instructions(project:, assignable_users:, instructions:, subject:, description:, tracker_id: nil, category_id: nil)
+      begin
+        langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: "suggest assignees by instructions")
+        agent = RedmineAiHelper::Agents::IssueAgent.new(project: project, langfuse: langfuse)
+
+        langfuse.create_span(name: "suggest_assignees_by_instructions", input: subject)
+
+        result = agent.suggest_assignees_by_instructions(
+          assignable_users: assignable_users,
+          instructions: instructions,
+          subject: subject,
+          description: description,
+          tracker_id: tracker_id,
+          category_id: category_id,
+        )
+
+        langfuse.finish_current_span(output: "suggestions: #{result}")
+        langfuse.flush
+        result
+      rescue => e
+        ai_helper_logger.error "Assignee suggestion by instructions error: #{e.full_message}"
+        raise e
+      end
+    end
+
     private
   end
 end

@@ -15,7 +15,7 @@ class AiHelperController < ApplicationController
 
   rescue_from ActionDispatch::Http::Parameters::ParseError, with: :handle_parse_error
 
-  protect_from_forgery except: [:generate_project_health, :suggest_completion, :suggest_wiki_completion, :check_typos, :api_create_health_report, :check_duplicates]
+  protect_from_forgery except: [:generate_project_health, :suggest_completion, :suggest_wiki_completion, :check_typos, :api_create_health_report, :check_duplicates, :suggest_assignees]
   accept_api_auth :api_create_health_report
   before_action :find_issue, only: [:issue_summary, :update_issue_summary, :generate_issue_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues]
   before_action :find_wiki_page, only: [:wiki_summary, :generate_wiki_summary]
@@ -586,6 +586,60 @@ class AiHelperController < ApplicationController
     )
 
     render json: { suggestions: suggestions }
+  end
+
+  # Suggest assignees for an issue based on multiple strategies
+  # POST /projects/:id/ai_helper/issue/:issue_id/suggest_assignees
+  def suggest_assignees
+    unless request.content_type == "application/json"
+      render json: { error: "Unsupported Media Type" }, status: :unsupported_media_type and return
+    end
+
+    begin
+      data = JSON.parse(request.body.read)
+    rescue JSON::ParserError
+      render json: { error: "Invalid JSON" }, status: :bad_request and return
+    end
+
+    subject = data["subject"]
+    description = data["description"] || ""
+    tracker_id = data["tracker_id"]
+    category_id = data["category_id"]
+
+    if subject.blank?
+      render json: { error: I18n.t("ai_helper.assignment_suggestion.empty_content") }, status: :bad_request and return
+    end
+
+    # Handle existing vs new issue
+    issue = nil
+    if params[:issue_id] != "new"
+      issue = Issue.find_by(id: params[:issue_id])
+      if issue && issue.project != @project
+        render json: { error: "Issue does not belong to the specified project" }, status: :bad_request and return
+      end
+    end
+
+    begin
+      assignable_users = issue ? issue.assignable_users : @project.assignable_users
+      suggestion_service = RedmineAiHelper::AssignmentSuggestion.new(
+        project: @project,
+        assignable_users: assignable_users
+      )
+
+      result = suggestion_service.suggest(
+        subject: subject,
+        description: description,
+        tracker_id: tracker_id,
+        category_id: category_id,
+        issue: issue,
+      )
+
+      render json: result
+    rescue => e
+      ai_helper_logger.error "Assignee suggestion error: #{e.message}"
+      ai_helper_logger.error e.backtrace.join("\n")
+      render json: { error: I18n.t("ai_helper.assignment_suggestion.error") }, status: :internal_server_error
+    end
   end
 
   # REST API: Create project health report
