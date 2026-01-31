@@ -3,7 +3,7 @@
 class AiHelperSettingsController < ApplicationController
   layout "admin"
 
-  protect_from_forgery
+  protect_from_forgery with: :exception
 
   before_action :require_admin, :find_setting
   self.main_menu = false

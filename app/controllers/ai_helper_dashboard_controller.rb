@@ -6,7 +6,7 @@ class AiHelperDashboardController < ApplicationController
   include AiHelper::Streaming
   include RedmineAiHelper::Export::PDF::ProjectHealthPdfHelper
 
-  protect_from_forgery
+  protect_from_forgery with: :exception
 
   before_action :find_project, :authorize, :find_user
   before_action :find_health_report_and_project, only: [:health_report_show, :health_report_destroy]

@@ -3,7 +3,7 @@
 class AiHelperModelProfilesController < ApplicationController
   layout "admin"
 
-  protect_from_forgery
+  protect_from_forgery with: :exception
 
   before_action :require_admin
   before_action :find_model_profile, only: [:show, :edit, :update, :destroy]

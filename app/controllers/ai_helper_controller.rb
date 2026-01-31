@@ -15,7 +15,7 @@ class AiHelperController < ApplicationController
 
   rescue_from ActionDispatch::Http::Parameters::ParseError, with: :handle_parse_error
 
-  protect_from_forgery
+  protect_from_forgery with: :exception
   accept_api_auth :api_create_health_report
   before_action :find_issue, only: [:issue_summary, :update_issue_summary, :generate_issue_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues]
   before_action :find_wiki_page, only: [:wiki_summary, :generate_wiki_summary]
