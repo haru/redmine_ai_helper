@@ -588,6 +588,15 @@ class AiHelperController < ApplicationController
     render json: { suggestions: suggestions }
   end
 
+  # Generate stuff todo suggestions with streaming
+  def stuff_todo
+    llm = RedmineAiHelper::Llm.new
+
+    stream_llm_response do |stream_proc|
+      llm.stuff_todo(project: @project, stream_proc: stream_proc)
+    end
+  end
+
   # Suggest assignees for an issue based on multiple strategies
   # POST /projects/:id/ai_helper/issue/:issue_id/suggest_assignees
   def suggest_assignees
