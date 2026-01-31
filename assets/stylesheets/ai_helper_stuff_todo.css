@@ -1,0 +1,100 @@
+/* Stuff Todo Modal Styles */
+
+/* Modal overlay */
+.ai-helper-stuff-todo-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9998;
+}
+
+/* Modal container */
+.ai-helper-stuff-todo-modal {
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 700px;
+  max-width: 90vw;
+  max-height: 80vh;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+/* Modal header */
+.ai-helper-stuff-todo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  border-bottom: 1px solid #ddd;
+}
+
+.ai-helper-stuff-todo-header h3 {
+  margin: 0;
+  padding: 0;
+}
+
+.ai-helper-stuff-todo-close {
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  border: none;
+  background: none;
+  padding: 0 5px;
+}
+
+/* Modal body - scrollable content area */
+.ai-helper-stuff-todo-body {
+  padding: 15px;
+  overflow-y: auto;
+  max-height: calc(80vh - 60px);
+}
+
+/* Top menu link */
+#ai-helper-stuff-todo-link {
+  cursor: pointer;
+  margin-right: 4px;
+}
+
+/* Streaming content formatting */
+.ai-helper-stuff-todo-body .ai-helper-streaming-content h2,
+.ai-helper-stuff-todo-body .ai-helper-final-content h2 {
+  font-size: 1.1em;
+  margin-top: 0.8em;
+  margin-bottom: 0.4em;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #ddd;
+}
+
+.ai-helper-stuff-todo-body .ai-helper-streaming-content h2:first-child,
+.ai-helper-stuff-todo-body .ai-helper-final-content h2:first-child {
+  margin-top: 0;
+}
+
+.ai-helper-stuff-todo-body .ai-helper-streaming-content ol,
+.ai-helper-stuff-todo-body .ai-helper-final-content ol {
+  padding-left: 20px;
+  margin: 0.5em 0;
+}
+
+.ai-helper-stuff-todo-body .ai-helper-streaming-content ol li,
+.ai-helper-stuff-todo-body .ai-helper-final-content ol li {
+  margin-bottom: 0.5em;
+  line-height: 1.5;
+}
+
+.ai-helper-stuff-todo-body .ai-helper-streaming-content p,
+.ai-helper-stuff-todo-body .ai-helper-final-content p {
+  margin: 0.3em 0;
+}
+
+/* Loader centered in modal */
+.ai-helper-stuff-todo-body .ai-helper-loader {
+  margin: 30px auto;
+}

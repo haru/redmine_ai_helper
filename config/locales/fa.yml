@@ -15,6 +15,11 @@ fa:
       generated_reply: "یادداشت‌های تولید شده"
       apply: "اعمال"
       copy_to_clipboard: "کپی در کلیپ‌بورد"
+    stuff_todo:
+      menu_label: "کارهای امروز"
+      modal_title: "پیشنهادات کار"
+      loading: "در حال بارگذاری..."
+      error: "خطایی رخ داده است"
     model_profiles:
       create_profile_title: "ساخت پروفایل مدل جدید"
       edit_profile_title: "ویرایش پروفایل مدل"

@@ -98,6 +98,11 @@ ja:
         reason: "理由"
       error: "担当者提案の取得中にエラーが発生しました"
       empty_content: "題名または説明を入力してください"
+    stuff_todo:
+      menu_label: "やること"
+      modal_title: "やること提案"
+      loading: "読み込み中..."
+      error: "エラーが発生しました"
     duplicate_check:
       title: "AIヘルパーで重複チェック"
       button: "AIヘルパーで重複チェック"

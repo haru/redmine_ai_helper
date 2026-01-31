@@ -33,6 +33,11 @@ fr:
       title: "Créer des sous-tâches avec l'Assistant IA"
       instructions: "Veuillez saisir vos instructions."
       generate_draft: "Générer le brouillon"
+    stuff_todo:
+      menu_label: "À faire"
+      modal_title: "Suggestions de tâches"
+      loading: "Chargement..."
+      error: "Une erreur est survenue"
     model_profiles:
       create_profile_title: "Nouveau profil de modèle"
       edit_profile_title: "Modifier le profil du modèle"
