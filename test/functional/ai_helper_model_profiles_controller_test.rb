@@ -72,4 +72,24 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
     end
     assert_response :not_found
   end
+
+  should "reject create without CSRF token when forgery protection is enabled" do
+    ActionController::Base.allow_forgery_protection = true
+    begin
+      post :create, params: { ai_helper_model_profile: { name: 'New', access_key: 'key', llm_type: "OpenAI", llm_model: "model" } }
+      assert_response 422
+    ensure
+      ActionController::Base.allow_forgery_protection = false
+    end
+  end
+
+  should "reject destroy without CSRF token when forgery protection is enabled" do
+    ActionController::Base.allow_forgery_protection = true
+    begin
+      delete :destroy, params: { id: @model_profile.id }
+      assert_response 422
+    ensure
+      ActionController::Base.allow_forgery_protection = false
+    end
+  end
 end

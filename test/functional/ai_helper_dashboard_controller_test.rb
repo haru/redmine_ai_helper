@@ -1233,5 +1233,33 @@ This is a test report.",
         assert_match(/\*\*markdown\*\*/, response.body)
       end
     end
+
+    context "CSRF protection" do
+      should "reject POST to comparison_pdf without CSRF token" do
+        ActionController::Base.allow_forgery_protection = true
+        begin
+          post :comparison_pdf, params: { id: @project.id, content: "test" }
+          assert_response 422
+        ensure
+          ActionController::Base.allow_forgery_protection = false
+        end
+      end
+
+      should "reject DELETE to health_report_destroy without CSRF token" do
+        report = AiHelperHealthReport.create!(
+          project: @project,
+          user: @user,
+          health_report: "test report",
+          created_at: Time.current
+        )
+        ActionController::Base.allow_forgery_protection = true
+        begin
+          delete :health_report_destroy, params: { id: @project.id, report_id: report.id }
+          assert_response 422
+        ensure
+          ActionController::Base.allow_forgery_protection = false
+        end
+      end
+    end
   end
 end

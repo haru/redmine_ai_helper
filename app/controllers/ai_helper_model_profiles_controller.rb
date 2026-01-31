@@ -2,6 +2,9 @@
 # Controller for performing CRUD operations on ModelProfile
 class AiHelperModelProfilesController < ApplicationController
   layout "admin"
+
+  protect_from_forgery
+
   before_action :require_admin
   before_action :find_model_profile, only: [:show, :edit, :update, :destroy]
   self.main_menu = false

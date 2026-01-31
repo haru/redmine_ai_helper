@@ -2,6 +2,9 @@
 # AiHelperSetting Controller for managing AI Helper settings
 class AiHelperSettingsController < ApplicationController
   layout "admin"
+
+  protect_from_forgery
+
   before_action :require_admin, :find_setting
   self.main_menu = false
 
