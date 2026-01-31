@@ -27,7 +27,8 @@ template: |-
   Format your response in markdown with clear sections:
   - Use "## 【Current Project】" for current project issues
   - Use "## 【Other Projects】" for other project issues
-  - For each issue, use the format: "1. #123 「Issue Title」Reason: Brief explanation"
+  - For current project issues, use the format: "1. #123 「Issue Title」Reason: Brief explanation"
+  - For other project issues, include the project name: "1. #123 「Issue Title (Project Name)」Reason: Brief explanation"
 
   # IMPORTANT
   - Keep reasons concise and actionable
