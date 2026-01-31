@@ -1345,6 +1345,28 @@ class AiHelperControllerTest < ActionController::TestCase
       end
     end
 
+    context "CSRF protection" do
+      should "reject JSON format POST without CSRF token" do
+        ActionController::Base.allow_forgery_protection = true
+        begin
+          post :project_health_pdf, params: { id: @project.id, health_report_content: "test", format: :json }
+          assert_response 422
+        ensure
+          ActionController::Base.allow_forgery_protection = false
+        end
+      end
+
+      should "reject JSON format chat POST without CSRF token" do
+        ActionController::Base.allow_forgery_protection = true
+        begin
+          post :chat, params: { id: @project.id, ai_helper_message: { content: "Hello" }, format: :json }
+          assert_response 422
+        ensure
+          ActionController::Base.allow_forgery_protection = false
+        end
+      end
+    end
+
     context "#check_duplicates" do
       setup do
         @llm_mock = mock("RedmineAiHelper::Llm")

@@ -42,4 +42,14 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       ActionController::Base.allow_forgery_protection = false
     end
   end
+
+  should "reject JSON format update without CSRF token" do
+    ActionController::Base.allow_forgery_protection = true
+    begin
+      post :update, params: { ai_helper_setting: { model_profile_id: @model_profile.id }, format: :json }
+      assert_response 422
+    ensure
+      ActionController::Base.allow_forgery_protection = false
+    end
+  end
 end

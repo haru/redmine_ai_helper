@@ -1260,6 +1260,32 @@ This is a test report.",
           ActionController::Base.allow_forgery_protection = false
         end
       end
+
+      should "reject JSON format POST without CSRF token" do
+        ActionController::Base.allow_forgery_protection = true
+        begin
+          post :comparison_pdf, params: { id: @project.id, content: "test", format: :json }
+          assert_response 422
+        ensure
+          ActionController::Base.allow_forgery_protection = false
+        end
+      end
+
+      should "reject JSON format DELETE without CSRF token" do
+        report = AiHelperHealthReport.create!(
+          project: @project,
+          user: @user,
+          health_report: "test report",
+          created_at: Time.current
+        )
+        ActionController::Base.allow_forgery_protection = true
+        begin
+          delete :health_report_destroy, params: { id: @project.id, report_id: report.id, format: :json }
+          assert_response 422
+        ensure
+          ActionController::Base.allow_forgery_protection = false
+        end
+      end
     end
   end
 end

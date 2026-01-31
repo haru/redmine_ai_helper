@@ -92,4 +92,24 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
       ActionController::Base.allow_forgery_protection = false
     end
   end
+
+  should "reject JSON format create without CSRF token" do
+    ActionController::Base.allow_forgery_protection = true
+    begin
+      post :create, params: { ai_helper_model_profile: { name: 'New', access_key: 'key', llm_type: "OpenAI", llm_model: "model" }, format: :json }
+      assert_response 422
+    ensure
+      ActionController::Base.allow_forgery_protection = false
+    end
+  end
+
+  should "reject JSON format destroy without CSRF token" do
+    ActionController::Base.allow_forgery_protection = true
+    begin
+      delete :destroy, params: { id: @model_profile.id, format: :json }
+      assert_response 422
+    ensure
+      ActionController::Base.allow_forgery_protection = false
+    end
+  end
 end

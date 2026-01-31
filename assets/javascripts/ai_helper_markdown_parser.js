@@ -87,15 +87,29 @@ if (typeof AiHelperMarkdownParser === "undefined") {
       return html;
     }
 
-    // Remove dangerous HTML patterns from the output
+    // Remove dangerous HTML patterns from the output using DOMParser
+    // for robust sanitization that handles nested/malformed tags correctly.
     sanitizeOutput(html) {
-      // Remove <script> tags and their content
-      html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-      // Remove on* event handler attributes (onclick, onerror, onload, etc.)
-      html = html.replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '');
-      // Remove dangerous tags: iframe, object, embed, form, base
-      html = html.replace(/<\/?(iframe|object|embed|form|base)\b[^>]*>/gi, '');
-      return html;
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      // Remove dangerous elements and their content
+      const dangerousTags = ['script', 'iframe', 'object', 'embed', 'form', 'base'];
+      dangerousTags.forEach(function(tag) {
+        const elements = doc.querySelectorAll(tag);
+        for (let i = elements.length - 1; i >= 0; i--) {
+          elements[i].remove();
+        }
+      });
+      // Remove on* event handler attributes from all elements
+      const allElements = doc.querySelectorAll('*');
+      for (let i = 0; i < allElements.length; i++) {
+        const attrs = allElements[i].attributes;
+        for (let j = attrs.length - 1; j >= 0; j--) {
+          if (attrs[j].name.toLowerCase().startsWith('on')) {
+            allElements[i].removeAttribute(attrs[j].name);
+          }
+        }
+      }
+      return doc.body.innerHTML;
     }
 
     // Validate URL protocol to prevent javascript: XSS

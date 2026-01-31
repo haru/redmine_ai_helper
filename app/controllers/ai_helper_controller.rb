@@ -707,6 +707,33 @@ class AiHelperController < ApplicationController
 
   private
 
+  # Always enforce CSRF verification for this controller.
+  # Overrides Redmine's ApplicationController which conditionally skips
+  # verification for API requests.
+  # Exception: api_create_health_report uses API key authentication via
+  # accept_api_auth, which replaces CSRF protection for machine-to-machine requests.
+  def verify_authenticity_token
+    if action_name == "api_create_health_report" && api_request?
+      return
+    end
+    unless verified_request?
+      handle_unverified_request
+    end
+  end
+
+  # Always handle unverified requests by returning 422.
+  # Overrides Redmine's version which skips handling for API-format requests.
+  def handle_unverified_request
+    if action_name == "api_create_health_report" && api_request?
+      super
+      return
+    end
+    cookies.delete(autologin_cookie_name)
+    self.logged_user = nil
+    set_localization
+    render_error status: 422, message: l(:error_invalid_authenticity_token)
+  end
+
   # Find the user
   def find_user
     @user = User.current
