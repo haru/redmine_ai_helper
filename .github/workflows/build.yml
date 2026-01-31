@@ -33,6 +33,8 @@ on:
   workflow_dispatch:
 env:
   SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+permissions:
+  contents: read
 jobs:
   build:
     runs-on: ubuntu-latest

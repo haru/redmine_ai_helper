@@ -21,10 +21,16 @@ if (typeof AiHelperMarkdownParser === "undefined") {
           pattern: /\*(.+?)\*/g,
           replacement: (match, content) => `<em>${content}</em>`
         },
-        // Links
+        // Links (with URL sanitization to prevent javascript: XSS)
         {
           pattern: /\[(.+?)\]\((.+?)\)/g,
-          replacement: (match, text, url) => `<a href="${url}">${text}</a>`
+          replacement: (match, text, url) => {
+            const sanitizedUrl = AiHelperMarkdownParser.sanitizeUrl(url);
+            if (sanitizedUrl === null) {
+              return text;
+            }
+            return `<a href="${sanitizedUrl}">${text}</a>`;
+          }
         },
         // Unordered lists
         {
@@ -75,7 +81,35 @@ if (typeof AiHelperMarkdownParser === "undefined") {
         }
       });
 
+      // Sanitize output to remove dangerous HTML patterns
+      html = this.sanitizeOutput(html);
+
       return html;
+    }
+
+    // Remove dangerous HTML patterns from the output
+    sanitizeOutput(html) {
+      // Remove <script> tags and their content
+      html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+      // Remove on* event handler attributes (onclick, onerror, onload, etc.)
+      html = html.replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '');
+      // Remove dangerous tags: iframe, object, embed, form, base
+      html = html.replace(/<\/?(iframe|object|embed|form|base)\b[^>]*>/gi, '');
+      return html;
+    }
+
+    // Validate URL protocol to prevent javascript: XSS
+    static sanitizeUrl(url) {
+      if (!url) return null;
+      const trimmed = url.trim();
+      // Allow safe protocols and relative URLs
+      if (/^https?:\/\//i.test(trimmed) ||
+          /^mailto:/i.test(trimmed) ||
+          /^[/#?]/.test(trimmed)) {
+        return trimmed;
+      }
+      // Block everything else (javascript:, data:, vbscript:, etc.)
+      return null;
     }
 
     processTables(markdown) {
