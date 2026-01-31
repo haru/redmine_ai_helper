@@ -1238,7 +1238,7 @@ This is a test report.",
       should "reject POST to comparison_pdf without CSRF token" do
         ActionController::Base.allow_forgery_protection = true
         begin
-          post :comparison_pdf, params: { id: @project.id, content: "test" }
+          post :comparison_pdf, params: { id: @project.id, comparison_content: "test" }
           assert_response 422
         ensure
           ActionController::Base.allow_forgery_protection = false
