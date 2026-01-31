@@ -107,6 +107,21 @@ For external tool integration via Model Context Protocol:
 
 ## Development Guidelines
 
+### Design Document Adherence
+**CRITICAL: Design documents in `specs/` directory are AUTHORITATIVE and MANDATORY.**
+
+- **NEVER deviate from design documents** without explicit user approval
+- If a design document exists for the feature you're implementing, follow it exactly
+- Design documents specify:
+  - Architecture (which classes/modules to use)
+  - File locations and naming
+  - Method placement and naming
+  - API specifications
+  - Test file locations
+- **DO NOT make "better" architectural decisions** on your own - follow the design
+- If you believe the design has issues, **ASK THE USER FIRST** before implementing differently
+- When asked "are you following the design?", check the design document thoroughly before answering
+
 ### Code Style(Ruby)
 - Follow Ruby on Rails conventions
 - Write comments in English
