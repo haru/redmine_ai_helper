@@ -403,7 +403,7 @@ module RedmineAiHelper
           .where.not(id: @project.id)
           .select do |proj|
             proj.module_enabled?(:ai_helper) &&
-              User.current.allowed_to?(:use_ai_helper, proj)
+              User.current.allowed_to?(:view_ai_helper, proj)
           end
 
         return Issue.none if eligible_projects.empty?

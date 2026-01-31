@@ -274,6 +274,34 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
       assert_not_nil result
     end
 
+    should "fetch issues from other projects with AI helper enabled and proper permissions" do
+      # Create another project with AI helper enabled
+      other_project = Project.create!(name: "Other Project With AI", identifier: "other-project-with-ai")
+
+      # Enable ai_helper module
+      EnabledModule.create!(project: other_project, name: "ai_helper")
+
+      # Add user as member with view_ai_helper permission
+      role = Role.find(1) # Manager role
+      role.add_permission!(:view_ai_helper) unless role.has_permission?(:view_ai_helper)
+      Member.create!(user: @user, project: other_project, roles: [role])
+
+      # Create issue assigned to user
+      other_issue = Issue.create!(
+        project: other_project,
+        tracker_id: 1,
+        subject: "Other project issue with AI",
+        author_id: 1,
+        assigned_to_id: @user.id,
+        status_id: 1,
+        priority_id: 5,
+        due_date: Date.today
+      )
+
+      issues = @agent.send(:fetch_todo_issues_from_other_projects)
+      assert_includes issues.map(&:id), other_issue.id, "Should include issues from other projects where AI helper is enabled and user has view_ai_helper permission"
+    end
+
     should "not fetch issues from projects without AI helper enabled" do
       # Create another project without AI helper
       other_project = Project.create!(name: "Other Project No AI", identifier: "other-project-no-ai")

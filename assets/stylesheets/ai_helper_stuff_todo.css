@@ -1,5 +1,20 @@
 /* Stuff Todo Modal Styles */
 
+/* Menu link in top menu */
+#ai-helper-stuff-todo-link {
+  color: #fff !important;
+  text-decoration: none;
+  padding: 3px 8px;
+  border-radius: 3px;
+  background-color: rgba(255, 255, 255, 0.1);
+  transition: background-color 0.2s;
+}
+
+#ai-helper-stuff-todo-link:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  text-decoration: none;
+}
+
 /* Modal overlay */
 .ai-helper-stuff-todo-overlay {
   display: none;

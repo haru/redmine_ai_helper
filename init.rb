@@ -62,4 +62,13 @@ Redmine::Plugin.register :redmine_ai_helper do
   menu :project_menu, :ai_helper_dashboard, {
          controller: "ai_helper_dashboard", action: "index",
        }, caption: :label_ai_helper
+
+  # Add "To Do" menu item to account menu (appears near login info)
+  # URL is "#" because the actual API call is handled by JavaScript via meta tag.
+  # The link is hidden on non-project pages by JavaScript.
+  menu :account_menu, :ai_helper_stuff_todo, "#",
+       caption: Proc.new { I18n.t("ai_helper.stuff_todo.menu_label") },
+       if: Proc.new { User.current.logged? },
+       before: :my_account,
+       html: { id: "ai-helper-stuff-todo-link" }
 end

@@ -11,7 +11,12 @@ document.addEventListener('DOMContentLoaded', function() {
   const loadingMeta = document.querySelector('meta[name="ai-helper-stuff-todo-loading"]');
   const errorMeta = document.querySelector('meta[name="ai-helper-stuff-todo-error"]');
 
+  // Hide the menu link on non-project pages where meta tag is not present
+  const menuLink = document.getElementById('ai-helper-stuff-todo-link');
   if (!urlMeta) {
+    if (menuLink) {
+      menuLink.closest('li').style.display = 'none';
+    }
     return;
   }
 
@@ -33,19 +38,10 @@ document.addEventListener('DOMContentLoaded', function() {
     return;
   }
 
-  // Inject the menu link into the top menu
-  const loggedAs = document.getElementById('loggedas');
-  if (!loggedAs) {
-    return;
-  }
+  // Note: Menu is now handled by Redmine's MenuManager in init.rb
+  // No need to inject menu link dynamically
 
-  const menuLink = document.createElement('a');
-  menuLink.id = 'ai-helper-stuff-todo-link';
-  menuLink.href = '#';
-  menuLink.textContent = menuLabel;
-  loggedAs.parentNode.insertBefore(menuLink, loggedAs);
-
-  // Create modal elements
+  // Initialize markdown parser
   const overlay = document.createElement('div');
   overlay.className = 'ai-helper-stuff-todo-overlay';
 
@@ -147,11 +143,13 @@ document.addEventListener('DOMContentLoaded', function() {
     };
   }
 
-  // Event handlers
-  menuLink.addEventListener('click', function(e) {
-    e.preventDefault();
-    openModal();
-  });
+  // Event handler for the menu link added by Redmine's MenuManager
+  if (menuLink) {
+    menuLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      openModal();
+    });
+  }
 
   closeBtn.addEventListener('click', function() {
     closeModal();
