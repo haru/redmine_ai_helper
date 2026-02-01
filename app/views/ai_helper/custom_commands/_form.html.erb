@@ -1,59 +1,58 @@
 <%= error_messages_for @command %>
 
-<div class="box">
+
   <%= labelled_form_for @command,
                         url: (@command.new_record? ?
-                              (@project ? project_custom_commands_path(@project) : custom_commands_path) :
-                              (@project ? project_custom_command_path(@project, @command) : custom_command_path(@command))),
+                          (@project ? project_custom_commands_path(@project) : custom_commands_path) :
+                          (@project ? project_custom_command_path(@project, @command) : custom_command_path(@command))),
                         html: { multipart: false } do |f| %>
 
-    <div class="splitcontent">
-      <div class="splitcontentleft">
+   <div class="box tabular">
         <p>
           <%= f.text_field :name, required: true, size: 30 %>
-          <em class="info"><%= l('ai_helper.custom_commands.text.name_format') %></em>
+          <em class="info"><%= l("ai_helper.custom_commands.text.name_format") %></em>
         </p>
 
         <p>
           <%= f.select :command_type,
-                      options_for_select(
-                        AiHelperCustomCommand.command_types.map { |k, v| [l("ai_helper.custom_commands.command_type.#{k}"), k] },
-                        @command.command_type
-                      ),
-                      required: true %>
+                       options_for_select(
+                         AiHelperCustomCommand.command_types.map { |k, v| [l("ai_helper.custom_commands.command_type.#{k}"), k] },
+                         @command.command_type
+                       ),
+                       required: true %>
         </p>
 
-        <p id="user_scope_field" style="<%= 'display:none;' unless @command.user? %>">
+        <p id="user_scope_field" style="<%= "display:none;" unless @command.user? %>">
           <%= f.select :user_scope,
-                      options_for_select(
-                        AiHelperCustomCommand.user_scopes.map { |k, v| [l("ai_helper.custom_commands.user_scope.#{k}"), k] },
-                        @command.user_scope || 'common'
-                      ) %>
+                       options_for_select(
+                         AiHelperCustomCommand.user_scopes.map { |k, v| [l("ai_helper.custom_commands.user_scope.#{k}"), k] },
+                         @command.user_scope || "common"
+                       ) %>
         </p>
 
-        <p id="project_field" style="<%= 'display:none;' unless @command.project? || (@command.user? && @command.project_limited?) %>">
+        <p id="project_field" style="<%= "display:none;" unless @command.project? || (@command.user? && @command.project_limited?) %>">
           <%= f.select :project_id,
-                      options_for_select(
-                        Project.visible.map { |p| [p.name, p.id] },
-                        @command.project_id || @project&.id
-                      ),
-                      include_blank: false %>
+                       options_for_select(
+                         Project.visible.map { |p| [p.name, p.id] },
+                         @command.project_id || @project&.id
+                       ),
+                       include_blank: false %>
         </p>
-      </div>
 
-      <div class="splitcontentright">
         <p>
           <%= f.text_area :prompt, rows: 15, cols: 60, required: true %>
-          <em class="info"><%= l('ai_helper.custom_commands.text.variables_help') %></em>
+          <em class="info"><%= l("ai_helper.custom_commands.text.variables_help") %></em>
         </p>
-      </div>
+
     </div>
 
     <%= f.submit l(:button_save) %>
     <%= link_to l(:button_cancel),
                 (@project ? project_custom_commands_path(@project) : custom_commands_path) %>
-  <% end %>
-</div>
+  </div>
+<% end %>
+
+
 
 <%= javascript_tag do %>
   (function() {

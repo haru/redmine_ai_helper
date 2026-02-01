@@ -170,6 +170,7 @@ en:
     models:
       ai_helper_model_profile: "Model Profile"
       ai_helper_setting: "AI Helper Setting"
+      ai_helper_custom_command: "Custom Command"
     attributes:
       ai_helper_model_profile:
         llm_type: "Type"
@@ -192,5 +193,11 @@ en:
         subtask_instructions: "Instructions for subtask generation"
         health_report_instructions: "Instructions for health report generation"
         assignment_suggestion_instructions: "Assignment Suggestion Instructions"
+      ai_helper_custom_command:
+        name: "Command Name"
+        command_type: "Command Type"
+        project_id: "Project"
+        prompt: "Prompt"
+        scope: "Scope"
 
   field_id: "ID"
