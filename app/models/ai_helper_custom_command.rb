@@ -16,8 +16,8 @@
 #   expanded = cmd.expand(input: 'some text', user: user, project: project)
 class AiHelperCustomCommand < ActiveRecord::Base
   # Enum definitions
-  enum command_type: { global: 0, project: 1, user: 2 }
-  enum user_scope: { common: 0, project_limited: 1 }
+  enum :command_type, { global: 0, project: 1, user: 2 }
+  enum :user_scope, { common: 0, project_limited: 1 }
 
   # Associations
   belongs_to :project, optional: true

@@ -842,4 +842,142 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       )
     end
   end
+
+  context "custom command expansion" do
+    setup do
+      AiHelperConversation.delete_all
+      @params = {
+        access_token: "test_access_token",
+        uri_base: "http://example.com",
+        organization_id: "test_org_id",
+      }
+      @openai_mock = DummyOpenAIClientForLlmTest.new
+      Langchain::LLM::OpenAI.stubs(:new).returns(@openai_mock)
+      @llm = RedmineAiHelper::Llm.new(@params)
+      @conversation = AiHelperConversation.new(title: "test task")
+      message = AiHelperMessage.new(content: "test task", role: "user")
+      @conversation.messages << message
+
+      @project = Project.find(1)
+      @user = User.find(2)
+      User.stubs(:current).returns(@user)
+
+      # Create a custom command
+      @custom_command = AiHelperCustomCommand.create!(
+        name: "summarize",
+        prompt: "Please summarize: {input}",
+        command_type: :global,
+        user: @user
+      )
+    end
+
+    should "expand custom command before calling LeaderAgent" do
+      message = AiHelperMessage.new(content: "/summarize issue #123", role: "user")
+      @conversation.messages << message
+
+      # Verify CustomCommandExpander#expand is called
+      expander_mock = mock('expander')
+      expander_mock.expects(:expand).with("/summarize issue #123").returns({
+        expanded: true,
+        message: "Please summarize: issue #123",
+        command: @custom_command
+      })
+      RedmineAiHelper::CustomCommandExpander.expects(:new).with(
+        user: @user,
+        project: nil
+      ).returns(expander_mock)
+
+      # Verify LeaderAgent receives the expanded message
+      leader_agent_mock = mock('leader_agent')
+      leader_agent_mock.expects(:perform_user_request).with(
+        includes({ role: "user", content: "Please summarize: issue #123" }),
+        anything,
+        anything
+      ).returns("test answer")
+      RedmineAiHelper::Agents::LeaderAgent.expects(:new).returns(leader_agent_mock)
+
+      result = @llm.chat(@conversation, nil, { controller_name: "issues", action_name: "show", content_id: 1 })
+      assert_equal "assistant", result.role
+    end
+
+    should "not expand when message is not a command" do
+      message = AiHelperMessage.new(content: "regular message", role: "user")
+      @conversation.messages << message
+
+      # Verify CustomCommandExpander#expand is called
+      expander_mock = mock('expander')
+      expander_mock.expects(:expand).with("regular message").returns({
+        expanded: false,
+        message: "regular message"
+      })
+      RedmineAiHelper::CustomCommandExpander.expects(:new).returns(expander_mock)
+
+      # Verify LeaderAgent receives the original message
+      leader_agent_mock = mock('leader_agent')
+      leader_agent_mock.expects(:perform_user_request).with(
+        includes({ role: "user", content: "regular message" }),
+        anything,
+        anything
+      ).returns("test answer")
+      RedmineAiHelper::Agents::LeaderAgent.expects(:new).returns(leader_agent_mock)
+
+      result = @llm.chat(@conversation, nil, { controller_name: "issues", action_name: "show", content_id: 1 })
+      assert_equal "assistant", result.role
+    end
+
+    should "expand command with project context" do
+      message = AiHelperMessage.new(content: "/review code changes", role: "user")
+      @conversation.messages << message
+
+      # Verify CustomCommandExpander is created with project context
+      expander_mock = mock('expander')
+      expander_mock.expects(:expand).returns({
+        expanded: true,
+        message: "Review the code changes in Project 1",
+        command: @custom_command
+      })
+      RedmineAiHelper::CustomCommandExpander.expects(:new).with(
+        user: @user,
+        project: @project
+      ).returns(expander_mock)
+
+      leader_agent_mock = mock('leader_agent')
+      leader_agent_mock.stubs(:perform_user_request).returns("test answer")
+      RedmineAiHelper::Agents::LeaderAgent.stubs(:new).returns(leader_agent_mock)
+
+      result = @llm.chat(@conversation, nil, {
+        controller_name: "issues",
+        action_name: "show",
+        content_id: 1,
+        project: @project
+      })
+      assert_equal "assistant", result.role
+    end
+
+    should "log custom command expansion" do
+      message = AiHelperMessage.new(content: "/summarize issue #123", role: "user")
+      @conversation.messages << message
+
+      expander_mock = mock('expander')
+      expander_mock.stubs(:expand).returns({
+        expanded: true,
+        message: "Please summarize: issue #123",
+        command: @custom_command
+      })
+      RedmineAiHelper::CustomCommandExpander.stubs(:new).returns(expander_mock)
+
+      leader_agent_mock = mock('leader_agent')
+      leader_agent_mock.stubs(:perform_user_request).returns("test answer")
+      RedmineAiHelper::Agents::LeaderAgent.stubs(:new).returns(leader_agent_mock)
+
+      # Verify logging is called
+      @llm.expects(:ai_helper_logger).returns(mock('logger').tap do |logger|
+        logger.stubs(:debug)
+        logger.stubs(:info)
+        logger.expects(:info).with("Custom command expanded: summarize")
+      end).at_least_once
+
+      @llm.chat(@conversation, nil, { controller_name: "issues", action_name: "show", content_id: 1 })
+    end
+  end
 end
