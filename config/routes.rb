@@ -65,4 +65,24 @@ RedmineApp::Application.routes.draw do
   patch "projects/:id/ai_helper_project_settings", to: "ai_helper_project_settings#update", as: "ai_helper_project_settings_update"
 
   get "projects/:id/ai_helper(/:tab)", to: "ai_helper_dashboard#index", as: "ai_helper_dashboard"
+
+  # Custom commands routes
+  resources :projects do
+    scope :ai_helper, module: :ai_helper do
+      resources :custom_commands, controller: 'custom_commands', except: [:show] do
+        collection do
+          get :available
+        end
+      end
+    end
+  end
+
+  # Project-independent custom commands
+  scope :ai_helper, module: :ai_helper do
+    resources :custom_commands, controller: 'custom_commands', except: [:show] do
+      collection do
+        get :available
+      end
+    end
+  end
 end

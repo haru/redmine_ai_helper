@@ -146,6 +146,26 @@ en:
         search_answer_instruction_with_vector: "When searching for issues, use the appropriate tool: For conceptual/semantic searches (e.g., 'issues related to exceptions', 'performance problems', 'login bugs'), use vector search (ask_with_filter). For explicit filter conditions (e.g., 'status is closed', 'assigned to someone', 'updated this month'), use search_issues."
       leader_agent:
         generate_final_response: "All agents have completed their tasks. Please create the final response for the user."
+    custom_commands:
+      label:
+        title: Custom Commands
+        new: New Custom Command
+        no_data: No custom commands registered
+      command_type:
+        global: Global Command
+        project: Project Command
+        user: User Command
+      user_scope:
+        common: Common
+        project_limited: Project Limited
+      field:
+        scope: Scope
+      text:
+        name_format: "Only alphanumeric, underscore, and hyphen allowed"
+        variables_help: "Available variables: {input}, {project_name}, {user_name}, {datetime}"
+      error:
+        name_duplicate: "Command name is already in use"
+        project_required: "Project commands require a project"
   activerecord:
     models:
       ai_helper_model_profile: "Model Profile"
