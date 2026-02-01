@@ -21,6 +21,9 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   const stuffTodoUrl = urlMeta.getAttribute('content');
+  // Show only the link element itself (minimal change).
+  // Avoid touching parent <li> or extra logic — just ensure the anchor is visible.
+  menuLink && (menuLink.style.display = 'inline-block');
   const modalTitle = titleMeta ? titleMeta.getAttribute('content') : 'To Do Suggestions';
   const menuLabel = menuLabelMeta ? menuLabelMeta.getAttribute('content') : 'To Do';
   const loadingText = loadingMeta ? loadingMeta.getAttribute('content') : 'Loading...';

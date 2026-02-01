@@ -67,8 +67,12 @@ Redmine::Plugin.register :redmine_ai_helper do
   # URL is "#" because the actual API call is handled by JavaScript via meta tag.
   # The link is hidden on non-project pages by JavaScript.
   menu :account_menu, :ai_helper_stuff_todo, "#",
-       caption: Proc.new { I18n.t("ai_helper.stuff_todo.menu_label") },
-       if: Proc.new { User.current.logged? },
-       before: :my_account,
-       html: { id: "ai-helper-stuff-todo-link" }
+       :caption => Proc.new { I18n.t("ai_helper.stuff_todo.menu_label") },
+       :if => Proc.new {
+         User.current.logged?
+       },
+       :first => true,
+       :icon => "ai-helper-robot",
+       :plugin => :redmine_ai_helper,
+       :html => { id: "ai-helper-stuff-todo-link", style: "display:none;" }
 end

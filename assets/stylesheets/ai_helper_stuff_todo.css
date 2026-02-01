@@ -1,18 +1,8 @@
 /* Stuff Todo Modal Styles */
 
-/* Menu link in top menu */
-#ai-helper-stuff-todo-link {
-  color: #fff !important;
-  text-decoration: none;
-  padding: 3px 8px;
-  border-radius: 3px;
-  background-color: rgba(255, 255, 255, 0.1);
-  transition: background-color 0.2s;
-}
-
-#ai-helper-stuff-todo-link:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-  text-decoration: none;
+/* Menu link in top menu - use Redmine's standard link styles */
+#ai-helper-stuff-todo-link svg.s18.icon-svg {
+  stroke: #ffffff;
 }
 
 /* Modal overlay */
@@ -69,12 +59,6 @@
   padding: 15px;
   overflow-y: auto;
   max-height: calc(80vh - 60px);
-}
-
-/* Top menu link */
-#ai-helper-stuff-todo-link {
-  cursor: pointer;
-  margin-right: 4px;
 }
 
 /* Streaming content formatting */
