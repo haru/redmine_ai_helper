@@ -6,8 +6,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Retrieve configuration from meta tags
   const urlMeta = document.querySelector('meta[name="ai-helper-stuff-todo-url"]');
-  const titleMeta = document.querySelector('meta[name="ai-helper-stuff-todo-title"]');
-  const menuLabelMeta = document.querySelector('meta[name="ai-helper-stuff-todo-menu-label"]');
   const loadingMeta = document.querySelector('meta[name="ai-helper-stuff-todo-loading"]');
   const errorMeta = document.querySelector('meta[name="ai-helper-stuff-todo-error"]');
 
@@ -23,9 +21,9 @@ document.addEventListener('DOMContentLoaded', function() {
   const stuffTodoUrl = urlMeta.getAttribute('content');
   // Show only the link element itself (minimal change).
   // Avoid touching parent <li> or extra logic — just ensure the anchor is visible.
-  menuLink && (menuLink.style.display = 'inline-block');
-  const modalTitle = titleMeta ? titleMeta.getAttribute('content') : 'To Do Suggestions';
-  const menuLabel = menuLabelMeta ? menuLabelMeta.getAttribute('content') : 'To Do';
+  if (menuLink) {
+    menuLink.style.display = 'inline-block';
+  }
   const loadingText = loadingMeta ? loadingMeta.getAttribute('content') : 'Loading...';
   const errorText = errorMeta ? errorMeta.getAttribute('content') : 'An error occurred';
 
@@ -41,38 +39,16 @@ document.addEventListener('DOMContentLoaded', function() {
     return;
   }
 
-  // Note: Menu is now handled by Redmine's MenuManager in init.rb
-  // No need to inject menu link dynamically
+  // Get modal elements from server-rendered HTML (ERB template)
+  const overlay = document.getElementById('ai-helper-stuff-todo-overlay');
+  const modal = document.getElementById('ai-helper-stuff-todo-modal');
+  const closeBtn = document.getElementById('ai-helper-stuff-todo-close');
+  const body = document.getElementById('ai-helper-stuff-todo-body');
 
-  // Initialize markdown parser
-  const overlay = document.createElement('div');
-  overlay.className = 'ai-helper-stuff-todo-overlay';
-
-  const modal = document.createElement('div');
-  modal.className = 'ai-helper-stuff-todo-modal box';
-
-  const header = document.createElement('div');
-  header.className = 'ai-helper-stuff-todo-header';
-
-  const titleEl = document.createElement('h3');
-  titleEl.textContent = modalTitle;
-
-  const closeBtn = document.createElement('button');
-  closeBtn.className = 'ai-helper-stuff-todo-close';
-  closeBtn.textContent = '\u00d7';
-  closeBtn.setAttribute('aria-label', 'Close');
-
-  header.appendChild(titleEl);
-  header.appendChild(closeBtn);
-
-  const body = document.createElement('div');
-  body.className = 'ai-helper-stuff-todo-body';
-
-  modal.appendChild(header);
-  modal.appendChild(body);
-
-  document.body.appendChild(overlay);
-  document.body.appendChild(modal);
+  // Exit if modal elements are not found (should not happen if template is rendered correctly)
+  if (!overlay || !modal || !closeBtn || !body) {
+    return;
+  }
 
   let currentEventSource = null;
 
