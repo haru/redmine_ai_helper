@@ -1,0 +1,68 @@
+<%
+  # Get available custom commands for the current user and project
+  @commands = AiHelperCustomCommand.available_for(
+    user: User.current,
+    project: @project
+  ).order(:command_type, :name)
+
+  @grouped_commands = @commands.group_by(&:command_type)
+%>
+
+<div class="contextual">
+  <%= link_to l('ai_helper.custom_commands.label.new'),
+              (@project ? new_project_custom_command_path(@project) : new_custom_command_path),
+              class: 'icon icon-add' %>
+</div>
+
+<% if @commands.empty? %>
+  <p class="nodata"><%= l('ai_helper.custom_commands.label.no_data') %></p>
+<% else %>
+  <% @grouped_commands.each do |type, commands| %>
+    <h3><%= l("ai_helper.custom_commands.command_type.#{type}") %></h3>
+    <div class="box">
+      <table class="list">
+        <thead>
+          <tr>
+            <th><%= l(:field_name) %></th>
+            <th><%= l(:field_prompt) %></th>
+            <th><%= l(:field_scope) %></th>
+            <th><%= l(:field_author) %></th>
+            <th><%= l(:field_updated_on) %></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% commands.each do |command| %>
+            <tr class="<%= cycle('odd', 'even') %>">
+              <td><code>/<%= command.name %></code></td>
+              <td class="description"><%= truncate(command.prompt, length: 100) %></td>
+              <td>
+                <% if command.user? %>
+                  <%= l("ai_helper.custom_commands.user_scope.#{command.user_scope}") %>
+                <% elsif command.project? %>
+                  <%= command.project.name %>
+                <% else %>
+                  -
+                <% end %>
+              </td>
+              <td><%= link_to_user command.user %></td>
+              <td><%= format_time(command.updated_at) %></td>
+              <td class="buttons">
+                <% if command.editable_by?(User.current) %>
+                  <%= link_to l(:button_edit),
+                              (@project ? edit_project_custom_command_path(@project, command) : edit_custom_command_path(command)),
+                              class: 'icon icon-edit' %>
+                  <%= link_to l(:button_delete),
+                              (@project ? project_custom_command_path(@project, command) : custom_command_path(command)),
+                              method: :delete,
+                              data: { confirm: l(:text_are_you_sure) },
+                              class: 'icon icon-del' %>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+<% end %>
