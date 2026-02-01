@@ -98,6 +98,11 @@ en:
         reason: "Reason"
       error: "An error occurred while fetching assignee suggestions"
       empty_content: "Please enter a subject or description"
+    stuff_todo:
+      menu_label: "To Do"
+      modal_title: "To Do Suggestions"
+      loading: "Loading..."
+      error: "An error occurred"
     duplicate_check:
       title: "Check Duplicates with AI Helper"
       button: "Check Duplicates with AI Helper"

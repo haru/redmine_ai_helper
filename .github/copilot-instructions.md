@@ -130,6 +130,12 @@ bundle exec rake redmine:plugins:test NAME=redmine_ai_helper
 
 ## Critical Implementation Details
 
+**Frontend Security:**
+- Build HTML structures in ERB templates (`*.html.erb`), not in JavaScript
+- This prevents XSS and JS injection vulnerabilities by leveraging Rails' automatic escaping
+- JavaScript should only manipulate existing DOM elements rendered by ERB
+- Use `sprite_icon` helper for icons, `t()` / `l()` for i18n text in templates
+
 **Langfuse Integration:**
 - LLM observability for all providers via `langfuse_util/`
 - Trace conversations and agent interactions

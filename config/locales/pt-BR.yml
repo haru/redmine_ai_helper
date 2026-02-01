@@ -61,6 +61,11 @@ pt-BR:
       note_enabled_tooltip: "O preenchimento automático de notas com IA está ativado. Pressione Tab para aceitar as sugestões ou Esc para dispensar."
       note_disabled_tooltip: "O preenchimento automático de notas com IA está desativado. Marque a caixa para ativar."
       common_toggle_label: "Preenchimento Automático do AI Helper"      
+    stuff_todo:
+      menu_label: "A Fazer"
+      modal_title: "Sugestões de Tarefas"
+      loading: "Carregando..."
+      error: "Ocorreu um erro"
     model_profiles:
       create_profile_title: "Novo perfil de modelo"
       edit_profile_title: "Editar perfil de modelo"

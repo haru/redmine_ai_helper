@@ -19,6 +19,7 @@
   - [Inline Issue Description and Wiki Completion](#inline-issue-description-and-wiki-completion)
   - [Typo Checking and Correction Suggestions](#typo-checking-and-correction-suggestions)
   - [Assignee Suggestion](#assignee-suggestion)
+  - [To-Do Suggestions](#to-do-suggestions)
   - [Project Health Report](#project-health-report)
     - [Health Report History](#health-report-history)
     - [Health Report REST API](#health-report-rest-api)
@@ -56,6 +57,7 @@ The Redmine AI Helper Plugin adds AI chat functionality to Redmine, enhancing pr
   - Inline issue description and wiki completion
   - Other project and Redmine-related inquiries
   - Typo checking and correction suggestions
+  - To-do suggestions based on assigned issues
 - Provides a project health report
 - Supports multiple AI models and services
 - MCP server integration
@@ -115,6 +117,10 @@ You can use the AI Helper Plugin to check for typos and receive correction sugge
 The AI Helper Plugin can suggest optimal assignees when creating or editing issues. This feature analyzes the issue content, past assignment history, current workload, and project context to recommend suitable team members. Click the "Suggest assignee with AI Helper" link next to the "Assign to me" link in the issue form to receive assignee recommendations.
 
 ![Image](https://github.com/user-attachments/assets/922985fb-4ec9-4784-b757-56b5c87e5e5c)
+
+## To-Do Suggestions
+
+The AI Helper Plugin can suggest what you should work on today based on your assigned issues. This feature analyzes your issues considering due dates, priorities, and how long they've been untouched, then provides prioritized recommendations for both the current project and other projects you have access to. Access this feature from the "To Do" menu in the top menu bar (available only within project contexts where you have AI Helper permissions).
 
 ## Project Health Report
 

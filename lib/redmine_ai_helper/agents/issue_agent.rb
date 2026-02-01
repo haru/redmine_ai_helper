@@ -339,7 +339,186 @@ module RedmineAiHelper
         end
       end
 
+      # Suggest stuff to do today with streaming support
+      # @param stream_proc [Proc] Optional callback proc for streaming content
+      # @return [String] Markdown-formatted suggestions
+      def suggest_stuff_todo(stream_proc: nil)
+        # Get issues from current project
+        current_project_issues = fetch_todo_issues(project: @project)
+
+        # Get issues from other projects with proper permissions
+        other_project_issues = fetch_todo_issues_from_other_projects
+
+        # Prioritize and limit issues
+        current_prioritized = prioritize_issues(current_project_issues).take(5)
+        other_prioritized = prioritize_issues(other_project_issues).take(5)
+
+        # Load prompt template
+        prompt = load_prompt("issue_agent/stuff_todo")
+
+        # Format issues for prompt
+        current_issues_text = format_issues_for_prompt(current_prioritized)
+        other_issues_text = format_issues_for_prompt(other_prioritized)
+
+        # Build prompt
+        prompt_text = prompt.format(
+          current_project_issues: current_issues_text,
+          other_project_issues: other_issues_text,
+          current_project_name: @project.name
+        )
+
+        message = { role: "user", content: prompt_text }
+        messages = [message]
+
+        # Call LLM with streaming support
+        chat(messages, {}, stream_proc)
+      end
+
       private
+
+      # Fetch todo issues based on options
+      # @param options [Hash] Options for filtering issues
+      # @option options [Project] :project The project to fetch issues from
+      # @option options [Array<Project>] :projects The projects to fetch issues from
+      # @return [ActiveRecord::Relation] Issues matching the criteria
+      def fetch_todo_issues(options = {})
+        project = options[:project] || @project
+        projects = options[:projects] || [project]
+
+        # Get current user's group IDs
+        group_ids = User.current.group_ids
+
+        Issue.visible
+          .where(project: projects)
+          .where(assigned_to_id: [User.current.id] + group_ids)
+          .joins(:status)
+          .where.not(issue_statuses: { is_closed: true })
+      end
+
+      # Fetch issues from other projects with proper permissions
+      # @return [ActiveRecord::Relation] Issues from other projects
+      def fetch_todo_issues_from_other_projects
+        # Get all visible projects except current project
+        eligible_projects = Project.visible
+          .where.not(id: @project.id)
+          .select do |proj|
+            proj.module_enabled?(:ai_helper) &&
+              User.current.allowed_to?(:view_ai_helper, proj)
+          end
+
+        return Issue.none if eligible_projects.empty?
+
+        fetch_todo_issues(projects: eligible_projects)
+      end
+
+      # Prioritize issues by calculated score
+      # @param issues [ActiveRecord::Relation] Issues to prioritize
+      # @return [Array<Issue>] Sorted issues by priority score (descending)
+      def prioritize_issues(issues)
+        issues.sort_by { |issue| -calculate_priority_score(issue) }
+      end
+
+      # Calculate priority score for an issue
+      # @param issue [Issue] The issue to calculate score for
+      # @return [Integer] The calculated priority score
+      def calculate_priority_score(issue)
+        score = 0
+        score += due_date_score(issue)
+        score += priority_field_score(issue)
+        score += untouched_score(issue)
+        score
+      end
+
+      # Calculate score based on due date
+      # @param issue [Issue] The issue
+      # @return [Integer] The due date score
+      def due_date_score(issue)
+        return 0 unless issue.due_date
+
+        days_until_due = (issue.due_date - Date.today).to_i
+
+        if days_until_due < 0
+          # Overdue: 100 + (days overdue * 10), max 150
+          [100 + (days_until_due.abs * 10), 150].min
+        elsif days_until_due == 0
+          # Due today
+          80
+        elsif days_until_due == 1
+          # Due tomorrow
+          60
+        elsif days_until_due <= 3
+          # Due within 3 days
+          40
+        elsif days_until_due <= 7
+          # Due within 1 week
+          20
+        else
+          # Due date is more than 1 week away
+          0
+        end
+      end
+
+      # Calculate score based on priority field
+      # @param issue [Issue] The issue
+      # @return [Integer] The priority field score
+      def priority_field_score(issue)
+        return 20 unless issue.priority
+
+        # Map priority names to scores
+        # Redmine default priorities: Low(1), Normal(2), High(3), Urgent(4), Immediate(5)
+        case issue.priority.position
+        when 5
+          50 # Immediate
+        when 4
+          40 # Urgent
+        when 3
+          30 # High
+        when 2
+          20 # Normal
+        when 1
+          10 # Low
+        else
+          20 # Default to Normal
+        end
+      end
+
+      # Calculate score based on untouched period
+      # @param issue [Issue] The issue
+      # @return [Integer] The untouched period score
+      def untouched_score(issue)
+        return 0 unless issue.updated_on
+
+        days_untouched = (Date.today - issue.updated_on.to_date).to_i
+
+        if days_untouched >= 30
+          30
+        elsif days_untouched >= 14
+          20
+        elsif days_untouched >= 7
+          10
+        else
+          0
+        end
+      end
+
+      # Format issues for prompt
+      # @param issues [Array<Issue>] Issues to format
+      # @return [String] Formatted issues text
+      def format_issues_for_prompt(issues)
+        return "No issues" if issues.empty?
+
+        issues.map do |issue|
+          {
+            id: issue.id,
+            subject: issue.subject,
+            priority: issue.priority&.name || "Normal",
+            due_date: issue.due_date&.to_s || "None",
+            updated_on: issue.updated_on.to_s,
+            project_name: issue.project.name,
+            score: calculate_priority_score(issue)
+          }
+        end.to_json
+      end
 
       # Generate a available issue properties string
       # Build context for completion based on project and issue information
