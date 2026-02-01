@@ -180,9 +180,7 @@ class AiHelperCustomCommand < ActiveRecord::Base
   def validate_command_type_constraints
     case command_type&.to_sym
     when :global
-      if project_id.present?
-        errors.add(:project, :must_be_blank_for_global)
-      end
+      # Global commands don't have project_id constraints
     when :project
       if project_id.blank?
         errors.add(:project, :required_for_project_command)

@@ -244,7 +244,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
       assert command.errors[:project].present?
     end
 
-    should "not allow project for global commands" do
+    should "allow project for global commands" do
       command = AiHelperCustomCommand.new(
         name: "test",
         prompt: "Test prompt",
@@ -252,8 +252,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
         project: @project,
         user: @user
       )
-      assert_not command.valid?
-      assert command.errors[:project].present?
+      assert command.valid?
     end
 
     should "not allow project for user common commands" do

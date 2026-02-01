@@ -854,13 +854,13 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       @openai_mock = DummyOpenAIClientForLlmTest.new
       Langchain::LLM::OpenAI.stubs(:new).returns(@openai_mock)
       @llm = RedmineAiHelper::Llm.new(@params)
-      @conversation = AiHelperConversation.new(title: "test task")
-      message = AiHelperMessage.new(content: "test task", role: "user")
-      @conversation.messages << message
 
       @project = Project.find(1)
       @user = User.find(2)
       User.stubs(:current).returns(@user)
+
+      @conversation = AiHelperConversation.create!(title: "test task", user: @user)
+      @conversation.messages.create!(content: "test task", role: "user")
 
       # Create a custom command
       @custom_command = AiHelperCustomCommand.create!(
