@@ -15,7 +15,7 @@ module AiHelper
     def index
       @commands = AiHelperCustomCommand.available_for(
         user: User.current,
-        project: @project
+        project: @project,
       ).order(:command_type, :name)
 
       @grouped_commands = @commands.group_by(&:command_type)
@@ -26,7 +26,7 @@ module AiHelper
     def available
       expander = RedmineAiHelper::CustomCommandExpander.new(
         user: User.current,
-        project: @project
+        project: @project,
       )
 
       prefix = params[:prefix]
@@ -40,7 +40,7 @@ module AiHelper
     def new
       @command = AiHelperCustomCommand.new(
         user: User.current,
-        project: @project
+        project: @project,
       )
     end
 
@@ -49,6 +49,8 @@ module AiHelper
     def create
       @command = AiHelperCustomCommand.new(command_params)
       @command.user = User.current
+      # Force project based on current context; user cannot set project via form
+      @command.project = @project
 
       if @command.save
         flash[:notice] = l(:notice_successful_create)
@@ -66,7 +68,10 @@ module AiHelper
     # PATCH/PUT /projects/:project_id/ai_helper/custom_commands/:id
     # PATCH/PUT /ai_helper/custom_commands/:id
     def update
-      if @command.update(command_params)
+      # Apply permitted params then force project based on context
+      @command.assign_attributes(command_params)
+      @command.project = @project
+      if @command.save
         flash[:notice] = l(:notice_successful_update)
         redirect_to_command_list
       else
@@ -115,7 +120,7 @@ module AiHelper
 
     def command_params
       params.require(:ai_helper_custom_command).permit(
-        :name, :prompt, :command_type, :user_scope, :project_id
+        :name, :prompt, :command_type, :user_scope
       )
     end
 

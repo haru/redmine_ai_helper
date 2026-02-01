@@ -30,14 +30,7 @@
                        ) %>
         </p>
 
-        <p id="project_field" style="<%= "display:none;" unless @command.project? || (@command.user? && @command.project_limited?) %>">
-          <%= f.select :project_id,
-                       options_for_select(
-                         Project.visible.map { |p| [p.name, p.id] },
-                         @command.project_id || @project&.id
-                       ),
-                       include_blank: false %>
-        </p>
+        <!-- Project is not user-editable. Project is set by controller/context. -->
 
         <p>
           <%= f.text_area :prompt, rows: 15, cols: 60, required: true %>
@@ -58,22 +51,14 @@
   (function() {
     const commandTypeField = document.getElementById('ai_helper_custom_command_command_type');
     const userScopeField = document.getElementById('user_scope_field');
-    const projectField = document.getElementById('project_field');
     const userScopeSelect = document.getElementById('ai_helper_custom_command_user_scope');
 
     function updateVisibility() {
       const commandType = commandTypeField.value;
-      const userScope = userScopeSelect ? userScopeSelect.value : 'common';
-
       if (commandType === 'user') {
         userScopeField.style.display = '';
-        projectField.style.display = (userScope === 'project_limited') ? '' : 'none';
-      } else if (commandType === 'project') {
-        userScopeField.style.display = 'none';
-        projectField.style.display = '';
       } else {
         userScopeField.style.display = 'none';
-        projectField.style.display = 'none';
       }
     }
 
