@@ -27,11 +27,17 @@ template: |-
   Format your response in markdown with clear sections:
   - Use "## Current Project" for current project issues
   - Use "## Other Projects" for other project issues
-  - For current project issues, use the format: "1. #123 「Issue Title」Reason: Brief explanation"
-  - For other project issues, include the project name: "1. #123 「Issue Title (Project Name)」Reason: Brief explanation"
+  - For current project issues, use the format:
+    "1. #123 [Issue Title]
+        Reason: Brief explanation"
+  - For other project issues, include the project name:
+    "1. #123 [Issue Title]
+        Project: Project Name
+        Reason: Brief explanation"
 
   # IMPORTANT
   - Keep reasons concise and actionable
   - Focus on urgency and importance
   - If there are no issues in a section, simply state "No tasks to do today"
   - Output ONLY the suggestion text. Do NOT add meta-commentary like "Here are the suggestions"
+  - Ensure issue IDs are output as links to the issues

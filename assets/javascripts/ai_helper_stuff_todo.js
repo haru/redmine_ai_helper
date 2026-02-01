@@ -24,8 +24,6 @@ document.addEventListener('DOMContentLoaded', function() {
   if (menuLink) {
     menuLink.style.display = 'inline-block';
   }
-  const loadingText = loadingMeta ? loadingMeta.getAttribute('content') : 'Loading...';
-  const errorText = errorMeta ? errorMeta.getAttribute('content') : 'An error occurred';
 
   // Initialize markdown parser
   let parser;
