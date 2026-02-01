@@ -25,8 +25,8 @@ template: |-
   2. Brief reason why it should be worked on today (consider due date, priority, and untouched period)
 
   Format your response in markdown with clear sections:
-  - Use "## 【Current Project】" for current project issues
-  - Use "## 【Other Projects】" for other project issues
+  - Use "## Current Project" for current project issues
+  - Use "## Other Projects" for other project issues
   - For current project issues, use the format: "1. #123 「Issue Title」Reason: Brief explanation"
   - For other project issues, include the project name: "1. #123 「Issue Title (Project Name)」Reason: Brief explanation"
 
