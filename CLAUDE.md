@@ -131,6 +131,12 @@ For external tool integration via Model Context Protocol:
 - Don't use jQuery, use vanilla JavaScript
 - Write comments in English
 
+### Frontend Security
+- Build HTML structures in ERB templates (`*.html.erb`), not in JavaScript
+- This prevents XSS and JS injection vulnerabilities by leveraging Rails' automatic escaping
+- JavaScript should only manipulate existing DOM elements rendered by ERB
+- Use `sprite_icon` helper for icons, `t()` / `l()` for i18n text in templates
+
 ### Error Handling Guidelines
 - **NEVER implement fallback error handling** - Fallbacks hide real problems and make debugging impossible
 - Let errors surface immediately so they can be properly diagnosed and fixed
