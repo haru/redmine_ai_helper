@@ -568,3 +568,111 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
     end
   end
 end
+
+  # Additional tests for scoring and formatting helpers added to cover
+  # due_date_score, priority_field_score, untouched_score and
+  # format_issues_for_prompt implementations.
+  class RedmineAiHelper::Agents::IssueAgentScoringTest < ActiveSupport::TestCase
+    setup do
+      @project = Project.find(1)
+      @langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: "Test input")
+      @agent = RedmineAiHelper::Agents::IssueAgent.new(project: @project, langfuse: @langfuse)
+    end
+
+    should "calculate due_date_score for various due dates" do
+      issue = mock('issue')
+      issue.stubs(:priority).returns(nil)
+      issue.stubs(:updated_on).returns(Time.now)
+
+      issue.stubs(:due_date).returns(Date.today - 2)
+      score = @agent.send(:due_date_score, issue)
+      assert_equal [100 + 2 * 10, 150].min, score
+
+      issue.stubs(:due_date).returns(Date.today)
+      assert_equal 80, @agent.send(:due_date_score, issue)
+
+      issue.stubs(:due_date).returns(Date.today + 1)
+      assert_equal 60, @agent.send(:due_date_score, issue)
+
+      issue.stubs(:due_date).returns(Date.today + 2)
+      assert_equal 40, @agent.send(:due_date_score, issue)
+
+      issue.stubs(:due_date).returns(Date.today + 6)
+      assert_equal 20, @agent.send(:due_date_score, issue)
+
+      issue.stubs(:due_date).returns(Date.today + 10)
+      assert_equal 0, @agent.send(:due_date_score, issue)
+    end
+
+    should "calculate priority_field_score correctly" do
+      issue = mock('issue')
+      priority = mock('priority')
+      priority.stubs(:name).returns('Immediate')
+      issue.stubs(:updated_on).returns(Time.now)
+
+      priority.stubs(:position).returns(5)
+      issue.stubs(:priority).returns(priority)
+      assert_equal 50, @agent.send(:priority_field_score, issue)
+
+      priority.stubs(:position).returns(4)
+      assert_equal 40, @agent.send(:priority_field_score, issue)
+
+      priority.stubs(:position).returns(3)
+      assert_equal 30, @agent.send(:priority_field_score, issue)
+
+      priority.stubs(:position).returns(2)
+      assert_equal 20, @agent.send(:priority_field_score, issue)
+
+      priority.stubs(:position).returns(1)
+      assert_equal 10, @agent.send(:priority_field_score, issue)
+
+      issue.stubs(:priority).returns(nil)
+      assert_equal 20, @agent.send(:priority_field_score, issue)
+    end
+
+    should "calculate untouched_score correctly" do
+      issue = mock('issue')
+
+      issue.stubs(:updated_on).returns((Date.today - 40).to_time)
+      assert_equal 30, @agent.send(:untouched_score, issue)
+
+      issue.stubs(:updated_on).returns((Date.today - 20).to_time)
+      assert_equal 20, @agent.send(:untouched_score, issue)
+
+      issue.stubs(:updated_on).returns((Date.today - 8).to_time)
+      assert_equal 10, @agent.send(:untouched_score, issue)
+
+      issue.stubs(:updated_on).returns(Time.now)
+      assert_equal 0, @agent.send(:untouched_score, issue)
+
+      issue.stubs(:updated_on).returns(nil)
+      assert_equal 0, @agent.send(:untouched_score, issue)
+    end
+
+    should "format_issues_for_prompt returns No issues when list empty and JSON for issues" do
+      assert_equal "No issues", @agent.send(:format_issues_for_prompt, [])
+
+      issue = mock('issue')
+      issue.stubs(:id).returns(123)
+      issue.stubs(:subject).returns('Test issue')
+      priority = mock('priority')
+      priority.stubs(:name).returns('High')
+      priority.stubs(:position).returns(3)
+      issue.stubs(:priority).returns(priority)
+      issue.stubs(:due_date).returns(Date.today + 3)
+      issue.stubs(:updated_on).returns((Date.today - 5).to_time)
+      proj = mock('project')
+      proj.stubs(:name).returns('Proj X')
+      issue.stubs(:project).returns(proj)
+
+      json_text = @agent.send(:format_issues_for_prompt, [issue])
+      parsed = JSON.parse(json_text)
+      assert_equal 1, parsed.length
+      item = parsed.first
+      assert_equal 123, item['id']
+      assert_equal 'Test issue', item['subject']
+      assert_equal 'High', item['priority']
+      assert_equal 'Proj X', item['project_name']
+      assert item['score'].is_a?(Integer)
+    end
+  end
