@@ -33,8 +33,10 @@ module RedmineAiHelper
 
         if result[:expanded]
           ai_helper_logger.info("Custom command expanded: #{result[:command].name}")
-          # Replace the last message with the expanded content
-          conversation.messages.last.content = result[:message]
+          # Persist the expanded content to the database so that
+          # messages_for_openai will return the expanded text
+          last_message = conversation.messages.last
+          last_message.update!(content: result[:message])
           task = result[:message]
         end
 
