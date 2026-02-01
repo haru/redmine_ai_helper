@@ -2,6 +2,7 @@
 (function() {
   const COMMAND_PREFIX = '/';
 
+  // Make CommandCompletion class available globally for dynamic initialization
   class CommandCompletion {
     constructor(inputElement, projectId = null) {
       this.input = inputElement;
@@ -45,7 +46,7 @@
 
     async fetchCommands(prefix) {
       const url = this.projectId
-        ? `/projects/${this.projectId}/ai_helper/custom_commands/available`
+        ? `/ai_helper/projects/${this.projectId}/custom_commands/available`
         : '/ai_helper/custom_commands/available';
 
       const params = new URLSearchParams({ prefix: prefix });
@@ -156,12 +157,16 @@
     }
   }
 
+  // Make CommandCompletion available globally
+  window.CommandCompletion = CommandCompletion;
+
   // Initialize on DOMContentLoaded
   document.addEventListener('DOMContentLoaded', function() {
     const chatInput = document.getElementById('ai-helper-message-input');
-    if (chatInput) {
+    if (chatInput && !chatInput.dataset.commandCompletionInitialized) {
       const projectId = chatInput.dataset.projectId;
-      new CommandCompletion(chatInput, projectId);
+      new window.CommandCompletion(chatInput, projectId);
+      chatInput.dataset.commandCompletionInitialized = 'true';
     }
   });
 })();
