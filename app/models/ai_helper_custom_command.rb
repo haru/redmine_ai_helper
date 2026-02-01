@@ -40,14 +40,14 @@ class AiHelperCustomCommand < ActiveRecord::Base
   # Scopes
   scope :global_commands, -> { where(command_type: :global) }
   scope :project_commands, ->(project_id) {
-    where(command_type: :project, project_id: project_id)
-  }
+          where(command_type: :project, project_id: project_id)
+        }
   scope :user_common_commands, ->(user_id) {
-    where(command_type: :user, user_id: user_id, user_scope: :common)
-  }
+          where(command_type: :user, user_id: user_id, user_scope: :common)
+        }
   scope :user_project_commands, ->(user_id, project_id) {
-    where(command_type: :user, user_id: user_id, user_scope: :project_limited, project_id: project_id)
-  }
+          where(command_type: :user, user_id: user_id, user_scope: :project_limited, project_id: project_id)
+        }
 
   # Class methods
   def self.available_for(user:, project: nil)
@@ -105,7 +105,7 @@ class AiHelperCustomCommand < ActiveRecord::Base
         user_id: user.id,
         user_scope: :project_limited,
         project_id: project.id,
-        name: normalized_name
+        name: normalized_name,
       ).first
       return command if command
     end
@@ -115,7 +115,7 @@ class AiHelperCustomCommand < ActiveRecord::Base
       command_type: :user,
       user_id: user.id,
       user_scope: :common,
-      name: normalized_name
+      name: normalized_name,
     ).first
     return command if command
 
@@ -124,7 +124,7 @@ class AiHelperCustomCommand < ActiveRecord::Base
       command = where(
         command_type: :project,
         project_id: project.id,
-        name: normalized_name
+        name: normalized_name,
       ).first
       return command if command
     end
@@ -132,19 +132,19 @@ class AiHelperCustomCommand < ActiveRecord::Base
     # Priority 4: Global commands
     where(
       command_type: :global,
-      name: normalized_name
+      name: normalized_name,
     ).first
   end
 
   # Instance methods
-  def expand(input: '', user:, project: nil, datetime: Time.current)
+  def expand(input: "", user:, project: nil, datetime: Time.current)
     result = prompt.dup
 
     # Expand variables
-    result.gsub!('{input}', input.to_s)
-    result.gsub!('{user_name}', user.name.to_s)
-    result.gsub!('{project_name}', project ? project.name.to_s : '')
-    result.gsub!('{datetime}', datetime.strftime('%Y-%m-%d %H:%M:%S'))
+    result.gsub!("{input}", input.to_s)
+    result.gsub!("{user_name}", user.name.to_s)
+    result.gsub!("{project_name}", project ? project.name.to_s : "")
+    result.gsub!("{datetime}", datetime.strftime("%Y-%m-%d %H:%M:%S"))
 
     result
   end
@@ -188,8 +188,6 @@ class AiHelperCustomCommand < ActiveRecord::Base
     when :user
       if user_scope&.to_sym == :project_limited && project_id.blank?
         errors.add(:project, :required_for_project_limited)
-      elsif user_scope&.to_sym == :common && project_id.present?
-        errors.add(:project, :must_be_blank_for_common)
       end
     end
   end
