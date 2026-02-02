@@ -11,6 +11,9 @@
       this.commands = [];
       this.selectedIndex = -1;
 
+      // Store reference on the input element for external access
+      this.input._commandCompletion = this;
+
       this.init();
     }
 
@@ -87,6 +90,30 @@
       this.selectedIndex = -1;
     }
 
+    /**
+     * Returns whether the suggestion list is currently visible
+     * @returns {boolean}
+     */
+    isSuggestionsVisible() {
+      return this.suggestionBox.style.display !== 'none' && this.commands.length > 0;
+    }
+
+    /**
+     * Accept the current suggestion.
+     * - If an item is selected via arrow keys, use that item
+     * - If no item is selected, use the first suggestion
+     * @returns {boolean} true if a suggestion was accepted
+     */
+    acceptSuggestion() {
+      if (!this.isSuggestionsVisible()) {
+        return false;
+      }
+
+      const index = this.selectedIndex >= 0 ? this.selectedIndex : 0;
+      this.selectCommand(index);
+      return true;
+    }
+
     handleKeyDown(event) {
       if (this.suggestionBox.style.display === 'none') {
         return;
@@ -102,9 +129,9 @@
           this.moveSelection(-1);
           break;
         case 'Enter':
-          if (this.selectedIndex >= 0) {
+          if (this.isSuggestionsVisible()) {
             event.preventDefault();
-            this.selectCommand(this.selectedIndex);
+            this.acceptSuggestion();
           }
           break;
         case 'Escape':

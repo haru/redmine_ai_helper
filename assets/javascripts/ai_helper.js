@@ -92,6 +92,13 @@ class AiHelper {
             // Ignore Enter key when confirming IME (e.g., for kanji conversion)
           return true;
         } else {
+          // Check if command completion is active
+          const commandCompletion = chatInput._commandCompletion;
+          if (commandCompletion && commandCompletion.isSuggestionsVisible()) {
+            // Let CommandCompletion handle the Enter key
+            // Do NOT submit the form
+            return;
+          }
             // If only Enter is pressed, trigger submit
           e.preventDefault();
           submitAction();
