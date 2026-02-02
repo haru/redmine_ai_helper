@@ -122,6 +122,8 @@ The AI Helper Plugin can suggest optimal assignees when creating or editing issu
 
 The AI Helper Plugin can suggest what you should work on today based on your assigned issues. This feature analyzes your issues considering due dates, priorities, and how long they've been untouched, then provides prioritized recommendations for both the current project and other projects you have access to. Access this feature from the "To Do" menu in the top menu bar (available only within project contexts where you have AI Helper permissions).
 
+![Image](https://github.com/user-attachments/assets/db12d4ac-58ee-4fd8-893c-d2feda0128cf)
+
 ## Project Health Report
 
 You can generate a project health report using the AI Helper Plugin. This feature provides a comprehensive overview of the project's status, including metrics such as open issues, closed issues, and overall project health.
