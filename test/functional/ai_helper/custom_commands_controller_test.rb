@@ -147,7 +147,7 @@ module AiHelper
             }
           }
         end
-        assert_redirected_to project_custom_commands_path(@project)
+        assert_redirected_to ai_helper_dashboard_path(@project, tab: 'custom_commands')
 
         command = AiHelperCustomCommand.last
         assert_equal 'new-project', command.name
@@ -285,7 +285,7 @@ module AiHelper
           project_id: @project.id,
           id: @project_command.id
         }
-        assert_redirected_to project_custom_commands_path(@project)
+        assert_redirected_to ai_helper_dashboard_path(@project, tab: 'custom_commands')
       end
     end
   end
