@@ -212,15 +212,14 @@ class CustomCommandExpanderTest < ActiveSupport::TestCase
       assert_not_includes command_names, "project_test"
     end
 
-    should "include command metadata" do
+    should "return command name only" do
       expander = RedmineAiHelper::CustomCommandExpander.new(user: @user, project: @project)
       commands = expander.available_commands(prefix: "global")
 
       command = commands.find { |c| c[:name] == "global_test" }
       assert command
       assert_equal "global_test", command[:name]
-      assert command[:prompt].present?
-      assert_equal "global", command[:type]
+      assert_equal [:name], command.keys
     end
   end
 end

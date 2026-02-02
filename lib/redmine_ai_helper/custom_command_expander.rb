@@ -69,10 +69,7 @@ module RedmineAiHelper
 
       commands.order(:name).map do |cmd|
         {
-          name: cmd.name,
-          prompt: cmd.prompt.truncate(100),
-          type: cmd.command_type,
-          scope: cmd.user_scope
+          name: cmd.name
         }
       end
     end

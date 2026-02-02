@@ -74,11 +74,7 @@
       this.commands.forEach((command, index) => {
         const item = document.createElement('div');
         item.className = 'suggestion-item';
-        item.innerHTML = `
-          <div class="suggestion-name">/${command.name}</div>
-          <div class="suggestion-prompt">${this.escapeHtml(command.prompt)}</div>
-          <div class="suggestion-meta">${this.getCommandTypeLabel(command)}</div>
-        `;
+        item.textContent = `/${command.name}`;
         item.addEventListener('click', () => this.selectCommand(index));
         this.suggestionBox.appendChild(item);
       });
@@ -145,16 +141,6 @@
       }
     }
 
-    escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-
-    getCommandTypeLabel(command) {
-      // Label is passed as type_label from JSON API or use the type
-      return command.type_label || command.type;
-    }
   }
 
   // Make CommandCompletion available globally
