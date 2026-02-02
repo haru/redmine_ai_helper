@@ -386,6 +386,30 @@ module RedmineAiHelper
       end
     end
 
+    # Get stuff todo suggestions using IssueAgent with streaming support
+    # @param project [Project] The project object
+    # @param stream_proc [Proc] Optional callback proc for streaming content
+    # @return [String] The markdown-formatted stuff todo suggestions
+    def stuff_todo(project:, stream_proc: nil)
+      begin
+        prompt = "Please suggest what to do today."
+        langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: prompt)
+        agent = RedmineAiHelper::Agents::IssueAgent.new(project: project, langfuse: langfuse)
+        langfuse.create_span(name: "user_request", input: prompt)
+
+        answer = agent.suggest_stuff_todo(stream_proc: stream_proc)
+
+        langfuse.finish_current_span(output: answer)
+        langfuse.flush
+      rescue => e
+        ai_helper_logger.error "error: #{e.full_message}"
+        answer = e.message
+        stream_proc.call(answer) if stream_proc
+      end
+      ai_helper_logger.info "answer: #{answer}"
+      answer
+    end
+
     private
   end
 end

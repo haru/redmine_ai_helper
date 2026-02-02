@@ -2,6 +2,9 @@
 # Controller for performing CRUD operations on ModelProfile
 class AiHelperModelProfilesController < ApplicationController
   layout "admin"
+
+  protect_from_forgery with: :exception
+
   before_action :require_admin
   before_action :find_model_profile, only: [:show, :edit, :update, :destroy]
   self.main_menu = false
@@ -65,6 +68,24 @@ class AiHelperModelProfilesController < ApplicationController
   end
 
   private
+
+  # Always enforce CSRF verification for this controller.
+  # Overrides Redmine's ApplicationController which conditionally skips
+  # verification for API requests. This controller does not serve API requests.
+  def verify_authenticity_token
+    unless verified_request?
+      handle_unverified_request
+    end
+  end
+
+  # Always handle unverified requests by returning 422.
+  # Overrides Redmine's version which skips handling for API-format requests.
+  def handle_unverified_request
+    cookies.delete(autologin_cookie_name)
+    self.logged_user = nil
+    set_localization
+    render_error status: 422, message: l(:error_invalid_authenticity_token)
+  end
 
   # Find the model profile based on the provided ID
   def find_model_profile

@@ -15,7 +15,7 @@ class AiHelperController < ApplicationController
 
   rescue_from ActionDispatch::Http::Parameters::ParseError, with: :handle_parse_error
 
-  protect_from_forgery except: [:generate_project_health, :suggest_completion, :suggest_wiki_completion, :check_typos, :api_create_health_report, :check_duplicates]
+  protect_from_forgery with: :exception
   accept_api_auth :api_create_health_report
   before_action :find_issue, only: [:issue_summary, :update_issue_summary, :generate_issue_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues]
   before_action :find_wiki_page, only: [:wiki_summary, :generate_wiki_summary]
@@ -588,6 +588,15 @@ class AiHelperController < ApplicationController
     render json: { suggestions: suggestions }
   end
 
+  # Generate stuff todo suggestions with streaming
+  def stuff_todo
+    llm = RedmineAiHelper::Llm.new
+
+    stream_llm_response do |stream_proc|
+      llm.stuff_todo(project: @project, stream_proc: stream_proc)
+    end
+  end
+
   # Suggest assignees for an issue based on multiple strategies
   # POST /projects/:id/ai_helper/issue/:issue_id/suggest_assignees
   def suggest_assignees
@@ -706,6 +715,33 @@ class AiHelperController < ApplicationController
   end
 
   private
+
+  # Always enforce CSRF verification for this controller.
+  # Overrides Redmine's ApplicationController which conditionally skips
+  # verification for API requests.
+  # Exception: api_create_health_report uses API key authentication via
+  # accept_api_auth, which replaces CSRF protection for machine-to-machine requests.
+  def verify_authenticity_token
+    if action_name == "api_create_health_report" && api_request?
+      return
+    end
+    unless verified_request?
+      handle_unverified_request
+    end
+  end
+
+  # Always handle unverified requests by returning 422.
+  # Overrides Redmine's version which skips handling for API-format requests.
+  def handle_unverified_request
+    if action_name == "api_create_health_report" && api_request?
+      super
+      return
+    end
+    cookies.delete(autologin_cookie_name)
+    self.logged_user = nil
+    set_localization
+    render_error status: 422, message: l(:error_invalid_authenticity_token)
+  end
 
   # Find the user
   def find_user

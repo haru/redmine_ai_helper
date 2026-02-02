@@ -111,12 +111,8 @@ document.addEventListener('DOMContentLoaded', function() {
       contentDiv.classList.add('has-report');
     }
 
-    // Re-parse markdown content to ensure proper formatting
-    const hiddenField = document.getElementById('ai-helper-health-report-content');
-    if (hiddenField && hiddenField.value) {
-      const formattedContent = parser.parse(hiddenField.value);
-      resultDiv.innerHTML = '<div class="ai-helper-final-content">' + formattedContent + '</div>';
-    }
+    // Server already renders the formatted HTML via textilizable(),
+    // so no client-side re-parsing is needed here.
 
     addPdfExportButton();
   }

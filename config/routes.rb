@@ -28,6 +28,9 @@ RedmineApp::Application.routes.draw do
   post "projects/:id/ai_helper/project_health_markdown", to: "ai_helper#project_health_markdown", as: "ai_helper_project_health_markdown"
   post "projects/:id/ai_helper/check_typos", to: "ai_helper#check_typos", as: "ai_helper_check_typos"
 
+  # Stuff todo route
+  get "projects/:id/ai_helper/stuff_todo", to: "ai_helper#stuff_todo", as: "ai_helper_stuff_todo"
+
   # Assignment suggestion routes
   post "projects/:id/ai_helper/issue/:issue_id/suggest_assignees",
        to: "ai_helper#suggest_assignees",

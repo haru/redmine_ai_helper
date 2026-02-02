@@ -21,10 +21,16 @@ if (typeof AiHelperMarkdownParser === "undefined") {
           pattern: /\*(.+?)\*/g,
           replacement: (match, content) => `<em>${content}</em>`
         },
-        // Links
+        // Links (with URL sanitization to prevent javascript: XSS)
         {
           pattern: /\[(.+?)\]\((.+?)\)/g,
-          replacement: (match, text, url) => `<a href="${url}">${text}</a>`
+          replacement: (match, text, url) => {
+            const sanitizedUrl = AiHelperMarkdownParser.sanitizeUrl(url);
+            if (sanitizedUrl === null) {
+              return text;
+            }
+            return `<a href="${sanitizedUrl}">${text}</a>`;
+          }
         },
         // Unordered lists
         {
@@ -75,7 +81,49 @@ if (typeof AiHelperMarkdownParser === "undefined") {
         }
       });
 
+      // Sanitize output to remove dangerous HTML patterns
+      html = this.sanitizeOutput(html);
+
       return html;
+    }
+
+    // Remove dangerous HTML patterns from the output using DOMParser
+    // for robust sanitization that handles nested/malformed tags correctly.
+    sanitizeOutput(html) {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      // Remove dangerous elements and their content
+      const dangerousTags = ['script', 'iframe', 'object', 'embed', 'form', 'base'];
+      dangerousTags.forEach(function(tag) {
+        const elements = doc.querySelectorAll(tag);
+        for (let i = elements.length - 1; i >= 0; i--) {
+          elements[i].remove();
+        }
+      });
+      // Remove on* event handler attributes from all elements
+      const allElements = doc.querySelectorAll('*');
+      for (let i = 0; i < allElements.length; i++) {
+        const attrs = allElements[i].attributes;
+        for (let j = attrs.length - 1; j >= 0; j--) {
+          if (attrs[j].name.toLowerCase().startsWith('on')) {
+            allElements[i].removeAttribute(attrs[j].name);
+          }
+        }
+      }
+      return doc.body.innerHTML;
+    }
+
+    // Validate URL protocol to prevent javascript: XSS
+    static sanitizeUrl(url) {
+      if (!url) return null;
+      const trimmed = url.trim();
+      // Allow safe protocols and relative URLs
+      if (/^https?:\/\//i.test(trimmed) ||
+          /^mailto:/i.test(trimmed) ||
+          /^[/#?]/.test(trimmed)) {
+        return trimmed;
+      }
+      // Block everything else (javascript:, data:, vbscript:, etc.)
+      return null;
     }
 
     processTables(markdown) {

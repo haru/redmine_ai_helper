@@ -27,7 +27,7 @@ Redmine::Plugin.register :redmine_ai_helper do
   author_url "https://github.com/haru"
   requires_redmine :version_or_higher => "6.0.0"
 
-  version "1.12.0"
+  version "1.13.0"
 
   project_module :ai_helper do
     permission :view_ai_helper,
@@ -38,7 +38,7 @@ Redmine::Plugin.register :redmine_ai_helper do
                    :generate_sub_issues, :add_sub_issues, :similar_issues, :check_duplicates, :project_health, :generate_project_health, :project_health_pdf, :project_health_markdown,
                    :project_health_metadata,
                    :suggest_completion, :suggest_wiki_completion, :check_typos,
-                   :api_create_health_report, :suggest_assignees,
+                   :api_create_health_report, :suggest_assignees, :stuff_todo,
                  ],
                  ai_helper_dashboard: [
                    :index, :health_report_history, :health_report_show, :compare_health_reports, :comparison_pdf, :comparison_markdown,
@@ -62,4 +62,17 @@ Redmine::Plugin.register :redmine_ai_helper do
   menu :project_menu, :ai_helper_dashboard, {
          controller: "ai_helper_dashboard", action: "index",
        }, caption: :label_ai_helper
+
+  # Add "To Do" menu item to account menu (appears near login info)
+  # URL is "#" because the actual API call is handled by JavaScript via meta tag.
+  # The link is hidden on non-project pages by JavaScript.
+  menu :account_menu, :ai_helper_stuff_todo, "#",
+       :caption => Proc.new { I18n.t("ai_helper.stuff_todo.menu_label") },
+       :if => Proc.new {
+         User.current.logged?
+       },
+       :first => true,
+       :icon => "ai-helper-robot",
+       :plugin => :redmine_ai_helper,
+       :html => { id: "ai-helper-stuff-todo-link", style: "display:none;" }
 end

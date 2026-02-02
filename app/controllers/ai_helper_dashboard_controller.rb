@@ -6,6 +6,8 @@ class AiHelperDashboardController < ApplicationController
   include AiHelper::Streaming
   include RedmineAiHelper::Export::PDF::ProjectHealthPdfHelper
 
+  protect_from_forgery with: :exception
+
   before_action :find_project, :authorize, :find_user
   before_action :find_health_report_and_project, only: [:health_report_show, :health_report_destroy]
   before_action :set_per_page_limit, only: [:index]
@@ -139,6 +141,24 @@ class AiHelperDashboardController < ApplicationController
   end
 
   private
+
+  # Always enforce CSRF verification for this controller.
+  # Overrides Redmine's ApplicationController which conditionally skips
+  # verification for API requests. This controller does not serve API requests.
+  def verify_authenticity_token
+    unless verified_request?
+      handle_unverified_request
+    end
+  end
+
+  # Always handle unverified requests by returning 422.
+  # Overrides Redmine's version which skips handling for API-format requests.
+  def handle_unverified_request
+    cookies.delete(autologin_cookie_name)
+    self.logged_user = nil
+    set_localization
+    render_error status: 422, message: l(:error_invalid_authenticity_token)
+  end
 
   # Show comparison UI
   def show_comparison_ui

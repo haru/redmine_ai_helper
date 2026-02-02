@@ -1,0 +1,17 @@
+<%#
+  Stuff Todo Modal
+  This modal displays AI-suggested tasks for the current user in the project context.
+  The modal content is streamed via SSE from the stuff_todo action.
+%>
+<% project = local_assigns[:project] %>
+<% if project %>
+  <div id="ai-helper-stuff-todo-overlay" class="ai-helper-stuff-todo-overlay"></div>
+  <div id="ai-helper-stuff-todo-modal" class="ai-helper-stuff-todo-modal box">
+    <div class="ai-helper-stuff-todo-header">
+      <h3><%= sprite_icon("ai-helper-robot", t('ai_helper.stuff_todo.modal_title'), plugin: :redmine_ai_helper) %></h3>
+      <button id="ai-helper-stuff-todo-close" class="ai-helper-stuff-todo-close" type="button" aria-label="<%= t('button_close') %>">&#215;</button>
+    </div>
+    <div id="ai-helper-stuff-todo-body" class="ai-helper-stuff-todo-body">
+    </div>
+  </div>
+<% end %>
