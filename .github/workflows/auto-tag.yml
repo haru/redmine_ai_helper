@@ -33,13 +33,13 @@ jobs:
       - name: Create and Push Tag
         run: |
           git checkout main
-          if git rev-parse "v${{ env.VERSION }}" >/dev/null 2>&1; then
-            echo "Tag v${{ env.VERSION }} already exists, skipping"
+          if git rev-parse "${{ env.VERSION }}" >/dev/null 2>&1; then
+            echo "Tag ${{ env.VERSION }} already exists, skipping"
           else
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git tag "v${{ env.VERSION }}"
-            git push origin "v${{ env.VERSION }}" || echo "Tag push failed, possibly already exists"
+            git tag "${{ env.VERSION }}"
+            git push origin "${{ env.VERSION }}" || echo "Tag push failed, possibly already exists"
           fi
 
       - name: Create backmerge PR to develop
