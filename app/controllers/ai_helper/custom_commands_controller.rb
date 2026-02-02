@@ -126,7 +126,7 @@ module AiHelper
 
     def redirect_to_command_list
       if @project
-        redirect_to ai_helper_dashboard_path(@project, tab: 'custom_commands')
+        redirect_to ai_helper_dashboard_path(@project, tab: "custom_commands")
       else
         redirect_to custom_commands_path
       end
