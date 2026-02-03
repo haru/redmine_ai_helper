@@ -22,6 +22,7 @@ en:
   label_ai_helper_report_detail_mobile: "Report Detail"
   label_ai_helper_close_detail: "Close Detail"
   ai_helper:
+    notice_sub_issues_added: "Sub-issues have been added"
     chat:
       planning: "Creating execution plan..."
       generating_final_response: "Generating final response..."

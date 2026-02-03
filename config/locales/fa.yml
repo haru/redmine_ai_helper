@@ -9,6 +9,7 @@ fa:
   ai_helper_error_occurred: "خطایی رخ داده است"
   permission_view_ai_helper: "مشاهده دستیار هوش مصنوعی"
   ai_helper:
+    notice_sub_issues_added: "زیر درخواست‌ها اضافه شدند"
     generate_issue_reply:
       title: "ایجاد پیش‌نویس یادداشت با دستیار هوش مصنوعی"
       instructions: "لطفاً نکات کلیدی یا دستورالعمل‌های پاسخ را وارد کنید."
