@@ -14,6 +14,7 @@ fr:
   permission_view_ai_helper: "Voir l'Assistant IA"
   label_ai_helper_error: "Erreur"
   ai_helper:
+    notice_sub_issues_added: "Les sous-tâches ont été ajoutées"
     project_health:
       title: "Rapport de santé du projet"
       pdf_title: "Rapport de santé du projet"
