@@ -19,8 +19,6 @@ document.addEventListener('DOMContentLoaded', function() {
     return;
   }
 
-  const generateLink = document.getElementById('ai-helper-generate-project-health-link');
-
   function getProjectHealthMetadataConfig() {
     const urlMeta = document.querySelector('meta[name="ai-helper-project-health-metadata-url"]');
     const labelMeta = document.querySelector('meta[name="ai-helper-project-health-created-label"]');
@@ -97,10 +95,6 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
 
-  if (!generateLink) {
-    return;
-  }
-
   // Check if report already exists and ensure proper initialization
   const resultDiv = document.getElementById('ai-helper-project-health-result');
   const contentDiv = document.querySelector('.ai-helper-project-health-content');
@@ -148,155 +142,159 @@ document.addEventListener('DOMContentLoaded', function() {
 
   let currentEventSource = null; // Keep track of current EventSource
 
-  if (generateLink) {
-    generateLink.addEventListener('click', function(e) {
-      e.preventDefault();
+  // Use event delegation so the handler survives DOM replacement
+  // (e.g. after updateHealthReportHistory replaces the history container)
+  document.addEventListener('click', function(e) {
+    const generateLink = e.target.closest('#ai-helper-generate-project-health-link');
+    if (!generateLink) {
+      return;
+    }
+    e.preventDefault();
 
-      // Close any existing EventSource to prevent conflicts
-      if (currentEventSource) {
-        currentEventSource.close();
-        currentEventSource = null;
-      }
+    // Close any existing EventSource to prevent conflicts
+    if (currentEventSource) {
+      currentEventSource.close();
+      currentEventSource = null;
+    }
 
-      // Get the result div that should already exist in the scrollable container
-      let resultDiv = document.getElementById('ai-helper-project-health-result');
+    // Get the result div that should already exist in the scrollable container
+    let resultDiv = document.getElementById('ai-helper-project-health-result');
 
-      // If no result div exists, something is wrong with the DOM structure
-      if (!resultDiv) {
-        console.error('No result div found for report generation. Please check the page structure.');
-        alert('Error: Cannot find report display area. Please refresh the page.');
-        return;
-      }
+    // If no result div exists, something is wrong with the DOM structure
+    if (!resultDiv) {
+      console.error('No result div found for report generation. Please check the page structure.');
+      alert('Error: Cannot find report display area. Please refresh the page.');
+      return;
+    }
 
-      // Hide placeholder if it exists
-      const placeholder = document.querySelector('.ai-helper-detail-placeholder');
-      if (placeholder) {
-        placeholder.style.display = 'none';
-      }
+    // Hide placeholder if it exists
+    const placeholder = document.querySelector('.ai-helper-detail-placeholder');
+    if (placeholder) {
+      placeholder.style.display = 'none';
+    }
 
-      // Show the report detail container if it's hidden
-      const reportDetail = document.querySelector('.ai-helper-health-report-detail');
-      if (reportDetail && reportDetail.style.display === 'none') {
-        reportDetail.style.display = 'block';
-      }
+    // Show the report detail container if it's hidden
+    const reportDetail = document.querySelector('.ai-helper-health-report-detail');
+    if (reportDetail && reportDetail.style.display === 'none') {
+      reportDetail.style.display = 'block';
+    }
 
-      // Show loading state and add has-report class
-      const contentContainer = resultDiv.closest('.ai-helper-project-health-content');
-      resultDiv.innerHTML = '<div class="ai-helper-loader"></div>';
-      if (contentContainer) {
-        contentContainer.classList.add('has-report');
-      }
-      if (resultDiv.parentElement) {
-        resultDiv.parentElement.classList.add('has-report');
-      }
+    // Show loading state and add has-report class
+    const contentContainer = resultDiv.closest('.ai-helper-project-health-content');
+    resultDiv.innerHTML = '<div class="ai-helper-loader"></div>';
+    if (contentContainer) {
+      contentContainer.classList.add('has-report');
+    }
+    if (resultDiv.parentElement) {
+      resultDiv.parentElement.classList.add('has-report');
+    }
 
-      // Remove existing PDF button during generation
-      removePdfExportButton();
+    // Remove existing PDF button during generation
+    removePdfExportButton();
 
-      const url = this.href;
+    const url = generateLink.href;
 
-      // Create EventSource for streaming
-      currentEventSource = new EventSource(url);
-      const eventSource = currentEventSource;
-      let content = '';
+    // Create EventSource for streaming
+    currentEventSource = new EventSource(url);
+    const eventSource = currentEventSource;
+    let content = '';
 
-      eventSource.onmessage = function(event) {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
-            content += data.choices[0].delta.content;
-            if (resultDiv) {
-              // Hide loader on first content
-              const loader = resultDiv.querySelector('.ai-helper-loader');
-              if (loader && loader.style.display !== 'none') {
-                loader.style.display = 'none';
-              }
+    eventSource.onmessage = function(event) {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
+          content += data.choices[0].delta.content;
+          if (resultDiv) {
+            // Hide loader on first content
+            const loader = resultDiv.querySelector('.ai-helper-loader');
+            if (loader && loader.style.display !== 'none') {
+              loader.style.display = 'none';
+            }
 
-              const formattedContent = parser.parse(content);
-              const newHTML = '<div class="ai-helper-streaming-content">' +
-                formattedContent +
-                '<span class="ai-helper-cursor">|</span></div>';
-              resultDiv.innerHTML = newHTML;
+            const formattedContent = parser.parse(content);
+            const newHTML = '<div class="ai-helper-streaming-content">' +
+              formattedContent +
+              '<span class="ai-helper-cursor">|</span></div>';
+            resultDiv.innerHTML = newHTML;
 
-              // Auto-scroll to bottom to show new content
-              const scrollableContainer = document.querySelector('.ai-helper-project-health-content.has-report');
-              if (scrollableContainer) {
-                scrollableContainer.scrollTop = scrollableContainer.scrollHeight;
-              }
+            // Auto-scroll to bottom to show new content
+            const scrollableContainer = document.querySelector('.ai-helper-project-health-content.has-report');
+            if (scrollableContainer) {
+              scrollableContainer.scrollTop = scrollableContainer.scrollHeight;
             }
           }
+        }
 
-          if (data.choices && data.choices[0] && data.choices[0].finish_reason === 'stop') {
-            eventSource.close();
-            currentEventSource = null;
-            if (resultDiv) {
-              const formattedContent = parser.parse(content);
-              const finalHTML = '<div class="ai-helper-final-content">' +
-                formattedContent + '</div>';
-              resultDiv.innerHTML = finalHTML;
+        if (data.choices && data.choices[0] && data.choices[0].finish_reason === 'stop') {
+          eventSource.close();
+          currentEventSource = null;
+          if (resultDiv) {
+            const formattedContent = parser.parse(content);
+            const finalHTML = '<div class="ai-helper-final-content">' +
+              formattedContent + '</div>';
+            resultDiv.innerHTML = finalHTML;
 
-              // Store the markdown content in hidden field for PDF generation
-              updateHiddenReportContent(content);
+            // Store the markdown content in hidden field for PDF generation
+            updateHiddenReportContent(content);
 
-              // Update health report history in master-detail layout
-              if (typeof window.updateHealthReportHistory === 'function') {
-                setTimeout(() => {
-                  window.updateHealthReportHistory((masterDetailInstance) => {
-                    if (masterDetailInstance) {
-                      setTimeout(() => {
-                        const firstReportRow = document.querySelector('.ai-helper-report-row');
-                        if (firstReportRow) {
-                          masterDetailInstance.selectedReportId = null;
-                          masterDetailInstance.selectReport(firstReportRow);
-                        }
-                        refreshProjectHealthMetadata();
-                      }, 100);
-                    } else {
+            // Update health report history in master-detail layout
+            if (typeof window.updateHealthReportHistory === 'function') {
+              setTimeout(() => {
+                window.updateHealthReportHistory((masterDetailInstance) => {
+                  if (masterDetailInstance) {
+                    setTimeout(() => {
+                      const firstReportRow = document.querySelector('.ai-helper-report-row');
+                      if (firstReportRow) {
+                        masterDetailInstance.selectedReportId = null;
+                        masterDetailInstance.selectReport(firstReportRow);
+                      }
                       refreshProjectHealthMetadata();
-                    }
-                  });
-                }, 1000);
-              } else {
-                refreshProjectHealthMetadata();
-              }
-
-              // Final scroll to bottom
-              const scrollableContainer = document.querySelector('.ai-helper-project-health-content.has-report');
-              if (scrollableContainer) {
-                scrollableContainer.scrollTop = scrollableContainer.scrollHeight;
-              }
-
-              // Add PDF export button after generation completes
-              addPdfExportButton();
-
-              // Refresh metadata (created timestamp) to reflect the regenerated report
+                    }, 100);
+                  } else {
+                    refreshProjectHealthMetadata();
+                  }
+                });
+              }, 1000);
+            } else {
               refreshProjectHealthMetadata();
             }
-          }
-        } catch (error) {
-          // Silently handle parsing errors
-        }
-      };
 
-      eventSource.onerror = function(event) {
-        eventSource.close();
-        currentEventSource = null;
-        if (resultDiv) {
-          const errorMessage = document.querySelector('meta[name="error-message"]');
-          const errorText = errorMessage ? errorMessage.getAttribute('content') : 'Error';
-          resultDiv.innerHTML = '<div class="ai-helper-error">' + errorText + '</div>';
+            // Final scroll to bottom
+            const scrollableContainer = document.querySelector('.ai-helper-project-health-content.has-report');
+            if (scrollableContainer) {
+              scrollableContainer.scrollTop = scrollableContainer.scrollHeight;
+            }
 
-          // Ensure content container is visible even on error
-          const contentContainer = resultDiv.closest('.ai-helper-project-health-content');
-          if (contentContainer) {
-            contentContainer.style.display = 'block';
+            // Add PDF export button after generation completes
+            addPdfExportButton();
+
+            // Refresh metadata (created timestamp) to reflect the regenerated report
+            refreshProjectHealthMetadata();
           }
         }
-        // Remove PDF button if it exists on error
-        removePdfExportButton();
-      };
-    });
-  }
+      } catch (error) {
+        // Silently handle parsing errors
+      }
+    };
+
+    eventSource.onerror = function(event) {
+      eventSource.close();
+      currentEventSource = null;
+      if (resultDiv) {
+        const errorMessage = document.querySelector('meta[name="error-message"]');
+        const errorText = errorMessage ? errorMessage.getAttribute('content') : 'Error';
+        resultDiv.innerHTML = '<div class="ai-helper-error">' + errorText + '</div>';
+
+        // Ensure content container is visible even on error
+        const contentContainer = resultDiv.closest('.ai-helper-project-health-content');
+        if (contentContainer) {
+          contentContainer.style.display = 'block';
+        }
+      }
+      // Remove PDF button if it exists on error
+      removePdfExportButton();
+    };
+  });
 
   // Function to add PDF export button after report generation
   function addPdfExportButton() {
