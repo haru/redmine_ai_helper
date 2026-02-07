@@ -33,13 +33,13 @@ jobs:
       - name: Create and Push Tag
         run: |
           git checkout main
-          if git rev-parse "v${{ env.VERSION }}" >/dev/null 2>&1; then
-            echo "Tag v${{ env.VERSION }} already exists, skipping"
+          if git rev-parse --verify "refs/tags/${{ env.VERSION }}" >/dev/null 2>&1; then
+            echo "Tag ${{ env.VERSION }} already exists, skipping"
           else
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git tag "v${{ env.VERSION }}"
-            git push origin "v${{ env.VERSION }}" || echo "Tag push failed, possibly already exists"
+            git tag "${{ env.VERSION }}"
+            git push origin "${{ env.VERSION }}" || echo "Tag push failed, possibly already exists"
           fi
 
       - name: Create backmerge PR to develop
@@ -63,12 +63,12 @@ jobs:
           fi
 
           # Create a new backmerge PR
-          BODY="Automated backmerge of main to develop after release v${{ env.VERSION }}.
+          BODY="Automated backmerge of main to develop after release ${{ env.VERSION }}.
 
           This PR was created automatically by GitHub Actions."
 
           gh pr create \
             --base develop \
             --head main \
-            --title "Backmerge main to develop (v${{ env.VERSION }})" \
+            --title "Backmerge main to develop (${{ env.VERSION }})" \
             --body "$BODY"

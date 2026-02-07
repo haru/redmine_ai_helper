@@ -247,7 +247,7 @@ class AiHelperController < ApplicationController
         redirect_to issue_path(@issue) and return
       end
     end
-    redirect_to issue_path(@issue), notice: l(:notice_sub_issues_added)
+    redirect_to issue_path(@issue), notice: l('ai_helper.notice_sub_issues_added')
   end
 
   # Find similar issues using LLM and IssueAgent

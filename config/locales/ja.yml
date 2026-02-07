@@ -22,6 +22,7 @@ ja:
   label_ai_helper_report_detail_mobile: "レポート詳細"
   label_ai_helper_close_detail: "詳細を閉じる"
   ai_helper:
+    notice_sub_issues_added: "子チケットが追加されました"
     chat:
       planning: "実行計画を作成中..."
       generating_final_response: "最終回答を作成しています..."
