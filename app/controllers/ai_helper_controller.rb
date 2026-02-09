@@ -222,14 +222,21 @@ class AiHelperController < ApplicationController
     versions = @issue.assignable_versions || []
     versions_options_for_select = versions.collect { |v| [v.name, v.id] }
 
-    render partial: "ai_helper/issues/subissues/issues", locals: { issue: @issue, subissues: subissues, trackers_options_for_select: trackers_options_for_select, versions_options_for_select: versions_options_for_select }
+    assignable_users_options_for_select = @issue.project.assignable_users.collect { |u| [u.name, u.id] }
+
+    render partial: "ai_helper/issues/subissues/issues", locals: {
+        issue: @issue,
+        subissues: subissues,
+        trackers_options_for_select: trackers_options_for_select,
+        versions_options_for_select: versions_options_for_select,
+        assignable_users_options_for_select: assignable_users_options_for_select}
   end
 
   # Add sub-issues to the current issue
   def add_sub_issues
     issues_param = params[:sub_issues]
     issues_param.each do |issue_param_array|
-      issue_param = issue_param_array[1].permit(:subject, :description, :tracker_id, :check, :fixed_version_id)
+      issue_param = issue_param_array[1].permit(:subject, :description, :tracker_id, :check, :fixed_version_id, :assigned_to_id)
       # Skip if the issue_param does not have the :check key or if it is false
       next unless issue_param[:check]
       issue = Issue.new
@@ -240,6 +247,14 @@ class AiHelperController < ApplicationController
       issue.description = issue_param[:description]
       issue.tracker_id = issue_param[:tracker_id]
       issue.fixed_version_id = issue_param[:fixed_version_id] unless issue_param[:fixed_version_id].blank?
+
+      if issue_param[:assigned_to_id].present?
+        assignee_id = issue_param[:assigned_to_id].to_i
+        if @issue.project.assignable_users.exists?(assignee_id)
+          issue.assigned_to_id = assignee_id
+        end
+      end
+
       # Save the issue and handle errors
       unless issue.save
         # If saving fails, collect error messages and display them using i18n
