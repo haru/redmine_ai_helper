@@ -3,6 +3,7 @@ en:
   label_ai_helper: "AI Helper"
   label_chat_placeholder: "Type your message here..."
   label_ai_helper_input_newline: "Press Shift + Enter for a new line."
+  label_ai_helper_custom_command_hint: "Type '/' to use custom commands."
   label_ai_helper_start_new_chat: "Start a new chat"
   ai_helper_summary: "Summarize with AI Helper"
   ai_helper_similar_issues: "Find Similar Issues with AI Helper"
