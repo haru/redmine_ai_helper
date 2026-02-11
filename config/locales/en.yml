@@ -3,6 +3,7 @@ en:
   label_ai_helper: "AI Helper"
   label_chat_placeholder: "Type your message here..."
   label_ai_helper_input_newline: "Press Shift + Enter for a new line."
+  label_ai_helper_custom_command_hint: "Type '/' to use custom commands."
   label_ai_helper_start_new_chat: "Start a new chat"
   ai_helper_summary: "Summarize with AI Helper"
   ai_helper_similar_issues: "Find Similar Issues with AI Helper"
@@ -147,10 +148,35 @@ en:
         search_answer_instruction_with_vector: "When searching for issues, use the appropriate tool: For conceptual/semantic searches (e.g., 'issues related to exceptions', 'performance problems', 'login bugs'), use vector search (ask_with_filter). For explicit filter conditions (e.g., 'status is closed', 'assigned to someone', 'updated this month'), use search_issues."
       leader_agent:
         generate_final_response: "All agents have completed their tasks. Please create the final response for the user."
+    custom_commands:
+      label:
+        title: Custom Commands
+        new: New Custom Command
+        no_data: No custom commands registered
+      command_type:
+        global: Global Commands
+        project: Project Commands
+        user: User Commands
+      command_type_description:
+        global: Commands shared across all projects where AI Helper is enabled.
+        project: Commands shared only within this project.
+        user: Commands that only you can use.
+      user_scope:
+        common: Common
+        project_limited: Project Limited
+      field:
+        scope: Scope
+      text:
+        name_format: "Only alphanumeric, underscore, and hyphen allowed"
+        variables_help: "Available variables: {input}, {project_name}, {user_name}, {datetime}"
+      error:
+        name_duplicate: "Command name is already in use"
+        project_required: "Project commands require a project"
   activerecord:
     models:
       ai_helper_model_profile: "Model Profile"
       ai_helper_setting: "AI Helper Setting"
+      ai_helper_custom_command: "Custom Command"
     attributes:
       ai_helper_model_profile:
         llm_type: "Type"
@@ -173,5 +199,12 @@ en:
         subtask_instructions: "Instructions for subtask generation"
         health_report_instructions: "Instructions for health report generation"
         assignment_suggestion_instructions: "Assignment Suggestion Instructions"
+      ai_helper_custom_command:
+        name: "Command Name"
+        command_type: "Command Type"
+        project_id: "Project"
+        prompt: "Prompt"
+        description: "Description"
+        user_scope: "Scope"
 
   field_id: "ID"

@@ -1,0 +1,40 @@
+.ai-helper-command-suggestions {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  max-height: 300px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 1000;
+  margin-bottom: 4px;
+}
+
+.suggestion-item {
+  padding: 4px 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.suggestion-command-name {
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.suggestion-command-description {
+  font-size: 0.85em;
+  color: #888;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggestion-item:hover,
+.suggestion-item.selected {
+  background: #f5f5f5;
+}

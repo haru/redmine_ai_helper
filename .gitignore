@@ -81,3 +81,4 @@ specs/
 .DS_Store
 .yardoc/
 Gemfile.local
+.playwright-mcp/
