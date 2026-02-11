@@ -198,6 +198,7 @@ en:
         command_type: "Command Type"
         project_id: "Project"
         prompt: "Prompt"
+        description: "Description"
         user_scope: "Scope"
 
   field_id: "ID"

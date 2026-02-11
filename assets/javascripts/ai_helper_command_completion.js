@@ -79,7 +79,19 @@
       this.commands.forEach((command, index) => {
         const item = document.createElement('div');
         item.className = 'suggestion-item';
-        item.textContent = `/${command.name}`;
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'suggestion-command-name';
+        nameSpan.textContent = `/${command.name}`;
+        item.appendChild(nameSpan);
+
+        if (command.description) {
+          const descSpan = document.createElement('span');
+          descSpan.className = 'suggestion-command-description';
+          descSpan.textContent = command.description;
+          item.appendChild(descSpan);
+        }
+
         item.addEventListener('click', () => this.selectCommand(index));
         this.suggestionBox.appendChild(item);
       });

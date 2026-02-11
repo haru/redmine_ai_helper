@@ -14,6 +14,10 @@
         </p>
 
         <p>
+          <%= f.text_field :description, size: 60 %>
+        </p>
+
+        <p>
           <%= f.select :command_type,
                        options_for_select(
                          AiHelperCustomCommand.command_types.map { |k, v| [l("ai_helper.custom_commands.command_type.#{k}"), k] },

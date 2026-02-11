@@ -30,6 +30,7 @@ class AiHelperCustomCommand < ActiveRecord::Base
   validates :name, presence: true,
                    length: { maximum: 50 },
                    format: { with: /\A[a-zA-Z0-9_-]+\z/ }
+  validates :description, length: { maximum: 200 }
   validates :prompt, presence: true
   validates :command_type, presence: true
 

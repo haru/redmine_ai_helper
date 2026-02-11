@@ -132,7 +132,7 @@ module AiHelper
 
     def command_params
       params.require(:ai_helper_custom_command).permit(
-        :name, :prompt, :command_type, :user_scope
+        :name, :description, :prompt, :command_type, :user_scope
       )
     end
 

@@ -24,8 +24,10 @@
         <thead>
           <tr>
             <th><%= l(:field_name) %></th>
-            <th><%= l('activerecord.attributes.ai_helper_custom_command.prompt') %></th>
-            <th><%= l('activerecord.attributes.ai_helper_custom_command.scope') %></th>
+            <th><%= l('activerecord.attributes.ai_helper_custom_command.description') %></th>
+            <% if type == "user" %>
+              <th><%= l('activerecord.attributes.ai_helper_custom_command.user_scope') %></th>
+            <% end %>
             <th><%= l(:field_author) %></th>
             <th><%= l(:field_updated_on) %></th>
             <th></th>
@@ -35,16 +37,10 @@
           <% commands.each do |command| %>
             <tr class="<%= cycle('odd', 'even') %>">
               <td><code>/<%= command.name %></code></td>
-              <td class="description"><%= truncate(command.prompt, length: 100) %></td>
-              <td>
-                <% if command.user? %>
-                  <%= l("ai_helper.custom_commands.user_scope.#{command.user_scope}") %>
-                <% elsif command.project? %>
-                  <%= command.project.name %>
-                <% else %>
-                  -
-                <% end %>
-              </td>
+              <td class="description"><%= command.description %></td>
+              <% if type == "user" %>
+                <td><%= l("ai_helper.custom_commands.user_scope.#{command.user_scope}") %></td>
+              <% end %>
               <td><%= link_to_user command.user %></td>
               <td><%= format_time(command.updated_at) %></td>
               <td class="buttons">

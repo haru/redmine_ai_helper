@@ -69,7 +69,8 @@ module RedmineAiHelper
 
       commands.order(:name).map do |cmd|
         {
-          name: cmd.name
+          name: cmd.name,
+          description: cmd.description
         }
       end
     end

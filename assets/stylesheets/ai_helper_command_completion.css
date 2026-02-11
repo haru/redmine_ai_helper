@@ -16,6 +16,22 @@
 .suggestion-item {
   padding: 4px 8px;
   cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.suggestion-command-name {
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.suggestion-command-description {
+  font-size: 0.85em;
+  color: #888;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .suggestion-item:hover,

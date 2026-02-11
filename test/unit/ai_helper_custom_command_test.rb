@@ -268,6 +268,53 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
     end
   end
 
+  context "description validation" do
+    should "accept valid description" do
+      command = AiHelperCustomCommand.new(
+        name: "test",
+        prompt: "Test prompt",
+        description: "This is a test command",
+        command_type: :global,
+        user: @user
+      )
+      assert command.valid?
+    end
+
+    should "accept nil description" do
+      command = AiHelperCustomCommand.new(
+        name: "test",
+        prompt: "Test prompt",
+        description: nil,
+        command_type: :global,
+        user: @user
+      )
+      assert command.valid?
+    end
+
+    should "accept empty description" do
+      command = AiHelperCustomCommand.new(
+        name: "test",
+        prompt: "Test prompt",
+        description: "",
+        command_type: :global,
+        user: @user
+      )
+      assert command.valid?
+    end
+
+    should "reject description longer than 200 characters" do
+      command = AiHelperCustomCommand.new(
+        name: "test",
+        prompt: "Test prompt",
+        description: "a" * 201,
+        command_type: :global,
+        user: @user
+      )
+      assert_not command.valid?
+      assert command.errors[:description].present?
+    end
+  end
+
   context "scopes" do
     setup do
       @global_cmd = AiHelperCustomCommand.create!(

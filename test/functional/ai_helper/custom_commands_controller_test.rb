@@ -98,6 +98,18 @@ module AiHelper
         json = JSON.parse(response.body)
         assert_not_nil json["commands"]
       end
+
+      should "include description in available commands JSON" do
+        @global_command.update!(description: "Test description")
+        @user.stubs(:allowed_to?).returns(true)
+        User.stubs(:current).returns(@user)
+        get :available, params: { id: @project.id, format: :json }
+        assert_response :success
+        json = JSON.parse(response.body)
+        command = json["commands"].find { |c| c["name"] == "global-test" }
+        assert_not_nil command
+        assert_equal "Test description", command["description"]
+      end
     end
 
     context "GET new" do
@@ -200,6 +212,40 @@ module AiHelper
         assert_response :success
         assert_not_nil assigns(:command).errors[:name]
         assert_not_nil assigns(:command).errors[:prompt]
+      end
+
+      should "create command with description" do
+        assert_difference "AiHelperCustomCommand.count", 1 do
+          post :create, params: {
+            ai_helper_custom_command: {
+              name: "with-desc",
+              prompt: "Test prompt",
+              description: "A helpful command",
+              command_type: "global",
+            },
+          }
+        end
+        assert_redirected_to custom_commands_path
+
+        command = AiHelperCustomCommand.last
+        assert_equal "with-desc", command.name
+        assert_equal "A helpful command", command.description
+      end
+
+      should "create command without description" do
+        assert_difference "AiHelperCustomCommand.count", 1 do
+          post :create, params: {
+            ai_helper_custom_command: {
+              name: "no-desc",
+              prompt: "Test prompt",
+              command_type: "global",
+            },
+          }
+        end
+        assert_redirected_to custom_commands_path
+
+        command = AiHelperCustomCommand.last
+        assert_nil command.description
       end
     end
 
