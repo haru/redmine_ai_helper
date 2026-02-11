@@ -4,6 +4,7 @@ module AiHelper
   # Provides CRUD operations for custom commands that can be used
   # to expand shortcuts into full prompts in the AI Helper chat interface.
   class CustomCommandsController < ApplicationController
+    protect_from_forgery with: :exception
     menu_item :ai_helper_dashboard
 
     before_action :require_login
