@@ -110,7 +110,7 @@ class CustomCommandExpanderTest < ActiveSupport::TestCase
     end
 
     should "respect command priority" do
-      # グローバルコマンド
+      # Global command
       global = AiHelperCustomCommand.create!(
         name: "test",
         prompt: "Global: {input}",
@@ -118,7 +118,7 @@ class CustomCommandExpanderTest < ActiveSupport::TestCase
         user: @user
       )
 
-      # プロジェクトコマンド（優先度高）
+      # Project command (higher priority)
       project_cmd = AiHelperCustomCommand.create!(
         name: "test",
         prompt: "Project: {input}",
@@ -127,7 +127,7 @@ class CustomCommandExpanderTest < ActiveSupport::TestCase
         user: @user
       )
 
-      # ユーザーコマンド（最優先）
+      # User command (highest priority)
       user_cmd = AiHelperCustomCommand.create!(
         name: "test",
         prompt: "User: {input}",
