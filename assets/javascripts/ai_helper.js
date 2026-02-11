@@ -15,12 +15,20 @@ class AiHelper {
   set_form_handlers = function () {
     // Prevent the default submit behavior of the form
     const form = document.getElementById("ai_helper_chat_form");
+    if (!form) {
+      return; // Chat form not present on this page
+    }
+
     form.addEventListener("submit", function (e) {
       e.preventDefault();
     });
 
     // Click event for #aihelper-chat-submit button
     const submitButton = document.getElementById("aihelper-chat-submit");
+    if (!submitButton) {
+      return; // Submit button not present on this page
+    }
+
     submitButton.addEventListener("click", function (e) {
       e.preventDefault();
       submitAction();
@@ -34,7 +42,7 @@ class AiHelper {
       document.getElementById("ai_helper_content_id").value = ai_helper.page_info["content_id"];
 
       // Get form data
-      const textInput = document.getElementById("ai_helper_chat_input");
+      const textInput = document.getElementById("ai-helper-message-input");
       const text = textInput.value;
 
       // Return if text is empty or contains only whitespace
@@ -70,7 +78,11 @@ class AiHelper {
     }
 
     // Key event handling for textarea
-    const chatInput = document.getElementById("ai_helper_chat_input");
+    const chatInput = document.getElementById("ai-helper-message-input");
+    if (!chatInput) {
+      return; // Chat input not present on this page
+    }
+
     chatInput.addEventListener("keydown", function (e) {
       if (e.key === "Enter") {
         if (e.shiftKey) {
@@ -80,6 +92,13 @@ class AiHelper {
             // Ignore Enter key when confirming IME (e.g., for kanji conversion)
           return true;
         } else {
+          // Check if command completion is active
+          const commandCompletion = chatInput._commandCompletion;
+          if (commandCompletion && commandCompletion.isSuggestionsVisible()) {
+            // Let CommandCompletion handle the Enter key
+            // Do NOT submit the form
+            return;
+          }
             // If only Enter is pressed, trigger submit
           e.preventDefault();
           submitAction();
