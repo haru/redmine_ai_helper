@@ -1,6 +1,10 @@
 <%= form_with model: @message, url: ai_helper_chat_path(@project), id: 'ai_helper_chat_form', local: true do |f| %>
   <p style="position: relative;">
-    <%= f.text_area :content, rows: 5, placeholder: t(:label_chat_placeholder), id: 'ai-helper-message-input', style: 'width: 100%;', data: { project_id: @project&.identifier } %>
+    <%= f.text_area :content, rows: 5, placeholder: t(:label_chat_placeholder), id: 'ai-helper-message-input', style: 'width: 100%;',
+        data: {
+          project_id: @project&.identifier,
+          commands_url: @project ? available_project_custom_commands_path(@project) : available_custom_commands_path
+        } %>
   </p>
   <%= hidden_field_tag :controller_name, "", id: 'ai_helper_controller_name' %>
   <%= hidden_field_tag :action_name, "", id: 'ai_helper_action_name' %>
@@ -14,9 +18,9 @@
   (function() {
     const chatInput = document.getElementById('ai-helper-message-input');
     if (chatInput && !chatInput.dataset.commandCompletionInitialized) {
-      const projectId = chatInput.dataset.projectId;
+      const commandsUrl = chatInput.dataset.commandsUrl;
       if (typeof CommandCompletion !== 'undefined') {
-        new CommandCompletion(chatInput, projectId);
+        new CommandCompletion(chatInput, commandsUrl);
         chatInput.dataset.commandCompletionInitialized = 'true';
       }
     }

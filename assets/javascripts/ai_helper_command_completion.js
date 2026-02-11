@@ -4,9 +4,9 @@
 
   // Make CommandCompletion class available globally for dynamic initialization
   class CommandCompletion {
-    constructor(inputElement, projectId = null) {
+    constructor(inputElement, commandsUrl = null) {
       this.input = inputElement;
-      this.projectId = projectId;
+      this.commandsUrl = commandsUrl;
       this.suggestionBox = null;
       this.commands = [];
       this.selectedIndex = -1;
@@ -48,9 +48,11 @@
     }
 
     async fetchCommands(prefix) {
-      const url = this.projectId
-        ? `/projects/${this.projectId}/ai_helper/custom_commands/available`
-        : '/ai_helper/custom_commands/available';
+      if (!this.commandsUrl) {
+        return;
+      }
+
+      const url = this.commandsUrl;
 
       const params = new URLSearchParams({ prefix: prefix });
 
@@ -177,8 +179,8 @@
   document.addEventListener('DOMContentLoaded', function() {
     const chatInput = document.getElementById('ai-helper-message-input');
     if (chatInput && !chatInput.dataset.commandCompletionInitialized) {
-      const projectId = chatInput.dataset.projectId;
-      new window.CommandCompletion(chatInput, projectId);
+      const commandsUrl = chatInput.dataset.commandsUrl;
+      new window.CommandCompletion(chatInput, commandsUrl);
       chatInput.dataset.commandCompletionInitialized = 'true';
     }
   });
