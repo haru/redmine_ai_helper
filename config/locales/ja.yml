@@ -198,6 +198,6 @@ ja:
         command_type: "コマンドタイプ"
         project_id: "プロジェクト"
         prompt: "プロンプト"
-        scope: "スコープ"
+        user_scope: "スコープ"
 
   field_id: "ID"
