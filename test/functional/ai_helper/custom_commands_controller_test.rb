@@ -42,13 +42,13 @@ module AiHelper
     end
 
     context "GET index" do
-      should "show commands for project" do
+      should "redirect to dashboard for project context" do
         @user.stubs(:allowed_to?).returns(true)
         User.stubs(:current).returns(@user)
+        # Use project_id param since no project-scoped index route exists;
+        # find_project still handles params[:project_id] for backward compatibility
         get :index, params: { project_id: @project.id }
-        assert_response :success
-        assert_not_nil assigns(:commands)
-        assert_not_nil assigns(:grouped_commands)
+        assert_redirected_to ai_helper_dashboard_path(@project, tab: "custom_commands")
       end
 
       should "show commands without project" do
@@ -60,7 +60,7 @@ module AiHelper
 
       should "require login" do
         @request.session[:user_id] = nil
-        get :index, params: { project_id: @project.id }
+        get :index, params: { id: @project.id }
         assert_response 302
       end
     end
@@ -69,7 +69,7 @@ module AiHelper
       should "return commands as JSON" do
         @user.stubs(:allowed_to?).returns(true)
         User.stubs(:current).returns(@user)
-        get :available, params: { project_id: @project.id, format: :json }
+        get :available, params: { id: @project.id, format: :json }
         assert_response :success
         json = JSON.parse(response.body)
         assert_not_nil json["commands"]
@@ -80,7 +80,7 @@ module AiHelper
         @user.stubs(:allowed_to?).returns(true)
         User.stubs(:current).returns(@user)
         get :available, params: {
-                      project_id: @project.id,
+                      id: @project.id,
                       prefix: "global",
                       format: :json,
                     }
@@ -102,7 +102,7 @@ module AiHelper
 
     context "GET new" do
       should "render new form for project" do
-        get :new, params: { project_id: @project.id }
+        get :new, params: { id: @project.id }
         assert_response :success
         assert_not_nil assigns(:command)
         assert_equal @project, assigns(:command).project
@@ -138,12 +138,11 @@ module AiHelper
       should "create project command" do
         assert_difference "AiHelperCustomCommand.count", 1 do
           post :create, params: {
-                     project_id: @project.id,
+                     id: @project.id,
                      ai_helper_custom_command: {
                        name: "new-project",
                        prompt: "New project prompt",
                        command_type: "project",
-                       project_id: @project.id,
                      },
                    }
         end
@@ -282,8 +281,8 @@ module AiHelper
 
       should "redirect to project path when in project context" do
         delete :destroy, params: {
-                    project_id: @project.id,
-                    id: @project_command.id,
+                    id: @project.id,
+                    custom_command_id: @project_command.id,
                   }
         assert_redirected_to ai_helper_dashboard_path(@project, tab: "custom_commands")
       end

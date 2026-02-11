@@ -15,9 +15,14 @@ module AiHelper
     # GET /projects/:project_id/ai_helper/custom_commands
     # GET /ai_helper/custom_commands
     def index
+      if @project
+        redirect_to ai_helper_dashboard_path(@project, tab: "custom_commands")
+        return
+      end
+
       @commands = AiHelperCustomCommand.available_for(
         user: User.current,
-        project: @project,
+        project: nil,
       ).order(:command_type, :name)
 
       @grouped_commands = @commands.group_by(&:command_type)
@@ -92,13 +97,18 @@ module AiHelper
     private
 
     def find_project
-      @project = Project.find(params[:project_id]) if params[:project_id]
+      if params[:project_id]
+        @project = Project.find(params[:project_id])
+      elsif request.path.start_with?("/projects/")
+        @project = Project.find(params[:id])
+      end
     rescue ActiveRecord::RecordNotFound
       render_404
     end
 
     def find_command
-      @command = AiHelperCustomCommand.find(params[:id])
+      command_id = params[:custom_command_id] || params[:id]
+      @command = AiHelperCustomCommand.find(command_id)
     rescue ActiveRecord::RecordNotFound
       render_404
     end

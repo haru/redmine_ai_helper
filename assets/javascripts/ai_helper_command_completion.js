@@ -49,7 +49,7 @@
 
     async fetchCommands(prefix) {
       const url = this.projectId
-        ? `/ai_helper/projects/${this.projectId}/custom_commands/available`
+        ? `/projects/${this.projectId}/ai_helper/custom_commands/available`
         : '/ai_helper/custom_commands/available';
 
       const params = new URLSearchParams({ prefix: prefix });

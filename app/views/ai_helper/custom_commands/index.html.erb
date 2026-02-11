@@ -1,6 +1,6 @@
 <div class="contextual">
   <%= link_to l('ai_helper.custom_commands.label.new'),
-              (@project ? new_project_custom_command_path(@project) : new_custom_command_path),
+              new_custom_command_path,
               class: 'icon icon-add' %>
 </div>
 
@@ -41,10 +41,10 @@
             <td class="buttons">
               <% if command.editable_by?(User.current) %>
                 <%= link_to l(:button_edit),
-                            (@project ? edit_project_custom_command_path(@project, command) : edit_custom_command_path(command)),
+                            edit_custom_command_path(command),
                             class: 'icon icon-edit' %>
                 <%= link_to l(:button_delete),
-                            (@project ? project_custom_command_path(@project, command) : custom_command_path(command)),
+                            custom_command_path(command),
                             method: :delete,
                             data: { confirm: l(:text_are_you_sure) },
                             class: 'icon icon-del' %>

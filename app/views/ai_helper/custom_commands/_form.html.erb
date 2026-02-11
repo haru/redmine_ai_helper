@@ -41,7 +41,7 @@
 
     <%= f.submit l(:button_save) %>
     <%= link_to l(:button_cancel),
-                (@project ? project_custom_commands_path(@project) : custom_commands_path) %>
+                (@project ? ai_helper_dashboard_path(@project, tab: "custom_commands") : custom_commands_path) %>
   </div>
 <% end %>
 
