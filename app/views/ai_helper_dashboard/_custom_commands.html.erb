@@ -19,6 +19,7 @@
 <% else %>
   <% @grouped_commands.each do |type, commands| %>
     <h3><%= l("ai_helper.custom_commands.command_type.#{type}") %></h3>
+    <p class="subtitle"><%= l("ai_helper.custom_commands.command_type_description.#{type}") %></p>
     <div class="box">
       <table class="list">
         <thead>
@@ -28,7 +29,9 @@
             <% if type == "user" %>
               <th><%= l('activerecord.attributes.ai_helper_custom_command.user_scope') %></th>
             <% end %>
-            <th><%= l(:field_author) %></th>
+            <% if type != "user" %>
+              <th><%= l(:field_author) %></th>
+            <% end %>
             <th><%= l(:field_updated_on) %></th>
             <th></th>
           </tr>
@@ -41,7 +44,9 @@
               <% if type == "user" %>
                 <td><%= l("ai_helper.custom_commands.user_scope.#{command.user_scope}") %></td>
               <% end %>
-              <td><%= link_to_user command.user %></td>
+              <% if type != "user" %>
+                <td><%= link_to_user command.user %></td>
+              <% end %>
               <td><%= format_time(command.updated_at) %></td>
               <td class="buttons">
                 <% if command.editable_by?(User.current) %>
