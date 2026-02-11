@@ -459,7 +459,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
     end
 
     should "prioritize user command over project command" do
-      project_cmd = AiHelperCustomCommand.create!(
+      AiHelperCustomCommand.create!(
         name: "priority",
         prompt: "Project prompt",
         command_type: :project,
@@ -481,7 +481,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
     end
 
     should "prioritize project command over global command" do
-      global_cmd = AiHelperCustomCommand.create!(
+      AiHelperCustomCommand.create!(
         name: "priority",
         prompt: "Global prompt",
         command_type: :global,

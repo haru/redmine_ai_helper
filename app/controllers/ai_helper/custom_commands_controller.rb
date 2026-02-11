@@ -98,11 +98,18 @@ module AiHelper
     private
 
     def find_project
-      if params[:project_id]
-        @project = Project.find(params[:project_id])
-      elsif request.path.start_with?("/projects/")
-        @project = Project.find(params[:id])
-      end
+      project_id = if params[:project_id]
+                     params[:project_id]
+                   elsif params[:custom_command_id]
+                     # Project-scoped member route (edit/update/destroy):
+                     # params[:id] is the project, params[:custom_command_id] is the command
+                     params[:id]
+                   elsif %w[index new create available].include?(action_name)
+                     # Project-scoped collection route:
+                     # params[:id] is the project (nil for non-project routes)
+                     params[:id]
+                   end
+      @project = Project.find(project_id) if project_id
     rescue ActiveRecord::RecordNotFound
       render_404
     end

@@ -77,7 +77,7 @@ class CustomCommandExpanderTest < ActiveSupport::TestCase
     end
 
     should "handle command without arguments" do
-      cmd = AiHelperCustomCommand.create!(
+      AiHelperCustomCommand.create!(
         name: "help",
         prompt: "Show help message",
         command_type: :global,
