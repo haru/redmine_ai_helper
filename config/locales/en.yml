@@ -153,9 +153,13 @@ en:
         new: New Custom Command
         no_data: No custom commands registered
       command_type:
-        global: Global Command
-        project: Project Command
-        user: User Command
+        global: Global Commands
+        project: Project Commands
+        user: User Commands
+      command_type_description:
+        global: Commands shared across all projects where AI Helper is enabled.
+        project: Commands shared only within this project.
+        user: Commands that only you can use.
       user_scope:
         common: Common
         project_limited: Project Limited

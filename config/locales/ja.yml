@@ -156,6 +156,10 @@ ja:
         global: グローバルコマンド
         project: プロジェクトコマンド
         user: ユーザーコマンド
+      command_type_description:
+        global: AIヘルパーを利用可能なすべてのプロジェクトで共有されるコマンドです。
+        project: このプロジェクト内でのみ共有されるコマンドです。
+        user: あなただけが使用できるコマンドです。
       user_scope:
         common: 共通
         project_limited: プロジェクト限定
