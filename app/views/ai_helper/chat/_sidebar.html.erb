@@ -33,6 +33,10 @@
         <div id="aihelper-chat-conversation"></div>
         <div id="aihelper-chat-form-area"></div>
         <span><%= t(:label_ai_helper_input_newline) %></span>
+        <% if AiHelperCustomCommand.available_for(user: User.current, project: @project).exists? %>
+          <br>
+          <span><%= t(:label_ai_helper_custom_command_hint) %></span>
+        <% end %>
         <hr>
       </div>
     </div>

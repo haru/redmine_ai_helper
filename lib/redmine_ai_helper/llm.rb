@@ -24,6 +24,22 @@ module RedmineAiHelper
       ai_helper_logger.debug "#### ai_helper: chat start ####"
       ai_helper_logger.info "user:#{User.current}, task: #{task}, option: #{option}"
       begin
+        # Expand custom command if the message is a command
+        expander = RedmineAiHelper::CustomCommandExpander.new(
+          user: User.current,
+          project: option[:project]
+        )
+        result = expander.expand(task)
+
+        if result[:expanded]
+          ai_helper_logger.info("Custom command expanded: #{result[:command].name}")
+          # Persist the expanded content to the database so that
+          # messages_for_openai will return the expanded text
+          last_message = conversation.messages.last
+          last_message.update!(content: result[:message])
+          task = result[:message]
+        end
+
         langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: task)
         option[:langfuse] = langfuse
         agent = RedmineAiHelper::Agents::LeaderAgent.new(option)

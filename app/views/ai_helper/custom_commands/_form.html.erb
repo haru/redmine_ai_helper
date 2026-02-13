@@ -1,0 +1,75 @@
+<%= error_messages_for @command %>
+
+
+  <%= labelled_form_for @command,
+                        url: (@command.new_record? ?
+                          (@project ? project_custom_commands_path(@project) : custom_commands_path) :
+                          (@project ? project_custom_command_path(@project, @command) : custom_command_path(@command))),
+                        html: { multipart: false } do |f| %>
+
+   <div class="box tabular">
+        <p>
+          <%= f.text_field :name, required: true, size: 30 %>
+          <em class="info"><%= l("ai_helper.custom_commands.text.name_format") %></em>
+        </p>
+
+        <p>
+          <%= f.text_field :description, size: 60 %>
+        </p>
+
+        <p>
+          <%= f.select :command_type,
+                       options_for_select(
+                         AiHelperCustomCommand.command_types.map { |k, v| [l("ai_helper.custom_commands.command_type.#{k}"), k] },
+                         @command.command_type
+                       ),
+                       required: true %>
+        </p>
+
+        <p id="user_scope_field" style="<%= "display:none;" unless @command.user? %>">
+          <%= f.select :user_scope,
+                       options_for_select(
+                         AiHelperCustomCommand.user_scopes.map { |k, v| [l("ai_helper.custom_commands.user_scope.#{k}"), k] },
+                         @command.user_scope || "common"
+                       ) %>
+        </p>
+
+        <!-- Project is not user-editable. Project is set by controller/context. -->
+
+        <p>
+          <%= f.text_area :prompt, rows: 15, cols: 60, required: true %>
+          <em class="info"><%= l("ai_helper.custom_commands.text.variables_help") %></em>
+        </p>
+
+    </div>
+
+    <%= f.submit l(:button_save) %>
+    <%= link_to l(:button_cancel),
+                (@project ? ai_helper_dashboard_path(@project, tab: "custom_commands") : custom_commands_path) %>
+  </div>
+<% end %>
+
+
+
+<%= javascript_tag do %>
+  (function() {
+    const commandTypeField = document.getElementById('ai_helper_custom_command_command_type');
+    const userScopeField = document.getElementById('user_scope_field');
+    const userScopeSelect = document.getElementById('ai_helper_custom_command_user_scope');
+
+    function updateVisibility() {
+      const commandType = commandTypeField.value;
+      if (commandType === 'user') {
+        userScopeField.style.display = '';
+      } else {
+        userScopeField.style.display = 'none';
+      }
+    }
+
+    commandTypeField.addEventListener('change', updateVisibility);
+    if (userScopeSelect) {
+      userScopeSelect.addEventListener('change', updateVisibility);
+    }
+    updateVisibility();
+  })();
+<% end %>

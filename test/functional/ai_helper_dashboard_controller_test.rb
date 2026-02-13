@@ -113,7 +113,8 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
 
         get :index, params: { id: @project.id, tab: "health_report" }
         assert_response :success
-        assert_select "p.nodata", 1
+        # Check for nodata message within the health report tab content area
+        assert_select ".ai-helper-master-detail-layout p.nodata", 1
       end
     end
 

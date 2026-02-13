@@ -3,6 +3,7 @@ ja:
   label_ai_helper: "AIヘルパー"
   label_chat_placeholder: "メッセージを入力してください..."
   label_ai_helper_input_newline: "Shift + Enter で改行します。"
+  label_ai_helper_custom_command_hint: "'/'でカスタムコマンドを入力できます。"
   label_ai_helper_start_new_chat: "新しいチャットを開始"
   ai_helper_summary: "AIヘルパーで要約"
   ai_helper_similar_issues: "AIヘルパーで類似チケットを検索"
@@ -147,10 +148,35 @@ ja:
         search_answer_instruction_with_vector: "チケットを検索する際は、以下のように使い分けてください：概念的・意味的な検索（「例外に関するチケット」「パフォーマンス問題」「ログイン関連のバグ」など）にはベクトル検索（ask_with_filter）を使用し、明確なフィルタ条件（「ステータスが完了」「担当者が○○」「今月更新された」など属性値で絞り込む場合）にはsearch_issuesを使用してください。"
       leader_agent:
         generate_final_response: "全てのエージェントがタスクを完了しました。ユーザーへの最終的な回答を作成してください。"
+    custom_commands:
+      label:
+        title: カスタムコマンド
+        new: 新しいカスタムコマンド
+        no_data: カスタムコマンドが登録されていません
+      command_type:
+        global: グローバルコマンド
+        project: プロジェクトコマンド
+        user: ユーザーコマンド
+      command_type_description:
+        global: AIヘルパーを利用可能なすべてのプロジェクトで共有されるコマンドです。
+        project: このプロジェクト内でのみ共有されるコマンドです。
+        user: あなただけが使用できるコマンドです。
+      user_scope:
+        common: 共通
+        project_limited: プロジェクト限定
+      field:
+        scope: スコープ
+      text:
+        name_format: "英数字、アンダースコア、ハイフンのみ使用可能"
+        variables_help: "使用可能な変数: {input}, {project_name}, {user_name}, {datetime}"
+      error:
+        name_duplicate: "コマンド名が既に使用されています"
+        project_required: "プロジェクトコマンドにはプロジェクトが必要です"
   activerecord:
     models:
       ai_helper_model_profile: "モデルプロファイル"
       ai_helper_setting: "AIヘルパー設定"
+      ai_helper_custom_command: "カスタムコマンド"
     attributes:
       ai_helper_model_profile:
         llm_type: "タイプ"
@@ -173,5 +199,12 @@ ja:
         subtask_instructions: "子チケットを生成する際の指示"
         health_report_instructions: "健全性レポートを生成する際の指示"
         assignment_suggestion_instructions: "担当者提案インストラクション"
+      ai_helper_custom_command:
+        name: "コマンド名"
+        command_type: "コマンドタイプ"
+        project_id: "プロジェクト"
+        prompt: "プロンプト"
+        description: "説明"
+        user_scope: "スコープ"
 
   field_id: "ID"
