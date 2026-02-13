@@ -20,6 +20,7 @@
   - [Typo Checking and Correction Suggestions](#typo-checking-and-correction-suggestions)
   - [Assignee Suggestion](#assignee-suggestion)
   - [To-Do Suggestions](#to-do-suggestions)
+  - [Custom Commands](#custom-commands)
   - [Project Health Report](#project-health-report)
     - [Health Report History](#health-report-history)
     - [Health Report REST API](#health-report-rest-api)
@@ -58,6 +59,7 @@ The Redmine AI Helper Plugin adds AI chat functionality to Redmine, enhancing pr
   - Other project and Redmine-related inquiries
   - Typo checking and correction suggestions
   - To-do suggestions based on assigned issues
+  - Custom commands for reusable prompt shortcuts
 - Provides a project health report
 - Supports multiple AI models and services
 - MCP server integration
@@ -123,6 +125,14 @@ The AI Helper Plugin can suggest optimal assignees when creating or editing issu
 The AI Helper Plugin can suggest what you should work on today based on your assigned issues. This feature analyzes your issues considering due dates, priorities, and how long they've been untouched, then provides prioritized recommendations for both the current project and other projects you have access to. Access this feature from the "To Do" menu in the top menu bar (available only within project contexts where you have AI Helper permissions).
 
 ![Image](https://github.com/user-attachments/assets/db12d4ac-58ee-4fd8-893c-d2feda0128cf)
+
+## Custom Commands
+
+Custom Commands allow you to create reusable prompt shortcuts for the AI Helper chat interface. Define a command once and invoke it by typing `/commandname` in the chat input. An autocomplete dropdown appears as you type, showing available commands with their descriptions.
+
+Three scope levels are available: **Global** (available across all projects), **Project** (available within a specific project), and **User** (personal commands visible only to you). When multiple commands share the same name, User commands take the highest priority, followed by Project commands, then Global commands.
+
+Commands support template variables `{input}`, `{user_name}`, `{project_name}`, and `{datetime}` for dynamic prompt generation. You can manage custom commands from the "Custom Commands" tab on the AI Helper dashboard.
 
 ## Project Health Report
 
