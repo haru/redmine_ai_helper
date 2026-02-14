@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 module RedmineAiHelper
+  # LLM provider implementations for different AI services.
   module LlmClient
     # BaseProvider is an abstract class that defines the interface for LLM providers.
     # Each subclass configures RubyLLM with the appropriate API keys and settings.

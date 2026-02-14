@@ -2,6 +2,7 @@ require "langfuse"
 require "redmine_ai_helper/util/config_file"
 
 module RedmineAiHelper
+  # Langfuse observability utilities for LLM call tracking and monitoring.
   module LangfuseUtil
     # Wrapper for Langfuse.
     class LangfuseWrapper

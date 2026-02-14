@@ -3,6 +3,7 @@
 require "qdrant"
 
 module RedmineAiHelper
+  # Vector search utilities for issue and wiki content similarity.
   module Vector
     # Qdrant vector search client using qdrant-ruby gem directly.
     class Qdrant
