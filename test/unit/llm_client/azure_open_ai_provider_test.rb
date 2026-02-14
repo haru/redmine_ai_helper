@@ -1,94 +1,85 @@
 require File.expand_path("../../../test_helper", __FILE__)
-require "redmine_ai_helper/llm_client/open_ai_compatible_provider"
+require "redmine_ai_helper/llm_client/azure_open_ai_provider"
 
 class RedmineAiHelper::LlmClient::AzureOpenAiProviderTest < ActiveSupport::TestCase
   context "AzureOpenAiProvider" do
     setup do
       @setting = AiHelperSetting.find_or_create
-      @openai_mock = AzureOpenAiProviderTest::DummyOpenAIClient.new
-      Langchain::LLM::OpenAI.stubs(:new).returns(@openai_mock)
-      @provider = RedmineAiHelper::LlmClient::AzureOpenAiProvider.new
+      @original_profile = @setting.model_profile
 
-      @original_model_profile = @setting.model_profile
+      @azure_profile = AiHelperModelProfile.create!(
+        name: "Test Azure Profile",
+        llm_type: "AzureOpenAi",
+        llm_model: "gpt-4o",
+        access_key: "test_azure_key",
+        base_uri: "https://myresource.openai.azure.com/openai/deployments/gpt-4o",
+      )
+      @setting.model_profile = @azure_profile
+      @setting.save!
+
+      @provider = RedmineAiHelper::LlmClient::AzureOpenAiProvider.new
     end
 
     teardown do
-      @setting.model_profile = @original_model_profile
+      @setting.model_profile = @original_profile
       @setting.save!
+      @azure_profile.destroy
     end
 
-    should "generate a valid client" do
-      client = @provider.generate_client
-      assert_not_nil client
+    should "configure RubyLLM with OpenAI-compatible settings for Azure" do
+      @provider.configure_ruby_llm
+      assert_equal "test_azure_key", RubyLLM.config.openai_api_key
+      assert_equal "https://myresource.openai.azure.com/openai/deployments/gpt-4o",
+                   RubyLLM.config.openai_api_base
     end
 
-    should "raise an error if model profile is missing" do
+    should "raise error when model profile is missing" do
       @setting.model_profile = nil
       @setting.save!
       assert_raises(RuntimeError, "Model Profile not found") do
-        @provider.generate_client
+        @provider.configure_ruby_llm
       end
     end
-  end
 
-  context "OpenAiCompatible" do
-    setup do
-      @openai_mock = OpenAiCompatibleTest::DummyOpenAIClient.new
-      ::OpenAI::Client.stubs(:new).returns(@openai_mock)
-      # Langchain::LLM::OpenAI.stubs(:new).returns(@openai_mock)
-      @client = RedmineAiHelper::LlmClient::OpenAiCompatibleProvider::OpenAiCompatible.new(
-        api_key: "test_key",
-      )
+    should "create chat with provider and assume_model_exists options" do
+      mock_chat = mock("RubyLLM::Chat")
+      mock_chat.expects(:with_instructions).with("Test prompt")
+      mock_chat.expects(:with_temperature).with(@azure_profile.temperature)
+      RubyLLM.expects(:chat).with(
+        model: @azure_profile.llm_model,
+        provider: :openai,
+        assume_model_exists: true,
+      ).returns(mock_chat)
+
+      chat = @provider.create_chat(instructions: "Test prompt")
+      assert_equal mock_chat, chat
     end
 
-    should "return a valid response for chat" do
-      params = {
-        messages: [{ role: "user", content: "Hello" }],
-      }
-      response = @client.chat(params).chat_completion
-      assert_not_nil response
+    should "create chat without instructions when nil" do
+      mock_chat = mock("RubyLLM::Chat")
+      mock_chat.expects(:with_instructions).never
+      mock_chat.expects(:with_temperature).with(@azure_profile.temperature)
+      RubyLLM.expects(:chat).with(
+        model: @azure_profile.llm_model,
+        provider: :openai,
+        assume_model_exists: true,
+      ).returns(mock_chat)
+
+      @provider.create_chat
     end
-  end
-end
 
-module AzureOpenAiProviderTest
-  class DummyOpenAIClient
-    def chat(params = {}, &block)
-      messages = params[:parameters][:messages] || []
-      # puts "Messages: #{messages.inspect}"
-      message = messages.first[:content]
-      # puts "Message content: #{message}"
+    should "create chat with tools" do
+      tool_class = mock("ToolClass")
+      mock_chat = mock("RubyLLM::Chat")
+      mock_chat.expects(:with_tools).with(tool_class)
+      mock_chat.expects(:with_temperature).with(@azure_profile.temperature)
+      RubyLLM.expects(:chat).with(
+        model: @azure_profile.llm_model,
+        provider: :openai,
+        assume_model_exists: true,
+      ).returns(mock_chat)
 
-      json_content = {
-        tool_calls: [
-          {
-            id: "call_rCE6Kk94VZZyUIrIlrZSH0Cr",
-            type: "function",
-            function: {
-              name: "weather_tool__weather",
-              arguments: "{\"location\": \"Tokyo\", \"date\": \"2023-10-01\"}",
-            },
-          },
-        ],
-      }
-      content = JSON.pretty_generate(json_content)
-
-      if message == "Hello"
-        content = "This is a dummy response for testing."
-      end
-
-      response = {
-        "choices" => [
-          {
-            "message" => {
-              "role" => "assistant",
-              "content" => content,
-            },
-          },
-        ],
-      }
-      block.call(response) if block_given?
-      response
+      @provider.create_chat(tools: [tool_class])
     end
   end
 end

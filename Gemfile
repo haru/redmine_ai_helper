@@ -1,18 +1,17 @@
 source "https://rubygems.org"
+
+# Legacy gems (to be removed after full migration to ruby_llm)
 gem "ruby-openai", "~> 8.3.0"
 gem "langchainrb", "~> 0.19.5"
 gem "ruby-anthropic", "~> 0.4.2"
-# gem "weaviate-ruby", "~> 0.9.2"
-gem "qdrant-ruby", "~> 0.9.9"
-gem "langfuse", "~> 0.1.1"
 gem "ruby-mcp-client"
 
-# HTTP client for MCP HTTP transport
-#gem "faraday", "~> 2.0"
-#gem "faraday-retry", "~> 2.0"
+# New LLM library
+gem "ruby_llm"
+gem "ruby_llm-mcp"
 
-# SSE client for MCP HTTP+SSE transport (optional)
-# Note: sse_client gem is not available, using fallback implementation
+gem "qdrant-ruby", "~> 0.9.9"
+gem "langfuse", "~> 0.1.1"
 
 group :test do
   gem "simplecov-cobertura"

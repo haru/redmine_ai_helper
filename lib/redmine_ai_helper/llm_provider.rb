@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 require_relative "llm_client/open_ai_provider"
 require_relative "llm_client/anthropic_provider"
+require_relative "llm_client/gemini_provider"
+require_relative "llm_client/azure_open_ai_provider"
+require_relative "llm_client/open_ai_compatible_provider"
 
 module RedmineAiHelper
   # This class is responsible for providing the appropriate LLM client based on the LLM type.

@@ -1,10 +1,24 @@
 # frozen_string_literal: true
+require_relative "base_provider"
+
 module RedmineAiHelper
   module LlmClient
-    ## AnthropicProvider is a specialized provider for handling requests to the Anthropic LLM.
+    # AnthropicProvider configures RubyLLM for Anthropic API access.
     class AnthropicProvider < RedmineAiHelper::LlmClient::BaseProvider
-      # generate a client for the Anthropic LLM
-      # @return [Langchain::LLM::Anthropic] client
+      # Configure RubyLLM with Anthropic API key.
+      # @return [void]
+      def configure_ruby_llm
+        setting = AiHelperSetting.find_or_create
+        model_profile = setting.model_profile
+        raise "Model Profile not found" unless model_profile
+        RubyLLM.configure do |config|
+          config.anthropic_api_key = model_profile.access_key
+        end
+      end
+
+      # Legacy: Generate a Langchain LLM client for backward compatibility.
+      # Will be removed after full migration to ruby_llm.
+      # @return [RedmineAiHelper::LangfuseUtil::Anthropic] client
       def generate_client
         setting = AiHelperSetting.find_or_create
         model_profile = setting.model_profile
@@ -23,31 +37,20 @@ module RedmineAiHelper
         client
       end
 
-      # Generate a chat completion request
-      # @param [Hash] system_prompt
-      # @param [Array] messages
-      # @return [Hash] chat_params
+      # Legacy: Generate a chat completion request for backward compatibility.
       def create_chat_param(system_prompt, messages)
         new_messages = messages.dup
-        chat_params = {
-          messages: new_messages,
-        }
+        chat_params = { messages: new_messages }
         chat_params[:system] = system_prompt[:content]
         chat_params
       end
 
-      # Extract a message from the chunk
-      # @param [Hash] chunk
-      # @return [String] message
+      # Legacy: Extract a message from the chunk for backward compatibility.
       def chunk_converter(chunk)
         chunk.dig("delta", "text")
       end
 
-      # Clear the messages held by the Assistant, set the system prompt, and add messages
-      # @param [RedmineAiHelper::Assistant] assistant
-      # @param [Hash] system_prompt
-      # @param [Array] messages
-      # @return [void]
+      # Legacy: Reset assistant messages for backward compatibility.
       def reset_assistant_messages(assistant:, system_prompt:, messages:)
         assistant.clear_messages!
         assistant.instructions = system_prompt

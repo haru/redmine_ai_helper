@@ -1,13 +1,44 @@
 # frozen_string_literal: true
-
 require_relative "base_provider"
 
 module RedmineAiHelper
   module LlmClient
-    # OpenAiProvider is a specialized provider for handling OpenAI-related queries.
+    # AzureOpenAiProvider configures RubyLLM for Azure OpenAI API access.
+    # Uses OpenAI-compatible endpoint with custom base URL.
     class AzureOpenAiProvider < RedmineAiHelper::LlmClient::BaseProvider
-      # Generate a client for OpenAI LLM
-      # @return [Langchain::LLM::OpenAI] the OpenAI client
+      # Configure RubyLLM with Azure OpenAI endpoint and API key.
+      # Azure OpenAI is accessed via the OpenAI-compatible interface.
+      # @return [void]
+      def configure_ruby_llm
+        setting = AiHelperSetting.find_or_create
+        model_profile = setting.model_profile
+        raise "Model Profile not found" unless model_profile
+        RubyLLM.configure do |config|
+          config.openai_api_key = model_profile.access_key
+          config.openai_api_base = model_profile.base_uri
+        end
+      end
+
+      # Create a RubyLLM::Chat instance for Azure OpenAI.
+      # Overrides base class to use provider: :openai and assume_model_exists: true.
+      # @param instructions [String, nil] system prompt
+      # @param tools [Array<Class>] tool classes to attach
+      # @return [RubyLLM::Chat]
+      def create_chat(instructions: nil, tools: [])
+        configure_ruby_llm
+        chat = RubyLLM.chat(
+          model: model_name,
+          provider: :openai,
+          assume_model_exists: true,
+        )
+        chat.with_instructions(instructions) if instructions
+        chat.with_tools(*tools) unless tools.empty?
+        chat.with_temperature(temperature) if temperature
+        chat
+      end
+      # Legacy: Generate a Langchain LLM client for backward compatibility.
+      # Will be removed after full migration to ruby_llm.
+      # @return [RedmineAiHelper::LangfuseUtil::AzureOpenAi] client
       def generate_client
         setting = AiHelperSetting.find_or_create
         model_profile = setting.model_profile

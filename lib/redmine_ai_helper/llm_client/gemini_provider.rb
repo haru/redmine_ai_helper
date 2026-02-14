@@ -1,10 +1,24 @@
 # frozen_string_literal: true
+require_relative "base_provider"
+
 module RedmineAiHelper
   module LlmClient
-    # GeminiProvider is a specialized provider for handling Google Gemini LLM requests.
+    # GeminiProvider configures RubyLLM for Google Gemini API access.
     class GeminiProvider < RedmineAiHelper::LlmClient::BaseProvider
-      # Generate a new Gemini client using the provided API key and model profile.
-      # @return [Langchain::LLM::GoogleGemini] client
+      # Configure RubyLLM with Gemini API key.
+      # @return [void]
+      def configure_ruby_llm
+        setting = AiHelperSetting.find_or_create
+        model_profile = setting.model_profile
+        raise "Model Profile not found" unless model_profile
+        RubyLLM.configure do |config|
+          config.gemini_api_key = model_profile.access_key
+        end
+      end
+
+      # Legacy: Generate a Langchain LLM client for backward compatibility.
+      # Will be removed after full migration to ruby_llm.
+      # @return [RedmineAiHelper::LangfuseUtil::Gemini] client
       def generate_client
         setting = AiHelperSetting.find_or_create
         model_profile = setting.model_profile
@@ -22,39 +36,16 @@ module RedmineAiHelper
         client
       end
 
-      # Generate a parameter for chat completion request for the Gemini LLM.
-      # @param [Hash] system_prompt
-      # @param [Array] messages
-      # @return [Hash] chat_params
+      # Legacy: Generate a parameter for chat completion request.
       def create_chat_param(system_prompt, messages)
-        # Maps the messages to the "contents" format expected by Gemini
         new_messages = messages.map do |message|
-          # Ensure that the role "assistant" is converted to "model"
           role = message[:role] == "assistant" ? "model" : message[:role]
-
-          {
-            role: role,
-            parts: [
-              {
-                text: message[:content],
-              },
-            ],
-          }
+          { role: role, parts: [{ text: message[:content] }] }
         end
-
-        chat_params = {
-          messages: new_messages,
-          system: system_prompt[:content],
-        }
-
-        chat_params
+        { messages: new_messages, system: system_prompt[:content] }
       end
 
-      # Reset the assistant's messages, set the system prompt, and add messages.
-      # @param [RedmineAiHelper::Assistant] assistant
-      # @param [Hash] system_prompt
-      # @param [Array] messages
-      # @return [void]
+      # Legacy: Reset the assistant's messages.
       def reset_assistant_messages(assistant:, system_prompt:, messages:)
         assistant.clear_messages!
         assistant.instructions = system_prompt
