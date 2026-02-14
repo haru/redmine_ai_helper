@@ -5,13 +5,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
   fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :enabled_modules
 
   setup do
-    @openai_mock = MyOpenAI::DummyOpenAIClient.new
-    Langchain::LLM::OpenAI.stubs(:new).returns(@openai_mock)
     @params = {
-      access_token: "test_access_token",
-      uri_base: "http://example.com",
-      organization_id: "test_org_id",
-      model: "test_model",
       project: Project.find(1),
       langfuse: DummyLangfuse.new,
     }

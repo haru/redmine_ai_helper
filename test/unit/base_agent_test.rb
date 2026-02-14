@@ -15,11 +15,6 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
     @mock_chat = mock("RubyLLM::Chat")
     @mock_llm_provider.stubs(:create_chat).returns(@mock_chat)
 
-    # For backward compatibility (LeaderAgent uses client via generate_client)
-    @mock_langchain_client = mock("langchain_client")
-    @mock_langchain_client.stubs(:langfuse=)
-    @mock_llm_provider.stubs(:generate_client).returns(@mock_langchain_client)
-
     RedmineAiHelper::LlmProvider.stubs(:get_llm_provider).returns(@mock_llm_provider)
 
     @params = {
@@ -165,14 +160,6 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
 
       response = @agent.perform_task({})
       assert response
-    end
-  end
-
-  context "client (backward compat)" do
-    should "lazily create a Langchain client via generate_client" do
-      agent = BaseAgentTestModele::TestAgent.new(@params)
-      client = agent.client
-      assert_equal @mock_langchain_client, client
     end
   end
 

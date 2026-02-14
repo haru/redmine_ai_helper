@@ -126,9 +126,10 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
 
     context "generate_sub_issues_draft" do
       setup do
-        Langchain::OutputParsers::OutputFixingParser.stubs(:from_llm).returns(DummyFixParser.new)
-
-        @agent.stubs(:chat).returns("This is a generated reply.")
+        @agent.stubs(:chat).returns({ "sub_issues" => [{ "subject" => "Dummy Sub Issue", "description" => "This is a dummy sub issue description." }] }.to_json)
+        RedmineAiHelper::Util::StructuredOutputHelper.stubs(:parse).returns(
+          { "sub_issues" => [{ "subject" => "Dummy Sub Issue", "description" => "This is a dummy sub issue description." }] }
+        )
         User.current = User.find(1)
       end
       should "generate sub issues for visible issue" do
@@ -569,16 +570,6 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
     end
   end
 
-  class DummyFixParser
-    def parse(text)
-      { "sub_issues" => [{ "subject" => "Dummy Sub Issue", "description" => "This is a dummy sub issue description." }] }
-    end
-
-    def get_format
-      # Format is a simple string
-      "string"
-    end
-  end
 end
 
   # Additional tests for scoring and formatting helpers added to cover

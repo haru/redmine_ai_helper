@@ -1,5 +1,6 @@
 # frozen_string_literal: true
-require "langchain"
+
+require_relative "prompt_template"
 
 module RedmineAiHelper
   module Util
@@ -9,7 +10,7 @@ module RedmineAiHelper
       class << self
         # Loads a prompt template from a YAML file.
         # @param name [String] The name of the template file (without extension).
-        # @return [Langchain::Prompt] The loaded prompt template.
+        # @return [PromptTemplate] The loaded prompt template.
         def load_template(name)
           tepmlate_base_dir = File.dirname(__FILE__) + "/../../../assets/prompt_templates"
           locale_string = I18n.locale.to_s
@@ -18,7 +19,7 @@ module RedmineAiHelper
           unless File.exist?(template_file)
             template_file = "#{tepmlate_base_dir}/#{name}.yml"
           end
-          Langchain::Prompt.load_from_path(file_path: template_file)
+          PromptTemplate.load_from_path(template_file)
         end
       end
     end

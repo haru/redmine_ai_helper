@@ -55,22 +55,6 @@ module RedmineAiHelper
       @langfuse
     end
 
-    # Backward compatibility: lazily create a Langchain LLM client.
-    # Used by LeaderAgent for Langchain::OutputParsers until Phase 4 migration.
-    # @return [Object] The Langchain LLM client.
-    def client
-      return @client if @client
-      @client = @llm_provider.generate_client
-      @client.langfuse = @langfuse if @langfuse
-      @client
-    end
-
-    # Backward compatibility: lazily determine the LLM type.
-    # @return [String] The LLM type identifier.
-    def llm_type
-      @llm_type ||= RedmineAiHelper::LlmProvider.type
-    end
-
     # Returns the assistant instance, creating it on first access.
     # @return [RedmineAiHelper::Assistant] The assistant instance.
     def assistant

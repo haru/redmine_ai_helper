@@ -20,36 +20,17 @@ class DocumentationAgentTest < ActiveSupport::TestCase
       }
     ]
 
-    @agent.stubs(:chat).returns("mock response")
-    
-    # Mock the StructuredOutputParser and OutputFixingParser
-    parser_mock = mock('parser')
-    parser_mock.stubs(:get_format_instructions).returns("format instructions")
-    Langchain::OutputParsers::StructuredOutputParser.stubs(:from_json_schema).returns(parser_mock)
-    
-    fix_parser_mock = mock('fix_parser')
-    fix_parser_mock.stubs(:parse).returns(mock_response)
-    Langchain::OutputParsers::OutputFixingParser.stubs(:from_llm).returns(fix_parser_mock)
-    
-    # Mock the client method
-    @agent.stubs(:client).returns(mock('client'))
-    
+    @agent.stubs(:chat).returns(mock_response.to_json)
+    RedmineAiHelper::Util::StructuredOutputHelper.stubs(:parse).returns(mock_response)
+
     result = @agent.check_typos(text: "teh quick brown fox", context_type: "test")
     assert_equal mock_response, result
   end
 
   def test_check_typos_with_empty_text
-    parser_mock = mock('parser')
-    parser_mock.stubs(:get_format_instructions).returns("format instructions")
-    Langchain::OutputParsers::StructuredOutputParser.stubs(:from_json_schema).returns(parser_mock)
-    
-    fix_parser_mock = mock('fix_parser')
-    fix_parser_mock.stubs(:parse).returns([])
-    Langchain::OutputParsers::OutputFixingParser.stubs(:from_llm).returns(fix_parser_mock)
-    
-    @agent.stubs(:client).returns(mock('client'))
-    @agent.stubs(:chat).returns("empty response")
-    
+    @agent.stubs(:chat).returns("[]")
+    RedmineAiHelper::Util::StructuredOutputHelper.stubs(:parse).returns([])
+
     result = @agent.check_typos(text: "", context_type: "test")
     assert_equal [], result
   end
@@ -61,7 +42,7 @@ class DocumentationAgentTest < ActiveSupport::TestCase
   def test_backstory_returns_prompt
     prompt_mock = mock('prompt')
     @agent.stubs(:load_prompt).with("documentation_agent/backstory").returns(prompt_mock)
-    
+
     assert_equal prompt_mock, @agent.backstory
   end
 
@@ -78,23 +59,12 @@ class DocumentationAgentTest < ActiveSupport::TestCase
       }
     ]
 
-    @agent.stubs(:chat).returns("mock response")
-    
-    # Mock the StructuredOutputParser and OutputFixingParser
-    parser_mock = mock('parser')
-    parser_mock.stubs(:get_format_instructions).returns("format instructions")
-    Langchain::OutputParsers::StructuredOutputParser.stubs(:from_json_schema).returns(parser_mock)
-    
-    fix_parser_mock = mock('fix_parser')
-    fix_parser_mock.stubs(:parse).returns(mock_response)
-    Langchain::OutputParsers::OutputFixingParser.stubs(:from_llm).returns(fix_parser_mock)
-    
-    # Mock the client method
-    @agent.stubs(:client).returns(mock('client'))
-    
+    @agent.stubs(:chat).returns(mock_response.to_json)
+    RedmineAiHelper::Util::StructuredOutputHelper.stubs(:parse).returns(mock_response)
+
     text = "テストしてみたいいと思います"
     result = @agent.check_typos(text: text, context_type: "test")
-    
+
     # Should fix the length to the actual length of the original text
     assert_equal 1, result.length
     assert_equal "テストしてみたいい", result[0]['original']
@@ -116,23 +86,12 @@ class DocumentationAgentTest < ActiveSupport::TestCase
       }
     ]
 
-    @agent.stubs(:chat).returns("mock response")
-    
-    # Mock the StructuredOutputParser and OutputFixingParser
-    parser_mock = mock('parser')
-    parser_mock.stubs(:get_format_instructions).returns("format instructions")
-    Langchain::OutputParsers::StructuredOutputParser.stubs(:from_json_schema).returns(parser_mock)
-    
-    fix_parser_mock = mock('fix_parser')
-    fix_parser_mock.stubs(:parse).returns(mock_response)
-    Langchain::OutputParsers::OutputFixingParser.stubs(:from_llm).returns(fix_parser_mock)
-    
-    # Mock the client method
-    @agent.stubs(:client).returns(mock('client'))
-    
+    @agent.stubs(:chat).returns(mock_response.to_json)
+    RedmineAiHelper::Util::StructuredOutputHelper.stubs(:parse).returns(mock_response)
+
     text = "これは普通のテキストです"
     result = @agent.check_typos(text: text, context_type: "test")
-    
+
     # Should skip the unfindable suggestion
     assert_equal 0, result.length
   end
@@ -158,23 +117,12 @@ class DocumentationAgentTest < ActiveSupport::TestCase
       }
     ]
 
-    @agent.stubs(:chat).returns("mock response")
-    
-    # Mock the StructuredOutputParser and OutputFixingParser
-    parser_mock = mock('parser')
-    parser_mock.stubs(:get_format_instructions).returns("format instructions")
-    Langchain::OutputParsers::StructuredOutputParser.stubs(:from_json_schema).returns(parser_mock)
-    
-    fix_parser_mock = mock('fix_parser')
-    fix_parser_mock.stubs(:parse).returns(mock_response)
-    Langchain::OutputParsers::OutputFixingParser.stubs(:from_llm).returns(fix_parser_mock)
-    
-    # Mock the client method
-    @agent.stubs(:client).returns(mock('client'))
-    
+    @agent.stubs(:chat).returns(mock_response.to_json)
+    RedmineAiHelper::Util::StructuredOutputHelper.stubs(:parse).returns(mock_response)
+
     text = "これはtypoのチェクのテストです"
     result = @agent.check_typos(text: text, context_type: "test")
-    
+
     # Should only keep the suggestion where original != corrected
     assert_equal 1, result.length
     assert_equal "チェク", result[0]['original']

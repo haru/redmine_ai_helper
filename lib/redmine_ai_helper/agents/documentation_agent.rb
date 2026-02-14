@@ -59,7 +59,7 @@ module RedmineAiHelper
           description: "Array of typo correction suggestions"
         }
 
-        parser = Langchain::OutputParsers::StructuredOutputParser.from_json_schema(json_schema)
+        format_instructions = RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(json_schema)
 
         prompt_template = load_prompt("documentation_agent/typo_check")
         
@@ -67,7 +67,7 @@ module RedmineAiHelper
           text: text,
           context_type: context_type,
           max_suggestions: options[:max_suggestions] || 10,
-          format_instructions: parser.get_format_instructions
+          format_instructions: format_instructions
         )
 
         # Create proper message array for BaseAgent#chat
@@ -78,14 +78,14 @@ module RedmineAiHelper
           }
         ]
 
-        response = chat(messages, output_parser: parser)
+        response = chat(messages)
 
-        fix_parser = Langchain::OutputParsers::OutputFixingParser.from_llm(
-          llm: client,
-          parser: parser
+        suggestions = RedmineAiHelper::Util::StructuredOutputHelper.parse(
+          response: response,
+          json_schema: json_schema,
+          chat_method: method(:chat),
+          messages: messages,
         )
-        
-        suggestions = fix_parser.parse(response)
         
         # Validate and fix suggestions data
         validated_suggestions = validate_and_fix_suggestions(suggestions, text)

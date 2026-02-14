@@ -6,7 +6,9 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
   context "IssueContentAnalyzer" do
     setup do
       @issue = Issue.find(1)
-      @mock_llm = mock("llm_client")
+      @mock_llm_provider = mock("llm_provider")
+      @mock_llm_provider.stubs(:model_name).returns("gpt-4")
+      @mock_llm_provider.stubs(:configure_ruby_llm)
       @mock_logger = mock("logger")
       @mock_logger.stubs(:debug)
       @mock_logger.stubs(:info)
@@ -21,11 +23,9 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
           "keywords" => ["login", "session timeout", "authentication", "bug"]
         }.to_json
 
-        @mock_llm.stubs(:chat).returns(mock_chat_response(valid_response))
-        mock_output_fixing_parser(valid_response)
-
-        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm: @mock_llm)
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:call_llm).returns(valid_response)
 
         result = analyzer.analyze(@issue)
 
@@ -42,11 +42,9 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
           "keywords" => ["keyword1", "keyword2", "keyword3"]
         }.to_json
 
-        @mock_llm.stubs(:chat).returns(mock_chat_response(valid_json))
-        mock_output_fixing_parser(valid_json)
-
-        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm: @mock_llm)
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:call_llm).returns(valid_json)
 
         result = analyzer.analyze(@issue)
 
@@ -69,11 +67,9 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
           Let me know if you need more details.
         RESPONSE
 
-        @mock_llm.stubs(:chat).returns(mock_chat_response(json_in_code_block))
-        mock_output_fixing_parser(json_data.to_json)
-
-        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm: @mock_llm)
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:call_llm).returns(json_in_code_block)
 
         result = analyzer.analyze(@issue)
 
@@ -82,10 +78,9 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
       end
 
       should "return empty result when LLM call fails" do
-        @mock_llm.stubs(:chat).raises(StandardError.new("API connection failed"))
-
-        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm: @mock_llm)
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:call_llm).raises(StandardError.new("API connection failed"))
 
         result = analyzer.analyze(@issue)
 
@@ -96,11 +91,10 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
       should "return empty result when response is not valid JSON" do
         invalid_response = "This is not JSON, just plain text response from the LLM."
 
-        @mock_llm.stubs(:chat).returns(mock_chat_response(invalid_response))
-        mock_output_fixing_parser_failure
-
-        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm: @mock_llm)
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:call_llm).returns(invalid_response)
+        RedmineAiHelper::Util::StructuredOutputHelper.stubs(:parse).raises(StandardError.new("Failed to parse JSON"))
 
         result = analyzer.analyze(@issue)
 
@@ -113,12 +107,9 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
           "other_field" => "some value"
         }.to_json
 
-        @mock_llm.stubs(:chat).returns(mock_chat_response(incomplete_json))
-        # OutputFixingParser will try to fix but still return incomplete data
-        mock_output_fixing_parser(incomplete_json)
-
-        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm: @mock_llm)
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:call_llm).returns(incomplete_json)
 
         result = analyzer.analyze(@issue)
 
@@ -133,11 +124,9 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
           "keywords" => []
         }
 
-        @mock_llm.stubs(:chat).returns(mock_chat_response(response_data.to_json))
-        mock_output_fixing_parser(response_data.to_json)
-
-        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm: @mock_llm)
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:call_llm).returns(response_data.to_json)
 
         result = analyzer.analyze(@issue)
 
@@ -151,11 +140,9 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
           "keywords" => ["keyword1"]
         }
 
-        @mock_llm.stubs(:chat).returns(mock_chat_response(response_data.to_json))
-        mock_output_fixing_parser(response_data.to_json)
-
-        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm: @mock_llm)
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:call_llm).returns(response_data.to_json)
 
         result = analyzer.analyze(@issue)
 
@@ -165,19 +152,12 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
     end
 
     context "#build_prompt" do
-      setup do
-        @mock_parser = mock("structured_output_parser")
-        @mock_parser.stubs(:get_format_instructions).returns("Output JSON with summary and keywords fields.")
-      end
-
       should "build prompt with issue data" do
-        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm: @mock_llm)
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
 
-        # Access the private method to test prompt building
-        prompt = analyzer.send(:build_prompt, @issue, @mock_parser)
+        prompt = analyzer.send(:build_prompt, @issue, "Output JSON with summary and keywords fields.")
 
-        # Verify prompt contains issue information
         assert prompt.is_a?(String), "Prompt should be a string"
         assert prompt.include?(@issue.subject), "Prompt should contain issue subject"
       end
@@ -186,16 +166,15 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
         @issue.description = "This is a detailed description of the bug."
         @issue.save!
 
-        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm: @mock_llm)
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
 
-        prompt = analyzer.send(:build_prompt, @issue, @mock_parser)
+        prompt = analyzer.send(:build_prompt, @issue, "Output JSON with summary and keywords fields.")
 
         assert prompt.include?(@issue.description), "Prompt should contain issue description"
       end
 
       should "include journal notes in prompt when present" do
-        # Create a journal entry with notes
         journal = Journal.new(
           journalized: @issue,
           user: User.find(1),
@@ -203,10 +182,10 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
         )
         journal.save!
 
-        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm: @mock_llm)
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
 
-        prompt = analyzer.send(:build_prompt, @issue, @mock_parser)
+        prompt = analyzer.send(:build_prompt, @issue, "Output JSON with summary and keywords fields.")
 
         assert prompt.include?("This is a comment on the issue."), "Prompt should contain journal notes"
       end
@@ -215,11 +194,10 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
         @issue.description = nil
         @issue.save!
 
-        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm: @mock_llm)
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
 
-        # Should not raise an error
-        prompt = analyzer.send(:build_prompt, @issue, @mock_parser)
+        prompt = analyzer.send(:build_prompt, @issue, "Output JSON with summary and keywords fields.")
 
         assert prompt.is_a?(String), "Prompt should still be a string"
         assert prompt.include?(@issue.subject), "Prompt should contain issue subject"
@@ -228,54 +206,42 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
       should "handle issue with no journals" do
         @issue.journals.destroy_all
 
-        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm: @mock_llm)
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
 
-        # Should not raise an error
-        prompt = analyzer.send(:build_prompt, @issue, @mock_parser)
+        prompt = analyzer.send(:build_prompt, @issue, "Output JSON with summary and keywords fields.")
 
         assert prompt.is_a?(String), "Prompt should still be a string"
       end
 
       should "include format instructions in prompt" do
-        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm: @mock_llm)
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
 
-        prompt = analyzer.send(:build_prompt, @issue, @mock_parser)
+        prompt = analyzer.send(:build_prompt, @issue, "Output JSON with summary and keywords fields.")
 
         assert prompt.include?("Output JSON with summary and keywords fields."), "Prompt should contain format instructions"
       end
     end
 
     context "#initialize" do
-      should "use provided LLM client" do
-        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm: @mock_llm)
+      should "use provided LLM provider" do
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
 
-        assert_equal @mock_llm, analyzer.instance_variable_get(:@llm)
+        assert_equal @mock_llm_provider, analyzer.instance_variable_get(:@llm_provider)
       end
 
-      should "create default LLM client when not provided" do
-        # Mock the LlmProvider to return a mock client
+      should "create default LLM provider when not provided" do
         mock_provider = mock("llm_provider")
-        mock_client = mock("default_llm_client")
-        mock_provider.stubs(:generate_client).returns(mock_client)
         RedmineAiHelper::LlmProvider.stubs(:get_llm_provider).returns(mock_provider)
 
         analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new
 
-        assert_equal mock_client, analyzer.instance_variable_get(:@llm)
+        assert_equal mock_provider, analyzer.instance_variable_get(:@llm_provider)
       end
     end
 
-    context "#create_parser" do
-      should "create StructuredOutputParser from JSON schema" do
-        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm: @mock_llm)
-
-        parser = analyzer.send(:create_parser)
-
-        assert parser.is_a?(Langchain::OutputParsers::StructuredOutputParser)
-      end
-
+    context "JSON_SCHEMA" do
       should "use correct JSON schema" do
         schema = RedmineAiHelper::Vector::IssueContentAnalyzer::JSON_SCHEMA
 
@@ -291,7 +257,6 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
     context "edge cases" do
       should "handle very long issue content" do
-        # Create an issue with very long description
         long_description = "A" * 10000
         @issue.description = long_description
         @issue.save!
@@ -301,11 +266,9 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
           "keywords" => ["long", "content"]
         }.to_json
 
-        @mock_llm.stubs(:chat).returns(mock_chat_response(valid_response))
-        mock_output_fixing_parser(valid_response)
-
-        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm: @mock_llm)
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:call_llm).returns(valid_response)
 
         result = analyzer.analyze(@issue)
 
@@ -323,11 +286,9 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
           "keywords" => ["unicode", "special chars"]
         }.to_json
 
-        @mock_llm.stubs(:chat).returns(mock_chat_response(valid_response))
-        mock_output_fixing_parser(valid_response)
-
-        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm: @mock_llm)
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:call_llm).returns(valid_response)
 
         result = analyzer.analyze(@issue)
 
@@ -341,11 +302,9 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
         }
         response_with_whitespace = "  \n  " + response_data.to_json + "  \n  "
 
-        @mock_llm.stubs(:chat).returns(mock_chat_response(response_with_whitespace))
-        mock_output_fixing_parser(response_data.to_json)
-
-        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm: @mock_llm)
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:call_llm).returns(response_with_whitespace)
 
         result = analyzer.analyze(@issue)
 
@@ -360,11 +319,10 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
           ```
         RESPONSE
 
-        @mock_llm.stubs(:chat).returns(mock_chat_response(malformed_json_in_block))
-        mock_output_fixing_parser_failure
-
-        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm: @mock_llm)
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:call_llm).returns(malformed_json_in_block)
+        RedmineAiHelper::Util::StructuredOutputHelper.stubs(:parse).raises(StandardError.new("Failed to parse JSON"))
 
         result = analyzer.analyze(@issue)
 
@@ -392,11 +350,9 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
           ```
         RESPONSE
 
-        @mock_llm.stubs(:chat).returns(mock_chat_response(multiple_json_blocks))
-        mock_output_fixing_parser(first_block_data.to_json)
-
-        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm: @mock_llm)
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:call_llm).returns(multiple_json_blocks)
 
         result = analyzer.analyze(@issue)
 
@@ -405,32 +361,5 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
         assert_equal ["first"], result[:keywords]
       end
     end
-  end
-
-  private
-
-  # Helper method to create a mock chat response object
-  # This mimics the structure returned by Langchain LLM clients
-  def mock_chat_response(content)
-    response = mock("chat_response")
-    response.stubs(:chat_completion).returns(content)
-    # For OpenAI-style response
-    response.stubs(:dig).with("choices", 0, "message", "content").returns(content)
-    response
-  end
-
-  # Mock OutputFixingParser to return parsed JSON data
-  def mock_output_fixing_parser(json_string)
-    parsed_data = JSON.parse(json_string)
-    mock_fix_parser = mock("output_fixing_parser")
-    mock_fix_parser.stubs(:parse).returns(parsed_data)
-    Langchain::OutputParsers::OutputFixingParser.stubs(:from_llm).returns(mock_fix_parser)
-  end
-
-  # Mock OutputFixingParser to raise an error (simulating parse failure)
-  def mock_output_fixing_parser_failure
-    mock_fix_parser = mock("output_fixing_parser")
-    mock_fix_parser.stubs(:parse).raises(StandardError.new("Failed to parse JSON"))
-    Langchain::OutputParsers::OutputFixingParser.stubs(:from_llm).returns(mock_fix_parser)
   end
 end

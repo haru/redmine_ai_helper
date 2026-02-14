@@ -11,11 +11,6 @@ class LeaderAgentTest < ActiveSupport::TestCase
     @mock_llm_provider.stubs(:configure_ruby_llm)
     @mock_llm_provider.stubs(:create_chat).returns(mock("chat"))
 
-    # For backward compat: LeaderAgent uses client for OutputFixingParser
-    @openai_mock = MyOpenAI::DummyOpenAIClient.new
-    Langchain::LLM::OpenAI.stubs(:new).returns(@openai_mock)
-    @mock_llm_provider.stubs(:generate_client).returns(@openai_mock)
-
     RedmineAiHelper::LlmProvider.stubs(:get_llm_provider).returns(@mock_llm_provider)
 
     @params = {
@@ -109,47 +104,3 @@ class LeaderAgentTest < ActiveSupport::TestCase
   end
 end
 
-module MyOpenAI
-  class DummyOpenAIClient < Langchain::LLM::OpenAI
-    attr_accessor :langfuse
-
-    def initialize(params = {})
-      super(api_key: "aaaa")
-    end
-
-    def chat(params = {})
-      messages = params[:messages]
-      message = messages.last[:content]
-
-      answer = "test answer"
-
-      if message.include?("clarify the user's request and set a clear goal")
-        answer = {
-          "goal" => "test goal",
-          "generate_steps_required" => true,
-        }.to_json
-      elsif message.include?("Please create instructions for other agents")
-        answer = {
-          "steps" => [
-            { "agent" => "project_agent", "step" => "my_projectという名前のプロジェクトのIDを教えてください", "description_for_human" => "Retrieving project information..." },
-            { "agent" => "project_agent", "step" => "my_projectの情報を取得してください", "description_for_human" => "Getting project details..." },
-          ],
-        }.to_json
-      else
-        answer = "test answer"
-      end
-
-      if block_given?
-        chunk = {
-          "index": 0,
-          "delta": { "content": answer },
-          "finish_reason": nil,
-        }.deep_stringify_keys
-        yield(chunk)
-      end
-
-      response = { "choices": [{ "message": { "content": answer } }] }.deep_stringify_keys
-      Langchain::LLM::OpenAIResponse.new(response)
-    end
-  end
-end

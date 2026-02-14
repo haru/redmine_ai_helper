@@ -135,11 +135,11 @@ module RedmineAiHelper
             },
             required: ["tool_calls"],
           }
-          parser = Langchain::OutputParsers::StructuredOutputParser.from_json_schema(json_schema)
+          format_instructions = RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(json_schema)
           prompt = <<~EOS
             Analyze the user's message and select the most appropriate tools to resolve the user's request.
 
-            #{parser.get_format_instructions}
+            #{format_instructions}
 
             JSON example:
             {
@@ -163,16 +163,21 @@ module RedmineAiHelper
           new_messages = messages.dup
 
           # Some LLMs may throw an error if user messages are consecutive, so insert an assistant message in between.
-          Langchain::Assistant::Messages::OpenAIMessage.new(role: "assistant", content: "ok").to_hash
-          new_messages << Langchain::Assistant::Messages::OpenAIMessage.new(role: "user", content: prompt).to_hash
+          new_messages << { "role" => "assistant", "content" => "ok" }
+          new_messages << { "role" => "user", "content" => prompt }
           response = chat(messages: new_messages)
 
           json_str = response.chat_completion
-          fix_parser = Langchain::OutputParsers::OutputFixingParser.from_llm(
-            llm: self,
-            parser: parser,
+          chat_method = ->(msgs) {
+            resp = chat(messages: msgs)
+            resp.chat_completion
+          }
+          json = RedmineAiHelper::Util::StructuredOutputHelper.parse(
+            response: json_str,
+            json_schema: json_schema,
+            chat_method: chat_method,
+            messages: new_messages,
           )
-          json = fix_parser.parse(json_str)
           raw_respose = response.raw_response
           new_response = {
             "id" => raw_respose["id"],
