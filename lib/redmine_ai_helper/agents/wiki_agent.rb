@@ -16,13 +16,13 @@ module RedmineAiHelper
 
       # Get available RubyLLM::Tool subclasses for this agent
       # @return [Array<Class>] Array of RubyLLM::Tool subclasses
-      def available_tool_classes
-        classes = []
+      def available_tool_providers
+        providers = []
         if AiHelperSetting.vector_search_enabled?
-          classes.concat(RedmineAiHelper::Tools::VectorTools.tool_classes)
+          providers << RedmineAiHelper::Tools::VectorTools
         end
-        classes.concat(RedmineAiHelper::Tools::WikiTools.tool_classes)
-        classes
+        providers << RedmineAiHelper::Tools::WikiTools
+        providers
       end
 
       # Generate a summary of the given wiki page with optional streaming support

@@ -24,6 +24,9 @@ redmine_ai_helper/
 
 ### Agent System
 - `base_agent.rb` - Foundation class with automatic registration
+  - `available_tool_providers` - Returns array of BaseTools subclasses (each agent overrides this)
+  - `available_tool_classes` - Calls `available_tool_providers` and expands via `.tool_classes` to get RubyLLM::Tool subclasses
+  - `available_tools` - Returns OpenAI-format tool schema hashes for LeaderAgent backstory
 - `agents/` - Specialized agents (IssueAgent, RepositoryAgent, WikiAgent, etc.)
 - `chat_room.rb` - Manages conversations and agent coordination
 

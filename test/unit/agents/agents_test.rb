@@ -8,12 +8,12 @@ class AgentsTest < ActiveSupport::TestCase
       @agent = RedmineAiHelper::Agents::BoardAgent.new
     end
 
-    should "return correct tool classes" do
-      assert_equal RedmineAiHelper::Tools::BoardTools.tool_classes, @agent.available_tool_classes
+    should "return correct tool providers" do
+      assert_equal [RedmineAiHelper::Tools::BoardTools], @agent.available_tool_providers
     end
 
-    should "support backward-compat available_tool_providers" do
-      assert_equal @agent.available_tool_classes, @agent.available_tool_providers
+    should "return correct tool classes derived from providers" do
+      assert_equal RedmineAiHelper::Tools::BoardTools.tool_classes, @agent.available_tool_classes
     end
   end
 
@@ -22,7 +22,17 @@ class AgentsTest < ActiveSupport::TestCase
       @agent = RedmineAiHelper::Agents::IssueAgent.new({ project: Project.find(1) })
     end
 
-    should "return correct tool classes" do
+    should "return correct tool providers" do
+      expected = [
+        RedmineAiHelper::Tools::IssueTools,
+        RedmineAiHelper::Tools::ProjectTools,
+        RedmineAiHelper::Tools::UserTools,
+        RedmineAiHelper::Tools::IssueSearchTools,
+      ]
+      assert_equal expected, @agent.available_tool_providers
+    end
+
+    should "return correct tool classes derived from providers" do
       expected = RedmineAiHelper::Tools::IssueTools.tool_classes +
                  RedmineAiHelper::Tools::ProjectTools.tool_classes +
                  RedmineAiHelper::Tools::UserTools.tool_classes +
@@ -40,7 +50,17 @@ class AgentsTest < ActiveSupport::TestCase
       @agent = RedmineAiHelper::Agents::IssueUpdateAgent.new({ project: Project.find(1) })
     end
 
-    should "return correct tool classes" do
+    should "return correct tool providers" do
+      expected = [
+        RedmineAiHelper::Tools::IssueTools,
+        RedmineAiHelper::Tools::IssueUpdateTools,
+        RedmineAiHelper::Tools::ProjectTools,
+        RedmineAiHelper::Tools::UserTools,
+      ]
+      assert_equal expected, @agent.available_tool_providers
+    end
+
+    should "return correct tool classes derived from providers" do
       expected = RedmineAiHelper::Tools::IssueTools.tool_classes +
                  RedmineAiHelper::Tools::IssueUpdateTools.tool_classes +
                  RedmineAiHelper::Tools::ProjectTools.tool_classes +
@@ -58,7 +78,11 @@ class AgentsTest < ActiveSupport::TestCase
       @agent = RedmineAiHelper::Agents::RepositoryAgent.new
     end
 
-    should "return correct tool classes" do
+    should "return correct tool providers" do
+      assert_equal [RedmineAiHelper::Tools::RepositoryTools], @agent.available_tool_providers
+    end
+
+    should "return correct tool classes derived from providers" do
       assert_equal RedmineAiHelper::Tools::RepositoryTools.tool_classes, @agent.available_tool_classes
     end
   end
@@ -68,7 +92,11 @@ class AgentsTest < ActiveSupport::TestCase
       @agent = RedmineAiHelper::Agents::SystemAgent.new
     end
 
-    should "return correct tool classes" do
+    should "return correct tool providers" do
+      assert_equal [RedmineAiHelper::Tools::SystemTools], @agent.available_tool_providers
+    end
+
+    should "return correct tool classes derived from providers" do
       assert_equal RedmineAiHelper::Tools::SystemTools.tool_classes, @agent.available_tool_classes
     end
   end
@@ -78,7 +106,11 @@ class AgentsTest < ActiveSupport::TestCase
       @agent = RedmineAiHelper::Agents::UserAgent.new
     end
 
-    should "return correct tool classes" do
+    should "return correct tool providers" do
+      assert_equal [RedmineAiHelper::Tools::UserTools], @agent.available_tool_providers
+    end
+
+    should "return correct tool classes derived from providers" do
       assert_equal RedmineAiHelper::Tools::UserTools.tool_classes, @agent.available_tool_classes
     end
   end
@@ -88,7 +120,11 @@ class AgentsTest < ActiveSupport::TestCase
       @agent = RedmineAiHelper::Agents::ProjectAgent.new
     end
 
-    should "return correct tool classes" do
+    should "return correct tool providers" do
+      assert_equal [RedmineAiHelper::Tools::ProjectTools], @agent.available_tool_providers
+    end
+
+    should "return correct tool classes derived from providers" do
       assert_equal RedmineAiHelper::Tools::ProjectTools.tool_classes, @agent.available_tool_classes
     end
   end
@@ -98,7 +134,11 @@ class AgentsTest < ActiveSupport::TestCase
       @agent = RedmineAiHelper::Agents::WikiAgent.new
     end
 
-    should "return correct tool classes" do
+    should "return correct tool providers" do
+      assert_equal [RedmineAiHelper::Tools::WikiTools], @agent.available_tool_providers
+    end
+
+    should "return correct tool classes derived from providers" do
       assert_equal RedmineAiHelper::Tools::WikiTools.tool_classes, @agent.available_tool_classes
     end
   end
@@ -108,7 +148,11 @@ class AgentsTest < ActiveSupport::TestCase
       @agent = RedmineAiHelper::Agents::VersionAgent.new
     end
 
-    should "return correct tool classes" do
+    should "return correct tool providers" do
+      assert_equal [RedmineAiHelper::Tools::VersionTools], @agent.available_tool_providers
+    end
+
+    should "return correct tool classes derived from providers" do
       assert_equal RedmineAiHelper::Tools::VersionTools.tool_classes, @agent.available_tool_classes
     end
   end

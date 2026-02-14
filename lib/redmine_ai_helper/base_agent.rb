@@ -73,12 +73,12 @@ module RedmineAiHelper
     # Subclasses should override this method.
     # @return [Array<Class>] Array of RubyLLM::Tool subclasses.
     def available_tool_classes
-      []
+      available_tool_providers.flat_map(&:tool_classes)
     end
 
     # Backward compatibility: delegates to available_tool_classes.
     def available_tool_providers
-      available_tool_classes
+      []
     end
 
     # The role of the agent

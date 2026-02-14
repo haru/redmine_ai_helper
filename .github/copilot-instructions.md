@@ -45,7 +45,7 @@ class MyTools < RedmineAiHelper::BaseTools
 end
 ```
 
-Agents expose tools via `available_tool_classes` returning `MyTools.tool_classes` (array of `RubyLLM::Tool` subclasses). These are passed to `RubyLLM::Chat#with_tools` when creating the assistant.
+Agents expose tools by overriding `available_tool_providers` to return an array of `BaseTools` subclasses (e.g. `[MyTools]`). The base `available_tool_classes` method then calls `available_tool_providers` and expands each provider via `.tool_classes`, returning a flat array of `RubyLLM::Tool` subclasses passed to `RubyLLM::Chat#with_tools`.
 
 ### LLM Providers
 
@@ -197,7 +197,7 @@ bundle exec rake redmine:plugins:migrate RAILS_ENV=production
 
 **Adding New Agents:**
 1. Create `lib/redmine_ai_helper/agents/your_agent.rb` inheriting from `BaseAgent`
-2. Implement required methods: `backstory`, `available_tool_classes`
+2. Implement required methods: `backstory`, `available_tool_providers`
 3. Create corresponding tools class in `lib/redmine_ai_helper/tools/`
 4. Agent auto-registers via inheritance hook
 5. See `example/redmine_fortune/` for a complete example

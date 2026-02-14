@@ -33,24 +33,31 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
     end
   end
 
+  context "available_tool_providers" do
+    should "return an array of BaseTools subclasses with agent" do
+      providers = @agent.available_tool_providers
+      assert providers.is_a?(Array)
+      assert_equal [RedmineAiHelper::Tools::BoardTools], providers
+    end
+
+    should "return an empty array with agent2" do
+      assert_equal [], @agent2.available_tool_providers
+    end
+  end
+
   context "available_tool_classes" do
-    should "return an array of RubyLLM::Tool subclasses with agent" do
+    should "return an array of RubyLLM::Tool subclasses derived from available_tool_providers" do
       tool_classes = @agent.available_tool_classes
       assert tool_classes.is_a?(Array)
       assert tool_classes.length > 0
       tool_classes.each do |klass|
         assert klass < RubyLLM::Tool, "#{klass} should be a subclass of RubyLLM::Tool"
       end
+      assert_equal RedmineAiHelper::Tools::BoardTools.tool_classes, tool_classes
     end
 
     should "return an empty array with agent2" do
       assert_equal [], @agent2.available_tool_classes
-    end
-  end
-
-  context "available_tool_providers (backward compat)" do
-    should "be an alias for available_tool_classes" do
-      assert_equal @agent.available_tool_classes, @agent.available_tool_providers
     end
   end
 
@@ -236,8 +243,8 @@ end
 
 module BaseAgentTestModele
   class TestAgent < RedmineAiHelper::BaseAgent
-    def available_tool_classes
-      RedmineAiHelper::Tools::BoardTools.tool_classes
+    def available_tool_providers
+      [RedmineAiHelper::Tools::BoardTools]
     end
 
     def backstory
