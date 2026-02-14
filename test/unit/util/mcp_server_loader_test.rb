@@ -135,6 +135,7 @@ class McpServerLoaderTest < ActiveSupport::TestCase
       @loader.expects(:create_mcp_client).with("filesystem", server_config).returns(fake_client)
       RedmineAiHelper::CustomLogger.stubs(:instance).returns(mock_logger)
       tool_class = build_fake_tool_class
+      fake_tool_classes = tool_class.tool_classes
       RedmineAiHelper::Tools::McpTools.expects(:generate_tool_class).with(mcp_server_name: "filesystem", mcp_client: fake_client).once.returns(tool_class)
 
       stub_llm_provider
@@ -144,17 +145,17 @@ class McpServerLoaderTest < ActiveSupport::TestCase
       klass = Object.const_get("AiHelperMcpFilesystem")
       agent = klass.new
 
-      providers_first = agent.available_tool_providers
-      providers_second = agent.available_tool_providers
+      classes_first = agent.available_tool_classes
+      classes_second = agent.available_tool_classes
 
-      assert_equal [tool_class], providers_first
-      assert_equal providers_first, providers_second
+      assert_equal fake_tool_classes, classes_first
+      assert_equal classes_first, classes_second
       assert_equal "ai_helper_mcp_filesystem", agent.role
       assert_equal "AiHelperMcpFilesystem", agent.name
       assert_equal "AiHelperMcpFilesystem", agent.to_s
       assert agent.enabled?
 
-      agent.stubs(:available_tools).returns([[{ function: { description: "List directory contents" } }]])
+      agent.stubs(:available_tools).returns([{ function: { description: "List directory contents" } }])
       backstory = agent.backstory
       assert_includes backstory, "List directory contents"
       assert_same backstory, agent.backstory
@@ -273,19 +274,16 @@ class McpServerLoaderTest < ActiveSupport::TestCase
   end
 
   def build_fake_tool_class
-    tool_instance = Class.new do
-      def function_schemas
-        Class.new do
-          def to_openai_format
-            [{ function: { description: "List directory contents" } }]
-          end
-        end.new
-      end
-    end.new
+    # Create a fake RubyLLM::Tool subclass with name and description
+    fake_tool = Class.new do
+      define_singleton_method(:name) { "RedmineAiHelper::Tools::FakeListDir" }
+      define_singleton_method(:description) { "List directory contents" }
+    end
 
+    # Return a class that responds to tool_classes (like BaseTools subclasses)
     Class.new do
-      define_singleton_method(:new) do
-        tool_instance
+      define_singleton_method(:tool_classes) do
+        [fake_tool]
       end
     end
   end

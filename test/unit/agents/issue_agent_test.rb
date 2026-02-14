@@ -21,18 +21,30 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
 
     should "include vector tools when vector db is enabled" do
       AiHelperSetting.any_instance.stubs(:vector_search_enabled).returns(true)
-      tools = @agent.available_tool_providers
-      assert_includes tools, RedmineAiHelper::Tools::VectorTools
-      assert_includes tools, RedmineAiHelper::Tools::IssueTools
-      assert_includes tools, RedmineAiHelper::Tools::ProjectTools
+      tool_classes = @agent.available_tool_classes
+      RedmineAiHelper::Tools::VectorTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
+      RedmineAiHelper::Tools::IssueTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
+      RedmineAiHelper::Tools::ProjectTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
     end
 
     should "not include vector tools when vector db is disabled" do
       AiHelperSetting.any_instance.stubs(:vector_search_enabled).returns(false)
-      tools = @agent.available_tool_providers
-      assert_not_includes tools, RedmineAiHelper::Tools::VectorTools
-      assert_includes tools, RedmineAiHelper::Tools::IssueTools
-      assert_includes tools, RedmineAiHelper::Tools::ProjectTools
+      tool_classes = @agent.available_tool_classes
+      RedmineAiHelper::Tools::VectorTools.tool_classes.each do |tc|
+        assert_not_includes tool_classes, tc
+      end
+      RedmineAiHelper::Tools::IssueTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
+      RedmineAiHelper::Tools::ProjectTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
     end
 
     should "generate issue summary for visible issue" do

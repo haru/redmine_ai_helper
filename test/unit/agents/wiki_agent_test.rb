@@ -34,23 +34,29 @@ class WikiAgentTest < ActiveSupport::TestCase
       assert @agent.backstory.is_a?(String)
     end
 
-    should "have correct available_tool_providers" do
-      providers = @agent.available_tool_providers
-      assert_includes providers, RedmineAiHelper::Tools::WikiTools
+    should "have correct available_tool_classes" do
+      tool_classes = @agent.available_tool_classes
+      RedmineAiHelper::Tools::WikiTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
     end
 
     should "include VectorTools when vector search is enabled" do
       AiHelperSetting.any_instance.stubs(:vector_search_enabled).returns(true)
       agent = RedmineAiHelper::Agents::WikiAgent.new(project: @project)
-      providers = agent.available_tool_providers
-      assert_includes providers, RedmineAiHelper::Tools::VectorTools
+      tool_classes = agent.available_tool_classes
+      RedmineAiHelper::Tools::VectorTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
     end
 
     should "not include VectorTools when vector search is disabled" do
       AiHelperSetting.any_instance.stubs(:vector_search_enabled).returns(false)
       agent = RedmineAiHelper::Agents::WikiAgent.new(project: @project)
-      providers = agent.available_tool_providers
-      assert_not_includes providers, RedmineAiHelper::Tools::VectorTools
+      tool_classes = agent.available_tool_classes
+      RedmineAiHelper::Tools::VectorTools.tool_classes.each do |tc|
+        assert_not_includes tool_classes, tc
+      end
     end
 
     context "#wiki_summary" do

@@ -2,13 +2,10 @@
 require "redmine_ai_helper/logger"
 require "redmine_ai_helper/assistant"
 
-# Without this, Langchain logs will be output excessively
-Langchain.logger.level = Logger::ERROR
-
 module RedmineAiHelper
   # Base class for all agents.
   class BaseAgent
-    attr_accessor :llm_type, :llm_provider, :client, :langfuse
+    attr_accessor :llm_provider, :langfuse
     include RedmineAiHelper::Logger
 
     class << self
@@ -24,7 +21,7 @@ module RedmineAiHelper
           @pending_dynamic_classes << subclass
           return
         end
-        
+
         class_name = subclass.name
         real_class_name = class_name.split("::").last
         @myname = real_class_name.underscore
@@ -34,7 +31,7 @@ module RedmineAiHelper
           subclass.name,
         )
       end
-      
+
       # Method to register pending dynamic classes
       def register_pending_dynamic_class(subclass, class_name)
         real_class_name = class_name.split("::").last
@@ -52,37 +49,52 @@ module RedmineAiHelper
       @project = params[:project]
       @langfuse = params[:langfuse]
       @llm_provider = RedmineAiHelper::LlmProvider.get_llm_provider
-
-      @client = @llm_provider.generate_client
-      @client.langfuse = @langfuse if @langfuse
-      @llm_type = RedmineAiHelper::LlmProvider.type
     end
 
     def langfuse
       @langfuse
     end
 
-    # Returns the LLM client.
+    # Backward compatibility: lazily create a Langchain LLM client.
+    # Used by LeaderAgent for Langchain::OutputParsers until Phase 4 migration.
+    # @return [Object] The Langchain LLM client.
+    def client
+      return @client if @client
+      @client = @llm_provider.generate_client
+      @client.langfuse = @langfuse if @langfuse
+      @client
+    end
+
+    # Backward compatibility: lazily determine the LLM type.
+    # @return [String] The LLM type identifier.
+    def llm_type
+      @llm_type ||= RedmineAiHelper::LlmProvider.type
+    end
+
+    # Returns the assistant instance, creating it on first access.
+    # @return [RedmineAiHelper::Assistant] The assistant instance.
     def assistant
       return @assistant if @assistant
-      tool_providers = available_tool_providers || []
-      tools = tool_providers.map { |tool|
-        tool.new
-      }
+      tool_classes = available_tool_classes || []
       @assistant = RedmineAiHelper::AssistantProvider.get_assistant(
-        llm_type: llm_type,
-        llm: client,
+        llm_provider: @llm_provider,
         instructions: system_prompt,
-        tools: tools,
+        tools: tool_classes,
       )
-      @assistant.llm_provider = llm_provider
+      @assistant.langfuse = langfuse
       @assistant
     end
 
-    # List all tools provided by this tool provider.
-    # if [] is returned, the agent will be able to use all tools.
-    def available_tool_providers
+    # Returns the array of RubyLLM::Tool subclasses available to this agent.
+    # Subclasses should override this method.
+    # @return [Array<Class>] Array of RubyLLM::Tool subclasses.
+    def available_tool_classes
       []
+    end
+
+    # Backward compatibility: delegates to available_tool_classes.
+    def available_tool_providers
+      available_tool_classes
     end
 
     # The role of the agent
@@ -102,7 +114,7 @@ module RedmineAiHelper
     end
 
     # The content of the system prompt
-    # @return [Hash] The system prompt content.
+    # @return [String] The system prompt content.
     def system_prompt
       time = Time.now.iso8601
       prompt = load_prompt("base_agent/system_prompt")
@@ -116,33 +128,54 @@ module RedmineAiHelper
       return prompt_text
     end
 
-    # List all tools provided by available tool providers.
-    # @return [Array] The list of available tools.
+    # List all tools as OpenAI-format hashes (used by LeaderAgent backstory etc.)
+    # @return [Array<Hash>] The list of available tools.
     def available_tools
-      tools = []
-      available_tool_providers.each do |provider|
-        tools << provider.function_schemas.to_openai_format
+      available_tool_classes.map do |tool_class|
+        {
+          function: {
+            name: tool_class.name.demodulize.underscore,
+            description: tool_class.description,
+          },
+        }
       end
-      tools
     end
 
-    # Chat with the assistant.
-    # @param messages [Array] The messages to be sent to the assistant.
+    # Chat with the LLM using RubyLLM.
+    # @param messages [Array<Hash>] The messages to be sent.
     # @param option [Hash] Additional options for the chat.
     # @param callback [Proc] A callback function to be called with each chunk of the response.
-    # @return [String] The response from the assistant.
+    # @return [String] The response from the LLM.
     def chat(messages, option = {}, callback = nil)
-      system_prompt_message = { "role": "system", "content": system_prompt }
-      chat_params = llm_provider.create_chat_param(system_prompt_message, messages)
-      answer = ""
-      response = client.chat(chat_params) do |chunk|
-        content = llm_provider.chunk_converter(chunk) rescue nil
-        if callback
-          callback.call(content)
-        end
-        answer += content if content
+      @llm_provider.configure_ruby_llm
+      chat_instance = RubyLLM.chat(model: @llm_provider.model_name)
+      chat_instance.with_instructions(system_prompt)
+      if @llm_provider.temperature
+        chat_instance.with_temperature(@llm_provider.temperature)
       end
-      answer = response.chat_completion if llm_type == RedmineAiHelper::LlmProvider::LLM_GEMINI
+
+      # Add message history (all except the last message)
+      messages[0..-2].each do |msg|
+        chat_instance.add_message(role: msg[:role].to_sym, content: msg[:content])
+      end
+
+      # Ask with the last message (with streaming support)
+      last_message = messages.last
+      answer = ""
+
+      if callback
+        chat_instance.ask(last_message[:content]) do |chunk|
+          content = chunk.content rescue nil
+          if content
+            callback.call(content)
+            answer += content
+          end
+        end
+      else
+        response = chat_instance.ask(last_message[:content])
+        answer = response.content
+      end
+
       answer
     end
 
@@ -233,7 +266,7 @@ module RedmineAiHelper
       @agents.filter_map { |a|
         # Skip if class name is nil or empty
         next if a[:class].nil? || a[:class].empty?
-        
+
         begin
           agent = Object.const_get(a[:class]).new
           next unless agent.enabled?

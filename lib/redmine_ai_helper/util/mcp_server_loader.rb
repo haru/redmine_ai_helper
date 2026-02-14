@@ -205,17 +205,15 @@ module RedmineAiHelper
             true
           end
 
-          define_method :available_tool_providers do
-            # Hold tool providers as class variable
-            return @tool_providers if @tool_providers
+          define_method :available_tool_classes do
+            # Cache tool classes
+            return @cached_tool_classes if @cached_tool_classes
 
-            @tool_providers = [
-              RedmineAiHelper::Tools::McpTools.generate_tool_class(
-                mcp_server_name: server_name,
-                mcp_client: mcp_client,
-              ),
-            ]
-            @tool_providers
+            mcp_tools_class = RedmineAiHelper::Tools::McpTools.generate_tool_class(
+              mcp_server_name: server_name,
+              mcp_client: mcp_client,
+            )
+            @cached_tool_classes = mcp_tools_class.tool_classes
           rescue => e
             ai_helper_logger.error "Error loading tools for MCP server '#{server_name}': #{e.message}"
             []
@@ -233,25 +231,15 @@ module RedmineAiHelper
             begin
               tools_list = available_tools
               if tools_list.is_a?(Array) && !tools_list.empty?
-                tools_info += "
-
-Available tools (#{server_name}):
-"
-                tools_list.each do |tool_schemas|
-                  if tool_schemas.is_a?(Array)
-                    tool_schemas.each do |tool|
-                      if tool.is_a?(Hash) && tool.dig(:function, :description)
-                        description = tool.dig(:function, :description)
-                        tools_info += "- #{description}
-"
-                      end
-                    end
+                tools_info += "\n\nAvailable tools (#{server_name}):\n"
+                tools_list.each do |tool|
+                  if tool.is_a?(Hash) && tool.dig(:function, :description)
+                    description = tool.dig(:function, :description)
+                    tools_info += "- #{description}\n"
                   end
                 end
               else
-                tools_info += "
-
-No tools available at the moment for #{server_name}."
+                tools_info += "\n\nNo tools available at the moment for #{server_name}."
               end
             rescue => e
               # Log tool info retrieval errors but do not mask prompt issues

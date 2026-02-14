@@ -21,19 +21,18 @@ module RedmineAiHelper
         prompt.format(issue_properties: issue_properties, search_answer_instruction: search_answer_instruction)
       end
 
-      # Returns the list of available tool providers for the IssueAgent.
-      def available_tool_providers
-        base_tools = [
-          RedmineAiHelper::Tools::IssueTools,
-          RedmineAiHelper::Tools::ProjectTools,
-          RedmineAiHelper::Tools::UserTools,
-          RedmineAiHelper::Tools::IssueSearchTools,
-        ]
+      # Returns the list of available RubyLLM::Tool subclasses for the IssueAgent.
+      # @return [Array<Class>] Array of RubyLLM::Tool subclasses
+      def available_tool_classes
+        classes = []
         if AiHelperSetting.vector_search_enabled?
-          base_tools.unshift(RedmineAiHelper::Tools::VectorTools)
+          classes.concat(RedmineAiHelper::Tools::VectorTools.tool_classes)
         end
-
-        base_tools
+        classes.concat(RedmineAiHelper::Tools::IssueTools.tool_classes)
+        classes.concat(RedmineAiHelper::Tools::ProjectTools.tool_classes)
+        classes.concat(RedmineAiHelper::Tools::UserTools.tool_classes)
+        classes.concat(RedmineAiHelper::Tools::IssueSearchTools.tool_classes)
+        classes
       end
 
       # Generate a summary of the issue with optional streaming support.

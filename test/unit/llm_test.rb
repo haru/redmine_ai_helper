@@ -87,6 +87,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         @wiki = Wiki.find(1)
         @wiki_page = @wiki.pages.first
         @llm = RedmineAiHelper::Llm.new(@params)
+        RedmineAiHelper::Agents::WikiAgent.any_instance.stubs(:chat).returns("test answer")
       end
 
       should "generate summary for wiki page" do
@@ -220,6 +221,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       end
 
       should "generate wiki summary successfully" do
+        RedmineAiHelper::Agents::WikiAgent.any_instance.stubs(:chat).returns("test answer")
         result = @llm.wiki_summary(wiki_page: @wiki_page)
         assert_equal "test answer", result
       end

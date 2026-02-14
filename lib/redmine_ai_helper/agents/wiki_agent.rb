@@ -14,14 +14,15 @@ module RedmineAiHelper
         content
       end
 
-      # Get available tool providers for this agent
-      # @return [Array<Class>] Array of tool provider classes
-      def available_tool_providers
-        base_tools = [RedmineAiHelper::Tools::WikiTools]
+      # Get available RubyLLM::Tool subclasses for this agent
+      # @return [Array<Class>] Array of RubyLLM::Tool subclasses
+      def available_tool_classes
+        classes = []
         if AiHelperSetting.vector_search_enabled?
-          base_tools.unshift(RedmineAiHelper::Tools::VectorTools)
+          classes.concat(RedmineAiHelper::Tools::VectorTools.tool_classes)
         end
-        base_tools
+        classes.concat(RedmineAiHelper::Tools::WikiTools.tool_classes)
+        classes
       end
 
       # Generate a summary of the given wiki page with optional streaming support

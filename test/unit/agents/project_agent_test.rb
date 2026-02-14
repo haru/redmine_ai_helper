@@ -19,9 +19,11 @@ class ProjectAgentTest < ActiveSupport::TestCase
   end
 
   context "ProjectAgent" do
-    should "return correct available_tool_providers" do
-      providers = @agent.available_tool_providers
-      assert_includes providers, RedmineAiHelper::Tools::ProjectTools
+    should "return correct available_tool_classes" do
+      tool_classes = @agent.available_tool_classes
+      RedmineAiHelper::Tools::ProjectTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
     end
 
     context "project_health_report" do
