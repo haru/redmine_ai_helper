@@ -27,6 +27,20 @@ class DocumentationAgentTest < ActiveSupport::TestCase
     assert_equal mock_response, result
   end
 
+  def test_check_typos_passes_messages_with_symbol_keys
+    @agent.stubs(:chat).with { |messages|
+      messages.is_a?(Array) &&
+        messages.length == 1 &&
+        messages.first[:role] == "user" &&
+        messages.first[:content].is_a?(String) &&
+        !messages.first[:content].nil?
+    }.returns("[]")
+    RedmineAiHelper::Util::StructuredOutputHelper.stubs(:parse).returns([])
+
+    result = @agent.check_typos(text: "test text", context_type: "test")
+    assert_equal [], result
+  end
+
   def test_check_typos_with_empty_text
     @agent.stubs(:chat).returns("[]")
     RedmineAiHelper::Util::StructuredOutputHelper.stubs(:parse).returns([])
