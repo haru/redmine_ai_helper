@@ -16,6 +16,9 @@ end
 
 # Load MCP Server Loader and generate MCP Agent classes
 require "redmine_ai_helper/util/mcp_server_loader"
+# Monkey-patch ruby_llm-mcp notification bug (add_id on notifications/initialized)
+require "redmine_ai_helper/util/mcp_patch"
+RedmineAiHelper::Util::McpPatch.apply!
 
 # Generate MCP Agent classes after all agents are loaded
 begin
