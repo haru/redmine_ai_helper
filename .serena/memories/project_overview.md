@@ -15,11 +15,10 @@ The Redmine AI Helper Plugin adds AI-powered chat functionality to Redmine proje
 ## Tech Stack
 - **Language**: Ruby on Rails (plugin for Redmine)
 - **AI/LLM Libraries**: 
-  - langchainrb (~> 0.19.5)
-  - ruby-openai (~> 8.0.0) 
-  - ruby-anthropic (~> 0.4.2)
+  - ruby_llm (unified LLM interface for OpenAI, Anthropic, Gemini, etc.)
+  - ruby_llm-mcp (Model Context Protocol integration)
 - **Vector Search**: qdrant-ruby (~> 0.9.9) for Qdrant vector database
-- **Observability**: langfuse (~> 0.1.1) for LLM monitoring
+- **Observability**: langfuse (~> 0.1.1) via RubyLLM on_end_message callbacks
 - **Testing**: shoulda, factory_bot_rails, simplecov-cobertura
 - **Frontend**: Vanilla JavaScript (no jQuery), integrates with Redmine's design system
 

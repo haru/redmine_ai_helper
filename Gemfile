@@ -1,12 +1,5 @@
 source "https://rubygems.org"
 
-# Legacy gems (to be removed after full migration to ruby_llm)
-gem "ruby-openai", "~> 8.3.0"
-gem "langchainrb", "~> 0.19.5"
-gem "ruby-anthropic", "~> 0.4.2"
-gem "ruby-mcp-client"
-
-# New LLM library
 gem "ruby_llm"
 gem "ruby_llm-mcp"
 

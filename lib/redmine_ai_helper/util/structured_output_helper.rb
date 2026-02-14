@@ -4,12 +4,11 @@ require "json"
 
 module RedmineAiHelper
   module Util
-    # Replaces Langchain::OutputParsers::StructuredOutputParser and OutputFixingParser.
     # Provides format instructions generation and JSON parsing with retry.
     class StructuredOutputHelper
       class << self
         # Generate format instructions from a JSON schema.
-        # Compatible with Langchain::OutputParsers::StructuredOutputParser#get_format_instructions.
+        # Generates format instructions to embed in a prompt.
         # @param json_schema [Hash] The JSON schema
         # @return [String] Format instructions to embed in a prompt
         def get_format_instructions(json_schema)

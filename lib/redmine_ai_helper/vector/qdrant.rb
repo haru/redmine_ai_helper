@@ -4,8 +4,7 @@ require "qdrant"
 
 module RedmineAiHelper
   module Vector
-    # Standalone Qdrant vector search client using qdrant-ruby gem directly.
-    # Replaces the former Langchain::Vectorsearch::Qdrant inheritance.
+    # Qdrant vector search client using qdrant-ruby gem directly.
     class Qdrant
       include RedmineAiHelper::Logger
 

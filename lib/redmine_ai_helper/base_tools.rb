@@ -1,5 +1,4 @@
 # frozen_string_literal: true
-require "langchain"
 require "ruby_llm"
 require "redmine_ai_helper/logger"
 
@@ -8,14 +7,9 @@ module RedmineAiHelper
   ROUTE_HELPERS = Rails.application.routes.url_helpers unless const_defined?(:ROUTE_HELPERS)
 
   # Base class for all tools.
-  # Provides a Langchain-compatible DSL (define_function / property / item)
-  # that internally generates RubyLLM::Tool subclasses.
+  # Provides a DSL (define_function / property / item) that internally generates
+  # RubyLLM::Tool subclasses.
   class BaseTools
-    # Legacy: extend Langchain::ToolDefinition for backward compatibility with
-    # Langchain::Assistant validation. Will be removed after Phase 3 migration.
-    # Our own define_function/function_schemas methods below override the Langchain ones.
-    extend Langchain::ToolDefinition
-
     include RedmineAiHelper::Logger
     include ROUTE_HELPERS
 
@@ -26,8 +20,7 @@ module RedmineAiHelper
         @tool_classes ||= []
       end
 
-      # Langchain-compatible define_function DSL.
-      # Internally generates a RubyLLM::Tool subclass for each function.
+      # Define a function using a DSL that internally generates a RubyLLM::Tool subclass.
       # @param name [Symbol] function name (must match an instance method on this class)
       # @param description [String] human-readable description of the function
       # @param block [Proc] block containing property/item definitions
@@ -85,8 +78,7 @@ module RedmineAiHelper
       end
     end
 
-    # ParameterBuilder: Recreates Langchain's property/item DSL
-    # and can generate JSON schema from the collected definitions.
+    # ParameterBuilder: property/item DSL for building JSON schema definitions.
     class ParameterBuilder
       attr_reader :params
 
@@ -94,7 +86,7 @@ module RedmineAiHelper
         @params = []
       end
 
-      # Define a property parameter (Langchain-compatible DSL)
+      # Define a property parameter
       # @param name [Symbol] parameter name
       # @param type [String] parameter type ("string", "integer", "boolean", "number", "object", "array")
       # @param description [String] parameter description
@@ -120,7 +112,7 @@ module RedmineAiHelper
         @params << param
       end
 
-      # Define an array item (Langchain-compatible DSL)
+      # Define an array item
       # @param name_or_type [Symbol, nil] item name (optional, used in some DSL patterns)
       # @param type [String] item type
       # @param description [String] item description
@@ -166,7 +158,7 @@ module RedmineAiHelper
         @items_parts
       end
 
-      # Build parameter definitions from a JSON schema hash (replaces LangchainPatch)
+      # Build parameter definitions from a JSON schema hash
       # @param json [Hash] JSON schema
       def build_properties_from_json(json)
         properties = json["properties"] || {}
@@ -319,7 +311,7 @@ module RedmineAiHelper
 
       private
 
-      # Generate function name in the same format as Langchain
+      # Generate function name from class name and method name
       # e.g., "redmine_ai_helper_tools_issue_tools__read_issues"
       def generate_function_name(func_name)
         class_name = @tools_class.name || "anonymous_tools"

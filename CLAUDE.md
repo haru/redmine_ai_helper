@@ -25,8 +25,8 @@ The plugin implements a multi-agent architecture where different agents handle s
 - **Vector Search** (`lib/redmine_ai_helper/vector/`) - Qdrant-based vector search for issues and wiki content
 - **Chat Room** (`lib/redmine_ai_helper/chat_room.rb`) - Manages conversation state and agent coordination
 - **MCP Transport Layer** (`lib/redmine_ai_helper/transport/`) - Multi-protocol support (STDIO, HTTP+SSE) for Model Context Protocol
-- **Assistant Layer** (`lib/redmine_ai_helper/assistant.rb`) - Extends Langchain::Assistant with provider-specific implementations
-- **Langfuse Integration** (`lib/redmine_ai_helper/langfuse_util/`) - LLM observability and monitoring for all providers
+- **Assistant Layer** (`lib/redmine_ai_helper/assistant.rb`) - Wraps RubyLLM::Chat with a unified interface for agent use
+- **Langfuse Integration** (`lib/redmine_ai_helper/langfuse_util/`) - LLM observability via RubyLLM on_end_message callbacks
 
 ### Models
 - `AiHelperConversation` - Stores chat conversations
@@ -218,7 +218,7 @@ bundle exec rake redmine:plugins:ai_helper:vector:regist RAILS_ENV=production
 - Backward compatibility with legacy MCP implementations
 
 ### Observability
-- Comprehensive Langfuse integration for all LLM providers
-- LLM call tracking and monitoring
-- Provider-specific wrappers for detailed observability
+- Langfuse integration via RubyLLM `on_end_message` callbacks in BaseAgent
+- LLM call tracking with token usage (input_tokens, output_tokens)
+- LangfuseWrapper for trace/span management (LLM-library agnostic)
 - Never modify the core Redmine code

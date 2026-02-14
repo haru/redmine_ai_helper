@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 module RedmineAiHelper
-  # Assistant wraps RubyLLM::Chat with a Langchain::Assistant-compatible interface.
+  # Assistant wraps RubyLLM::Chat with a unified interface.
   # Provides add_message, run, clear_messages!, messages, and instructions= methods
-  # for backward compatibility with existing agent code.
+  # used by the agent framework.
   class Assistant
     attr_accessor :llm_provider
     attr_reader :chat

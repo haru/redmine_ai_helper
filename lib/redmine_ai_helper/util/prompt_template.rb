@@ -4,7 +4,7 @@ require "yaml"
 
 module RedmineAiHelper
   module Util
-    # A lightweight prompt template class that replaces Langchain::Prompt.
+    # A lightweight prompt template class.
     # Loads YAML template files and substitutes {variable_name} placeholders.
     class PromptTemplate
       attr_reader :template, :input_variables
