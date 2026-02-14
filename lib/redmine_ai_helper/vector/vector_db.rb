@@ -1,17 +1,14 @@
 # frozen_string_literal: true
-require "langchain"
-
 module RedmineAiHelper
   module Vector
     # This class is responsible for managing the vector database.
     class VectorDb
-      attr_accessor :llm
+      attr_accessor :llm_provider
 
-      # Initializes the VectorDb with an optional LLM client.
-      # @param llm [Object] The LLM client to use for vector operations.
-      def initialize(llm: nil)
-        @llm = llm
-        @llm = RedmineAiHelper::LlmProvider.get_llm_provider.generate_client unless @llm
+      # Initializes the VectorDb with an optional LLM provider.
+      # @param llm_provider [Object] The LLM provider to use for vector operations.
+      def initialize(llm_provider: nil)
+        @llm_provider = llm_provider || RedmineAiHelper::LlmProvider.get_llm_provider
       end
 
       # Returns the vector search client.
@@ -24,7 +21,7 @@ module RedmineAiHelper
           url: setting.vector_search_uri,
           api_key: setting.vector_search_api_key || "dummy",
           index_name: index_name,
-          llm: @llm,
+          llm_provider: @llm_provider,
         )
         @client
       end
@@ -141,14 +138,6 @@ module RedmineAiHelper
       # @return [Array] An array of similar data that match the query.
       def similarity_search(question:, k: 10)
         client.similarity_search(query: question, k: k)
-      end
-
-      # Searches for similar data in the vector database
-      # @param question [String] The query string to search for
-      # @param k [Integer] The number of results to return
-      # @return [String] The chat completion response
-      def ask(question:, k: 10)
-        client.ask(question: question, k: k).chat_completion
       end
 
       # Converts the data to JSON format.
