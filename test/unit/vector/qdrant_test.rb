@@ -146,10 +146,59 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
     end
 
     context "similarity_search" do
-      should "delegate to ask_with_filter with default k" do
-        @qdrant.expects(:ask_with_filter).with(query: "test query", k: 4).returns(["result"])
+      should "return payload and score for each result" do
+        mock_response = {
+          "result" => [
+            { "payload" => { "issue_id" => 1 }, "score" => 0.95 },
+            { "payload" => { "issue_id" => 2 }, "score" => 0.85 },
+          ],
+        }
+        @mock_client.stubs(:points).returns(@mock_points)
+        @mock_points.expects(:search).with(
+          collection_name: "test_collection",
+          limit: 4,
+          vector: [0.1, 0.2, 0.3],
+          with_payload: true,
+          with_vector: false,
+        ).returns(mock_response)
+
         results = @qdrant.similarity_search(query: "test query")
-        assert_equal ["result"], results
+        assert_equal 2, results.length
+        assert_equal({ "payload" => { "issue_id" => 1 }, "score" => 0.95 }, results[0])
+        assert_equal({ "payload" => { "issue_id" => 2 }, "score" => 0.85 }, results[1])
+      end
+
+      should "return empty array when no results" do
+        @mock_client.stubs(:points).returns(@mock_points)
+        @mock_points.stubs(:search).returns({ "result" => [] })
+        results = @qdrant.similarity_search(query: "test query")
+        assert_equal [], results
+      end
+
+      should "return empty array when result is nil" do
+        @mock_client.stubs(:points).returns(@mock_points)
+        @mock_points.stubs(:search).returns({ "result" => nil })
+        results = @qdrant.similarity_search(query: "test query")
+        assert_equal [], results
+      end
+
+      should "accept custom k parameter" do
+        mock_response = {
+          "result" => [
+            { "payload" => { "issue_id" => 1 }, "score" => 0.9 },
+          ],
+        }
+        @mock_client.stubs(:points).returns(@mock_points)
+        @mock_points.expects(:search).with(
+          collection_name: "test_collection",
+          limit: 10,
+          vector: [0.1, 0.2, 0.3],
+          with_payload: true,
+          with_vector: false,
+        ).returns(mock_response)
+
+        results = @qdrant.similarity_search(query: "test query", k: 10)
+        assert_equal 1, results.length
       end
     end
 

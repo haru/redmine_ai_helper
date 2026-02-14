@@ -77,12 +77,33 @@ module RedmineAiHelper
         results.map { |result| result.dig("payload") }
       end
 
-      # Convenience wrapper for similarity search.
+      # Similarity search returning payload and score for each result.
+      # Unlike ask_with_filter (which returns only payloads), this method
+      # preserves similarity scores for ranking purposes.
       # @param query [String] The query string.
       # @param k [Integer] The number of results to return.
-      # @return [Array<Hash>] The search results.
+      # @return [Array<Hash>] Each hash contains "payload" and "score" keys.
       def similarity_search(query:, k: 4)
-        ask_with_filter(query: query, k: k)
+        return [] unless client
+
+        embedding = embed(query)
+
+        response = client.points.search(
+          collection_name: @index_name,
+          limit: k,
+          vector: embedding,
+          with_payload: true,
+          with_vector: false,
+        )
+        results = response.dig("result")
+        return [] unless results.is_a?(Array)
+
+        results.map do |result|
+          {
+            "payload" => result.dig("payload"),
+            "score" => result.dig("score"),
+          }
+        end
       end
 
       # Create the default collection schema in Qdrant.
