@@ -3,7 +3,6 @@ module RedmineAiHelper
   module Tools
     # MCP (Model Context Protocol) tools for dynamic server integration
     class McpTools < RedmineAiHelper::BaseTools
-      using RedmineAiHelper::Util::LangchainPatch
       include RedmineAiHelper::Logger
 
       class << self
@@ -97,17 +96,15 @@ module RedmineAiHelper
             end
 
             # Generate ToolDefinition from tool list
+            # Uses BaseTools' ParameterBuilder.build_properties_from_json
             define_singleton_method :load_tools_from_list do |tools|
-              # Extend langchain_patch to make build_properties_from_json method available
-              extend RedmineAiHelper::Util::LangchainPatch
-
               tools.each do |tool|
                 begin
                   # Normalize schema in advance
                   input_schema = normalize_input_schema(tool.schema)
 
                   define_function tool.name, description: tool.description do
-                    # Use normalized schema
+                    # ParameterBuilder#build_properties_from_json replaces LangchainPatch
                     build_properties_from_json(input_schema)
                   end
                 rescue => e
@@ -122,7 +119,7 @@ module RedmineAiHelper
             define_method :method_missing do |method_name, *args|
               # Search for target function from function schema
               schema = self.class.function_schemas.to_openai_format
-              # Perform search compatible with langchainrb naming conventions
+              # Perform search compatible with naming conventions
               function = schema.find do |f|
                 function_name = f.dig(:function, :name)
                 # Exact match, pattern ending with __, or direct tool name
