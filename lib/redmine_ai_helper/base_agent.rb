@@ -65,7 +65,7 @@ module RedmineAiHelper
         instructions: system_prompt,
         tools: tool_classes,
       )
-      @assistant.langfuse = langfuse
+      setup_langfuse_callbacks(@assistant.chat)
       @assistant
     end
 
@@ -133,6 +133,7 @@ module RedmineAiHelper
     def chat(messages, option = {}, callback = nil)
       @llm_provider.configure_ruby_llm
       chat_instance = RubyLLM.chat(model: @llm_provider.model_name)
+      setup_langfuse_callbacks(chat_instance)
       chat_instance.with_instructions(system_prompt)
       if @llm_provider.temperature
         chat_instance.with_temperature(@llm_provider.temperature)
@@ -198,6 +199,36 @@ module RedmineAiHelper
     end
 
     private
+
+    # Set up Langfuse callbacks on a RubyLLM::Chat instance.
+    # Registers an on_end_message callback that creates Langfuse generations
+    # for each assistant response with token usage data.
+    # @param chat_instance [RubyLLM::Chat] The chat instance to register callbacks on.
+    def setup_langfuse_callbacks(chat_instance)
+      return unless langfuse
+
+      chat_instance.on_end_message do |message|
+        next unless message && message.role == :assistant
+        next unless langfuse.current_span
+
+        span = langfuse.current_span
+        usage = {}
+        if message.input_tokens
+          usage = {
+            prompt_tokens: message.input_tokens,
+            completion_tokens: message.output_tokens,
+            total_tokens: (message.input_tokens || 0) + (message.output_tokens || 0),
+          }
+        end
+        span.create_generation(
+          name: "chat",
+          messages: nil,
+          model: @llm_provider.model_name,
+          temperature: @llm_provider.temperature,
+          max_tokens: @llm_provider.max_tokens,
+        )&.finish(output: message.content, usage: usage)
+      end
+    end
 
     # Loads the prompt template from the specified name.
     # @param name [String] The name of the prompt template to be loaded.

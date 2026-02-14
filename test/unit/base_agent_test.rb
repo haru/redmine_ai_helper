@@ -13,6 +13,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
 
     # Mock create_chat for assistant method
     @mock_chat = mock("RubyLLM::Chat")
+    @mock_chat.stubs(:on_end_message).returns(@mock_chat)
     @mock_llm_provider.stubs(:create_chat).returns(@mock_chat)
 
     RedmineAiHelper::LlmProvider.stubs(:get_llm_provider).returns(@mock_llm_provider)
@@ -95,6 +96,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       mock_chat_instance = mock("RubyLLM::Chat")
       mock_chat_instance.stubs(:with_instructions).returns(mock_chat_instance)
       mock_chat_instance.stubs(:with_temperature).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
       mock_chat_instance.stubs(:add_message)
 
       mock_response = mock("Response")
@@ -133,6 +135,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       mock_chat_instance = mock("RubyLLM::Chat")
       mock_chat_instance.stubs(:with_instructions).returns(mock_chat_instance)
       mock_chat_instance.expects(:with_temperature).with(0.7).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
       mock_chat_instance.stubs(:add_message)
 
       mock_response = mock("Response")
@@ -214,6 +217,10 @@ class StreamingMockChat
   end
 
   def with_temperature(_temp)
+    self
+  end
+
+  def on_end_message(&_block)
     self
   end
 

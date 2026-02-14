@@ -21,11 +21,6 @@ class RedmineAiHelper::AssistantTest < ActiveSupport::TestCase
       assert_equal "test_provider", @assistant.llm_provider
     end
 
-    should "have langfuse accessor" do
-      @assistant.langfuse = "test_langfuse"
-      assert_equal "test_langfuse", @assistant.langfuse
-    end
-
     context "add_message" do
       should "delegate to chat" do
         @mock_chat.expects(:add_message).with(role: :user, content: "Hello")

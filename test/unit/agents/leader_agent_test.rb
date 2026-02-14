@@ -9,7 +9,9 @@ class LeaderAgentTest < ActiveSupport::TestCase
     @mock_llm_provider.stubs(:model_name).returns("gpt-4")
     @mock_llm_provider.stubs(:temperature).returns(nil)
     @mock_llm_provider.stubs(:configure_ruby_llm)
-    @mock_llm_provider.stubs(:create_chat).returns(mock("chat"))
+    mock_chat_for_assistant = mock("chat")
+    mock_chat_for_assistant.stubs(:on_end_message).returns(mock_chat_for_assistant)
+    @mock_llm_provider.stubs(:create_chat).returns(mock_chat_for_assistant)
 
     RedmineAiHelper::LlmProvider.stubs(:get_llm_provider).returns(@mock_llm_provider)
 
@@ -24,6 +26,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
     @mock_ruby_llm_chat = mock("RubyLLM::Chat")
     @mock_ruby_llm_chat.stubs(:with_instructions).returns(@mock_ruby_llm_chat)
     @mock_ruby_llm_chat.stubs(:with_temperature).returns(@mock_ruby_llm_chat)
+    @mock_ruby_llm_chat.stubs(:on_end_message).returns(@mock_ruby_llm_chat)
     @mock_ruby_llm_chat.stubs(:add_message)
     RubyLLM.stubs(:chat).with(model: "gpt-4").returns(@mock_ruby_llm_chat)
   end

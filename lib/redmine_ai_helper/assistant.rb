@@ -5,7 +5,7 @@ module RedmineAiHelper
   # Provides add_message, run, clear_messages!, messages, and instructions= methods
   # for backward compatibility with existing agent code.
   class Assistant
-    attr_accessor :llm_provider, :langfuse
+    attr_accessor :llm_provider
     attr_reader :chat
 
     def initialize(chat:, instructions: nil, tools: [])
