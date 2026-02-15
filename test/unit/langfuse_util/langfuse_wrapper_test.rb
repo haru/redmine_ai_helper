@@ -52,6 +52,36 @@ class RedmineAiHelper::LangfuseUtil::LangfuseWrapperTest < ActiveSupport::TestCa
     end
   end
 
+  context "update_trace_output" do
+    should "set output on the trace via upsert" do
+      # update_trace_output calls Langfuse.trace with the existing trace ID and new output.
+      # DummyClient.trace creates a new trace object, so no error means the upsert was enqueued.
+      assert_nothing_raised do
+        @langfuse.update_trace_output(output: "final answer")
+      end
+    end
+
+    should "do nothing when disabled" do
+      @langfuse.stubs(:enabled?).returns(false)
+      # Should not raise
+      assert_nothing_raised do
+        @langfuse.update_trace_output(output: "final answer")
+      end
+    end
+  end
+
+  context "flush" do
+    should "update trace output when output parameter is provided" do
+      @langfuse.expects(:update_trace_output).with(output: "final answer").once
+      @langfuse.flush(output: "final answer")
+    end
+
+    should "not update trace output when output parameter is nil" do
+      @langfuse.expects(:update_trace_output).never
+      @langfuse.flush
+    end
+  end
+
   class DummyClient
     def trace(attr = {})
       Langfuse::Models::Trace.new(
@@ -86,6 +116,14 @@ class RedmineAiHelper::LangfuseUtil::LangfuseWrapperTest < ActiveSupport::TestCa
         output: "test output",
         span_id: "test_span_id",
       )
+    end
+
+    def flush
+      true
+    end
+
+    def update_trace(trace)
+      trace
     end
 
     def update_span(span)

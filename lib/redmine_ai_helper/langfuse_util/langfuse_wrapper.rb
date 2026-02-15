@@ -70,7 +70,20 @@ module RedmineAiHelper
       end
 
       # It finishes the trace and updates it with the output.
-      def flush
+
+      # Updates the trace output.
+      # @param output [String] The output to set on the trace.
+      # @return [void]
+      def update_trace_output(output:)
+        return unless enabled?
+        return unless @trace
+        # Langfuse SDK has no update_trace method; trace-create with existing ID
+        # performs an upsert, updating only the provided fields.
+        Langfuse.trace(id: @trace.id, output: output)
+      end
+
+      def flush(output: nil)
+        update_trace_output(output: output) if output
         Langfuse.flush
       end
     end

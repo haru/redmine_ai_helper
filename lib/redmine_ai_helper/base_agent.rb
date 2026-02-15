@@ -215,13 +215,26 @@ module RedmineAiHelper
             total_tokens: (message.input_tokens || 0) + (message.output_tokens || 0),
           }
         end
+
+        # Collect input messages (all messages before the current response)
+        input_messages = chat_instance.messages[0..-2].map do |m|
+          { role: m.role.to_s, content: m.content }
+        end
+
+        # Determine output: use content if available, otherwise represent tool calls.
+        # RubyLLM tool_calls is a Hash { call_id => ToolCall }, so use .values to get ToolCall objects.
+        output = message.content
+        if output.nil? && message.tool_calls
+          output = message.tool_calls.values.map(&:to_h).to_json
+        end
+
         span.create_generation(
           name: "chat",
-          messages: nil,
+          messages: input_messages,
           model: @llm_provider.model_name,
           temperature: @llm_provider.temperature,
           max_tokens: @llm_provider.max_tokens,
-        )&.finish(output: message.content, usage: usage)
+        )&.finish(output: output, usage: usage)
       end
     end
 
