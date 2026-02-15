@@ -8,7 +8,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
       @issue = Issue.find(1)
       @mock_llm_provider = mock("llm_provider")
       @mock_llm_provider.stubs(:model_name).returns("gpt-4")
-      @mock_llm_provider.stubs(:configure_ruby_llm)
+      @mock_llm_provider.stubs(:create_chat)
       @mock_logger = mock("logger")
       @mock_logger.stubs(:debug)
       @mock_logger.stubs(:info)

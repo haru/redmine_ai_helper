@@ -9,7 +9,6 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
     @mock_llm_provider = mock("llm_provider")
     @mock_llm_provider.stubs(:model_name).returns("gpt-4")
     @mock_llm_provider.stubs(:temperature).returns(nil)
-    @mock_llm_provider.stubs(:configure_ruby_llm)
 
     # Mock create_chat for assistant method
     @mock_chat = mock("RubyLLM::Chat")
@@ -99,10 +98,8 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
   end
 
   context "chat" do
-    should "use RubyLLM.chat to send messages and return answer" do
+    should "use create_chat to send messages and return answer" do
       mock_chat_instance = mock("RubyLLM::Chat")
-      mock_chat_instance.stubs(:with_instructions).returns(mock_chat_instance)
-      mock_chat_instance.stubs(:with_temperature).returns(mock_chat_instance)
       mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
       mock_chat_instance.stubs(:add_message)
 
@@ -110,7 +107,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       mock_response.stubs(:content).returns("test answer")
       mock_chat_instance.stubs(:ask).returns(mock_response)
 
-      RubyLLM.stubs(:chat).with(model: "gpt-4").returns(mock_chat_instance)
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
 
       messages = [
         { role: "user", content: "Hello" },
@@ -123,9 +120,8 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
     end
 
     should "support streaming with callback" do
-      # Use a real object to properly handle block arguments
       streaming_chat = StreamingMockChat.new(["chunk1", "chunk2"])
-      RubyLLM.stubs(:chat).with(model: "gpt-4").returns(streaming_chat)
+      @mock_llm_provider.stubs(:create_chat).returns(streaming_chat)
 
       messages = [{ role: "user", content: "Hello" }]
       chunks_received = []
@@ -136,12 +132,8 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       assert_equal "chunk1chunk2", answer
     end
 
-    should "apply temperature when set" do
-      @mock_llm_provider.stubs(:temperature).returns(0.7)
-
+    should "pass system_prompt as instructions to create_chat" do
       mock_chat_instance = mock("RubyLLM::Chat")
-      mock_chat_instance.stubs(:with_instructions).returns(mock_chat_instance)
-      mock_chat_instance.expects(:with_temperature).with(0.7).returns(mock_chat_instance)
       mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
       mock_chat_instance.stubs(:add_message)
 
@@ -149,7 +141,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       mock_response.stubs(:content).returns("answer")
       mock_chat_instance.stubs(:ask).returns(mock_response)
 
-      RubyLLM.stubs(:chat).with(model: "gpt-4").returns(mock_chat_instance)
+      @mock_llm_provider.expects(:create_chat).with(instructions: @agent.system_prompt).returns(mock_chat_instance)
 
       messages = [{ role: "user", content: "Hello" }]
       @agent.chat(messages)

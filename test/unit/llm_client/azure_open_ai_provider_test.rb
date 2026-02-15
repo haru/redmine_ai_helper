@@ -26,58 +26,67 @@ class RedmineAiHelper::LlmClient::AzureOpenAiProviderTest < ActiveSupport::TestC
       @azure_profile.destroy
     end
 
-    should "configure RubyLLM with OpenAI-compatible settings for Azure" do
-      @provider.configure_ruby_llm
-      assert_equal "test_azure_key", RubyLLM.config.openai_api_key
-      assert_equal "https://myresource.openai.azure.com/openai/deployments/gpt-4o",
-                   RubyLLM.config.openai_api_base
+    should "return a RubyLLM::Context" do
+      assert_instance_of RubyLLM::Context, @provider.context
+    end
+
+    should "memoize the context" do
+      context1 = @provider.context
+      context2 = @provider.context
+      assert_same context1, context2
     end
 
     should "raise error when model profile is missing" do
       @setting.model_profile = nil
       @setting.save!
       assert_raises(RuntimeError, "Model Profile not found") do
-        @provider.configure_ruby_llm
+        @provider.context
       end
     end
 
     should "create chat with provider and assume_model_exists options" do
+      mock_context = mock("RubyLLM::Context")
       mock_chat = mock("RubyLLM::Chat")
       mock_chat.expects(:with_instructions).with("Test prompt")
       mock_chat.expects(:with_temperature).with(@azure_profile.temperature)
-      RubyLLM.expects(:chat).with(
+      mock_context.expects(:chat).with(
         model: @azure_profile.llm_model,
         provider: :openai,
         assume_model_exists: true,
       ).returns(mock_chat)
+      @provider.expects(:build_context).returns(mock_context)
 
       chat = @provider.create_chat(instructions: "Test prompt")
       assert_equal mock_chat, chat
     end
 
     should "create chat without instructions when nil" do
+      mock_context = mock("RubyLLM::Context")
       mock_chat = mock("RubyLLM::Chat")
       mock_chat.expects(:with_instructions).never
       mock_chat.expects(:with_temperature).with(@azure_profile.temperature)
-      RubyLLM.expects(:chat).with(
+      mock_context.expects(:chat).with(
         model: @azure_profile.llm_model,
         provider: :openai,
         assume_model_exists: true,
       ).returns(mock_chat)
+      @provider.expects(:build_context).returns(mock_context)
 
       @provider.create_chat
     end
 
     should "create chat with tools" do
+      mock_context = mock("RubyLLM::Context")
       tool_class = mock("ToolClass")
       mock_chat = mock("RubyLLM::Chat")
       mock_chat.expects(:with_tools).with(tool_class)
       mock_chat.expects(:with_temperature).with(@azure_profile.temperature)
-      RubyLLM.expects(:chat).with(
+      mock_context.expects(:chat).with(
         model: @azure_profile.llm_model,
         provider: :openai,
         assume_model_exists: true,
       ).returns(mock_chat)
+      @provider.expects(:build_context).returns(mock_context)
 
       @provider.create_chat(tools: [tool_class])
     end

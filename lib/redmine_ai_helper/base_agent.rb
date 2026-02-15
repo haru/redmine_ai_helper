@@ -131,13 +131,8 @@ module RedmineAiHelper
     # @param callback [Proc] A callback function to be called with each chunk of the response.
     # @return [String] The response from the LLM.
     def chat(messages, option = {}, callback = nil)
-      @llm_provider.configure_ruby_llm
-      chat_instance = RubyLLM.chat(model: @llm_provider.model_name)
+      chat_instance = @llm_provider.create_chat(instructions: system_prompt)
       setup_langfuse_callbacks(chat_instance)
-      chat_instance.with_instructions(system_prompt)
-      if @llm_provider.temperature
-        chat_instance.with_temperature(@llm_provider.temperature)
-      end
 
       # Add message history (all except the last message)
       messages[0..-2].each do |msg|

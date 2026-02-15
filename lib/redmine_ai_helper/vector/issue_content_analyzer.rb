@@ -71,8 +71,7 @@ module RedmineAiHelper
       # @param messages [Array<Hash>] The messages to send to the LLM.
       # @return [String] The text response from the LLM.
       def call_llm(messages)
-        @llm_provider.configure_ruby_llm
-        chat_instance = RubyLLM.chat(model: @llm_provider.model_name)
+        chat_instance = @llm_provider.create_chat
 
         # Add message history (all except the last message)
         messages[0..-2].each do |msg|

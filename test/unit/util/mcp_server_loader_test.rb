@@ -277,7 +277,6 @@ class McpServerLoaderTest < ActiveSupport::TestCase
     fake_provider = mock("llm_provider")
     fake_provider.stubs(:model_name).returns("gpt-4")
     fake_provider.stubs(:temperature).returns(nil)
-    fake_provider.stubs(:configure_ruby_llm)
     fake_provider.stubs(:create_chat).returns(mock("chat"))
     RedmineAiHelper::LlmProvider.stubs(:get_llm_provider).returns(fake_provider)
     RedmineAiHelper::LlmProvider.stubs(:type).returns("OpenAI")

@@ -14,7 +14,6 @@ class LangfuseCallbackTest < ActiveSupport::TestCase
     @mock_provider.stubs(:model_name).returns("gpt-4")
     @mock_provider.stubs(:temperature).returns(0.7)
     @mock_provider.stubs(:max_tokens).returns(4096)
-    @mock_provider.stubs(:configure_ruby_llm)
     @mock_provider.stubs(:create_chat).returns(mock_assistant_chat)
     RedmineAiHelper::LlmProvider.stubs(:get_llm_provider).returns(@mock_provider)
     RedmineAiHelper::LlmProvider.stubs(:type).returns("OpenAI")

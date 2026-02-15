@@ -14,29 +14,31 @@ class RedmineAiHelper::LlmClient::OpenAiProviderTest < ActiveSupport::TestCase
       @setting.save!
     end
 
-    should "configure RubyLLM with OpenAI API key" do
-      @provider.configure_ruby_llm
-      assert_equal @setting.model_profile.access_key, RubyLLM.config.openai_api_key
+    should "return a RubyLLM::Context" do
+      assert_instance_of RubyLLM::Context, @provider.context
     end
 
-    should "configure organization_id when present" do
-      @provider.configure_ruby_llm
-      assert_equal @setting.model_profile.organization_id, RubyLLM.config.openai_organization_id
+    should "memoize the context" do
+      context1 = @provider.context
+      context2 = @provider.context
+      assert_same context1, context2
     end
 
     should "raise error when model profile is missing" do
       @setting.model_profile = nil
       @setting.save!
       assert_raises(RuntimeError, "Model Profile not found") do
-        @provider.configure_ruby_llm
+        @provider.context
       end
     end
 
     should "create chat via base class" do
+      mock_context = mock("RubyLLM::Context")
       mock_chat = mock("RubyLLM::Chat")
       mock_chat.expects(:with_instructions).with("Test prompt")
       mock_chat.expects(:with_temperature).with(@setting.model_profile.temperature)
-      RubyLLM.expects(:chat).with(model: @setting.model_profile.llm_model).returns(mock_chat)
+      mock_context.expects(:chat).with(model: @setting.model_profile.llm_model).returns(mock_chat)
+      @provider.expects(:build_context).returns(mock_context)
 
       chat = @provider.create_chat(instructions: "Test prompt")
       assert_equal mock_chat, chat
