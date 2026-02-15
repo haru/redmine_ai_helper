@@ -59,7 +59,7 @@ jobs:
             redmine_version: master
     services:
       mysql:
-        image: mysql:8.1
+        image: mysql:9.6
         options: --health-cmd "mysqladmin ping -h localhost" --health-interval 20s --health-timeout 10s --health-retries 10
         env:
           MYSQL_ROOT_PASSWORD: dbpassword
