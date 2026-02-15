@@ -29,7 +29,11 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
     end
 
     should "return max_tokens from setting" do
-      assert_equal @setting.max_tokens, @provider.max_tokens
+      if @setting.max_tokens.nil?
+        assert_nil @provider.max_tokens
+      else
+        assert_equal @setting.max_tokens, @provider.max_tokens
+      end
     end
 
     should "raise error when model profile is missing for model_name" do
@@ -169,8 +173,16 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         provider = RedmineAiHelper::LlmClient::OpenAiCompatibleProvider.new
         provider.context
 
-        assert_equal original_api_base, RubyLLM.config.openai_api_base
-        assert_equal original_api_key, RubyLLM.config.openai_api_key
+        if original_api_base.nil?
+          assert_nil RubyLLM.config.openai_api_base
+        else
+          assert_equal original_api_base, RubyLLM.config.openai_api_base
+        end
+        if original_api_key.nil?
+          assert_nil RubyLLM.config.openai_api_key
+        else
+          assert_equal original_api_key, RubyLLM.config.openai_api_key
+        end
 
         compatible_profile.destroy
       end
@@ -192,8 +204,16 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         provider = RedmineAiHelper::LlmClient::AzureOpenAiProvider.new
         provider.context
 
-        assert_equal original_api_base, RubyLLM.config.openai_api_base
-        assert_equal original_api_key, RubyLLM.config.openai_api_key
+        if original_api_base.nil?
+          assert_nil RubyLLM.config.openai_api_base
+        else
+          assert_equal original_api_base, RubyLLM.config.openai_api_base
+        end
+        if original_api_key.nil?
+          assert_nil RubyLLM.config.openai_api_key
+        else
+          assert_equal original_api_key, RubyLLM.config.openai_api_key
+        end
 
         azure_profile.destroy
       end
