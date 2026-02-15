@@ -13,12 +13,16 @@ module RedmineAiHelper
     # This patch overrides `call` to use `add_id: false`.
     # It can be removed once ruby_llm-mcp releases a fix upstream.
     module McpPatch
+      # Applies the monkey-patch by prepending NotificationFix into the MCP notification class.
+      # @return [void]
       def self.apply!
         RubyLLM::MCP::Notifications::Initialize.prepend(NotificationFix)
       end
 
       # Prepended module to fix the notification id issue
       module NotificationFix
+        # Sends the initialization notification without an id field.
+        # @return [void]
         def call
           @coordinator.request(notification_body, add_id: false, wait_for_response: false)
         end

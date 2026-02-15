@@ -82,6 +82,9 @@ module RedmineAiHelper
         Langfuse.trace(id: @trace.id, output: output)
       end
 
+      # Flushes pending Langfuse events, optionally updating the trace output beforehand.
+      # @param output [String, nil] If provided, updates the trace output before flushing.
+      # @return [void]
       def flush(output: nil)
         update_trace_output(output: output) if output
         Langfuse.flush
