@@ -1,5 +1,12 @@
 require "langfuse"
+require "ruby_llm"
 $LOAD_PATH.unshift "#{File.dirname(__FILE__)}/lib"
+
+# Initialize RubyLLM with minimal configuration.
+# API keys are dynamically set per-request via each provider's configure_ruby_llm method.
+RubyLLM.configure do |config|
+  # No API keys set here; they are loaded from AiHelperModelProfile at runtime.
+end
 require "redmine_ai_helper/util/config_file"
 require "redmine_ai_helper/user_patch"
 require_dependency "redmine_ai_helper/view_hook"
@@ -9,6 +16,9 @@ end
 
 # Load MCP Server Loader and generate MCP Agent classes
 require "redmine_ai_helper/util/mcp_server_loader"
+# Monkey-patch ruby_llm-mcp notification bug (add_id on notifications/initialized)
+require "redmine_ai_helper/util/mcp_patch"
+RedmineAiHelper::Util::McpPatch.apply!
 
 # Generate MCP Agent classes after all agents are loaded
 begin

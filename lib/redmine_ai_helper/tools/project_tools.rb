@@ -11,7 +11,7 @@ module RedmineAiHelper
 
       # List all projects visible to the current user.
       # A dummy property is defined because at least one property is required in the tool
-      # definition for langchainrb.
+      # definition.
       # @param dummy [String] Dummy property to satisfy the tool definition requirement.
       # @return [Array<Hash>] An array of hashes containing project information.
       def list_projects(dummy: nil)

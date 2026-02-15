@@ -1,8 +1,7 @@
 require "redmine_ai_helper/base_tools"
 
 # This class provides fortune-telling features such as omikuji (Japanese fortune-telling) and horoscope predictions.
-# Based on langchainrb's ToolDefinition. The format of define_function follows the specifications of langchainrb.
-# @see https://github.com/patterns-ai-core/langchainrb#creating-custom-tools
+# Uses the define_function DSL from BaseTools which generates RubyLLM::Tool subclasses.
 class FortuneTools < RedmineAiHelper::BaseTools
   # Definition of the Omikuji fortune-telling feature
   define_function :omikuji, description: "Draw a fortune by Japanese-OMIKUJI for the specified date." do

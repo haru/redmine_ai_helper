@@ -83,10 +83,6 @@ class AiHelperControllerTest < ActionController::TestCase
 
     context "#call_llm" do
       should "call LLM and respond successfully" do
-        openai_mock = mock("OpenAI::Client")
-        openai_mock.stubs(:chat).returns({ "choices" => [{ "text" => "test answer" }] })
-        OpenAI::Client.stubs(:new).returns(openai_mock)
-
         post :chat, params: { id: @project.id, ai_helper_message: { content: "Hello AI" } }
         assert_response :success
         post :call_llm, params: { id: @project.id, controller_name: "issues", action_name: "show", content_id: 1, additional_info: { key: "value" } }

@@ -13,8 +13,8 @@ module RedmineAiHelper
         content
       end
 
-      # Get available tool providers for this agent
-      # @return [Array<Class>] Array of tool provider classes
+      # Get available RubyLLM::Tool subclasses for this agent
+      # @return [Array<Class>] Array of RubyLLM::Tool subclasses
       def available_tool_providers
         [RedmineAiHelper::Tools::ProjectTools]
       end

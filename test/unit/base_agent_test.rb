@@ -3,14 +3,21 @@ require "redmine_ai_helper/base_agent"
 
 class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
   def setup
-    @openai_mock = BaseAgentTestModele::DummyOpenAIClient.new
-    Langchain::LLM::OpenAI.stubs(:new).returns(@openai_mock)
     @project = Project.find(1)
+
+    # Mock LLM provider
+    @mock_llm_provider = mock("llm_provider")
+    @mock_llm_provider.stubs(:model_name).returns("gpt-4")
+    @mock_llm_provider.stubs(:temperature).returns(nil)
+
+    # Mock create_chat for assistant method
+    @mock_chat = mock("RubyLLM::Chat")
+    @mock_chat.stubs(:on_end_message).returns(@mock_chat)
+    @mock_llm_provider.stubs(:create_chat).returns(@mock_chat)
+
+    RedmineAiHelper::LlmProvider.stubs(:get_llm_provider).returns(@mock_llm_provider)
+
     @params = {
-      access_token: "test_access_token",
-      uri_base: "http://example.com",
-      organization_id: "test_org_id",
-      model: "test_model",
       project: @project,
       langfuse: DummyLangfuse.new,
     }
@@ -26,12 +33,30 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
   end
 
   context "available_tool_providers" do
-    should "return an array of available tool providers with agent" do
-      assert_equal [RedmineAiHelper::Tools::BoardTools], @agent.available_tool_providers
+    should "return an array of BaseTools subclasses with agent" do
+      providers = @agent.available_tool_providers
+      assert providers.is_a?(Array)
+      assert_equal [RedmineAiHelper::Tools::BoardTools], providers
     end
 
     should "return an empty array with agent2" do
       assert_equal [], @agent2.available_tool_providers
+    end
+  end
+
+  context "available_tool_classes" do
+    should "return an array of RubyLLM::Tool subclasses derived from available_tool_providers" do
+      tool_classes = @agent.available_tool_classes
+      assert tool_classes.is_a?(Array)
+      assert tool_classes.length > 0
+      tool_classes.each do |klass|
+        assert klass < RubyLLM::Tool, "#{klass} should be a subclass of RubyLLM::Tool"
+      end
+      assert_equal RedmineAiHelper::Tools::BoardTools.tool_classes, tool_classes
+    end
+
+    should "return an empty array with agent2" do
+      assert_equal [], @agent2.available_tool_classes
     end
   end
 
@@ -46,9 +71,15 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
   end
 
   context "available_tools" do
-    should "return an array of available tools with agent" do
+    should "return an array of tool info hashes with agent" do
       tools = @agent.available_tools
-      assert_equal 1, tools.size
+      assert tools.is_a?(Array)
+      assert tools.length > 0
+      tools.each do |tool|
+        assert tool.key?(:function), "Tool should have :function key"
+        assert tool[:function].key?(:name), "Function should have :name"
+        assert tool[:function].key?(:description), "Function should have :description"
+      end
     end
 
     should "return an empty array with agent2" do
@@ -66,10 +97,70 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
     end
   end
 
+  context "chat" do
+    should "use create_chat to send messages and return answer" do
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+
+      mock_response = mock("Response")
+      mock_response.stubs(:content).returns("test answer")
+      mock_chat_instance.stubs(:ask).returns(mock_response)
+
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+
+      messages = [
+        { role: "user", content: "Hello" },
+        { role: "assistant", content: "Hi there" },
+        { role: "user", content: "What is Redmine?" },
+      ]
+
+      answer = @agent.chat(messages)
+      assert_equal "test answer", answer
+    end
+
+    should "support streaming with callback" do
+      streaming_chat = StreamingMockChat.new(["chunk1", "chunk2"])
+      @mock_llm_provider.stubs(:create_chat).returns(streaming_chat)
+
+      messages = [{ role: "user", content: "Hello" }]
+      chunks_received = []
+      callback = ->(content) { chunks_received << content }
+
+      answer = @agent.chat(messages, {}, callback)
+      assert_equal ["chunk1", "chunk2"], chunks_received
+      assert_equal "chunk1chunk2", answer
+    end
+
+    should "pass system_prompt as instructions to create_chat" do
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+
+      mock_response = mock("Response")
+      mock_response.stubs(:content).returns("answer")
+      mock_chat_instance.stubs(:ask).returns(mock_response)
+
+      @mock_llm_provider.expects(:create_chat).with(instructions: @agent.system_prompt).returns(mock_chat_instance)
+
+      messages = [{ role: "user", content: "Hello" }]
+      @agent.chat(messages)
+    end
+  end
+
   context "perform_task" do
     should "perform the task and return a response" do
-      messages = [{ role: "user", content: "テストメッセージ" }]
-      response = @agent.perform_task(messages)
+      mock_message = mock("message")
+      mock_message.stubs(:role).returns(:user)
+      mock_message.stubs(:content).returns("テストメッセージ")
+      @mock_chat.stubs(:messages).returns([mock_message])
+
+      mock_response = mock("response")
+      mock_response.stubs(:content).returns("test response")
+      @mock_chat.stubs(:ask).with("テストメッセージ").returns(mock_response)
+      @mock_chat.stubs(:add_message)
+
+      response = @agent.perform_task({})
       assert response
     end
   end
@@ -77,9 +168,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
   context "AgentList" do
     setup do
       @agent_list = RedmineAiHelper::AgentList.instance
-      # Store original agents to restore later
       @original_agents = @agent_list.instance_variable_get(:@agents).dup
-      # Clear existing agents and add test agents
       @agent_list.instance_variable_set(:@agents, [])
       @agent_list.add_agent("test_agent", "BaseAgentTestModele::TestAgent")
       @agent_list.add_agent("test_agent2", "BaseAgentTestModele::TestAgent2")
@@ -87,14 +176,13 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
     end
 
     teardown do
-      # Restore original agents to avoid interfering with other tests
       @agent_list.instance_variable_set(:@agents, @original_agents)
     end
 
     should "return only enabled agents in list_agents" do
       agents = @agent_list.list_agents
       agent_names = agents.map { |a| a[:agent_name] }
-      
+
       assert_includes agent_names, "test_agent"
       assert_includes agent_names, "test_agent2"
       assert_not_includes agent_names, "disabled_agent"
@@ -107,15 +195,40 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
     end
 
     def create_span(name:, input:)
-      # Dummy implementation
     end
 
     def finish_current_span(output:)
-      # Dummy implementation
     end
 
     def flush
-      # Dummy implementation
+    end
+  end
+end
+
+# Helper class to simulate RubyLLM::Chat with streaming support
+class StreamingMockChat
+  def initialize(chunks)
+    @chunks = chunks
+  end
+
+  def with_instructions(_text)
+    self
+  end
+
+  def with_temperature(_temp)
+    self
+  end
+
+  def on_end_message(&_block)
+    self
+  end
+
+  def add_message(**_kwargs)
+  end
+
+  def ask(_content)
+    @chunks.each do |chunk_text|
+      yield OpenStruct.new(content: chunk_text)
     end
   end
 end
@@ -131,7 +244,6 @@ module BaseAgentTestModele
     end
 
     def generate_response(prompt:, **options)
-      # Generate dummy response for testing
       "テストエージェントの応答"
     end
   end
@@ -142,7 +254,6 @@ module BaseAgentTestModele
     end
 
     def generate_response(prompt:, **options)
-      # Generate dummy response for testing
       "テストエージェントの応答"
     end
   end
@@ -157,42 +268,7 @@ module BaseAgentTestModele
     end
 
     def generate_response(prompt:, **options)
-      # Generate dummy response for testing
       "無効化されたエージェントの応答"
-    end
-  end
-
-  class DummyOpenAIClient < Langchain::LLM::OpenAI
-    attr_accessor :langfuse
-
-    def initialize(params = {})
-      super(api_key: "aaaa")
-    end
-
-    def chat(params = {})
-      answer = <<~EOS
-        {
-            "steps": [
-              {
-                    "name": "step1",
-                    "step": "チケットを更新するために、必要な情報を整理する。"
-              }
-            ]
-          }
-      EOS
-
-      if block_given?
-        { "index" => 0, "delta" => { "content" => "ら" }, "logprobs" => nil, "finish_reason" => nil }
-        chunk = {
-          "index": 0,
-          "delta": { "content": answer },
-          "finish_reason": nil,
-        }.deep_stringify_keys
-        yield(chunk)
-      end
-
-      response = { "choices": [{ "message": { "content": answer } }] }.deep_stringify_keys
-      response
     end
   end
 end

@@ -21,19 +21,18 @@ module RedmineAiHelper
         prompt.format(issue_properties: issue_properties, search_answer_instruction: search_answer_instruction)
       end
 
-      # Returns the list of available tool providers for the IssueAgent.
+      # Returns the list of available RubyLLM::Tool subclasses for the IssueAgent.
+      # @return [Array<Class>] Array of RubyLLM::Tool subclasses
       def available_tool_providers
-        base_tools = [
-          RedmineAiHelper::Tools::IssueTools,
-          RedmineAiHelper::Tools::ProjectTools,
-          RedmineAiHelper::Tools::UserTools,
-          RedmineAiHelper::Tools::IssueSearchTools,
-        ]
+        providers = []
         if AiHelperSetting.vector_search_enabled?
-          base_tools.unshift(RedmineAiHelper::Tools::VectorTools)
+          providers << RedmineAiHelper::Tools::VectorTools
         end
-
-        base_tools
+        providers << RedmineAiHelper::Tools::IssueTools
+        providers << RedmineAiHelper::Tools::ProjectTools
+        providers << RedmineAiHelper::Tools::UserTools
+        providers << RedmineAiHelper::Tools::IssueSearchTools
+        providers
       end
 
       # Generate a summary of the issue with optional streaming support.
@@ -47,7 +46,7 @@ module RedmineAiHelper
         prompt = load_prompt("issue_agent/summary")
         issue_json = generate_issue_data(issue)
         # Convert issue data to JSON string for the prompt
-        json_string = safe_json_for_prompt(issue_json)
+        json_string = JSON.pretty_generate(issue_json)
         prompt_text = prompt.format(issue: json_string)
         message = { role: "user", content: prompt_text }
         messages = [message]
@@ -69,7 +68,7 @@ module RedmineAiHelper
         project_setting = AiHelperProjectSetting.settings(issue.project)
         issue_json = generate_issue_data(issue)
         prompt_text = prompt.format(
-          issue: safe_json_for_prompt(issue_json),
+          issue: JSON.pretty_generate(issue_json),
           instructions: instructions,
           issue_draft_instructions: project_setting.issue_draft_instructions,
           format: Setting.text_formatting,
@@ -133,26 +132,26 @@ module RedmineAiHelper
             },
           },
         }
-        parser = Langchain::OutputParsers::StructuredOutputParser.from_json_schema(json_schema)
         issue_json = generate_issue_data(issue)
         project_setting = AiHelperProjectSetting.settings(issue.project)
 
         prompt_text = prompt.format(
-          parent_issue: safe_json_for_prompt(issue_json),
+          parent_issue: JSON.pretty_generate(issue_json),
           instructions: instructions,
           subtask_instructions: project_setting.subtask_instructions,
-          format_instructions: parser.get_format_instructions,
+          format_instructions: RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(json_schema),
         )
         ai_helper_logger.debug "prompt_text: #{prompt_text}"
 
         message = { role: "user", content: prompt_text }
         messages = [message]
-        answer = chat(messages, output_parser: parser)
-        fix_parser = Langchain::OutputParsers::OutputFixingParser.from_llm(
-          llm: client,
-          parser: parser,
+        answer = chat(messages)
+        fixed_json = RedmineAiHelper::Util::StructuredOutputHelper.parse(
+          response: answer,
+          json_schema: json_schema,
+          chat_method: method(:chat),
+          messages: messages,
         )
-        fixed_json = fix_parser.parse(answer)
 
         # Convert the answer to an array of Issue objects
         sub_issues = []
@@ -235,8 +234,6 @@ module RedmineAiHelper
           },
           required: ["suggestions"],
         }
-        parser = Langchain::OutputParsers::StructuredOutputParser.from_json_schema(json_schema)
-
         users_text = assignable_users.map { |u| "- #{u.name} (ID: #{u.id})" }.join("\n")
         tracker_name = tracker_id ? Tracker.find_by(id: tracker_id)&.name : ""
         category_name = category_id ? IssueCategory.find_by(id: category_id)&.name : ""
@@ -249,18 +246,19 @@ module RedmineAiHelper
           description: description || "",
           tracker: tracker_name || "",
           category: category_name || "",
-          format_instructions: parser.get_format_instructions,
+          format_instructions: RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(json_schema),
         )
 
         message = { role: "user", content: prompt_text }
         messages = [message]
-        answer = chat(messages, output_parser: parser)
+        answer = chat(messages)
 
-        fix_parser = Langchain::OutputParsers::OutputFixingParser.from_llm(
-          llm: client,
-          parser: parser,
+        RedmineAiHelper::Util::StructuredOutputHelper.parse(
+          response: answer,
+          json_schema: json_schema,
+          chat_method: method(:chat),
+          messages: messages,
         )
-        fix_parser.parse(answer)
       end
 
       # Generate text completion for inline auto-completion
@@ -673,22 +671,12 @@ module RedmineAiHelper
           The following issue properties are available for Project ID: #{@project.id}.
 
           ```json
-          #{safe_json_for_prompt(properties)}
+          #{JSON.pretty_generate(properties)}
           ```
         EOS
         content
       end
 
-      # Generate a JSON string safe for prompt interpolation.
-      # Escapes backslashes to prevent them from being consumed by the prompt formatter.
-      # @param data [Hash] The data to convert to JSON.
-      # @return [String] The safe JSON string.
-      def safe_json_for_prompt(data)
-        json = JSON.pretty_generate(data)
-        # Langchain's prompt format consumes one level of backslash escaping.
-        # We need to double-escape backslashes so they survive the formatting.
-        json.gsub(/\\/) { "\\\\" }
-      end
     end
   end
 end

@@ -21,18 +21,30 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
 
     should "include vector tools when vector db is enabled" do
       AiHelperSetting.any_instance.stubs(:vector_search_enabled).returns(true)
-      tools = @agent.available_tool_providers
-      assert_includes tools, RedmineAiHelper::Tools::VectorTools
-      assert_includes tools, RedmineAiHelper::Tools::IssueTools
-      assert_includes tools, RedmineAiHelper::Tools::ProjectTools
+      tool_classes = @agent.available_tool_classes
+      RedmineAiHelper::Tools::VectorTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
+      RedmineAiHelper::Tools::IssueTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
+      RedmineAiHelper::Tools::ProjectTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
     end
 
     should "not include vector tools when vector db is disabled" do
       AiHelperSetting.any_instance.stubs(:vector_search_enabled).returns(false)
-      tools = @agent.available_tool_providers
-      assert_not_includes tools, RedmineAiHelper::Tools::VectorTools
-      assert_includes tools, RedmineAiHelper::Tools::IssueTools
-      assert_includes tools, RedmineAiHelper::Tools::ProjectTools
+      tool_classes = @agent.available_tool_classes
+      RedmineAiHelper::Tools::VectorTools.tool_classes.each do |tc|
+        assert_not_includes tool_classes, tc
+      end
+      RedmineAiHelper::Tools::IssueTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
+      RedmineAiHelper::Tools::ProjectTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
     end
 
     should "generate issue summary for visible issue" do
@@ -114,9 +126,10 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
 
     context "generate_sub_issues_draft" do
       setup do
-        Langchain::OutputParsers::OutputFixingParser.stubs(:from_llm).returns(DummyFixParser.new)
-
-        @agent.stubs(:chat).returns("This is a generated reply.")
+        @agent.stubs(:chat).returns({ "sub_issues" => [{ "subject" => "Dummy Sub Issue", "description" => "This is a dummy sub issue description." }] }.to_json)
+        RedmineAiHelper::Util::StructuredOutputHelper.stubs(:parse).returns(
+          { "sub_issues" => [{ "subject" => "Dummy Sub Issue", "description" => "This is a dummy sub issue description." }] }
+        )
         User.current = User.find(1)
       end
       should "generate sub issues for visible issue" do
@@ -557,16 +570,6 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
     end
   end
 
-  class DummyFixParser
-    def parse(text)
-      { "sub_issues" => [{ "subject" => "Dummy Sub Issue", "description" => "This is a dummy sub issue description." }] }
-    end
-
-    def get_format
-      # Format is a simple string
-      "string"
-    end
-  end
 end
 
   # Additional tests for scoring and formatting helpers added to cover
