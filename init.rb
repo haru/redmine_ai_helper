@@ -49,6 +49,7 @@ Redmine::Plugin.register :redmine_ai_helper do
                    :project_health_metadata,
                    :suggest_completion, :suggest_wiki_completion, :check_typos,
                    :api_create_health_report, :suggest_assignees, :stuff_todo,
+                   :assignable_users_for_tracker,
                  ],
                  ai_helper_dashboard: [
                    :index, :health_report_history, :health_report_show, :compare_health_reports, :comparison_pdf, :comparison_markdown,

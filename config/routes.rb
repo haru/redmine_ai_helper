@@ -16,6 +16,7 @@ RedmineApp::Application.routes.draw do
   post "ai_helper/issue/:id/generate_reply", to: "ai_helper#generate_issue_reply", as: "ai_helper_generate_issue_reply"
   post "ai_helper/issue/:id/subissue_gen", to: "ai_helper#generate_sub_issues", as: "ai_helper_subissue_gen"
   post "ai_helper/issue/:id/add_sub_issues", to: "ai_helper#add_sub_issues", as: "ai_helper_add_sub_issues"
+  get "projects/:id/ai_helper/assignable_users", to: "ai_helper#assignable_users_for_tracker", as: "ai_helper_assignable_users"
   get "ai_helper/issue/:id/similar_issues", to: "ai_helper#similar_issues", as: "ai_helper_similar_issues"
   post "projects/:id/ai_helper/check_duplicates", to: "ai_helper#check_duplicates", as: "ai_helper_check_duplicates"
   post "projects/:id/ai_helper/issue/:issue_id/suggest_completion", to: "ai_helper#suggest_completion", as: "ai_helper_suggest_completion", constraints: { issue_id: /\d+|new/ }
