@@ -1,5 +1,8 @@
 module RedmineAiHelper
   module Tools
+    # ImageTools provides image analysis functions that internally call LLM to describe image contents.
+    # Supports analyzing images attached to Issues, WikiPages, Messages, and external URL images.
+
     class ImageTools < RedmineAiHelper::BaseTools
       include RedmineAiHelper::Util::AttachmentImageHelper
 

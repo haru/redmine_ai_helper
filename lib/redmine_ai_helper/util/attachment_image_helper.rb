@@ -1,5 +1,6 @@
 module RedmineAiHelper
   module Util
+    # Helper module for extracting image attachment disk paths from Redmine containers.
     module AttachmentImageHelper
       # Returns disk paths of image attachments from a container.
       # @param container [Issue, WikiPage, Message] an object that responds to :attachments
