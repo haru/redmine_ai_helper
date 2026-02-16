@@ -21,18 +21,36 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
 
     should "include vector tools when vector db is enabled" do
       AiHelperSetting.any_instance.stubs(:vector_search_enabled).returns(true)
-      tools = @agent.available_tool_providers
-      assert_includes tools, RedmineAiHelper::Tools::VectorTools
-      assert_includes tools, RedmineAiHelper::Tools::IssueTools
-      assert_includes tools, RedmineAiHelper::Tools::ProjectTools
+      tool_classes = @agent.available_tool_classes
+      RedmineAiHelper::Tools::VectorTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
+      RedmineAiHelper::Tools::IssueTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
+      RedmineAiHelper::Tools::ProjectTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
+      RedmineAiHelper::Tools::ImageTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
     end
 
     should "not include vector tools when vector db is disabled" do
       AiHelperSetting.any_instance.stubs(:vector_search_enabled).returns(false)
-      tools = @agent.available_tool_providers
-      assert_not_includes tools, RedmineAiHelper::Tools::VectorTools
-      assert_includes tools, RedmineAiHelper::Tools::IssueTools
-      assert_includes tools, RedmineAiHelper::Tools::ProjectTools
+      tool_classes = @agent.available_tool_classes
+      RedmineAiHelper::Tools::VectorTools.tool_classes.each do |tc|
+        assert_not_includes tool_classes, tc
+      end
+      RedmineAiHelper::Tools::IssueTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
+      RedmineAiHelper::Tools::ProjectTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
+      RedmineAiHelper::Tools::ImageTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
     end
 
     should "generate issue summary for visible issue" do
@@ -54,6 +72,39 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
       @issue.stubs(:visible?).returns(false)
       result = @agent.issue_summary(issue: @issue)
       assert_equal "Permission denied", result
+    end
+
+    should "pass image paths to chat with: parameter when images exist" do
+      @issue.stubs(:visible?).returns(true)
+
+      mock_prompt = mock("Prompt")
+      mock_prompt.stubs(:format).returns("Summarize this issue")
+      @agent.stubs(:load_prompt).with("issue_agent/summary").returns(mock_prompt)
+
+      image_paths = ["/path/to/image.png"]
+      @agent.stubs(:image_attachment_paths).with(@issue).returns(image_paths)
+
+      expected_messages = [{ role: "user", content: "Summarize this issue" }]
+      @agent.expects(:chat).with(expected_messages, {}, nil, with: image_paths).returns("Summary with image")
+
+      result = @agent.issue_summary(issue: @issue)
+      assert_equal "Summary with image", result
+    end
+
+    should "pass with: nil when no images exist" do
+      @issue.stubs(:visible?).returns(true)
+
+      mock_prompt = mock("Prompt")
+      mock_prompt.stubs(:format).returns("Summarize this issue")
+      @agent.stubs(:load_prompt).with("issue_agent/summary").returns(mock_prompt)
+
+      @agent.stubs(:image_attachment_paths).with(@issue).returns([])
+
+      expected_messages = [{ role: "user", content: "Summarize this issue" }]
+      @agent.expects(:chat).with(expected_messages, {}, nil, with: nil).returns("Summary without image")
+
+      result = @agent.issue_summary(issue: @issue)
+      assert_equal "Summary without image", result
     end
 
     should "generate issue properties string" do
@@ -114,9 +165,10 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
 
     context "generate_sub_issues_draft" do
       setup do
-        Langchain::OutputParsers::OutputFixingParser.stubs(:from_llm).returns(DummyFixParser.new)
-
-        @agent.stubs(:chat).returns("This is a generated reply.")
+        @agent.stubs(:chat).returns({ "sub_issues" => [{ "subject" => "Dummy Sub Issue", "description" => "This is a dummy sub issue description." }] }.to_json)
+        RedmineAiHelper::Util::StructuredOutputHelper.stubs(:parse).returns(
+          { "sub_issues" => [{ "subject" => "Dummy Sub Issue", "description" => "This is a dummy sub issue description." }] }
+        )
         User.current = User.find(1)
       end
       should "generate sub issues for visible issue" do
@@ -557,16 +609,6 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
     end
   end
 
-  class DummyFixParser
-    def parse(text)
-      { "sub_issues" => [{ "subject" => "Dummy Sub Issue", "description" => "This is a dummy sub issue description." }] }
-    end
-
-    def get_format
-      # Format is a simple string
-      "string"
-    end
-  end
 end
 
   # Additional tests for scoring and formatting helpers added to cover

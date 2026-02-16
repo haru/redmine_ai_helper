@@ -46,7 +46,7 @@ module RedmineAiHelper
         langfuse.create_span(name: "user_request", input: task)
         answer = agent.perform_user_request(conversation.messages_for_openai, option, proc)
         langfuse.finish_current_span(output: answer)
-        langfuse.flush
+        langfuse.flush(output: answer)
       rescue => e
         ai_helper_logger.error "error: #{e.full_message}"
         answer = e.message
@@ -67,7 +67,7 @@ module RedmineAiHelper
         langfuse.create_span(name: "user_request", input: prompt)
         answer = agent.issue_summary(issue: issue, stream_proc: stream_proc)
         langfuse.finish_current_span(output: answer)
-        langfuse.flush
+        langfuse.flush(output: answer)
       rescue => e
         ai_helper_logger.error "error: #{e.full_message}"
         answer = e.message
@@ -92,7 +92,7 @@ module RedmineAiHelper
         answer = agent.generate_issue_reply(issue: issue, instructions: instructions, stream_proc: stream_proc)
 
         langfuse.finish_current_span(output: answer)
-        langfuse.flush
+        langfuse.flush(output: answer)
       rescue => e
         ai_helper_logger.error "error: #{e.full_message}"
         answer = e.message
@@ -114,7 +114,7 @@ module RedmineAiHelper
         langfuse.create_span(name: "user_request", input: prompt)
         sub_issues = agent.generate_sub_issues_draft(issue: issue, instructions: instructions)
         langfuse.finish_current_span(output: sub_issues.inspect)
-        langfuse.flush
+        langfuse.flush(output: sub_issues.inspect)
       rescue => e
         ai_helper_logger.error "error: #{e.full_message}"
         throw e
@@ -133,7 +133,7 @@ module RedmineAiHelper
         langfuse.create_span(name: "find_similar_issues", input: "issue_id: #{issue.id}")
         results = agent.find_similar_issues(issue: issue)
         langfuse.finish_current_span(output: results)
-        langfuse.flush
+        langfuse.flush(output: results.to_s)
         results
       rescue => e
         ai_helper_logger.error "error: #{e.full_message}"
@@ -160,7 +160,7 @@ module RedmineAiHelper
           description: description,
         )
         langfuse.finish_current_span(output: "found: #{results.length}")
-        langfuse.flush
+        langfuse.flush(output: "found: #{results.length}")
         results
       rescue => e
         ai_helper_logger.error "error: #{e.full_message}"
@@ -180,7 +180,7 @@ module RedmineAiHelper
         langfuse.create_span(name: "user_request", input: prompt)
         answer = agent.wiki_summary(wiki_page: wiki_page, stream_proc: stream_proc)
         langfuse.finish_current_span(output: answer)
-        langfuse.flush
+        langfuse.flush(output: answer)
       rescue => e
         ai_helper_logger.error "error: #{e.full_message}"
         answer = e.message
@@ -210,7 +210,7 @@ module RedmineAiHelper
           stream_proc: stream_proc,
         )
         langfuse.finish_current_span(output: answer)
-        langfuse.flush
+        langfuse.flush(output: answer)
       rescue => e
         ai_helper_logger.error "error: #{e.full_message}"
         answer = e.message
@@ -249,7 +249,7 @@ module RedmineAiHelper
         ai_helper_logger.info "WikiAgent returned completion: '#{completion}' (length: #{completion.length})"
 
         langfuse.finish_current_span(output: completion)
-        langfuse.flush
+        langfuse.flush(output: completion)
 
         completion
       rescue => e
@@ -286,7 +286,7 @@ module RedmineAiHelper
         ai_helper_logger.info "Agent returned completion: '#{completion}' (length: #{completion.length})"
 
         langfuse.finish_current_span(output: completion)
-        langfuse.flush
+        langfuse.flush(output: completion)
 
         completion
       rescue => e
@@ -322,7 +322,7 @@ module RedmineAiHelper
         ai_helper_logger.info "DocumentationAgent returned suggestions: #{suggestions}"
 
         langfuse.finish_current_span(output: suggestions)
-        langfuse.flush
+        langfuse.flush(output: suggestions.to_s)
 
         suggestions
       rescue => e
@@ -357,7 +357,7 @@ module RedmineAiHelper
         )
 
         langfuse.finish_current_span(output: answer)
-        langfuse.flush
+        langfuse.flush(output: answer)
 
         answer
       rescue => e
@@ -394,7 +394,7 @@ module RedmineAiHelper
         )
 
         langfuse.finish_current_span(output: "suggestions: #{result}")
-        langfuse.flush
+        langfuse.flush(output: result.to_s)
         result
       rescue => e
         ai_helper_logger.error "Assignee suggestion by instructions error: #{e.full_message}"
@@ -416,7 +416,7 @@ module RedmineAiHelper
         answer = agent.suggest_stuff_todo(stream_proc: stream_proc)
 
         langfuse.finish_current_span(output: answer)
-        langfuse.flush
+        langfuse.flush(output: answer)
       rescue => e
         ai_helper_logger.error "error: #{e.full_message}"
         answer = e.message

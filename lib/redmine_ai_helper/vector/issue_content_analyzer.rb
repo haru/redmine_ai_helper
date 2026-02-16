@@ -27,20 +27,21 @@ module RedmineAiHelper
         additionalProperties: false
       }.freeze
 
-      # Initialize the analyzer with an optional LLM client.
-      # @param llm [Object] Optional LLM client. If not provided, creates default from LlmProvider.
-      def initialize(llm: nil)
-        @llm = llm || RedmineAiHelper::LlmProvider.get_llm_provider.generate_client
+      # Initialize the analyzer with an optional LLM provider.
+      # @param llm_provider [Object] Optional LLM provider. If not provided, creates default from LlmProvider.
+      def initialize(llm_provider: nil)
+        @llm_provider = llm_provider || RedmineAiHelper::LlmProvider.get_llm_provider
       end
 
       # Analyze an issue and extract summary and keywords.
       # @param issue [Issue] The issue to analyze.
       # @return [Hash] A hash containing :summary (String) and :keywords (Array<String>).
       def analyze(issue)
-        parser = create_parser
-        prompt = build_prompt(issue, parser)
-        response = call_llm(prompt)
-        parse_response(response, parser)
+        format_instructions = RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(JSON_SCHEMA)
+        prompt = build_prompt(issue, format_instructions)
+        messages = [{ role: "user", content: prompt }]
+        response = call_llm(messages)
+        parse_response(response, messages)
       rescue StandardError => e
         ai_helper_logger.warn("Failed to analyze issue content: #{e.message}")
         empty_result
@@ -48,17 +49,11 @@ module RedmineAiHelper
 
       private
 
-      # Create a StructuredOutputParser from the JSON schema.
-      # @return [Langchain::OutputParsers::StructuredOutputParser]
-      def create_parser
-        Langchain::OutputParsers::StructuredOutputParser.from_json_schema(JSON_SCHEMA)
-      end
-
       # Build the prompt for the LLM from the issue data.
       # @param issue [Issue] The issue to build a prompt for.
-      # @param parser [Langchain::OutputParsers::StructuredOutputParser] The output parser.
+      # @param format_instructions [String] The format instructions for the output.
       # @return [String] The formatted prompt string.
-      def build_prompt(issue, parser)
+      def build_prompt(issue, format_instructions)
         issue_data = {
           subject: issue.subject,
           description: issue.description || "",
@@ -68,33 +63,40 @@ module RedmineAiHelper
         template = RedmineAiHelper::Util::PromptLoader.load_template("vector/issue_content_analysis")
         template.format(
           issue: issue_data.to_json,
-          format_instructions: parser.get_format_instructions
+          format_instructions: format_instructions
         )
       end
 
-      # Call the LLM with the given prompt.
-      # @param prompt [String] The prompt to send to the LLM.
+      # Call the LLM with the given messages.
+      # @param messages [Array<Hash>] The messages to send to the LLM.
       # @return [String] The text response from the LLM.
-      def call_llm(prompt)
-        messages = [{ role: "user", content: prompt }]
-        response = @llm.chat(messages: messages)
-        response.chat_completion
+      def call_llm(messages)
+        chat_instance = @llm_provider.create_chat
+
+        # Add message history (all except the last message)
+        messages[0..-2].each do |msg|
+          chat_instance.add_message(role: msg[:role].to_sym, content: msg[:content])
+        end
+
+        # Ask with the last message
+        last_message = messages.last
+        response = chat_instance.ask(last_message[:content])
+        response.content
       end
 
-      # Parse the LLM response using StructuredOutputParser with OutputFixingParser.
+      # Parse the LLM response using StructuredOutputHelper.
       # @param response [String] The raw response text from the LLM.
-      # @param parser [Langchain::OutputParsers::StructuredOutputParser] The output parser.
+      # @param messages [Array<Hash>] The original messages for retry context.
       # @return [Hash] A hash containing :summary (String) and :keywords (Array<String>).
-      def parse_response(response, parser)
+      def parse_response(response, messages)
         return empty_result if response.nil? || response.strip.empty?
 
-        # Use OutputFixingParser to handle minor formatting issues in LLM response
-        fix_parser = Langchain::OutputParsers::OutputFixingParser.from_llm(
-          llm: @llm,
-          parser: parser
+        result = RedmineAiHelper::Util::StructuredOutputHelper.parse(
+          response: response,
+          json_schema: JSON_SCHEMA,
+          chat_method: method(:call_llm),
+          messages: messages,
         )
-
-        result = fix_parser.parse(response)
 
         {
           summary: result["summary"].to_s,

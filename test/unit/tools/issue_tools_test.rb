@@ -21,6 +21,15 @@ class IssueToolsTest < ActiveSupport::TestCase
           @provider.read_issues(issue_ids: [999])
         end
       end
+
+      should "always return Hash regardless of image attachments" do
+        issue = Issue.find(1)
+
+        response = @provider.read_issues(issue_ids: [issue.id])
+
+        assert_instance_of Hash, response
+        assert response[:issues].is_a?(Array)
+      end
     end
 
     context "capable_issue_properties" do

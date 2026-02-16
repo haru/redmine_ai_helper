@@ -8,6 +8,7 @@ module RedmineAiHelper
       # @return [Hash] A hash representing the wiki page in JSON format.
       def generate_wiki_data(page)
         json = {
+          id: page.id,
           title: page.title,
           text: page.text,
           page_url: project_wiki_page_path(page.wiki.project, page.title),
@@ -26,9 +27,11 @@ module RedmineAiHelper
           parent: page.parent ? { title: page.parent.title } : nil,
           attachments: page.attachments.map do |attachment|
             {
+              id: attachment.id,
               filename: attachment.filename,
               filesize: attachment.filesize,
               content_type: attachment.content_type,
+              type: attachment.image? ? "image" : nil,
               description: attachment.description,
               created_on: attachment.created_on,
               attachment_url: attachment_path(attachment),

@@ -29,7 +29,7 @@ class McpServerLoaderTest < ActiveSupport::TestCase
       # Test case when config file doesn't exist
       original_path = Rails.root.join("config", "ai_helper", "config.json")
       backup_path = "#{original_path}.backup"
-      
+
       # Temporarily move config file
       if File.exist?(original_path)
         File.rename(original_path, backup_path)
@@ -134,8 +134,13 @@ class McpServerLoaderTest < ActiveSupport::TestCase
       @loader.stubs(:load_config).returns(config)
       @loader.expects(:create_mcp_client).with("filesystem", server_config).returns(fake_client)
       RedmineAiHelper::CustomLogger.stubs(:instance).returns(mock_logger)
-      tool_class = build_fake_tool_class
-      RedmineAiHelper::Tools::McpTools.expects(:generate_tool_class).with(mcp_server_name: "filesystem", mcp_client: fake_client).once.returns(tool_class)
+
+      # Build fake tool instances (as ruby_llm-mcp returns)
+      fake_tools = build_fake_tool_instances
+      RedmineAiHelper::Tools::McpTools.expects(:generate_tool_classes).with(
+        mcp_server_name: "filesystem",
+        mcp_client: fake_client,
+      ).once.returns(fake_tools)
 
       stub_llm_provider
 
@@ -144,17 +149,22 @@ class McpServerLoaderTest < ActiveSupport::TestCase
       klass = Object.const_get("AiHelperMcpFilesystem")
       agent = klass.new
 
-      providers_first = agent.available_tool_providers
-      providers_second = agent.available_tool_providers
+      classes_first = agent.available_tool_classes
+      classes_second = agent.available_tool_classes
 
-      assert_equal [tool_class], providers_first
-      assert_equal providers_first, providers_second
+      assert_equal fake_tools, classes_first
+      assert_equal classes_first, classes_second
       assert_equal "ai_helper_mcp_filesystem", agent.role
       assert_equal "AiHelperMcpFilesystem", agent.name
       assert_equal "AiHelperMcpFilesystem", agent.to_s
       assert agent.enabled?
 
-      agent.stubs(:available_tools).returns([[{ function: { description: "List directory contents" } }]])
+      # available_tools should return tool info hashes
+      tools_info = agent.available_tools
+      assert_equal 1, tools_info.length
+      assert_equal "list_dir", tools_info[0].dig(:function, :name)
+      assert_equal "List directory contents", tools_info[0].dig(:function, :description)
+
       backstory = agent.backstory
       assert_includes backstory, "List directory contents"
       assert_same backstory, agent.backstory
@@ -186,9 +196,9 @@ class McpServerLoaderTest < ActiveSupport::TestCase
       klass = Object.const_get("AiHelperMcpFilesystem")
       agent = klass.new
 
-      RedmineAiHelper::Tools::McpTools.stubs(:generate_tool_class).raises(StandardError.new("boom"))
+      RedmineAiHelper::Tools::McpTools.stubs(:generate_tool_classes).raises(StandardError.new("boom"))
 
-      assert_equal [], agent.available_tool_providers
+      assert_equal [], agent.available_tool_classes
     end
 
     should "propagate errors when tool list retrieval fails in backstory" do
@@ -208,7 +218,7 @@ class McpServerLoaderTest < ActiveSupport::TestCase
       @loader.stubs(:load_config).returns(config)
       @loader.expects(:create_mcp_client).returns(fake_client)
       RedmineAiHelper::CustomLogger.stubs(:instance).returns(mock_logger)
-      RedmineAiHelper::Tools::McpTools.stubs(:generate_tool_class).returns(build_fake_tool_class)
+      RedmineAiHelper::Tools::McpTools.stubs(:generate_tool_classes).returns(build_fake_tool_instances)
 
       stub_llm_provider
 
@@ -264,30 +274,20 @@ class McpServerLoaderTest < ActiveSupport::TestCase
   end
 
   def stub_llm_provider
-    fake_client = mock("llm_client")
-    fake_client.stubs(:langfuse=)
     fake_provider = mock("llm_provider")
-    fake_provider.stubs(:generate_client).returns(fake_client)
+    fake_provider.stubs(:model_name).returns("gpt-4")
+    fake_provider.stubs(:temperature).returns(nil)
+    fake_provider.stubs(:create_chat).returns(mock("chat"))
     RedmineAiHelper::LlmProvider.stubs(:get_llm_provider).returns(fake_provider)
     RedmineAiHelper::LlmProvider.stubs(:type).returns("OpenAI")
   end
 
-  def build_fake_tool_class
-    tool_instance = Class.new do
-      def function_schemas
-        Class.new do
-          def to_openai_format
-            [{ function: { description: "List directory contents" } }]
-          end
-        end.new
-      end
-    end.new
-
-    Class.new do
-      define_singleton_method(:new) do
-        tool_instance
-      end
-    end
+  def build_fake_tool_instances
+    # Create fake tool instances that respond to .name and .description
+    # (like RubyLLM::MCP::Tool instances)
+    [
+      Struct.new(:name, :description).new("list_dir", "List directory contents"),
+    ]
   end
 
   def cleanup_dynamic_classes

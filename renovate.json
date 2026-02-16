@@ -5,5 +5,18 @@
   ],
   "baseBranchPatterns": [
     "develop"
+  ],
+  "packageRules": [
+    {
+      "description": "Disable updates for MySQL and PostgreSQL (pinned to Redmine supported versions)",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "mysql",
+        "postgres"
+      ],
+      "enabled": false
+    }
   ]
 }

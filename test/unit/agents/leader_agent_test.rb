@@ -4,19 +4,30 @@ require "redmine_ai_helper/agents/leader_agent"
 class LeaderAgentTest < ActiveSupport::TestCase
   fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :enabled_modules
   setup do
-    @openai_mock = MyOpenAI::DummyOpenAIClient.new
-    Langchain::LLM::OpenAI.stubs(:new).returns(@openai_mock)
+    # Mock LLM provider
+    @mock_llm_provider = mock("llm_provider")
+    @mock_llm_provider = mock("llm_provider")
+    @mock_llm_provider.stubs(:model_name).returns("gpt-4")
+    @mock_llm_provider.stubs(:temperature).returns(nil)
+
+    # Mock chat instance returned by create_chat (used by both assistant and chat methods)
+    @mock_ruby_llm_chat = mock("RubyLLM::Chat")
+    @mock_ruby_llm_chat.stubs(:with_instructions).returns(@mock_ruby_llm_chat)
+    @mock_ruby_llm_chat.stubs(:with_temperature).returns(@mock_ruby_llm_chat)
+    @mock_ruby_llm_chat.stubs(:on_end_message).returns(@mock_ruby_llm_chat)
+    @mock_ruby_llm_chat.stubs(:add_message)
+    @mock_llm_provider.stubs(:create_chat).returns(@mock_ruby_llm_chat)
+
+    RedmineAiHelper::LlmProvider.stubs(:get_llm_provider).returns(@mock_llm_provider)
+
     @params = {
-      access_token: "test_access_token",
-      uri_base: "http://example.com",
-      organization_id: "test_org_id",
-      model: "test_model",
       project: Project.find(1),
       langfuse: DummyLangfuse.new,
     }
     @agent = RedmineAiHelper::Agents::LeaderAgent.new(@params)
     @messages = [{ role: "user", content: "Hello" }]
   end
+
   context "LeaderAgent" do
     should "return correct role" do
       assert_equal "leader", @agent.role
@@ -33,12 +44,27 @@ class LeaderAgentTest < ActiveSupport::TestCase
     end
 
     should "generate goal correctly" do
+      goal_json = { "goal" => "test goal", "generate_steps_required" => true }.to_json
+      mock_response = mock("Response")
+      mock_response.stubs(:content).returns(goal_json)
+      @mock_ruby_llm_chat.stubs(:ask).returns(mock_response)
+
       goal = @agent.generate_goal(@messages)
       assert goal.is_a?(Hash)
       assert_equal "test goal", goal["goal"]
     end
 
     should "generate steps correctly" do
+      steps_json = {
+        "steps" => [
+          { "agent" => "project_agent", "step" => "my_projectのIDを教えてください", "description_for_human" => "Retrieving project information..." },
+          { "agent" => "project_agent", "step" => "my_projectの情報を取得してください", "description_for_human" => "Getting project details..." },
+        ],
+      }.to_json
+      mock_response = mock("Response")
+      mock_response.stubs(:content).returns(steps_json)
+      @mock_ruby_llm_chat.stubs(:ask).returns(mock_response)
+
       goal = "test goal"
       steps = @agent.generate_steps(goal, @messages)
       assert steps.is_a?(Hash)
@@ -46,6 +72,17 @@ class LeaderAgentTest < ActiveSupport::TestCase
     end
 
     should "perform user request successfully" do
+      # First call: generate_goal
+      goal_json = { "goal" => "test goal", "generate_steps_required" => false }.to_json
+      goal_response = mock("GoalResponse")
+      goal_response.stubs(:content).returns(goal_json)
+
+      # Second call: chat (when generate_steps_required is false, it falls through to chat)
+      chat_response = mock("ChatResponse")
+      chat_response.stubs(:content).returns("test answer")
+
+      @mock_ruby_llm_chat.stubs(:ask).returns(goal_response).then.returns(chat_response)
+
       result = @agent.perform_user_request(@messages)
       assert result.is_a?(String)
     end
@@ -57,61 +94,13 @@ class LeaderAgentTest < ActiveSupport::TestCase
     end
 
     def create_span(name:, input:)
-      # Dummy implementation
     end
 
     def finish_current_span(output:)
-      # Dummy implementation
     end
 
     def flush
-      # Dummy implementation
     end
   end
 end
 
-module MyOpenAI
-  class DummyOpenAIClient < Langchain::LLM::OpenAI
-    attr_accessor :langfuse
-
-    def initialize(params = {})
-      super(api_key: "aaaa")
-    end
-
-    def chat(params = {})
-      messages = params[:messages]
-      message = messages.last[:content]
-
-      answer = "test answer"
-
-      if message.include?("clarify the user's request and set a clear goal")
-        answer = {
-          "goal" => "test goal",
-          "generate_steps_required" => true
-        }.to_json
-      elsif message.include?("Please create instructions for other agents")
-        answer = {
-          "steps" => [
-            { "agent" => "project_agent", "step" => "my_projectという名前のプロジェクトのIDを教えてください", "description_for_human" => "Retrieving project information..." },
-            { "agent" => "project_agent", "step" => "my_projectの情報を取得してください", "description_for_human" => "Getting project details..." }
-          ]
-        }.to_json
-      else
-        answer = "test answer"
-      end
-
-      if block_given?
-        { "index" => 0, "delta" => { "content" => "ら" }, "logprobs" => nil, "finish_reason" => nil }
-        chunk = {
-          "index": 0,
-          "delta": { "content": answer },
-          "finish_reason": nil,
-        }.deep_stringify_keys
-        yield(chunk)
-      end
-
-      response = { "choices": [{ "message": { "content": answer } }] }.deep_stringify_keys
-      Langchain::LLM::OpenAIResponse.new(response)
-    end
-  end
-end

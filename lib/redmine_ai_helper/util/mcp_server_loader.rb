@@ -1,5 +1,6 @@
 require "singleton"
 require "json"
+require "ruby_llm/mcp"
 
 module RedmineAiHelper
   module Util
@@ -126,43 +127,40 @@ module RedmineAiHelper
         end
       end
 
-      # Create STDIO MCP client
+      # Create STDIO MCP client using ruby_llm-mcp
       def create_stdio_client(server_name, server_config)
-        require "mcp_client"
-
-        config = MCPClient.stdio_config(
-          command: build_command_string(server_config),
+        RubyLLM::MCP.client(
           name: server_name,
-          env: server_config["env"] || {},
+          transport_type: :stdio,
+          config: {
+            command: build_command_string(server_config),
+            env: server_config["env"] || {},
+          }
         )
-
-        MCPClient.create_client(mcp_server_configs: [config], logger: nil)
       end
 
-      # Create HTTP MCP client
+      # Create HTTP MCP client using ruby_llm-mcp (streamable transport)
       def create_http_client(server_name, server_config)
-        require "mcp_client"
-
-        config = MCPClient.http_config(
-          base_url: server_config["url"],
+        RubyLLM::MCP.client(
           name: server_name,
-          headers: server_config["headers"] || {},
+          transport_type: :streamable,
+          config: {
+            url: server_config["url"],
+            headers: server_config["headers"] || {},
+          }
         )
-
-        MCPClient.create_client(mcp_server_configs: [config], logger: nil)
       end
 
-      # Create SSE MCP client
+      # Create SSE MCP client using ruby_llm-mcp
       def create_sse_client(server_name, server_config)
-        require "mcp_client"
-
-        config = MCPClient.sse_config(
-          base_url: server_config["url"],
+        RubyLLM::MCP.client(
           name: server_name,
-          headers: server_config["headers"] || {},
+          transport_type: :sse,
+          config: {
+            url: server_config["url"],
+            headers: server_config["headers"] || {},
+          }
         )
-
-        MCPClient.create_client(mcp_server_configs: [config], logger: nil)
       end
 
       # Build command string
@@ -205,20 +203,28 @@ module RedmineAiHelper
             true
           end
 
-          define_method :available_tool_providers do
-            # Hold tool providers as class variable
-            return @tool_providers if @tool_providers
-
-            @tool_providers = [
-              RedmineAiHelper::Tools::McpTools.generate_tool_class(
-                mcp_server_name: server_name,
-                mcp_client: mcp_client,
-              ),
-            ]
-            @tool_providers
+          define_method :available_tool_classes do
+            return @cached_tool_classes if @cached_tool_classes
+            @cached_tool_classes = RedmineAiHelper::Tools::McpTools.generate_tool_classes(
+              mcp_server_name: server_name,
+              mcp_client: mcp_client,
+            )
           rescue => e
             ai_helper_logger.error "Error loading tools for MCP server '#{server_name}': #{e.message}"
             []
+          end
+
+          # Override available_tools to handle MCP tool instances
+          # (MCP tools are RubyLLM::Tool instances, not classes)
+          define_method :available_tools do
+            available_tool_classes.map do |tool|
+              {
+                function: {
+                  name: tool.name,
+                  description: tool.description,
+                },
+              }
+            end
           end
 
           define_method :backstory do
@@ -233,25 +239,15 @@ module RedmineAiHelper
             begin
               tools_list = available_tools
               if tools_list.is_a?(Array) && !tools_list.empty?
-                tools_info += "
-
-Available tools (#{server_name}):
-"
-                tools_list.each do |tool_schemas|
-                  if tool_schemas.is_a?(Array)
-                    tool_schemas.each do |tool|
-                      if tool.is_a?(Hash) && tool.dig(:function, :description)
-                        description = tool.dig(:function, :description)
-                        tools_info += "- #{description}
-"
-                      end
-                    end
+                tools_info += "\n\nAvailable tools (#{server_name}):\n"
+                tools_list.each do |tool|
+                  if tool.is_a?(Hash) && tool.dig(:function, :description)
+                    description = tool.dig(:function, :description)
+                    tools_info += "- #{description}\n"
                   end
                 end
               else
-                tools_info += "
-
-No tools available at the moment for #{server_name}."
+                tools_info += "\n\nNo tools available at the moment for #{server_name}."
               end
             rescue => e
               # Log tool info retrieval errors but do not mask prompt issues

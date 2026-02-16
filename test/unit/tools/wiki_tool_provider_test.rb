@@ -31,4 +31,13 @@ class WikiToolsTest < ActiveSupport::TestCase
     expected_url = "/projects/#{@project.identifier}/wiki/#{@page.title}"
     assert_equal expected_url, response[:url]
   end
+
+  context "read_wiki_page" do
+    should "always return Hash regardless of image attachments" do
+      response = @provider.read_wiki_page(project_id: @project.id, title: @page.title)
+
+      assert_instance_of Hash, response
+      assert_equal @page.title, response[:title]
+    end
+  end
 end

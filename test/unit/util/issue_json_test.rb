@@ -51,6 +51,33 @@ class RedmineAiHelper::Util::IssueJsonTest < ActiveSupport::TestCase
       assert_equal @issue.created_on.to_s, issue_data[:created_on].to_s
       assert_equal @issue.updated_on.to_s, issue_data[:updated_on].to_s
     end
+
+    should "include type 'image' for image attachments" do
+      Attachment.any_instance.stubs(:image?).returns(true)
+
+      issue_data = @test_class.generate_issue_data(@issue)
+      attachment_data = issue_data[:attachments].first
+
+      assert_equal "image", attachment_data[:type]
+    end
+
+    should "include type nil for non-image attachments" do
+      Attachment.any_instance.stubs(:image?).returns(false)
+
+      issue_data = @test_class.generate_issue_data(@issue)
+      attachment_data = issue_data[:attachments].first
+
+      assert_nil attachment_data[:type]
+    end
+
+    should "not include disk_path in attachments" do
+      issue_data = @test_class.generate_issue_data(@issue)
+
+      issue_data[:attachments].each do |attachment_data|
+        assert_not_includes attachment_data.keys, :disk_path,
+          "Attachment data must not contain disk_path for security reasons"
+      end
+    end
   end
 
   class TestClass < RedmineAiHelper::BaseTools

@@ -1,4 +1,4 @@
-name: Prevent Direct Pull Requests to Main
+name: Main Branch PR Policy
 
 on:
   pull_request_target:
@@ -39,3 +39,19 @@ jobs:
             });
 
             console.log('PR has been commented and closed automatically');
+
+  label-release-pr:
+    runs-on: ubuntu-latest
+    # Add ignore-for-release label to PRs from release branches
+    if: ${{ startsWith(github.head_ref, 'release/') }}
+    steps:
+      - name: Add ignore-for-release label
+        uses: actions/github-script@v8
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['ignore-for-release']
+            });
