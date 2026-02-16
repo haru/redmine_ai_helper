@@ -1,12 +1,14 @@
 # frozen_string_literal: true
 require "redmine_ai_helper/base_tools"
 require "redmine_ai_helper/util/wiki_json"
+require "redmine_ai_helper/util/attachment_image_helper"
 
 module RedmineAiHelper
   module Tools
     # WikiTools is a specialized tool for handling Redmine wiki-related queries.
     class WikiTools < RedmineAiHelper::BaseTools
       include RedmineAiHelper::Util::WikiJson
+      include RedmineAiHelper::Util::AttachmentImageHelper
       define_function :read_wiki_page, description: "Read a wiki page from the database. It includes the title, text, author, version, created_on, updated_on, children, parent, and attachments." do
         property :project_id, type: "integer", description: "The project ID of the wiki page to read.", required: true
         property :title, type: "string", description: "The title of the wiki page to read.", required: true
@@ -24,7 +26,14 @@ module RedmineAiHelper
         page = pages.find_by(title: title)
         raise("Page not found: title = #{title}") if !page || !page.visible?
 
-        generate_wiki_data(page)
+        wiki_data = generate_wiki_data(page)
+        image_paths = image_attachment_paths(page)
+
+        if image_paths.any?
+          RubyLLM::Content.new(JSON.pretty_generate(wiki_data), image_paths)
+        else
+          wiki_data
+        end
       end
 
       define_function :list_wiki_pages, description: "List all wiki pages in the project. It includes the title, author, created_on, and updated_on." do
