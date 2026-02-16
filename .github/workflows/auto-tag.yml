@@ -67,8 +67,11 @@ jobs:
 
           This PR was created automatically by GitHub Actions."
 
-          gh pr create \
+          PR_URL=$(gh pr create \
             --base develop \
             --head main \
             --title "Backmerge main to develop (${{ env.VERSION }})" \
-            --body "$BODY"
+            --body "$BODY")
+
+          # Add ignore-for-release label to the backmerge PR
+          gh pr edit "$PR_URL" --add-label "ignore-for-release"

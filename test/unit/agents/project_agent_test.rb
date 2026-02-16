@@ -5,13 +5,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
   fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :enabled_modules
 
   setup do
-    @openai_mock = MyOpenAI::DummyOpenAIClient.new
-    Langchain::LLM::OpenAI.stubs(:new).returns(@openai_mock)
     @params = {
-      access_token: "test_access_token",
-      uri_base: "http://example.com",
-      organization_id: "test_org_id",
-      model: "test_model",
       project: Project.find(1),
       langfuse: DummyLangfuse.new,
     }
@@ -19,9 +13,11 @@ class ProjectAgentTest < ActiveSupport::TestCase
   end
 
   context "ProjectAgent" do
-    should "return correct available_tool_providers" do
-      providers = @agent.available_tool_providers
-      assert_includes providers, RedmineAiHelper::Tools::ProjectTools
+    should "return correct available_tool_classes" do
+      tool_classes = @agent.available_tool_classes
+      RedmineAiHelper::Tools::ProjectTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
     end
 
     context "project_health_report" do

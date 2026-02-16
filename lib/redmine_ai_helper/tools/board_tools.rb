@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 require "redmine_ai_helper/base_tools"
+require "redmine_ai_helper/util/attachment_image_helper"
 
 module RedmineAiHelper
   module Tools
@@ -85,6 +86,16 @@ module RedmineAiHelper
           created_on: message.created_on,
           updated_on: message.updated_on,
           url_for_message: "#{board_message_path(message.board, message)}",
+          attachments: message.attachments.map do |attachment|
+            {
+              id: attachment.id,
+              filename: attachment.filename,
+              filesize: attachment.filesize,
+              content_type: attachment.content_type,
+              type: attachment.image? ? "image" : nil,
+              created_on: attachment.created_on,
+            }
+          end,
           replies: message.children.filter(&:visible?).map do |reply|
             {
               id: reply.id,

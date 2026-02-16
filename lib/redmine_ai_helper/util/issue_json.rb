@@ -55,6 +55,7 @@ module RedmineAiHelper
               filename: attachment.filename,
               filesize: attachment.filesize,
               content_type: attachment.content_type,
+              type: attachment.image? ? "image" : nil,
               created_on: attachment.created_on,
               attachment_url: attachment_path(attachment, only_path: false),
             }

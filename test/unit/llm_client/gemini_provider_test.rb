@@ -4,56 +4,55 @@ require "redmine_ai_helper/llm_client/gemini_provider"
 class RedmineAiHelper::LlmClient::GeminiProviderTest < ActiveSupport::TestCase
   context "GeminiProvider" do
     setup do
+      @setting = AiHelperSetting.find_or_create
+      @original_profile = @setting.model_profile
+
+      @gemini_profile = AiHelperModelProfile.create!(
+        name: "Test Gemini Profile",
+        llm_type: "Gemini",
+        llm_model: "gemini-2.0-flash",
+        access_key: "test_gemini_key",
+      )
+      @setting.model_profile = @gemini_profile
+      @setting.save!
+
       @provider = RedmineAiHelper::LlmClient::GeminiProvider.new
     end
 
-    should "generate a valid client" do
-      Langchain::LLM::GoogleGemini.stubs(:new).returns(mock("GeminiClient"))
-      client = @provider.generate_client
-      assert_not_nil client
+    teardown do
+      @setting.model_profile = @original_profile
+      @setting.save!
+      @gemini_profile.destroy
     end
 
-    should "raise an error if client generation fails" do
-      Langchain::LLM::GoogleGemini.stubs(:new).returns(nil)
-      assert_raises(RuntimeError, "Gemini LLM Create Error") do
-        @provider.generate_client
+    should "return a RubyLLM::Context" do
+      assert_instance_of RubyLLM::Context, @provider.context
+    end
+
+    should "memoize the context" do
+      context1 = @provider.context
+      context2 = @provider.context
+      assert_same context1, context2
+    end
+
+    should "raise error when model profile is missing" do
+      @setting.model_profile = nil
+      @setting.save!
+      assert_raises(RuntimeError, "Model Profile not found") do
+        @provider.context
       end
     end
 
-    should "create valid chat parameters" do
-      system_prompt = { content: "This is a system prompt" }
-      messages = [
-        { role: "user", content: "Hello" },
-        { role: "assistant", content: "Hi there!" },
-      ]
-      chat_params = @provider.create_chat_param(system_prompt, messages)
+    should "create chat via base class" do
+      mock_context = mock("RubyLLM::Context")
+      mock_chat = mock("RubyLLM::Chat")
+      mock_chat.expects(:with_instructions).with("Test prompt")
+      mock_chat.expects(:with_temperature).with(@gemini_profile.temperature)
+      mock_context.expects(:chat).with(model: @gemini_profile.llm_model).returns(mock_chat)
+      @provider.expects(:build_context).returns(mock_context)
 
-      assert_equal 2, chat_params[:messages].size
-      assert_equal "user", chat_params[:messages][0][:role]
-      assert_equal "Hello", chat_params[:messages][0][:parts][0][:text]
-      assert_equal "model", chat_params[:messages][1][:role]
-      assert_equal "Hi there!", chat_params[:messages][1][:parts][0][:text]
-      assert_equal "This is a system prompt", chat_params[:system]
-    end
-
-    should "reset assistant messages correctly" do
-      assistant = mock("Assistant")
-      assistant.expects(:clear_messages!).once
-      assistant.expects(:instructions=).with("System instructions").once
-      assistant.expects(:add_message).with(role: "user", content: "Hello").once
-      assistant.expects(:add_message).with(role: "model", content: "Hi there!").once
-
-      system_prompt = "System instructions"
-      messages = [
-        { role: "user", content: "Hello" },
-        { role: "assistant", content: "Hi there!" },
-      ]
-
-      @provider.reset_assistant_messages(
-        assistant: assistant,
-        system_prompt: system_prompt,
-        messages: messages,
-      )
+      chat = @provider.create_chat(instructions: "Test prompt")
+      assert_equal mock_chat, chat
     end
   end
 end

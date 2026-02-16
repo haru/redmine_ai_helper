@@ -46,16 +46,16 @@ namespace :redmine do
 
         def issue_vector_db
           return nil unless enabled?
-          @issue_vector_db ||= RedmineAiHelper::Vector::IssueVectorDb.new(llm: llm)
+          @issue_vector_db ||= RedmineAiHelper::Vector::IssueVectorDb.new(llm_provider: llm_provider)
         end
 
         def wiki_vector_db
           return nil unless enabled?
-          @wiki_vector_db ||= RedmineAiHelper::Vector::WikiVectorDb.new(llm: llm)
+          @wiki_vector_db ||= RedmineAiHelper::Vector::WikiVectorDb.new(llm_provider: llm_provider)
         end
 
-        def llm
-          @llm ||= RedmineAiHelper::LlmProvider.get_llm_provider.generate_client
+        def llm_provider
+          @llm_provider ||= RedmineAiHelper::LlmProvider.get_llm_provider
         end
 
         def enabled?

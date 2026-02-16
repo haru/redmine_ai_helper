@@ -4,57 +4,55 @@ require "redmine_ai_helper/llm_client/anthropic_provider"
 class RedmineAiHelper::LlmClient::AnthropicProviderTest < ActiveSupport::TestCase
   context "AnthropicProvider" do
     setup do
+      @setting = AiHelperSetting.find_or_create
+      @original_profile = @setting.model_profile
+
+      @anthropic_profile = AiHelperModelProfile.create!(
+        name: "Test Anthropic Profile",
+        llm_type: "Anthropic",
+        llm_model: "claude-sonnet-4-5-20250929",
+        access_key: "test_anthropic_key",
+      )
+      @setting.model_profile = @anthropic_profile
+      @setting.save!
+
       @provider = RedmineAiHelper::LlmClient::AnthropicProvider.new
     end
 
-    should "generate a valid client" do
-      Langchain::LLM::Anthropic.stubs(:new).returns(mock("AnthropicClient"))
-      client = @provider.generate_client
-      assert_not_nil client
+    teardown do
+      @setting.model_profile = @original_profile
+      @setting.save!
+      @anthropic_profile.destroy
     end
 
-    should "raise an error if client generation fails" do
-      Langchain::LLM::Anthropic.stubs(:new).returns(nil)
-      assert_raises(RuntimeError, "Anthropic LLM Create Error") do
-        @provider.generate_client
+    should "return a RubyLLM::Context" do
+      assert_instance_of RubyLLM::Context, @provider.context
+    end
+
+    should "memoize the context" do
+      context1 = @provider.context
+      context2 = @provider.context
+      assert_same context1, context2
+    end
+
+    should "raise error when model profile is missing" do
+      @setting.model_profile = nil
+      @setting.save!
+      assert_raises(RuntimeError, "Model Profile not found") do
+        @provider.context
       end
     end
 
-    should "create valid chat parameters" do
-      system_prompt = { role: "system", content: "This is a system prompt" }
-      messages = [{ role: "user", content: "Hello" }]
-      chat_params = @provider.create_chat_param(system_prompt, messages)
+    should "create chat via base class" do
+      mock_context = mock("RubyLLM::Context")
+      mock_chat = mock("RubyLLM::Chat")
+      mock_chat.expects(:with_instructions).with("Test prompt")
+      mock_chat.expects(:with_temperature).with(@anthropic_profile.temperature)
+      mock_context.expects(:chat).with(model: @anthropic_profile.llm_model).returns(mock_chat)
+      @provider.expects(:build_context).returns(mock_context)
 
-      assert_equal messages, chat_params[:messages]
-      assert_equal "This is a system prompt", chat_params[:system]
-    end
-
-    should "convert chunk correctly" do
-      chunk = { "delta" => { "text" => "Test content" } }
-      result = @provider.chunk_converter(chunk)
-      assert_equal "Test content", result
-    end
-
-    should "return nil if chunk content is missing" do
-      chunk = { "delta" => {} }
-      result = @provider.chunk_converter(chunk)
-      assert_nil result
-    end
-
-    should "reset assistant messages correctly" do
-      assistant = mock("Assistant")
-      assistant.expects(:clear_messages!).once
-      assistant.expects(:instructions=).with("System instructions").once
-      assistant.expects(:add_message).with(role: "user", content: "Hello").once
-
-      system_prompt = "System instructions"
-      messages = [{ role: "user", content: "Hello" }]
-
-      @provider.reset_assistant_messages(
-        assistant: assistant,
-        system_prompt: system_prompt,
-        messages: messages,
-      )
+      chat = @provider.create_chat(instructions: "Test prompt")
+      assert_equal mock_chat, chat
     end
   end
 end

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
-require "langchain"
 require "redmine_ai_helper/base_tools"
 require "redmine_ai_helper/util/issue_json"
+require "redmine_ai_helper/util/attachment_image_helper"
 
 module RedmineAiHelper
   module Tools

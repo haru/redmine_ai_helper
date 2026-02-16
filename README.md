@@ -337,6 +337,8 @@ To create your own agent, you need to create the following two files:
 
 - **Agent Implementation**
    - A class that inherits from `RedmineAiHelper::BaseAgent`
+   - Override `available_tool_providers` to return an array of your `BaseTools` subclasses
+   - Override `backstory` to return the agent's system prompt context
    - Defines the agent's behavior
 - **Tools**
    - A class that inherits from `RedmineAiHelper::BaseTools`

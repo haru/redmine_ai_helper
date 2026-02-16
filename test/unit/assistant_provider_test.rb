@@ -2,115 +2,60 @@ require File.expand_path("../../test_helper", __FILE__)
 
 class AssistantProviderTest < ActiveSupport::TestCase
   def setup
-    @mock_llm = mock('llm')
+    @mock_llm_provider = mock("llm_provider")
     @instructions = "Test instructions"
-    @tools = [] # Use empty array for valid tools
+    @tool_classes = []
   end
 
-  def test_get_assistant_with_gemini_llm_type
-    mock_assistant = mock('gemini_assistant')
-    RedmineAiHelper::Assistants::GeminiAssistant.expects(:new).with(
-      llm: @mock_llm,
+  def test_get_assistant_creates_chat_via_llm_provider
+    mock_chat = mock("RubyLLM::Chat")
+    @mock_llm_provider.expects(:create_chat).with(
       instructions: @instructions,
-      tools: @tools
-    ).returns(mock_assistant)
+      tools: @tool_classes,
+    ).returns(mock_chat)
 
     assistant = RedmineAiHelper::AssistantProvider.get_assistant(
-      llm_type: RedmineAiHelper::LlmProvider::LLM_GEMINI,
-      llm: @mock_llm,
+      llm_provider: @mock_llm_provider,
       instructions: @instructions,
-      tools: @tools
+      tools: @tool_classes,
     )
 
-    assert_equal mock_assistant, assistant
-  end
-
-  def test_get_assistant_with_non_gemini_llm_type
-    mock_assistant = mock('assistant')
-    RedmineAiHelper::Assistant.expects(:new).with(
-      llm: @mock_llm,
-      instructions: @instructions,
-      tools: @tools
-    ).returns(mock_assistant)
-
-    assistant = RedmineAiHelper::AssistantProvider.get_assistant(
-      llm_type: RedmineAiHelper::LlmProvider::LLM_OPENAI,
-      llm: @mock_llm,
-      instructions: @instructions,
-      tools: @tools
-    )
-
-    assert_equal mock_assistant, assistant
-  end
-
-  def test_get_assistant_with_unknown_llm_type
-    mock_assistant = mock('assistant')
-    RedmineAiHelper::Assistant.expects(:new).with(
-      llm: @mock_llm,
-      instructions: @instructions,
-      tools: @tools
-    ).returns(mock_assistant)
-
-    assistant = RedmineAiHelper::AssistantProvider.get_assistant(
-      llm_type: "unknown_type",
-      llm: @mock_llm,
-      instructions: @instructions,
-      tools: @tools
-    )
-
-    assert_equal mock_assistant, assistant
+    assert_instance_of RedmineAiHelper::Assistant, assistant
+    assert_equal mock_chat, assistant.chat
   end
 
   def test_get_assistant_with_default_empty_tools
-    mock_assistant = mock('assistant')
-    RedmineAiHelper::Assistant.expects(:new).with(
-      llm: @mock_llm,
+    mock_chat = mock("RubyLLM::Chat")
+    @mock_llm_provider.expects(:create_chat).with(
       instructions: @instructions,
-      tools: []
-    ).returns(mock_assistant)
+      tools: [],
+    ).returns(mock_chat)
 
     assistant = RedmineAiHelper::AssistantProvider.get_assistant(
-      llm_type: RedmineAiHelper::LlmProvider::LLM_OPENAI,
-      llm: @mock_llm,
-      instructions: @instructions
+      llm_provider: @mock_llm_provider,
+      instructions: @instructions,
     )
 
-    assert_equal mock_assistant, assistant
+    assert_instance_of RedmineAiHelper::Assistant, assistant
   end
 
-  def test_get_assistant_passes_correct_parameters_to_gemini
-    mock_assistant = mock('gemini_assistant')
-    RedmineAiHelper::Assistants::GeminiAssistant.expects(:new).with(
-      llm: @mock_llm,
-      instructions: @instructions,
-      tools: @tools
-    ).returns(mock_assistant)
+  def test_get_assistant_with_tool_classes
+    tool_class1 = mock("ToolClass1")
+    tool_class2 = mock("ToolClass2")
+    tools = [tool_class1, tool_class2]
+    mock_chat = mock("RubyLLM::Chat")
 
-    result = RedmineAiHelper::AssistantProvider.get_assistant(
-      llm_type: RedmineAiHelper::LlmProvider::LLM_GEMINI,
-      llm: @mock_llm,
+    @mock_llm_provider.expects(:create_chat).with(
       instructions: @instructions,
-      tools: @tools
+      tools: tools,
+    ).returns(mock_chat)
+
+    assistant = RedmineAiHelper::AssistantProvider.get_assistant(
+      llm_provider: @mock_llm_provider,
+      instructions: @instructions,
+      tools: tools,
     )
 
-    assert_equal mock_assistant, result
-  end
-
-  def test_get_assistant_passes_correct_parameters_to_default_assistant
-    mock_assistant = mock('assistant')
-    RedmineAiHelper::Assistant.expects(:new).with(
-      llm: @mock_llm,
-      instructions: @instructions,
-      tools: @tools
-    ).returns(mock_assistant)
-
-    result = RedmineAiHelper::AssistantProvider.get_assistant(
-      llm_type: RedmineAiHelper::LlmProvider::LLM_OPENAI,
-      llm: @mock_llm,
-      instructions: @instructions,
-      tools: @tools
-    )
-
-    assert_equal mock_assistant, result
+    assert_instance_of RedmineAiHelper::Assistant, assistant
   end
 end

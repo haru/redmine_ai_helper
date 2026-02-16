@@ -15,7 +15,7 @@ module RedmineAiHelper
 
       # Returns a list of all plugins installed in Redmine.
       # A dummy property is defined because at least one property is required in the tool
-      # definition for langchainrb.
+      # definition.
       # @param dummy [String] Dummy property to satisfy the tool definition requirement.
       # @return [Array<Hash>] An array of hashes containing plugin information.
       def list_plugins(dummy: nil)
