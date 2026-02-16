@@ -1,7 +1,7 @@
 source "https://rubygems.org"
 
-gem "ruby_llm"
-gem "ruby_llm-mcp"
+gem "ruby_llm", "~> 1.12.0"
+gem "ruby_llm-mcp", "~> 0.8.0"
 
 gem "qdrant-ruby", "~> 0.9.9"
 gem "langfuse", "~> 0.1.1"
