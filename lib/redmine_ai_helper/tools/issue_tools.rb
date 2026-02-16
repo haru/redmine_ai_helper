@@ -8,7 +8,6 @@ module RedmineAiHelper
     # IssueTools is a specialized tool provider for handling Redmine issue-related queries.
     class IssueTools < RedmineAiHelper::BaseTools
       include RedmineAiHelper::Util::IssueJson
-      include RedmineAiHelper::Util::AttachmentImageHelper
       define_function :read_issues, description: "Read an issue from the database and return it as a JSON object. It returns the issue ID, subject, project, tracker, status, priority, author, assigned_to, description, start_date, due_date, done_ratio, is_private, estimated_hours, total_estimated_hours, spent_hours, total_spent_hours, created_on, updated_on, closed_on, issue_url, attachments, children and relations." do
         property :issue_ids, type: "array", description: "The issue ID array to read.", required: true do
           item type: "integer", description: "The issue ID to read."
@@ -20,25 +19,17 @@ module RedmineAiHelper
       def read_issues(issue_ids:)
         raise("Issue ID array is required.") if issue_ids.empty?
         issues = []
-        image_paths = []
         Issue.where(id: issue_ids).each do |issue|
 
           # Check if the issue is visible to the current user
           next unless issue.visible?
 
           issues << generate_issue_data(issue)
-          image_paths.concat(image_attachment_paths(issue))
         end
 
         raise("Issue not found") if issues.empty?
 
-        result_text = JSON.pretty_generate({ issues: issues })
-
-        if image_paths.any?
-          RubyLLM::Content.new(result_text, image_paths)
-        else
-          { issues: issues }
-        end
+        { issues: issues }
       end
 
       define_function :capable_issue_properties, description: "Return properties that can be assigned to an issue for the specified project, such as status, tracker, custom fields, etc. You must specify one of project_id, project_name, or project_identifier." do

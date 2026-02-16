@@ -32,24 +32,8 @@ class WikiToolsTest < ActiveSupport::TestCase
     assert_equal expected_url, response[:url]
   end
 
-  context "read_wiki_page with image attachments" do
-    should "return RubyLLM::Content when page has image attachments" do
-      image_path = File.join(Dir.tmpdir, "test_wiki_image.png")
-      File.write(image_path, "fake png content")
-      @provider.stubs(:image_attachment_paths).returns([image_path])
-
-      response = @provider.read_wiki_page(project_id: @project.id, title: @page.title)
-
-      assert_instance_of RubyLLM::Content, response
-      assert_includes response.text, @page.title
-      assert_equal 1, response.attachments.size
-    ensure
-      File.delete(image_path) if File.exist?(image_path)
-    end
-
-    should "return Hash when page has no image attachments" do
-      @provider.stubs(:image_attachment_paths).returns([])
-
+  context "read_wiki_page" do
+    should "always return Hash regardless of image attachments" do
       response = @provider.read_wiki_page(project_id: @project.id, title: @page.title)
 
       assert_instance_of Hash, response

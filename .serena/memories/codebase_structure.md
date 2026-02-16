@@ -38,7 +38,7 @@ redmine_ai_helper/
 - `assistant_provider.rb` - Creates RubyLLM::Chat-based assistant instances
 
 ### Tools and Utilities
-- `tools/` - Agent-specific tools for operations (IssueTools, WikiTools, BoardTools return `RubyLLM::Content` with images when available)
+- `tools/` - Agent-specific tools for operations (IssueTools, WikiTools, BoardTools return Hash; ImageTools handles image analysis via internal LLM calls)
 - `base_tools.rb` - Foundation for tool implementations
 - `util/attachment_image_helper.rb` - Extracts image attachment disk paths from containers (Issue, WikiPage, Message)
 - `transport/` - MCP protocol support (STDIO, HTTP+SSE)

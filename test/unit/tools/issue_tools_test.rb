@@ -22,24 +22,8 @@ class IssueToolsTest < ActiveSupport::TestCase
         end
       end
 
-      should "return RubyLLM::Content when issue has image attachments" do
+      should "always return Hash regardless of image attachments" do
         issue = Issue.find(1)
-        image_path = File.join(Dir.tmpdir, "test_image.png")
-        File.write(image_path, "fake png content")
-        @provider.stubs(:image_attachment_paths).returns([image_path])
-
-        response = @provider.read_issues(issue_ids: [issue.id])
-
-        assert_instance_of RubyLLM::Content, response
-        assert_includes response.text, issue.subject
-        assert_equal 1, response.attachments.size
-      ensure
-        File.delete(image_path) if File.exist?(image_path)
-      end
-
-      should "return Hash when issue has no image attachments" do
-        issue = Issue.find(1)
-        @provider.stubs(:image_attachment_paths).returns([])
 
         response = @provider.read_issues(issue_ids: [issue.id])
 

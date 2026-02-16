@@ -6,7 +6,6 @@ module RedmineAiHelper
   module Tools
     # Tools for handling Redmine board-related queries.
     class BoardTools < RedmineAiHelper::BaseTools
-      include RedmineAiHelper::Util::AttachmentImageHelper
       define_function :list_boards, description: "List all boards in the project. It returns the board ID, project ID, name, description, messages_count, and last_message." do
         property :project_id, type: "integer", description: "The project ID of the project to return.", required: true
       end
@@ -111,13 +110,7 @@ module RedmineAiHelper
           end,
         }
 
-        image_paths = image_attachment_paths(message)
-
-        if image_paths.any?
-          RubyLLM::Content.new(JSON.pretty_generate(message_hash), image_paths)
-        else
-          message_hash
-        end
+        message_hash
       end
 
       define_function :generate_url_for_board, description: "Generate a URL for the specified board. It returns the board's URL." do

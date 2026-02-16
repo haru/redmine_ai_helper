@@ -76,7 +76,6 @@ class BoardToolsTest < ActiveSupport::TestCase
     end
 
     should "include attachments with type field in message data" do
-      @provider.stubs(:image_attachment_paths).returns([])
       Attachment.any_instance.stubs(:image?).returns(true)
 
       response = @provider.read_message(message_id: @message.id)
@@ -91,7 +90,6 @@ class BoardToolsTest < ActiveSupport::TestCase
     end
 
     should "include type nil for non-image attachments" do
-      @provider.stubs(:image_attachment_paths).returns([])
       Attachment.any_instance.stubs(:image?).returns(false)
 
       response = @provider.read_message(message_id: @message.id)
@@ -101,8 +99,6 @@ class BoardToolsTest < ActiveSupport::TestCase
     end
 
     should "not include disk_path in attachments" do
-      @provider.stubs(:image_attachment_paths).returns([])
-
       response = @provider.read_message(message_id: @message.id)
 
       response[:attachments].each do |attachment_data|
@@ -111,23 +107,7 @@ class BoardToolsTest < ActiveSupport::TestCase
       end
     end
 
-    should "return RubyLLM::Content when message has image attachments" do
-      image_path = File.join(Dir.tmpdir, "test_board_image.png")
-      File.write(image_path, "fake png content")
-      @provider.stubs(:image_attachment_paths).returns([image_path])
-
-      response = @provider.read_message(message_id: @message.id)
-
-      assert_instance_of RubyLLM::Content, response
-      assert_includes response.text, @message.subject
-      assert_equal 1, response.attachments.size
-    ensure
-      File.delete(image_path) if File.exist?(image_path)
-    end
-
-    should "return Hash when message has no image attachments" do
-      @provider.stubs(:image_attachment_paths).returns([])
-
+    should "always return Hash regardless of image attachments" do
       response = @provider.read_message(message_id: @message.id)
 
       assert_instance_of Hash, response
