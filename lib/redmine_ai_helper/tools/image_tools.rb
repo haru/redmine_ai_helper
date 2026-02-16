@@ -21,8 +21,11 @@ module RedmineAiHelper
       # @param question [String] Optional question about the images
       # @return [String] Text description of the image contents
       def analyze_content_images(content_type:, content_id:, question: nil)
+        ai_helper_logger.debug("analyze_content_images called: content_type=#{content_type}, content_id=#{content_id}, question=#{question.inspect}")
         container = resolve_container(content_type, content_id)
+        ai_helper_logger.debug("resolved container: #{container.class.name}##{container.id}")
         image_paths = image_attachment_paths(container)
+        ai_helper_logger.debug("image_paths: #{image_paths.inspect}, attachments count: #{container.respond_to?(:attachments) ? container.attachments.count : "N/A"}")
         raise("No image attachments found.") if image_paths.empty?
 
         prompt = build_analysis_prompt(question: question, image_count: image_paths.size)
@@ -52,6 +55,7 @@ module RedmineAiHelper
       # @param content_id [Integer] The ID of the content
       # @return [Issue, WikiPage, Message] The resolved container
       def resolve_container(content_type, content_id)
+        ai_helper_logger.debug("resolve_container: content_type=#{content_type}, content_id=#{content_id}")
         case content_type
         when "issue"
           issue = Issue.find_by(id: content_id)
@@ -59,6 +63,7 @@ module RedmineAiHelper
           issue
         when "wiki_page"
           page = WikiPage.find_by(id: content_id)
+          ai_helper_logger.debug("WikiPage.find_by(id: #{content_id}): #{page.inspect}")
           raise("Wiki page not found: id = #{content_id}") if page.nil? || !page.visible?
           page
         when "message"
