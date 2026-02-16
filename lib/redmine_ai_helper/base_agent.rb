@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+require "ruby_llm"
 require "redmine_ai_helper/logger"
 require "redmine_ai_helper/assistant"
 
@@ -129,8 +130,9 @@ module RedmineAiHelper
     # @param messages [Array<Hash>] The messages to be sent.
     # @param option [Hash] Additional options for the chat.
     # @param callback [Proc] A callback function to be called with each chunk of the response.
+    # @param with [Array<String>, nil] Image file paths to attach to the request.
     # @return [String] The response from the LLM.
-    def chat(messages, option = {}, callback = nil)
+    def chat(messages, option = {}, callback = nil, with: nil)
       chat_instance = @llm_provider.create_chat(instructions: system_prompt)
       setup_langfuse_callbacks(chat_instance)
 
@@ -141,10 +143,12 @@ module RedmineAiHelper
 
       # Ask with the last message (with streaming support)
       last_message = messages.last
+      ask_options = {}
+      ask_options[:with] = with if with.present?
       answer = ""
 
       if callback
-        chat_instance.ask(last_message[:content]) do |chunk|
+        chat_instance.ask(last_message[:content], **ask_options) do |chunk|
           content = chunk.content rescue nil
           if content
             callback.call(content)
@@ -152,7 +156,7 @@ module RedmineAiHelper
           end
         end
       else
-        response = chat_instance.ask(last_message[:content])
+        response = chat_instance.ask(last_message[:content], **ask_options)
         answer = response.content
       end
 
@@ -217,13 +221,14 @@ module RedmineAiHelper
         end
 
         # Collect input messages (all messages before the current response)
+        # Extract text-only content from Content objects to avoid binary image data in JSON serialization
         input_messages = chat_instance.messages[0..-2].map do |m|
-          { role: m.role.to_s, content: m.content }
+          { role: m.role.to_s, content: extract_text_content(m.content) }
         end
 
         # Determine output: use content if available, otherwise represent tool calls.
         # RubyLLM tool_calls is a Hash { call_id => ToolCall }, so use .values to get ToolCall objects.
-        output = message.content
+        output = extract_text_content(message.content)
         if output.nil? && message.tool_calls
           output = message.tool_calls.values.map(&:to_h).to_json
         end
@@ -243,6 +248,19 @@ module RedmineAiHelper
     # @return [String] The loaded prompt template.
     def load_prompt(name)
       RedmineAiHelper::Util::PromptLoader.load_template(name)
+    end
+
+    # Extracts text content from a message content value.
+    # When content is a RubyLLM::Content object (e.g., containing image attachments),
+    # returns only the text portion to avoid binary data in JSON serialization.
+    # @param content [String, RubyLLM::Content, nil] The message content
+    # @return [String, nil] The text content
+    def extract_text_content(content)
+      if content.is_a?(RubyLLM::Content)
+        content.text
+      else
+        content
+      end
     end
 
     # Response class for agent tasks
@@ -321,7 +339,7 @@ module RedmineAiHelper
     # Get debug information about all agents
     # @return [Array<Hash>] Array of agent debug information
     def debug_agents
-      RedmineAiHelper::CustomLogger.instance.info("Registered agents: #{@agents.map { |a| "#{a[:name]} (#{a[:class]})" }.join(', ')}")
+      RedmineAiHelper::CustomLogger.instance.info("Registered agents: #{@agents.map { |a| "#{a[:name]} (#{a[:class]})" }.join(", ")}")
     end
   end
 end

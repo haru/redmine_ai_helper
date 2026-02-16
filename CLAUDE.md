@@ -88,13 +88,23 @@ Users define reusable commands (global/project/user scoped) stored in `AiHelperC
 
 MCP servers configured in `config/ai_helper/config.json`. `McpServerLoader` auto-generates `SubMcpAgent` classes per server. Supports STDIO and HTTP+SSE transports (auto-detected).
 
+### Image Attachment Support
+
+Attached images on Issues, Wiki pages, and Board messages are sent to LLMs for visual understanding.
+
+- **Tool flow**: `IssueTools`/`WikiTools`/`BoardTools` use `AttachmentImageHelper` to collect image paths and return plain Ruby Hash data structures; images are provided to the LLM via `BaseAgent#chat(with:)` or image-related tools rather than `RubyLLM::Content`
+- **Summary flow**: `IssueAgent#issue_summary`/`WikiAgent#wiki_summary` pass image paths via `BaseAgent#chat(with:)` parameter
+- **Security**: Disk file paths are never included in JSON text sent to the LLM — they are only passed via RubyLLM's `with:` parameter or dedicated image tool parameters, not embedded in the textual prompt
+- **Image detection**: Uses Redmine's `Attachment#image?` (extension-based: bmp, gif, jpg, jpe, jpeg, png, webp)
+
 ## Key Components
 
 - `lib/redmine_ai_helper/llm.rb` — Entry point from controllers, wraps all agent calls with Langfuse traces
-- `lib/redmine_ai_helper/base_agent.rb` — Agent base class: `chat`, `assistant`, `perform_task`, `setup_langfuse_callbacks`
+- `lib/redmine_ai_helper/base_agent.rb` — Agent base class: `chat` (with `with:` for images), `assistant`, `perform_task`, `setup_langfuse_callbacks`
 - `lib/redmine_ai_helper/base_tools.rb` — Tool DSL: `define_function`/`property`/`item` → `RubyLLM::Tool` generation
 - `lib/redmine_ai_helper/assistant.rb` — Wraps `RubyLLM::Chat` with unified interface (`add_message`, `run`, `messages`)
 - `lib/redmine_ai_helper/assistant_provider.rb` — Factory: creates Assistant from LLM provider + instructions + tools
+- `lib/redmine_ai_helper/util/attachment_image_helper.rb` — Extracts image attachment disk paths from containers (Issue, WikiPage, Message)
 - `app/controllers/ai_helper_controller.rb` — Main controller with streaming support
 - `assets/prompt_templates/` — Internationalized YAML prompt templates (EN/JP)
 - `config/ai_helper/config.json` — MCP server configuration

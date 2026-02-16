@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 require "redmine_ai_helper/base_tools"
 require "redmine_ai_helper/util/wiki_json"
+require "redmine_ai_helper/util/attachment_image_helper"
 
 module RedmineAiHelper
   module Tools
@@ -24,7 +25,8 @@ module RedmineAiHelper
         page = pages.find_by(title: title)
         raise("Page not found: title = #{title}") if !page || !page.visible?
 
-        generate_wiki_data(page)
+        wiki_data = generate_wiki_data(page)
+        wiki_data
       end
 
       define_function :list_wiki_pages, description: "List all wiki pages in the project. It includes the title, author, created_on, and updated_on." do

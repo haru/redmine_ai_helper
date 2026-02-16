@@ -146,6 +146,73 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       messages = [{ role: "user", content: "Hello" }]
       @agent.chat(messages)
     end
+
+    should "pass with: parameter to ask when provided" do
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+
+      mock_response = mock("Response")
+      mock_response.stubs(:content).returns("image answer")
+      image_paths = ["/path/to/image.png"]
+      mock_chat_instance.expects(:ask).with("Describe this", with: image_paths).returns(mock_response)
+
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+
+      messages = [{ role: "user", content: "Describe this" }]
+      answer = @agent.chat(messages, {}, nil, with: image_paths)
+      assert_equal "image answer", answer
+    end
+
+    should "not pass with: to ask when nil" do
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+
+      mock_response = mock("Response")
+      mock_response.stubs(:content).returns("text answer")
+      mock_chat_instance.expects(:ask).with("Hello").returns(mock_response)
+
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+
+      messages = [{ role: "user", content: "Hello" }]
+      answer = @agent.chat(messages, {}, nil, with: nil)
+      assert_equal "text answer", answer
+    end
+  end
+
+  context "extract_text_content" do
+    should "return text as-is for plain string content" do
+      result = @agent.send(:extract_text_content, "Hello world")
+      assert_equal "Hello world", result
+    end
+
+    should "return nil for nil content" do
+      result = @agent.send(:extract_text_content, nil)
+      assert_nil result
+    end
+
+    should "return text from RubyLLM::Content object" do
+      content = RubyLLM::Content.new("Image description text", [])
+      result = @agent.send(:extract_text_content, content)
+      assert_equal "Image description text", result
+    end
+
+    should "return text from RubyLLM::Content with attachments, stripping binary data" do
+      # Create a temporary image file
+      tmpfile = Tempfile.new(["test_image", ".png"])
+      tmpfile.binmode
+      # PNG header bytes
+      tmpfile.write("\x89PNG\r\n\x1a\n")
+      tmpfile.flush
+
+      content = RubyLLM::Content.new("Describe this image", [tmpfile.path])
+      result = @agent.send(:extract_text_content, content)
+      assert_equal "Describe this image", result
+    ensure
+      tmpfile&.close
+      tmpfile&.unlink
+    end
   end
 
   context "perform_task" do

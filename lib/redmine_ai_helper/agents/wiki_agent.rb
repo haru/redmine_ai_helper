@@ -6,6 +6,7 @@ module RedmineAiHelper
     # WikiAgent is a specialized agent for handling Redmine wiki-related queries
     class WikiAgent < RedmineAiHelper::BaseAgent
       include RedmineAiHelper::Util::WikiJson
+      include RedmineAiHelper::Util::AttachmentImageHelper
       # Get the agent's backstory
       # @return [String] The backstory prompt
       def backstory
@@ -22,6 +23,7 @@ module RedmineAiHelper
           providers << RedmineAiHelper::Tools::VectorTools
         end
         providers << RedmineAiHelper::Tools::WikiTools
+        providers << RedmineAiHelper::Tools::ImageTools
         providers
       end
 
@@ -46,7 +48,9 @@ module RedmineAiHelper
 
         message = { role: "user", content: prompt_text }
         messages = [message]
-        chat(messages, {}, stream_proc)
+
+        image_paths = image_attachment_paths(wiki_page)
+        chat(messages, {}, stream_proc, with: image_paths.presence)
       end      # Generate wiki completion suggestions
       # @param text [String] The current text
       # @param cursor_position [Integer] The cursor position

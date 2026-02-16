@@ -66,4 +66,52 @@ class BoardToolsTest < ActiveSupport::TestCase
     response = @provider.generate_message_url(message_id: @message.id)
     assert_match(%r{/boards/\d+/topics/\d+}, response[:url])
   end
+
+  context "read_message with attachments" do
+    setup do
+      attachment = Attachment.find(1)
+      attachment.container = @message
+      attachment.save!
+      @message.reload
+    end
+
+    should "include attachments with type field in message data" do
+      Attachment.any_instance.stubs(:image?).returns(true)
+
+      response = @provider.read_message(message_id: @message.id)
+
+      assert response[:attachments].is_a?(Array)
+      assert response[:attachments].length > 0
+      attachment_data = response[:attachments].first
+      assert_equal "image", attachment_data[:type]
+      assert attachment_data.key?(:id)
+      assert attachment_data.key?(:filename)
+      assert attachment_data.key?(:content_type)
+    end
+
+    should "include type nil for non-image attachments" do
+      Attachment.any_instance.stubs(:image?).returns(false)
+
+      response = @provider.read_message(message_id: @message.id)
+
+      attachment_data = response[:attachments].first
+      assert_nil attachment_data[:type]
+    end
+
+    should "not include disk_path in attachments" do
+      response = @provider.read_message(message_id: @message.id)
+
+      response[:attachments].each do |attachment_data|
+        assert_not_includes attachment_data.keys, :disk_path,
+          "Attachment data must not contain disk_path for security reasons"
+      end
+    end
+
+    should "always return Hash regardless of image attachments" do
+      response = @provider.read_message(message_id: @message.id)
+
+      assert_instance_of Hash, response
+      assert_equal @message.id, response[:id]
+    end
+  end
 end
