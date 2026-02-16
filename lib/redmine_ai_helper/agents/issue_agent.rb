@@ -8,6 +8,7 @@ module RedmineAiHelper
     # IssueAgent is a specialized agent for handling Redmine issue-related queries.
     class IssueAgent < RedmineAiHelper::BaseAgent
       include RedmineAiHelper::Util::IssueJson
+      include RedmineAiHelper::Util::AttachmentImageHelper
       include ROUTE_HELPERS
 
       # Backstory for the IssueAgent
@@ -51,7 +52,8 @@ module RedmineAiHelper
         message = { role: "user", content: prompt_text }
         messages = [message]
 
-        chat(messages, {}, stream_proc)
+        image_paths = image_attachment_paths(issue)
+        chat(messages, {}, stream_proc, with: image_paths.presence)
       end
 
       # Generate issue reply with optional streaming support

@@ -129,8 +129,9 @@ module RedmineAiHelper
     # @param messages [Array<Hash>] The messages to be sent.
     # @param option [Hash] Additional options for the chat.
     # @param callback [Proc] A callback function to be called with each chunk of the response.
+    # @param with [Array<String>, nil] Image file paths to attach to the request.
     # @return [String] The response from the LLM.
-    def chat(messages, option = {}, callback = nil)
+    def chat(messages, option = {}, callback = nil, with: nil)
       chat_instance = @llm_provider.create_chat(instructions: system_prompt)
       setup_langfuse_callbacks(chat_instance)
 
@@ -141,10 +142,12 @@ module RedmineAiHelper
 
       # Ask with the last message (with streaming support)
       last_message = messages.last
+      ask_options = {}
+      ask_options[:with] = with if with.present?
       answer = ""
 
       if callback
-        chat_instance.ask(last_message[:content]) do |chunk|
+        chat_instance.ask(last_message[:content], **ask_options) do |chunk|
           content = chunk.content rescue nil
           if content
             callback.call(content)
@@ -152,7 +155,7 @@ module RedmineAiHelper
           end
         end
       else
-        response = chat_instance.ask(last_message[:content])
+        response = chat_instance.ask(last_message[:content], **ask_options)
         answer = response.content
       end
 

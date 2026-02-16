@@ -68,6 +68,39 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
       assert_equal "Permission denied", result
     end
 
+    should "pass image paths to chat with: parameter when images exist" do
+      @issue.stubs(:visible?).returns(true)
+
+      mock_prompt = mock("Prompt")
+      mock_prompt.stubs(:format).returns("Summarize this issue")
+      @agent.stubs(:load_prompt).with("issue_agent/summary").returns(mock_prompt)
+
+      image_paths = ["/path/to/image.png"]
+      @agent.stubs(:image_attachment_paths).with(@issue).returns(image_paths)
+
+      expected_messages = [{ role: "user", content: "Summarize this issue" }]
+      @agent.expects(:chat).with(expected_messages, {}, nil, with: image_paths).returns("Summary with image")
+
+      result = @agent.issue_summary(issue: @issue)
+      assert_equal "Summary with image", result
+    end
+
+    should "pass with: nil when no images exist" do
+      @issue.stubs(:visible?).returns(true)
+
+      mock_prompt = mock("Prompt")
+      mock_prompt.stubs(:format).returns("Summarize this issue")
+      @agent.stubs(:load_prompt).with("issue_agent/summary").returns(mock_prompt)
+
+      @agent.stubs(:image_attachment_paths).with(@issue).returns([])
+
+      expected_messages = [{ role: "user", content: "Summarize this issue" }]
+      @agent.expects(:chat).with(expected_messages, {}, nil, with: nil).returns("Summary without image")
+
+      result = @agent.issue_summary(issue: @issue)
+      assert_equal "Summary without image", result
+    end
+
     should "generate issue properties string" do
       RedmineAiHelper::Tools::IssueTools.any_instance.stubs(:capable_issue_properties).returns({
         "priority" => ["High", "Normal", "Low"],
