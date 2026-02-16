@@ -392,6 +392,91 @@ class AiHelperControllerTest < ActionController::TestCase
       end
     end
 
+    context "#add_sub_issues with assigned_to_id" do
+      setup do
+        @issue = Issue.new(subject: "Parent Issue", project: @project, author: @user, tracker_id: 1, status_id: 1)
+        @issue.save!
+        # User 2 is a member of project 1 with Manager role (assignable)
+        @assignable_user = User.find(2)
+      end
+
+      should "assign a valid assignee to the sub-issue" do
+        sub_issue_params = {
+          "1" => { subject: "Sub Issue", description: "Desc", tracker_id: 1, check: true, assigned_to_id: @assignable_user.id },
+        }
+        post :add_sub_issues, params: { id: @issue.id, sub_issues: sub_issue_params, tracker_id: 1 }
+        assert_response :redirect
+        created_issue = Issue.where(parent_id: @issue.id).first
+        assert_not_nil created_issue
+        assert_equal @assignable_user.id, created_issue.assigned_to_id
+      end
+
+      should "create sub-issue without assignee when assigned_to_id is blank" do
+        sub_issue_params = {
+          "1" => { subject: "Sub Issue", description: "Desc", tracker_id: 1, check: true, assigned_to_id: "" },
+        }
+        post :add_sub_issues, params: { id: @issue.id, sub_issues: sub_issue_params, tracker_id: 1 }
+        assert_response :redirect
+        created_issue = Issue.where(parent_id: @issue.id).first
+        assert_not_nil created_issue
+        assert_nil created_issue.assigned_to_id
+      end
+
+      should "show error when assigned_to_id is not a valid assignable user" do
+        sub_issue_params = {
+          "1" => { subject: "Sub Issue", description: "Desc", tracker_id: 1, check: true, assigned_to_id: 99999 },
+        }
+        post :add_sub_issues, params: { id: @issue.id, sub_issues: sub_issue_params, tracker_id: 1 }
+        assert_response :redirect
+        assert_not_nil flash[:error]
+        assert_equal 0, Issue.where(parent_id: @issue.id).count
+      end
+    end
+
+    context "#assignable_users_for_tracker" do
+      setup do
+        @tracker = Tracker.find(1)
+      end
+
+      should "return assignable users as JSON for a given tracker" do
+        get :assignable_users_for_tracker, params: { id: @project.id, tracker_id: @tracker.id }
+        assert_response :success
+        json = JSON.parse(response.body)
+        assert_kind_of Array, json
+        assert json.all? { |u| u.key?("id") && u.key?("name") }
+      end
+
+      should "return assignable users when tracker_id is not provided" do
+        get :assignable_users_for_tracker, params: { id: @project.id }
+        assert_response :success
+        json = JSON.parse(response.body)
+        assert_kind_of Array, json
+      end
+
+      should "return assignable users when tracker_id is invalid" do
+        get :assignable_users_for_tracker, params: { id: @project.id, tracker_id: 99999 }
+        assert_response :success
+        json = JSON.parse(response.body)
+        assert_kind_of Array, json
+      end
+
+      should "include project members with assignable roles" do
+        get :assignable_users_for_tracker, params: { id: @project.id, tracker_id: @tracker.id }
+        json = JSON.parse(response.body)
+        user_ids = json.map { |u| u["id"] }
+        # User 2 is a member of project 1 with Manager role (assignable)
+        assert_includes user_ids, 2
+      end
+
+      should "not include non-member users" do
+        get :assignable_users_for_tracker, params: { id: @project.id, tracker_id: @tracker.id }
+        json = JSON.parse(response.body)
+        user_ids = json.map { |u| u["id"] }
+        # User 4 is not a member of project 1
+        assert_not_includes user_ids, 4
+      end
+    end
+
     context "#similar_issues" do
       setup do
         @issue = Issue.find(1)
