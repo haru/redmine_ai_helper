@@ -9,11 +9,13 @@ class AgentsTest < ActiveSupport::TestCase
     end
 
     should "return correct tool providers" do
-      assert_equal [RedmineAiHelper::Tools::BoardTools], @agent.available_tool_providers
+      assert_equal [RedmineAiHelper::Tools::BoardTools, RedmineAiHelper::Tools::ImageTools], @agent.available_tool_providers
     end
 
     should "return correct tool classes derived from providers" do
-      assert_equal RedmineAiHelper::Tools::BoardTools.tool_classes, @agent.available_tool_classes
+      expected = RedmineAiHelper::Tools::BoardTools.tool_classes +
+                 RedmineAiHelper::Tools::ImageTools.tool_classes
+      assert_equal expected, @agent.available_tool_classes
     end
   end
 
@@ -28,6 +30,7 @@ class AgentsTest < ActiveSupport::TestCase
         RedmineAiHelper::Tools::ProjectTools,
         RedmineAiHelper::Tools::UserTools,
         RedmineAiHelper::Tools::IssueSearchTools,
+        RedmineAiHelper::Tools::ImageTools,
       ]
       assert_equal expected, @agent.available_tool_providers
     end
@@ -36,7 +39,8 @@ class AgentsTest < ActiveSupport::TestCase
       expected = RedmineAiHelper::Tools::IssueTools.tool_classes +
                  RedmineAiHelper::Tools::ProjectTools.tool_classes +
                  RedmineAiHelper::Tools::UserTools.tool_classes +
-                 RedmineAiHelper::Tools::IssueSearchTools.tool_classes
+                 RedmineAiHelper::Tools::IssueSearchTools.tool_classes +
+                 RedmineAiHelper::Tools::ImageTools.tool_classes
       assert_equal expected, @agent.available_tool_classes
     end
 
@@ -135,11 +139,13 @@ class AgentsTest < ActiveSupport::TestCase
     end
 
     should "return correct tool providers" do
-      assert_equal [RedmineAiHelper::Tools::WikiTools], @agent.available_tool_providers
+      assert_equal [RedmineAiHelper::Tools::WikiTools, RedmineAiHelper::Tools::ImageTools], @agent.available_tool_providers
     end
 
     should "return correct tool classes derived from providers" do
-      assert_equal RedmineAiHelper::Tools::WikiTools.tool_classes, @agent.available_tool_classes
+      expected = RedmineAiHelper::Tools::WikiTools.tool_classes +
+                 RedmineAiHelper::Tools::ImageTools.tool_classes
+      assert_equal expected, @agent.available_tool_classes
     end
   end
 

@@ -31,6 +31,9 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
       RedmineAiHelper::Tools::ProjectTools.tool_classes.each do |tc|
         assert_includes tool_classes, tc
       end
+      RedmineAiHelper::Tools::ImageTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
     end
 
     should "not include vector tools when vector db is disabled" do
@@ -43,6 +46,9 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
         assert_includes tool_classes, tc
       end
       RedmineAiHelper::Tools::ProjectTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
+      RedmineAiHelper::Tools::ImageTools.tool_classes.each do |tc|
         assert_includes tool_classes, tc
       end
     end

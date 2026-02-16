@@ -39,6 +39,9 @@ class WikiAgentTest < ActiveSupport::TestCase
       RedmineAiHelper::Tools::WikiTools.tool_classes.each do |tc|
         assert_includes tool_classes, tc
       end
+      RedmineAiHelper::Tools::ImageTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
     end
 
     should "include VectorTools when vector search is enabled" do

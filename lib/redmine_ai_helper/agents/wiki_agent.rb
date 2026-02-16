@@ -23,6 +23,7 @@ module RedmineAiHelper
           providers << RedmineAiHelper::Tools::VectorTools
         end
         providers << RedmineAiHelper::Tools::WikiTools
+        providers << RedmineAiHelper::Tools::ImageTools
         providers
       end
 

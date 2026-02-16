@@ -33,6 +33,7 @@ module RedmineAiHelper
         providers << RedmineAiHelper::Tools::ProjectTools
         providers << RedmineAiHelper::Tools::UserTools
         providers << RedmineAiHelper::Tools::IssueSearchTools
+        providers << RedmineAiHelper::Tools::ImageTools
         providers
       end
 
