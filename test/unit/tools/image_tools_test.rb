@@ -74,9 +74,10 @@ class ImageToolsTest < ActiveSupport::TestCase
       should "raise error when no images attached" do
         @provider.stubs(:image_attachment_paths).with(@issue).returns([])
 
-        assert_raises(RuntimeError, "No image attachments found.") do
+        error = assert_raises(RuntimeError) do
           @provider.analyze_content_images(content_type: "issue", content_id: @issue.id)
         end
+        assert_equal "No image attachments found.", error.message
       end
 
       should "not include disk path in return value" do
@@ -134,36 +135,41 @@ class ImageToolsTest < ActiveSupport::TestCase
 
     context "error handling" do
       should "raise error for non-existent issue" do
-        assert_raises(RuntimeError, "Issue not found") do
+        error = assert_raises(RuntimeError) do
           @provider.analyze_content_images(content_type: "issue", content_id: 999999)
         end
+        assert_match /Issue not found/, error.message
       end
 
       should "raise error for non-existent wiki page" do
-        assert_raises(RuntimeError, "Wiki page not found") do
+        error = assert_raises(RuntimeError) do
           @provider.analyze_content_images(content_type: "wiki_page", content_id: 999999)
         end
+        assert_match /Wiki page not found/, error.message
       end
 
       should "raise error for non-existent message" do
-        assert_raises(RuntimeError, "Message not found") do
+        error = assert_raises(RuntimeError) do
           @provider.analyze_content_images(content_type: "message", content_id: 999999)
         end
+        assert_match /Message not found/, error.message
       end
 
       should "raise error for unsupported content_type" do
-        assert_raises(RuntimeError, "Unsupported content type") do
+        error = assert_raises(RuntimeError) do
           @provider.analyze_content_images(content_type: "document", content_id: 1)
         end
+        assert_match /Unsupported content type/, error.message
       end
 
       should "raise error for invisible issue" do
         issue = Issue.find(1)
         Issue.any_instance.stubs(:visible?).returns(false)
 
-        assert_raises(RuntimeError, "Issue not found") do
+        error = assert_raises(RuntimeError) do
           @provider.analyze_content_images(content_type: "issue", content_id: issue.id)
         end
+        assert_match /Issue not found/, error.message
       end
     end
   end

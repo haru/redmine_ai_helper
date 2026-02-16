@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+require "ruby_llm"
 require "redmine_ai_helper/logger"
 require "redmine_ai_helper/assistant"
 

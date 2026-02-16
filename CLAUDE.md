@@ -92,9 +92,9 @@ MCP servers configured in `config/ai_helper/config.json`. `McpServerLoader` auto
 
 Attached images on Issues, Wiki pages, and Board messages are sent to LLMs for visual understanding.
 
-- **Tool flow**: `IssueTools`/`WikiTools`/`BoardTools` use `AttachmentImageHelper` to collect image paths, returning `RubyLLM::Content` (text + image attachments) when images exist
+- **Tool flow**: `IssueTools`/`WikiTools`/`BoardTools` use `AttachmentImageHelper` to collect image paths and return plain Ruby Hash data structures; images are provided to the LLM via `BaseAgent#chat(with:)` or image-related tools rather than `RubyLLM::Content`
 - **Summary flow**: `IssueAgent#issue_summary`/`WikiAgent#wiki_summary` pass image paths via `BaseAgent#chat(with:)` parameter
-- **Security**: Disk file paths are never included in JSON text sent to the LLM — they are only passed through `RubyLLM::Content` attachments or the `with:` parameter
+- **Security**: Disk file paths are never included in JSON text sent to the LLM — they are only passed via RubyLLM's `with:` parameter or dedicated image tool parameters, not embedded in the textual prompt
 - **Image detection**: Uses Redmine's `Attachment#image?` (extension-based: bmp, gif, jpg, jpe, jpeg, png, webp)
 
 ## Key Components

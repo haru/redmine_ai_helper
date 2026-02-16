@@ -1,3 +1,6 @@
+# frozen_string_literal: true
+require "redmine_ai_helper/base_tools"
+
 module RedmineAiHelper
   module Tools
     # ImageTools provides image analysis functions that internally call LLM to describe image contents.
