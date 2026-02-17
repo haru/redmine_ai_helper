@@ -6,7 +6,7 @@ module RedmineAiHelper
     # WikiAgent is a specialized agent for handling Redmine wiki-related queries
     class WikiAgent < RedmineAiHelper::BaseAgent
       include RedmineAiHelper::Util::WikiJson
-      include RedmineAiHelper::Util::AttachmentImageHelper
+      include RedmineAiHelper::Util::AttachmentFileHelper
       # Get the agent's backstory
       # @return [String] The backstory prompt
       def backstory

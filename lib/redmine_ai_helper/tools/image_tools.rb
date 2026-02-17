@@ -7,7 +7,7 @@ module RedmineAiHelper
     # Supports analyzing images attached to Issues, WikiPages, Messages, and external URL images.
 
     class ImageTools < RedmineAiHelper::BaseTools
-      include RedmineAiHelper::Util::AttachmentImageHelper
+      include RedmineAiHelper::Util::AttachmentFileHelper
 
       define_function :analyze_content_images,
         description: "Analyze images attached to a Redmine content (issue, wiki page, or forum message). " \

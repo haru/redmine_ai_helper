@@ -8,7 +8,7 @@ module RedmineAiHelper
     # IssueAgent is a specialized agent for handling Redmine issue-related queries.
     class IssueAgent < RedmineAiHelper::BaseAgent
       include RedmineAiHelper::Util::IssueJson
-      include RedmineAiHelper::Util::AttachmentImageHelper
+      include RedmineAiHelper::Util::AttachmentFileHelper
       include ROUTE_HELPERS
 
       # Backstory for the IssueAgent
