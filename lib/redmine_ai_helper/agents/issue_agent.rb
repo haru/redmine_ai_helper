@@ -33,7 +33,7 @@ module RedmineAiHelper
         providers << RedmineAiHelper::Tools::ProjectTools
         providers << RedmineAiHelper::Tools::UserTools
         providers << RedmineAiHelper::Tools::IssueSearchTools
-        providers << RedmineAiHelper::Tools::ImageTools
+        providers << RedmineAiHelper::Tools::FileTools
         providers
       end
 
@@ -53,8 +53,8 @@ module RedmineAiHelper
         message = { role: "user", content: prompt_text }
         messages = [message]
 
-        image_paths = image_attachment_paths(issue)
-        chat(messages, {}, stream_proc, with: image_paths.presence)
+        file_paths = supported_attachment_paths(issue)
+        chat(messages, {}, stream_proc, with: file_paths.presence)
       end
 
       # Generate issue reply with optional streaming support

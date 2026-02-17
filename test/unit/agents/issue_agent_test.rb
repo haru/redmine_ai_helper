@@ -31,7 +31,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
       RedmineAiHelper::Tools::ProjectTools.tool_classes.each do |tc|
         assert_includes tool_classes, tc
       end
-      RedmineAiHelper::Tools::ImageTools.tool_classes.each do |tc|
+      RedmineAiHelper::Tools::FileTools.tool_classes.each do |tc|
         assert_includes tool_classes, tc
       end
     end
@@ -48,7 +48,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
       RedmineAiHelper::Tools::ProjectTools.tool_classes.each do |tc|
         assert_includes tool_classes, tc
       end
-      RedmineAiHelper::Tools::ImageTools.tool_classes.each do |tc|
+      RedmineAiHelper::Tools::FileTools.tool_classes.each do |tc|
         assert_includes tool_classes, tc
       end
     end
@@ -74,37 +74,37 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
       assert_equal "Permission denied", result
     end
 
-    should "pass image paths to chat with: parameter when images exist" do
+    should "pass file paths to chat with: parameter when files exist" do
       @issue.stubs(:visible?).returns(true)
 
       mock_prompt = mock("Prompt")
       mock_prompt.stubs(:format).returns("Summarize this issue")
       @agent.stubs(:load_prompt).with("issue_agent/summary").returns(mock_prompt)
 
-      image_paths = ["/path/to/image.png"]
-      @agent.stubs(:image_attachment_paths).with(@issue).returns(image_paths)
+      file_paths = ["/path/to/image.png"]
+      @agent.stubs(:supported_attachment_paths).with(@issue).returns(file_paths)
 
       expected_messages = [{ role: "user", content: "Summarize this issue" }]
-      @agent.expects(:chat).with(expected_messages, {}, nil, with: image_paths).returns("Summary with image")
+      @agent.expects(:chat).with(expected_messages, {}, nil, with: file_paths).returns("Summary with file")
 
       result = @agent.issue_summary(issue: @issue)
-      assert_equal "Summary with image", result
+      assert_equal "Summary with file", result
     end
 
-    should "pass with: nil when no images exist" do
+    should "pass with: nil when no files exist" do
       @issue.stubs(:visible?).returns(true)
 
       mock_prompt = mock("Prompt")
       mock_prompt.stubs(:format).returns("Summarize this issue")
       @agent.stubs(:load_prompt).with("issue_agent/summary").returns(mock_prompt)
 
-      @agent.stubs(:image_attachment_paths).with(@issue).returns([])
+      @agent.stubs(:supported_attachment_paths).with(@issue).returns([])
 
       expected_messages = [{ role: "user", content: "Summarize this issue" }]
-      @agent.expects(:chat).with(expected_messages, {}, nil, with: nil).returns("Summary without image")
+      @agent.expects(:chat).with(expected_messages, {}, nil, with: nil).returns("Summary without file")
 
       result = @agent.issue_summary(issue: @issue)
-      assert_equal "Summary without image", result
+      assert_equal "Summary without file", result
     end
 
     should "generate issue properties string" do
