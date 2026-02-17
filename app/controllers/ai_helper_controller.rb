@@ -202,11 +202,11 @@ class AiHelperController < ApplicationController
     llm = RedmineAiHelper::Llm.new
     unless request.content_type == "application/json"
       render json: { error: "Unsupported Media Type" }, status: :unsupported_media_type and return
-    end
+    end 
 
     begin
       data = JSON.parse(request.body.read)
-    rescue JSON::ParserError
+    rescue JSON::ParserError 
       render json: { error: "Invalid JSON" }, status: :bad_request and return
     end
 
@@ -222,16 +222,26 @@ class AiHelperController < ApplicationController
     versions = @issue.assignable_versions || []
     versions_options_for_select = versions.collect { |v| [v.name, v.id] }
 
-    render partial: "ai_helper/issues/subissues/issues", locals: { issue: @issue, subissues: subissues, trackers_options_for_select: trackers_options_for_select, versions_options_for_select: versions_options_for_select }
+    # Initially empty - will be populated via AJAX based on tracker selection
+    assignable_users_options_for_select = []
+
+    render partial: "ai_helper/issues/subissues/issues", locals: { 
+      issue: @issue, 
+      subissues: subissues, 
+      trackers_options_for_select: trackers_options_for_select, 
+      versions_options_for_select: versions_options_for_select,
+      assignable_users_options_for_select: assignable_users_options_for_select
+    }
   end
 
   # Add sub-issues to the current issue
   def add_sub_issues
     issues_param = params[:sub_issues]
+  
     issues_param.each do |issue_param_array|
-      issue_param = issue_param_array[1].permit(:subject, :description, :tracker_id, :check, :fixed_version_id)
-      # Skip if the issue_param does not have the :check key or if it is false
+      issue_param = issue_param_array[1].permit(:subject, :description, :tracker_id, :check, :fixed_version_id, :assigned_to_id)
       next unless issue_param[:check]
+    
       issue = Issue.new
       issue.author = User.current
       issue.project = @issue.project
@@ -240,13 +250,30 @@ class AiHelperController < ApplicationController
       issue.description = issue_param[:description]
       issue.tracker_id = issue_param[:tracker_id]
       issue.fixed_version_id = issue_param[:fixed_version_id] unless issue_param[:fixed_version_id].blank?
-      # Save the issue and handle errors
+
+      # Tracker-specific assignee validation
+      if issue_param[:assigned_to_id].present?
+        assignee_id = issue_param[:assigned_to_id].to_i
+        tracker = Tracker.find_by(id: issue.tracker_id)
+      
+        # Use Redmine's built-in method to check tracker-specific permissions
+        if tracker && @issue.project.assignable_users(tracker).exists?(assignee_id)
+          issue.assigned_to_id = assignee_id
+        else
+          # Show error if assignee is not valid for this tracker
+          flash[:error] = l(:error_invalid_assignee, 
+                          subject: issue.subject, 
+                          default: "Invalid assignee for '%{subject}' - user not authorized for this tracker")
+          redirect_to issue_path(@issue) and return
+        end
+      end
+
       unless issue.save
-        # If saving fails, collect error messages and display them using i18n
         flash[:error] = issue.errors.full_messages.join("\n")
         redirect_to issue_path(@issue) and return
       end
     end
+  
     redirect_to issue_path(@issue), notice: l('ai_helper.notice_sub_issues_added')
   end
 
@@ -712,6 +739,53 @@ class AiHelperController < ApplicationController
                status: :not_acceptable
       end
     end
+  end
+
+  # Get assignable users for a specific tracker
+  # Filters users based on role permissions for the given tracker
+
+  def assignable_users_for_tracker
+    tracker = Tracker.find_by(id: params[:tracker_id])
+  
+    if tracker && @project
+      all_assignable = @project.assignable_users
+    
+      users = all_assignable.select do |principal|
+        if principal.is_a?(Group)
+          # Include all groups (Redmine handles permissions internally)
+          true
+        elsif principal.is_a?(User)
+          user_roles = principal.roles_for_project(@project)
+        
+          # Check if user has any role that allows this tracker
+          user_roles.any? do |role|
+            settings = role.settings || {}
+            permissions_tracker_ids = settings["permissions_tracker_ids"] || {}
+          
+            # Get tracker restrictions for critical permissions
+            view_tracker_ids = permissions_tracker_ids["view_issues"] || []
+            add_tracker_ids = permissions_tracker_ids["add_issues"] || []
+          
+            # Check if "all trackers" is enabled
+            all_trackers = settings["permissions_all_trackers"] || {}
+            view_all = all_trackers["view_issues"] == "1"
+            add_all = all_trackers["add_issues"] == "1"
+          
+            # User has permission if all trackers enabled OR specific tracker in list
+            has_view = view_all || view_tracker_ids.include?(tracker.id.to_s)
+            has_add = add_all || add_tracker_ids.include?(tracker.id.to_s)
+          
+            has_view && has_add
+          end
+        else
+          false
+        end
+      end
+    else
+      users = @project.assignable_users
+    end
+  
+    render json: users.map { |u| { id: u.id, name: u.name } }
   end
 
   private
