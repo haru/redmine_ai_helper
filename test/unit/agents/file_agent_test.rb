@@ -39,5 +39,11 @@ class FileAgentTest < ActiveSupport::TestCase
       assert_not_nil file_agent_entry, "FileAgent should appear in list_agents"
       assert file_agent_entry[:backstory].is_a?(String)
     end
+
+    should "not have image_agent in AgentList" do
+      agent_list = RedmineAiHelper::AgentList.instance
+      agent_info = agent_list.find_agent("image_agent")
+      assert_nil agent_info, "image_agent should not be registered in AgentList"
+    end
   end
 end
