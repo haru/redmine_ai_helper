@@ -202,11 +202,11 @@ class AiHelperController < ApplicationController
     llm = RedmineAiHelper::Llm.new
     unless request.content_type == "application/json"
       render json: { error: "Unsupported Media Type" }, status: :unsupported_media_type and return
-    end 
+    end
 
     begin
       data = JSON.parse(request.body.read)
-    rescue JSON::ParserError 
+    rescue JSON::ParserError
       render json: { error: "Invalid JSON" }, status: :bad_request and return
     end
 
@@ -261,9 +261,7 @@ class AiHelperController < ApplicationController
           issue.assigned_to_id = assignee_id
         else
           # Show error if assignee is not valid for this tracker
-          flash[:error] = l(:error_invalid_assignee, 
-                          subject: issue.subject, 
-                          default: "Invalid assignee for '%{subject}' - user not authorized for this tracker")
+          flash[:error] = l('ai_helper.error_invalid_assignee', subject: issue.subject)
           redirect_to issue_path(@issue) and return
         end
       end
@@ -742,49 +740,9 @@ class AiHelperController < ApplicationController
   end
 
   # Get assignable users for a specific tracker
-  # Filters users based on role permissions for the given tracker
-
   def assignable_users_for_tracker
     tracker = Tracker.find_by(id: params[:tracker_id])
-  
-    if tracker && @project
-      all_assignable = @project.assignable_users
-    
-      users = all_assignable.select do |principal|
-        if principal.is_a?(Group)
-          # Include all groups (Redmine handles permissions internally)
-          true
-        elsif principal.is_a?(User)
-          user_roles = principal.roles_for_project(@project)
-        
-          # Check if user has any role that allows this tracker
-          user_roles.any? do |role|
-            settings = role.settings || {}
-            permissions_tracker_ids = settings["permissions_tracker_ids"] || {}
-          
-            # Get tracker restrictions for critical permissions
-            view_tracker_ids = permissions_tracker_ids["view_issues"] || []
-            add_tracker_ids = permissions_tracker_ids["add_issues"] || []
-          
-            # Check if "all trackers" is enabled
-            all_trackers = settings["permissions_all_trackers"] || {}
-            view_all = all_trackers["view_issues"] == "1"
-            add_all = all_trackers["add_issues"] == "1"
-          
-            # User has permission if all trackers enabled OR specific tracker in list
-            has_view = view_all || view_tracker_ids.include?(tracker.id.to_s)
-            has_add = add_all || add_tracker_ids.include?(tracker.id.to_s)
-          
-            has_view && has_add
-          end
-        else
-          false
-        end
-      end
-    else
-      users = @project.assignable_users
-    end
-  
+    users = @project.assignable_users(tracker)
     render json: users.map { |u| { id: u.id, name: u.name } }
   end
 

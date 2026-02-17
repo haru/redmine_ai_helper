@@ -1,7 +1,7 @@
 (function() {
   'use strict';
   
-  var initialized = false;
+  let initialized = false;
   
   // Load assignees for a specific tracker
   function loadAssignees(trackerSelect) {
@@ -44,7 +44,7 @@
   function initializeAllTrackers() {
     if (initialized) return;
     
-    var trackerSelects = document.querySelectorAll('.sub-issue-tracker-select');
+    const trackerSelects = document.querySelectorAll('.sub-issue-tracker-select');
     
     if (trackerSelects.length > 0) {
       initialized = true;
@@ -66,18 +66,18 @@
   
   // Setup MutationObserver to detect when sub-issues are loaded
   function setupObserver() {
-    var mainContent = document.querySelector('#content');
-    
+    let mainContent = document.querySelector('#content');
+
     if (!mainContent) {
       mainContent = document.body;
     }
     
     if (!mainContent) return;
     
-    var observer = new MutationObserver(function(mutations) {
+    const observer = new MutationObserver(function(mutations) {
       mutations.forEach(function(mutation) {
         if (mutation.addedNodes.length > 0) {
-          var found = false;
+          let found = false;
           mutation.addedNodes.forEach(function(node) {
             if (node.nodeType === 1) {
               if (node.querySelector && node.querySelector('.sub-issue-tracker-select')) {

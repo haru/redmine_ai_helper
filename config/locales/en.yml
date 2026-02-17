@@ -24,6 +24,7 @@ en:
   label_ai_helper_close_detail: "Close Detail"
   ai_helper:
     notice_sub_issues_added: "Sub-issues have been added"
+    error_invalid_assignee: "Invalid assignee for '%{subject}' - user is not authorized for this tracker"
     chat:
       planning: "Creating execution plan..."
       generating_final_response: "Generating final response..."

@@ -24,6 +24,7 @@ ja:
   label_ai_helper_close_detail: "詳細を閉じる"
   ai_helper:
     notice_sub_issues_added: "子チケットが追加されました"
+    error_invalid_assignee: "'%{subject}' の担当者が無効です。このトラッカーに対する権限がありません"
     chat:
       planning: "実行計画を作成中..."
       generating_final_response: "最終回答を作成しています..."
