@@ -20,7 +20,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
       should "analyze issue and return summary and keywords" do
         valid_response = {
           "summary" => "This issue is about a bug in the login system. The user cannot log in due to a session timeout error.",
-          "keywords" => ["login", "session timeout", "authentication", "bug"]
+          "keywords" => ["login", "session timeout", "authentication", "bug"],
         }.to_json
 
         analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
@@ -39,7 +39,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
       should "parse valid JSON response from LLM" do
         valid_json = {
           "summary" => "A test summary for the issue.",
-          "keywords" => ["keyword1", "keyword2", "keyword3"]
+          "keywords" => ["keyword1", "keyword2", "keyword3"],
         }.to_json
 
         analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
@@ -55,7 +55,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
       should "parse JSON wrapped in markdown code block" do
         json_data = {
           "summary" => "This is a summary extracted from markdown.",
-          "keywords" => ["markdown", "code block", "json"]
+          "keywords" => ["markdown", "code block", "json"],
         }
         json_in_code_block = <<~RESPONSE
           Here is the analysis:
@@ -104,7 +104,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
       should "return empty result when JSON is missing required fields" do
         incomplete_json = {
-          "other_field" => "some value"
+          "other_field" => "some value",
         }.to_json
 
         analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
@@ -121,7 +121,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
       should "handle empty keywords array in response" do
         response_data = {
           "summary" => "A summary without keywords.",
-          "keywords" => []
+          "keywords" => [],
         }
 
         analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
@@ -137,7 +137,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
       should "handle null summary in response" do
         response_data = {
           "summary" => nil,
-          "keywords" => ["keyword1"]
+          "keywords" => ["keyword1"],
         }
 
         analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
@@ -178,7 +178,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
         journal = Journal.new(
           journalized: @issue,
           user: User.find(1),
-          notes: "This is a comment on the issue."
+          notes: "This is a comment on the issue.",
         )
         journal.save!
 
@@ -263,7 +263,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
         valid_response = {
           "summary" => "Summary of long content.",
-          "keywords" => ["long", "content"]
+          "keywords" => ["long", "content"],
         }.to_json
 
         analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
@@ -283,7 +283,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
         valid_response = {
           "summary" => "Summary with special characters.",
-          "keywords" => ["unicode", "special chars"]
+          "keywords" => ["unicode", "special chars"],
         }.to_json
 
         analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
@@ -298,7 +298,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
       should "handle JSON response with extra whitespace" do
         response_data = {
           "summary" => "Summary with whitespace.",
-          "keywords" => ["test"]
+          "keywords" => ["test"],
         }
         response_with_whitespace = "  \n  " + response_data.to_json + "  \n  "
 
@@ -333,7 +333,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
       should "handle response with multiple JSON blocks and use first valid one" do
         first_block_data = {
           "summary" => "First block summary.",
-          "keywords" => ["first"]
+          "keywords" => ["first"],
         }
         multiple_json_blocks = <<~RESPONSE
           ```json
@@ -359,6 +359,107 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
         # Should use the first valid JSON block
         assert_equal "First block summary.", result[:summary]
         assert_equal ["first"], result[:keywords]
+      end
+    end
+
+    context "analyze with attachments" do
+      setup do
+        @mock_attachment = mock("attachment")
+        @mock_attachment.stubs(:filename).returns("document.pdf")
+        @mock_attachment.stubs(:diskfile).returns("/path/to/document.pdf")
+        @mock_attachment.stubs(:filesize).returns(1.megabyte)
+        @issue.stubs(:attachments).returns([@mock_attachment])
+      end
+
+      should "pass attachment file paths to call_llm via with: parameter" do
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
+        analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:supported_attachment_paths).with(@issue).returns(["/path/to/document.pdf"])
+
+        valid_response = { "summary" => "Summary with attachment.", "keywords" => ["pdf"] }.to_json
+
+        # Verify that call_llm is called with with: containing the attachment path
+        analyzer.expects(:call_llm).with(
+          anything,
+          with: ["/path/to/document.pdf"],
+        ).returns(valid_response)
+
+        analyzer.analyze(@issue)
+      end
+
+      should "pass nil when no attachments exist" do
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
+        analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:supported_attachment_paths).with(@issue).returns([])
+
+        valid_response = { "summary" => "Summary.", "keywords" => ["word"] }.to_json
+
+        # Verify that call_llm is called with with: nil (presence of empty array is nil)
+        analyzer.expects(:call_llm).with(
+          anything,
+          with: nil,
+        ).returns(valid_response)
+
+        analyzer.analyze(@issue)
+      end
+
+      should "pass nil when attachment_send is disabled" do
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
+        analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:supported_attachment_paths).with(@issue).returns([])
+
+        valid_response = { "summary" => "Summary.", "keywords" => ["word"] }.to_json
+
+        # Verify that call_llm is called with with: nil when attachment_send is disabled
+        analyzer.expects(:call_llm).with(
+          anything,
+          with: nil,
+        ).returns(valid_response)
+
+        analyzer.analyze(@issue)
+      end
+    end
+
+    context "call_llm with with: parameter" do
+      setup do
+        @mock_chat = mock("chat_instance")
+        @mock_response = mock("response")
+        @mock_response.stubs(:content).returns('{"summary":"s","keywords":[]}')
+        @mock_llm_provider.stubs(:create_chat).returns(@mock_chat)
+      end
+
+      should "pass with: parameter to chat_instance.ask when file paths given" do
+        @mock_chat.stubs(:add_message)
+        @mock_chat.expects(:ask).with("prompt text", with: ["/path/to/file.pdf"]).returns(@mock_response)
+
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
+        analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+
+        messages = [{ role: "user", content: "prompt text" }]
+        analyzer.send(:call_llm, messages, with: ["/path/to/file.pdf"])
+      end
+
+      should "not include with: in ask options when with is nil" do
+        @mock_chat.stubs(:add_message)
+        # Expect ask to be called WITHOUT with: keyword
+        @mock_chat.expects(:ask).with("prompt text").returns(@mock_response)
+
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
+        analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+
+        messages = [{ role: "user", content: "prompt text" }]
+        analyzer.send(:call_llm, messages, with: nil)
+      end
+
+      should "maintain backward compatibility when called without with: argument" do
+        @mock_chat.stubs(:add_message)
+        @mock_chat.expects(:ask).with("prompt text").returns(@mock_response)
+
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
+        analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+
+        messages = [{ role: "user", content: "prompt text" }]
+        analyzer.send(:call_llm, messages)
       end
     end
   end

@@ -8,6 +8,7 @@ module RedmineAiHelper
     # for improved vector search embedding.
     class IssueContentAnalyzer
       include RedmineAiHelper::Logger
+      include RedmineAiHelper::Util::AttachmentFileHelper
 
       # JSON schema for the output structure
       JSON_SCHEMA = {
@@ -15,16 +16,16 @@ module RedmineAiHelper
         properties: {
           summary: {
             type: "string",
-            description: "A concise summary including the problem, background, cause, and solution (if any). Maximum 200 characters."
+            description: "A concise summary including the problem, background, cause, and solution (if any). Maximum 200 characters.",
           },
           keywords: {
             type: "array",
             items: { type: "string" },
-            description: "Array of 5-10 important keywords (technical terms, error messages, feature names, component names)"
-          }
+            description: "Array of 5-10 important keywords (technical terms, error messages, feature names, component names)",
+          },
         },
         required: ["summary", "keywords"],
-        additionalProperties: false
+        additionalProperties: false,
       }.freeze
 
       # Initialize the analyzer with an optional LLM provider.
@@ -40,7 +41,8 @@ module RedmineAiHelper
         format_instructions = RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(JSON_SCHEMA)
         prompt = build_prompt(issue, format_instructions)
         messages = [{ role: "user", content: prompt }]
-        response = call_llm(messages)
+        file_paths = supported_attachment_paths(issue)
+        response = call_llm(messages, with: file_paths.presence)
         parse_response(response, messages)
       rescue StandardError => e
         ai_helper_logger.warn("Failed to analyze issue content: #{e.message}")
@@ -57,20 +59,20 @@ module RedmineAiHelper
         issue_data = {
           subject: issue.subject,
           description: issue.description || "",
-          journals: issue.journals.map { |j| j.notes.to_s }.reject(&:blank?)
+          journals: issue.journals.map { |j| j.notes.to_s }.reject(&:blank?),
         }
 
         template = RedmineAiHelper::Util::PromptLoader.load_template("vector/issue_content_analysis")
         template.format(
           issue: issue_data.to_json,
-          format_instructions: format_instructions
+          format_instructions: format_instructions,
         )
       end
 
       # Call the LLM with the given messages.
       # @param messages [Array<Hash>] The messages to send to the LLM.
       # @return [String] The text response from the LLM.
-      def call_llm(messages)
+      def call_llm(messages, with: nil)
         chat_instance = @llm_provider.create_chat
 
         # Add message history (all except the last message)
@@ -78,9 +80,11 @@ module RedmineAiHelper
           chat_instance.add_message(role: msg[:role].to_sym, content: msg[:content])
         end
 
-        # Ask with the last message
+        # Ask with the last message, optionally passing file attachments
         last_message = messages.last
-        response = chat_instance.ask(last_message[:content])
+        ask_options = {}
+        ask_options[:with] = with if with.present?
+        response = chat_instance.ask(last_message[:content], **ask_options)
         response.content
       end
 
@@ -100,7 +104,7 @@ module RedmineAiHelper
 
         {
           summary: result["summary"].to_s,
-          keywords: result["keywords"].is_a?(Array) ? result["keywords"] : []
+          keywords: result["keywords"].is_a?(Array) ? result["keywords"] : [],
         }
       rescue StandardError => e
         ai_helper_logger.warn("Failed to parse LLM response: #{e.message}")
