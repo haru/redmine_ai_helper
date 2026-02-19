@@ -43,10 +43,6 @@ class AiHelperSetting < ApplicationRecord
     end
   end
 
-  def attachment_send_enabled?
-    attachment_send_enabled
-  end
-
   # Returns true if embedding_url is required
   # @return [Boolean] Whether embedding URL is enabled
   def embedding_url_enabled?

@@ -406,7 +406,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
       should "pass nil when attachment_send is disabled" do
         analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
-        analyzer.stubs(:supported_attachment_paths).with(@issue).returns([])
+        AiHelperSetting.stubs(:attachment_send_enabled?).returns(false)
 
         valid_response = { "summary" => "Summary.", "keywords" => ["word"] }.to_json
 

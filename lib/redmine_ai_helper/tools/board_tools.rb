@@ -6,6 +6,7 @@ module RedmineAiHelper
   module Tools
     # Tools for handling Redmine board-related queries.
     class BoardTools < RedmineAiHelper::BaseTools
+      include RedmineAiHelper::Util::AttachmentFileHelper
       define_function :list_boards, description: "List all boards in the project. It returns the board ID, project ID, name, description, messages_count, and last_message." do
         property :project_id, type: "integer", description: "The project ID of the project to return.", required: true
       end
@@ -92,7 +93,7 @@ module RedmineAiHelper
               filename: attachment.filename,
               filesize: attachment.filesize,
               content_type: attachment.content_type,
-              type: attachment.image? ? "image" : nil,
+              type: attachment_file_type(attachment),
               created_on: attachment.created_on,
             }
           end,

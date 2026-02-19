@@ -76,7 +76,7 @@ class BoardToolsTest < ActiveSupport::TestCase
     end
 
     should "include attachments with type field in message data" do
-      Attachment.any_instance.stubs(:image?).returns(true)
+      Attachment.any_instance.stubs(:filename).returns("test.png")
 
       response = @provider.read_message(message_id: @message.id)
 
@@ -89,8 +89,8 @@ class BoardToolsTest < ActiveSupport::TestCase
       assert attachment_data.key?(:content_type)
     end
 
-    should "include type nil for non-image attachments" do
-      Attachment.any_instance.stubs(:image?).returns(false)
+    should "include type nil for unsupported file types" do
+      Attachment.any_instance.stubs(:filename).returns("test.xyz")
 
       response = @provider.read_message(message_id: @message.id)
 
