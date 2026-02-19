@@ -221,6 +221,45 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
       end
     end
 
+    context "generate_sub_issues_draft attachment support" do
+      setup do
+        User.current = User.find(1)
+        @issue = Issue.find(1)
+        RedmineAiHelper::Util::StructuredOutputHelper.stubs(:parse).returns(
+          { "sub_issues" => [{ "subject" => "Sub Issue", "description" => "Description", "project_id" => @issue.project_id, "tracker_id" => @issue.tracker_id }] }
+        )
+      end
+
+      should "pass attachment file paths to chat via with parameter" do
+        file_paths = ["/path/to/file1.pdf", "/path/to/file2.png"]
+        @agent.stubs(:supported_attachment_paths).with(@issue).returns(file_paths)
+
+        @agent.expects(:chat).with(
+          anything,
+          anything,
+          anything,
+          with: file_paths
+        ).returns({ "sub_issues" => [{ "subject" => "Sub Issue", "description" => "Description" }] }.to_json)
+
+        result = @agent.generate_sub_issues_draft(issue: @issue, instructions: "Create sub issues considering attachments.")
+        assert result.is_a?(Array)
+      end
+
+      should "pass nil for with parameter when no attachments exist" do
+        @agent.stubs(:supported_attachment_paths).with(@issue).returns([])
+
+        @agent.expects(:chat).with(
+          anything,
+          anything,
+          anything,
+          with: nil
+        ).returns({ "sub_issues" => [{ "subject" => "Sub Issue", "description" => "Description" }] }.to_json)
+
+        result = @agent.generate_sub_issues_draft(issue: @issue, instructions: "Create sub issues.")
+        assert result.is_a?(Array)
+      end
+    end
+
     context "find_similar_issues" do
       setup do
         @mock_vector_tools = mock("VectorTools")

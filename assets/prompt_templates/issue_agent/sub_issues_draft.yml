@@ -11,6 +11,12 @@ template: |-
   Sub-issues should be divided step-by-step tasks required to resolve the parent issue, considering the content of the parent issue.
   The titles of the sub-issues should reflect the tasks required to resolve the parent issue, dividing the work accordingly.
 
+  - If files are attached, also consider their content when creating the sub-issue proposals.
+    - For images: Read and interpret visual information such as text, diagrams, charts, screenshots, and designs
+    - For PDFs and documents: Consider the document content and key information
+    - For code files: Consider the purpose and key logic of the code
+    - For audio: Consider the content if applicable
+
   If fixed_version_id, priority_id, or due_date are set in the parent issue, use the same values for the sub-issues. If they are not set in the parent issue, do not set them in the sub-issues.
 
   ----

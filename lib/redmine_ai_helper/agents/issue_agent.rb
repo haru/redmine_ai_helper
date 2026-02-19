@@ -149,7 +149,8 @@ module RedmineAiHelper
 
         message = { role: "user", content: prompt_text }
         messages = [message]
-        answer = chat(messages)
+        file_paths = supported_attachment_paths(issue)
+        answer = chat(messages, {}, nil, with: file_paths.presence)
         fixed_json = RedmineAiHelper::Util::StructuredOutputHelper.parse(
           response: answer,
           json_schema: json_schema,
