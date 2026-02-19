@@ -14,6 +14,8 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
       @vector_tools.stubs(:ai_helper_logger).returns(@mock_logger)
       @mock_logger.stubs(:debug)
       @mock_logger.stubs(:error)
+      User.current = User.find(1)
+      Project.find(1).enable_module!(:ai_helper)
     end
 
     should "raise error if vector search is not enabled" do
@@ -52,6 +54,61 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
       @mock_logger.expects(:error).at_least_once
       assert_raises(RuntimeError, "Error: db error") do
         @vector_tools.ask_with_filter(query: "foo", k: 10, filter: {}, target: "issue")
+      end
+    end
+
+    context "ask_with_filter permission check" do
+      setup do
+        User.current = User.find(2)
+      end
+
+      should "filter out issues from projects where user lacks view_ai_helper permission" do
+        issue = Issue.find(1)
+        issue.project.enable_module!(:ai_helper)
+        User.current.stubs(:allowed_to?).returns(true)
+        User.current.stubs(:allowed_to?).with(:view_ai_helper, issue.project).returns(false)
+        @vector_tools.stubs(:vector_db).with(target: "issue").returns(@mock_db)
+        @mock_db.expects(:ask_with_filter).returns([{ "issue_id" => issue.id }])
+
+        result = @vector_tools.ask_with_filter(query: "foo", k: 10, filter: {}, target: "issue")
+        assert_equal 0, result.length
+      end
+
+      should "return issues from projects where user has view_ai_helper permission" do
+        issue = Issue.find(1)
+        issue.project.enable_module!(:ai_helper)
+        User.current.stubs(:allowed_to?).returns(true)
+        User.current.stubs(:allowed_to?).with(:view_ai_helper, issue.project).returns(true)
+        @vector_tools.stubs(:vector_db).with(target: "issue").returns(@mock_db)
+        @mock_db.expects(:ask_with_filter).returns([{ "issue_id" => issue.id }])
+
+        result = @vector_tools.ask_with_filter(query: "foo", k: 10, filter: {}, target: "issue")
+        assert_equal 1, result.length
+      end
+
+      should "filter out wiki pages from projects where user lacks view_ai_helper permission" do
+        wiki = WikiPage.find(1)
+        wiki.project.enable_module!(:ai_helper)
+        User.current.stubs(:allowed_to?).returns(true)
+        User.current.stubs(:allowed_to?).with(:view_ai_helper, wiki.project).returns(false)
+        @vector_tools.stubs(:vector_db).with(target: "wiki").returns(@mock_db)
+        @mock_db.expects(:ask_with_filter).returns([{ "wiki_id" => wiki.id }])
+
+        result = @vector_tools.ask_with_filter(query: "foo", k: 10, filter: {}, target: "wiki")
+        assert_equal 0, result.length
+      end
+
+      should "return wiki pages from projects where user has view_ai_helper permission" do
+        wiki = WikiPage.find(1)
+        wiki.project.enable_module!(:ai_helper)
+        User.current.stubs(:allowed_to?).returns(true)
+        User.current.stubs(:allowed_to?).with(:view_ai_helper, wiki.project).returns(true)
+        @vector_tools.stubs(:vector_db).with(target: "wiki").returns(@mock_db)
+        @mock_db.expects(:ask_with_filter).returns([{ "wiki_id" => wiki.id }])
+
+        result = @vector_tools.ask_with_filter(query: "foo", k: 10, filter: {}, target: "wiki")
+        assert_equal 1, result.length
+        assert_equal wiki.title, result.first[:title]
       end
     end
 
@@ -217,6 +274,42 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         result = @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
 
         assert_equal 0, result.length
+      end
+
+      should "filter out similar issues from projects where user lacks view_ai_helper permission" do
+        other_issue = Issue.find(2)
+        other_issue.project.enable_module!(:ai_helper)
+        User.current.stubs(:allowed_to?).returns(true)
+        User.current.stubs(:allowed_to?).with(:view_ai_helper, other_issue.project).returns(false)
+
+        mock_results = [
+          {
+            "payload" => { "issue_id" => other_issue.id },
+            "score" => 0.85,
+          },
+        ]
+        @mock_db.expects(:similarity_search).returns(mock_results)
+
+        result = @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
+        assert_equal 0, result.length
+      end
+
+      should "return similar issues from projects where user has view_ai_helper permission" do
+        other_issue = Issue.find(2)
+        other_issue.project.enable_module!(:ai_helper)
+        User.current.stubs(:allowed_to?).returns(true)
+        User.current.stubs(:allowed_to?).with(:view_ai_helper, other_issue.project).returns(true)
+
+        mock_results = [
+          {
+            "payload" => { "issue_id" => other_issue.id },
+            "score" => 0.85,
+          },
+        ]
+        @mock_db.expects(:similarity_search).returns(mock_results)
+
+        result = @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
+        assert_equal 1, result.length
       end
 
       should "handle issues that cause generate_issue_data to fail" do
@@ -431,6 +524,50 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         )
 
         assert_equal 0, result.length
+      end
+
+      should "filter out issues by content from projects where user lacks view_ai_helper permission" do
+        other_issue = Issue.find(2)
+        other_issue.project.enable_module!(:ai_helper)
+        User.current.stubs(:allowed_to?).returns(true)
+        User.current.stubs(:allowed_to?).with(:view_ai_helper, other_issue.project).returns(false)
+
+        mock_results = [
+          {
+            "payload" => { "issue_id" => other_issue.id },
+            "score" => 0.85,
+          },
+        ]
+        @mock_db.expects(:similarity_search).returns(mock_results)
+
+        result = @vector_tools.find_similar_issues_by_content(
+          subject: "Test",
+          description: "Test",
+          k: 10,
+        )
+        assert_equal 0, result.length
+      end
+
+      should "return issues by content from projects where user has view_ai_helper permission" do
+        other_issue = Issue.find(2)
+        other_issue.project.enable_module!(:ai_helper)
+        User.current.stubs(:allowed_to?).returns(true)
+        User.current.stubs(:allowed_to?).with(:view_ai_helper, other_issue.project).returns(true)
+
+        mock_results = [
+          {
+            "payload" => { "issue_id" => other_issue.id },
+            "score" => 0.85,
+          },
+        ]
+        @mock_db.expects(:similarity_search).returns(mock_results)
+
+        result = @vector_tools.find_similar_issues_by_content(
+          subject: "Test",
+          description: "Test",
+          k: 10,
+        )
+        assert_equal 1, result.length
       end
 
       should "filter out issues that are not visible" do

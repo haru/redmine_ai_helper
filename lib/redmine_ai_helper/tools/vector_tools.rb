@@ -69,6 +69,7 @@ module RedmineAiHelper
               wiki = WikiPage.find_by(id: id)
               next unless wiki
               next unless wiki.visible?
+              next unless User.current.allowed_to?(:view_ai_helper, wiki.project)
               wikis << generate_wiki_data(wiki)
             }
             ai_helper_logger.debug("Filtered wikis: #{wikis}")
@@ -80,6 +81,7 @@ module RedmineAiHelper
               issue = Issue.find_by(id: id)
               next unless issue
               next unless issue.visible?
+              next unless User.current.allowed_to?(:view_ai_helper, issue.project)
               issues << generate_issue_data(issue)
             }
             ai_helper_logger.debug("Filtered issues: #{issues}")
@@ -145,9 +147,7 @@ module RedmineAiHelper
             result_issue = Issue.find_by(id: result_issue_id)
             next unless result_issue
             next unless result_issue.visible?
-
-            # Check if ai_helper module is enabled in the issue's project
-            next unless result_issue.project&.module_enabled?(:ai_helper)
+            next unless User.current.allowed_to?(:view_ai_helper, result_issue.project)
 
             begin
               # Generate issue data using the same method as ask_with_filter
@@ -204,7 +204,7 @@ module RedmineAiHelper
             result_issue = Issue.find_by(id: result_issue_id)
             next unless result_issue
             next unless result_issue.visible?
-            next unless result_issue.project&.module_enabled?(:ai_helper)
+            next unless User.current.allowed_to?(:view_ai_helper, result_issue.project)
 
             begin
               issue_data = generate_issue_data(result_issue)
