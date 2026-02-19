@@ -23,9 +23,13 @@ module RedmineAiHelper
       # @return [Array<String>] disk paths of existing supported files
       def supported_attachment_paths(container)
         return [] unless container.respond_to?(:attachments)
+        return [] unless AiHelperSetting.attachment_send_enabled?
 
-        container.attachments.select { |a| supported_file?(a) && File.exist?(a.diskfile) }
-                             .map(&:diskfile)
+        max_size = AiHelperSetting.attachment_max_size_mb * 1.megabyte
+
+        container.attachments
+          .select { |a| supported_file?(a) && File.exist?(a.diskfile) && a.filesize <= max_size }
+          .map(&:diskfile)
       end
 
       # Backward compatibility alias

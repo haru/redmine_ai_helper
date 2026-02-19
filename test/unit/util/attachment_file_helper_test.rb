@@ -8,14 +8,18 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
 
   setup do
     @helper = TestClass.new
+    AiHelperSetting.delete_all
+    @setting = AiHelperSetting.find_or_create
+    @setting.update!(attachment_send_enabled: true, attachment_max_size_mb: 100)
   end
 
   # Helper to create a mock attachment with a given filename
-  def mock_attachment(filename, disk_path: nil, exists: true)
+  def mock_attachment(filename, disk_path: nil, exists: true, filesize: 1.megabyte)
     attachment = mock("attachment_#{filename}")
     attachment.stubs(:filename).returns(filename)
     disk_path ||= "/path/to/files/#{filename}"
     attachment.stubs(:diskfile).returns(disk_path)
+    attachment.stubs(:filesize).returns(filesize)
     File.stubs(:exist?).with(disk_path).returns(exists)
     attachment
   end
@@ -242,6 +246,71 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
         attachment = mock_attachment("file.#{ext}")
         refute @helper.send(:supported_file?, attachment), "Expected false for extension: #{ext}"
       end
+    end
+  end
+
+  context "supported_attachment_paths with attachment settings" do
+    should "return empty array when attachment_send_enabled is false" do
+      @setting.update!(attachment_send_enabled: false)
+      attachment = mock_attachment("image.png", filesize: 1.megabyte)
+
+      container = mock("container")
+      container.stubs(:respond_to?).with(:attachments).returns(true)
+      container.stubs(:attachments).returns([attachment])
+
+      result = @helper.supported_attachment_paths(container)
+      assert_equal [], result
+    end
+
+    should "return file paths when attachment_send_enabled is true" do
+      @setting.update!(attachment_send_enabled: true, attachment_max_size_mb: 3)
+      attachment = mock_attachment("image.png", filesize: 1.megabyte)
+
+      container = mock("container")
+      container.stubs(:respond_to?).with(:attachments).returns(true)
+      container.stubs(:attachments).returns([attachment])
+
+      result = @helper.supported_attachment_paths(container)
+      assert_equal ["/path/to/files/image.png"], result
+    end
+
+    should "exclude files exceeding attachment_max_size_mb" do
+      @setting.update!(attachment_send_enabled: true, attachment_max_size_mb: 2)
+      small_file = mock_attachment("small.png", filesize: 1.megabyte)
+      large_file = mock_attachment("large.png", filesize: 3.megabytes)
+
+      container = mock("container")
+      container.stubs(:respond_to?).with(:attachments).returns(true)
+      container.stubs(:attachments).returns([small_file, large_file])
+
+      result = @helper.supported_attachment_paths(container)
+      assert_equal ["/path/to/files/small.png"], result
+    end
+
+    should "include files at exactly the max size limit" do
+      @setting.update!(attachment_send_enabled: true, attachment_max_size_mb: 2)
+      exact_file = mock_attachment("exact.png", filesize: 2.megabytes)
+
+      container = mock("container")
+      container.stubs(:respond_to?).with(:attachments).returns(true)
+      container.stubs(:attachments).returns([exact_file])
+
+      result = @helper.supported_attachment_paths(container)
+      assert_equal ["/path/to/files/exact.png"], result
+    end
+
+    should "combine size filtering with extension filtering" do
+      @setting.update!(attachment_send_enabled: true, attachment_max_size_mb: 2)
+      small_supported = mock_attachment("file.png", filesize: 1.megabyte)
+      large_supported = mock_attachment("file2.png", filesize: 3.megabytes)
+      small_unsupported = mock_attachment("file.exe", filesize: 1.megabyte)
+
+      container = mock("container")
+      container.stubs(:respond_to?).with(:attachments).returns(true)
+      container.stubs(:attachments).returns([small_supported, large_supported, small_unsupported])
+
+      result = @helper.supported_attachment_paths(container)
+      assert_equal ["/path/to/files/file.png"], result
     end
   end
 end
