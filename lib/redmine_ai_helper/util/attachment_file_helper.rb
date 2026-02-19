@@ -15,7 +15,9 @@ module RedmineAiHelper
 
       # Extension categories for file type classification
       IMAGE_EXTENSIONS = %w[jpg jpeg png gif webp bmp].freeze
+      # Supported audio file extensions for attachment processing.
       AUDIO_EXTENSIONS = %w[mp3 wav m4a ogg flac].freeze
+      # Supported document file extensions for attachment processing.
       DOCUMENT_EXTENSIONS = %w[pdf txt md csv json xml].freeze
 
       # Returns disk paths of supported attachments from a container.

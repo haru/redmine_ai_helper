@@ -36,6 +36,8 @@ class AiHelperSetting < ApplicationRecord
       setting.attachment_send_enabled?
     end
 
+    # Returns the maximum attachment size in megabytes from the global setting.
+    # @return [Integer] maximum size in megabytes
     def attachment_max_size_mb
       setting.attachment_max_size_mb
     end
