@@ -52,4 +52,24 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       ActionController::Base.allow_forgery_protection = false
     end
   end
+
+  should "update attachment_send_enabled to true" do
+    post :update, params: { ai_helper_setting: { attachment_send_enabled: "1", attachment_max_size_mb: "5" } }
+    assert_redirected_to action: :index
+    @ai_helper_setting.reload
+    assert_equal true, @ai_helper_setting.attachment_send_enabled
+    assert_equal 5, @ai_helper_setting.attachment_max_size_mb
+  end
+
+  should "update attachment_max_size_mb" do
+    post :update, params: { ai_helper_setting: { attachment_send_enabled: "1", attachment_max_size_mb: "10" } }
+    assert_redirected_to action: :index
+    @ai_helper_setting.reload
+    assert_equal 10, @ai_helper_setting.attachment_max_size_mb
+  end
+
+  should "skip attachment_max_size_mb validation when attachment_send_enabled is false" do
+    post :update, params: { ai_helper_setting: { attachment_send_enabled: "0", attachment_max_size_mb: "0" } }
+    assert_redirected_to action: :index
+  end
 end

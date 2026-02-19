@@ -93,6 +93,8 @@ fr:
       ai_helper_setting:
         model_profile_id: "Profil du modèle"
         additional_instructions: "Instructions supplémentaires"
+        attachment_send_enabled: "Send attachments to LLM"
+        attachment_max_size_mb: "Maximum attachment size (MB)"
         vector_search_enabled: "Activer la recherche vectorielle"
         vector_search_uri: "URI"
         vector_search_api_key: "Clé API"

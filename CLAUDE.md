@@ -25,6 +25,11 @@ bundle exec rake redmine:plugins:ai_helper:setup_scm
 # Run migrations
 bundle exec rake redmine:plugins:migrate RAILS_ENV=production
 
+# Vector search index management
+bundle exec rake redmine:plugins:ai_helper:vector:generate RAILS_ENV=production  # Create index
+bundle exec rake redmine:plugins:ai_helper:vector:regist RAILS_ENV=production    # Register data
+bundle exec rake redmine:plugins:ai_helper:vector:destroy RAILS_ENV=production   # Delete index
+
 # YARD documentation coverage
 yard stats --list-undoc
 ```
@@ -97,6 +102,21 @@ Attached images on Issues, Wiki pages, and Board messages are sent to LLMs for v
 - **Security**: Disk file paths are never included in JSON text sent to the LLM — they are only passed via RubyLLM's `with:` parameter or dedicated image tool parameters, not embedded in the textual prompt
 - **Image detection**: Uses Redmine's `Attachment#image?` (extension-based: bmp, gif, jpg, jpe, jpeg, png, webp)
 
+### Redmine Plugin Integration
+
+- `init.rb` — Plugin registration, permissions, and module setup
+- `lib/redmine_ai_helper/view_hook.rb` — UI integration points into Redmine views
+- `*_patch.rb` files — Extend Redmine core classes (e.g., Project, Issue)
+
+### Data Models
+
+- `AiHelperConversation` / `AiHelperMessage` — Chat conversation storage
+- `AiHelperSummaryCache` — Cached summaries to avoid re-computation
+- `AiHelperSetting` / `AiHelperProjectSetting` — Global and project-level settings
+- `AiHelperModelProfile` — LLM provider configurations
+- `AiHelperVectorData` — Vector embeddings for issue/wiki similarity search (Qdrant)
+- `AiHelperCustomCommand` — User-defined reusable prompt commands
+
 ## Key Components
 
 - `lib/redmine_ai_helper/llm.rb` — Entry point from controllers, wraps all agent calls with Langfuse traces
@@ -129,7 +149,8 @@ This project follows TDD. **Always write tests BEFORE implementing features.**
 Testing conventions:
 - Use `shoulda` (context/should blocks), not rspec
 - Use `mocha` for mocking external servers
-- Test structure: `test/unit/` (models, agents, tools), `test/functional/` (controllers)
+- Use `test/model_factory.rb` for creating test fixtures
+- Test structure: `test/unit/` (models, agents, tools), `test/functional/` (controllers), `test/integration/` (API tests)
 - Aim for 95%+ coverage (check `coverage/` directory)
 
 ### Code Style (Ruby)
@@ -156,7 +177,10 @@ Testing conventions:
 - No custom colors or fonts — use Redmine's class definitions and design system
 - Use Redmine's `.box` class for container elements
 
-## Commit Guidelines
+## Git Workflow
+
+- Uses git-flow: `develop` is the integration branch, `main` is production
+- Always branch from `develop` for new features/fixes
 - Do not include any information about Claude Code in commit messages
 - Write commit messages in plain English
 

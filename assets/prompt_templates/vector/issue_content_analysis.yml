@@ -26,6 +26,9 @@ template: |-
 
   {issue}
 
+  # ATTACHED FILES
+  If any files are attached, analyze their contents as well and incorporate them into the summary and keyword extraction.
+
   # OUTPUT FORMAT
   {format_instructions}
 

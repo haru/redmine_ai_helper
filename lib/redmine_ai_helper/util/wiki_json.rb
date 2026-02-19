@@ -3,6 +3,7 @@ module RedmineAiHelper
   module Util
     # This module provides methods to generate JSON data for wiki pages.
     module WikiJson
+      include RedmineAiHelper::Util::AttachmentFileHelper
       # Generates a JSON representation of a wiki page.
       # @param page [WikiPage] The wiki page to be represented in JSON.
       # @return [Hash] A hash representing the wiki page in JSON format.
@@ -31,7 +32,7 @@ module RedmineAiHelper
               filename: attachment.filename,
               filesize: attachment.filesize,
               content_type: attachment.content_type,
-              type: attachment.image? ? "image" : nil,
+              type: attachment_file_type(attachment),
               description: attachment.description,
               created_on: attachment.created_on,
               attachment_url: attachment_path(attachment),

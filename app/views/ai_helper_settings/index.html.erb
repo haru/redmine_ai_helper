@@ -18,6 +18,15 @@
 
     <hr>
     <p>
+        <%= f.check_box :attachment_send_enabled %>
+    </p>
+    <div id="ai-helper-attachment-settings">
+        <p>
+            <%= f.number_field :attachment_max_size_mb, min: 1, size: 10 %>
+        </p>
+    </div>
+    <hr>
+    <p>
         <%= f.check_box :vector_search_enabled %>
     </p>
     <div id="ai-helper-vector-search">
@@ -68,6 +77,12 @@
         }
     }
 
+    function setAttachmentSettingsVisible() {
+        const attachmentEnabled = document.getElementById('ai_helper_setting_attachment_send_enabled').checked;
+        const settingsDiv = document.getElementById('ai-helper-attachment-settings');
+        settingsDiv.style.display = attachmentEnabled ? '' : 'none';
+    }
+
     function setVectorSearchVisible() {
         var vectorSearchEnabled = $('#ai_helper_setting_vector_search_enabled').is(':checked');
         if (vectorSearchEnabled) {
@@ -96,10 +111,14 @@
         $('#ai_helper_setting_model_profile_id').change(function() {
             setModelProfile();
         });
+        document.getElementById('ai_helper_setting_attachment_send_enabled').addEventListener('change', function() {
+            setAttachmentSettingsVisible();
+        });
         $('#ai_helper_setting_vector_search_enabled').change(function() {
             setVectorSearchVisible();
         });
     });
     setModelProfile();
+    setAttachmentSettingsVisible();
     setVectorSearchVisible();
 </script>

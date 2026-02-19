@@ -121,6 +121,8 @@ pt-BR:
       ai_helper_setting:
         model_profile_id: "Perfil de modelo"
         additional_instructions: "Instruções adicionais"
+        attachment_send_enabled: "Send attachments to LLM"
+        attachment_max_size_mb: "Maximum attachment size (MB)"
         vector_search_enabled: "Habilitar busca vetorial"
         vector_search_uri: "URI"
         vector_search_api_key: "Chave de API"

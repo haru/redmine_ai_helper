@@ -190,6 +190,8 @@ ja:
       ai_helper_setting:
         model_profile_id: "モデル定義"
         additional_instructions: "追加の指示"
+        attachment_send_enabled: "添付ファイルをLLMに送信する"
+        attachment_max_size_mb: "添付ファイルの最大サイズ(MB)"
         vector_search_enabled: "ベクトル検索を有効にする"
         vector_search_uri: "URI"
         vector_search_api_key: "APIキー"

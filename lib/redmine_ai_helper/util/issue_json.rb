@@ -5,6 +5,7 @@ module RedmineAiHelper
     # Provides methods to generate comprehensive JSON representations of issues
     # including related data like project, tracker, status, priority, assignees, attachments, etc.
     module IssueJson
+      include RedmineAiHelper::Util::AttachmentFileHelper
       # Generates a JSON representation of an issue.
       # @param issue [Issue] The issue to be represented in JSON.
       # @return [Hash] A hash representing the issue in JSON format.
@@ -55,7 +56,7 @@ module RedmineAiHelper
               filename: attachment.filename,
               filesize: attachment.filesize,
               content_type: attachment.content_type,
-              type: attachment.image? ? "image" : nil,
+              type: attachment_file_type(attachment),
               created_on: attachment.created_on,
               attachment_url: attachment_path(attachment, only_path: false),
             }
