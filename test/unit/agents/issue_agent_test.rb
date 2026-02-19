@@ -161,6 +161,47 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
         result = @agent.generate_issue_reply(issue: @issue, instructions: "Please provide a detailed response.")
         assert_equal "This is a generated reply.", result
       end
+
+      should "pass attachment file paths to chat via with parameter" do
+        @issue.stubs(:visible?).returns(true)
+
+        mock_prompt = mock("Prompt")
+        mock_prompt.stubs(:format).returns("Generate a reply for this issue")
+        @agent.stubs(:load_prompt).with("issue_agent/generate_reply").returns(mock_prompt)
+
+        file_paths = ["/path/to/file1.pdf", "/path/to/file2.png"]
+        @agent.stubs(:supported_attachment_paths).with(@issue).returns(file_paths)
+
+        @agent.expects(:chat).with(
+          anything,
+          anything,
+          anything,
+          with: file_paths
+        ).returns("Reply considering attachments.")
+
+        result = @agent.generate_issue_reply(issue: @issue, instructions: "Reply considering the attached files.")
+        assert_equal "Reply considering attachments.", result
+      end
+
+      should "pass nil for with parameter when no attachments exist" do
+        @issue.stubs(:visible?).returns(true)
+
+        mock_prompt = mock("Prompt")
+        mock_prompt.stubs(:format).returns("Generate a reply for this issue")
+        @agent.stubs(:load_prompt).with("issue_agent/generate_reply").returns(mock_prompt)
+
+        @agent.stubs(:supported_attachment_paths).with(@issue).returns([])
+
+        @agent.expects(:chat).with(
+          anything,
+          anything,
+          anything,
+          with: nil
+        ).returns("Reply without attachments.")
+
+        result = @agent.generate_issue_reply(issue: @issue, instructions: "Reply to the issue.")
+        assert_equal "Reply without attachments.", result
+      end
     end
 
     context "generate_sub_issues_draft" do
