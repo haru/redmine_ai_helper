@@ -2,10 +2,21 @@ require "langfuse"
 require "ruby_llm"
 $LOAD_PATH.unshift "#{File.dirname(__FILE__)}/lib"
 
+# require logger early so CustomLogger is available during plugin initialization
+require "redmine_ai_helper/logger"
+
 # Initialize RubyLLM with minimal configuration.
 # API keys are dynamically set per-request via each provider's configure_ruby_llm method.
 RubyLLM.configure do |config|
   # No API keys set here; they are loaded from AiHelperModelProfile at runtime.
+  # Configure logging per specs/ruby_llm_logging_design_ja.md:
+  # - Route logs to RedmineAiHelper::CustomLogger
+  # - Default to :error level unless debugging is explicitly enabled via env
+  config.logger = RedmineAiHelper::CustomLogger.instance
+
+  # Always default log level to :error and disable stream debug per spec
+  config.log_level = :error
+  config.log_stream_debug = false
 end
 require "redmine_ai_helper/util/config_file"
 require "redmine_ai_helper/user_patch"
