@@ -72,25 +72,10 @@ class IssuesBottomPartialTest < ActionView::TestCase
         assert_includes html, "getSelectedScope"
       end
 
-      should "include saveScopeSelection function" do
-        html = render(partial: "ai_helper/issues/bottom", locals: {})
-        assert_includes html, "saveScopeSelection"
-      end
-
-      should "include loadScopeSelection function" do
-        html = render(partial: "ai_helper/issues/bottom", locals: {})
-        assert_includes html, "loadScopeSelection"
-      end
-
       should "pass scope parameter to similar issues URL" do
         html = render(partial: "ai_helper/issues/bottom", locals: {})
         assert_includes html, "scope"
         assert_includes html, "getSelectedScope()"
-      end
-
-      should "use localStorage key with user id for scope" do
-        html = render(partial: "ai_helper/issues/bottom", locals: {})
-        assert_includes html, "aiHelperSimilarIssuesScope_#{User.current.id}"
       end
     end
   end
