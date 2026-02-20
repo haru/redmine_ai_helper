@@ -353,6 +353,74 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
       end
     end
 
+    context "#find_similar_issues with scope" do
+      setup do
+        @issue = Issue.find(1)
+        @issue.project.enable_module!(:ai_helper)
+        User.current = User.find(1)
+        @mock_db = mock("vector_db")
+        @vector_tools.stubs(:vector_db).with(target: "issue").returns(@mock_db)
+        @mock_db.stubs(:client).returns(true)
+        @mock_logger.stubs(:warn)
+
+        @mock_analyzer = mock("issue_content_analyzer")
+        @mock_analyzer.stubs(:analyze).returns({
+          summary: "Test summary",
+          keywords: ["keyword1", "keyword2"],
+        })
+        RedmineAiHelper::Vector::IssueContentAnalyzer.stubs(:new).returns(@mock_analyzer)
+      end
+
+      should "pass scope filter to similarity_search for scope current" do
+        User.current.stubs(:allowed_to?).returns(true)
+        @mock_db.expects(:similarity_search).with { |args|
+          args[:filter] == { must: [{ key: "project_id", match: { value: @issue.project.id } }] }
+        }.returns([])
+
+        @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10, scope: "current", project: @issue.project)
+      end
+
+      should "pass scope filter to similarity_search for scope with_subprojects" do
+        @issue.project.descendants.active.each { |p| p.enable_module!(:ai_helper) }
+        User.current.stubs(:allowed_to?).returns(true)
+
+        @mock_db.expects(:similarity_search).with { |args|
+          args[:filter].key?(:should) || args[:filter].key?(:must)
+        }.returns([])
+
+        @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10, scope: "with_subprojects", project: @issue.project)
+      end
+
+      should "pass scope filter to similarity_search for scope all" do
+        Project.active.each { |p| p.enable_module!(:ai_helper) }
+        User.current.stubs(:allowed_to?).returns(true)
+
+        @mock_db.expects(:similarity_search).with { |args|
+          args[:filter].key?(:should)
+        }.returns([])
+
+        @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10, scope: "all", project: @issue.project)
+      end
+
+      should "default to with_subprojects scope when scope not specified" do
+        @issue.project.descendants.active.each { |p| p.enable_module!(:ai_helper) }
+        User.current.stubs(:allowed_to?).returns(true)
+
+        expected_ids = [@issue.project.id] + @issue.project.descendants.active.pluck(:id)
+        @mock_db.expects(:similarity_search).with { |args|
+          filter = args[:filter]
+          if expected_ids.length == 1
+            filter[:must].first[:match][:value] == expected_ids.first
+          else
+            filter_ids = filter[:should].map { |f| f[:match][:value] }
+            expected_ids.all? { |id| filter_ids.include?(id) }
+          end
+        }.returns([])
+
+        @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
+      end
+    end
+
     context "find_similar_issues with hybrid query" do
       setup do
         @issue = Issue.find(1)
@@ -422,6 +490,161 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         # Should not raise error, should fallback gracefully
         result = @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
         assert_equal [], result
+      end
+    end
+
+    context "#collect_permitted_project_ids" do
+      setup do
+        @project = Project.find(1)
+        @project.enable_module!(:ai_helper)
+        User.current = User.find(1)
+      end
+
+      should "return only current project id for scope current" do
+        User.current.stubs(:allowed_to?).with(:view_ai_helper, @project).returns(true)
+        result = @vector_tools.send(:collect_permitted_project_ids, "current", @project)
+        assert_equal [@project.id], result
+      end
+
+      should "return empty array when user lacks permission for scope current" do
+        User.current.stubs(:allowed_to?).returns(false)
+        result = @vector_tools.send(:collect_permitted_project_ids, "current", @project)
+        assert_equal [], result
+      end
+
+      should "return project and subproject ids for scope with_subprojects" do
+        # Enable ai_helper for subprojects and stub permissions
+        subproject_ids = @project.descendants.active.pluck(:id)
+        all_project_ids = [@project.id] + subproject_ids
+        all_project_ids.each do |pid|
+          Project.find(pid).enable_module!(:ai_helper)
+        end
+        User.current.stubs(:allowed_to?).returns(true)
+
+        result = @vector_tools.send(:collect_permitted_project_ids, "with_subprojects", @project)
+        assert_includes result, @project.id
+        subproject_ids.each do |sid|
+          assert_includes result, sid
+        end
+      end
+
+      should "exclude subprojects where user lacks permission" do
+        subproject = Project.find(3)
+        subproject.enable_module!(:ai_helper)
+        User.current.stubs(:allowed_to?).returns(true)
+        User.current.stubs(:allowed_to?).with(:view_ai_helper, subproject).returns(false)
+
+        result = @vector_tools.send(:collect_permitted_project_ids, "with_subprojects", @project)
+        assert_includes result, @project.id
+        refute_includes result, subproject.id
+      end
+
+      should "return all active project ids with permission for scope all" do
+        Project.active.each { |p| p.enable_module!(:ai_helper) }
+        User.current.stubs(:allowed_to?).returns(true)
+
+        result = @vector_tools.send(:collect_permitted_project_ids, "all", @project)
+        Project.active.each do |p|
+          assert_includes result, p.id
+        end
+      end
+
+      should "exclude projects without permission for scope all" do
+        excluded_project = Project.find(2)
+        Project.active.each { |p| p.enable_module!(:ai_helper) }
+        User.current.stubs(:allowed_to?).returns(true)
+        User.current.stubs(:allowed_to?).with(:view_ai_helper, excluded_project).returns(false)
+
+        result = @vector_tools.send(:collect_permitted_project_ids, "all", @project)
+        refute_includes result, excluded_project.id
+      end
+
+      should "raise ArgumentError for invalid scope" do
+        assert_raises(ArgumentError) do
+          @vector_tools.send(:collect_permitted_project_ids, "invalid", @project)
+        end
+      end
+    end
+
+    context "#build_scope_filter" do
+      setup do
+        @project = Project.find(1)
+        @project.enable_module!(:ai_helper)
+        User.current = User.find(1)
+      end
+
+      should "return must filter with single project id for scope current" do
+        User.current.stubs(:allowed_to?).with(:view_ai_helper, @project).returns(true)
+        result = @vector_tools.send(:build_scope_filter, "current", @project)
+        expected = {
+          must: [
+            { key: "project_id", match: { value: @project.id } }
+          ]
+        }
+        assert_equal expected, result
+      end
+
+      should "return nil when no permitted projects for scope current" do
+        User.current.stubs(:allowed_to?).returns(false)
+        result = @vector_tools.send(:build_scope_filter, "current", @project)
+        assert_nil result
+      end
+
+      should "return should filter with multiple project ids for scope with_subprojects" do
+        subproject_ids = @project.descendants.active.pluck(:id)
+        all_ids = [@project.id] + subproject_ids
+        all_ids.each { |pid| Project.find(pid).enable_module!(:ai_helper) }
+        User.current.stubs(:allowed_to?).returns(true)
+
+        result = @vector_tools.send(:build_scope_filter, "with_subprojects", @project)
+        assert result.key?(:should)
+        result_ids = result[:should].map { |f| f[:match][:value] }
+        all_ids.each { |id| assert_includes result_ids, id }
+      end
+
+      should "return must filter when with_subprojects has no subprojects with permission" do
+        # Only current project has permission
+        User.current.stubs(:allowed_to?).returns(false)
+        User.current.stubs(:allowed_to?).with(:view_ai_helper, @project).returns(true)
+
+        result = @vector_tools.send(:build_scope_filter, "with_subprojects", @project)
+        expected = {
+          must: [
+            { key: "project_id", match: { value: @project.id } }
+          ]
+        }
+        assert_equal expected, result
+      end
+
+      should "return should filter for scope all with multiple permitted projects" do
+        Project.active.each { |p| p.enable_module!(:ai_helper) }
+        User.current.stubs(:allowed_to?).returns(true)
+
+        result = @vector_tools.send(:build_scope_filter, "all", @project)
+        assert result.key?(:should)
+        result_ids = result[:should].map { |f| f[:match][:value] }
+        Project.active.each { |p| assert_includes result_ids, p.id }
+      end
+
+      should "return must filter for scope all when only one project permitted" do
+        permitted_project = Project.find(1)
+        permitted_project.enable_module!(:ai_helper)
+        User.current.stubs(:allowed_to?).returns(false)
+        User.current.stubs(:allowed_to?).with(:view_ai_helper, permitted_project).returns(true)
+
+        result = @vector_tools.send(:build_scope_filter, "all", @project)
+        expected = {
+          must: [
+            { key: "project_id", match: { value: permitted_project.id } }
+          ]
+        }
+        assert_equal expected, result
+      end
+
+      should "raise ArgumentError for invalid scope" do
+        assert_raises(ArgumentError) do
+          @vector_tools.send(:build_scope_filter, "invalid", @project)
+        end
       end
     end
 
