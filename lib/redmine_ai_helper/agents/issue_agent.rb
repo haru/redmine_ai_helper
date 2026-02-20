@@ -175,13 +175,18 @@ module RedmineAiHelper
       # Find similar issues using VectorTools
       # @param issue [Issue] The issue to find similar issues for
       # @return [Array<Hash>] Array of similar issues with formatted metadata
-      def find_similar_issues(issue:)
+      def find_similar_issues(issue:, scope: "with_subprojects", project: nil)
         return [] unless issue.visible?
         return [] unless AiHelperSetting.vector_search_enabled?
 
         begin
           vector_tools = RedmineAiHelper::Tools::VectorTools.new
-          similar_issues = vector_tools.find_similar_issues(issue_id: issue.id, k: 10)
+          similar_issues = vector_tools.find_similar_issues(
+            issue_id: issue.id,
+            k: 10,
+            scope: scope,
+            project: project || issue.project
+          )
 
           ai_helper_logger.debug "Found #{similar_issues.length} similar issues for issue #{issue.id}"
           similar_issues

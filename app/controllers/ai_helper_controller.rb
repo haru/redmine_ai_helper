@@ -13,6 +13,9 @@ class AiHelperController < ApplicationController
   include AiHelperHelper
   include RedmineAiHelper::Export::PDF::ProjectHealthPdfHelper
 
+  SIMILAR_ISSUES_VALID_SCOPES = %w[current with_subprojects all].freeze
+  SIMILAR_ISSUES_DEFAULT_SCOPE = "with_subprojects".freeze
+
   rescue_from ActionDispatch::Http::Parameters::ParseError, with: :handle_parse_error
 
   protect_from_forgery with: :exception
@@ -279,7 +282,9 @@ class AiHelperController < ApplicationController
   def similar_issues
     begin
       llm = RedmineAiHelper::Llm.new
-      similar_issues = llm.find_similar_issues(issue: @issue)
+      scope = params[:scope]
+      scope = SIMILAR_ISSUES_DEFAULT_SCOPE unless SIMILAR_ISSUES_VALID_SCOPES.include?(scope)
+      similar_issues = llm.find_similar_issues(issue: @issue, scope: scope, project: @issue.project)
 
       render partial: "ai_helper/issues/similar_issues", locals: { similar_issues: similar_issues }
     rescue => e
