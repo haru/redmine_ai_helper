@@ -43,7 +43,7 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
           llm_provider: @mock_llm_provider,
         )
         mock_qdrant_client = mock("Qdrant::Client")
-        ::Qdrant::Client.expects(:new).with(url: "http://localhost:6333", api_key: "test_key").returns(mock_qdrant_client)
+        ::Qdrant::Client.expects(:new).with(url: "http://localhost:6333", api_key: "test_key", logger: RedmineAiHelper::CustomLogger.instance).returns(mock_qdrant_client)
         assert_equal mock_qdrant_client, qdrant.client
       end
     end
@@ -206,8 +206,8 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
       should "pass filter parameter to Qdrant API" do
         filter = {
           must: [
-            { key: "project_id", match: { value: 1 } }
-          ]
+            { key: "project_id", match: { value: 1 } },
+          ],
         }
         mock_response = {
           "result" => [
