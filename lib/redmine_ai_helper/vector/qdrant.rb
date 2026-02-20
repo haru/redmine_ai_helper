@@ -83,7 +83,7 @@ module RedmineAiHelper
       # @param query [String] The query string.
       # @param k [Integer] The number of results to return.
       # @return [Array<Hash>] Each hash contains "payload" and "score" keys.
-      def similarity_search(query:, k: 4)
+      def similarity_search(query:, k: 4, filter: nil)
         return [] unless client
 
         embedding = embed(query)
@@ -94,6 +94,7 @@ module RedmineAiHelper
           vector: embedding,
           with_payload: true,
           with_vector: false,
+          filter: filter,
         )
         results = response.dig("result")
         return [] unless results.is_a?(Array)

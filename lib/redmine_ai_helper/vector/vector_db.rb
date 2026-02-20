@@ -136,8 +136,8 @@ module RedmineAiHelper
       # @param question [String] The query string to search for.
       # @param k [Integer] The number of results to return.
       # @return [Array] An array of similar data that match the query.
-      def similarity_search(question:, k: 10)
-        client.similarity_search(query: question, k: k)
+      def similarity_search(question:, k: 10, filter: nil)
+        client.similarity_search(query: question, k: k, filter: filter)
       end
 
       # Converts the data to JSON format.
