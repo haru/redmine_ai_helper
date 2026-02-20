@@ -73,9 +73,10 @@
 
   // Function to find similar issues
   function findSimilarIssues() {
-    const url = "<%= ai_helper_similar_issues_path(id: @issue.id) %>";
+    const scope = getSelectedScope();
+    const url = "<%= ai_helper_similar_issues_path(id: @issue.id) %>" + "?scope=" + encodeURIComponent(scope);
     const similarIssuesArea = document.getElementById('ai-helper-similar-issues-area');
-    
+
     if (similarIssuesArea) {
       similarIssuesArea.innerHTML = '<div class="ai-helper-loader"></div>';
     }
@@ -102,6 +103,22 @@
   };
 
 
+  // Get selected scope value from radio buttons
+  function getSelectedScope() {
+    const selected = document.querySelector('input[name="ai_helper_scope"]:checked');
+    return selected ? selected.value : "with_subprojects";
+  }
+
+  // Save scope selection to localStorage
+  function saveScopeSelection(scope) {
+    localStorage.setItem('aiHelperSimilarIssuesScope_<%= User.current.id %>', scope);
+  }
+
+  // Load scope selection from localStorage
+  function loadScopeSelection() {
+    return localStorage.getItem('aiHelperSimilarIssuesScope_<%= User.current.id %>') || "with_subprojects";
+  }
+
   // Function to move similar issues section to after relations
   function moveSimilarIssuesToRelations() {
     const similarIssuesSection = document.getElementById('ai-helper-similar-issues-section');
@@ -126,6 +143,21 @@
 
     // Move similar issues to relations area
     moveSimilarIssuesToRelations();
+
+    // Restore saved scope selection
+    const savedScope = loadScopeSelection();
+    const scopeRadio = document.querySelector('input[name="ai_helper_scope"][value="' + savedScope + '"]');
+    if (scopeRadio) {
+      scopeRadio.checked = true;
+    }
+
+    // Add change event listeners to scope radio buttons
+    const scopeRadios = document.querySelectorAll('input[name="ai_helper_scope"]');
+    scopeRadios.forEach(function(radio) {
+      radio.addEventListener('change', function() {
+        saveScopeSelection(this.value);
+      });
+    });
   });
 
 <% end %>
@@ -167,6 +199,20 @@
         <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper)%>
         <%= l(:ai_helper_similar_issues) %>
     <% end %>
+    <div id="ai-helper-similar-issues-scope" class="ai-helper-scope-toggle">
+      <label class="ai-helper-scope-option">
+        <input type="radio" name="ai_helper_scope" value="current">
+        <span><%= l(:ai_helper_scope_current_project) %></span>
+      </label>
+      <label class="ai-helper-scope-option">
+        <input type="radio" name="ai_helper_scope" value="with_subprojects" checked>
+        <span><%= l(:ai_helper_scope_with_subprojects) %></span>
+      </label>
+      <label class="ai-helper-scope-option">
+        <input type="radio" name="ai_helper_scope" value="all">
+        <span><%= l(:ai_helper_scope_all_projects) %></span>
+      </label>
+    </div>
     <div id="ai-helper-similar-issues-area">
     </div>
 </div>

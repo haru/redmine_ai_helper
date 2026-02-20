@@ -1493,3 +1493,42 @@ table.list.ai-helper-report-list td.radio .radio-placeholder {
   color: #888;
   font-size: 0.9em;
 }
+
+.ai-helper-scope-toggle {
+  display: inline-flex;
+  margin-left: 10px;
+  vertical-align: middle;
+}
+
+.ai-helper-scope-option {
+  cursor: pointer;
+}
+
+.ai-helper-scope-option input[type="radio"] {
+  display: none;
+}
+
+.ai-helper-scope-option span {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid #ddd;
+  font-size: 0.85em;
+}
+
+.ai-helper-scope-option:first-child span {
+  border-radius: 3px 0 0 3px;
+}
+
+.ai-helper-scope-option:last-child span {
+  border-radius: 0 3px 3px 0;
+}
+
+.ai-helper-scope-option+.ai-helper-scope-option span {
+  border-left: none;
+}
+
+.ai-helper-scope-option input[type="radio"]:checked+span {
+  background-color: #628DB6;
+  color: #fff;
+  border-color: #628DB6;
+}
