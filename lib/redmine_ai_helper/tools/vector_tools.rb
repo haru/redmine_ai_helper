@@ -69,6 +69,7 @@ module RedmineAiHelper
               wiki = WikiPage.find_by(id: id)
               next unless wiki
               next unless wiki.visible?
+              next unless User.current.allowed_to?(:view_ai_helper, wiki.project)
               wikis << generate_wiki_data(wiki)
             }
             ai_helper_logger.debug("Filtered wikis: #{wikis}")
@@ -80,6 +81,7 @@ module RedmineAiHelper
               issue = Issue.find_by(id: id)
               next unless issue
               next unless issue.visible?
+              next unless User.current.allowed_to?(:view_ai_helper, issue.project)
               issues << generate_issue_data(issue)
             }
             ai_helper_logger.debug("Filtered issues: #{issues}")
@@ -102,12 +104,12 @@ module RedmineAiHelper
       # @param issue_id [Integer] The ID of the issue to find similar issues for.
       # @param k [Integer] The number of similar issues to retrieve. Default is 10. Max is 50
       # @return [Array<Hash>] An array of hashes containing similar issues with similarity scores.
-      def find_similar_issues(issue_id:, k: 10)
+      def find_similar_issues(issue_id:, k: 10, scope: "with_subprojects", project: nil)
         raise("The vector search functionality is not enabled.") unless vector_db_enabled?
         raise("limit must be between 1 and 50.") unless k.between?(1, 50)
 
         begin
-          ai_helper_logger.debug("Finding similar issues for issue_id: #{issue_id}, k: #{k}")
+          ai_helper_logger.debug("Finding similar issues for issue_id: #{issue_id}, k: #{k}, scope: #{scope}")
 
           issue = Issue.find_by(id: issue_id)
           raise("Issue not found with ID: #{issue_id}") unless issue
@@ -126,8 +128,11 @@ module RedmineAiHelper
           query = build_hybrid_query(issue)
           ai_helper_logger.debug("Performing similarity search with query: #{query[0..100]}...")
 
-          # Search for similar issues
-          results = db.similarity_search(question: query, k: k)
+          # Build scope filter
+          filter = build_scope_filter(scope, project || issue.project)
+
+          # Search for similar issues with scope filter
+          results = db.similarity_search(question: query, k: k, filter: filter)
           ai_helper_logger.debug("Raw similarity search results: #{results&.length || 0} items")
 
           # Handle case where results is nil or empty
@@ -145,9 +150,7 @@ module RedmineAiHelper
             result_issue = Issue.find_by(id: result_issue_id)
             next unless result_issue
             next unless result_issue.visible?
-
-            # Check if ai_helper module is enabled in the issue's project
-            next unless result_issue.project&.module_enabled?(:ai_helper)
+            next unless User.current.allowed_to?(:view_ai_helper, result_issue.project)
 
             begin
               # Generate issue data using the same method as ask_with_filter
@@ -204,7 +207,7 @@ module RedmineAiHelper
             result_issue = Issue.find_by(id: result_issue_id)
             next unless result_issue
             next unless result_issue.visible?
-            next unless result_issue.project&.module_enabled?(:ai_helper)
+            next unless User.current.allowed_to?(:view_ai_helper, result_issue.project)
 
             begin
               issue_data = generate_issue_data(result_issue)
@@ -300,6 +303,45 @@ module RedmineAiHelper
           raise("Invalid target: #{target}. Must be 'issue' or 'wiki'.")
         end
         @vector_db
+      end
+
+      VALID_SCOPES = %w[current with_subprojects all].freeze
+
+      def collect_permitted_project_ids(scope, project)
+        candidate_ids = case scope
+                        when "current"
+                          [project.id]
+                        when "with_subprojects"
+                          [project.id] + project.descendants.active.pluck(:id)
+                        when "all"
+                          Project.active.pluck(:id)
+                        else
+                          raise ArgumentError, "Invalid scope: #{scope}"
+                        end
+
+        Project.where(id: candidate_ids).select { |p|
+          User.current.allowed_to?(:view_ai_helper, p)
+        }.map(&:id)
+      end
+
+      def build_scope_filter(scope, project)
+        project_ids = collect_permitted_project_ids(scope, project)
+
+        return nil if project_ids.empty?
+
+        if project_ids.length == 1
+          {
+            must: [
+              { key: "project_id", match: { value: project_ids.first } }
+            ]
+          }
+        else
+          {
+            should: project_ids.map { |id|
+              { key: "project_id", match: { value: id } }
+            }
+          }
+        end
       end
     end
   end

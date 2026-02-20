@@ -83,9 +83,34 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
         assert_equal res, ["test"]
       end
     end
+
+    context "similarity_search" do
+      should "delegate to client similarity_search without filter" do
+        res = @issue_vector_db.similarity_search(question: "test query", k: 5)
+        assert_equal [{ "payload" => { "issue_id" => 1 }, "score" => 0.9 }], res
+      end
+
+      should "pass filter parameter to client similarity_search" do
+        filter = {
+          must: [
+            { key: "project_id", match: { value: 1 } }
+          ]
+        }
+        res = @issue_vector_db.similarity_search(question: "test query", k: 5, filter: filter)
+        assert_equal [{ "payload" => { "issue_id" => 1 }, "score" => 0.9 }], res
+        assert_equal filter, @qdrant_stub.last_filter
+      end
+
+      should "default filter to nil" do
+        @issue_vector_db.similarity_search(question: "test query", k: 5)
+        assert_nil @qdrant_stub.last_filter
+      end
+    end
   end
 
   class QdrantStub
+    attr_reader :last_filter
+
     def create_default_schema
       return ""
     end
@@ -106,6 +131,11 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
 
     def ask_with_filter(query:, k: 20, filter: nil)
       ["test"]
+    end
+
+    def similarity_search(query:, k: 4, filter: nil)
+      @last_filter = filter
+      [{ "payload" => { "issue_id" => 1 }, "score" => 0.9 }]
     end
   end
 end

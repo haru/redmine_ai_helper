@@ -499,7 +499,7 @@ class AiHelperControllerTest < ActionController::TestCase
           issue_url: "/issues/2"
         }]
 
-        @llm_mock.stubs(:find_similar_issues).with(issue: @issue).returns(similar_issues)
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
 
         get :similar_issues, params: { id: @issue.id }
         assert_response :success
@@ -523,7 +523,7 @@ class AiHelperControllerTest < ActionController::TestCase
           issue_url: "/issues/2"
         }]
 
-        @llm_mock.stubs(:find_similar_issues).with(issue: @issue).returns(similar_issues)
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
 
         get :similar_issues, params: { id: @issue.id }
         assert_response :success
@@ -537,7 +537,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
       should "return empty array when no similar issues found" do
         # Mock LLM find_similar_issues method returning empty array
-        @llm_mock.stubs(:find_similar_issues).with(issue: @issue).returns([])
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns([])
 
         get :similar_issues, params: { id: @issue.id }
         assert_response :success
@@ -548,7 +548,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
       should "handle vector search errors gracefully" do
         # Mock LLM find_similar_issues method raising an error
-        @llm_mock.stubs(:find_similar_issues).with(issue: @issue).raises(StandardError.new("Vector search failed"))
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).raises(StandardError.new("Vector search failed"))
 
         get :similar_issues, params: { id: @issue.id }
         assert_response :internal_server_error
@@ -570,7 +570,7 @@ class AiHelperControllerTest < ActionController::TestCase
           issue_url: "/issues/2"
         }]
 
-        @llm_mock.stubs(:find_similar_issues).with(issue: @issue).returns(similar_issues)
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
 
         get :similar_issues, params: { id: @issue.id }
         assert_response :success
@@ -578,6 +578,42 @@ class AiHelperControllerTest < ActionController::TestCase
         # Check that the similar issue is displayed even without assigned_to_name
         assert_match /Similar issue/, @response.body
         assert_match /85\.0%/, @response.body
+      end
+
+      should "pass scope parameter to Llm" do
+        @llm_mock.expects(:find_similar_issues)
+                 .with(issue: @issue, scope: "current", project: @issue.project)
+                 .returns([])
+
+        get :similar_issues, params: { id: @issue.id, scope: "current" }
+        assert_response :success
+      end
+
+      should "pass all scope to Llm" do
+        @llm_mock.expects(:find_similar_issues)
+                 .with(issue: @issue, scope: "all", project: @issue.project)
+                 .returns([])
+
+        get :similar_issues, params: { id: @issue.id, scope: "all" }
+        assert_response :success
+      end
+
+      should "default scope to with_subprojects when not specified" do
+        @llm_mock.expects(:find_similar_issues)
+                 .with(issue: @issue, scope: "with_subprojects", project: @issue.project)
+                 .returns([])
+
+        get :similar_issues, params: { id: @issue.id }
+        assert_response :success
+      end
+
+      should "fallback to default scope for invalid scope value" do
+        @llm_mock.expects(:find_similar_issues)
+                 .with(issue: @issue, scope: "with_subprojects", project: @issue.project)
+                 .returns([])
+
+        get :similar_issues, params: { id: @issue.id, scope: "invalid_scope" }
+        assert_response :success
       end
     end
 

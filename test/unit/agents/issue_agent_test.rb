@@ -296,12 +296,34 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
         ]
 
         @mock_vector_tools.expects(:find_similar_issues)
-                         .with(issue_id: @issue.id, k: 10)
+                         .with(issue_id: @issue.id, k: 10, scope: "with_subprojects", project: @issue.project)
                          .returns(similar_issues_data)
 
         result = @agent.find_similar_issues(issue: @issue)
 
         assert_equal similar_issues_data, result
+      end
+
+      should "pass scope and project to VectorTools" do
+        @issue.stubs(:visible?).returns(true)
+        @mock_vector_tools.expects(:find_similar_issues)
+                         .with(issue_id: @issue.id, k: 10, scope: "current", project: @issue.project)
+                         .returns([])
+
+        result = @agent.find_similar_issues(issue: @issue, scope: "current", project: @issue.project)
+
+        assert_equal [], result
+      end
+
+      should "default scope to with_subprojects" do
+        @issue.stubs(:visible?).returns(true)
+        @mock_vector_tools.expects(:find_similar_issues)
+                         .with(issue_id: @issue.id, k: 10, scope: "with_subprojects", project: @issue.project)
+                         .returns([])
+
+        result = @agent.find_similar_issues(issue: @issue, project: @issue.project)
+
+        assert_equal [], result
       end
 
       should "handle errors from VectorTools gracefully" do

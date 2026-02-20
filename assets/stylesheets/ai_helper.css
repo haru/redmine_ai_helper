@@ -1493,3 +1493,7 @@ table.list.ai-helper-report-list td.radio .radio-placeholder {
   color: #888;
   font-size: 0.9em;
 }
+
+.ai-helper-scope-toggle {
+  margin-left: 1em;
+}

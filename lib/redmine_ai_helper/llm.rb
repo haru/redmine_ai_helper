@@ -126,12 +126,12 @@ module RedmineAiHelper
     # Find similar issues using IssueAgent
     # @param issue [Issue] The issue object to find similar issues for
     # @return [Array<Hash>] Array of similar issues with metadata
-    def find_similar_issues(issue:)
+    def find_similar_issues(issue:, scope: "with_subprojects", project: nil)
       begin
         langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: "find similar issues for #{issue.id}")
         agent = RedmineAiHelper::Agents::IssueAgent.new(project: issue.project, langfuse: langfuse)
-        langfuse.create_span(name: "find_similar_issues", input: "issue_id: #{issue.id}")
-        results = agent.find_similar_issues(issue: issue)
+        langfuse.create_span(name: "find_similar_issues", input: "issue_id: #{issue.id}, scope: #{scope}")
+        results = agent.find_similar_issues(issue: issue, scope: scope, project: project || issue.project)
         langfuse.finish_current_span(output: results)
         langfuse.flush(output: results.to_s)
         results
