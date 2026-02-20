@@ -28,7 +28,7 @@ RedmineAiHelper::Util::McpPatch.apply!
 
 # Suppress RubyLLM::MCP INFO logs; the gem has its own Logger independent of RubyLLM.configure
 if defined?(RubyLLM::MCP) && RubyLLM::MCP.respond_to?(:logger)
-  RubyLLM::MCP.logger.level = Logger::ERROR
+  RubyLLM::MCP.logger.level = ::Logger::ERROR
 end
 
 # Generate MCP Agent classes after all agents are loaded
