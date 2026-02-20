@@ -25,7 +25,9 @@ module RedmineAiHelper
       # Returns the qdrant-ruby client, lazily initialized.
       # @return [::Qdrant::Client] The Qdrant client instance.
       def client
-        @client ||= ::Qdrant::Client.new(url: @url, api_key: @api_key)
+        # Pass the plugin's custom logger so Faraday HTTP logs are routed to
+        # log/ai_helper.log instead of being printed to STDOUT.
+        @client ||= ::Qdrant::Client.new(url: @url, api_key: @api_key, logger: RedmineAiHelper::CustomLogger.instance)
       end
 
       # Generate embedding via LLM provider (uses RubyLLM).
