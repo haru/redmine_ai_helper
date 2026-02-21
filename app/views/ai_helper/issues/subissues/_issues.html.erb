@@ -6,6 +6,7 @@
             <th></th>
             <th><%= l(:field_tracker) %></th>
             <th><%= l(:field_title) %></th>
+            <th><%= l(:field_assigned_to) %></th>
             <th><%= l(:field_fixed_version) %></th>
             <th><%= l(:field_description) %></th>
         </tr>
@@ -15,8 +16,12 @@
         <tr>
             <td><%= check_box_tag "sub_issues[#{i}]check", sub_issue.id, true, id: "sub_issue_#{i}" %></td>
             <td>
-                <%= select_tag "sub_issues[#{i}]tracker_id", options_for_select(trackers_options_for_select, sub_issue.tracker_id), :title => @issue.tracker.description, id: "sub_issues_tracker_id_#{i}" %>
-
+                <%= select_tag "sub_issues[#{i}]tracker_id",
+                    options_for_select(trackers_options_for_select, sub_issue.tracker_id),
+                    title: @issue.tracker.description,
+                    id: "sub_issues_tracker_id_#{i}",
+                    class: "sub-issue-tracker-select",
+                    data: { project_id: @issue.project_id, row_index: i } %>
             </td>
             <td>
                 <span id="ai_helper_sub_issue_subject_<%= i %>">
@@ -28,6 +33,13 @@
                     <%= link_to sprite_icon('save'), "#", onclick: "ai_helper.apply_sub_issue_subject(#{i}); return false" %>
                     <%= link_to sprite_icon('cancel'), "#", onclick: "ai_helper.cancel_sub_issue_subject(#{i}); return false" %>
                 </span>
+            </td>
+            <td>
+                <%= select_tag "sub_issues[#{i}]assigned_to_id",
+                    options_for_select(assignable_users_options_for_select),
+                    include_blank: true,
+                    id: "sub_issues_assigned_to_id_#{i}",
+                    class: "sub-issue-assignee-select" %>
             </td>
             <td>
                 <%= select_tag "sub_issues[#{i}]fixed_version_id", options_for_select(versions_options_for_select, issue.fixed_version_id), include_blank: "",id: "sub_issues_fixed_version_id_#{i}" %>

@@ -31,7 +31,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
       RedmineAiHelper::Tools::ProjectTools.tool_classes.each do |tc|
         assert_includes tool_classes, tc
       end
-      RedmineAiHelper::Tools::ImageTools.tool_classes.each do |tc|
+      RedmineAiHelper::Tools::FileTools.tool_classes.each do |tc|
         assert_includes tool_classes, tc
       end
     end
@@ -48,7 +48,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
       RedmineAiHelper::Tools::ProjectTools.tool_classes.each do |tc|
         assert_includes tool_classes, tc
       end
-      RedmineAiHelper::Tools::ImageTools.tool_classes.each do |tc|
+      RedmineAiHelper::Tools::FileTools.tool_classes.each do |tc|
         assert_includes tool_classes, tc
       end
     end
@@ -74,37 +74,37 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
       assert_equal "Permission denied", result
     end
 
-    should "pass image paths to chat with: parameter when images exist" do
+    should "pass file paths to chat with: parameter when files exist" do
       @issue.stubs(:visible?).returns(true)
 
       mock_prompt = mock("Prompt")
       mock_prompt.stubs(:format).returns("Summarize this issue")
       @agent.stubs(:load_prompt).with("issue_agent/summary").returns(mock_prompt)
 
-      image_paths = ["/path/to/image.png"]
-      @agent.stubs(:image_attachment_paths).with(@issue).returns(image_paths)
+      file_paths = ["/path/to/image.png"]
+      @agent.stubs(:supported_attachment_paths).with(@issue).returns(file_paths)
 
       expected_messages = [{ role: "user", content: "Summarize this issue" }]
-      @agent.expects(:chat).with(expected_messages, {}, nil, with: image_paths).returns("Summary with image")
+      @agent.expects(:chat).with(expected_messages, {}, nil, with: file_paths).returns("Summary with file")
 
       result = @agent.issue_summary(issue: @issue)
-      assert_equal "Summary with image", result
+      assert_equal "Summary with file", result
     end
 
-    should "pass with: nil when no images exist" do
+    should "pass with: nil when no files exist" do
       @issue.stubs(:visible?).returns(true)
 
       mock_prompt = mock("Prompt")
       mock_prompt.stubs(:format).returns("Summarize this issue")
       @agent.stubs(:load_prompt).with("issue_agent/summary").returns(mock_prompt)
 
-      @agent.stubs(:image_attachment_paths).with(@issue).returns([])
+      @agent.stubs(:supported_attachment_paths).with(@issue).returns([])
 
       expected_messages = [{ role: "user", content: "Summarize this issue" }]
-      @agent.expects(:chat).with(expected_messages, {}, nil, with: nil).returns("Summary without image")
+      @agent.expects(:chat).with(expected_messages, {}, nil, with: nil).returns("Summary without file")
 
       result = @agent.issue_summary(issue: @issue)
-      assert_equal "Summary without image", result
+      assert_equal "Summary without file", result
     end
 
     should "generate issue properties string" do
@@ -161,6 +161,47 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
         result = @agent.generate_issue_reply(issue: @issue, instructions: "Please provide a detailed response.")
         assert_equal "This is a generated reply.", result
       end
+
+      should "pass attachment file paths to chat via with parameter" do
+        @issue.stubs(:visible?).returns(true)
+
+        mock_prompt = mock("Prompt")
+        mock_prompt.stubs(:format).returns("Generate a reply for this issue")
+        @agent.stubs(:load_prompt).with("issue_agent/generate_reply").returns(mock_prompt)
+
+        file_paths = ["/path/to/file1.pdf", "/path/to/file2.png"]
+        @agent.stubs(:supported_attachment_paths).with(@issue).returns(file_paths)
+
+        @agent.expects(:chat).with(
+          anything,
+          anything,
+          anything,
+          with: file_paths
+        ).returns("Reply considering attachments.")
+
+        result = @agent.generate_issue_reply(issue: @issue, instructions: "Reply considering the attached files.")
+        assert_equal "Reply considering attachments.", result
+      end
+
+      should "pass nil for with parameter when no attachments exist" do
+        @issue.stubs(:visible?).returns(true)
+
+        mock_prompt = mock("Prompt")
+        mock_prompt.stubs(:format).returns("Generate a reply for this issue")
+        @agent.stubs(:load_prompt).with("issue_agent/generate_reply").returns(mock_prompt)
+
+        @agent.stubs(:supported_attachment_paths).with(@issue).returns([])
+
+        @agent.expects(:chat).with(
+          anything,
+          anything,
+          anything,
+          with: nil
+        ).returns("Reply without attachments.")
+
+        result = @agent.generate_issue_reply(issue: @issue, instructions: "Reply to the issue.")
+        assert_equal "Reply without attachments.", result
+      end
     end
 
     context "generate_sub_issues_draft" do
@@ -177,6 +218,45 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
         subissues = @agent.generate_sub_issues_draft(issue: issue, instructions: "Create sub issues based on this issue.")
 
         assert subissues
+      end
+    end
+
+    context "generate_sub_issues_draft attachment support" do
+      setup do
+        User.current = User.find(1)
+        @issue = Issue.find(1)
+        RedmineAiHelper::Util::StructuredOutputHelper.stubs(:parse).returns(
+          { "sub_issues" => [{ "subject" => "Sub Issue", "description" => "Description", "project_id" => @issue.project_id, "tracker_id" => @issue.tracker_id }] }
+        )
+      end
+
+      should "pass attachment file paths to chat via with parameter" do
+        file_paths = ["/path/to/file1.pdf", "/path/to/file2.png"]
+        @agent.stubs(:supported_attachment_paths).with(@issue).returns(file_paths)
+
+        @agent.expects(:chat).with(
+          anything,
+          anything,
+          anything,
+          with: file_paths
+        ).returns({ "sub_issues" => [{ "subject" => "Sub Issue", "description" => "Description" }] }.to_json)
+
+        result = @agent.generate_sub_issues_draft(issue: @issue, instructions: "Create sub issues considering attachments.")
+        assert result.is_a?(Array)
+      end
+
+      should "pass nil for with parameter when no attachments exist" do
+        @agent.stubs(:supported_attachment_paths).with(@issue).returns([])
+
+        @agent.expects(:chat).with(
+          anything,
+          anything,
+          anything,
+          with: nil
+        ).returns({ "sub_issues" => [{ "subject" => "Sub Issue", "description" => "Description" }] }.to_json)
+
+        result = @agent.generate_sub_issues_draft(issue: @issue, instructions: "Create sub issues.")
+        assert result.is_a?(Array)
       end
     end
 
@@ -216,12 +296,34 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
         ]
 
         @mock_vector_tools.expects(:find_similar_issues)
-                         .with(issue_id: @issue.id, k: 10)
+                         .with(issue_id: @issue.id, k: 10, scope: "with_subprojects", project: @issue.project)
                          .returns(similar_issues_data)
 
         result = @agent.find_similar_issues(issue: @issue)
 
         assert_equal similar_issues_data, result
+      end
+
+      should "pass scope and project to VectorTools" do
+        @issue.stubs(:visible?).returns(true)
+        @mock_vector_tools.expects(:find_similar_issues)
+                         .with(issue_id: @issue.id, k: 10, scope: "current", project: @issue.project)
+                         .returns([])
+
+        result = @agent.find_similar_issues(issue: @issue, scope: "current", project: @issue.project)
+
+        assert_equal [], result
+      end
+
+      should "default scope to with_subprojects" do
+        @issue.stubs(:visible?).returns(true)
+        @mock_vector_tools.expects(:find_similar_issues)
+                         .with(issue_id: @issue.id, k: 10, scope: "with_subprojects", project: @issue.project)
+                         .returns([])
+
+        result = @agent.find_similar_issues(issue: @issue, project: @issue.project)
+
+        assert_equal [], result
       end
 
       should "handle errors from VectorTools gracefully" do

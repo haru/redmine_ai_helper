@@ -10,6 +10,9 @@ en:
   ai_helper_find_similar_issues: "Find Similar Issues"
   ai_helper_similarity: "Similarity"
   ai_helper_no_similar_issues_found: "No similar issues found"
+  ai_helper_scope_current_project: "Current project"
+  ai_helper_scope_with_subprojects: "Include subprojects"
+  ai_helper_scope_all_projects: "All projects"
   ai_helper_text_summary_generated_time: "Generated at %{time}"
   ai_helper_error_occurred: "An error occurred"
   permission_view_ai_helper: "View AI Helper"
@@ -24,6 +27,7 @@ en:
   label_ai_helper_close_detail: "Close Detail"
   ai_helper:
     notice_sub_issues_added: "Sub-issues have been added"
+    error_invalid_assignee: "Invalid assignee for '%{subject}' - user is not authorized for this tracker"
     chat:
       planning: "Creating execution plan..."
       generating_final_response: "Generating final response..."
@@ -189,6 +193,8 @@ en:
       ai_helper_setting:
         model_profile_id: "Model profile"
         additional_instructions: "Additional instructions"
+        attachment_send_enabled: "Send attachments to LLM"
+        attachment_max_size_mb: "Maximum attachment size (MB)"
         vector_search_enabled: "Enable vector search"
         vector_search_uri: "URI"
         vector_search_api_key: "API key"

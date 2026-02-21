@@ -75,6 +75,8 @@ fa:
       ai_helper_setting:
         model_profile_id: "پروفایل مدل"
         additional_instructions: "دستورالعمل‌های اضافی"
+        attachment_send_enabled: "Send attachments to LLM"
+        attachment_max_size_mb: "Maximum attachment size (MB)"
         vector_search_enabled: "فعالسازی جستجوی برداری"
         vector_search_uri: "آدرس URI"
         vector_search_api_key: "کلید API"

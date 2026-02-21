@@ -39,7 +39,7 @@ class WikiAgentTest < ActiveSupport::TestCase
       RedmineAiHelper::Tools::WikiTools.tool_classes.each do |tc|
         assert_includes tool_classes, tc
       end
-      RedmineAiHelper::Tools::ImageTools.tool_classes.each do |tc|
+      RedmineAiHelper::Tools::FileTools.tool_classes.each do |tc|
         assert_includes tool_classes, tc
       end
     end
@@ -105,7 +105,7 @@ class WikiAgentTest < ActiveSupport::TestCase
         mock_prompt = mock('prompt')
         mock_prompt.stubs(:format).returns(formatted_text)
         @agent.stubs(:load_prompt).returns(mock_prompt)
-        @agent.stubs(:image_attachment_paths).returns([])
+        @agent.stubs(:supported_attachment_paths).returns([])
 
         expected_messages = [{ role: "user", content: formatted_text }]
         @agent.expects(:chat).with(expected_messages, {}, nil, with: nil).returns("Summary")
@@ -113,33 +113,33 @@ class WikiAgentTest < ActiveSupport::TestCase
         @agent.wiki_summary(wiki_page: @wiki_page)
       end
 
-      should "pass image paths to chat with: parameter when images exist" do
+      should "pass file paths to chat with: parameter when files exist" do
         mock_prompt = mock('prompt')
         mock_prompt.stubs(:format).returns("Formatted prompt")
         @agent.stubs(:load_prompt).returns(mock_prompt)
 
-        image_paths = ["/path/to/wiki_image.png"]
-        @agent.stubs(:image_attachment_paths).with(@wiki_page).returns(image_paths)
+        file_paths = ["/path/to/wiki_image.png"]
+        @agent.stubs(:supported_attachment_paths).with(@wiki_page).returns(file_paths)
 
         expected_messages = [{ role: "user", content: "Formatted prompt" }]
-        @agent.expects(:chat).with(expected_messages, {}, nil, with: image_paths).returns("Summary with image")
+        @agent.expects(:chat).with(expected_messages, {}, nil, with: file_paths).returns("Summary with file")
 
         result = @agent.wiki_summary(wiki_page: @wiki_page)
-        assert_equal "Summary with image", result
+        assert_equal "Summary with file", result
       end
 
-      should "pass with: nil when no images exist" do
+      should "pass with: nil when no files exist" do
         mock_prompt = mock('prompt')
         mock_prompt.stubs(:format).returns("Formatted prompt")
         @agent.stubs(:load_prompt).returns(mock_prompt)
 
-        @agent.stubs(:image_attachment_paths).with(@wiki_page).returns([])
+        @agent.stubs(:supported_attachment_paths).with(@wiki_page).returns([])
 
         expected_messages = [{ role: "user", content: "Formatted prompt" }]
-        @agent.expects(:chat).with(expected_messages, {}, nil, with: nil).returns("Summary without image")
+        @agent.expects(:chat).with(expected_messages, {}, nil, with: nil).returns("Summary without file")
 
         result = @agent.wiki_summary(wiki_page: @wiki_page)
-        assert_equal "Summary without image", result
+        assert_equal "Summary without file", result
       end
     end
 

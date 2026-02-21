@@ -2,10 +2,16 @@ require "langfuse"
 require "ruby_llm"
 $LOAD_PATH.unshift "#{File.dirname(__FILE__)}/lib"
 
+require "redmine_ai_helper/logger"
+
 # Initialize RubyLLM with minimal configuration.
 # API keys are dynamically set per-request via each provider's configure_ruby_llm method.
 RubyLLM.configure do |config|
   # No API keys set here; they are loaded from AiHelperModelProfile at runtime.
+  config.logger = RedmineAiHelper::CustomLogger.instance
+
+  config.log_level = :error
+  config.log_stream_debug = false
 end
 require "redmine_ai_helper/util/config_file"
 require "redmine_ai_helper/user_patch"
@@ -19,6 +25,11 @@ require "redmine_ai_helper/util/mcp_server_loader"
 # Monkey-patch ruby_llm-mcp notification bug (add_id on notifications/initialized)
 require "redmine_ai_helper/util/mcp_patch"
 RedmineAiHelper::Util::McpPatch.apply!
+
+# Suppress RubyLLM::MCP INFO logs; the gem has its own Logger independent of RubyLLM.configure
+if defined?(RubyLLM::MCP) && RubyLLM::MCP.respond_to?(:logger)
+  RubyLLM::MCP.logger.level = ::Logger::ERROR
+end
 
 # Generate MCP Agent classes after all agents are loaded
 begin
@@ -37,7 +48,7 @@ Redmine::Plugin.register :redmine_ai_helper do
   author_url "https://github.com/haru"
   requires_redmine :version_or_higher => "6.0.0"
 
-  version "2.0.0"
+  version "2.1.0"
 
   project_module :ai_helper do
     permission :view_ai_helper,
@@ -49,6 +60,7 @@ Redmine::Plugin.register :redmine_ai_helper do
                    :project_health_metadata,
                    :suggest_completion, :suggest_wiki_completion, :check_typos,
                    :api_create_health_report, :suggest_assignees, :stuff_todo,
+                   :assignable_users_for_tracker,
                  ],
                  ai_helper_dashboard: [
                    :index, :health_report_history, :health_report_show, :compare_health_reports, :comparison_pdf, :comparison_markdown,

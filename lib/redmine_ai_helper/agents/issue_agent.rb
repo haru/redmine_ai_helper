@@ -8,7 +8,7 @@ module RedmineAiHelper
     # IssueAgent is a specialized agent for handling Redmine issue-related queries.
     class IssueAgent < RedmineAiHelper::BaseAgent
       include RedmineAiHelper::Util::IssueJson
-      include RedmineAiHelper::Util::AttachmentImageHelper
+      include RedmineAiHelper::Util::AttachmentFileHelper
       include ROUTE_HELPERS
 
       # Backstory for the IssueAgent
@@ -33,7 +33,7 @@ module RedmineAiHelper
         providers << RedmineAiHelper::Tools::ProjectTools
         providers << RedmineAiHelper::Tools::UserTools
         providers << RedmineAiHelper::Tools::IssueSearchTools
-        providers << RedmineAiHelper::Tools::ImageTools
+        providers << RedmineAiHelper::Tools::FileTools
         providers
       end
 
@@ -53,8 +53,8 @@ module RedmineAiHelper
         message = { role: "user", content: prompt_text }
         messages = [message]
 
-        image_paths = image_attachment_paths(issue)
-        chat(messages, {}, stream_proc, with: image_paths.presence)
+        file_paths = supported_attachment_paths(issue)
+        chat(messages, {}, stream_proc, with: file_paths.presence)
       end
 
       # Generate issue reply with optional streaming support
@@ -79,7 +79,8 @@ module RedmineAiHelper
         message = { role: "user", content: prompt_text }
         messages = [message]
 
-        chat(messages, {}, stream_proc)
+        file_paths = supported_attachment_paths(issue)
+        chat(messages, {}, stream_proc, with: file_paths.presence)
       end
 
       # Generate a draft for sub-issues based on the provided issue and instructions.
@@ -148,7 +149,8 @@ module RedmineAiHelper
 
         message = { role: "user", content: prompt_text }
         messages = [message]
-        answer = chat(messages)
+        file_paths = supported_attachment_paths(issue)
+        answer = chat(messages, {}, nil, with: file_paths.presence)
         fixed_json = RedmineAiHelper::Util::StructuredOutputHelper.parse(
           response: answer,
           json_schema: json_schema,
@@ -173,13 +175,18 @@ module RedmineAiHelper
       # Find similar issues using VectorTools
       # @param issue [Issue] The issue to find similar issues for
       # @return [Array<Hash>] Array of similar issues with formatted metadata
-      def find_similar_issues(issue:)
+      def find_similar_issues(issue:, scope: "with_subprojects", project: nil)
         return [] unless issue.visible?
         return [] unless AiHelperSetting.vector_search_enabled?
 
         begin
           vector_tools = RedmineAiHelper::Tools::VectorTools.new
-          similar_issues = vector_tools.find_similar_issues(issue_id: issue.id, k: 10)
+          similar_issues = vector_tools.find_similar_issues(
+            issue_id: issue.id,
+            k: 10,
+            scope: scope,
+            project: project || issue.project
+          )
 
           ai_helper_logger.debug "Found #{similar_issues.length} similar issues for issue #{issue.id}"
           similar_issues

@@ -329,7 +329,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         { id: 2, subject: "Similar issue", similarity_score: 85.0 }
       ]
       mock_agent = mock('issue_agent')
-      mock_agent.stubs(:find_similar_issues).with(issue: @issue).returns(similar_issues_data)
+      mock_agent.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues_data)
       RedmineAiHelper::Agents::IssueAgent.stubs(:new).returns(mock_agent)
 
       result = @llm.find_similar_issues(issue: @issue)
@@ -348,7 +348,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
     should "create langfuse trace for similar issues search" do
       # Mock langfuse wrapper with expectations
       mock_langfuse = mock('langfuse_wrapper')
-      mock_langfuse.expects(:create_span).with(name: "find_similar_issues", input: "issue_id: #{@issue.id}")
+      mock_langfuse.expects(:create_span).with(name: "find_similar_issues", input: "issue_id: #{@issue.id}, scope: with_subprojects")
       mock_langfuse.expects(:finish_current_span).with(anything)
       mock_langfuse.expects(:flush)
       RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).with(input: "find similar issues for #{@issue.id}").returns(mock_langfuse)
@@ -376,7 +376,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         project: @issue.project,
         langfuse: mock_langfuse
       ).returns(mock('agent').tap do |agent|
-        agent.stubs(:find_similar_issues).with(issue: @issue).returns([])
+        agent.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns([])
       end)
 
       @llm.find_similar_issues(issue: @issue)

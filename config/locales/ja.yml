@@ -10,6 +10,9 @@ ja:
   ai_helper_find_similar_issues: "類似チケットを検索"
   ai_helper_similarity: "類似度"
   ai_helper_no_similar_issues_found: "類似するチケットが見つかりませんでした"
+  ai_helper_scope_current_project: "このプロジェクト内"
+  ai_helper_scope_with_subprojects: "サブプロジェクトを含める"
+  ai_helper_scope_all_projects: "全プロジェクト"
   ai_helper_text_summary_generated_time: "%{time} に生成"
   ai_helper_error_occurred: "エラーが発生しました"
   permission_view_ai_helper: "AIヘルパーの表示"
@@ -24,6 +27,7 @@ ja:
   label_ai_helper_close_detail: "詳細を閉じる"
   ai_helper:
     notice_sub_issues_added: "子チケットが追加されました"
+    error_invalid_assignee: "'%{subject}' の担当者が無効です。このトラッカーに対する権限がありません"
     chat:
       planning: "実行計画を作成中..."
       generating_final_response: "最終回答を作成しています..."
@@ -189,6 +193,8 @@ ja:
       ai_helper_setting:
         model_profile_id: "モデル定義"
         additional_instructions: "追加の指示"
+        attachment_send_enabled: "添付ファイルをLLMに送信する"
+        attachment_max_size_mb: "添付ファイルの最大サイズ(MB)"
         vector_search_enabled: "ベクトル検索を有効にする"
         vector_search_uri: "URI"
         vector_search_api_key: "APIキー"

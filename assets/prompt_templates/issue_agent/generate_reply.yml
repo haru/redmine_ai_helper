@@ -10,6 +10,11 @@ template: |-
   This draft will be displayed in the Redmine issue edit screen.
 
   - Please refer to the issue details, past comments, and update history.
+  - If files are attached, also consider their content when drafting the reply.
+    - For images: Read and interpret visual information such as text, diagrams, charts, screenshots, and designs
+    - For PDFs and documents: Consider the document content and key information
+    - For code files: Consider the purpose and key logic of the code
+    - For audio: Consider the content if applicable
   - Write the reply as if it will be posted directly to the issue. Do not include phrases like "I have drafted the following reply."
   - Please format the text as {format}.
 

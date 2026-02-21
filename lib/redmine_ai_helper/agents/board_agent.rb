@@ -15,7 +15,7 @@ module RedmineAiHelper
       # Get available RubyLLM::Tool subclasses for this agent
       # @return [Array<Class>] Array of RubyLLM::Tool subclasses
       def available_tool_providers
-        [RedmineAiHelper::Tools::BoardTools, RedmineAiHelper::Tools::ImageTools]
+        [RedmineAiHelper::Tools::BoardTools, RedmineAiHelper::Tools::FileTools]
       end
     end
   end

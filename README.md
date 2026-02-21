@@ -24,6 +24,7 @@
   - [Project Health Report](#project-health-report)
     - [Health Report History](#health-report-history)
     - [Health Report REST API](#health-report-rest-api)
+  - [Multi-modal File Support](#multi-modal-file-support)
 - [📦 Installation](#-installation)
 - [⚙️ Basic Configuration](#️-basic-configuration)
   - [Plugin Settings](#plugin-settings)
@@ -61,6 +62,7 @@ The Redmine AI Helper Plugin adds AI chat functionality to Redmine, enhancing pr
   - To-do suggestions based on assigned issues
   - Custom commands for reusable prompt shortcuts
 - Provides a project health report
+- Supports multi-modal file analysis (images, PDFs, text, code, audio attachments)
 - Supports multiple AI models and services
 - MCP server integration
 - Vector search using Qdrant
@@ -192,6 +194,25 @@ To generate health reports automatically every Monday at 9:00 AM, add the follow
 ```bash
 0 9 * * 1 curl -X POST -H "X-Redmine-API-Key: your_api_key_here" -H "Content-Type: application/json" https://your-redmine-instance.com/projects/your-project/ai_helper/health_report.json
 ```
+
+## Multi-modal File Support
+
+The AI Helper Plugin can analyze files attached to Issues, Wiki pages, and Board messages. When enabled, attached files are sent to the LLM alongside the content, allowing the AI to understand and reference file contents when generating summaries or responding in chat.
+
+**Supported file types:**
+
+| Category | Extensions |
+|----------|------------|
+| Images | .jpg, .jpeg, .png, .gif, .webp, .bmp |
+| Documents | .pdf, .txt, .md, .csv, .json, .xml |
+| Code | .rb, .py, .js, .html, .css, and more |
+| Audio | .mp3, .wav, .m4a, .ogg, .flac |
+
+To enable this feature, go to the AI Helper settings page in the Administration menu. Check **"Send attachments to LLM"** and optionally set the maximum file size limit (default: 3 MB). Files exceeding the limit are not sent to the LLM.
+
+You can also ask the AI to analyze specific attached files directly in the chat interface using the file analysis tools.
+
+When vector search is enabled, attachment contents are also incorporated into the vector index. The LLM analyzes attachments during index registration and similar-issue searches, resulting in more accurate similarity matching for issues that carry meaningful file attachments.
 
 # 📦 Installation
 

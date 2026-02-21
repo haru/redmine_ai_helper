@@ -53,7 +53,7 @@ class RedmineAiHelper::Util::IssueJsonTest < ActiveSupport::TestCase
     end
 
     should "include type 'image' for image attachments" do
-      Attachment.any_instance.stubs(:image?).returns(true)
+      Attachment.any_instance.stubs(:filename).returns("screenshot.png")
 
       issue_data = @test_class.generate_issue_data(@issue)
       attachment_data = issue_data[:attachments].first
@@ -61,8 +61,35 @@ class RedmineAiHelper::Util::IssueJsonTest < ActiveSupport::TestCase
       assert_equal "image", attachment_data[:type]
     end
 
-    should "include type nil for non-image attachments" do
-      Attachment.any_instance.stubs(:image?).returns(false)
+    should "include type 'document' for document attachments" do
+      Attachment.any_instance.stubs(:filename).returns("report.pdf")
+
+      issue_data = @test_class.generate_issue_data(@issue)
+      attachment_data = issue_data[:attachments].first
+
+      assert_equal "document", attachment_data[:type]
+    end
+
+    should "include type 'code' for code attachments" do
+      Attachment.any_instance.stubs(:filename).returns("script.rb")
+
+      issue_data = @test_class.generate_issue_data(@issue)
+      attachment_data = issue_data[:attachments].first
+
+      assert_equal "code", attachment_data[:type]
+    end
+
+    should "include type 'audio' for audio attachments" do
+      Attachment.any_instance.stubs(:filename).returns("recording.mp3")
+
+      issue_data = @test_class.generate_issue_data(@issue)
+      attachment_data = issue_data[:attachments].first
+
+      assert_equal "audio", attachment_data[:type]
+    end
+
+    should "include type nil for unsupported attachments" do
+      Attachment.any_instance.stubs(:filename).returns("archive.zip")
 
       issue_data = @test_class.generate_issue_data(@issue)
       attachment_data = issue_data[:attachments].first

@@ -100,26 +100,26 @@ module RedmineAiHelper
 
     # Log debug message
     # @param message [String] The message to log
-    def debug(message)
-      @logger.debug(message)
+    def debug(*args, &block)
+      @logger.debug(*args, &block)
     end
 
     # Log info message
     # @param message [String] The message to log
-    def info(message)
-      @logger.info(message)
+    def info(*args, &block)
+      @logger.info(*args, &block)
     end
 
     # Log warning message
     # @param message [String] The message to log
-    def warn(message)
-      @logger.warn(message)
+    def warn(*args, &block)
+      @logger.warn(*args, &block)
     end
 
     # Log error message
     # @param message [String] The message to log
-    def error(message)
-      @logger.error(message)
+    def error(*args, &block)
+      @logger.error(*args, &block)
     end
 
     # Set the log level

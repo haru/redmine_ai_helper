@@ -9,6 +9,9 @@ pt-BR:
   ai_helper_find_similar_issues: "Encontrar Tarefas Semelhantes"
   ai_helper_similarity: "Similaridade"
   ai_helper_no_similar_issues_found: "Nenhuma tarefa semelhante encontrada"
+  ai_helper_scope_current_project: "Projeto atual"
+  ai_helper_scope_with_subprojects: "Incluir subprojetos"
+  ai_helper_scope_all_projects: "Todos os projetos"
   ai_helper_text_summary_generated_time: "Gerado em %{time}"
   ai_helper_error_occurred: "Ocorreu um erro"
   permission_view_ai_helper: "Visualizar AI Helper"
@@ -61,7 +64,7 @@ pt-BR:
       disabled_tooltip: "O preenchimento automático com IA está desativado. Marque a caixa para ativar."
       note_enabled_tooltip: "O preenchimento automático de notas com IA está ativado. Pressione Tab para aceitar as sugestões ou Esc para dispensar."
       note_disabled_tooltip: "O preenchimento automático de notas com IA está desativado. Marque a caixa para ativar."
-      common_toggle_label: "Preenchimento Automático do AI Helper"      
+      common_toggle_label: "Preenchimento Automático do AI Helper"
     stuff_todo:
       menu_label: "A Fazer"
       modal_title: "Sugestões de Tarefas"
@@ -121,6 +124,8 @@ pt-BR:
       ai_helper_setting:
         model_profile_id: "Perfil de modelo"
         additional_instructions: "Instruções adicionais"
+        attachment_send_enabled: "Send attachments to LLM"
+        attachment_max_size_mb: "Maximum attachment size (MB)"
         vector_search_enabled: "Habilitar busca vetorial"
         vector_search_uri: "URI"
         vector_search_api_key: "Chave de API"

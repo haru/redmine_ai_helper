@@ -13,6 +13,14 @@ class AiHelperController < ApplicationController
   include AiHelperHelper
   include RedmineAiHelper::Export::PDF::ProjectHealthPdfHelper
 
+  # Valid scope values for similar issue search.
+  # @return [Array<String>] allowed values: "current", "with_subprojects", "all"
+  SIMILAR_ISSUES_VALID_SCOPES = %w[current with_subprojects all].freeze
+
+  # Default scope applied when no valid scope parameter is provided.
+  # @return [String] default scope value
+  SIMILAR_ISSUES_DEFAULT_SCOPE = "with_subprojects".freeze
+
   rescue_from ActionDispatch::Http::Parameters::ParseError, with: :handle_parse_error
 
   protect_from_forgery with: :exception
@@ -222,16 +230,26 @@ class AiHelperController < ApplicationController
     versions = @issue.assignable_versions || []
     versions_options_for_select = versions.collect { |v| [v.name, v.id] }
 
-    render partial: "ai_helper/issues/subissues/issues", locals: { issue: @issue, subissues: subissues, trackers_options_for_select: trackers_options_for_select, versions_options_for_select: versions_options_for_select }
+    # Initially empty - will be populated via AJAX based on tracker selection
+    assignable_users_options_for_select = []
+
+    render partial: "ai_helper/issues/subissues/issues", locals: {
+      issue: @issue,
+      subissues: subissues,
+      trackers_options_for_select: trackers_options_for_select,
+      versions_options_for_select: versions_options_for_select,
+      assignable_users_options_for_select: assignable_users_options_for_select,
+    }
   end
 
   # Add sub-issues to the current issue
   def add_sub_issues
     issues_param = params[:sub_issues]
+
     issues_param.each do |issue_param_array|
-      issue_param = issue_param_array[1].permit(:subject, :description, :tracker_id, :check, :fixed_version_id)
-      # Skip if the issue_param does not have the :check key or if it is false
+      issue_param = issue_param_array[1].permit(:subject, :description, :tracker_id, :check, :fixed_version_id, :assigned_to_id)
       next unless issue_param[:check]
+
       issue = Issue.new
       issue.author = User.current
       issue.project = @issue.project
@@ -240,21 +258,38 @@ class AiHelperController < ApplicationController
       issue.description = issue_param[:description]
       issue.tracker_id = issue_param[:tracker_id]
       issue.fixed_version_id = issue_param[:fixed_version_id] unless issue_param[:fixed_version_id].blank?
-      # Save the issue and handle errors
+
+      # Tracker-specific assignee validation
+      if issue_param[:assigned_to_id].present?
+        assignee_id = issue_param[:assigned_to_id].to_i
+        tracker = Tracker.find_by(id: issue.tracker_id)
+
+        # Use Redmine's built-in method to check tracker-specific permissions
+        if tracker && @issue.project.assignable_users(tracker).exists?(assignee_id)
+          issue.assigned_to_id = assignee_id
+        else
+          # Show error if assignee is not valid for this tracker
+          flash[:error] = l("ai_helper.error_invalid_assignee", subject: issue.subject)
+          redirect_to issue_path(@issue) and return
+        end
+      end
+
       unless issue.save
-        # If saving fails, collect error messages and display them using i18n
         flash[:error] = issue.errors.full_messages.join("\n")
         redirect_to issue_path(@issue) and return
       end
     end
-    redirect_to issue_path(@issue), notice: l('ai_helper.notice_sub_issues_added')
+
+    redirect_to issue_path(@issue), notice: l("ai_helper.notice_sub_issues_added")
   end
 
   # Find similar issues using LLM and IssueAgent
   def similar_issues
     begin
       llm = RedmineAiHelper::Llm.new
-      similar_issues = llm.find_similar_issues(issue: @issue)
+      scope = params[:scope]
+      scope = SIMILAR_ISSUES_DEFAULT_SCOPE unless SIMILAR_ISSUES_VALID_SCOPES.include?(scope)
+      similar_issues = llm.find_similar_issues(issue: @issue, scope: scope, project: @issue.project)
 
       render partial: "ai_helper/issues/similar_issues", locals: { similar_issues: similar_issues }
     rescue => e
@@ -640,7 +675,7 @@ class AiHelperController < ApplicationController
       assignable_users = issue ? issue.assignable_users : @project.assignable_users
       suggestion_service = RedmineAiHelper::AssignmentSuggestion.new(
         project: @project,
-        assignable_users: assignable_users
+        assignable_users: assignable_users,
       )
 
       result = suggestion_service.suggest(
@@ -712,6 +747,13 @@ class AiHelperController < ApplicationController
                status: :not_acceptable
       end
     end
+  end
+
+  # Get assignable users for a specific tracker
+  def assignable_users_for_tracker
+    tracker = Tracker.find_by(id: params[:tracker_id])
+    users = @project.assignable_users(tracker)
+    render json: users.map { |u| { id: u.id, name: u.name } }
   end
 
   private

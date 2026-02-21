@@ -392,6 +392,91 @@ class AiHelperControllerTest < ActionController::TestCase
       end
     end
 
+    context "#add_sub_issues with assigned_to_id" do
+      setup do
+        @issue = Issue.new(subject: "Parent Issue", project: @project, author: @user, tracker_id: 1, status_id: 1)
+        @issue.save!
+        # User 2 is a member of project 1 with Manager role (assignable)
+        @assignable_user = User.find(2)
+      end
+
+      should "assign a valid assignee to the sub-issue" do
+        sub_issue_params = {
+          "1" => { subject: "Sub Issue", description: "Desc", tracker_id: 1, check: true, assigned_to_id: @assignable_user.id },
+        }
+        post :add_sub_issues, params: { id: @issue.id, sub_issues: sub_issue_params, tracker_id: 1 }
+        assert_response :redirect
+        created_issue = Issue.where(parent_id: @issue.id).first
+        assert_not_nil created_issue
+        assert_equal @assignable_user.id, created_issue.assigned_to_id
+      end
+
+      should "create sub-issue without assignee when assigned_to_id is blank" do
+        sub_issue_params = {
+          "1" => { subject: "Sub Issue", description: "Desc", tracker_id: 1, check: true, assigned_to_id: "" },
+        }
+        post :add_sub_issues, params: { id: @issue.id, sub_issues: sub_issue_params, tracker_id: 1 }
+        assert_response :redirect
+        created_issue = Issue.where(parent_id: @issue.id).first
+        assert_not_nil created_issue
+        assert_nil created_issue.assigned_to_id
+      end
+
+      should "show error when assigned_to_id is not a valid assignable user" do
+        sub_issue_params = {
+          "1" => { subject: "Sub Issue", description: "Desc", tracker_id: 1, check: true, assigned_to_id: 99999 },
+        }
+        post :add_sub_issues, params: { id: @issue.id, sub_issues: sub_issue_params, tracker_id: 1 }
+        assert_response :redirect
+        assert_not_nil flash[:error]
+        assert_equal 0, Issue.where(parent_id: @issue.id).count
+      end
+    end
+
+    context "#assignable_users_for_tracker" do
+      setup do
+        @tracker = Tracker.find(1)
+      end
+
+      should "return assignable users as JSON for a given tracker" do
+        get :assignable_users_for_tracker, params: { id: @project.id, tracker_id: @tracker.id }
+        assert_response :success
+        json = JSON.parse(response.body)
+        assert_kind_of Array, json
+        assert json.all? { |u| u.key?("id") && u.key?("name") }
+      end
+
+      should "return assignable users when tracker_id is not provided" do
+        get :assignable_users_for_tracker, params: { id: @project.id }
+        assert_response :success
+        json = JSON.parse(response.body)
+        assert_kind_of Array, json
+      end
+
+      should "return assignable users when tracker_id is invalid" do
+        get :assignable_users_for_tracker, params: { id: @project.id, tracker_id: 99999 }
+        assert_response :success
+        json = JSON.parse(response.body)
+        assert_kind_of Array, json
+      end
+
+      should "include project members with assignable roles" do
+        get :assignable_users_for_tracker, params: { id: @project.id, tracker_id: @tracker.id }
+        json = JSON.parse(response.body)
+        user_ids = json.map { |u| u["id"] }
+        # User 2 is a member of project 1 with Manager role (assignable)
+        assert_includes user_ids, 2
+      end
+
+      should "not include non-member users" do
+        get :assignable_users_for_tracker, params: { id: @project.id, tracker_id: @tracker.id }
+        json = JSON.parse(response.body)
+        user_ids = json.map { |u| u["id"] }
+        # User 4 is not a member of project 1
+        assert_not_includes user_ids, 4
+      end
+    end
+
     context "#similar_issues" do
       setup do
         @issue = Issue.find(1)
@@ -414,7 +499,7 @@ class AiHelperControllerTest < ActionController::TestCase
           issue_url: "/issues/2"
         }]
 
-        @llm_mock.stubs(:find_similar_issues).with(issue: @issue).returns(similar_issues)
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
 
         get :similar_issues, params: { id: @issue.id }
         assert_response :success
@@ -438,7 +523,7 @@ class AiHelperControllerTest < ActionController::TestCase
           issue_url: "/issues/2"
         }]
 
-        @llm_mock.stubs(:find_similar_issues).with(issue: @issue).returns(similar_issues)
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
 
         get :similar_issues, params: { id: @issue.id }
         assert_response :success
@@ -452,7 +537,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
       should "return empty array when no similar issues found" do
         # Mock LLM find_similar_issues method returning empty array
-        @llm_mock.stubs(:find_similar_issues).with(issue: @issue).returns([])
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns([])
 
         get :similar_issues, params: { id: @issue.id }
         assert_response :success
@@ -463,7 +548,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
       should "handle vector search errors gracefully" do
         # Mock LLM find_similar_issues method raising an error
-        @llm_mock.stubs(:find_similar_issues).with(issue: @issue).raises(StandardError.new("Vector search failed"))
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).raises(StandardError.new("Vector search failed"))
 
         get :similar_issues, params: { id: @issue.id }
         assert_response :internal_server_error
@@ -485,7 +570,7 @@ class AiHelperControllerTest < ActionController::TestCase
           issue_url: "/issues/2"
         }]
 
-        @llm_mock.stubs(:find_similar_issues).with(issue: @issue).returns(similar_issues)
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
 
         get :similar_issues, params: { id: @issue.id }
         assert_response :success
@@ -493,6 +578,42 @@ class AiHelperControllerTest < ActionController::TestCase
         # Check that the similar issue is displayed even without assigned_to_name
         assert_match /Similar issue/, @response.body
         assert_match /85\.0%/, @response.body
+      end
+
+      should "pass scope parameter to Llm" do
+        @llm_mock.expects(:find_similar_issues)
+                 .with(issue: @issue, scope: "current", project: @issue.project)
+                 .returns([])
+
+        get :similar_issues, params: { id: @issue.id, scope: "current" }
+        assert_response :success
+      end
+
+      should "pass all scope to Llm" do
+        @llm_mock.expects(:find_similar_issues)
+                 .with(issue: @issue, scope: "all", project: @issue.project)
+                 .returns([])
+
+        get :similar_issues, params: { id: @issue.id, scope: "all" }
+        assert_response :success
+      end
+
+      should "default scope to with_subprojects when not specified" do
+        @llm_mock.expects(:find_similar_issues)
+                 .with(issue: @issue, scope: "with_subprojects", project: @issue.project)
+                 .returns([])
+
+        get :similar_issues, params: { id: @issue.id }
+        assert_response :success
+      end
+
+      should "fallback to default scope for invalid scope value" do
+        @llm_mock.expects(:find_similar_issues)
+                 .with(issue: @issue, scope: "with_subprojects", project: @issue.project)
+                 .returns([])
+
+        get :similar_issues, params: { id: @issue.id, scope: "invalid_scope" }
+        assert_response :success
       end
     end
 
