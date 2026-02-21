@@ -39,7 +39,10 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
     end
 
     should "not error with generate_schema" do
-      assert @issue_vector_db.generate_schema
+      mock_provider = mock("llm_provider")
+      mock_provider.stubs(:embed).returns([0.1] * 3072)
+      issue_vector_db = RedmineAiHelper::Vector::IssueVectorDb.new(llm_provider: mock_provider)
+      assert issue_vector_db.generate_schema
     end
 
     should "not error with destory_schema" do
@@ -111,7 +114,7 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
   class QdrantStub
     attr_reader :last_filter
 
-    def create_default_schema
+    def create_default_schema(vector_size: 1536)
       return ""
     end
 

@@ -2,6 +2,7 @@ require "langfuse"
 require "ruby_llm"
 $LOAD_PATH.unshift "#{File.dirname(__FILE__)}/lib"
 
+require_relative "version"
 require "redmine_ai_helper/logger"
 
 # Initialize RubyLLM with minimal configuration.
@@ -48,7 +49,7 @@ Redmine::Plugin.register :redmine_ai_helper do
   author_url "https://github.com/haru"
   requires_redmine :version_or_higher => "6.0.0"
 
-  version "2.1.0"
+  version RedmineAiHelper::VERSION
 
   project_module :ai_helper do
     permission :view_ai_helper,

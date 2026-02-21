@@ -15,6 +15,7 @@ on:
       - '.gitignore'
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/*.md'
+      - 'version.rb'
   pull_request:
     branches:
       - '**'
@@ -30,6 +31,7 @@ on:
       - '.gitignore'
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/*.md'
+      - 'version.rb'
   workflow_dispatch:
 env:
   SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}

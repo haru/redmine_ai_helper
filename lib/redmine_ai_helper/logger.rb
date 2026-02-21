@@ -99,25 +99,29 @@ module RedmineAiHelper
     end
 
     # Log debug message
-    # @param message [String] The message to log
+    # @param args [Array] The arguments to pass to the logger
+    # @yield Optional block to pass to the logger
     def debug(*args, &block)
       @logger.debug(*args, &block)
     end
 
     # Log info message
-    # @param message [String] The message to log
+    # @param args [Array] The arguments to pass to the logger
+    # @yield Optional block to pass to the logger
     def info(*args, &block)
       @logger.info(*args, &block)
     end
 
     # Log warning message
-    # @param message [String] The message to log
+    # @param args [Array] The arguments to pass to the logger
+    # @yield Optional block to pass to the logger
     def warn(*args, &block)
       @logger.warn(*args, &block)
     end
 
     # Log error message
-    # @param message [String] The message to log
+    # @param args [Array] The arguments to pass to the logger
+    # @yield Optional block to pass to the logger
     def error(*args, &block)
       @logger.error(*args, &block)
     end
