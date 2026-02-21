@@ -1,0 +1,13 @@
+# Exclude files not needed in release archives (git archive)
+/.github/          export-ignore
+/test/             export-ignore
+/specs/            export-ignore
+/coverage/         export-ignore
+/tmp/              export-ignore
+/docs/             export-ignore
+/example/          export-ignore
+CLAUDE.md          export-ignore
+GEMINI.md          export-ignore
+AGENTS.md          export-ignore
+Gemfile.lock       export-ignore
+renovate.json      export-ignore

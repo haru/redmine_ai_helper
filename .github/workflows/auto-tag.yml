@@ -1,4 +1,4 @@
-name: Auto Tag from init.rb on Release Merge
+name: Auto Tag and Release on Release Merge
 
 on:
   pull_request:
@@ -7,7 +7,7 @@ on:
     types: [closed]
 
 jobs:
-  tag-and-backmerge:
+  tag-release-backmerge:
     # Run only when "merged" and "source branch starts with release/"
     if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/')
     runs-on: ubuntu-latest
@@ -29,6 +29,9 @@ jobs:
             exit 1
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
+          REPOSITORY=$(echo ${{ github.repository }} | sed -e "s#.*/##")
+          echo "REPOSITORY=$REPOSITORY" >> $GITHUB_ENV
+          echo "FILENAME=$REPOSITORY-$VERSION" >> $GITHUB_ENV
 
       - name: Create and Push Tag
         run: |
@@ -41,6 +44,19 @@ jobs:
             git tag "${{ env.VERSION }}"
             git push origin "${{ env.VERSION }}" || echo "Tag push failed, possibly already exists"
           fi
+
+      - name: Create Archive
+        run: |
+          git archive --format=zip --prefix="${{ env.REPOSITORY }}/" "${{ env.VERSION }}" -o "${{ env.FILENAME }}.zip"
+
+      - name: Create Release and Upload Asset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ env.VERSION }}" \
+            "${{ env.FILENAME }}.zip" \
+            --title "${{ env.VERSION }}" \
+            --prerelease
 
       - name: Create backmerge PR to develop
         env:
