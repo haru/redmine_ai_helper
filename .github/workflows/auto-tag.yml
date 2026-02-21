@@ -53,10 +53,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${{ env.VERSION }}" \
-            "${{ env.FILENAME }}.zip" \
-            --title "${{ env.VERSION }}" \
-            --prerelease
+          if gh release view "${{ env.VERSION }}" >/dev/null 2>&1; then
+            echo "Release ${{ env.VERSION }} already exists, uploading asset with clobber"
+            gh release upload "${{ env.VERSION }}" "${{ env.FILENAME }}.zip" --clobber
+          else
+            gh release create "${{ env.VERSION }}" \
+              "${{ env.FILENAME }}.zip" \
+              --title "${{ env.VERSION }}" \
+              --prerelease
+          fi
 
       - name: Create backmerge PR to develop
         env:
