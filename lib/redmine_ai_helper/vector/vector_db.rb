@@ -48,8 +48,8 @@ module RedmineAiHelper
         client.create_default_schema(vector_size: vector_size)
       end
 
-      # Detect the vector dimension by embedding a short test text.
-      # Falls back to setting.dimension or 1536 if the API call fails.
+      # Detects the vector dimension by embedding a short test text.
+      # Raises an exception if the API call fails (no fallback).
       # @return [Integer] the vector dimension
       def detect_vector_size
         vectors = @llm_provider.embed("test")

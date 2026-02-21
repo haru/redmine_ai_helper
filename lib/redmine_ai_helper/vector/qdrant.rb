@@ -48,7 +48,7 @@ module RedmineAiHelper
         end
         response = client.points.upsert(collection_name: @index_name, points: points)
         unless response.is_a?(Hash) && response["status"] == "ok"
-          raise "Qdrant upsert failed: #{response.inspect}"
+          raise "Qdrant upsert failed for collection '#{@index_name}' with #{points.length} points: #{response.inspect}"
         end
         response
       end
