@@ -20,12 +20,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Extract version from init.rb
+      - name: Extract version from version.rb
         id: get_version
         run: |
-          VERSION=$(grep -oP '^\s*version\s+["\x27]\K[0-9.]+' init.rb)
+          VERSION=$(grep -oP 'VERSION\s*=\s*["\x27]\K[0-9.]+' version.rb)
           if [ -z "$VERSION" ]; then
-            echo "Error: Could not extract version from init.rb"
+            echo "Error: Could not extract version from version.rb"
             exit 1
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
