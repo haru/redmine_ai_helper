@@ -7,14 +7,16 @@ namespace :redmine do
         desc "Register vector data for Redmine AI Helper"
         task :regist => :environment do
           if enabled?
+            setting = AiHelperSetting.find_or_create
+            puts "Embedding model: #{setting.embedding_model || '(default)'}"
             issue_vector_db.generate_schema
             wiki_vector_db.generate_schema
             puts "Registering vector data for Redmine AI Helper..."
             issues = Issue.order(:id).all
-            puts "Issues:"
+            puts "Issues: #{issues.count} items"
             issue_vector_db.add_datas(datas: issues)
             wikis = WikiPage.order(:id).all
-            puts "Wiki Pages:"
+            puts "Wiki Pages: #{wikis.count} items"
             wiki_vector_db.add_datas(datas: wikis)
             puts "Vector data registration completed."
           else

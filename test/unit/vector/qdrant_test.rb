@@ -68,7 +68,7 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
             { id: "id1", vector: [0.1, 0.2], payload: { key: "val" } },
             { id: "id2", vector: [0.3, 0.4], payload: { key: "val" } },
           ],
-        )
+        ).returns({"status" => "ok", "result" => {"operation_id" => 1, "status" => "acknowledged"}})
 
         @qdrant.add_texts(texts: ["text1", "text2"], ids: ["id1", "id2"], payload: { key: "val" })
       end
@@ -82,9 +82,22 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
           points: [
             { id: "id1", vector: [0.1, 0.2], payload: {} },
           ],
-        )
+        ).returns({"status" => "ok", "result" => {"operation_id" => 1, "status" => "acknowledged"}})
 
         @qdrant.add_texts(texts: ["text1"], ids: ["id1"])
+      end
+
+      should "raise error when upsert fails" do
+        @mock_llm_provider.stubs(:embed).with("text1").returns([0.1, 0.2])
+        @mock_client.stubs(:points).returns(@mock_points)
+
+        @mock_points.expects(:upsert).returns(
+          {"status" => {"error" => "Wrong input: Vector dimension error"}, "time" => 0.0},
+        )
+
+        assert_raises(RuntimeError) do
+          @qdrant.add_texts(texts: ["text1"], ids: ["id1"])
+        end
       end
     end
 
