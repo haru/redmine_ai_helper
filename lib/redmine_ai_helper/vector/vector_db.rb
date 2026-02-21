@@ -44,7 +44,16 @@ module RedmineAiHelper
 
       # Generates the schema for the vector database. Must be executed once before registering data.
       def generate_schema
-        client.create_default_schema
+        vector_size = detect_vector_size
+        client.create_default_schema(vector_size: vector_size)
+      end
+
+      # Detect the vector dimension by embedding a short test text.
+      # Falls back to setting.dimension or 1536 if the API call fails.
+      # @return [Integer] the vector dimension
+      def detect_vector_size
+        vectors = @llm_provider.embed("test")
+        vectors.length
       end
 
       # Destroys the schema for the vector database.

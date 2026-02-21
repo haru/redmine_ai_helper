@@ -46,7 +46,11 @@ module RedmineAiHelper
         points = ids.zip(vectors).map do |id, vector|
           { id: id, vector: vector, payload: payload || {} }
         end
-        client.points.upsert(collection_name: @index_name, points: points)
+        response = client.points.upsert(collection_name: @index_name, points: points)
+        unless response.is_a?(Hash) && response["status"] == "ok"
+          raise "Qdrant upsert failed: #{response.inspect}"
+        end
+        response
       end
 
       # Delete points by IDs from the Qdrant collection.
