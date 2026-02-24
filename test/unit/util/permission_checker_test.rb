@@ -6,6 +6,11 @@ class RedmineAiHelper::Util::PermissionCheckerTest < ActiveSupport::TestCase
     setup do
       @project = Project.find(1)
       @user = User.find(2)
+      @previous_user = User.current
+    end
+
+    teardown do
+      User.current = @previous_user
     end
 
     should "return false when project is nil" do
