@@ -23,10 +23,6 @@ end
 
 # Load MCP Server Loader and generate MCP Agent classes
 require "redmine_ai_helper/util/mcp_server_loader"
-# Monkey-patch ruby_llm-mcp notification bug (add_id on notifications/initialized)
-require "redmine_ai_helper/util/mcp_patch"
-RedmineAiHelper::Util::McpPatch.apply!
-
 # Suppress RubyLLM::MCP INFO logs; the gem has its own Logger independent of RubyLLM.configure
 if defined?(RubyLLM::MCP) && RubyLLM::MCP.respond_to?(:logger)
   RubyLLM::MCP.logger.level = ::Logger::ERROR
