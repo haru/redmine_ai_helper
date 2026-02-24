@@ -10,7 +10,7 @@ module RedmineAiHelper
       # - user has the specified permission on the project
       #   (allowed_to? internally checks module_enabled? as well)
       def self.module_enabled?(project:, user: User.current, permission: :view_ai_helper)
-        project&.id && user.allowed_to?(permission, project)
+        !!(project&.id && user.allowed_to?(permission, project))
       end
     end
   end
