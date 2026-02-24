@@ -1,7 +1,6 @@
-<% if @project&.id %>
 <%
   # Skip rendering if no project is available or user doesn't have permission
-  if @project.module_enabled?(:ai_helper) && User.current.allowed_to?({ controller: :ai_helper, action: :project_health }, @project) && AiHelperSetting.find_or_create.model_profile
+  if RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: @project, permission: { controller: :ai_helper, action: :project_health }) && AiHelperSetting.find_or_create.model_profile
 %>
 
 <!-- Header Section (without Generate Button) -->
@@ -85,7 +84,6 @@
 <meta name="pdf-export-url" content="<%= ai_helper_project_health_pdf_path(@project) %>" />
 
 <% end # if project %>
-<% end %>
 
 <% content_for :header_tags do %>
   <%= javascript_include_tag 'ai_helper_markdown_parser', plugin: 'redmine_ai_helper' %>
