@@ -1,4 +1,4 @@
-<% if @project and @project.module_enabled?(:ai_helper) and User.current.allowed_to?({ controller: :ai_helper, action: :chat_form }, @project) and AiHelperSetting.find_or_create.model_profile %>
+<% if RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: @project, permission: { controller: :ai_helper, action: :chat_form }) and AiHelperSetting.find_or_create.model_profile %>
 <script>
     // Function to toggle the open/closed state of a fieldset
     // flag: true to expand, false to collapse

@@ -1,10 +1,9 @@
-<% if @project&.id %>
 <%
   # Get project from hook context or controller instance
   project = @project || instance_variable_get(:@project) || (respond_to?(:project) ? project : nil)
 
   # Skip rendering if no project is available or user doesn't have permission
-  if project and project.module_enabled?(:ai_helper) and User.current.allowed_to?({ controller: :ai_helper, action: :project_health }, project) and AiHelperSetting.find_or_create.model_profile
+  if RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: project, permission: { controller: :ai_helper, action: :project_health }) and AiHelperSetting.find_or_create.model_profile
     # Safely access params
     version_id = defined?(params) ? params[:version_id] : nil
     start_date = defined?(params) ? params[:start_date] : nil
@@ -97,5 +96,3 @@
 <% end %>
 
 <% end # if project %>
-
-<% end %>

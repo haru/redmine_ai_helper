@@ -15,6 +15,7 @@ RubyLLM.configure do |config|
   config.log_stream_debug = false
 end
 require "redmine_ai_helper/util/config_file"
+require "redmine_ai_helper/util/permission_checker"
 require "redmine_ai_helper/user_patch"
 require_dependency "redmine_ai_helper/view_hook"
 Dir[File.join(File.dirname(__FILE__), "lib/redmine_ai_helper/agents", "*_agent.rb")].each do |file|
