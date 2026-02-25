@@ -1,4 +1,4 @@
-<% if @project and @project.module_enabled?(:ai_helper) and User.current.allowed_to?({ controller: :ai_helper, action: :chat_form }, @project) and AiHelperSetting.find_or_create.model_profile and User.current.allowed_to?(:add_issues, @project)%>
+<% if RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: @project, permission: { controller: :ai_helper, action: :chat_form }) and AiHelperSetting.find_or_create.model_profile and User.current.allowed_to?(:add_issues, @project) %>
 
 <span id="ai-helper-subissuer-generator-menu">
 <%= link_to sprite_icon("ai-helper-robot", l('ai_helper.generate_sub_issues.title'), plugin: :redmine_ai_helper), '#', onclick: "showSubissuerGenerator(); return false;", class: "ai-helper-subissuer-generator-button" %> |

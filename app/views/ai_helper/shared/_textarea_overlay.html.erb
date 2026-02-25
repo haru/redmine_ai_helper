@@ -4,7 +4,7 @@
   # Determine project from @issue if @project is not available
   project = @project || (@issue&.project)
 %>
-<% if project&.module_enabled?(:ai_helper) && User.current.allowed_to?(:view_ai_helper, project) %>
+<% if RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: project) %>
 
 <!-- Create checkboxes in ERB with proper Redmine sprite_icon -->
 <div id="ai-helper-description-checkbox-container" class="ai-helper-autocompletion-controls" style="display: none;">

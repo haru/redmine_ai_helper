@@ -15,6 +15,7 @@ RubyLLM.configure do |config|
   config.log_stream_debug = false
 end
 require "redmine_ai_helper/util/config_file"
+require "redmine_ai_helper/util/permission_checker"
 require "redmine_ai_helper/user_patch"
 require_dependency "redmine_ai_helper/view_hook"
 Dir[File.join(File.dirname(__FILE__), "lib/redmine_ai_helper/agents", "*_agent.rb")].each do |file|
@@ -23,10 +24,6 @@ end
 
 # Load MCP Server Loader and generate MCP Agent classes
 require "redmine_ai_helper/util/mcp_server_loader"
-# Monkey-patch ruby_llm-mcp notification bug (add_id on notifications/initialized)
-require "redmine_ai_helper/util/mcp_patch"
-RedmineAiHelper::Util::McpPatch.apply!
-
 # Suppress RubyLLM::MCP INFO logs; the gem has its own Logger independent of RubyLLM.configure
 if defined?(RubyLLM::MCP) && RubyLLM::MCP.respond_to?(:logger)
   RubyLLM::MCP.logger.level = ::Logger::ERROR
