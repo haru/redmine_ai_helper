@@ -11,10 +11,16 @@ if [ ! -f ~/.bashrc ]; then
     cd $BASEDIR
 fi
 
-curl -fsSL https://claude.ai/install.sh | bash
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> $HOME/.bashrc
 
+
+rm -rf .ruby-lsp
+ln -s /dev/null .ruby-lsp
+
 cd $REDMINE_ROOT
+
+rm -rf .ruby-lsp
+ln -s /dev/null .ruby-lsp
 
 git pull
 
