@@ -1,6 +1,6 @@
 source "https://rubygems.org"
 
-gem "ruby_llm", "~> 1.13.0"
+gem "ruby_llm", "~> 1.13.2"
 gem "ruby_llm-mcp", "~> 1.0.0"
 
 gem "qdrant-ruby", "~> 0.9.9"
