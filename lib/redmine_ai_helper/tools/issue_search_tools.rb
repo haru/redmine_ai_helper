@@ -188,7 +188,8 @@ module RedmineAiHelper
 
         (fields || []).each do |field|
           if field[:field_name].nil?
-            ai_helper_logger.warn "validate_search_params: field_name is nil. field=#{field.inspect}"
+            safe_keys = field.respond_to?(:keys) ? field.keys : nil
+            ai_helper_logger.warn "validate_search_params: field_name is nil. field_keys=#{safe_keys}"
             errors << "field_name is required but was not provided."
             next
           end
