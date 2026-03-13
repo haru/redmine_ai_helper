@@ -228,6 +228,10 @@ module RedmineAiHelper
                 errors << "A value in '#{field[:field_name]}' is nil. All values must be non-nil strings."
                 next
               end
+              unless value.is_a?(String)
+                errors << "A value in '#{field[:field_name]}' is not a string. All values must be non-nil strings."
+                next
+              end
               unless value.match(/\d{4}-\d{2}-\d{2}/)
                 errors << "The #{field[:field_name]} and #{field[:operator]} requires an absolute date value in the format YYYY-MM-DD. But the value is #{value}."
               end
@@ -239,6 +243,10 @@ module RedmineAiHelper
             field[:values].each do |value|
               if value.nil?
                 errors << "A value in '#{field[:field_name]}' is nil. All values must be non-nil strings."
+                next
+              end
+              unless value.is_a?(String)
+                errors << "A value in '#{field[:field_name]}' is not a string. All values must be non-nil strings."
                 next
               end
               unless value.match(/\d+/)
