@@ -53,6 +53,7 @@ module RedmineAiHelper
         issue.is_private = is_private
         issue.estimated_hours = estimated_hours.to_f if estimated_hours
 
+        custom_values = issue.custom_field_values || {}
         custom_fields.each do |field|
           if field[:field_id].nil?
             ai_helper_logger.warn "Skipping custom field with nil field_id"
@@ -60,8 +61,9 @@ module RedmineAiHelper
           end
           custom_field = CustomField.find_by(id: field[:field_id])
           next unless custom_field
-          issue.custom_field_values = { custom_field.id => field[:value] }
+          custom_values[custom_field.id] = field[:value]
         end
+        issue.custom_field_values = custom_values unless custom_values.empty?
 
         if validate_only
           unless issue.valid?
