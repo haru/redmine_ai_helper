@@ -42,10 +42,10 @@ module RedmineAiHelper
         issue.tracker_id = tracker_id
         issue.subject = subject
         issue.status_id = status_id
-        issue.priority_id = priority_id
-        issue.category_id = category_id
-        issue.fixed_version_id = version_id
-        issue.assigned_to_id = assigned_to_id
+        issue.priority_id = priority_id if priority_id
+        issue.category_id = category_id if category_id
+        issue.fixed_version_id = version_id if version_id
+        issue.assigned_to_id = assigned_to_id if assigned_to_id
         issue.description = description
         issue.start_date = start_date
         issue.due_date = due_date
@@ -54,7 +54,11 @@ module RedmineAiHelper
         issue.estimated_hours = estimated_hours.to_f if estimated_hours
 
         custom_fields.each do |field|
-          custom_field = CustomField.find(field[:field_id])
+          if field[:field_id].nil?
+            ai_helper_logger.warn "Skipping custom field with nil field_id"
+            next
+          end
+          custom_field = CustomField.find_by(id: field[:field_id])
           next unless custom_field
           issue.custom_field_values = { custom_field.id => field[:value] }
         end
@@ -122,7 +126,11 @@ module RedmineAiHelper
         issue.estimated_hours = estimated_hours.to_f if estimated_hours
 
         custom_fields.each do |field|
-          custom_field = CustomField.find(field[:field_id])
+          if field[:field_id].nil?
+            ai_helper_logger.warn "Skipping custom field with nil field_id"
+            next
+          end
+          custom_field = CustomField.find_by(id: field[:field_id])
           next unless custom_field
           issue.custom_field_values = { custom_field.id => field[:value] }
         end
