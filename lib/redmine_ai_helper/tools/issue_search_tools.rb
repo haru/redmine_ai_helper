@@ -187,6 +187,10 @@ module RedmineAiHelper
         errors = []
 
         (fields || []).each do |field|
+          unless field.is_a?(Hash)
+            ai_helper_logger.warn "validate_search_params: field is not a Hash. field=#{field.inspect}"
+            next
+          end
           if field[:field_name].nil?
             safe_keys = field.respond_to?(:keys) ? field.keys : nil
             ai_helper_logger.warn "validate_search_params: field_name is nil. field_keys=#{safe_keys}"
