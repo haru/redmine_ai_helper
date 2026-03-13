@@ -186,7 +186,22 @@ module RedmineAiHelper
       def validate_search_params(fields, date_fields)
         errors = []
 
-        fields.each do |field|
+        (fields || []).each do |field|
+          unless field.is_a?(Hash)
+            ai_helper_logger.warn "validate_search_params: field is not a Hash. field=#{field.inspect}"
+            next
+          end
+          if field[:field_name].nil?
+            safe_keys = field.respond_to?(:keys) ? field.keys : nil
+            ai_helper_logger.warn "validate_search_params: field_name is nil. field_keys=#{safe_keys}"
+            errors << "field_name is required but was not provided."
+            next
+          end
+          if field[:values].nil?
+            ai_helper_logger.warn "validate_search_params: values is nil for field '#{field[:field_name]}'"
+            errors << "values for field '#{field[:field_name]}' are required but were not provided."
+            next
+          end
           if field[:field_name].match(/_id$/) && field[:values].length > 0
             field[:values].each do |value|
               unless value.to_s.match(/^\d+$/)
@@ -196,13 +211,31 @@ module RedmineAiHelper
           end
         end
 
-        date_fields.each do |field|
+        (date_fields || []).each do |field|
+          if field[:field_name].nil?
+            ai_helper_logger.warn "validate_search_params: field_name is nil in date_fields. field=#{field.inspect}"
+            errors << "field_name is required but was not provided in date_fields."
+            next
+          end
+          if field[:values].nil?
+            ai_helper_logger.warn "validate_search_params: values is nil for date field '#{field[:field_name]}'"
+            errors << "values for date field '#{field[:field_name]}' is required but was not provided."
+            next
+          end
           case field[:operator]
           when "=", ">=", "<=", "><"
             if field[:values].length == 0
               errors << "The #{field[:field_name]} and #{field[:operator]} requires an absolute date value. But no value is specified."
             end
             field[:values].each do |value|
+              if value.nil?
+                errors << "A value in '#{field[:field_name]}' is nil. All values must be non-nil strings."
+                next
+              end
+              unless value.is_a?(String)
+                errors << "A value in '#{field[:field_name]}' is not a string. All values must be non-nil strings."
+                next
+              end
               unless value.match(/\d{4}-\d{2}-\d{2}/)
                 errors << "The #{field[:field_name]} and #{field[:operator]} requires an absolute date value in the format YYYY-MM-DD. But the value is #{value}."
               end
@@ -212,6 +245,14 @@ module RedmineAiHelper
               errors << "The #{field[:field_name]} and #{field[:operator]} requires a relative date value. But no value is specified."
             end
             field[:values].each do |value|
+              if value.nil?
+                errors << "A value in '#{field[:field_name]}' is nil. All values must be non-nil strings."
+                next
+              end
+              unless value.is_a?(String)
+                errors << "A value in '#{field[:field_name]}' is not a string. All values must be non-nil strings."
+                next
+              end
               unless value.match(/\d+/)
                 errors << "The #{field[:field_name]} and #{field[:operator]} requires a relative date value. But the value is #{value}."
               end
