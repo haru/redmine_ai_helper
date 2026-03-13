@@ -195,7 +195,7 @@ module RedmineAiHelper
           end
           if field[:values].nil?
             ai_helper_logger.warn "validate_search_params: values is nil for field '#{field[:field_name]}'"
-            errors << "values for field '#{field[:field_name]}' is required but was not provided."
+            errors << "values for field '#{field[:field_name]}' are required but were not provided."
             next
           end
           if field[:field_name].match(/_id$/) && field[:values].length > 0
