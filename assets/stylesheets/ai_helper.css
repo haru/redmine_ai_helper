@@ -1508,6 +1508,13 @@ table.list.ai-helper-report-list td.radio .radio-placeholder {
 
 .aihelper-option-btn {
   cursor: pointer;
+  white-space: normal;
+  word-break: break-word;
+  height: auto;
+  min-height: 2em;
+  text-align: center;
+  padding: 4px 10px;
+  line-height: 1.4;
 }
 
 .aihelper-option-btn:disabled {

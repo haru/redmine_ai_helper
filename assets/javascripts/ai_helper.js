@@ -135,7 +135,6 @@ class AiHelper {
             // Handle interactive options event
             try {
               const data = JSON.parse(dataStr);
-              console.log('[AI Helper] SSE interactive_options data parsed:', data);
               if (onInteractiveOptionsCallback && data.choices) {
                 onInteractiveOptionsCallback(data.choices);
               }
@@ -179,9 +178,7 @@ class AiHelper {
 
   // Render interactive option buttons for the given choices array
   renderInteractiveOptions = function(choices) {
-    console.log('[AI Helper] renderInteractiveOptions called with:', choices);
     const container = document.getElementById('aihelper-interactive-options');
-    console.log('[AI Helper] container found:', container);
     if (!container) return;
 
     const buttons = container.querySelectorAll('.aihelper-option-btn');
@@ -287,7 +284,6 @@ class AiHelper {
       },
       // onInteractiveOptionsCallback
       function(choices) {
-        console.log('[AI Helper] interactive_options received:', choices);
         ai_helper.renderInteractiveOptions(choices);
       }
     );
@@ -341,7 +337,6 @@ class AiHelper {
       if (xhr.status === 200) {
         ai_helper.innerHTMLwithScripts(chatArea, xhr.responseText);
         chatArea.scrollTop = chatArea.scrollHeight;
-        console.log('[AI Helper] reload_chat onload');
       } else {
         console.error("Failed to reload chat conversation:", xhr.statusText);
       }
