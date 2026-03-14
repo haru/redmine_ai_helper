@@ -34,16 +34,25 @@ module RedmineAiHelper
         return nil unless match
 
         parsed = JSON.parse(match[1])
-        choices = parsed["choices"]
-        return nil if choices.nil? || choices.empty?
+        return nil unless parsed.is_a?(Hash)
 
-        result = choices.first(5).map do |c|
-          { label: c["label"].to_s.strip, value: c["value"].to_s.strip }
-        end.reject { |c| c[:label].empty? || c[:value].empty? }
+        choices = parsed["choices"]
+        return nil unless choices.is_a?(Array) && choices.any?
+
+        result = choices.first(5).filter_map do |c|
+          next unless c.is_a?(Hash)
+          label = c["label"].to_s.strip
+          value = c["value"].to_s.strip
+          next if label.empty? || value.empty?
+          { label: label, value: value }
+        end
 
         result.empty? ? nil : result
       rescue JSON::ParserError => e
         new.ai_helper_logger.error("InteractiveOptionsParser: JSON parse error: #{e.message}")
+        nil
+      rescue StandardError => e
+        new.ai_helper_logger.error("InteractiveOptionsParser: error while extracting options: #{e.class}: #{e.message}")
         nil
       end
     end

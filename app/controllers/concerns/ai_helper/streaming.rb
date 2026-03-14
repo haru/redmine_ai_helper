@@ -66,10 +66,10 @@ module AiHelper
         }],
       })
 
-      full_content = ""
+      full_content = String.new
 
       stream_proc = Proc.new do |content|
-        full_content += content.to_s
+        full_content << content.to_s
         write_chunk({
           id: response_id,
           object: "chat.completion.chunk",

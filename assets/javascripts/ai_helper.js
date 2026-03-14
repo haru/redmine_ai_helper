@@ -5,6 +5,7 @@ class AiHelper {
   };
   userId = 'anonymous';
   chat_fold_storage_key = 'aihelper-fold-flag_anonymous';
+  interactiveOptionsHandlersInitialized = false;
 
   // Method to update user ID without recreating the instance
   setUserId(userId) {
@@ -176,15 +177,51 @@ class AiHelper {
     };
   };
 
+  // Attach delegated click/keydown handlers to the container once
+  initializeInteractiveOptionsHandlers = function(container) {
+    if (this.interactiveOptionsHandlersInitialized) return;
+
+    container.addEventListener('click', function(e) {
+      const button = e.target.closest('.aihelper-option-btn');
+      if (!button || !container.contains(button)) return;
+
+      const input = document.getElementById('ai-helper-message-input');
+      if (input) {
+        input.value = button.dataset.value;
+      }
+      ai_helper.hideInteractiveOptions();
+      const submitButton = document.getElementById('aihelper-chat-submit');
+      if (submitButton) {
+        submitButton.click();
+      }
+    });
+
+    container.addEventListener('keydown', function(e) {
+      const button = e.target.closest('.aihelper-option-btn');
+      if (!button || !container.contains(button)) return;
+
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        button.click();
+      }
+    });
+
+    this.interactiveOptionsHandlersInitialized = true;
+  };
+
   // Render interactive option buttons for the given choices array
   renderInteractiveOptions = function(choices) {
     const container = document.getElementById('aihelper-interactive-options');
     if (!container) return;
 
+    if (!this.interactiveOptionsHandlersInitialized) {
+      this.initializeInteractiveOptionsHandlers(container);
+    }
+
     const buttons = container.querySelectorAll('.aihelper-option-btn');
 
     // Show container and configure buttons
-    container.style.display = 'flex';
+    container.hidden = false;
 
     buttons.forEach((btn, index) => {
       if (index < choices.length) {
@@ -192,43 +229,10 @@ class AiHelper {
         btn.textContent = choice.label;
         btn.dataset.value = choice.value;
         btn.disabled = false;
-        btn.style.display = '';
-
-        // Remove old listeners by replacing with clone
-        const newBtn = btn.cloneNode(true);
-        btn.parentNode.replaceChild(newBtn, btn);
-
-        newBtn.addEventListener('click', function() {
-          const input = document.getElementById('ai-helper-message-input');
-          if (input) {
-            input.value = this.dataset.value;
-          }
-          ai_helper.hideInteractiveOptions();
-          const submitButton = document.getElementById('aihelper-chat-submit');
-          if (submitButton) {
-            submitButton.click();
-          }
-        });
-
-        newBtn.addEventListener('keydown', function(e) {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            this.click();
-          }
-        });
+        btn.hidden = false;
       } else {
-        btn.style.display = 'none';
+        btn.hidden = true;
       }
-    });
-  };
-
-  // Disable all interactive option buttons (after selection or submit)
-  disableInteractiveOptions = function() {
-    const container = document.getElementById('aihelper-interactive-options');
-    if (!container) return;
-    const buttons = container.querySelectorAll('.aihelper-option-btn');
-    buttons.forEach(btn => {
-      btn.disabled = true;
     });
   };
 
@@ -236,7 +240,7 @@ class AiHelper {
   hideInteractiveOptions = function() {
     const container = document.getElementById('aihelper-interactive-options');
     if (container) {
-      container.style.display = 'none';
+      container.hidden = true;
     }
   };
 
