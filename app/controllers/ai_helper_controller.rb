@@ -174,7 +174,7 @@ class AiHelperController < ApplicationController
 
     stream_llm_response do |stream_proc|
       message = llm.chat(@conversation, stream_proc, option)
-      if message.content
+      if message.content && message.content.include?("AIHELPER_OPTIONS")
         message.content = RedmineAiHelper::Util::InteractiveOptionsParser.strip(message.content)
       end
       @conversation.messages << message

@@ -18,10 +18,12 @@ module RedmineAiHelper
       PATTERN = /<!--AIHELPER_OPTIONS:(.*?)-->/m
 
       # Return the content with the options block removed and whitespace stripped.
+      # If no options block is present, the content is returned unchanged.
       #
       # @param content [String] LLM response full text
       # @return [String] body with the options block removed
       def self.strip(content)
+        return content unless content.match?(PATTERN)
         content.gsub(PATTERN, "").strip
       end
 
@@ -49,10 +51,10 @@ module RedmineAiHelper
 
         result.empty? ? nil : result
       rescue JSON::ParserError => e
-        new.ai_helper_logger.error("InteractiveOptionsParser: JSON parse error: #{e.message}")
+        ai_helper_logger.error("InteractiveOptionsParser: JSON parse error: #{e.message}")
         nil
       rescue StandardError => e
-        new.ai_helper_logger.error("InteractiveOptionsParser: error while extracting options: #{e.class}: #{e.message}")
+        ai_helper_logger.error("InteractiveOptionsParser: error while extracting options: #{e.class}: #{e.message}")
         nil
       end
     end
