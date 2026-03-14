@@ -94,13 +94,11 @@ class IssueUpdateToolsTest < ActiveSupport::TestCase
           end
         end
 
-        should "skip and log warning when parent_issue_id is nil" do
-          logger = mock("logger")
-          logger.stubs(:warn)
-          @provider.stubs(:ai_helper_logger).returns(logger)
-          logger.expects(:warn).with(regexp_matches(/parent_issue_id/)).at_least_once
+        should "skip parent assignment when parent_issue_id is nil" do
           response = @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "no parent issue", parent_issue_id: nil)
           assert response[:id].present?
+          issue = Issue.find(response[:id])
+          assert_nil issue.parent_issue_id
         end
 
         should "validate parent_issue_id existence when validate_only is true without saving" do

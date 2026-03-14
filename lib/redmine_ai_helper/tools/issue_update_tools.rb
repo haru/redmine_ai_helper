@@ -72,27 +72,29 @@ module RedmineAiHelper
         end
         issue.custom_field_values = custom_values unless custom_values.empty?
 
-        if parent_issue_id.nil?
-          ai_helper_logger.warn "parent_issue_id is nil, skipping parent assignment"
-        else
-          parent = Issue.find_by(id: parent_issue_id)
-          raise("Parent issue not found. id = #{parent_issue_id}") unless parent
+        if parent_issue_id
+          unless Issue.exists?(id: parent_issue_id)
+            raise("Parent issue not found. id = #{parent_issue_id}")
+          end
           issue.parent_issue_id = parent_issue_id
         end
 
+        validate_relations!(relations)
+
         if validate_only
-          validate_relations!(relations)
           unless issue.valid?
             raise("Validation failed. #{issue.errors.full_messages.join(", ")}")
           end
           return generate_issue_data(issue)
         end
 
-        unless issue.save
-          raise("Failed to create a new issue. #{issue.errors.full_messages.join(", ")}")
-        end
+        Issue.transaction do
+          unless issue.save
+            raise("Failed to create a new issue. #{issue.errors.full_messages.join(", ")}")
+          end
 
-        create_relations!(issue, relations)
+          create_relations!(issue, relations)
+        end
 
         generate_issue_data(issue)
       end
