@@ -566,12 +566,12 @@ module RedmineAiHelper
       def calculate_progress_metrics(issues)
         issue_list = issues.to_a
 
-        total_done_ratio = issue_list.sum { |issue| issue.done_ratio || 0 }
-        issues_with_progress = issue_list.select { |issue| (issue.done_ratio || 0) > 0 }
+        total_done_ratio = issue_list.sum { |issue| issue.status.is_closed? ? 100 : (issue.done_ratio || 0) }
+        issues_with_progress = issue_list.select { |issue| issue.status.is_closed? || (issue.done_ratio || 0) > 0 }
 
-        not_started = issue_list.select { |issue| (issue.done_ratio || 0) == 0 }
-        in_progress = issue_list.select { |issue| ratio = (issue.done_ratio || 0); ratio > 0 && ratio < 100 }
-        completed = issue_list.select { |issue| (issue.done_ratio || 0) == 100 }
+        not_started = issue_list.select { |issue| (issue.done_ratio || 0) == 0 && !issue.status.is_closed? }
+        in_progress = issue_list.select { |issue| !issue.status.is_closed? && (ratio = (issue.done_ratio || 0); ratio > 0 && ratio < 100) }
+        completed = issue_list.select { |issue| issue.status.is_closed? || (issue.done_ratio || 0) == 100 }
 
         {
           average_completion_percentage: issue_list.count > 0 ? (total_done_ratio.to_f / issue_list.count).round(2) : 0,
