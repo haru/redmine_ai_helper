@@ -72,7 +72,7 @@ module RedmineAiHelper
               issue_url: issue_url(child, only_path: true),
             }
           end,
-          parent: issue.parent ? {
+          parent: (issue.parent && issue.parent.visible?) ? {
             id: issue.parent.id,
             subject: issue.parent.subject,
           } : nil,
