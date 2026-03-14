@@ -28,10 +28,17 @@ module RedmineAiHelper
             property :value, type: "string", description: "The value of the custom field.", required: true
           end
         end
+        property :parent_issue_id, type: "integer", description: "The parent issue ID. When specified, the created issue becomes a child of the parent issue.", required: false
+        property :relations, type: "array", description: "Relations to create between the new issue and existing issues.", required: false do
+          item type: "object", description: "A relation to create." do
+            property :issue_id, type: "integer", description: "The ID of the related issue.", required: true
+            property :relation_type, type: "string", description: "The relation type. Valid values: relates, duplicates, duplicated, blocks, blocked, precedes, follows, copied_to, copied_from.", required: true
+          end
+        end
         property :validate_only, type: "boolean", description: "If true, only validate the issue and do not create it.", required: false
       end
       # Create a new issue in the database.
-      def create_new_issue(project_id:, tracker_id:, subject:, status_id:, priority_id: nil, category_id: nil, version_id: nil, assigned_to_id: nil, description: nil, start_date: nil, due_date: nil, done_ratio: nil, is_private: false, estimated_hours: nil, custom_fields: [], validate_only: false)
+      def create_new_issue(project_id:, tracker_id:, subject:, status_id:, priority_id: nil, category_id: nil, version_id: nil, assigned_to_id: nil, description: nil, start_date: nil, due_date: nil, done_ratio: nil, is_private: false, estimated_hours: nil, custom_fields: [], parent_issue_id: nil, relations: [], validate_only: false)
         project = Project.find_by(id: project_id)
         raise("Project not found. id = #{project_id}") unless project
         raise("Permission denied") unless User.current.allowed_to?(:add_issues, project)
@@ -65,15 +72,28 @@ module RedmineAiHelper
         end
         issue.custom_field_values = custom_values unless custom_values.empty?
 
+        if parent_issue_id.nil?
+          ai_helper_logger.warn "parent_issue_id is nil, skipping parent assignment"
+        else
+          parent = Issue.find_by(id: parent_issue_id)
+          raise("Parent issue not found. id = #{parent_issue_id}") unless parent
+          issue.parent_issue_id = parent_issue_id
+        end
+
         if validate_only
+          validate_relations!(relations)
           unless issue.valid?
             raise("Validation failed. #{issue.errors.full_messages.join(", ")}")
           end
           return generate_issue_data(issue)
         end
+
         unless issue.save
           raise("Failed to create a new issue. #{issue.errors.full_messages.join(", ")}")
         end
+
+        create_relations!(issue, relations)
+
         generate_issue_data(issue)
       end
 
@@ -98,11 +118,23 @@ module RedmineAiHelper
             property :value, type: "string", description: "The value of the custom field.", required: true
           end
         end
+        property :parent_issue_id, type: "integer", description: "The parent issue ID. Set to 0 to clear the parent (remove the parent-child relationship). When nil, the existing parent relationship is unchanged.", required: false
+        property :relations_to_add, type: "array", description: "Relations to add between this issue and other issues.", required: false do
+          item type: "object", description: "A relation to add." do
+            property :issue_id, type: "integer", description: "The ID of the related issue.", required: true
+            property :relation_type, type: "string", description: "The relation type. Valid values: relates, duplicates, duplicated, blocks, blocked, precedes, follows, copied_to, copied_from.", required: true
+          end
+        end
+        property :relations_to_remove, type: "array", description: "Relations to remove between this issue and other issues. The issue_id uniquely identifies the relation to remove.", required: false do
+          item type: "object", description: "A relation to remove." do
+            property :issue_id, type: "integer", description: "The ID of the related issue whose relation should be removed.", required: true
+          end
+        end
         property :comment_to_add, type: "string", description: "Comment to add to the issue. To insert a newline, you need to insert a blank line. Otherwise, it will be concatenated into a single line.", required: false
         property :validate_only, type: "boolean", description: "If true, only validate the issue and do not update it.", required: false
       end
       # Update an issue in the database.
-      def update_issue(issue_id:, subject: nil, tracker_id: nil, status_id: nil, priority_id: nil, category_id: nil, version_id: nil, assigned_to_id: nil, description: nil, start_date: nil, due_date: nil, done_ratio: nil, is_private: false, estimated_hours: nil, custom_fields: [], comment_to_add: nil, validate_only: false)
+      def update_issue(issue_id:, subject: nil, tracker_id: nil, status_id: nil, priority_id: nil, category_id: nil, version_id: nil, assigned_to_id: nil, description: nil, start_date: nil, due_date: nil, done_ratio: nil, is_private: false, estimated_hours: nil, custom_fields: [], parent_issue_id: nil, relations_to_add: [], relations_to_remove: [], comment_to_add: nil, validate_only: false)
         issue = Issue.find_by(id: issue_id)
         raise("Issue not found. id = #{issue_id}") unless issue
         raise("Permission denied") unless issue.editable?(User.current)
@@ -143,7 +175,18 @@ module RedmineAiHelper
 
         issue.custom_field_values = custom_field_values unless custom_field_values.empty?
 
+        unless parent_issue_id.nil?
+          if parent_issue_id == 0
+            issue.parent_issue_id = nil
+          else
+            parent = Issue.find_by(id: parent_issue_id)
+            raise("Parent issue not found. id = #{parent_issue_id}") unless parent
+            issue.parent_issue_id = parent_issue_id
+          end
+        end
+
         if validate_only
+          validate_relations!(relations_to_add)
           unless issue.valid?
             raise("Validation failed. #{issue.errors.full_messages.join(", ")}")
           end
@@ -153,10 +196,45 @@ module RedmineAiHelper
         unless issue.save
           raise("Failed to update the issue #{issue.id}. #{issue.errors.full_messages.join(", ")}")
         end
+
+        (relations_to_remove || []).each do |rel|
+          next if rel[:issue_id].nil?
+          relation = issue.relations.find { |r| r.issue_from_id == rel[:issue_id] || r.issue_to_id == rel[:issue_id] }
+          relation&.destroy
+        end
+
+        create_relations!(issue, relations_to_add)
+
         generate_issue_data(issue)
       end
 
       private
+
+      # Validates that each relation entry references an existing issue and a valid relation_type.
+      # Used in validate_only paths where the issue is not yet saved.
+      def validate_relations!(relations)
+        (relations || []).each do |rel|
+          next if rel[:issue_id].nil?
+          raise("Related issue not found. id = #{rel[:issue_id]}") unless Issue.exists?(rel[:issue_id])
+          raise("Invalid relation_type: #{rel[:relation_type]}") unless IssueRelation::TYPES.key?(rel[:relation_type])
+        end
+      end
+
+      # Creates IssueRelation records between issue and each entry in relations_list.
+      # Skips entries with nil issue_id (with warning) and duplicate relations (idempotent).
+      def create_relations!(issue, relations_list)
+        (relations_list || []).each do |rel|
+          if rel[:issue_id].nil?
+            ai_helper_logger.warn "Skipping relation with nil issue_id"
+            next
+          end
+          target = Issue.find_by(id: rel[:issue_id])
+          raise("Related issue not found. id = #{rel[:issue_id]}") unless target
+          raise("Invalid relation_type: #{rel[:relation_type]}") unless IssueRelation::TYPES.key?(rel[:relation_type])
+          next if issue.relations.any? { |r| r.issue_from_id == rel[:issue_id] || r.issue_to_id == rel[:issue_id] }
+          IssueRelation.create!(issue_from_id: issue.id, issue_to_id: rel[:issue_id], relation_type: rel[:relation_type])
+        end
+      end
     end
   end
 end

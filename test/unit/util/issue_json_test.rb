@@ -2,7 +2,7 @@ require File.expand_path("../../../test_helper", __FILE__)
 require "redmine_ai_helper/util/issue_json"
 
 class RedmineAiHelper::Util::IssueJsonTest < ActiveSupport::TestCase
-  fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :attachments, :changesets, :journals, :journal_details, :changes
+  fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :attachments, :changesets, :journals, :journal_details, :changes, :issue_relations
 
   context "generate_issue_data" do
     setup do
@@ -104,6 +104,48 @@ class RedmineAiHelper::Util::IssueJsonTest < ActiveSupport::TestCase
         assert_not_includes attachment_data.keys, :disk_path,
           "Attachment data must not contain disk_path for security reasons"
       end
+    end
+
+    should "include parent field with id and subject when issue has a parent" do
+      child_issue = Issue.find(2)
+      issue_data = @test_class.generate_issue_data(child_issue)
+
+      assert_not_nil issue_data[:parent]
+      assert_equal @issue.id, issue_data[:parent][:id]
+      assert_equal @issue.subject, issue_data[:parent][:subject]
+    end
+
+    should "set parent field to nil when issue has no parent" do
+      issue_data = @test_class.generate_issue_data(@issue)
+
+      assert_nil issue_data[:parent]
+    end
+
+    should "include other_issue_id and other_issue_subject in relations" do
+      target_issue = Issue.find(3)
+      IssueRelation.create!(issue_from_id: @issue.id, issue_to_id: target_issue.id, relation_type: "relates")
+      @issue.reload
+
+      issue_data = @test_class.generate_issue_data(@issue)
+      relation_data = issue_data[:relations].find { |r| r[:issue_to_id] == target_issue.id }
+
+      assert_not_nil relation_data
+      assert_equal target_issue.id, relation_data[:other_issue_id]
+      assert_equal target_issue.subject, relation_data[:other_issue_subject]
+    end
+
+    should "set other_issue_id correctly when issue is the issue_to in the relation" do
+      source_issue = Issue.find(3)
+      # Use "blocks" to avoid the relates-type ID normalization (which swaps from/to when from_id > to_id)
+      IssueRelation.create!(issue_from_id: source_issue.id, issue_to_id: @issue.id, relation_type: "blocks")
+      @issue.reload
+
+      issue_data = @test_class.generate_issue_data(@issue)
+      relation_data = issue_data[:relations].find { |r| r[:issue_from_id] == source_issue.id }
+
+      assert_not_nil relation_data
+      assert_equal source_issue.id, relation_data[:other_issue_id]
+      assert_equal source_issue.subject, relation_data[:other_issue_subject]
     end
   end
 
