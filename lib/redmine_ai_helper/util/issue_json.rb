@@ -72,13 +72,20 @@ module RedmineAiHelper
               issue_url: issue_url(child, only_path: true),
             }
           end,
+          parent: (issue.parent && issue.parent.visible?) ? {
+            id: issue.parent.id,
+            subject: issue.parent.subject,
+          } : nil,
           relations: issue.relations.filter { |relation| relation.visible? }.map do |relation|
+            other_issue_id = relation.issue_from_id == issue.id ? relation.issue_to_id : relation.issue_from_id
             {
               id: relation.id,
               issue_to_id: relation.issue_to_id,
               issue_from_id: relation.issue_from_id,
               relation_type: relation.relation_type,
               delay: relation.delay,
+              other_issue_id: other_issue_id,
+              other_issue_subject: Issue.find_by(id: other_issue_id)&.subject,
             }
           end,
           journals: issue.journals.filter { |journal| journal.visible? }.map do |journal|
