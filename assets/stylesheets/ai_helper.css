@@ -1506,6 +1506,10 @@ table.list.ai-helper-report-list td.radio .radio-placeholder {
   margin-bottom: 4px;
 }
 
+.aihelper-interactive-options[hidden] {
+  display: none;
+}
+
 .aihelper-option-btn {
   cursor: pointer;
   white-space: normal;
