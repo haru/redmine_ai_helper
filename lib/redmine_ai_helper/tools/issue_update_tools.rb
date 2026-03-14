@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+require "set"
 require "redmine_ai_helper/base_tools"
 require "redmine_ai_helper/util/issue_json"
 
@@ -228,6 +229,17 @@ module RedmineAiHelper
       # Creates IssueRelation records between issue and each entry in relations_list.
       # Skips entries with nil issue_id (with warning) and duplicate relations (idempotent).
       def create_relations!(issue, relations_list)
+        # Collect all issues already related to this issue (in either direction) into a Set.
+        # Using a DB query rather than issue.relations so that relations created earlier in this
+        # method are also reflected (in-memory association is not updated by IssueRelation.create!).
+        already_related_issue_ids = IssueRelation
+          .where("issue_from_id = :id OR issue_to_id = :id", id: issue.id)
+          .pluck(:issue_from_id, :issue_to_id)
+          .flatten
+          .uniq
+          .reject { |related_id| related_id == issue.id }
+          .to_set
+
         (relations_list || []).each do |rel|
           if rel[:issue_id].nil?
             ai_helper_logger.warn "Skipping relation with nil issue_id"
@@ -236,8 +248,12 @@ module RedmineAiHelper
           target = Issue.find_by(id: rel[:issue_id])
           raise("Related issue not found. id = #{rel[:issue_id]}") unless target
           raise("Invalid relation_type: #{rel[:relation_type]}") unless IssueRelation::TYPES.key?(rel[:relation_type])
-          next if issue.relations.any? { |r| r.issue_from_id == rel[:issue_id] || r.issue_to_id == rel[:issue_id] }
+          if already_related_issue_ids.include?(rel[:issue_id])
+            ai_helper_logger.info "Skipping duplicate relation to issue_id=#{rel[:issue_id]}"
+            next
+          end
           IssueRelation.create!(issue_from_id: issue.id, issue_to_id: rel[:issue_id], relation_type: rel[:relation_type])
+          already_related_issue_ids << rel[:issue_id]
         end
       end
     end
