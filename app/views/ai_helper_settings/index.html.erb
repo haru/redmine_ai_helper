@@ -22,10 +22,7 @@
     </p>
     <div id="ai-helper-think-model-settings">
         <p>
-            <%
-                think_options = @model_profiles.map{|p| [p.display_name, p.id]}
-            %>
-            <%= f.select :think_model_profile_id, think_options, include_blank: true %>
+            <%= f.select :think_model_profile_id, options, include_blank: true %>
         </p>
     </div>
     <hr>
