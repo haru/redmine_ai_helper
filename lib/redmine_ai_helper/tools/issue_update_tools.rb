@@ -187,25 +187,28 @@ module RedmineAiHelper
           end
         end
 
+        validate_relations!(relations_to_add)
+
         if validate_only
-          validate_relations!(relations_to_add)
           unless issue.valid?
             raise("Validation failed. #{issue.errors.full_messages.join(", ")}")
           end
           return generate_issue_data(issue)
         end
 
-        unless issue.save
-          raise("Failed to update the issue #{issue.id}. #{issue.errors.full_messages.join(", ")}")
-        end
+        Issue.transaction do
+          unless issue.save
+            raise("Failed to update the issue #{issue.id}. #{issue.errors.full_messages.join(", ")}")
+          end
 
-        (relations_to_remove || []).each do |rel|
-          next if rel[:issue_id].nil?
-          relation = issue.relations.find { |r| r.issue_from_id == rel[:issue_id] || r.issue_to_id == rel[:issue_id] }
-          relation&.destroy
-        end
+          (relations_to_remove || []).each do |rel|
+            next if rel[:issue_id].nil?
+            relation = issue.relations.find { |r| r.issue_from_id == rel[:issue_id] || r.issue_to_id == rel[:issue_id] }
+            relation&.destroy
+          end
 
-        create_relations!(issue, relations_to_add)
+          create_relations!(issue, relations_to_add)
+        end
 
         generate_issue_data(issue)
       end
