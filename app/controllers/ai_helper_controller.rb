@@ -3,6 +3,7 @@
 require "redmine_ai_helper/llm"
 require "redmine_ai_helper/logger"
 require "redmine_ai_helper/export/pdf/project_health_pdf_helper"
+require "redmine_ai_helper/util/interactive_options_parser"
 
 # Controller for AI Helper plugin's main functionality
 # Handles chat interactions, project health reports, issue summaries, and wiki completions
@@ -172,7 +173,11 @@ class AiHelperController < ApplicationController
     }
 
     stream_llm_response do |stream_proc|
-      @conversation.messages << llm.chat(@conversation, stream_proc, option)
+      message = llm.chat(@conversation, stream_proc, option)
+      if message.content && message.content.include?("AIHELPER_OPTIONS")
+        message.content = RedmineAiHelper::Util::InteractiveOptionsParser.strip(message.content)
+      end
+      @conversation.messages << message
       @conversation.save!
       AiHelperConversation.cleanup_old_conversations
     end

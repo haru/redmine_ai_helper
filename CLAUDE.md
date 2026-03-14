@@ -191,3 +191,10 @@ Testing conventions:
 3. Override `available_tool_providers` to return an array of your `BaseTools` subclasses (e.g. `[YourTools]`)
 4. Override `backstory` to return the agent's system prompt context
 5. See `example/redmine_fortune/` for a complete example
+
+## Active Technologies
+- Ruby 3.x / Rails 7.x (Redmine 5.x) + RubyLLM (LLM streaming), Redmine Plugin API, shoulda + mocha (test) (005-chat-interactive-responses)
+- 選択肢データはDBに保存しない。既存の `ai_helper_messages`（content, role）テーブルはそのまま使用。 (005-chat-interactive-responses)
+
+## Recent Changes
+- 005-chat-interactive-responses: Added Ruby 3.x / Rails 7.x (Redmine 5.x) + RubyLLM (LLM streaming), Redmine Plugin API, shoulda + mocha (test)

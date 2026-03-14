@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "redmine_ai_helper/util/interactive_options_parser"
+
 # Namespace for concerns shared by AI helper controllers.
 module AiHelper
   # Mixin that encapsulates Server-Sent Events (SSE) helpers for streaming LLM responses.
@@ -25,7 +27,22 @@ module AiHelper
       response.stream.write("data: #{data.to_json}\n\n")
     end
 
+    # Emit an interactive options SSE event with the given choices.
+    #
+    # @param options [Array<Hash>, nil] array of {label:, value:} hashes, or nil/empty to skip.
+    # @return [void]
+    def send_interactive_options_event(options)
+      return if options.nil? || options.empty?
+
+      payload = { choices: options }.to_json
+      response.stream.write("event: interactive_options\ndata: #{payload}\n\n")
+    rescue JSON::GeneratorError => e
+      ai_helper_logger.error("send_interactive_options_event: JSON serialization error: #{e.message}")
+    end
+
     # Stream a full LLM response using SSE, yielding a proc to the caller for incremental content.
+    # After streaming completes, checks the full response for an interactive options block and
+    # emits a separate SSE event if choices are found.
     #
     # @param close_stream [Boolean] whether to close the SSE stream after completion.
     # @yieldparam stream_proc [Proc] block to call with incremental response fragments.
@@ -49,7 +66,10 @@ module AiHelper
         }],
       })
 
+      full_content = String.new
+
       stream_proc = Proc.new do |content|
+        full_content << content.to_s
         write_chunk({
           id: response_id,
           object: "chat.completion.chunk",
@@ -78,6 +98,9 @@ module AiHelper
           finish_reason: "stop",
         }],
       })
+
+      options = RedmineAiHelper::Util::InteractiveOptionsParser.extract_options(full_content)
+      send_interactive_options_event(options)
     ensure
       response.stream.close if close_stream
     end

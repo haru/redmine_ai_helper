@@ -31,6 +31,7 @@
       </div>
       <div id="aihelper-foldable-area">
         <div id="aihelper-chat-conversation"></div>
+        <%= render 'ai_helper/chat/interactive_options' %>
         <div id="aihelper-chat-form-area"></div>
         <span><%= t(:label_ai_helper_input_newline) %></span>
         <% if AiHelperCustomCommand.available_for(user: User.current, project: @project).exists? %>
