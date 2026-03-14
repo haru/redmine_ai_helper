@@ -56,6 +56,13 @@ module RedmineAiHelper
       @langfuse
     end
 
+    # Lazily returns the Think LLM provider, creating it on first access.
+    # This avoids unnecessary DB lookups when the Think model is disabled
+    # or not used by a particular agent.
+    def think_llm_provider
+      @think_llm_provider ||= RedmineAiHelper::LlmProvider.get_think_llm_provider
+    end
+
     # Returns the assistant instance, creating it on first access.
     # @return [RedmineAiHelper::Assistant] The assistant instance.
     def assistant
@@ -66,7 +73,7 @@ module RedmineAiHelper
         instructions: system_prompt,
         tools: tool_classes,
       )
-      setup_langfuse_callbacks(@assistant.chat)
+      setup_langfuse_callbacks(@assistant.chat, provider: @llm_provider)
       @assistant
     end
 
@@ -134,7 +141,7 @@ module RedmineAiHelper
     # @return [String] The response from the LLM.
     def chat(messages, option = {}, callback = nil, with: nil)
       chat_instance = @llm_provider.create_chat(instructions: system_prompt)
-      setup_langfuse_callbacks(chat_instance)
+      setup_langfuse_callbacks(chat_instance, provider: @llm_provider)
 
       # Add message history (all except the last message)
       messages[0..-2].each do |msg|
@@ -142,6 +149,45 @@ module RedmineAiHelper
       end
 
       # Ask with the last message (with streaming support)
+      last_message = messages.last
+      ask_options = {}
+      ask_options[:with] = with if with.present?
+      answer = ""
+
+      if callback
+        chat_instance.ask(last_message[:content], **ask_options) do |chunk|
+          content = chunk.content rescue nil
+          if content
+            callback.call(content)
+            answer += content
+          end
+        end
+      else
+        response = chat_instance.ask(last_message[:content], **ask_options)
+        answer = response.content
+      end
+
+      answer
+    end
+
+    # Chat with the Think model LLM if configured, otherwise delegates to chat().
+    # NOTE: Applying Think model to the @assistant pattern (tool-use loop) is not
+    # implemented. A future design would need to solve cross-provider switching combined
+    # with shared conversation history (no solution exists yet).
+    # @param messages [Array<Hash>] The messages to be sent.
+    # @param option [Hash] Additional options for the chat.
+    # @param callback [Proc] A callback function to be called with each chunk of the response.
+    # @param with [Array<String>, nil] Image file paths to attach to the request.
+    # @return [String] The response from the LLM.
+    def think_chat(messages, option = {}, callback = nil, with: nil)
+      provider = think_llm_provider || @llm_provider
+      chat_instance = provider.create_chat(instructions: system_prompt)
+      setup_langfuse_callbacks(chat_instance, provider: provider)
+
+      messages[0..-2].each do |msg|
+        chat_instance.add_message(role: msg[:role].to_sym, content: msg[:content])
+      end
+
       last_message = messages.last
       ask_options = {}
       ask_options[:with] = with if with.present?
@@ -203,7 +249,8 @@ module RedmineAiHelper
     # Registers an on_end_message callback that creates Langfuse generations
     # for each assistant response with token usage data.
     # @param chat_instance [RubyLLM::Chat] The chat instance to register callbacks on.
-    def setup_langfuse_callbacks(chat_instance)
+    # @param provider [Object] The LLM provider used for this chat (for model name logging).
+    def setup_langfuse_callbacks(chat_instance, provider: @llm_provider)
       return unless langfuse
 
       chat_instance.on_end_message do |message|
@@ -236,9 +283,9 @@ module RedmineAiHelper
         span.create_generation(
           name: "chat",
           messages: input_messages,
-          model: @llm_provider.model_name,
-          temperature: @llm_provider.temperature,
-          max_tokens: @llm_provider.max_tokens,
+          model: provider.model_name,
+          temperature: provider.temperature,
+          max_tokens: provider.max_tokens,
         )&.finish(output: output, usage: usage)
       end
     end

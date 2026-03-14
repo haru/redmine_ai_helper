@@ -6,6 +6,14 @@ module RedmineAiHelper
     # Each subclass configures RubyLLM with the appropriate API keys and settings.
     class BaseProvider
 
+      # @param model_profile [AiHelperModelProfile, nil] Explicit profile to use.
+      #   When nil, falls back to the current AiHelperSetting#model_profile.
+      #   Pass an explicit profile when instantiating a provider for a non-default
+      #   profile (e.g. the Think model profile).
+      def initialize(model_profile: nil)
+        @model_profile = model_profile
+      end
+
       # Returns the memoized RubyLLM::Context for this provider instance.
       # The context is created once via build_context and reused for all
       # subsequent chat and embed calls within the same request lifecycle.
@@ -14,28 +22,24 @@ module RedmineAiHelper
         @context ||= build_context
       end
 
-      # Get the model name from the current model profile.
+      # Get the model name from the resolved model profile.
       # @return [String] model name
       def model_name
-        setting = AiHelperSetting.find_or_create
-        model_profile = setting.model_profile
-        raise "Model Profile not found" unless model_profile
-        model_profile.llm_model
+        profile = resolved_model_profile
+        raise "Model Profile not found" unless profile
+        profile.llm_model
       end
 
-      # Get the temperature from the current model profile.
+      # Get the temperature from the resolved model profile.
       # @return [Float, nil] temperature
       def temperature
-        setting = AiHelperSetting.find_or_create
-        model_profile = setting.model_profile
-        model_profile&.temperature
+        resolved_model_profile&.temperature
       end
 
-      # Get the max_tokens from the current setting.
+      # Get the max_tokens from the resolved model profile.
       # @return [Integer, nil] max_tokens
       def max_tokens
-        setting = AiHelperSetting.find_or_create
-        setting.max_tokens
+        resolved_model_profile&.max_tokens
       end
 
       # Create a RubyLLM::Chat instance via the memoized context.
@@ -64,6 +68,14 @@ module RedmineAiHelper
       end
 
       protected
+
+      # Returns the model profile to use for this provider instance.
+      # Uses the explicit profile passed at construction time, or falls back
+      # to the current AiHelperSetting#model_profile.
+      # @return [AiHelperModelProfile, nil]
+      def resolved_model_profile
+        @model_profile || AiHelperSetting.find_or_create.model_profile
+      end
 
       # Build a RubyLLM::Context with provider-specific configuration.
       # Must be implemented by subclasses.

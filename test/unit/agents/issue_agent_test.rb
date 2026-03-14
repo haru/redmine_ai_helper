@@ -130,8 +130,8 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
         mock_prompt.stubs(:format).returns("Generate a reply for this issue")
         @agent.stubs(:load_prompt).with("issue_agent/generate_reply").returns(mock_prompt)
 
-        # Mock chat method
-        @agent.stubs(:chat).returns("This is a generated reply.")
+        # Mock think_chat method
+        @agent.stubs(:think_chat).returns("This is a generated reply.")
 
         result = @agent.generate_issue_reply(issue: @issue, instructions: "Please provide a detailed response.")
         assert_equal "This is a generated reply.", result
@@ -156,7 +156,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
         ).returns("Generate a reply for this issue with instructions.")
         @agent.stubs(:load_prompt).with("issue_agent/generate_reply").returns(mock_prompt)
 
-        @agent.stubs(:chat).returns("This is a generated reply.")
+        @agent.stubs(:think_chat).returns("This is a generated reply.")
 
         result = @agent.generate_issue_reply(issue: @issue, instructions: "Please provide a detailed response.")
         assert_equal "This is a generated reply.", result
@@ -172,7 +172,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
         file_paths = ["/path/to/file1.pdf", "/path/to/file2.png"]
         @agent.stubs(:supported_attachment_paths).with(@issue).returns(file_paths)
 
-        @agent.expects(:chat).with(
+        @agent.expects(:think_chat).with(
           anything,
           anything,
           anything,
@@ -192,7 +192,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
 
         @agent.stubs(:supported_attachment_paths).with(@issue).returns([])
 
-        @agent.expects(:chat).with(
+        @agent.expects(:think_chat).with(
           anything,
           anything,
           anything,
@@ -201,6 +201,57 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
 
         result = @agent.generate_issue_reply(issue: @issue, instructions: "Reply to the issue.")
         assert_equal "Reply without attachments.", result
+      end
+
+      context "think model" do
+        setup do
+          @issue.stubs(:visible?).returns(true)
+          @issue.stubs(:notes_addable?).returns(true)
+          mock_prompt = mock("Prompt")
+          mock_prompt.stubs(:format).returns("Generate a reply")
+          @agent.stubs(:load_prompt).with("issue_agent/generate_reply").returns(mock_prompt)
+          @agent.stubs(:supported_attachment_paths).with(@issue).returns([])
+        end
+
+        should "call think_chat when think model is configured" do
+          mock_think_provider = mock("think_llm_provider")
+          RedmineAiHelper::LlmProvider.stubs(:get_think_llm_provider).returns(mock_think_provider)
+          agent = RedmineAiHelper::Agents::IssueAgent.new(project: @project, langfuse: @langfuse)
+          agent.stubs(:load_prompt).returns(mock("Prompt").tap { |p| p.stubs(:format).returns("prompt") })
+          agent.stubs(:supported_attachment_paths).returns([])
+          @issue.stubs(:notes_addable?).returns(true)
+
+          agent.expects(:think_chat).returns("think reply")
+          agent.stubs(:chat).never
+
+          result = agent.generate_issue_reply(issue: @issue, instructions: "Respond")
+          assert_equal "think reply", result
+        end
+
+        should "call think_chat (falling back to normal) when think model is NOT configured" do
+          RedmineAiHelper::LlmProvider.stubs(:get_think_llm_provider).returns(nil)
+          agent = RedmineAiHelper::Agents::IssueAgent.new(project: @project, langfuse: @langfuse)
+          agent.stubs(:load_prompt).returns(mock("Prompt").tap { |p| p.stubs(:format).returns("prompt") })
+          agent.stubs(:supported_attachment_paths).returns([])
+          @issue.stubs(:notes_addable?).returns(true)
+
+          agent.expects(:think_chat).returns("normal reply via think_chat")
+
+          result = agent.generate_issue_reply(issue: @issue, instructions: "Respond")
+          assert_equal "normal reply via think_chat", result
+        end
+
+        should "NOT call think_chat for issue_summary (sidebar chat exclusion)" do
+          mock_prompt = mock("Prompt")
+          mock_prompt.stubs(:format).returns("Summarize this issue")
+          @agent.stubs(:load_prompt).with("issue_agent/summary").returns(mock_prompt)
+
+          @agent.expects(:chat).returns("summary result")
+          @agent.stubs(:think_chat).never
+
+          result = @agent.issue_summary(issue: @issue)
+          assert_equal "summary result", result
+        end
       end
     end
 

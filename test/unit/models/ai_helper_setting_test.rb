@@ -21,6 +21,50 @@ class AiHelperSettingTest < ActiveSupport::TestCase
     AiHelperSetting.destroy_all
   end
 
+  context "think model" do
+    setup do
+      @think_profile = AiHelperModelProfile.create!(
+        name: "Think Model Profile",
+        llm_model: "claude-3-7-sonnet",
+        access_key: "think_access_key",
+        temperature: 0.7,
+        base_uri: "https://api.anthropic.com",
+        max_tokens: 4096,
+        llm_type: RedmineAiHelper::LlmProvider::LLM_ANTHROPIC,
+      )
+    end
+
+    teardown do
+      @think_profile.destroy if @think_profile.persisted?
+    end
+
+    should "default use_think_model to false" do
+      assert_equal false, @setting.use_think_model
+    end
+
+    should "validate presence of think_model_profile_id when use_think_model is true" do
+      @setting.use_think_model = true
+      @setting.think_model_profile_id = nil
+      assert_not @setting.valid?
+      assert @setting.errors[:think_model_profile_id].any?
+    end
+
+    should "allow nil think_model_profile_id when use_think_model is false" do
+      @setting.use_think_model = false
+      @setting.think_model_profile_id = nil
+      assert @setting.valid?
+    end
+
+    should "resolve belongs_to association for think_model_profile" do
+      @setting.use_think_model = true
+      @setting.think_model_profile = @think_profile
+      @setting.save!
+      @setting.reload
+      assert_equal @think_profile, @setting.think_model_profile
+      assert_instance_of AiHelperModelProfile, @setting.think_model_profile
+    end
+  end
+
   context "max_tokens" do
     should "return nil if not set" do
       @setting.model_profile.max_tokens = nil

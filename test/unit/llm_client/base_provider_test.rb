@@ -28,11 +28,11 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
       assert_equal @setting.model_profile.temperature, @provider.temperature
     end
 
-    should "return max_tokens from setting" do
-      if @setting.max_tokens.nil?
+    should "return max_tokens from model profile" do
+      if @setting.model_profile.max_tokens.nil?
         assert_nil @provider.max_tokens
       else
-        assert_equal @setting.max_tokens, @provider.max_tokens
+        assert_equal @setting.model_profile.max_tokens, @provider.max_tokens
       end
     end
 
@@ -41,6 +41,40 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
       @setting.save!
       assert_raises(RuntimeError, "Model Profile not found") do
         @provider.model_name
+      end
+    end
+
+    context "with explicit model_profile" do
+      setup do
+        @explicit_profile = AiHelperModelProfile.create!(
+          name: "Explicit Think Profile",
+          llm_model: "claude-3-7-sonnet-20250219",
+          access_key: "think_key",
+          temperature: 0.5,
+          llm_type: "Anthropic",
+          max_tokens: 4096,
+        )
+        @provider_with_profile = RedmineAiHelper::LlmClient::BaseProvider.new(model_profile: @explicit_profile)
+      end
+
+      teardown do
+        @explicit_profile.destroy
+      end
+
+      should "return model name from explicit profile, not from setting" do
+        assert_equal "claude-3-7-sonnet-20250219", @provider_with_profile.model_name
+        refute_equal @setting.model_profile.llm_model, @provider_with_profile.model_name
+      end
+
+      should "return temperature from explicit profile, not from setting" do
+        assert_equal 0.5, @provider_with_profile.temperature
+      end
+
+      should "return max_tokens from explicit profile, not from setting" do
+        assert_equal @explicit_profile.max_tokens, @provider_with_profile.max_tokens
+        if @setting.model_profile && @setting.model_profile.max_tokens
+          refute_equal @setting.model_profile.max_tokens, @provider_with_profile.max_tokens
+        end
       end
     end
 

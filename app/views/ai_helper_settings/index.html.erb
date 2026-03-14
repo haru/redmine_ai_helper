@@ -18,6 +18,15 @@
 
     <hr>
     <p>
+        <%= f.check_box :use_think_model %>
+    </p>
+    <div id="ai-helper-think-model-settings">
+        <p>
+            <%= f.select :think_model_profile_id, options, include_blank: true %>
+        </p>
+    </div>
+    <hr>
+    <p>
         <%= f.check_box :attachment_send_enabled %>
     </p>
     <div id="ai-helper-attachment-settings">
@@ -77,6 +86,12 @@
         }
     }
 
+    function setThinkModelVisible() {
+        const thinkEnabled = document.getElementById('ai_helper_setting_use_think_model').checked;
+        const settingsDiv = document.getElementById('ai-helper-think-model-settings');
+        settingsDiv.style.display = thinkEnabled ? '' : 'none';
+    }
+
     function setAttachmentSettingsVisible() {
         const attachmentEnabled = document.getElementById('ai_helper_setting_attachment_send_enabled').checked;
         const settingsDiv = document.getElementById('ai-helper-attachment-settings');
@@ -111,6 +126,9 @@
         $('#ai_helper_setting_model_profile_id').change(function() {
             setModelProfile();
         });
+        document.getElementById('ai_helper_setting_use_think_model').addEventListener('change', function() {
+            setThinkModelVisible();
+        });
         document.getElementById('ai_helper_setting_attachment_send_enabled').addEventListener('change', function() {
             setAttachmentSettingsVisible();
         });
@@ -119,6 +137,7 @@
         });
     });
     setModelProfile();
+    setThinkModelVisible();
     setAttachmentSettingsVisible();
     setVectorSearchVisible();
 </script>
