@@ -44,6 +44,32 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
       end
     end
 
+    context "with explicit model_profile" do
+      setup do
+        @explicit_profile = AiHelperModelProfile.create!(
+          name: "Explicit Think Profile",
+          llm_model: "claude-3-7-sonnet-20250219",
+          access_key: "think_key",
+          temperature: 0.5,
+          llm_type: "Anthropic",
+        )
+        @provider_with_profile = RedmineAiHelper::LlmClient::BaseProvider.new(model_profile: @explicit_profile)
+      end
+
+      teardown do
+        @explicit_profile.destroy
+      end
+
+      should "return model name from explicit profile, not from setting" do
+        assert_equal "claude-3-7-sonnet-20250219", @provider_with_profile.model_name
+        refute_equal @setting.model_profile.llm_model, @provider_with_profile.model_name
+      end
+
+      should "return temperature from explicit profile, not from setting" do
+        assert_equal 0.5, @provider_with_profile.temperature
+      end
+    end
+
     context "create_chat" do
       should "return a RubyLLM::Chat instance with instructions" do
         mock_context = mock("RubyLLM::Context")

@@ -67,7 +67,7 @@ module RedmineAiHelper
         instructions: system_prompt,
         tools: tool_classes,
       )
-      setup_langfuse_callbacks(@assistant.chat)
+      setup_langfuse_callbacks(@assistant.chat, provider: @llm_provider)
       @assistant
     end
 
@@ -135,7 +135,7 @@ module RedmineAiHelper
     # @return [String] The response from the LLM.
     def chat(messages, option = {}, callback = nil, with: nil)
       chat_instance = @llm_provider.create_chat(instructions: system_prompt)
-      setup_langfuse_callbacks(chat_instance)
+      setup_langfuse_callbacks(chat_instance, provider: @llm_provider)
 
       # Add message history (all except the last message)
       messages[0..-2].each do |msg|
@@ -176,7 +176,7 @@ module RedmineAiHelper
     def think_chat(messages, option = {}, callback = nil, with: nil)
       provider = @think_llm_provider || @llm_provider
       chat_instance = provider.create_chat(instructions: system_prompt)
-      setup_langfuse_callbacks(chat_instance)
+      setup_langfuse_callbacks(chat_instance, provider: provider)
 
       messages[0..-2].each do |msg|
         chat_instance.add_message(role: msg[:role].to_sym, content: msg[:content])
@@ -243,7 +243,8 @@ module RedmineAiHelper
     # Registers an on_end_message callback that creates Langfuse generations
     # for each assistant response with token usage data.
     # @param chat_instance [RubyLLM::Chat] The chat instance to register callbacks on.
-    def setup_langfuse_callbacks(chat_instance)
+    # @param provider [Object] The LLM provider used for this chat (for model name logging).
+    def setup_langfuse_callbacks(chat_instance, provider: @llm_provider)
       return unless langfuse
 
       chat_instance.on_end_message do |message|
@@ -276,9 +277,9 @@ module RedmineAiHelper
         span.create_generation(
           name: "chat",
           messages: input_messages,
-          model: @llm_provider.model_name,
-          temperature: @llm_provider.temperature,
-          max_tokens: @llm_provider.max_tokens,
+          model: provider.model_name,
+          temperature: provider.temperature,
+          max_tokens: provider.max_tokens,
         )&.finish(output: output, usage: usage)
       end
     end

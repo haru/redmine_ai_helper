@@ -60,6 +60,19 @@ class LlmProviderTest < ActiveSupport::TestCase
           @llm_provider.get_think_llm_provider
         end
       end
+
+      should "return provider with think model's model_name, not regular model's" do
+        @setting.update!(use_think_model: true, think_model_profile_id: @think_profile.id)
+        provider = @llm_provider.get_think_llm_provider
+        assert_equal @think_profile.llm_model, provider.model_name
+        refute_equal @setting.model_profile.llm_model, provider.model_name
+      end
+
+      should "return provider with think model's temperature" do
+        @setting.update!(use_think_model: true, think_model_profile_id: @think_profile.id)
+        provider = @llm_provider.get_think_llm_provider
+        assert_equal @think_profile.temperature, provider.temperature
+      end
     end
 
     context "get_llm_provider" do
