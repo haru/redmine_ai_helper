@@ -28,6 +28,7 @@
 - [📦 Installation](#-installation)
 - [⚙️ Basic Configuration](#️-basic-configuration)
   - [Plugin Settings](#plugin-settings)
+  - [Think Model Settings](#think-model-settings)
   - [Role and Permission Settings](#role-and-permission-settings)
   - [Project-specific Settings](#project-specific-settings)
 - [⚙️ Advanced Configuration](#️-advanced-configuration)
@@ -248,6 +249,10 @@ When vector search is enabled, attachment contents are also incorporated into th
    - Temperature: Set the temperature for the AI model (e.g., 0.7)
 3. Select the model profile you created from the dropdown menu and save the settings.
 
+
+## Think Model Settings
+
+You can optionally configure a separate model profile for tasks that require deeper reasoning, such as project health report generation and issue reply drafting. When not configured, all tasks use the standard model profile.
 
 ## Role and Permission Settings
 
