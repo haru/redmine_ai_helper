@@ -1,6 +1,7 @@
 require File.expand_path("../../../test_helper", __FILE__)
 require "json"
 require "active_support/testing/time_helpers"
+require "redmine_ai_helper/util/interactive_options_parser"
 
 class AiHelper::StreamingTest < ActiveSupport::TestCase
   include ActiveSupport::Testing::TimeHelpers
@@ -123,6 +124,76 @@ class AiHelper::StreamingTest < ActiveSupport::TestCase
 
     assert context.stream.closed?
     assert_equal 1, context.stream.writes.size, "initial chunk should be written before the error"
+  end
+
+  def test_send_interactive_options_event_writes_sse_event_when_options_present
+    context = DummyContext.new
+    options = [{ label: "はい", value: "はい" }, { label: "いいえ", value: "いいえ" }]
+
+    context.send(:send_interactive_options_event, options)
+
+    assert_equal 1, context.stream.writes.size
+    written = context.stream.writes.first
+    assert_match(/\Aevent: interactive_options\n/, written)
+    assert_match(/data: /, written)
+    assert_match(/\n\n\z/, written)
+    data_json = written.match(/data: (.+)\n\n/)[1]
+    data = JSON.parse(data_json)
+    assert_equal 2, data["choices"].length
+    assert_equal "はい", data["choices"][0]["label"]
+    assert_equal "いいえ", data["choices"][1]["label"]
+  end
+
+  def test_send_interactive_options_event_does_nothing_when_options_nil
+    context = DummyContext.new
+
+    context.send(:send_interactive_options_event, nil)
+
+    assert_equal 0, context.stream.writes.size
+  end
+
+  def test_send_interactive_options_event_does_nothing_when_options_empty
+    context = DummyContext.new
+
+    context.send(:send_interactive_options_event, [])
+
+    assert_equal 0, context.stream.writes.size
+  end
+
+  def test_stream_llm_response_calls_extract_options_on_full_content
+    context = DummyContext.new
+    content_with_options = "この課題を移動しますか？\n\n<!--AIHELPER_OPTIONS:{\"choices\":[{\"label\":\"はい\",\"value\":\"はい\"},{\"label\":\"いいえ\",\"value\":\"いいえ\"}]}-->"
+
+    with_fixed_random do
+      travel_to @fixed_time do
+        context.send(:stream_llm_response) do |stream_proc|
+          stream_proc.call(content_with_options)
+        end
+      end
+    end
+
+    # 3 data chunks + 1 interactive_options event
+    assert_equal 4, context.stream.writes.size
+    options_event = context.stream.writes.last
+    assert_match(/\Aevent: interactive_options\n/, options_event)
+  end
+
+  def test_stream_llm_response_does_not_send_options_event_when_no_block
+    context = DummyContext.new
+
+    with_fixed_random do
+      travel_to @fixed_time do
+        context.send(:stream_llm_response) do |stream_proc|
+          stream_proc.call("普通の回答です。")
+        end
+      end
+    end
+
+    # Only 3 data chunks, no options event
+    assert_equal 3, context.stream.writes.size
+    context.stream.writes.each do |write|
+      assert_match(/\Adata: /, write)
+    end
   end
 
   private

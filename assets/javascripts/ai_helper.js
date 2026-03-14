@@ -31,6 +31,7 @@ class AiHelper {
 
     submitButton.addEventListener("click", function (e) {
       e.preventDefault();
+      ai_helper.hideInteractiveOptions();
       submitAction();
       return false;
     });
@@ -109,47 +110,137 @@ class AiHelper {
   };
 
   // SSE stream processing helper
-  handleSSEStream = function(xhr, onContentCallback, onCompleteCallback) {
+  handleSSEStream = function(xhr, onContentCallback, onCompleteCallback, onInteractiveOptionsCallback) {
     let fullResponse = '';
     let buffer = '';
     let lastProcessedIndex = 0;
+    let pendingEventType = null;
 
     xhr.onprogress = function (event) {
       const text = xhr.responseText.substring(lastProcessedIndex);
       lastProcessedIndex = xhr.responseText.length;
       buffer += text;
 
-      // Extract data from Server-Sent Events
-      const matches = buffer.match(/^data: (.+?)\n\n/gm);
-      if (matches) {
-        matches.forEach(match => {
-          try {
-            const dataStr = match.replace(/^data: /, '').trim();
-            const data = JSON.parse(dataStr);
+      // Process line by line to handle named events (event: interactive_options)
+      let lines = buffer.split('\n');
+      // Keep the last incomplete line in the buffer
+      buffer = lines.pop();
 
-            // Get content from chunk
-            const content = data.choices[0]?.delta?.content;
-            if (content) {
-              fullResponse += content;
-              if (onContentCallback) {
-                onContentCallback(content, fullResponse);
+      lines.forEach(line => {
+        if (line.startsWith('event: ')) {
+          pendingEventType = line.substring('event: '.length).trim();
+        } else if (line.startsWith('data: ')) {
+          const dataStr = line.substring('data: '.length).trim();
+          if (pendingEventType === 'interactive_options') {
+            // Handle interactive options event
+            try {
+              const data = JSON.parse(dataStr);
+              console.log('[AI Helper] SSE interactive_options data parsed:', data);
+              if (onInteractiveOptionsCallback && data.choices) {
+                onInteractiveOptionsCallback(data.choices);
               }
+            } catch (e) {
+              console.error('Parse error for interactive_options:', e);
             }
+            pendingEventType = null;
+          } else {
+            // Handle regular SSE data chunk
+            pendingEventType = null;
+            try {
+              const data = JSON.parse(dataStr);
 
-            if (data.choices[0]?.finish_reason === 'stop') {
-              if (onCompleteCallback) {
-                onCompleteCallback(fullResponse);
+              // Get content from chunk
+              const content = data.choices && data.choices[0]?.delta?.content;
+              if (content) {
+                fullResponse += content;
+                if (onContentCallback) {
+                  onContentCallback(content, fullResponse);
+                }
               }
+
+              if (data.choices && data.choices[0]?.finish_reason === 'stop') {
+                if (onCompleteCallback) {
+                  onCompleteCallback(fullResponse);
+                }
+              }
+            } catch (e) {
+              console.error('Parse error:', e);
             }
-          } catch (e) {
-            console.error('Parse error:', e);
           }
-
-          // Remove processed data from buffer
-          buffer = buffer.replace(match, '');
-        });
-      }
+        } else if (line === '') {
+          // Empty line resets pending event type if not already consumed
+          if (pendingEventType !== null) {
+            pendingEventType = null;
+          }
+        }
+      });
     };
+  };
+
+  // Render interactive option buttons for the given choices array
+  renderInteractiveOptions = function(choices) {
+    console.log('[AI Helper] renderInteractiveOptions called with:', choices);
+    const container = document.getElementById('aihelper-interactive-options');
+    console.log('[AI Helper] container found:', container);
+    if (!container) return;
+
+    const buttons = container.querySelectorAll('.aihelper-option-btn');
+
+    // Show container and configure buttons
+    container.style.display = 'flex';
+
+    buttons.forEach((btn, index) => {
+      if (index < choices.length) {
+        const choice = choices[index];
+        btn.textContent = choice.label;
+        btn.dataset.value = choice.value;
+        btn.disabled = false;
+        btn.style.display = '';
+
+        // Remove old listeners by replacing with clone
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+
+        newBtn.addEventListener('click', function() {
+          const input = document.getElementById('ai-helper-message-input');
+          if (input) {
+            input.value = this.dataset.value;
+          }
+          ai_helper.hideInteractiveOptions();
+          const submitButton = document.getElementById('aihelper-chat-submit');
+          if (submitButton) {
+            submitButton.click();
+          }
+        });
+
+        newBtn.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            this.click();
+          }
+        });
+      } else {
+        btn.style.display = 'none';
+      }
+    });
+  };
+
+  // Disable all interactive option buttons (after selection or submit)
+  disableInteractiveOptions = function() {
+    const container = document.getElementById('aihelper-interactive-options');
+    if (!container) return;
+    const buttons = container.querySelectorAll('.aihelper-option-btn');
+    buttons.forEach(btn => {
+      btn.disabled = true;
+    });
+  };
+
+  // Hide the interactive options container (on reload/clear)
+  hideInteractiveOptions = function() {
+    const container = document.getElementById('aihelper-interactive-options');
+    if (container) {
+      container.style.display = 'none';
+    }
   };
 
   call_llm = function () {
@@ -167,6 +258,9 @@ class AiHelper {
     xhr.responseType = 'text';
 
     const parser = new AiHelperMarkdownParser();
+
+    // Hide any existing interactive option buttons while waiting for new response
+    ai_helper.hideInteractiveOptions();
 
     // Use the common SSE handler
     this.handleSSEStream(xhr,
@@ -188,8 +282,13 @@ class AiHelper {
         if (loaderArea) {
           loaderArea.style.display = "none";
         }
-        
+
         ai_helper.reload_chat();
+      },
+      // onInteractiveOptionsCallback
+      function(choices) {
+        console.log('[AI Helper] interactive_options received:', choices);
+        ai_helper.renderInteractiveOptions(choices);
       }
     );
 
@@ -232,6 +331,9 @@ class AiHelper {
     const chatArea = document.getElementById("aihelper-chat-conversation");
     if (!chatArea) return;
 
+    // Hide interactive options when chat reloads (they are re-rendered fresh)
+    ai_helper.hideInteractiveOptions();
+
     const xhr = new XMLHttpRequest();
     xhr.open("GET", ai_helper_urls.reload, true);
 
@@ -239,6 +341,7 @@ class AiHelper {
       if (xhr.status === 200) {
         ai_helper.innerHTMLwithScripts(chatArea, xhr.responseText);
         chatArea.scrollTop = chatArea.scrollHeight;
+        console.log('[AI Helper] reload_chat onload');
       } else {
         console.error("Failed to reload chat conversation:", xhr.statusText);
       }

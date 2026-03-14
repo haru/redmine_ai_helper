@@ -79,7 +79,7 @@ fr:
         search_answer_instruction: "Pour des tâches telles que la recherche de plusieurs demandes correspondant à certaines conditions, comme 'Trouver les demandes qui remplissent ces conditions' ou 'Montrez-moi les demandes avec ces critères', veuillez utiliser l'outil search_issues pour récupérer et retourner une liste de demandes."
         search_answer_instruction_with_vector: "Lors de la recherche de demandes, utilisez l'outil approprié: Pour les recherches conceptuelles/sémantiques (ex: 'demandes liées aux exceptions', 'problèmes de performance'), utilisez la recherche vectorielle (ask_with_filter). Pour les conditions de filtre explicites (ex: 'statut fermé', 'assigné à quelqu'un'), utilisez search_issues."
       leader_agent:
-        generate_final_response: "Tous les agents ont terminé leurs tâches. Veuillez créer la réponse finale pour l'utilisateur."
+        generate_final_response: "Tous les agents ont terminé leurs tâches. Veuillez créer la réponse finale pour l'utilisateur. Si votre réponse inclut une question avec des choix discrets, pensez à ajouter le bloc <!--AIHELPER_OPTIONS:{...}--> à la toute fin."
   activerecord:
     models:
       ai_helper_model_profile: "Profil du modèle"

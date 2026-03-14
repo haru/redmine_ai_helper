@@ -93,6 +93,8 @@ class AiHelperControllerTest < ActionController::TestCase
         # Mock LLM to avoid actual API calls
         llm_mock = mock("RedmineAiHelper::Llm")
         message_mock = mock("AiHelperMessage")
+        message_mock.stubs(:content).returns("普通の回答です。")
+        message_mock.stubs(:content=)
         llm_mock.stubs(:chat).returns(message_mock)
         RedmineAiHelper::Llm.stubs(:new).returns(llm_mock)
 
@@ -1606,6 +1608,151 @@ class AiHelperControllerTest < ActionController::TestCase
       end
     end
 
+
+    context "#call_llm interactive options" do
+      setup do
+        AiHelperConversation.stubs(:cleanup_old_conversations)
+        @request.session[:ai_helper] = { conversation_id: @conversation.id }
+        # Helper lambda: creates a real object whose chat method calls stream_proc (simulating LLM streaming)
+        @make_streaming_llm = lambda do |llm_response|
+          stub_llm = Object.new
+          stub_llm.define_singleton_method(:chat) do |_conv, stream_proc, _opt|
+            stream_proc.call(llm_response) if stream_proc.respond_to?(:call)
+            AiHelperMessage.new(role: "assistant", content: llm_response)
+          end
+          RedmineAiHelper::Llm.stubs(:new).returns(stub_llm)
+          stub_llm
+        end
+      end
+
+      should "include interactive_options SSE event when LLM response contains options block" do
+        options_block = '<!--AIHELPER_OPTIONS:{"choices":[{"label":"はい","value":"はい"},{"label":"いいえ","value":"いいえ"}]}-->'
+        @make_streaming_llm.call("この課題を次のバージョンに移動しますか？\n\n#{options_block}")
+
+        post :call_llm, params: {
+          id: @project.id,
+          controller_name: "issues",
+          action_name: "show",
+          content_id: 1,
+          additional_info: { key: "value" },
+        }
+
+        assert_response :success
+        assert_includes @response.body, "event: interactive_options"
+        assert_includes @response.body, '"choices"'
+        assert_includes @response.body, '"label":"はい"'
+      end
+
+      should "not include interactive_options SSE event when LLM response has no options block" do
+        @make_streaming_llm.call("普通の回答です。")
+
+        post :call_llm, params: {
+          id: @project.id,
+          controller_name: "issues",
+          action_name: "show",
+          content_id: 1,
+          additional_info: { key: "value" },
+        }
+
+        assert_response :success
+        refute_includes @response.body, "event: interactive_options"
+      end
+
+      should "save message content without options block" do
+        options_block = '<!--AIHELPER_OPTIONS:{"choices":[{"label":"はい","value":"はい"},{"label":"いいえ","value":"いいえ"}]}-->'
+        @make_streaming_llm.call("この課題を次のバージョンに移動しますか？\n\n#{options_block}")
+
+        post :call_llm, params: {
+          id: @project.id,
+          controller_name: "issues",
+          action_name: "show",
+          content_id: 1,
+          additional_info: { key: "value" },
+        }
+
+        assert_response :success
+        saved_message = AiHelperMessage.where(role: "assistant").last
+        assert_not_nil saved_message
+        refute_includes saved_message.content, "AIHELPER_OPTIONS"
+      end
+
+      should "include interactive_options event with 3 choices" do
+        block = '<!--AIHELPER_OPTIONS:{"choices":[{"label":"High","value":"High"},{"label":"Normal","value":"Normal"},{"label":"Low","value":"Low"}]}-->'
+        @make_streaming_llm.call("優先度を選択してください。\n\n#{block}")
+
+        post :call_llm, params: {
+          id: @project.id,
+          controller_name: "issues",
+          action_name: "show",
+          content_id: 1,
+          additional_info: { key: "value" },
+        }
+
+        assert_response :success
+        assert_includes @response.body, "event: interactive_options"
+        data_match = @response.body.match(/event: interactive_options\ndata: (.+)\n/)
+        assert_not_nil data_match
+        data = JSON.parse(data_match[1])
+        assert_equal 3, data["choices"].length
+      end
+
+      should "include only 5 choices when LLM response has 6 choices" do
+        block = '<!--AIHELPER_OPTIONS:{"choices":[{"label":"A","value":"A"},{"label":"B","value":"B"},{"label":"C","value":"C"},{"label":"D","value":"D"},{"label":"E","value":"E"},{"label":"F","value":"F"}]}-->'
+        @make_streaming_llm.call("どれですか？\n\n#{block}")
+
+        post :call_llm, params: {
+          id: @project.id,
+          controller_name: "issues",
+          action_name: "show",
+          content_id: 1,
+          additional_info: { key: "value" },
+        }
+
+        assert_response :success
+        assert_includes @response.body, "event: interactive_options"
+        data_match = @response.body.match(/event: interactive_options\ndata: (.+)\n/)
+        assert_not_nil data_match
+        data = JSON.parse(data_match[1])
+        assert_equal 5, data["choices"].length
+      end
+
+      should "handle second call_llm with conversation history correctly" do
+        user_message = AiHelperMessage.new(content: "選択してください", role: "user")
+        @conversation.messages << user_message
+
+        options_block = '<!--AIHELPER_OPTIONS:{"choices":[{"label":"はい","value":"はい"},{"label":"いいえ","value":"いいえ"}]}-->'
+        @make_streaming_llm.call("確認しますか？\n\n#{options_block}")
+
+        post :call_llm, params: {
+          id: @project.id,
+          controller_name: "issues",
+          action_name: "show",
+          content_id: 1,
+          additional_info: { key: "value" },
+        }
+
+        assert_response :success
+        assert_includes @response.body, "event: interactive_options"
+      end
+
+      should "not send interactive_options event on second call when no options block" do
+        user_message = AiHelperMessage.new(content: "はい", role: "user")
+        @conversation.messages << user_message
+
+        @make_streaming_llm.call("了解しました。処理を実行します。")
+
+        post :call_llm, params: {
+          id: @project.id,
+          controller_name: "issues",
+          action_name: "show",
+          content_id: 1,
+          additional_info: { key: "value" },
+        }
+
+        assert_response :success
+        refute_includes @response.body, "event: interactive_options"
+      end
+    end
 
   end
 end

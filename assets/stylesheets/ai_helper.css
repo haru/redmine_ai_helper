@@ -1497,3 +1497,25 @@ table.list.ai-helper-report-list td.radio .radio-placeholder {
 .ai-helper-scope-toggle {
   margin-left: 1em;
 }
+
+.aihelper-interactive-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+
+.aihelper-option-btn {
+  cursor: pointer;
+}
+
+.aihelper-option-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.aihelper-option-btn:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
