@@ -224,16 +224,17 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       assert_equal "think answer", answer
     end
 
-    should "initialize @think_llm_provider from LlmProvider.get_think_llm_provider" do
+    should "lazily return think_llm_provider from LlmProvider.get_think_llm_provider" do
       RedmineAiHelper::LlmProvider.stubs(:get_think_llm_provider).returns(@mock_think_provider)
       agent = BaseAgentTestModele::TestAgent.new(@params)
-      assert_equal @mock_think_provider, agent.instance_variable_get(:@think_llm_provider)
+      assert_nil agent.instance_variable_get(:@think_llm_provider)
+      assert_equal @mock_think_provider, agent.think_llm_provider
     end
 
-    should "set @think_llm_provider to nil when not configured" do
+    should "return nil from think_llm_provider when not configured" do
       RedmineAiHelper::LlmProvider.stubs(:get_think_llm_provider).returns(nil)
       agent = BaseAgentTestModele::TestAgent.new(@params)
-      assert_nil agent.instance_variable_get(:@think_llm_provider)
+      assert_nil agent.think_llm_provider
     end
   end
 

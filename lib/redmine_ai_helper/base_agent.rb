@@ -50,11 +50,17 @@ module RedmineAiHelper
       @project = params[:project]
       @langfuse = params[:langfuse]
       @llm_provider = RedmineAiHelper::LlmProvider.get_llm_provider
-      @think_llm_provider = RedmineAiHelper::LlmProvider.get_think_llm_provider
     end
 
     def langfuse
       @langfuse
+    end
+
+    # Lazily returns the Think LLM provider, creating it on first access.
+    # This avoids unnecessary DB lookups when the Think model is disabled
+    # or not used by a particular agent.
+    def think_llm_provider
+      @think_llm_provider ||= RedmineAiHelper::LlmProvider.get_think_llm_provider
     end
 
     # Returns the assistant instance, creating it on first access.
@@ -174,7 +180,7 @@ module RedmineAiHelper
     # @param with [Array<String>, nil] Image file paths to attach to the request.
     # @return [String] The response from the LLM.
     def think_chat(messages, option = {}, callback = nil, with: nil)
-      provider = @think_llm_provider || @llm_provider
+      provider = think_llm_provider || @llm_provider
       chat_instance = provider.create_chat(instructions: system_prompt)
       setup_langfuse_callbacks(chat_instance, provider: provider)
 
