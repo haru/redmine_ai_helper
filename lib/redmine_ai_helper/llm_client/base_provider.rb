@@ -36,11 +36,10 @@ module RedmineAiHelper
         resolved_model_profile&.temperature
       end
 
-      # Get the max_tokens from the current setting.
+      # Get the max_tokens from the resolved model profile.
       # @return [Integer, nil] max_tokens
       def max_tokens
-        setting = AiHelperSetting.find_or_create
-        setting.max_tokens
+        resolved_model_profile&.max_tokens
       end
 
       # Create a RubyLLM::Chat instance via the memoized context.
