@@ -80,7 +80,7 @@ module RedmineAiHelper
         messages = [message]
 
         file_paths = supported_attachment_paths(issue)
-        chat(messages, {}, stream_proc, with: file_paths.presence)
+        think_chat(messages, {}, stream_proc, with: file_paths.presence)
       end
 
       # Generate a draft for sub-issues based on the provided issue and instructions.

@@ -200,6 +200,8 @@ ja:
         vector_search_api_key: "APIキー"
         embedding_model: "埋め込みモデル"
         dimension: "次元数"
+        use_think_model: "Thinkモデルを使用する"
+        think_model_profile_id: "Thinkモデルプロファイル"
       ai_helper_project_setting:
         issue_draft_instructions: "チケットのコメントを生成する際の指示"
         subtask_instructions: "子チケットを生成する際の指示"

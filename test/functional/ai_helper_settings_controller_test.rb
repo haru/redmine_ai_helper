@@ -72,4 +72,47 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
     post :update, params: { ai_helper_setting: { attachment_send_enabled: "0", attachment_max_size_mb: "0" } }
     assert_redirected_to action: :index
   end
+
+  context "think model settings" do
+    setup do
+      @think_profile = AiHelperModelProfile.create!(
+        name: "Think Profile",
+        access_key: "think_key",
+        llm_type: "Anthropic",
+        llm_model: "claude-3-7-sonnet",
+      )
+    end
+
+    teardown do
+      @think_profile.destroy if @think_profile.persisted?
+    end
+
+    should "save use_think_model true with valid think_model_profile_id" do
+      post :update, params: { ai_helper_setting: { use_think_model: "1", think_model_profile_id: @think_profile.id } }
+      assert_redirected_to action: :index
+      @ai_helper_setting.reload
+      assert_equal true, @ai_helper_setting.use_think_model
+      assert_equal @think_profile.id, @ai_helper_setting.think_model_profile_id
+    end
+
+    should "not save when use_think_model true but think_model_profile_id blank" do
+      post :update, params: { ai_helper_setting: { use_think_model: "1", think_model_profile_id: "" } }
+      assert_response :success
+      @ai_helper_setting.reload
+      assert_not @ai_helper_setting.use_think_model
+    end
+
+    should "save use_think_model false regardless of think_model_profile_id" do
+      post :update, params: { ai_helper_setting: { use_think_model: "0", think_model_profile_id: "" } }
+      assert_redirected_to action: :index
+      @ai_helper_setting.reload
+      assert_equal false, @ai_helper_setting.use_think_model
+    end
+
+    should "render think model checkbox on index" do
+      get :index
+      assert_response :success
+      assert_select "input[type=checkbox][name='ai_helper_setting[use_think_model]']"
+    end
+  end
 end

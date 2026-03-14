@@ -50,6 +50,7 @@ module RedmineAiHelper
       @project = params[:project]
       @langfuse = params[:langfuse]
       @llm_provider = RedmineAiHelper::LlmProvider.get_llm_provider
+      @think_llm_provider = RedmineAiHelper::LlmProvider.get_think_llm_provider
     end
 
     def langfuse
@@ -142,6 +143,45 @@ module RedmineAiHelper
       end
 
       # Ask with the last message (with streaming support)
+      last_message = messages.last
+      ask_options = {}
+      ask_options[:with] = with if with.present?
+      answer = ""
+
+      if callback
+        chat_instance.ask(last_message[:content], **ask_options) do |chunk|
+          content = chunk.content rescue nil
+          if content
+            callback.call(content)
+            answer += content
+          end
+        end
+      else
+        response = chat_instance.ask(last_message[:content], **ask_options)
+        answer = response.content
+      end
+
+      answer
+    end
+
+    # Chat with the Think model LLM if configured, otherwise delegates to chat().
+    # NOTE: Applying Think model to the @assistant pattern (tool-use loop) is not
+    # implemented. A future design would need to solve cross-provider switching combined
+    # with shared conversation history (no solution exists yet).
+    # @param messages [Array<Hash>] The messages to be sent.
+    # @param option [Hash] Additional options for the chat.
+    # @param callback [Proc] A callback function to be called with each chunk of the response.
+    # @param with [Array<String>, nil] Image file paths to attach to the request.
+    # @return [String] The response from the LLM.
+    def think_chat(messages, option = {}, callback = nil, with: nil)
+      provider = @think_llm_provider || @llm_provider
+      chat_instance = provider.create_chat(instructions: system_prompt)
+      setup_langfuse_callbacks(chat_instance)
+
+      messages[0..-2].each do |msg|
+        chat_instance.add_message(role: msg[:role].to_sym, content: msg[:content])
+      end
+
       last_message = messages.last
       ask_options = {}
       ask_options[:with] = with if with.present?

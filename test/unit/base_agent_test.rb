@@ -181,6 +181,62 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
     end
   end
 
+  context "think_chat" do
+    setup do
+      @mock_think_provider = mock("think_llm_provider")
+      @mock_think_provider.stubs(:model_name).returns("claude-3-7-sonnet")
+      @mock_think_provider.stubs(:temperature).returns(nil)
+      @mock_think_provider.stubs(:max_tokens).returns(4096)
+
+      @mock_think_chat_instance = mock("RubyLLM::Chat think")
+      @mock_think_chat_instance.stubs(:on_end_message).returns(@mock_think_chat_instance)
+      @mock_think_chat_instance.stubs(:add_message)
+
+      @mock_think_response = mock("Response think")
+      @mock_think_response.stubs(:content).returns("think answer")
+      @mock_think_chat_instance.stubs(:ask).returns(@mock_think_response)
+      @mock_think_provider.stubs(:create_chat).returns(@mock_think_chat_instance)
+    end
+
+    should "delegate to @llm_provider when @think_llm_provider is nil" do
+      RedmineAiHelper::LlmProvider.stubs(:get_think_llm_provider).returns(nil)
+      agent = BaseAgentTestModele::TestAgent.new(@params)
+
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+      mock_response = mock("Response")
+      mock_response.stubs(:content).returns("normal answer")
+      mock_chat_instance.stubs(:ask).returns(mock_response)
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+
+      messages = [{ role: "user", content: "Hello" }]
+      answer = agent.think_chat(messages)
+      assert_equal "normal answer", answer
+    end
+
+    should "use @think_llm_provider when set" do
+      RedmineAiHelper::LlmProvider.stubs(:get_think_llm_provider).returns(@mock_think_provider)
+      agent = BaseAgentTestModele::TestAgent.new(@params)
+
+      messages = [{ role: "user", content: "Complex question" }]
+      answer = agent.think_chat(messages)
+      assert_equal "think answer", answer
+    end
+
+    should "initialize @think_llm_provider from LlmProvider.get_think_llm_provider" do
+      RedmineAiHelper::LlmProvider.stubs(:get_think_llm_provider).returns(@mock_think_provider)
+      agent = BaseAgentTestModele::TestAgent.new(@params)
+      assert_equal @mock_think_provider, agent.instance_variable_get(:@think_llm_provider)
+    end
+
+    should "set @think_llm_provider to nil when not configured" do
+      RedmineAiHelper::LlmProvider.stubs(:get_think_llm_provider).returns(nil)
+      agent = BaseAgentTestModele::TestAgent.new(@params)
+      assert_nil agent.instance_variable_get(:@think_llm_provider)
+    end
+  end
+
   context "extract_text_content" do
     should "return text as-is for plain string content" do
       result = @agent.send(:extract_text_content, "Hello world")
