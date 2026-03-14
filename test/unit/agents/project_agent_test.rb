@@ -58,7 +58,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
         RedmineAiHelper::Tools::ProjectTools.stubs(:new).returns(mock_tools)
 
         # Mock the chat method
-        @agent.stubs(:chat).returns("test answer")
+        @agent.stubs(:think_chat).returns("test answer")
 
         result = @agent.project_health_report(project: @project)
         assert result.is_a?(String)
@@ -79,7 +79,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
         RedmineAiHelper::Tools::ProjectTools.stubs(:new).returns(mock_tools)
 
         # Mock the chat method
-        @agent.stubs(:chat).returns("test answer")
+        @agent.stubs(:think_chat).returns("test answer")
 
         result = @agent.project_health_report(project: @project)
         assert result.is_a?(String)
@@ -117,7 +117,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
 
         @agent.stubs(:load_prompt).with("project_agent/analysis_instructions_time_period").returns(mock_analysis_prompt)
         @agent.stubs(:load_prompt).with("project_agent/health_report").returns(mock_prompt)
-        @agent.stubs(:chat).returns("test result")
+        @agent.stubs(:think_chat).returns("test result")
 
         result = @agent.project_health_report(project: @project)
         assert_equal "test result", result
@@ -159,7 +159,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
         @agent.stubs(:load_prompt).returns(mock_prompt)
 
         # Mock the chat method
-        @agent.stubs(:chat).returns("Comparison analysis result")
+        @agent.stubs(:think_chat).returns("Comparison analysis result")
 
         result = @agent.health_report_comparison(
           old_report: @old_report,
@@ -185,7 +185,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
         ).returns("formatted prompt")
 
         @agent.stubs(:load_prompt).returns(mock_prompt)
-        @agent.stubs(:chat).returns("test result")
+        @agent.stubs(:think_chat).returns("test result")
 
         # Pass reports in reverse chronological order
         result = @agent.health_report_comparison(
@@ -224,7 +224,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
 
         # Expect Japanese prompt to be loaded
         @agent.expects(:load_prompt).with("project_agent/health_report_comparison_ja").returns(mock_prompt)
-        @agent.stubs(:chat).returns("Japanese comparison result")
+        @agent.stubs(:think_chat).returns("Japanese comparison result")
 
         result = @agent.health_report_comparison(
           old_report: @old_report,
@@ -243,7 +243,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
 
         # Expect English prompt to be loaded
         @agent.expects(:load_prompt).with("project_agent/health_report_comparison").returns(mock_prompt)
-        @agent.stubs(:chat).returns("English comparison result")
+        @agent.stubs(:think_chat).returns("English comparison result")
 
         result = @agent.health_report_comparison(
           old_report: @old_report,
@@ -262,7 +262,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
         ).returns("formatted prompt")
 
         @agent.stubs(:load_prompt).returns(mock_prompt)
-        @agent.stubs(:chat).returns("test result")
+        @agent.stubs(:think_chat).returns("test result")
 
         @agent.health_report_comparison(
           old_report: @old_report,
@@ -279,7 +279,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
         @agent.stubs(:load_prompt).returns(mock_prompt)
 
         # Mock chat to call stream_proc
-        @agent.stubs(:chat).returns("Final result")
+        @agent.stubs(:think_chat).returns("Final result")
 
         result = @agent.health_report_comparison(
           old_report: @old_report,
@@ -301,12 +301,97 @@ class ProjectAgentTest < ActiveSupport::TestCase
         ).returns("formatted prompt")
 
         @agent.stubs(:load_prompt).returns(mock_prompt)
-        @agent.stubs(:chat).returns("test result")
+        @agent.stubs(:think_chat).returns("test result")
 
         @agent.health_report_comparison(
           old_report: @old_report,
           new_report: @new_report,
         )
+      end
+    end
+
+    context "think model" do
+      setup do
+        User.current = User.find(1)
+        @mock_think_provider = mock("think_llm_provider")
+        @mock_think_chat = mock("RubyLLM::Chat think")
+        @mock_think_chat.stubs(:on_end_message).returns(@mock_think_chat)
+        @mock_think_chat.stubs(:add_message)
+        mock_response = mock("Response")
+        mock_response.stubs(:content).returns("think answer")
+        @mock_think_chat.stubs(:ask).returns(mock_response)
+        @mock_think_provider.stubs(:create_chat).returns(@mock_think_chat)
+        @mock_think_provider.stubs(:model_name).returns("claude-3-7-sonnet")
+        @mock_think_provider.stubs(:temperature).returns(nil)
+        @mock_think_provider.stubs(:max_tokens).returns(4096)
+      end
+
+      should "call think_chat in project_health_report when think model is configured" do
+        RedmineAiHelper::LlmProvider.stubs(:get_think_llm_provider).returns(@mock_think_provider)
+        agent = RedmineAiHelper::Agents::ProjectAgent.new(@params)
+
+        project = Project.find(1)
+        mock_versions = mock("OpenVersions")
+        mock_versions.stubs(:order).returns([])
+        mock_shared_versions = mock("SharedVersions")
+        mock_shared_versions.stubs(:open).returns(mock_versions)
+        project.stubs(:shared_versions).returns(mock_shared_versions)
+
+        mock_tools = mock("ProjectTools")
+        mock_tools.stubs(:get_metrics).returns({ issue_statistics: { total_issues: 0 } })
+        RedmineAiHelper::Tools::ProjectTools.stubs(:new).returns(mock_tools)
+
+        agent.expects(:think_chat).returns("think health report")
+        agent.stubs(:chat).never
+
+        result = agent.project_health_report(project: project)
+        assert_equal "think health report", result
+      end
+
+      should "call think_chat in health_report_comparison when think model is configured" do
+        RedmineAiHelper::LlmProvider.stubs(:get_think_llm_provider).returns(@mock_think_provider)
+        agent = RedmineAiHelper::Agents::ProjectAgent.new(@params)
+
+        User.current = User.find(1)
+        project = Project.find(1)
+        old_report = AiHelperHealthReport.create!(project: project, user: User.current,
+          health_report: "old", metrics: "{}", created_at: 7.days.ago)
+        new_report = AiHelperHealthReport.create!(project: project, user: User.current,
+          health_report: "new", metrics: "{}", created_at: Time.now)
+
+        mock_prompt = mock("Prompt")
+        mock_prompt.stubs(:format).returns("prompt text")
+        agent.stubs(:load_prompt).returns(mock_prompt)
+
+        agent.expects(:think_chat).returns("think comparison")
+        agent.stubs(:chat).never
+
+        result = agent.health_report_comparison(old_report: old_report, new_report: new_report)
+        assert_equal "think comparison", result
+      ensure
+        old_report&.destroy
+        new_report&.destroy
+      end
+
+      should "fall back to normal chat via think_chat when think model is NOT configured" do
+        RedmineAiHelper::LlmProvider.stubs(:get_think_llm_provider).returns(nil)
+        agent = RedmineAiHelper::Agents::ProjectAgent.new(@params)
+
+        project = Project.find(1)
+        mock_versions = mock("OpenVersions")
+        mock_versions.stubs(:order).returns([])
+        mock_shared_versions = mock("SharedVersions")
+        mock_shared_versions.stubs(:open).returns(mock_versions)
+        project.stubs(:shared_versions).returns(mock_shared_versions)
+
+        mock_tools = mock("ProjectTools")
+        mock_tools.stubs(:get_metrics).returns({ issue_statistics: { total_issues: 0 } })
+        RedmineAiHelper::Tools::ProjectTools.stubs(:new).returns(mock_tools)
+
+        agent.expects(:think_chat).returns("normal answer via think_chat")
+
+        result = agent.project_health_report(project: project)
+        assert_equal "normal answer via think_chat", result
       end
     end
 
@@ -354,7 +439,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
 
         # Mock the chat method to capture the prompt
         captured_prompt = nil
-        @agent.define_singleton_method(:chat) do |messages, options = {}, stream_proc = nil|
+        @agent.define_singleton_method(:think_chat) do |messages, options = {}, stream_proc = nil|
           captured_prompt = messages.is_a?(Array) ? messages.first[:content] : messages
           "Mock health report with shared version"
         end
@@ -407,7 +492,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
 
         # Mock the chat method to capture the prompt
         captured_prompt = nil
-        @agent.define_singleton_method(:chat) do |messages, options = {}, stream_proc = nil|
+        @agent.define_singleton_method(:think_chat) do |messages, options = {}, stream_proc = nil|
           captured_prompt = messages.is_a?(Array) ? messages.first[:content] : messages
           "Mock health report with system version"
         end
@@ -454,7 +539,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
 
         # Mock the chat method to capture the prompt
         captured_prompt = nil
-        @agent.define_singleton_method(:chat) do |messages, options = {}, stream_proc = nil|
+        @agent.define_singleton_method(:think_chat) do |messages, options = {}, stream_proc = nil|
           captured_prompt = messages.is_a?(Array) ? messages.first[:content] : messages
           "Mock health report with local version"
         end
@@ -511,7 +596,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
 
         # Mock the chat method to capture the prompt
         captured_prompt = nil
-        @agent.define_singleton_method(:chat) do |messages, options = {}, stream_proc = nil|
+        @agent.define_singleton_method(:think_chat) do |messages, options = {}, stream_proc = nil|
           captured_prompt = messages.is_a?(Array) ? messages.first[:content] : messages
           "Mock health report with hierarchy version"
         end
@@ -567,7 +652,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
 
         # Mock the chat method to capture the prompt with metrics
         captured_prompt = nil
-        @agent.define_singleton_method(:chat) do |messages, options = {}, stream_proc = nil|
+        @agent.define_singleton_method(:think_chat) do |messages, options = {}, stream_proc = nil|
           captured_prompt = messages.is_a?(Array) ? messages.first[:content] : messages
           "Mock health report with correct metrics"
         end

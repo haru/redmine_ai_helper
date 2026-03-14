@@ -197,4 +197,171 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       issue&.destroy
     end
   end
+
+  context "validate_search_params" do
+    # T003
+    context "when fields is nil" do
+      should "not raise an exception" do
+        assert_nothing_raised do
+          @provider.send(:validate_search_params, nil, [])
+        end
+      end
+
+      should "return empty errors array" do
+        errors = @provider.send(:validate_search_params, nil, [])
+        assert_equal [], errors
+      end
+    end
+
+    # T004
+    context "when date_fields is nil" do
+      should "not raise an exception" do
+        assert_nothing_raised do
+          @provider.send(:validate_search_params, [], nil)
+        end
+      end
+
+      should "return empty errors array" do
+        errors = @provider.send(:validate_search_params, [], nil)
+        assert_equal [], errors
+      end
+    end
+
+    # T005
+    context "when field_name is nil in fields" do
+      should "not raise an exception" do
+        assert_nothing_raised do
+          @provider.send(:validate_search_params,
+            [{ field_name: nil, operator: "=", values: ["1"] }], [])
+        end
+      end
+
+      should "add an error message mentioning field_name" do
+        errors = @provider.send(:validate_search_params,
+          [{ field_name: nil, operator: "=", values: ["1"] }], [])
+        assert errors.any? { |e| e.include?("field_name") },
+          "Expected error message to mention field_name, got: #{errors.inspect}"
+      end
+    end
+
+    # T006
+    context "when values is nil in fields" do
+      should "not raise an exception" do
+        assert_nothing_raised do
+          @provider.send(:validate_search_params,
+            [{ field_name: "tracker_id", operator: "=", values: nil }], [])
+        end
+      end
+
+      should "add an error message mentioning values" do
+        errors = @provider.send(:validate_search_params,
+          [{ field_name: "tracker_id", operator: "=", values: nil }], [])
+        assert errors.any? { |e| e.include?("values") },
+          "Expected error message to mention values, got: #{errors.inspect}"
+      end
+    end
+
+    # T007
+    context "when field_name is nil in date_fields" do
+      should "not raise an exception" do
+        assert_nothing_raised do
+          @provider.send(:validate_search_params, [],
+            [{ field_name: nil, operator: "=", values: ["2024-01-01"] }])
+        end
+      end
+
+      should "add an error message mentioning field_name" do
+        errors = @provider.send(:validate_search_params, [],
+          [{ field_name: nil, operator: "=", values: ["2024-01-01"] }])
+        assert errors.any? { |e| e.include?("field_name") },
+          "Expected error message to mention field_name, got: #{errors.inspect}"
+      end
+    end
+
+    # T008
+    context "when values is nil in date_fields" do
+      should "not raise an exception" do
+        assert_nothing_raised do
+          @provider.send(:validate_search_params, [],
+            [{ field_name: "due_date", operator: "=", values: nil }])
+        end
+      end
+
+      should "add an error message mentioning values" do
+        errors = @provider.send(:validate_search_params, [],
+          [{ field_name: "due_date", operator: "=", values: nil }])
+        assert errors.any? { |e| e.include?("values") },
+          "Expected error message to mention values, got: #{errors.inspect}"
+      end
+    end
+
+    # T009
+    context "when a value element is nil in date_fields values" do
+      should "not raise an exception" do
+        assert_nothing_raised do
+          @provider.send(:validate_search_params, [],
+            [{ field_name: "due_date", operator: "=", values: [nil, "2024-01-01"] }])
+        end
+      end
+
+      should "add an error message for the nil value" do
+        errors = @provider.send(:validate_search_params, [],
+          [{ field_name: "due_date", operator: "=", values: [nil, "2024-01-01"] }])
+        assert errors.any?,
+          "Expected at least one error message, got empty array"
+      end
+    end
+
+    # T010
+    context "when nil and valid fields are mixed" do
+      should "continue validating valid fields after encountering a nil field_name" do
+        errors = @provider.send(:validate_search_params, [
+          { field_name: nil, operator: "=", values: ["1"] },
+          { field_name: "tracker_id", operator: "=", values: ["not-a-number"] }
+        ], [])
+        # Expect error from nil field_name AND error from invalid numeric value
+        assert errors.length >= 2,
+          "Expected at least 2 errors (nil field_name + invalid numeric), got: #{errors.inspect}"
+      end
+
+      should "continue validating date_fields after encountering a nil field" do
+        errors = @provider.send(:validate_search_params, [],
+          [
+            { field_name: nil, operator: "=", values: ["2024-01-01"] },
+            { field_name: "due_date", operator: "=", values: ["not-a-date"] }
+          ])
+        assert errors.length >= 2,
+          "Expected at least 2 errors, got: #{errors.inspect}"
+      end
+    end
+
+    # T014 / T015 - warn logging
+    context "warn logging when field_name is nil" do
+      should "call ai_helper_logger warn when field_name is nil in fields" do
+        mock_logger = mock("logger")
+        mock_logger.expects(:warn).at_least_once
+        @provider.stubs(:ai_helper_logger).returns(mock_logger)
+        @provider.send(:validate_search_params,
+          [{ field_name: nil, operator: "=", values: ["1"] }], [])
+      end
+    end
+
+    context "warn logging when values is nil" do
+      should "call ai_helper_logger warn when values is nil in fields" do
+        mock_logger = mock("logger")
+        mock_logger.expects(:warn).at_least_once
+        @provider.stubs(:ai_helper_logger).returns(mock_logger)
+        @provider.send(:validate_search_params,
+          [{ field_name: "tracker_id", operator: "=", values: nil }], [])
+      end
+
+      should "call ai_helper_logger warn when values is nil in date_fields" do
+        mock_logger = mock("logger")
+        mock_logger.expects(:warn).at_least_once
+        @provider.stubs(:ai_helper_logger).returns(mock_logger)
+        @provider.send(:validate_search_params, [],
+          [{ field_name: "due_date", operator: "=", values: nil }])
+      end
+    end
+  end
 end

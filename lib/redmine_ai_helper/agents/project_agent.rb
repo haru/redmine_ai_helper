@@ -210,7 +210,7 @@ module RedmineAiHelper
 
         messages = [{ role: "user", content: prompt_text }]
 
-        report_text = chat(messages, {}, stream_proc)
+        report_text = think_chat(messages, {}, stream_proc)
 
         # Save health report to database
         report = AiHelperHealthReport.new
@@ -263,7 +263,7 @@ module RedmineAiHelper
 
         messages = [{ role: "user", content: prompt_text }]
 
-        comparison_text = chat(messages, {}, stream_proc)
+        comparison_text = think_chat(messages, {}, stream_proc)
         comparison_text
       end
     end

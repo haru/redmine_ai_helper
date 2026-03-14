@@ -28,12 +28,11 @@ module RedmineAiHelper
       # Build a RubyLLM::Context with Azure OpenAI endpoint and API key.
       # @return [RubyLLM::Context]
       def build_context
-        setting = AiHelperSetting.find_or_create
-        model_profile = setting.model_profile
-        raise "Model Profile not found" unless model_profile
+        profile = resolved_model_profile
+        raise "Model Profile not found" unless profile
         RubyLLM.context do |config|
-          config.openai_api_key = model_profile.access_key
-          config.openai_api_base = model_profile.base_uri
+          config.openai_api_key = profile.access_key
+          config.openai_api_base = profile.base_uri
         end
       end
     end

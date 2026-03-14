@@ -82,3 +82,4 @@ specs/
 .yardoc/
 Gemfile.local
 .playwright-mcp/
+.ruby-lsp

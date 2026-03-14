@@ -1497,3 +1497,36 @@ table.list.ai-helper-report-list td.radio .radio-placeholder {
 .ai-helper-scope-toggle {
   margin-left: 1em;
 }
+
+.aihelper-interactive-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+
+.aihelper-interactive-options[hidden] {
+  display: none;
+}
+
+.aihelper-option-btn {
+  cursor: pointer;
+  white-space: normal;
+  word-break: break-word;
+  height: auto;
+  min-height: 2em;
+  text-align: center;
+  padding: 4px 10px;
+  line-height: 1.4;
+}
+
+.aihelper-option-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.aihelper-option-btn:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
