@@ -474,12 +474,12 @@ class ProjectToolsTest < ActiveSupport::TestCase
 
   def test_progress_metrics_closed_issue_with_zero_done_ratio_not_counted_as_not_started
     project = Project.find(1)
-    closed_status = IssueStatus.find(5) # Closed
+    closed_status = IssueStatus.find_by!(is_closed: true)
 
     # Create a closed issue with done_ratio = 0
     closed_issue = Issue.new(
       project: project,
-      tracker: Tracker.first,
+      tracker: project.trackers.first,
       author: User.find(1),
       subject: "Closed issue with zero progress",
       status: closed_status,
@@ -497,12 +497,12 @@ class ProjectToolsTest < ActiveSupport::TestCase
 
   def test_progress_metrics_closed_issue_counted_as_completed
     project = Project.find(1)
-    closed_status = IssueStatus.find(5) # Closed
+    closed_status = IssueStatus.find_by!(is_closed: true)
 
     # Create a closed issue with done_ratio = 50 (not 100)
     closed_issue = Issue.new(
       project: project,
-      tracker: Tracker.first,
+      tracker: project.trackers.first,
       author: User.find(1),
       subject: "Closed issue with partial progress",
       status: closed_status,
@@ -525,22 +525,23 @@ class ProjectToolsTest < ActiveSupport::TestCase
 
   def test_progress_metrics_average_completion_treats_closed_as_100
     project = Project.find(1)
-    closed_status = IssueStatus.find(5) # Closed
+    closed_status = IssueStatus.find_by!(is_closed: true)
+    open_status = IssueStatus.find_by!(is_closed: false)
 
     # Remove existing issues to have a controlled set
     project.issues.destroy_all
 
     open_issue = Issue.create!(
       project: project,
-      tracker: Tracker.first,
+      tracker: project.trackers.first,
       author: User.find(1),
       subject: "Open issue 0%",
-      status: IssueStatus.find(1),
+      status: open_status,
       done_ratio: 0
     )
     closed_issue = Issue.create!(
       project: project,
-      tracker: Tracker.first,
+      tracker: project.trackers.first,
       author: User.find(1),
       subject: "Closed issue 0%",
       status: closed_status,
