@@ -203,6 +203,9 @@ ja:
         use_think_model: "Thinkモデルを使用する"
         think_model_profile_id: "Thinkモデルプロファイル"
         think_model_description: "健全性レポートの生成やチケット回答案の作成など、高度な推論が必要なタスクに別のモデルを使用します。"
+        use_vector_model_profile: "ベクトル検索用モデルプロファイルを使用する"
+        vector_model_profile_id: "ベクトル検索用モデルプロファイル"
+        vector_model_profile_description: "ベクトル検索の埋め込みおよびコンテンツ分析に別のモデルプロファイルを使用します。"
       ai_helper_project_setting:
         issue_draft_instructions: "チケットのコメントを生成する際の指示"
         subtask_instructions: "子チケットを生成する際の指示"

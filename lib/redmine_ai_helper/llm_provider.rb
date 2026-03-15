@@ -26,6 +26,20 @@ module RedmineAiHelper
         get_provider_for_profile(setting.model_profile)
       end
 
+      # Returns an LLM provider instance for vector operations.
+      # Falls back to get_llm_provider when:
+      #   - use_vector_model_profile is false
+      #   - vector_model_profile_id is blank
+      #   - referenced profile no longer exists
+      # @return [Object] An instance of the appropriate LLM client.
+      def get_vector_llm_provider
+        setting = AiHelperSetting.find_or_create
+        return get_llm_provider unless setting.use_vector_model_profile? && setting.vector_model_profile_id.present?
+        profile = AiHelperModelProfile.find_by(id: setting.vector_model_profile_id)
+        return get_llm_provider unless profile
+        get_provider_for_profile(profile)
+      end
+
       # Returns an LLM provider instance for the Think model, or nil if not configured.
       # nil return means BaseAgent#think_chat will delegate to chat().
       # Raises ActiveRecord::RecordNotFound if use_think_model is true but the

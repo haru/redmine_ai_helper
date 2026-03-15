@@ -191,3 +191,10 @@ Testing conventions:
 3. Override `available_tool_providers` to return an array of your `BaseTools` subclasses (e.g. `[YourTools]`)
 4. Override `backstory` to return the agent's system prompt context
 5. See `example/redmine_fortune/` for a complete example
+
+## Active Technologies
+- Ruby 3.x / Rails 7.2 + RubyLLM, ActiveRecord (Redmine ORM) (007-vector-model-profile)
+- 既存 MySQL/PostgreSQL テーブル `ai_helper_settings` にカラム追加 (007-vector-model-profile)
+
+## Recent Changes
+- 007-vector-model-profile: Added Ruby 3.x / Rails 7.2 + RubyLLM, ActiveRecord (Redmine ORM)

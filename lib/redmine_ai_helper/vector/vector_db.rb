@@ -8,7 +8,7 @@ module RedmineAiHelper
       # Initializes the VectorDb with an optional LLM provider.
       # @param llm_provider [Object] The LLM provider to use for vector operations.
       def initialize(llm_provider: nil)
-        @llm_provider = llm_provider || RedmineAiHelper::LlmProvider.get_llm_provider
+        @llm_provider = llm_provider || RedmineAiHelper::LlmProvider.get_vector_llm_provider
       end
 
       # Returns the vector search client.

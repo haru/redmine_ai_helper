@@ -64,7 +64,7 @@ module RedmineAiHelper
       # @param issue [Issue] The issue to build content for.
       # @return [String] The structured content for vector embedding.
       def build_hybrid_content(issue)
-        analyzer = IssueContentAnalyzer.new
+        analyzer = IssueContentAnalyzer.new(llm_provider: @llm_provider)
         analysis = analyzer.analyze(issue)
         build_structured_content(issue, analysis)
       rescue => e
