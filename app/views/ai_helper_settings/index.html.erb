@@ -39,6 +39,15 @@
     <p>
         <%= f.check_box :vector_search_enabled %>
     </p>
+    <p>
+        <%= f.check_box :use_vector_model_profile %>
+        <span class="description"><%= t("activerecord.attributes.ai_helper_setting.vector_model_profile_description") %></span>
+    </p>
+    <div id="ai-helper-vector-model-profile-settings">
+        <p>
+            <%= f.select :vector_model_profile_id, options, include_blank: true %>
+        </p>
+    </div>
     <div id="ai-helper-vector-search">
         <p>
             <%= f.text_field :vector_search_uri, size: 60, required: true %>
@@ -54,16 +63,6 @@
         </p>
         <p id="ai_helper_embedding_url" style="display: none;">
             <%= f.text_field :embedding_url, size: 90 %>
-        </p>
-    </div>
-    <hr>
-    <p>
-        <%= f.check_box :use_vector_model_profile %>
-        <span class="description"><%= t("activerecord.attributes.ai_helper_setting.vector_model_profile_description") %></span>
-    </p>
-    <div id="ai-helper-vector-model-profile-settings">
-        <p>
-            <%= f.select :vector_model_profile_id, options, include_blank: true %>
         </p>
     </div>
     <hr>
