@@ -205,7 +205,7 @@ en:
         think_model_description: "Use a separate model for tasks requiring deeper reasoning, such as health report generation and issue reply drafting."
         use_vector_model_profile: "Use vector model profile"
         vector_model_profile_id: "Vector model profile"
-        vector_model_profile_description: "Use a separate model profile for vector search embedding and content analysis."
+        vector_model_profile_description: "Use a separate model profile for vector search operations (API credentials and content analysis). Note: the embedding model name is still controlled by the Embedding model setting above."
       ai_helper_project_setting:
         issue_draft_instructions: "Instructions for issue comment generation"
         subtask_instructions: "Instructions for subtask generation"

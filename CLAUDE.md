@@ -193,8 +193,7 @@ Testing conventions:
 5. See `example/redmine_fortune/` for a complete example
 
 ## Active Technologies
-- Ruby 3.x / Rails 7.2 + RubyLLM, ActiveRecord (Redmine ORM) (007-vector-model-profile)
-- 既存 MySQL/PostgreSQL テーブル `ai_helper_settings` にカラム追加 (007-vector-model-profile)
+- Ruby 3.x / Rails 7.2 + RubyLLM, ActiveRecord (Redmine ORM)
 
 ## Recent Changes
-- 007-vector-model-profile: Added Ruby 3.x / Rails 7.2 + RubyLLM, ActiveRecord (Redmine ORM)
+- 007-vector-model-profile: Added vector model profile support; adds `use_vector_model_profile` and `vector_model_profile_id` columns to the existing `ai_helper_settings` table (MySQL/PostgreSQL)

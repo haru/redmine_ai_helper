@@ -27,6 +27,9 @@ module RedmineAiHelper
       end
 
       # Returns an LLM provider instance for vector operations.
+      # The returned provider supplies API credentials and the chat model used for
+      # content analysis. Note: the embedding model name is still controlled by
+      # AiHelperSetting#embedding_model, not by the profile's llm_model.
       # Falls back to get_llm_provider when:
       #   - use_vector_model_profile is false
       #   - vector_model_profile_id is blank
