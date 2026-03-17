@@ -91,36 +91,28 @@ class LoggerTest < ActiveSupport::TestCase
 
   def test_custom_logger_predicate_methods
     # ruby_llm 1.14.0 calls RubyLLM.logger.debug? in connection.rb.
-    # CustomLogger must delegate these to the internal @logger.
-    test_logger = Object.new
-    mock_internal_logger = mock('internal_logger_for_predicates')
-    test_logger.instance_variable_set(:@logger, mock_internal_logger)
-
-    def test_logger.debug?; @logger.debug?; end
-    def test_logger.info?;  @logger.info?;  end
-    def test_logger.warn?;  @logger.warn?;  end
-    def test_logger.error?; @logger.error?; end
-    def test_logger.fatal?; @logger.fatal?; end
-
-    mock_internal_logger.stubs(:debug?).returns(false)
-    mock_internal_logger.stubs(:info?).returns(true)
-    mock_internal_logger.stubs(:warn?).returns(true)
-    mock_internal_logger.stubs(:error?).returns(true)
-    mock_internal_logger.stubs(:fatal?).returns(true)
-
-    assert_equal false, test_logger.debug?
-    assert_equal true,  test_logger.info?
-    assert_equal true,  test_logger.warn?
-    assert_equal true,  test_logger.error?
-    assert_equal true,  test_logger.fatal?
-
-    # Also verify the real CustomLogger instance responds to these methods
+    # Verify that CustomLogger delegates predicate calls to its internal @logger.
     logger = RedmineAiHelper::CustomLogger.instance
-    assert_respond_to logger, :debug?
-    assert_respond_to logger, :info?
-    assert_respond_to logger, :warn?
-    assert_respond_to logger, :error?
-    assert_respond_to logger, :fatal?
+    original_internal_logger = logger.instance_variable_get(:@logger)
+
+    begin
+      mock_internal_logger = mock("internal_logger_for_predicates")
+      logger.instance_variable_set(:@logger, mock_internal_logger)
+
+      mock_internal_logger.stubs(:debug?).returns(false)
+      mock_internal_logger.stubs(:info?).returns(true)
+      mock_internal_logger.stubs(:warn?).returns(true)
+      mock_internal_logger.stubs(:error?).returns(true)
+      mock_internal_logger.stubs(:fatal?).returns(true)
+
+      assert_equal false, logger.debug?
+      assert_equal true,  logger.info?
+      assert_equal true,  logger.warn?
+      assert_equal true,  logger.error?
+      assert_equal true,  logger.fatal?
+    ensure
+      logger.instance_variable_set(:@logger, original_internal_logger)
+    end
   end
 
   def test_custom_logger_logging_methods

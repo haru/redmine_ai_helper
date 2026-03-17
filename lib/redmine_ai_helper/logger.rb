@@ -127,11 +127,25 @@ module RedmineAiHelper
     end
 
     # Predicate methods required by libraries such as RubyLLM (e.g. logger.debug?)
-    def debug?; @logger.debug?; end
-    def info?;  @logger.info?;  end
-    def warn?;  @logger.warn?;  end
-    def error?; @logger.error?; end
-    def fatal?; @logger.fatal?; end
+    def debug?
+      @logger.debug?
+    end
+
+    def info?
+      @logger.info?
+    end
+
+    def warn?
+      @logger.warn?
+    end
+
+    def error?
+      @logger.error?
+    end
+
+    def fatal?
+      @logger.fatal?
+    end
 
     # Set the log level
     # @param log_level [String, Integer] The log level
