@@ -183,6 +183,7 @@ Testing conventions:
 - Always branch from `develop` for new features/fixes
 - Do not include any information about Claude Code in commit messages
 - Write commit messages in plain English
+- **NEVER commit or push without explicit instruction from the user**
 
 ## Custom Agent Development
 
