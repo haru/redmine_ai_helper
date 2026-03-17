@@ -80,6 +80,38 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
       end
     end
 
+    context "VectorDb uses vector model profile provider" do
+      setup do
+        @vector_profile = AiHelperModelProfile.create!(
+          name: "Vector Profile",
+          llm_model: "text-embedding-3-large",
+          access_key: "vec_key",
+          temperature: 0.0,
+          base_uri: "https://api.openai.com",
+          max_tokens: 0,
+          llm_type: "OpenAI",
+        )
+      end
+
+      teardown do
+        @setting.update_columns(use_vector_model_profile: false, vector_model_profile_id: nil)
+        @vector_profile.destroy if @vector_profile.persisted?
+      end
+
+      should "use vector profile provider when configured" do
+        @setting.update_columns(use_vector_model_profile: true, vector_model_profile_id: @vector_profile.id)
+        vector_db = RedmineAiHelper::Vector::IssueVectorDb.new
+        assert_equal @vector_profile.llm_model, vector_db.llm_provider.model_name
+      end
+
+      should "use default provider when use_vector_model_profile is false" do
+        @setting.update_columns(use_vector_model_profile: false, vector_model_profile_id: nil)
+        default_provider = RedmineAiHelper::LlmProvider.get_llm_provider
+        vector_db = RedmineAiHelper::Vector::IssueVectorDb.new
+        assert_equal default_provider.model_name, vector_db.llm_provider.model_name
+      end
+    end
+
     context "ask_with_filter" do
       should "return array" do
         res = @issue_vector_db.ask_with_filter(query: "test")

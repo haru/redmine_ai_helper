@@ -6,13 +6,19 @@ class AiHelperSetting < ApplicationRecord
   belongs_to :model_profile, class_name: "AiHelperModelProfile"
   belongs_to :think_model_profile, class_name: "AiHelperModelProfile",
              foreign_key: "think_model_profile_id", optional: true
+  belongs_to :vector_model_profile, class_name: "AiHelperModelProfile",
+             foreign_key: "vector_model_profile_id", optional: true
   validates :vector_search_uri, :presence => true, if: :vector_search_enabled?
   validates :vector_search_uri, :format => { with: URI::regexp(%w[http https]), message: l("ai_helper.model_profiles.messages.must_be_valid_url") }, if: :vector_search_enabled?
   validates :think_model_profile_id, presence: true, if: :use_think_model?
+  validates :vector_model_profile_id, presence: true, if: :use_vector_model_profile?
+
+  before_save :clear_vector_model_profile_id_if_disabled
 
   safe_attributes "model_profile_id", "additional_instructions", "version", "vector_search_enabled", "vector_search_uri", "vector_search_api_key", "embedding_model", "dimension", "vector_search_index_name", "vector_search_index_type", "embedding_url",
     "attachment_send_enabled", "attachment_max_size_mb",
-    "use_think_model", "think_model_profile_id"
+    "use_think_model", "think_model_profile_id",
+    "use_vector_model_profile", "vector_model_profile_id"
 
   validates :attachment_max_size_mb,
     numericality: { only_integer: true, greater_than_or_equal_to: 1 },
@@ -46,6 +52,14 @@ class AiHelperSetting < ApplicationRecord
       setting.attachment_max_size_mb
     end
   end
+
+  private
+
+  def clear_vector_model_profile_id_if_disabled
+    self.vector_model_profile_id = nil unless use_vector_model_profile?
+  end
+
+  public
 
   # Returns true if embedding_url is required
   # @return [Boolean] Whether embedding URL is enabled
