@@ -57,7 +57,7 @@ namespace :redmine do
         end
 
         def llm_provider
-          @llm_provider ||= RedmineAiHelper::LlmProvider.get_llm_provider
+          @llm_provider ||= RedmineAiHelper::LlmProvider.get_vector_llm_provider
         end
 
         def enabled?

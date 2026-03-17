@@ -73,6 +73,51 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
     assert_redirected_to action: :index
   end
 
+  context "vector model profile settings" do
+    setup do
+      @vector_profile = AiHelperModelProfile.create!(
+        name: "Vector Profile",
+        access_key: "vec_key",
+        llm_type: "OpenAI",
+        llm_model: "text-embedding-3-large",
+      )
+    end
+
+    teardown do
+      @vector_profile.destroy if @vector_profile.persisted?
+    end
+
+    should "save use_vector_model_profile true with valid vector_model_profile_id" do
+      post :update, params: { ai_helper_setting: { use_vector_model_profile: "1", vector_model_profile_id: @vector_profile.id } }
+      assert_redirected_to action: :index
+      @ai_helper_setting.reload
+      assert_equal true, @ai_helper_setting.use_vector_model_profile
+      assert_equal @vector_profile.id, @ai_helper_setting.vector_model_profile_id
+    end
+
+    should "not save when use_vector_model_profile true but vector_model_profile_id blank" do
+      post :update, params: { ai_helper_setting: { use_vector_model_profile: "1", vector_model_profile_id: "" } }
+      assert_response :success
+      @ai_helper_setting.reload
+      assert_not @ai_helper_setting.use_vector_model_profile
+    end
+
+    should "save use_vector_model_profile false and clear vector_model_profile_id" do
+      @ai_helper_setting.update_columns(use_vector_model_profile: true, vector_model_profile_id: @vector_profile.id)
+      post :update, params: { ai_helper_setting: { use_vector_model_profile: "0", vector_model_profile_id: "" } }
+      assert_redirected_to action: :index
+      @ai_helper_setting.reload
+      assert_equal false, @ai_helper_setting.use_vector_model_profile
+      assert_nil @ai_helper_setting.vector_model_profile_id
+    end
+
+    should "render vector model profile checkbox on index" do
+      get :index
+      assert_response :success
+      assert_select "input[type=checkbox][name='ai_helper_setting[use_vector_model_profile]']"
+    end
+  end
+
   context "think model settings" do
     setup do
       @think_profile = AiHelperModelProfile.create!(

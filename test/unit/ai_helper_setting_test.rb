@@ -85,4 +85,70 @@ class AiHelperSettingTest < ActiveSupport::TestCase
       assert_not @setting.attachment_send_enabled?
     end
   end
+
+  context "use_vector_model_profile validation" do
+    setup do
+      @vector_profile = AiHelperModelProfile.create!(
+        name: "Vector Profile",
+        access_key: "vec_key",
+        llm_type: "OpenAI",
+        llm_model: "text-embedding-3-large",
+      )
+    end
+
+    teardown do
+      @vector_profile.destroy if @vector_profile.persisted?
+    end
+
+    should "be invalid when use_vector_model_profile is true but vector_model_profile_id is blank" do
+      @setting.use_vector_model_profile = true
+      @setting.vector_model_profile_id = nil
+      assert_not @setting.valid?
+      assert @setting.errors[:vector_model_profile_id].present?
+    end
+
+    should "be valid when use_vector_model_profile is true and vector_model_profile_id is set" do
+      @setting.use_vector_model_profile = true
+      @setting.vector_model_profile_id = @vector_profile.id
+      assert @setting.valid?
+    end
+
+    should "be valid when use_vector_model_profile is false even without vector_model_profile_id" do
+      @setting.use_vector_model_profile = false
+      @setting.vector_model_profile_id = nil
+      assert @setting.valid?
+    end
+  end
+
+  context "before_save clear_vector_model_profile_id_if_disabled" do
+    setup do
+      @vector_profile = AiHelperModelProfile.create!(
+        name: "Vector Profile",
+        access_key: "vec_key",
+        llm_type: "OpenAI",
+        llm_model: "text-embedding-3-large",
+      )
+    end
+
+    teardown do
+      @vector_profile.destroy if @vector_profile.persisted?
+    end
+
+    should "clear vector_model_profile_id when use_vector_model_profile is set to false" do
+      @setting.update_columns(use_vector_model_profile: true, vector_model_profile_id: @vector_profile.id)
+      @setting.reload
+      @setting.use_vector_model_profile = false
+      @setting.save!
+      @setting.reload
+      assert_nil @setting.vector_model_profile_id
+    end
+
+    should "not clear vector_model_profile_id when use_vector_model_profile is true" do
+      @setting.use_vector_model_profile = true
+      @setting.vector_model_profile_id = @vector_profile.id
+      @setting.save!
+      @setting.reload
+      assert_equal @vector_profile.id, @setting.vector_model_profile_id
+    end
+  end
 end
