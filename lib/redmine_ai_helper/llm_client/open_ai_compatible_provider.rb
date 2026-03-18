@@ -33,6 +33,7 @@ module RedmineAiHelper
         RubyLLM.context do |config|
           config.openai_api_key = profile.access_key
           config.openai_api_base = profile.base_uri
+          config.openai_use_system_role = true
         end
       end
     end

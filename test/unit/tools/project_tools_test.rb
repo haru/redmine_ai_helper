@@ -472,6 +472,91 @@ class ProjectToolsTest < ActiveSupport::TestCase
     assert completion_dist.key?(:completed)
   end
 
+  def test_progress_metrics_closed_issue_with_zero_done_ratio_not_counted_as_not_started
+    project = Project.find(1)
+    closed_status = IssueStatus.find_by!(is_closed: true)
+
+    # Create a closed issue with done_ratio = 0
+    closed_issue = Issue.new(
+      project: project,
+      tracker: project.trackers.first,
+      author: User.find(1),
+      subject: "Closed issue with zero progress",
+      status: closed_status,
+      done_ratio: 0
+    )
+    closed_issue.save!
+
+    metrics = @provider.get_metrics(project_id: project.id)
+    completion_dist = metrics[:progress_metrics][:completion_distribution]
+
+    # The closed issue should not appear in not_started
+    open_issues_with_zero_ratio = project.issues.reload.select { |i| !i.status.is_closed? && (i.done_ratio || 0) == 0 }
+    assert_equal open_issues_with_zero_ratio.count, completion_dist[:not_started]
+  end
+
+  def test_progress_metrics_closed_issue_counted_as_completed
+    project = Project.find(1)
+    closed_status = IssueStatus.find_by!(is_closed: true)
+
+    # Create a closed issue with done_ratio = 50 (not 100)
+    closed_issue = Issue.new(
+      project: project,
+      tracker: project.trackers.first,
+      author: User.find(1),
+      subject: "Closed issue with partial progress",
+      status: closed_status,
+      done_ratio: 50
+    )
+    closed_issue.save!
+
+    metrics = @provider.get_metrics(project_id: project.id)
+    completion_dist = metrics[:progress_metrics][:completion_distribution]
+
+    # The closed issue should appear in completed, not in_progress
+    all_issues = project.issues.includes(:status).reload.to_a
+    expected_completed = all_issues.select { |i| i.status.is_closed? || (i.done_ratio || 0) == 100 }.count
+    assert_equal expected_completed, completion_dist[:completed]
+
+    # in_progress should not include the closed issue
+    expected_in_progress = all_issues.select { |i| !i.status.is_closed? && (r = (i.done_ratio || 0); r > 0 && r < 100) }.count
+    assert_equal expected_in_progress, completion_dist[:in_progress]
+  end
+
+  def test_progress_metrics_average_completion_treats_closed_as_100
+    project = Project.find(1)
+    closed_status = IssueStatus.find_by!(is_closed: true)
+    open_status = IssueStatus.find_by!(is_closed: false)
+
+    # Remove existing issues to have a controlled set
+    project.issues.destroy_all
+
+    open_issue = Issue.create!(
+      project: project,
+      tracker: project.trackers.first,
+      author: User.find(1),
+      subject: "Open issue 0%",
+      status: open_status,
+      done_ratio: 0
+    )
+    closed_issue = Issue.create!(
+      project: project,
+      tracker: project.trackers.first,
+      author: User.find(1),
+      subject: "Closed issue 0%",
+      status: closed_status,
+      done_ratio: 0
+    )
+
+    metrics = @provider.get_metrics(project_id: project.id)
+    progress_metrics = metrics[:progress_metrics]
+
+    # total_done_ratio = 0 (open) + 100 (closed) = 100, average = 100/2 = 50.0
+    assert_equal 50.0, progress_metrics[:average_completion_percentage]
+    # issues_with_progress: closed issue counts as having progress
+    assert_equal 1, progress_metrics[:issues_with_progress]
+  end
+
   def test_get_metrics_member_metrics_structure
     project = Project.find(1)
 

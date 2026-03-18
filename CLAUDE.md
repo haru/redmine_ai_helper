@@ -183,6 +183,7 @@ Testing conventions:
 - Always branch from `develop` for new features/fixes
 - Do not include any information about Claude Code in commit messages
 - Write commit messages in plain English
+- **NEVER commit or push without explicit instruction from the user**
 
 ## Custom Agent Development
 
@@ -191,3 +192,9 @@ Testing conventions:
 3. Override `available_tool_providers` to return an array of your `BaseTools` subclasses (e.g. `[YourTools]`)
 4. Override `backstory` to return the agent's system prompt context
 5. See `example/redmine_fortune/` for a complete example
+
+## Active Technologies
+- Ruby 3.x / Rails 7.2 + RubyLLM, ActiveRecord (Redmine ORM)
+
+## Recent Changes
+- 007-vector-model-profile: Added vector model profile support; adds `use_vector_model_profile` and `vector_model_profile_id` columns to the existing `ai_helper_settings` table (MySQL/PostgreSQL)

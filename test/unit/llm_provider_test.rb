@@ -75,6 +75,57 @@ class LlmProviderTest < ActiveSupport::TestCase
       end
     end
 
+    context "get_vector_llm_provider" do
+      setup do
+        @setting = AiHelperSetting.find_or_create
+        @vector_profile = AiHelperModelProfile.create!(
+          name: "Vector Profile",
+          llm_model: "text-embedding-3-large",
+          access_key: "vec_key",
+          temperature: 0.0,
+          base_uri: "https://api.openai.com",
+          max_tokens: 0,
+          llm_type: RedmineAiHelper::LlmProvider::LLM_OPENAI,
+        )
+      end
+
+      teardown do
+        @setting.update_columns(use_vector_model_profile: false, vector_model_profile_id: nil)
+        @vector_profile.destroy if @vector_profile.persisted?
+      end
+
+      should "return normal provider when use_vector_model_profile is false" do
+        @setting.update_columns(use_vector_model_profile: false, vector_model_profile_id: nil)
+        normal_provider = @llm_provider.get_llm_provider
+        vector_provider = @llm_provider.get_vector_llm_provider
+        assert_equal normal_provider.class, vector_provider.class
+        assert_equal normal_provider.model_name, vector_provider.model_name
+      end
+
+      should "return vector profile provider when use_vector_model_profile is true and profile exists" do
+        @setting.update_columns(use_vector_model_profile: true, vector_model_profile_id: @vector_profile.id)
+        provider = @llm_provider.get_vector_llm_provider
+        assert_not_nil provider
+        assert_instance_of RedmineAiHelper::LlmClient::OpenAiProvider, provider
+        assert_equal @vector_profile.llm_model, provider.model_name
+      end
+
+      should "fallback to normal provider when use_vector_model_profile is true but profile_id is blank" do
+        @setting.update_columns(use_vector_model_profile: true, vector_model_profile_id: nil)
+        normal_provider = @llm_provider.get_llm_provider
+        vector_provider = @llm_provider.get_vector_llm_provider
+        assert_equal normal_provider.class, vector_provider.class
+        assert_equal normal_provider.model_name, vector_provider.model_name
+      end
+
+      should "raise ActiveRecord::RecordNotFound when referenced profile is deleted" do
+        @setting.update_columns(use_vector_model_profile: true, vector_model_profile_id: 999999)
+        assert_raises(ActiveRecord::RecordNotFound) do
+          @llm_provider.get_vector_llm_provider
+        end
+      end
+    end
+
     context "get_llm_provider" do
       setup do
         @setting = AiHelperSetting.find_or_create

@@ -39,6 +39,15 @@
     <p>
         <%= f.check_box :vector_search_enabled %>
     </p>
+    <p>
+        <%= f.check_box :use_vector_model_profile %>
+        <span class="description"><%= t("activerecord.attributes.ai_helper_setting.vector_model_profile_description") %></span>
+    </p>
+    <div id="ai-helper-vector-model-profile-settings">
+        <p>
+            <%= f.select :vector_model_profile_id, options, include_blank: true %>
+        </p>
+    </div>
     <div id="ai-helper-vector-search">
         <p>
             <%= f.text_field :vector_search_uri, size: 60, required: true %>
@@ -106,6 +115,30 @@
         } else {
             $('#ai-helper-vector-search').hide();
         }
+        setVectorModelProfileToggleVisible();
+    }
+
+    function setVectorModelProfileVisible() {
+        const enabled = document.getElementById('ai_helper_setting_use_vector_model_profile').checked;
+        const settingsDiv = document.getElementById('ai-helper-vector-model-profile-settings');
+        settingsDiv.style.display = enabled ? '' : 'none';
+    }
+
+    function setVectorModelProfileToggleVisible() {
+        const vectorSearchEnabled = document.getElementById('ai_helper_setting_vector_search_enabled').checked;
+        const toggleRow = document.getElementById('ai_helper_setting_use_vector_model_profile');
+        if (toggleRow) {
+            const parentP = toggleRow.closest('p');
+            if (parentP) {
+                parentP.style.display = vectorSearchEnabled ? '' : 'none';
+            }
+            if (!vectorSearchEnabled) {
+                const settingsDiv = document.getElementById('ai-helper-vector-model-profile-settings');
+                if (settingsDiv) settingsDiv.style.display = 'none';
+            } else {
+                setVectorModelProfileVisible();
+            }
+        }
     }
 
     function modelTypeChanged() {
@@ -135,6 +168,9 @@
         });
         $('#ai_helper_setting_vector_search_enabled').change(function() {
             setVectorSearchVisible();
+        });
+        document.getElementById('ai_helper_setting_use_vector_model_profile').addEventListener('change', function() {
+            setVectorModelProfileVisible();
         });
     });
     setModelProfile();

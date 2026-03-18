@@ -100,5 +100,11 @@ class RedmineAiHelper::LlmClient::OpenAiCompatibleProviderTest < ActiveSupport::
 
       @provider.create_chat(tools: [tool_class])
     end
+
+    should "set openai_use_system_role to true in context config" do
+      context = @provider.context
+      assert_equal true, context.config.openai_use_system_role,
+        "openai_use_system_role should be true for OpenAI-compatible providers to avoid sending 'developer' role"
+    end
   end
 end

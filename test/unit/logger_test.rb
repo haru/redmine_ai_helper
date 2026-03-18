@@ -89,6 +89,32 @@ class LoggerTest < ActiveSupport::TestCase
     assert_same instance1, instance2
   end
 
+  def test_custom_logger_predicate_methods
+    # ruby_llm 1.14.0 calls RubyLLM.logger.debug? in connection.rb.
+    # Verify that CustomLogger delegates predicate calls to its internal @logger.
+    logger = RedmineAiHelper::CustomLogger.instance
+    original_internal_logger = logger.instance_variable_get(:@logger)
+
+    begin
+      mock_internal_logger = mock("internal_logger_for_predicates")
+      logger.instance_variable_set(:@logger, mock_internal_logger)
+
+      mock_internal_logger.stubs(:debug?).returns(false)
+      mock_internal_logger.stubs(:info?).returns(true)
+      mock_internal_logger.stubs(:warn?).returns(true)
+      mock_internal_logger.stubs(:error?).returns(true)
+      mock_internal_logger.stubs(:fatal?).returns(true)
+
+      assert_equal false, logger.debug?
+      assert_equal true,  logger.info?
+      assert_equal true,  logger.warn?
+      assert_equal true,  logger.error?
+      assert_equal true,  logger.fatal?
+    ensure
+      logger.instance_variable_set(:@logger, original_internal_logger)
+    end
+  end
+
   def test_custom_logger_logging_methods
     # Create a test object that mimics CustomLogger methods
     test_logger = Object.new
