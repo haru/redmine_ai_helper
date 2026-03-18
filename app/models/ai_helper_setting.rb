@@ -11,7 +11,7 @@ class AiHelperSetting < ApplicationRecord
   validates :vector_search_uri, :presence => true, if: :vector_search_enabled?
   validates :vector_search_uri, :format => { with: URI::regexp(%w[http https]), message: l("ai_helper.model_profiles.messages.must_be_valid_url") }, if: :vector_search_enabled?
   validates :think_model_profile_id, presence: true, if: :use_think_model?
-  validates :vector_model_profile_id, presence: true, if: :use_vector_model_profile?
+  validates :vector_model_profile_id, presence: true, if: -> { use_vector_model_profile? && vector_search_enabled? }
 
   before_save :clear_vector_model_profile_id_if_disabled
 
@@ -56,6 +56,11 @@ class AiHelperSetting < ApplicationRecord
   private
 
   def clear_vector_model_profile_id_if_disabled
+    unless vector_search_enabled?
+      self.use_vector_model_profile = false
+      self.vector_model_profile_id = nil
+      return
+    end
     self.vector_model_profile_id = nil unless use_vector_model_profile?
   end
 

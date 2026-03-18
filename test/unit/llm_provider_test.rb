@@ -118,12 +118,11 @@ class LlmProviderTest < ActiveSupport::TestCase
         assert_equal normal_provider.model_name, vector_provider.model_name
       end
 
-      should "fallback to normal provider when referenced profile is deleted" do
+      should "raise ActiveRecord::RecordNotFound when referenced profile is deleted" do
         @setting.update_columns(use_vector_model_profile: true, vector_model_profile_id: 999999)
-        normal_provider = @llm_provider.get_llm_provider
-        vector_provider = @llm_provider.get_vector_llm_provider
-        assert_equal normal_provider.class, vector_provider.class
-        assert_equal normal_provider.model_name, vector_provider.model_name
+        assert_raises(ActiveRecord::RecordNotFound) do
+          @llm_provider.get_vector_llm_provider
+        end
       end
     end
 

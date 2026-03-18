@@ -100,14 +100,18 @@ class AiHelperSettingTest < ActiveSupport::TestCase
       @vector_profile.destroy if @vector_profile.persisted?
     end
 
-    should "be invalid when use_vector_model_profile is true but vector_model_profile_id is blank" do
+    should "be invalid when use_vector_model_profile is true, vector_search_enabled is true, but vector_model_profile_id is blank" do
+      @setting.vector_search_enabled = true
+      @setting.vector_search_uri = "http://localhost:6333"
       @setting.use_vector_model_profile = true
       @setting.vector_model_profile_id = nil
       assert_not @setting.valid?
       assert @setting.errors[:vector_model_profile_id].present?
     end
 
-    should "be valid when use_vector_model_profile is true and vector_model_profile_id is set" do
+    should "be valid when use_vector_model_profile is true, vector_search_enabled is true, and vector_model_profile_id is set" do
+      @setting.vector_search_enabled = true
+      @setting.vector_search_uri = "http://localhost:6333"
       @setting.use_vector_model_profile = true
       @setting.vector_model_profile_id = @vector_profile.id
       assert @setting.valid?
@@ -115,6 +119,13 @@ class AiHelperSettingTest < ActiveSupport::TestCase
 
     should "be valid when use_vector_model_profile is false even without vector_model_profile_id" do
       @setting.use_vector_model_profile = false
+      @setting.vector_model_profile_id = nil
+      assert @setting.valid?
+    end
+
+    should "skip vector_model_profile_id validation when vector_search_enabled is false" do
+      @setting.vector_search_enabled = false
+      @setting.use_vector_model_profile = true
       @setting.vector_model_profile_id = nil
       assert @setting.valid?
     end
@@ -144,11 +155,27 @@ class AiHelperSettingTest < ActiveSupport::TestCase
     end
 
     should "not clear vector_model_profile_id when use_vector_model_profile is true" do
+      @setting.vector_search_enabled = true
+      @setting.vector_search_uri = "http://localhost:6333"
       @setting.use_vector_model_profile = true
       @setting.vector_model_profile_id = @vector_profile.id
       @setting.save!
       @setting.reload
       assert_equal @vector_profile.id, @setting.vector_model_profile_id
+    end
+
+    should "clear use_vector_model_profile and vector_model_profile_id when vector_search_enabled is set to false" do
+      @setting.update_columns(
+        vector_search_enabled: true,
+        use_vector_model_profile: true,
+        vector_model_profile_id: @vector_profile.id,
+      )
+      @setting.reload
+      @setting.vector_search_enabled = false
+      @setting.save!
+      @setting.reload
+      assert_equal false, @setting.use_vector_model_profile
+      assert_nil @setting.vector_model_profile_id
     end
   end
 end
