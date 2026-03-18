@@ -74,18 +74,19 @@ class AiHelperModelProfilesController < ApplicationController
     temp_profile.temperature ||= 1.0
 
     unless temp_profile.llm_type.present? && temp_profile.llm_model.present? &&
-           (temp_profile.access_key.present? || !temp_profile.access_key_required?)
+           (temp_profile.access_key.present? || !temp_profile.access_key_required?) &&
+           (temp_profile.base_uri.present? || !temp_profile.base_uri_required?)
       render json: { success: false, error: l("ai_helper.model_profiles.messages.required_fields_missing") }, status: :unprocessable_entity
       return
     end
 
-    provider = RedmineAiHelper::LlmProvider.send(:get_provider_for_profile, temp_profile)
+    provider = RedmineAiHelper::LlmProvider.provider_for_profile(temp_profile)
     chat = provider.create_chat
     chat.ask("hi")
     render json: { success: true }
   rescue => e
     ai_helper_logger.error("LLM connection test failed: #{e.message}")
-    render json: { success: false, error: e.message }
+    render json: { success: false, error: e.message }, status: :internal_server_error
   end
 
   # Delete an existing model profile

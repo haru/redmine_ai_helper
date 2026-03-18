@@ -195,8 +195,8 @@ Testing conventions:
 
 ## Active Technologies
 - Ruby 3.x / Rails 7.2 + RubyLLM, ActiveRecord (Redmine ORM)
-- Ruby 3.x / Rails 7.2 + RubyLLM（既存）、mocha（テスト用モック）、shoulda（テストアサーション） (008-llm-connection-test)
-- N/A（接続テスト結果は永続化しない） (008-llm-connection-test)
+- Testing: mocha (mocking), shoulda (assertions)
+- Connection test results are not persisted
 
 ## Recent Changes
 - 007-vector-model-profile: Added vector model profile support; adds `use_vector_model_profile` and `vector_model_profile_id` columns to the existing `ai_helper_settings` table (MySQL/PostgreSQL)

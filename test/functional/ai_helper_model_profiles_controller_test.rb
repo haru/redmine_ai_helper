@@ -119,7 +119,7 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
     chat_mock = mock("chat")
     chat_mock.expects(:ask).with("hi").returns(mock("message"))
     provider_mock.expects(:create_chat).returns(chat_mock)
-    RedmineAiHelper::LlmProvider.expects(:get_provider_for_profile).returns(provider_mock)
+    RedmineAiHelper::LlmProvider.expects(:provider_for_profile).returns(provider_mock)
 
     post :test_connection, params: {
       ai_helper_model_profile: {
@@ -139,7 +139,7 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
     chat_mock = mock("chat")
     chat_mock.expects(:ask).with("hi").raises(StandardError, "connection refused")
     provider_mock.expects(:create_chat).returns(chat_mock)
-    RedmineAiHelper::LlmProvider.expects(:get_provider_for_profile).returns(provider_mock)
+    RedmineAiHelper::LlmProvider.expects(:provider_for_profile).returns(provider_mock)
 
     post :test_connection, params: {
       ai_helper_model_profile: {
@@ -148,7 +148,7 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
         access_key: "real_key"
       }
     }
-    assert_response :success
+    assert_response :internal_server_error
     json = JSON.parse(response.body)
     assert_equal false, json["success"]
     assert_includes json["error"], "connection refused"
@@ -205,7 +205,7 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
     chat_mock = mock("chat")
     chat_mock.expects(:ask).with("hi").returns(mock("message"))
     provider_mock.expects(:create_chat).returns(chat_mock)
-    RedmineAiHelper::LlmProvider.expects(:get_provider_for_profile).with do |profile|
+    RedmineAiHelper::LlmProvider.expects(:provider_for_profile).with do |profile|
       profile.access_key == "test_key"
     end.returns(provider_mock)
 
@@ -228,7 +228,7 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
     chat_mock = mock("chat")
     chat_mock.expects(:ask).with("hi").returns(mock("message"))
     provider_mock.expects(:create_chat).returns(chat_mock)
-    RedmineAiHelper::LlmProvider.expects(:get_provider_for_profile).with do |profile|
+    RedmineAiHelper::LlmProvider.expects(:provider_for_profile).with do |profile|
       profile.access_key == "new_real_key"
     end.returns(provider_mock)
 
@@ -243,6 +243,38 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
     assert_response :success
     json = JSON.parse(response.body)
     assert_equal true, json["success"]
+  end
+
+  # T010: missing base_uri for OpenAICompatible returns 422
+  should "return 422 when base_uri is missing for OpenAICompatible" do
+    post :test_connection, params: {
+      ai_helper_model_profile: {
+        llm_type: "OpenAICompatible",
+        llm_model: "some-model",
+        access_key: "key",
+        base_uri: ""
+      }
+    }
+    assert_response :unprocessable_entity
+    json = JSON.parse(response.body)
+    assert_equal false, json["success"]
+    assert json["error"].present?
+  end
+
+  # T011: missing base_uri for AzureOpenAi returns 422
+  should "return 422 when base_uri is missing for AzureOpenAi" do
+    post :test_connection, params: {
+      ai_helper_model_profile: {
+        llm_type: "AzureOpenAi",
+        llm_model: "gpt-4",
+        access_key: "key",
+        base_uri: ""
+      }
+    }
+    assert_response :unprocessable_entity
+    json = JSON.parse(response.body)
+    assert_equal false, json["success"]
+    assert json["error"].present?
   end
 
   # T015: dummy key without id → returns 422 validation error

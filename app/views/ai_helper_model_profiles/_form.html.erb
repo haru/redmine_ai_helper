@@ -1,3 +1,6 @@
+<%= content_for :header_tags do %>
+  <%= stylesheet_link_tag 'ai_helper', plugin: 'redmine_ai_helper' %>
+<% end %>
 <%= error_messages_for "model_profile" %>
 <div class="box tabular">
   <p><%= f.select :llm_type, RedmineAiHelper::LlmProvider.option_for_select %></p>
@@ -28,9 +31,9 @@
 
   <p id="ai-helper-test-connection">
     <%= hidden_field_tag :id, @model_profile.id unless @model_profile.new_record? %>
-    <%= link_to l("ai_helper.model_profiles.test_connection"), "#",
-          id: "ai-helper-test-connection-btn",
-          class: "button" %>
+    <button type="submit" id="ai-helper-test-connection-btn">
+      <%= l("ai_helper.model_profiles.test_connection") %>
+    </button>
     <span id="ai-helper-test-connection-result"></span>
   </p>
 </div>
@@ -87,8 +90,11 @@
     if (testConnectionBtn) {
       testConnectionBtn.addEventListener('click', function(event) {
         event.preventDefault();
+        if (testConnectionBtn.dataset.loading) return;
+        testConnectionBtn.dataset.loading = 'true';
         testConnectionBtn.disabled = true;
         testConnectionResult.textContent = '';
+        testConnectionResult.className = '';
 
         const form = testConnectionBtn.closest('form');
         const formData = new FormData(form);
@@ -102,21 +108,30 @@
           headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content },
           body: formData
         })
-        .then(function(response) { return response.json(); })
+        .then(function(response) {
+          const contentType = response.headers.get('Content-Type') || '';
+          if (!contentType.includes('application/json')) {
+            return response.text().then(function() {
+              return { success: false, error: '<%= j l("ai_helper.model_profiles.test_connection_failed") %>' };
+            });
+          }
+          return response.json();
+        })
         .then(function(data) {
           if (data.success) {
             testConnectionResult.textContent = '<%= j l("ai_helper.model_profiles.test_connection_success") %>';
-            testConnectionResult.style.color = 'green';
+            testConnectionResult.className = 'ai-helper-connection-success';
           } else {
             testConnectionResult.textContent = '<%= j l("ai_helper.model_profiles.test_connection_failed") %>' + (data.error ? ': ' + data.error : '');
-            testConnectionResult.style.color = 'red';
+            testConnectionResult.className = 'ai-helper-connection-failure';
           }
         })
         .catch(function(error) {
           testConnectionResult.textContent = '<%= j l("ai_helper.model_profiles.test_connection_failed") %>: ' + error.message;
-          testConnectionResult.style.color = 'red';
+          testConnectionResult.className = 'ai-helper-connection-failure';
         })
         .finally(function() {
+          delete testConnectionBtn.dataset.loading;
           testConnectionBtn.disabled = false;
         });
       });
