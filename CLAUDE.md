@@ -197,6 +197,8 @@ Testing conventions:
 - Ruby 3.x / Rails 7.2 + RubyLLM, ActiveRecord (Redmine ORM)
 - Testing: mocha (mocking), shoulda (assertions)
 - Connection test results are not persisted
+- Ruby 3.x / Rails 7.2 + ruby_llm 1.14.0（既存）、RubyLLM::Providers::OpenAI / Anthropic / Gemini (009-fetch-latest-models)
+- N/A（メモリ上のみ。DB 変更なし） (009-fetch-latest-models)
 
 ## Recent Changes
 - 007-vector-model-profile: Added vector model profile support; adds `use_vector_model_profile` and `vector_model_profile_id` columns to the existing `ai_helper_settings` table (MySQL/PostgreSQL)

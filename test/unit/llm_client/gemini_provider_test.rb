@@ -43,6 +43,20 @@ class RedmineAiHelper::LlmClient::GeminiProviderTest < ActiveSupport::TestCase
       end
     end
 
+    should "return RubyLLM::Providers::Gemini for ruby_llm_provider_class" do
+      assert_equal RubyLLM::Providers::Gemini, @provider.send(:ruby_llm_provider_class)
+    end
+
+    should "return 'gemini' for ruby_llm_provider_slug" do
+      assert_equal "gemini", @provider.send(:ruby_llm_provider_slug)
+    end
+
+    should "configure_provider_config sets gemini_api_key" do
+      config = RubyLLM::Configuration.new
+      @provider.send(:configure_provider_config, config)
+      assert_equal @gemini_profile.access_key, config.gemini_api_key
+    end
+
     should "create chat via base class" do
       mock_context = mock("RubyLLM::Context")
       mock_chat = mock("RubyLLM::Chat")

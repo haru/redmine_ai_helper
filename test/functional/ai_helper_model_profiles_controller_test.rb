@@ -277,6 +277,48 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
     assert json["error"].present?
   end
 
+  # T028 [US2]: unregistered model → list_models is called → test_connection succeeds
+  should "auto-fetch model via list_models when model is not in registry during test_connection" do
+    unregistered_model_id = "gpt-unregistered-controller-test-888"
+    RubyLLM.models.instance_variable_get(:@models).reject! { |m| m.id == unregistered_model_id }
+
+    unregistered_profile = AiHelperModelProfile.create!(
+      name: "Unregistered Controller Test Profile",
+      llm_type: "OpenAI",
+      llm_model: unregistered_model_id,
+      access_key: "test_key",
+    )
+
+    begin
+      # Return a real OpenAiProvider so ensure_model_registered! runs through it
+      real_provider = RedmineAiHelper::LlmClient::OpenAiProvider.new(model_profile: unregistered_profile)
+      RedmineAiHelper::LlmProvider.stubs(:provider_for_profile).returns(real_provider)
+
+      # Stub list_models on any OpenAI provider instance (triggered by fetch_and_register_model!)
+      fetched_model = RubyLLM::Model::Info.new(
+        id: unregistered_model_id, provider: "openai", name: "GPT Unregistered Controller Test",
+      )
+      RubyLLM::Providers::OpenAI.any_instance.expects(:list_models).at_least_once.returns([fetched_model])
+
+      # Stub chat.ask to avoid real API calls
+      RubyLLM::Chat.any_instance.stubs(:ask).returns(stub("message"))
+
+      post :test_connection, params: {
+        ai_helper_model_profile: {
+          llm_type: "OpenAI",
+          llm_model: unregistered_model_id,
+          access_key: "test_key",
+        }
+      }
+      assert_response :success
+      json = JSON.parse(response.body)
+      assert_equal true, json["success"]
+    ensure
+      unregistered_profile.destroy
+      RubyLLM.models.instance_variable_get(:@models).reject! { |m| m.id == unregistered_model_id }
+    end
+  end
+
   # T015: dummy key without id → returns 422 validation error
   should "return 422 when dummy key is submitted without a profile id" do
     post :test_connection, params: {
