@@ -88,7 +88,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
     end
 
     should "save use_vector_model_profile true with valid vector_model_profile_id" do
-      post :update, params: { ai_helper_setting: { use_vector_model_profile: "1", vector_model_profile_id: @vector_profile.id } }
+      post :update, params: { ai_helper_setting: { vector_search_enabled: "1", vector_search_uri: "http://localhost:6333", use_vector_model_profile: "1", vector_model_profile_id: @vector_profile.id } }
       assert_redirected_to action: :index
       @ai_helper_setting.reload
       assert_equal true, @ai_helper_setting.use_vector_model_profile
@@ -96,7 +96,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
     end
 
     should "not save when use_vector_model_profile true but vector_model_profile_id blank" do
-      post :update, params: { ai_helper_setting: { use_vector_model_profile: "1", vector_model_profile_id: "" } }
+      post :update, params: { ai_helper_setting: { vector_search_enabled: "1", vector_search_uri: "http://localhost:6333", use_vector_model_profile: "1", vector_model_profile_id: "" } }
       assert_response :success
       @ai_helper_setting.reload
       assert_not @ai_helper_setting.use_vector_model_profile
