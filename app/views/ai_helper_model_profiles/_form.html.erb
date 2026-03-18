@@ -26,6 +26,13 @@
   </p>
 
 
+  <p id="ai-helper-test-connection">
+    <%= hidden_field_tag :id, @model_profile.id unless @model_profile.new_record? %>
+    <%= link_to l("ai_helper.model_profiles.test_connection"), "#",
+          id: "ai-helper-test-connection-btn",
+          class: "button" %>
+    <span id="ai-helper-test-connection-result"></span>
+  </p>
 </div>
 
 <script>
@@ -71,6 +78,57 @@
 
       // Trigger change event on page load
       handleLlmTypeChange();
+    }
+
+    // Connection test button
+    const testConnectionBtn = document.getElementById('ai-helper-test-connection-btn');
+    const testConnectionResult = document.getElementById('ai-helper-test-connection-result');
+
+    if (testConnectionBtn) {
+      testConnectionBtn.addEventListener('click', function(event) {
+        event.preventDefault();
+        testConnectionBtn.disabled = true;
+        testConnectionResult.textContent = '';
+
+        const form = testConnectionBtn.closest('form');
+        const formData = new FormData(form);
+        const idField = document.getElementById('id');
+        if (idField) {
+          formData.set('id', idField.value);
+        }
+
+        fetch('<%= ai_helper_model_profiles_test_connection_path %>', {
+          method: 'POST',
+          headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content },
+          body: formData
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+          if (data.success) {
+            testConnectionResult.textContent = '<%= j l("ai_helper.model_profiles.test_connection_success") %>';
+            testConnectionResult.style.color = 'green';
+          } else {
+            testConnectionResult.textContent = '<%= j l("ai_helper.model_profiles.test_connection_failed") %>' + (data.error ? ': ' + data.error : '');
+            testConnectionResult.style.color = 'red';
+          }
+        })
+        .catch(function(error) {
+          testConnectionResult.textContent = '<%= j l("ai_helper.model_profiles.test_connection_failed") %>: ' + error.message;
+          testConnectionResult.style.color = 'red';
+        })
+        .finally(function() {
+          testConnectionBtn.disabled = false;
+        });
+      });
+
+      // Auto-clear result when any form field changes
+      const form = testConnectionBtn.closest('form');
+      if (form) {
+        form.querySelectorAll('input, select, textarea').forEach(function(field) {
+          field.addEventListener('input', function() { testConnectionResult.textContent = ''; });
+          field.addEventListener('change', function() { testConnectionResult.textContent = ''; });
+        });
+      }
     }
   });
 </script>
