@@ -5,6 +5,7 @@ module RedmineAiHelper
     # BaseProvider is an abstract class that defines the interface for LLM providers.
     # Each subclass configures RubyLLM with the appropriate API keys and settings.
     class BaseProvider
+      # Mutex used to prevent duplicate model fetches under concurrent requests.
       FETCH_MUTEX = Mutex.new
 
       # @param model_profile [AiHelperModelProfile, nil] Explicit profile to use.
