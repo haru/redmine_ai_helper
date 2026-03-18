@@ -562,6 +562,14 @@ body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-conte
   margin: 10px 0;
 }
 
+.ai-helper-connection-success {
+  color: #080;
+}
+
+.ai-helper-connection-failure {
+  color: #d33;
+}
+
 .ai-helper-note {
   font-size: 0.9em;
   margin-top: 10px;

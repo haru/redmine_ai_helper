@@ -54,6 +54,10 @@ RedmineApp::Application.routes.draw do
   get "ai_helper_settings/index", to: "ai_helper_settings#index", as: "ai_helper_setting"
   post "ai_helper_settings/index", to: "ai_helper_settings#update", as: "ai_helper_setting_update"
 
+  post "ai_helper_model_profiles/test_connection",
+       to: "ai_helper_model_profiles#test_connection",
+       as: "ai_helper_model_profiles_test_connection"
+
   get "ai_helper_model_profiles", to: "ai_helper_model_profiles#index", as: "ai_helper_model_profiles"
   get "ai_helper_model_profiles/:id", to: "ai_helper_model_profiles#show", as: "ai_helper_model_profiles_show"
   get "ai_helper_model_profiles/:id/edit", to: "ai_helper_model_profiles#edit", as: "ai_helper_model_profiles_edit"

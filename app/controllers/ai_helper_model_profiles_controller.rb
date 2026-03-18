@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 # Controller for performing CRUD operations on ModelProfile
 class AiHelperModelProfilesController < ApplicationController
+  include RedmineAiHelper::Logger
+
   layout "admin"
 
   protect_from_forgery with: :exception
@@ -52,6 +54,39 @@ class AiHelperModelProfilesController < ApplicationController
     else
       render action: :edit
     end
+  end
+
+  # Test the LLM connection using the current form parameters
+  def test_connection
+    temp_profile = AiHelperModelProfile.new
+    temp_profile.safe_attributes = params[:ai_helper_model_profile]
+
+    if temp_profile.access_key == DUMMY_ACCESS_KEY
+      if params[:id].present?
+        original = AiHelperModelProfile.find(params[:id])
+        temp_profile.access_key = original.access_key
+      else
+        render json: { success: false, error: l("ai_helper.model_profiles.messages.access_key_required") }, status: :unprocessable_entity
+        return
+      end
+    end
+
+    temp_profile.temperature ||= 1.0
+
+    unless temp_profile.llm_type.present? && temp_profile.llm_model.present? &&
+           (temp_profile.access_key.present? || !temp_profile.access_key_required?) &&
+           (temp_profile.base_uri.present? || !temp_profile.base_uri_required?)
+      render json: { success: false, error: l("ai_helper.model_profiles.messages.required_fields_missing") }, status: :unprocessable_entity
+      return
+    end
+
+    provider = RedmineAiHelper::LlmProvider.provider_for_profile(temp_profile)
+    chat = provider.create_chat
+    chat.ask("hi")
+    render json: { success: true }
+  rescue => e
+    ai_helper_logger.error("LLM connection test failed: #{e.message}")
+    render json: { success: false, error: e.message }, status: :internal_server_error
   end
 
   # Delete an existing model profile
