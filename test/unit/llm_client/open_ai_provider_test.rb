@@ -46,6 +46,35 @@ class RedmineAiHelper::LlmClient::OpenAiProviderTest < ActiveSupport::TestCase
       assert_equal @setting.model_profile.access_key, config.openai_api_key
     end
 
+    should "configure_provider_config sets openai_organization_id when present" do
+      profile = AiHelperModelProfile.create!(
+        name: "OpenAI Org Profile",
+        llm_type: "OpenAI",
+        llm_model: "gpt-4o",
+        access_key: "test_key",
+        organization_id: "org-test123",
+      )
+      provider = RedmineAiHelper::LlmClient::OpenAiProvider.new(model_profile: profile)
+      config = RubyLLM::Configuration.new
+      provider.send(:configure_provider_config, config)
+      assert_equal "org-test123", config.openai_organization_id
+      profile.destroy
+    end
+
+    should "configure_provider_config does not set openai_organization_id when absent" do
+      profile = AiHelperModelProfile.create!(
+        name: "OpenAI No Org Profile",
+        llm_type: "OpenAI",
+        llm_model: "gpt-4o",
+        access_key: "test_key",
+      )
+      provider = RedmineAiHelper::LlmClient::OpenAiProvider.new(model_profile: profile)
+      config = RubyLLM::Configuration.new
+      provider.send(:configure_provider_config, config)
+      assert_nil config.openai_organization_id
+      profile.destroy
+    end
+
     context "auto-fetch integration" do
       setup do
         @unregistered_model_id = "gpt-unregistered-test-999"

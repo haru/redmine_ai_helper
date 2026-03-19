@@ -140,8 +140,17 @@ module RedmineAiHelper
           fetched_models = provider_instance.list_models
           model_info = fetched_models.find { |m| m.id == model_name }
           raise "Model '#{model_name}' not found in provider's model list" unless model_info
-          RubyLLM.models.instance_variable_get(:@models) << model_info
+          append_to_model_registry(model_info)
         end
+      end
+
+      # Appends a single model to the RubyLLM model registry.
+      # RubyLLM 1.x does not expose a public API for adding individual models, so
+      # this method accesses the internal @models array directly.  It is isolated
+      # here so that any future public API can be adopted in a single place.
+      # @param model_info [RubyLLM::Model::Info] model to register
+      def append_to_model_registry(model_info)
+        RubyLLM.models.instance_variable_get(:@models) << model_info
       end
     end
   end
