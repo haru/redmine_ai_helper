@@ -8,6 +8,20 @@ module RedmineAiHelper
 
       protected
 
+      def ruby_llm_provider_class
+        RubyLLM::Providers::OpenAI
+      end
+
+      def ruby_llm_provider_slug
+        "openai"
+      end
+
+      def configure_provider_config(config)
+        profile = resolved_model_profile
+        config.openai_api_key = profile.access_key
+        config.openai_organization_id = profile.organization_id if profile.organization_id
+      end
+
       # Build a RubyLLM::Context with OpenAI API key and organization.
       # @return [RubyLLM::Context]
       def build_context
