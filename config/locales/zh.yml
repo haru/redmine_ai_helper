@@ -1,0 +1,222 @@
+zh:
+  project_module_ai_helper: "AI 助手"
+  label_ai_helper: "AI 助手"
+  label_chat_placeholder: "在此输入您的消息..."
+  label_ai_helper_input_newline: "按 Shift + Enter 换行。"
+  label_ai_helper_custom_command_hint: "输入 '/' 使用自定义命令。"
+  label_ai_helper_start_new_chat: "开始新的对话"
+  ai_helper_summary: "使用 AI 助手进行摘要"
+  ai_helper_similar_issues: "使用 AI 助手查找类似问题"
+  ai_helper_find_similar_issues: "查找类似问题"
+  ai_helper_similarity: "相似度"
+  ai_helper_no_similar_issues_found: "未找到类似问题"
+  ai_helper_scope_current_project: "当前项目"
+  ai_helper_scope_with_subprojects: "包含子项目"
+  ai_helper_scope_all_projects: "所有项目"
+  ai_helper_text_summary_generated_time: "生成于 %{time}"
+  ai_helper_error_occurred: "发生错误"
+  permission_view_ai_helper: "查看 AI 助手"
+  permission_settings_ai_helper: "项目设置"
+  permission_delete_ai_helper_health_reports: "删除健康报告"
+  label_ai_helper_error: "错误"
+  label_ai_helper_health_report_history: "报告历史"
+  label_ai_helper_health_report_detail: "报告详情"
+  label_ai_helper_report_period: "时间段"
+  label_ai_helper_select_report_to_view: "生成报告或从左侧历史中选择"
+  label_ai_helper_report_detail_mobile: "报告详情"
+  label_ai_helper_close_detail: "关闭详情"
+  ai_helper:
+    notice_sub_issues_added: "已添加子问题"
+    error_invalid_assignee: "'%{subject}' 的负责人无效 - 用户无权处理此跟踪器"
+    chat:
+      planning: "正在创建执行计划..."
+      generating_final_response: "正在生成最终回复..."
+    project_health:
+      title: "项目健康报告"
+      pdf_title: "项目健康报告"
+      generate_report: "生成报告"
+      generating: "正在生成"
+      placeholder: "点击'生成报告'分析项目指标并获取洞察。"
+      note: "报告将分析问题统计、时间指标、工作负载分布，并提供可操作的建议。"
+      no_report_available: "没有可用于 PDF 导出的健康报告"
+      report_content: "健康报告内容"
+    health_report_comparison:
+      compare_button: "比较报告"
+      comparison_column: "比较"
+      page_title: "健康报告比较"
+      old_report: "旧报告"
+      new_report: "新报告"
+      analyze_button: "分析变更"
+      placeholder: "比较分析将自动生成"
+      analysis_title: "比较分析"
+      error_select_two_reports: "请选择两个不同的报告进行比较"
+    generate_issue_reply:
+      title: "使用 AI 助手创建评论草稿"
+      instructions: "请输入回复的要点或指示。"
+      generated_reply: "生成的笔记"
+      apply: "应用"
+    typo_check:
+      toggle_label: "AI 拼写检查"
+      check_button: "AI 助手拼写检查"
+      suggestions_title: "修正建议"
+      no_suggestions: "未发现拼写错误"
+      accept_suggestion: "接受"
+      dismiss_suggestion: "忽略"
+      accept_all: "全部接受"
+      dismiss_all: "全部忽略"
+      close: "关闭"
+      checking: "正在检查..."
+      error_occurred: "发生错误"
+      copy_to_clipboard: "复制到剪贴板"
+      correction_tooltip: "修正建议"
+      apply_failed: "应用修正失败，未找到文本位置"
+    generate_sub_issues:
+      title: "使用 AI 助手创建子任务"
+      instructions: "请输入您的指示。"
+      generate_draft: "生成草稿"
+    autocompletion:
+      loading: "正在生成 AI 建议..."
+      no_suggestions: "无可用建议"
+      accept_suggestion: "接受建议"
+      dismiss: "忽略"
+      enabled_tooltip: "AI 自动补全已启用。按 Tab 键接受建议或按 Esc 键忽略。"
+      disabled_tooltip: "AI 自动补全已禁用。勾选复选框以启用。"
+      note_enabled_tooltip: "AI 笔记自动补全已启用。按 Tab 键接受建议或按 Esc 键忽略。"
+      note_disabled_tooltip: "AI 笔记自动补全已禁用。勾选复选框以启用。"
+      common_toggle_label: "AI 助手补全"
+    assignment_suggestion:
+      link_label: "使用 AI 助手建议负责人"
+      loading: "正在分析负责人..."
+      close: "关闭"
+      no_suggestions: "无建议"
+      history_based:
+        title: "基于类似问题历史的建议"
+        score: "相似度"
+        similar_count: "类似问题数"
+        similar_issues: "用于建议的类似问题"
+        more_issues: "还有 %{count} 个"
+      workload_based:
+        title: "基于当前工作负载的建议"
+        open_issues: "进行中问题"
+        issues_unit: "个"
+      instruction_based:
+        title: "基于用户指示的建议"
+        reason: "原因"
+      error: "获取负责人建议时发生错误"
+      empty_content: "请输入主题或描述"
+    stuff_todo:
+      menu_label: "待办事项"
+      modal_title: "待办事项建议"
+      loading: "正在加载..."
+      error: "发生错误"
+    duplicate_check:
+      title: "使用 AI 助手检查重复"
+      button: "使用 AI 助手检查重复"
+      loading: "正在搜索类似问题..."
+      empty_content: "请在检查重复之前输入主题或描述"
+    model_profiles:
+      create_profile_title: "新建模型配置"
+      edit_profile_title: "编辑模型配置"
+      messages:
+        confirm_delete: "确定要删除此模型配置吗？"
+        must_be_valid_url: "必须是有效的 URL"
+    prompts:
+      current_page_info:
+        project_page: "这是项目 '%{project_name}' 的信息页面。"
+        issue_detail_page: "这是问题 #%{issue_id} 的详情页面。\n如果用户提到'问题'但未指定 ID 或名称，则指此问题。"
+        issue_list_page: "这是问题列表页面。"
+        issue_with_action_page: "这是问题的 %{action_name} 页面。"
+        wiki_page: "这是标题为 '%{page_title}' 的 Wiki 页面。\n如果用户提到'Wiki 页面'或'页面'但未指定标题，则指此 Wiki 页面。"
+        repository_page: "这是仓库 '%{repo_name}' 的信息页面。仓库 ID 是 %{repo_id}。"
+        repository_file_page: "这是仓库的文件信息页面。显示的文件路径是 %{path}。版本是 %{rev}。仓库是 '%{repo_name}'。仓库 ID 是 %{repo_id}。"
+        repository_diff:
+          page: "这是仓库 '%{repo_name}' 的差异对比页面。仓库 ID 是 %{repo_id}。"
+          rev: "版本是 %{rev}。"
+          rev_to: "版本从 %{rev} 到 %{rev_to}。"
+          path: "文件路径是 %{path}。"
+        repository_revision_page: "这是仓库 '%{repo_name}' 的版本信息页面。版本是 %{rev}。仓库 ID 是 %{repo_id}。"
+        repository_other_page: "这是仓库的信息页面。"
+        boards:
+          show: "这是论坛 '%{board_name}' 的页面。论坛 ID 是 %{board_id}。"
+          index: "这是论坛列表页面。"
+          other: "这是论坛的页面。"
+        messages:
+          show: "这是消息 '%{subject}' 的页面。消息 ID 是 %{message_id}。"
+          other: "这是消息的页面。"
+        versions:
+          show: "这是版本 '%{version_name}' 的页面。版本 ID 是 %{version_id}。"
+          other: "这是版本的页面。"
+        other_page: "这是 %{controller_name} 的 %{action_name} 页面。"
+      issue_agent:
+        search_answer_instruction: "对于查找符合特定条件的多个问题的任务，例如'查找符合这些条件的问题'或'显示符合这些标准的问题'，请使用 search_issues 工具检索并返回问题列表。"
+        search_answer_instruction_with_vector: "在搜索问题时，使用合适的工具：对于概念/语义搜索（例如'与异常相关的问题'、'性能问题'、'登录漏洞'），使用向量搜索 (ask_with_filter)。对于明确的过滤条件（例如'状态已关闭'、'分配给某人'、'本月更新'），使用 search_issues。"
+      leader_agent:
+        generate_final_response: "所有代理已完成任务。请为用户创建最终回复。如果您的回复包含带有离散选择的问题，请记得在末尾附加 <!--AIHELPER_OPTIONS:{...}--> 块。"
+    custom_commands:
+      label:
+        title: 自定义命令
+        new: 新建自定义命令
+        no_data: 未注册自定义命令
+      command_type:
+        global: 全局命令
+        project: 项目命令
+        user: 用户命令
+      command_type_description:
+        global: "在所有启用 AI 助手的项目中共享的命令。"
+        project: "仅在此项目内共享的命令。"
+        user: "仅您可使用的命令。"
+      user_scope:
+        common: 通用
+        project_limited: 项目限制
+      field:
+        scope: 范围
+      text:
+        name_format: "只允许字母数字、下划线和连字符"
+        variables_help: "可用变量：{input}, {project_name}, {user_name}, {datetime}"
+      error:
+        name_duplicate: "命令名称已被使用"
+        project_required: "项目命令需要指定项目"
+  activerecord:
+    models:
+      ai_helper_model_profile: "模型配置"
+      ai_helper_setting: "AI 助手设置"
+      ai_helper_custom_command: "自定义命令"
+    attributes:
+      ai_helper_model_profile:
+        llm_type: "类型"
+        llm_model: "模型名称"
+        access_key: "访问密钥"
+        temperature: "温度"
+        organization_id: "组织 ID"
+        base_uri: "基础 URI"
+        max_tokens: "最大令牌数"
+      ai_helper_setting:
+        model_profile_id: "模型配置"
+        additional_instructions: "附加说明"
+        attachment_send_enabled: "发送附件到 LLM"
+        attachment_max_size_mb: "最大附件大小 (MB)"
+        vector_search_enabled: "启用向量搜索"
+        vector_search_uri: "URI"
+        vector_search_api_key: "API 密钥"
+        embedding_model: "嵌入模型"
+        dimension: "维度"
+        use_think_model: "使用思考模型"
+        think_model_profile_id: "思考模型配置"
+        think_model_description: "对需要更深入推理的任务使用单独的模型，例如健康报告生成和问题回复草稿。"
+        use_vector_model_profile: "使用向量模型配置"
+        vector_model_profile_id: "向量模型配置"
+        vector_model_profile_description: "对向量搜索操作使用单独的模型配置（API 凭据和内容分析）。注意：嵌入模型名称仍由上面的嵌入模型设置控制。"
+      ai_helper_project_setting:
+        issue_draft_instructions: "问题评论生成说明"
+        subtask_instructions: "子任务生成说明"
+        health_report_instructions: "健康报告生成说明"
+        assignment_suggestion_instructions: "负责人建议说明"
+      ai_helper_custom_command:
+        name: "命令名称"
+        command_type: "命令类型"
+        project_id: "项目"
+        prompt: "提示词"
+        description: "描述"
+        user_scope: "范围"
+
+  field_id: "ID"
