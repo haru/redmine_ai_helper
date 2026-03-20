@@ -1,12 +1,14 @@
 # frozen_string_literal: true
 # Controller for performing CRUD operations on ModelProfile
 class AiHelperModelProfilesController < ApplicationController
+  include RedmineAiHelper::Logger
+
   layout "admin"
 
   protect_from_forgery with: :exception
 
   before_action :require_admin
-  before_action :find_model_profile, only: [:show, :edit, :update, :destroy]
+  before_action :find_model_profile, only: [:show, :edit, :update, :destroy, :copy]
   self.main_menu = false
 
   # Placeholder value used to mask the actual access key in forms
@@ -51,6 +53,58 @@ class AiHelperModelProfilesController < ApplicationController
       redirect_to ai_helper_setting_path
     else
       render action: :edit
+    end
+  end
+
+  # Test the LLM connection using the current form parameters
+  def test_connection
+    temp_profile = AiHelperModelProfile.new
+    temp_profile.safe_attributes = params[:ai_helper_model_profile]
+
+    if temp_profile.access_key == DUMMY_ACCESS_KEY
+      if params[:id].present?
+        original = AiHelperModelProfile.find(params[:id])
+        temp_profile.access_key = original.access_key
+      else
+        render json: { success: false, error: l("ai_helper.model_profiles.messages.access_key_required") }, status: :unprocessable_entity
+        return
+      end
+    end
+
+    temp_profile.temperature ||= 1.0
+
+    unless temp_profile.llm_type.present? && temp_profile.llm_model.present? &&
+           (temp_profile.access_key.present? || !temp_profile.access_key_required?) &&
+           (temp_profile.base_uri.present? || !temp_profile.base_uri_required?)
+      render json: { success: false, error: l("ai_helper.model_profiles.messages.required_fields_missing") }, status: :unprocessable_entity
+      return
+    end
+
+    provider = RedmineAiHelper::LlmProvider.provider_for_profile(temp_profile)
+    chat = provider.create_chat
+    chat.ask("hi")
+    render json: { success: true }
+  rescue => e
+    ai_helper_logger.error("LLM connection test failed: #{e.message}")
+    render json: { success: false, error: e.message }, status: :internal_server_error
+  end
+
+  # Copy an existing model profile with a new name
+  #
+  # @note Copies all attributes from the source profile, using the actual
+  #   access key from the database (not the masked DUMMY_ACCESS_KEY value).
+  # @return [void] Renders JSON `{ success: true }` on success,
+  #   or `{ success: false, errors: [...] }` with HTTP 422 on validation failure.
+  def copy
+    new_profile = @model_profile.dup
+    new_profile.name = params[:name].to_s.strip
+
+    if new_profile.save
+      flash[:notice] = l(:notice_successful_create)
+      render json: { success: true }
+    else
+      render json: { success: false, errors: new_profile.errors.full_messages },
+             status: :unprocessable_entity
     end
   end
 

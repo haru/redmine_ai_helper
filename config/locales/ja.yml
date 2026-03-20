@@ -117,9 +117,14 @@ ja:
     model_profiles:
       create_profile_title: "新しいモデルプロファイル"
       edit_profile_title: "モデルプロファイルの編集"
+      test_connection: "接続テスト"
+      test_connection_success: "接続成功"
+      test_connection_failed: "接続失敗"
       messages:
         confirm_delete: "このモデルプロファイルを削除してもよろしいですか？"
         must_be_valid_url: "は有効なURLを入力してください"
+        required_fields_missing: "必須フィールドが未入力です。"
+        access_key_required: "接続テストにはアクセスキーが必要です。"
     prompts:
       current_page_info:
         project_page: "プロジェクト「%{project_name}」の情報ページです"

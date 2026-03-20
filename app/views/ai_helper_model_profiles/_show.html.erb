@@ -2,9 +2,27 @@
 <div class="contextual">
     <%= link_to(sprite_icon('edit', l(:button_edit)), ai_helper_model_profiles_edit_path(@model_profile), :class => 'icon icon-edit') %>
 
-    <%= link_to(sprite_icon('del', l(:button_delete)), ai_helper_model_profiles_destroy_url(id: @model_profile), method: :delete, data: { confirm: l('ai_helper.model_profiles.messages.confirm_delete') }, :class => 'icon icon-del') %>
+    <%= link_to sprite_icon('copy', l(:button_copy)), '#',
+        id: 'copy-model-profile-btn', class: 'icon icon-copy' %>
 
+    <%= link_to(sprite_icon('del', l(:button_delete)), ai_helper_model_profiles_destroy_url(id: @model_profile), method: :delete, data: { confirm: l('ai_helper.model_profiles.messages.confirm_delete') }, :class => 'icon icon-del') %>
 </div>
+
+<dialog id="copy-profile-dialog">
+  <h3><%= l(:button_copy) %></h3>
+  <div class="box">
+    <p>
+      <label for="new-profile-name"><%= l(:field_name) %></label>
+      <input type="text" id="new-profile-name" size="60" />
+    </p>
+    <p id="copy-profile-error" style="display:none" class="error"></p>
+  </div>
+  <button type="button" id="copy-profile-submit" class="button-positive">
+    <%= l(:button_submit) %>
+  </button>
+  <%= link_to l(:button_cancel), '#', id: 'copy-profile-cancel' %>
+</dialog>
+
 <p>
   <%= label_tag AiHelperModelProfile.human_attribute_name(:llm_type) %>
   <%= @model_profile.display_llm_type %>
@@ -40,3 +58,72 @@
 </p>
 <% end %>
 <div id="ai_helper_model_type" style="display: none;"><%= @model_profile.llm_type %></div>
+
+<script>
+  (function() {
+    const copyBtn = document.getElementById('copy-model-profile-btn');
+    const dialog = document.getElementById('copy-profile-dialog');
+    const nameInput = document.getElementById('new-profile-name');
+    const submitBtn = document.getElementById('copy-profile-submit');
+    const cancelBtn = document.getElementById('copy-profile-cancel');
+    const errorEl = document.getElementById('copy-profile-error');
+    const copyUrl = '<%= ai_helper_model_profiles_copy_path(id: @model_profile) %>';
+    const redirectUrl = '<%= ai_helper_setting_path %>';
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+    copyBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      nameInput.value = '';
+      errorEl.style.display = 'none';
+      dialog.showModal();
+      nameInput.focus();
+    });
+
+    nameInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        submitBtn.click();
+      }
+    });
+
+    cancelBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      dialog.close();
+    });
+
+    submitBtn.addEventListener('click', function() {
+      errorEl.style.display = 'none';
+      const name = nameInput.value.trim();
+
+      fetch(copyUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRF-Token': csrfToken
+        },
+        body: 'name=' + encodeURIComponent(name)
+      })
+      .then(function(response) {
+        const contentType = response.headers.get('Content-Type') || '';
+        if (contentType.includes('application/json')) {
+          return response.json();
+        }
+        return response.text().then(function() {
+          throw new Error(response.statusText || 'Server error');
+        });
+      })
+      .then(function(data) {
+        if (data.success) {
+          window.location.href = redirectUrl;
+        } else {
+          errorEl.textContent = data.errors.join(', ');
+          errorEl.style.display = 'block';
+        }
+      })
+      .catch(function(error) {
+        errorEl.textContent = error.message;
+        errorEl.style.display = 'block';
+      });
+    });
+  })();
+</script>

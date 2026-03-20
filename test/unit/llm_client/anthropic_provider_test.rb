@@ -43,6 +43,20 @@ class RedmineAiHelper::LlmClient::AnthropicProviderTest < ActiveSupport::TestCas
       end
     end
 
+    should "return RubyLLM::Providers::Anthropic for ruby_llm_provider_class" do
+      assert_equal RubyLLM::Providers::Anthropic, @provider.send(:ruby_llm_provider_class)
+    end
+
+    should "return 'anthropic' for ruby_llm_provider_slug" do
+      assert_equal "anthropic", @provider.send(:ruby_llm_provider_slug)
+    end
+
+    should "configure_provider_config sets anthropic_api_key" do
+      config = RubyLLM::Configuration.new
+      @provider.send(:configure_provider_config, config)
+      assert_equal @anthropic_profile.access_key, config.anthropic_api_key
+    end
+
     should "create chat via base class" do
       mock_context = mock("RubyLLM::Context")
       mock_chat = mock("RubyLLM::Chat")

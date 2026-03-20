@@ -23,7 +23,7 @@ module RedmineAiHelper
       # @return [Object] An instance of the appropriate LLM client.
       def get_llm_provider
         setting = AiHelperSetting.find_or_create
-        get_provider_for_profile(setting.model_profile)
+        provider_for_profile(setting.model_profile)
       end
 
       # Returns an LLM provider instance for vector operations.
@@ -40,7 +40,7 @@ module RedmineAiHelper
         setting = AiHelperSetting.find_or_create
         return get_llm_provider unless setting.use_vector_model_profile? && setting.vector_model_profile_id.present?
         profile = AiHelperModelProfile.find(setting.vector_model_profile_id)
-        get_provider_for_profile(profile)
+        provider_for_profile(profile)
       end
 
       # Returns an LLM provider instance for the Think model, or nil if not configured.
@@ -52,7 +52,7 @@ module RedmineAiHelper
         setting = AiHelperSetting.find_or_create
         return nil unless setting.use_think_model? && setting.think_model_profile_id.present?
         profile = AiHelperModelProfile.find(setting.think_model_profile_id)
-        get_provider_for_profile(profile)
+        provider_for_profile(profile)
       end
 
       # Returns the LLM type based on the system settings.
@@ -62,12 +62,10 @@ module RedmineAiHelper
         setting.model_profile.llm_type
       end
 
-      private
-
       # Instantiates the correct provider for a given AiHelperModelProfile.
       # @param profile [AiHelperModelProfile] The model profile to use.
       # @return [Object] An instance of the appropriate LLM client.
-      def get_provider_for_profile(profile)
+      def provider_for_profile(profile)
         case profile.llm_type
         when LLM_OPENAI
           return RedmineAiHelper::LlmClient::OpenAiProvider.new(model_profile: profile)
@@ -83,8 +81,6 @@ module RedmineAiHelper
           raise NotImplementedError, "LLM provider not found"
         end
       end
-
-      public
 
       # Returns the options to display in the settings screen's dropdown menu
       # @return [Array] An array of options for the select menu.

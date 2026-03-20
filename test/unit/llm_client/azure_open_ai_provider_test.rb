@@ -44,6 +44,11 @@ class RedmineAiHelper::LlmClient::AzureOpenAiProviderTest < ActiveSupport::TestC
       end
     end
 
+    should "ensure_model_registered! is skipped because ruby_llm_provider_class is nil (FR-004)" do
+      @provider.expects(:fetch_and_register_model!).never
+      @provider.send(:ensure_model_registered!)
+    end
+
     should "create chat with provider and assume_model_exists options" do
       mock_context = mock("RubyLLM::Context")
       mock_chat = mock("RubyLLM::Chat")

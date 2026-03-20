@@ -1,3 +1,4 @@
+# Top-level namespace for the Redmine AI Helper plugin.
 module RedmineAiHelper
   # Service class for suggesting issue assignees based on multiple strategies
   class AssignmentSuggestion
