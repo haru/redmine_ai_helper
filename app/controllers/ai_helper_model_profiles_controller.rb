@@ -96,18 +96,11 @@ class AiHelperModelProfilesController < ApplicationController
   # @return [void] Renders JSON `{ success: true }` on success,
   #   or `{ success: false, errors: [...] }` with HTTP 422 on validation failure.
   def copy
-    new_profile = AiHelperModelProfile.new
-    new_profile.llm_type        = @model_profile.llm_type
-    new_profile.access_key      = @model_profile.access_key
-    new_profile.organization_id = @model_profile.organization_id
-    new_profile.base_uri        = @model_profile.base_uri
-    new_profile.version         = @model_profile.version
-    new_profile.llm_model       = @model_profile.llm_model
-    new_profile.temperature     = @model_profile.temperature
-    new_profile.max_tokens      = @model_profile.max_tokens
-    new_profile.name            = params[:name]
+    new_profile = @model_profile.dup
+    new_profile.name = params[:name].to_s.strip
 
     if new_profile.save
+      flash[:notice] = l(:notice_successful_create)
       render json: { success: true }
     else
       render json: { success: false, errors: new_profile.errors.full_messages },

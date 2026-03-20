@@ -86,7 +86,8 @@
       }
     });
 
-    cancelBtn.addEventListener('click', function() {
+    cancelBtn.addEventListener('click', function(e) {
+      e.preventDefault();
       dialog.close();
     });
 
@@ -102,7 +103,15 @@
         },
         body: 'name=' + encodeURIComponent(name)
       })
-      .then(function(response) { return response.json(); })
+      .then(function(response) {
+        const contentType = response.headers.get('Content-Type') || '';
+        if (contentType.includes('application/json')) {
+          return response.json();
+        }
+        return response.text().then(function() {
+          throw new Error(response.statusText || 'Server error');
+        });
+      })
       .then(function(data) {
         if (data.success) {
           window.location.href = redirectUrl;

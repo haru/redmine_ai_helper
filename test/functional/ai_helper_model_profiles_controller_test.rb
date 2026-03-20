@@ -327,6 +327,7 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
       assert_response :success
       response_json = JSON.parse(response.body)
       assert response_json['success']
+      assert_equal flash[:notice], I18n.t(:notice_successful_create)
 
       copied = AiHelperModelProfile.find_by(name: 'Copied Profile')
       assert_not_nil copied
