@@ -1,9 +1,8 @@
 <% html_title l('ai_helper.model_profiles.edit_profile_title')%>
 
 <div class="contextual">
-  <button type="button" id="copy-model-profile-btn" class="icon icon-copy">
-    <%= l(:button_copy) %>
-  </button>
+  <%= link_to sprite_icon('copy', l(:button_copy)), '#',
+      id: 'copy-model-profile-btn', class: 'icon icon-copy' %>
 </div>
 
 <h2><%= l('ai_helper.model_profiles.edit_profile_title') %></h2>
@@ -50,7 +49,8 @@
     const redirectUrl = form.dataset.redirectUrl;
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
-    copyBtn.addEventListener('click', function() {
+    copyBtn.addEventListener('click', function(e) {
+      e.preventDefault();
       nameInput.value = '';
       errorEl.style.display = 'none';
       dialog.showModal();
