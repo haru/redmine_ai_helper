@@ -1,21 +1,19 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: (uninitialized template) → 1.0.0
-Modified principles: N/A (initial creation)
+Version change: 1.0.0 → 1.1.0
+Modified principles: N/A
 Added sections:
-  - Core Principles (5 principles)
-  - Development Workflow
-  - Code Standards
-  - Governance
+  - Development Workflow step 7: YARD documentation check (mandatory gate)
+Modified sections:
+  - Development Workflow: added mandatory YARD verification step before PR review;
+      renumbered former step 7 to step 8.
+  - Code Standards: documentation row tightened to MUST language with gate wording.
 Removed sections: N/A
 Templates requiring updates:
-  - .specify/templates/plan-template.md  ✅ No structural change needed;
-      "Constitution Check" section already uses placeholder that agents fill
-      dynamically from this constitution at plan-time.
+  - .specify/templates/plan-template.md  ✅ No structural change needed.
   - .specify/templates/spec-template.md  ✅ No change needed.
-  - .specify/templates/tasks-template.md ✅ No change needed; task categories
-      (TDD tests before implementation) align with Principle I.
+  - .specify/templates/tasks-template.md ✅ No change needed.
 Deferred TODOs: None.
 -->
 
@@ -124,7 +122,9 @@ All feature work MUST follow this sequence:
 4. Implement minimum code to pass tests (Green phase).
 5. Refactor while keeping tests green (Refactor phase).
 6. Verify test coverage is 95%+ before requesting review.
-7. Merge via PR targeting `develop`; `main` receives only production-ready releases.
+7. Run `yard stats --list-undoc` and fix ALL undocumented public APIs before
+   requesting review. Zero undocumented items is the required gate.
+8. Merge via PR targeting `develop`; `main` receives only production-ready releases.
 
 **Commit messages** MUST be written in plain English. MUST NOT reference
 Claude Code or any AI tooling in commit messages.
@@ -141,7 +141,7 @@ begins for any non-trivial feature (see Principle II).
 | CSS | Redmine design system only; no custom colors or fonts |
 | Testing framework | `shoulda` assertions; `mocha` for external mocks |
 | Coverage target | ≥ 95% (checked in `coverage/`) |
-| Documentation | YARD for public APIs; `yard stats --list-undoc` to audit |
+| Documentation | YARD for all public APIs; MUST run `yard stats --list-undoc` after implementation and fix all undocumented items before PR review |
 | File creation | Prefer editing existing files; create new files only when necessary |
 | Error handling | Surface errors immediately; NEVER add silent fallbacks |
 
@@ -168,4 +168,4 @@ section in `plan.md` serves this purpose for planned features.
 For runtime development guidance not covered by this constitution, refer to
 `CLAUDE.md`.
 
-**Version**: 1.0.0 | **Ratified**: 2026-02-27 | **Last Amended**: 2026-02-27
+**Version**: 1.1.0 | **Ratified**: 2026-02-27 | **Last Amended**: 2026-03-20

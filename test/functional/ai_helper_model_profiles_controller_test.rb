@@ -319,6 +319,50 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
     end
   end
 
+  context "copy action" do
+    should "copy model profile with valid name" do
+      assert_difference('AiHelperModelProfile.count', 1) do
+        post :copy, params: { id: @model_profile.id, name: 'Copied Profile' }
+      end
+      assert_response :success
+      response_json = JSON.parse(response.body)
+      assert response_json['success']
+      assert_equal flash[:notice], I18n.t(:notice_successful_create)
+
+      copied = AiHelperModelProfile.find_by(name: 'Copied Profile')
+      assert_not_nil copied
+      assert_equal @model_profile.llm_type, copied.llm_type
+      assert_equal @model_profile.access_key, copied.access_key
+      assert_equal @model_profile.llm_model, copied.llm_model
+    end
+
+    should "not copy model profile with blank name" do
+      assert_no_difference('AiHelperModelProfile.count') do
+        post :copy, params: { id: @model_profile.id, name: '' }
+      end
+      assert_response :unprocessable_entity
+      response_json = JSON.parse(response.body)
+      assert_not response_json['success']
+      assert response_json['errors'].present?
+    end
+
+    should "not copy model profile with duplicate name" do
+      AiHelperModelProfile.create!(name: 'Existing Profile', access_key: 'key2',
+                                    llm_type: 'OpenAI', llm_model: 'gpt-4')
+      assert_no_difference('AiHelperModelProfile.count') do
+        post :copy, params: { id: @model_profile.id, name: 'Existing Profile' }
+      end
+      assert_response :unprocessable_entity
+      response_json = JSON.parse(response.body)
+      assert_not response_json['success']
+    end
+
+    should "return 404 for non-existent source profile" do
+      post :copy, params: { id: 9999, name: 'New Profile' }
+      assert_response :not_found
+    end
+  end
+
   # T015: dummy key without id → returns 422 validation error
   should "return 422 when dummy key is submitted without a profile id" do
     post :test_connection, params: {
