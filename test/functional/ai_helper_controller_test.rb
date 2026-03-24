@@ -32,6 +32,33 @@ class AiHelperControllerTest < ActionController::TestCase
       end
     end
 
+    context "_interactive_options partial" do
+      should "render a free-input button with data-free-input attribute" do
+        get :chat_form, params: { id: @project.id }
+        html = @controller.render_to_string(partial: "ai_helper/chat/interactive_options")
+        assert_match 'data-free-input="true"', html
+      end
+
+      should "render free-input button with correct English label text" do
+        get :chat_form, params: { id: @project.id }
+        html = @controller.render_to_string(partial: "ai_helper/chat/interactive_options")
+        assert_match "Other (type yourself)", html
+      end
+
+      context "with Japanese locale" do
+        teardown do
+          I18n.locale = I18n.default_locale
+        end
+
+        should "render free-input button with Japanese label" do
+          get :chat_form, params: { id: @project.id }
+          I18n.locale = :ja
+          html = @controller.render_to_string(partial: "ai_helper/chat/interactive_options")
+          assert_match "その他（自分で入力）", html
+        end
+      end
+    end
+
     context "#reload" do
       should "render chat partial" do
         get :reload, params: { id: @project.id }

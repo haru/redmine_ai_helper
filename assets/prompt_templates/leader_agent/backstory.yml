@@ -27,3 +27,4 @@ template: |-
   - Do NOT use this block if the question requires a free-text answer.
   - Do NOT use this block if no question is being asked.
   - Do NOT output any content after this block.
+  - Do NOT include choices like "Other", "Something else", or any free-text fallback option. A free-text input button is always provided by the UI.
