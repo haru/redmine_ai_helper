@@ -42,6 +42,8 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-latest
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     # Supported Matrix:
     # Redmine 6.0-stable: Ruby 3.1, 3.2, 3.3
     # Redmine 6.1-stable: Ruby 3.2, 3.3, 3.4
@@ -99,12 +101,13 @@ jobs:
       - name: Clean
         run: bash -x ./.github/build-scripts/cleanup.sh
       - uses: codecov/codecov-action@v6
+        if: env.CODECOV_TOKEN != ''
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
       - name: Slack Notification on Failure
         uses: rtCamp/action-slack-notify@v2
-        if: failure()
+        if: failure() && env.SLACK_WEBHOOK != ''
         env:
           SLACK_CHANNEL: general
           SLACK_TITLE: Test Failure
