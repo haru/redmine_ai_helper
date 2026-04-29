@@ -5,6 +5,7 @@ ja:
   label_ai_helper_input_newline: "Shift + Enter で改行します。"
   label_ai_helper_custom_command_hint: "'/'でカスタムコマンドを入力できます。"
   label_ai_helper_start_new_chat: "新しいチャットを開始"
+  label_ai_helper_free_input_option: "その他（自分で入力）"
   ai_helper_summary: "AIヘルパーで要約"
   ai_helper_similar_issues: "AIヘルパーで類似チケットを検索"
   ai_helper_find_similar_issues: "類似チケットを検索"

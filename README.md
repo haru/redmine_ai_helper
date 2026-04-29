@@ -32,6 +32,7 @@
   - [Role and Permission Settings](#role-and-permission-settings)
   - [Project-specific Settings](#project-specific-settings)
 - [⚙️ Advanced Configuration](#️-advanced-configuration)
+  - [Nginx Reverse Proxy Settings](#nginx-reverse-proxy-settings)
   - [MCP Server Settings](#mcp-server-settings)
   - [Vector Search Settings](#vector-search-settings)
     - [Qdrant Setup](#qdrant-setup)
@@ -267,6 +268,49 @@ You can optionally configure a separate model profile for tasks that require dee
 4. Click "Save" to apply the changes
 
 # ⚙️ Advanced Configuration
+
+## Nginx Reverse Proxy Settings
+
+If you are running Redmine behind an Nginx reverse proxy, you must disable response buffering to allow the plugin's SSE (Server-Sent Events) streaming to work correctly. Without these settings, the plugin may fail to authenticate users properly and behave as if requests are coming from an anonymous user.
+
+Add the following five directives to your existing Nginx location block for Redmine:
+
+```nginx
+proxy_http_version 1.1;
+proxy_set_header Connection "";
+proxy_buffering off;
+proxy_cache off;
+proxy_set_header X-Accel-Buffering no;
+```
+
+`proxy_http_version 1.1` and `proxy_set_header Connection ""` are required to enable HTTP/1.1 persistent connections between Nginx and the upstream server. Without them, Nginx defaults to HTTP/1.0, which does not properly support SSE streaming.
+
+For example:
+
+```nginx
+location / {
+  proxy_pass http://127.0.0.1:3000;  # Change to your Redmine server address
+
+  # Required for SSE streaming — add these to your existing configuration
+  proxy_http_version 1.1;
+  proxy_set_header Connection "";
+  proxy_buffering off;
+  proxy_cache off;
+  proxy_set_header X-Accel-Buffering no;
+
+  proxy_set_header Host $host;
+  proxy_set_header X-Forwarded-Proto $scheme;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_redirect off;
+  proxy_read_timeout 300;
+}
+```
+
+After applying these changes, reload Nginx:
+
+```bash
+nginx -s reload
+```
 
 ## MCP Server Settings
 

@@ -83,3 +83,4 @@ specs/
 Gemfile.local
 .playwright-mcp/
 .ruby-lsp
+.serena/

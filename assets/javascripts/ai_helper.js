@@ -185,6 +185,13 @@ class AiHelper {
       const button = e.target.closest('.aihelper-option-btn');
       if (!button || !container.contains(button)) return;
 
+      if (button.dataset.freeInput === 'true') {
+        ai_helper.hideInteractiveOptions();
+        const input = document.getElementById('ai-helper-message-input');
+        if (input) { input.focus(); }
+        return;
+      }
+
       const input = document.getElementById('ai-helper-message-input');
       if (input) {
         input.value = button.dataset.value;
@@ -218,7 +225,9 @@ class AiHelper {
       this.initializeInteractiveOptionsHandlers(container);
     }
 
-    const buttons = container.querySelectorAll('.aihelper-option-btn');
+    const buttons = Array.from(container.querySelectorAll('.aihelper-option-btn'))
+      .filter(btn => btn.dataset.freeInput !== 'true');
+    const freeInputBtn = container.querySelector('.aihelper-option-btn[data-free-input="true"]');
 
     // Show container and configure buttons
     container.hidden = false;
@@ -234,6 +243,10 @@ class AiHelper {
         btn.hidden = true;
       }
     });
+
+    if (freeInputBtn) {
+      freeInputBtn.hidden = false;
+    }
   };
 
   // Hide the interactive options container (on reload/clear)
