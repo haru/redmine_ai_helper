@@ -32,33 +32,14 @@ module RedmineAiHelper
             description: tool_description,
             input_schema: tool_schema
           ) do |**arguments|
-            begin
-              tool_args = arguments.reject { |k, _| k == :server_context }
-              result = ruby_tool_class.new.call(tool_args)
-              if result.is_a?(Hash) && result[:error]
-                { content: [{ type: "text", text: result[:error].to_s }], isError: true }
-              else
-                { content: [{ type: "text", text: JSON.generate(result) }], isError: false }
-              end
-            rescue => e
-              { content: [{ type: "text", text: e.message }], isError: true }
-            end
+            tool_args = arguments.reject { |k, _| k == :server_context }
+            ToolAdapter.call_ruby_tool(ruby_tool_class, tool_args)
           end
         end
 
-        private
-
-        # Extracts the short function name from a tool instance's derived name.
-        # The RubyLLM name method converts the full class path to a
-        # double-hyphen-separated snake_case string; we take the last segment.
-        #
-        # @param instance [RubyLLM::Tool] instantiated tool
-        # @return [String] short function name (e.g. "search_issues")
-        def extract_tool_name(instance)
-          instance.name.to_s.split("--").last
-        end
-
         # Executes the RubyLLM tool and returns an MCP result hash.
+        # Tool-level errors are surfaced to the MCP client via +isError: true+
+        # rather than raising, as required by the MCP +tools/call+ contract.
         #
         # @param ruby_tool_class [Class] RubyLLM::Tool subclass
         # @param arguments [Hash] symbol-keyed arguments from MCP
@@ -73,6 +54,18 @@ module RedmineAiHelper
           end
         rescue => e
           { content: [{ type: "text", text: e.message }], isError: true }
+        end
+
+        private
+
+        # Extracts the short function name from a tool instance's derived name.
+        # The RubyLLM name method converts the full class path to a
+        # double-hyphen-separated snake_case string; we take the last segment.
+        #
+        # @param instance [RubyLLM::Tool] instantiated tool
+        # @return [String] short function name (e.g. "search_issues")
+        def extract_tool_name(instance)
+          instance.name.to_s.split("--").last
         end
 
         # Removes empty +required+ arrays from a JSON Schema hash to ensure

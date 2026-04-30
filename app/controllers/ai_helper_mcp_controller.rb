@@ -14,16 +14,16 @@ require "redmine_ai_helper/mcp/session_strategy"
 # +StreamableHTTPTransport+ in stateless mode, which handles JSON-RPC
 # framing, +initialize+, +tools/list+, and +tools/call+ methods.
 class AiHelperMcpController < ApplicationController
-  protect_from_forgery with: :null_session
+  # Authentication is enforced by authenticate_mcp_request below using the
+  # X-Redmine-API-Key request header. Because authentication is header-based
+  # (not session-cookie-based) and no session state is mutated by this
+  # controller, CSRF token verification does not apply. Skipping it here
+  # prevents Redmine's handle_unverified_request from rendering 422 for
+  # legitimate stateless API-key requests.
+  skip_before_action :verify_authenticity_token
 
   before_action :check_mcp_enabled
   before_action :authenticate_mcp_request
-
-  # Skip Redmine's CSRF check; this endpoint uses API key authentication.
-  # ApplicationController#handle_unverified_request renders 422 when the CSRF
-  # token is absent, which conflicts with stateless API-key-only auth.
-  def verify_authenticity_token
-  end
 
   # Handles POST, GET, and DELETE requests for the MCP Streamable HTTP
   # transport. All three verbs are routed here to comply with the MCP spec.

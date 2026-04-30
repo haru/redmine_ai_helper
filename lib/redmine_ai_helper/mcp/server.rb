@@ -44,6 +44,10 @@ module RedmineAiHelper
         # Collects and adapts all BaseTools subclasses (excluding SystemTools)
         # into MCP::Tool subclasses.
         #
+        # Tool adaptation failures are surfaced immediately so a misconfigured
+        # tool fails fast at server build time rather than silently disappearing
+        # from the exposed tool list.
+        #
         # @return [Array<Class>] array of MCP::Tool subclasses
         def collect_tools
           load_all_tool_files
@@ -54,8 +58,6 @@ module RedmineAiHelper
 
             base_tools_class.tool_classes.each do |ruby_tool_class|
               tools << ToolAdapter.adapt(ruby_tool_class)
-            rescue => e
-              Rails.logger.error("McpServerBuilder: failed to adapt tool #{ruby_tool_class.name}: #{e.message}")
             end
           end
           tools
@@ -66,8 +68,6 @@ module RedmineAiHelper
         # @return [String] plugin version
         def plugin_version
           Redmine::Plugin.find(:redmine_ai_helper).version
-        rescue
-          "0.0.0"
         end
       end
     end

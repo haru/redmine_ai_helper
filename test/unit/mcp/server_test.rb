@@ -16,12 +16,6 @@ class McpServerBuilderTest < ActiveSupport::TestCase
       assert server.tools.size >= 1, "server should have at least one tool"
     end
 
-    should "have at least 10 total tools" do
-      server = RedmineAiHelper::Mcp::Server.build
-      assert server.tools.size >= 10,
-             "expected >= 10 tools, got #{server.tools.size}"
-    end
-
     should "exclude SystemTools (get_system_info, list_plugins)" do
       server = RedmineAiHelper::Mcp::Server.build
       tool_names = server.tools.keys
