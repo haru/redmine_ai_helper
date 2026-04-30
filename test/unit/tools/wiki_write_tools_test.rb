@@ -86,6 +86,18 @@ class WikiWriteToolsTest < ActiveSupport::TestCase
         @provider.wiki_add_page(project_id: nil, title: "FailPage", content: "content")
       end
     end
+
+    should "raise error when title is nil" do
+      assert_raises(RuntimeError, "title is required") do
+        @provider.wiki_add_page(project_id: 1, title: nil, content: "content")
+      end
+    end
+
+    should "raise error when content is nil" do
+      assert_raises(RuntimeError, "content is required") do
+        @provider.wiki_add_page(project_id: 1, title: "NilContentPage", content: nil)
+      end
+    end
   end
 
   context "wiki_update_page" do

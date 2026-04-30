@@ -96,16 +96,16 @@ module RedmineAiHelper
         raise "Page not found: title = #{title}" unless page
 
         ActiveRecord::Base.transaction do
-          if content
+          unless content.nil?
             page.content.text = content
             page.content.author = User.current
-            page.content.comments = comment if comment
+            page.content.comments = comment unless comment.nil?
             unless page.content.save
               raise "Failed to update wiki content: #{page.content.errors.full_messages.join(", ")}"
             end
           end
 
-          if new_title
+          unless new_title.nil?
             page.title = new_title
             unless page.save
               raise "Failed to rename wiki page: #{page.errors.full_messages.join(", ")}"
