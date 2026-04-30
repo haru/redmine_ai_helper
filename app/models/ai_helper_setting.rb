@@ -18,7 +18,8 @@ class AiHelperSetting < ApplicationRecord
   safe_attributes "model_profile_id", "additional_instructions", "version", "vector_search_enabled", "vector_search_uri", "vector_search_api_key", "embedding_model", "dimension", "vector_search_index_name", "vector_search_index_type", "embedding_url",
     "attachment_send_enabled", "attachment_max_size_mb",
     "use_think_model", "think_model_profile_id",
-    "use_vector_model_profile", "vector_model_profile_id"
+    "use_vector_model_profile", "vector_model_profile_id",
+    "mcp_server_enabled"
 
   validates :attachment_max_size_mb,
     numericality: { only_integer: true, greater_than_or_equal_to: 1 },
@@ -50,6 +51,12 @@ class AiHelperSetting < ApplicationRecord
     # @return [Integer] maximum size in megabytes
     def attachment_max_size_mb
       setting.attachment_max_size_mb
+    end
+
+    # Returns whether the MCP server endpoint is enabled.
+    # @return [Boolean]
+    def mcp_server_enabled?
+      setting.mcp_server_enabled
     end
   end
 
