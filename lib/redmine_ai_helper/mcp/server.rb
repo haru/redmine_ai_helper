@@ -49,6 +49,7 @@ module RedmineAiHelper
           load_all_tool_files
           tools = []
           RedmineAiHelper::BaseTools.subclasses.each do |base_tools_class|
+            next if base_tools_class.name.nil?
             next if EXCLUDED_TOOL_CLASS_NAMES.include?(base_tools_class.name)
 
             base_tools_class.tool_classes.each do |ruby_tool_class|
