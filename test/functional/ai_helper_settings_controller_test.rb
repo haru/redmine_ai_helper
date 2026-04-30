@@ -160,4 +160,29 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert_select "input[type=checkbox][name='ai_helper_setting[use_think_model]']"
     end
   end
+
+  # ─── MCP server enabled setting (T024) ────────────────────────────────────
+
+  context "mcp_server_enabled setting" do
+    should "save mcp_server_enabled true" do
+      post :update, params: { ai_helper_setting: { mcp_server_enabled: "1" } }
+      assert_redirected_to action: :index
+      @ai_helper_setting.reload
+      assert_equal true, @ai_helper_setting.mcp_server_enabled
+    end
+
+    should "save mcp_server_enabled false" do
+      @ai_helper_setting.update_column(:mcp_server_enabled, true)
+      post :update, params: { ai_helper_setting: { mcp_server_enabled: "0" } }
+      assert_redirected_to action: :index
+      @ai_helper_setting.reload
+      assert_equal false, @ai_helper_setting.mcp_server_enabled
+    end
+
+    should "render mcp_server_enabled checkbox on index" do
+      get :index
+      assert_response :success
+      assert_select "input[type=checkbox][name='ai_helper_setting[mcp_server_enabled]']"
+    end
+  end
 end

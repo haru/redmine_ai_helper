@@ -126,3 +126,9 @@ Follow TDD: write tests BEFORE implementing features.
 - All user-facing text must support i18n via `config/locales/*.yml`
 - Use `t()` helper for translations
 - Support English (en) and Japanese (ja) locales
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+at specs/012-mcp-server-endpoint/plan.md.
+<!-- SPECKIT END -->

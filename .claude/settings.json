@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(gem contents:*)"
+      "Bash(gem contents:*)",
+      "Read(//usr/local/lib/ruby/gems/**)",
+      "Read(//usr/local/bundle/**)",
+      "Bash(RAILS_ENV=test bundle exec rails db:test:prepare)",
+      "Bash(RAILS_ENV=test bundle exec rails db:migrate)",
+      "Read(//workspaces/**)"
     ]
   }
 }

@@ -99,4 +99,8 @@ RedmineApp::Application.routes.draw do
       end
     end
   end
+
+  # MCP (Model Context Protocol) server endpoint
+  match "ai_helper/mcp", to: "ai_helper_mcp#handle_request",
+        via: [:get, :post, :delete], as: "ai_helper_mcp"
 end
