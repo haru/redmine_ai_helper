@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 require_relative "../base_agent"
+require "redmine_ai_helper/tools/wiki_write_tools"
 
 module RedmineAiHelper
   module Agents
@@ -23,6 +24,7 @@ module RedmineAiHelper
           providers << RedmineAiHelper::Tools::VectorTools
         end
         providers << RedmineAiHelper::Tools::WikiTools
+        providers << RedmineAiHelper::Tools::WikiWriteTools
         providers << RedmineAiHelper::Tools::FileTools
         providers
       end
