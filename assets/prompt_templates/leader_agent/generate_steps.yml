@@ -49,6 +49,12 @@ template: |-
 
     ----
 
+    **USE_THINK_MODEL DECISION: For each step, set `use_think_model` as follows:**
+    - `true`: **generating new original content** — writing a new Wiki page or substantially editing one; drafting a new answer or solution to an Issue; performing code review or code analysis; any step whose primary output is newly reasoned or composed text
+    - `false`: reading, retrieving, or summarizing existing content (Wiki pages, Issues, etc.); simple data lookups, existence checks, or any step that consumes information without producing new original content
+
+    Key distinction: **summarizing** an existing Wiki page is `false` (reading existing data). **Creating** a new Wiki page is `true` (generating new content).
+
     {format_instructions}
 
     {json_examples}

@@ -50,6 +50,7 @@ module RedmineAiHelper
       @project = params[:project]
       @langfuse = params[:langfuse]
       @llm_provider = RedmineAiHelper::LlmProvider.get_llm_provider
+      @shared_messages = []
     end
 
     def langfuse
@@ -210,22 +211,25 @@ module RedmineAiHelper
     end
 
     # Perform a task using the assistant.
+    # When use_think_model: true, builds a fresh think assistant with shared context.
     # @param option [Hash] Additional options for the task.
     # @param callback [Proc] A callback function to be called with each chunk of the response.
-    # @return [Array] The result of the task.
+    # @return [TaskResponse] The response from the task.
     def perform_task(option = {}, callback = nil)
-      task = assistant.messages.last
+      active_assistant = option[:use_think_model] ? build_think_assistant : assistant
+      task = active_assistant.messages.last
       langfuse.create_span(name: "perform_task", input: task.content)
-      response = dispatch()
+      response = dispatch(active_assistant)
       langfuse.finish_current_span(output: response)
       response
     end
 
-    # dispatch the tool
+    # Dispatch the tool using the given assistant.
+    # @param active_assistant [RedmineAiHelper::Assistant] The assistant to use.
     # @return [TaskResponse] The response from the task.
-    def dispatch()
+    def dispatch(active_assistant = assistant)
       begin
-        response = assistant.run(auto_tool_execution: true)
+        response = active_assistant.run(auto_tool_execution: true)
 
         answer = response.last.content
         res = TaskResponse.create_success answer
@@ -236,14 +240,34 @@ module RedmineAiHelper
       end
     end
 
-    # Add a message to the assistant.
+    # Add a message to the assistant and track it in @shared_messages for think-model replay.
     # @param role [String] The role of the message sender.
     # @param content [String] The content of the message.
     def add_message(role:, content:)
+      @shared_messages << { role: role, content: content }
       assistant.add_message(role: role, content: content)
     end
 
     private
+
+    # Build a fresh assistant using the think LLM provider (or fall back to the regular provider).
+    # Replays @shared_messages so the think model has full conversation context.
+    # A fresh assistant is used rather than reusing @assistant to avoid stale provider-specific
+    # tool-call state that cannot be safely copied across providers.
+    # @return [RedmineAiHelper::Assistant]
+    def build_think_assistant
+      provider = think_llm_provider || @llm_provider
+      think_asst = RedmineAiHelper::AssistantProvider.get_assistant(
+        llm_provider: provider,
+        instructions: system_prompt,
+        tools: available_tool_classes,
+      )
+      setup_langfuse_callbacks(think_asst.chat, provider: provider)
+      @shared_messages.each do |msg|
+        think_asst.add_message(role: msg[:role], content: msg[:content])
+      end
+      think_asst
+    end
 
     # Set up Langfuse callbacks on a RubyLLM::Chat instance.
     # Registers an on_end_message callback that creates Langfuse generations

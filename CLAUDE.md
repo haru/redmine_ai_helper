@@ -208,4 +208,6 @@ Testing conventions:
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the relevant current
 plan in the `specs/` directory.
+
+Current feature plan: `specs/014-workflow-think-model/plan.md`
 <!-- SPECKIT END -->
