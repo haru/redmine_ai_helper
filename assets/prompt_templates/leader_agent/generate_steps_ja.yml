@@ -49,6 +49,10 @@ template: |-
 
   ----
 
+  **USE_THINK_MODEL の判断: 各ステップについて、以下の基準で `use_think_model` を設定してください:**
+  - `true`: Wikiページの作成・編集、Issueへの回答・解決策の作成、コードレビュー・コード分析、複数の視点から深い分析・推論を要するタスク
+  - `false`: 単純なデータ取得・検索・確認など、創造的・分析的な深さを必要としないステップ
+
   {format_instructions}
 
   {json_examples}

@@ -272,6 +272,125 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
     end
   end
 
+  context "@shared_messages tracking" do
+    should "initialize @shared_messages as empty array" do
+      assert_equal [], @agent.instance_variable_get(:@shared_messages)
+    end
+
+    should "append to @shared_messages when add_message is called" do
+      @mock_chat.stubs(:add_message)
+      @agent.add_message(role: "user", content: "hello")
+      shared = @agent.instance_variable_get(:@shared_messages)
+      assert_equal 1, shared.length
+      assert_equal({ role: "user", content: "hello" }, shared.first)
+    end
+
+    should "also forward add_message to assistant" do
+      @mock_chat.expects(:add_message).with(role: :user, content: "hello")
+      @agent.add_message(role: "user", content: "hello")
+    end
+  end
+
+  context "build_think_assistant" do
+    setup do
+      @mock_think_provider = mock("think_llm_provider")
+      @mock_think_provider.stubs(:model_name).returns("claude-3-7-sonnet")
+      @mock_think_provider.stubs(:temperature).returns(nil)
+      @mock_think_provider.stubs(:max_tokens).returns(4096)
+
+      @mock_think_chat = mock("think_chat")
+      @mock_think_chat.stubs(:on_end_message).returns(@mock_think_chat)
+      @mock_think_chat.stubs(:add_message)
+      @mock_think_chat.stubs(:messages).returns([])
+      @mock_think_provider.stubs(:create_chat).returns(@mock_think_chat)
+    end
+
+    should "use think_llm_provider when available" do
+      RedmineAiHelper::LlmProvider.stubs(:get_think_llm_provider).returns(@mock_think_provider)
+      agent = BaseAgentTestModele::TestAgent.new(@params)
+
+      mock_think_response = mock("response")
+      mock_think_response.stubs(:content).returns("think result")
+      @mock_think_chat.stubs(:run).returns([mock_think_response])
+
+      @mock_think_provider.expects(:create_chat).at_least_once.returns(@mock_think_chat)
+
+      result = agent.send(:build_think_assistant)
+      assert_not_nil result
+    end
+
+    should "fall back to @llm_provider when think_llm_provider is nil" do
+      RedmineAiHelper::LlmProvider.stubs(:get_think_llm_provider).returns(nil)
+      agent = BaseAgentTestModele::TestAgent.new(@params)
+
+      mock_response = mock("response")
+      mock_response.stubs(:content).returns("regular result")
+      @mock_chat.stubs(:run).returns([mock_response])
+
+      @mock_llm_provider.expects(:create_chat).at_least_once.returns(@mock_chat)
+
+      result = agent.send(:build_think_assistant)
+      assert_not_nil result
+    end
+
+    should "replay @shared_messages to the new think assistant" do
+      RedmineAiHelper::LlmProvider.stubs(:get_think_llm_provider).returns(@mock_think_provider)
+      agent = BaseAgentTestModele::TestAgent.new(@params)
+
+      @mock_chat.stubs(:add_message)
+      agent.add_message(role: "user", content: "first message")
+      agent.add_message(role: "assistant", content: "first reply")
+
+      @mock_think_chat.expects(:add_message).with(role: :user, content: "first message")
+      @mock_think_chat.expects(:add_message).with(role: :assistant, content: "first reply")
+
+      agent.send(:build_think_assistant)
+    end
+  end
+
+  context "perform_task with use_think_model option" do
+    setup do
+      @mock_think_assistant = mock("think_assistant")
+      mock_msg = mock("think_msg")
+      mock_msg.stubs(:content).returns("think task")
+      @mock_think_assistant.stubs(:messages).returns([mock_msg])
+      @mock_task_response = RedmineAiHelper::BaseAgent::TaskResponse.create_success("ok")
+    end
+
+    should "call build_think_assistant when use_think_model is true" do
+      agent = BaseAgentTestModele::TestAgent.new(@params)
+      agent.stubs(:dispatch).returns(@mock_task_response)
+      agent.expects(:build_think_assistant).returns(@mock_think_assistant)
+
+      response = agent.perform_task({ use_think_model: true })
+      assert response
+    end
+
+    should "not call build_think_assistant when use_think_model is false" do
+      agent = BaseAgentTestModele::TestAgent.new(@params)
+      mock_msg = mock("reg_msg")
+      mock_msg.stubs(:content).returns("task")
+      @mock_chat.stubs(:messages).returns([mock_msg])
+      agent.stubs(:dispatch).returns(@mock_task_response)
+      agent.expects(:build_think_assistant).never
+
+      response = agent.perform_task({ use_think_model: false })
+      assert response
+    end
+
+    should "not call build_think_assistant when use_think_model is absent" do
+      agent = BaseAgentTestModele::TestAgent.new(@params)
+      mock_msg = mock("reg_msg")
+      mock_msg.stubs(:content).returns("task")
+      @mock_chat.stubs(:messages).returns([mock_msg])
+      agent.stubs(:dispatch).returns(@mock_task_response)
+      agent.expects(:build_think_assistant).never
+
+      response = agent.perform_task({})
+      assert response
+    end
+  end
+
   context "perform_task" do
     should "perform the task and return a response" do
       mock_message = mock("message")

@@ -49,6 +49,10 @@ template: |-
 
     ----
 
+    **USE_THINK_MODEL DECISION: For each step, set `use_think_model` as follows:**
+    - `true`: creating or editing a Wiki page; writing an answer or solution to an Issue; performing code review or code analysis; any task requiring deep multi-perspective analysis or reasoning
+    - `false`: simple data retrieval, lookups, existence checks, or any step that does not require creative or analytical depth
+
     {format_instructions}
 
     {json_examples}
