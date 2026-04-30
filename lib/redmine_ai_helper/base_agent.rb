@@ -214,7 +214,7 @@ module RedmineAiHelper
     # When use_think_model: true, builds a fresh think assistant with shared context.
     # @param option [Hash] Additional options for the task.
     # @param callback [Proc] A callback function to be called with each chunk of the response.
-    # @return [Array] The result of the task.
+    # @return [TaskResponse] The response from the task.
     def perform_task(option = {}, callback = nil)
       active_assistant = option[:use_think_model] ? build_think_assistant : assistant
       task = active_assistant.messages.last
