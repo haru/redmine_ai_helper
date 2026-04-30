@@ -155,7 +155,24 @@ module RedmineAiHelper
 
           ----
 
-          Example JSON when appropriate agents are found:
+          Example JSON — reading/summarizing existing content (use_think_model: false):
+
+          ```json
+          {
+            "steps": [
+              {
+                "agent": "wiki_agent",
+                "step": "Read and summarize the Wiki page named 'ProjectOverview'.",
+                "description_for_human": "Reading the Wiki page 'ProjectOverview'...",
+                "use_think_model": false
+              }
+            ]
+          }
+          ```
+
+          ----
+
+          Example JSON — creating new content and retrieving data (use_think_model true/false mix):
 
           ```json
           {
@@ -168,7 +185,7 @@ module RedmineAiHelper
               },
               {
                 "agent": "wiki_agent",
-                "step": "Create a Wiki page summarizing the project scope.",
+                "step": "Create a new Wiki page with a comprehensive introduction to the project scope.",
                 "description_for_human": "Creating the Wiki page...",
                 "use_think_model": true
               }
