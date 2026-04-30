@@ -33,7 +33,8 @@ module RedmineAiHelper
             input_schema: tool_schema
           ) do |**arguments|
             begin
-              result = ruby_tool_class.new.call(arguments)
+              tool_args = arguments.reject { |k, _| k == :server_context }
+              result = ruby_tool_class.new.call(tool_args)
               if result.is_a?(Hash) && result[:error]
                 { content: [{ type: "text", text: result[:error].to_s }], isError: true }
               else

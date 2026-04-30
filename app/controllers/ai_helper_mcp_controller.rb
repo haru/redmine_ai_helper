@@ -19,6 +19,12 @@ class AiHelperMcpController < ApplicationController
   before_action :check_mcp_enabled
   before_action :authenticate_mcp_request
 
+  # Skip Redmine's CSRF check; this endpoint uses API key authentication.
+  # ApplicationController#handle_unverified_request renders 422 when the CSRF
+  # token is absent, which conflicts with stateless API-key-only auth.
+  def verify_authenticity_token
+  end
+
   # Handles POST, GET, and DELETE requests for the MCP Streamable HTTP
   # transport. All three verbs are routed here to comply with the MCP spec.
   #
