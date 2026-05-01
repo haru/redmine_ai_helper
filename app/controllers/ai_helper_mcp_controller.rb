@@ -31,7 +31,7 @@ class AiHelperMcpController < ApplicationController
   # @return [void]
   def handle_request
     body_content = request.body.read
-    parsed_request = JSON.parse(body_content) rescue nil
+    parsed_request = JSON.parse(body_content) rescue JSON::ParserError => nil
 
     if parsed_request && parsed_request["method"] == "tools/call"
       tool_name = parsed_request.dig("params", "name")
