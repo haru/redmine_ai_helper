@@ -162,6 +162,7 @@ ja:
       errors:
         disabled: "MCPサーバーは無効です"
         unauthorized: "認証に失敗しました - APIキーが無効または未指定です"
+        tool_permission_denied: "権限がありません: このツールへのアクセス権がありません"
     custom_commands:
       label:
         title: カスタムコマンド

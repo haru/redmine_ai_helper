@@ -31,6 +31,23 @@ class AiHelperMcpController < ApplicationController
   # @return [void]
   def handle_request
     body_content = request.body.read
+    parsed_request = JSON.parse(body_content) rescue nil
+
+    if parsed_request && parsed_request["method"] == "tools/call"
+      tool_name = parsed_request.dig("params", "name")
+      unless RedmineAiHelper::Mcp::Server.tool_call_permitted?(tool_name.to_s, user: User.current)
+        render json: {
+          jsonrpc: "2.0",
+          id: parsed_request["id"],
+          result: {
+            content: [{ type: "text", text: l("ai_helper.mcp.errors.tool_permission_denied") }],
+            isError: true,
+          }
+        }
+        return
+      end
+    end
+
     rack_env = request.env.merge("rack.input" => StringIO.new(body_content))
     server = RedmineAiHelper::Mcp::Server.build
     transport = MCP::Server::Transports::StreamableHTTPTransport.new(server, stateless: true, enable_json_response: true)

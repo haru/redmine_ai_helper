@@ -5,6 +5,8 @@ module RedmineAiHelper
   module Tools
     # SystemTools is a specialized tool provider for handling system-related queries in Redmine.
     class SystemTools < RedmineAiHelper::BaseTools
+      requires admin: true
+
       define_function :list_plugins, description: "Returns a list of all plugins installed in Redmine." do
         property :dummy, type: "string", description: "Dummy property. No need to specify.", required: false
       end

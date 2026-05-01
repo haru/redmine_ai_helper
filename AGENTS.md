@@ -130,5 +130,5 @@ Follow TDD: write tests BEFORE implementing features.
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/012-mcp-server-endpoint/plan.md.
+at specs/015-mcp-tool-execution-check/plan.md.
 <!-- SPECKIT END -->

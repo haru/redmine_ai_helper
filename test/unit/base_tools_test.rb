@@ -266,5 +266,43 @@ class BaseToolsTest < ActiveSupport::TestCase
         refute tools.accessible_project?(project)
       end
     end
+
+    context "requires DSL" do
+      should "return empty hash by default (no restrictions)" do
+        klass = Class.new(RedmineAiHelper::BaseTools)
+        assert_equal({}, klass.permission_requirements)
+      end
+
+      should "store vector_db_enabled condition" do
+        klass = Class.new(RedmineAiHelper::BaseTools)
+        klass.requires(vector_db_enabled: true)
+        assert_equal({ vector_db_enabled: true }, klass.permission_requirements)
+      end
+
+      should "store admin condition" do
+        klass = Class.new(RedmineAiHelper::BaseTools)
+        klass.requires(admin: true)
+        assert_equal({ admin: true }, klass.permission_requirements)
+      end
+
+      should "merge conditions from multiple requires calls" do
+        klass = Class.new(RedmineAiHelper::BaseTools)
+        klass.requires(vector_db_enabled: true)
+        klass.requires(admin: true)
+        assert_equal({ vector_db_enabled: true, admin: true }, klass.permission_requirements)
+      end
+
+      should "raise ArgumentError for unknown condition keys" do
+        klass = Class.new(RedmineAiHelper::BaseTools)
+        assert_raises(ArgumentError) { klass.requires(unknown_key: true) }
+      end
+
+      should "not share permission_requirements between subclasses" do
+        klass_a = Class.new(RedmineAiHelper::BaseTools)
+        klass_b = Class.new(RedmineAiHelper::BaseTools)
+        klass_a.requires(admin: true)
+        assert_equal({}, klass_b.permission_requirements)
+      end
+    end
   end
 end
