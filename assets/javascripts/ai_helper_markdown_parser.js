@@ -61,7 +61,12 @@ if (typeof AiHelperMarkdownParser === "undefined") {
     }
 
     parse(markdown) {
-      let html = markdown;
+      // Escape HTML special characters in the source so any raw HTML embedded
+      // in the report content (e.g. <script>, <img onerror=...>, attribute
+      // breakouts via stray quotes) is rendered as literal text. Markdown
+      // tags are inserted by the replacement rules AFTER escaping, so
+      // heading/table/list/etc. rendering still works.
+      let html = AiHelperMarkdownParser.escapeHtml(markdown);
 
       // Process tables first
       html = this.processTables(html);
@@ -110,6 +115,17 @@ if (typeof AiHelperMarkdownParser === "undefined") {
         }
       }
       return doc.body.innerHTML;
+    }
+
+    // Escape HTML special characters so raw HTML in the input renders as text.
+    static escapeHtml(text) {
+      if (text == null) return "";
+      return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
     }
 
     // Validate URL protocol to prevent javascript: XSS
