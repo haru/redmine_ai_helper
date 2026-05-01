@@ -20,8 +20,9 @@ module RedmineAiHelper
         # Converts a RubyLLM::Tool subclass into an MCP::Tool subclass.
         #
         # @param ruby_tool_class [Class] a subclass of RubyLLM::Tool
+        # @param source_tools_class [Class, nil] the BaseTools subclass that generated ruby_tool_class
         # @return [Class] a subclass of MCP::Tool
-        def adapt(ruby_tool_class)
+        def adapt(ruby_tool_class, source_tools_class: nil)
           instance = ruby_tool_class.new
           tool_name = extract_tool_name(instance)
           tool_description = ruby_tool_class.description.to_s
@@ -33,7 +34,7 @@ module RedmineAiHelper
             input_schema: tool_schema
           ) do |**arguments|
             tool_args = arguments.reject { |k, _| k == :server_context }
-            ToolAdapter.call_ruby_tool(ruby_tool_class, tool_args)
+            ToolAdapter.call_ruby_tool(ruby_tool_class, tool_args, source_tools_class: source_tools_class)
           end
         end
 
@@ -43,8 +44,21 @@ module RedmineAiHelper
         #
         # @param ruby_tool_class [Class] RubyLLM::Tool subclass
         # @param arguments [Hash] symbol-keyed arguments from MCP
+        # @param source_tools_class [Class, nil] the BaseTools subclass (for permission check)
         # @return [Hash] MCP result with :content and :isError
-        def call_ruby_tool(ruby_tool_class, arguments)
+        def call_ruby_tool(ruby_tool_class, arguments, source_tools_class: nil)
+          if source_tools_class
+            reqs = source_tools_class.permission_requirements
+            unless reqs.empty?
+              if reqs[:vector_db_enabled] && !AiHelperSetting.vector_search_enabled?
+                return { content: [{ type: "text", text: "Permission denied: VectorDB is not enabled." }], isError: true }
+              end
+              if reqs[:admin] && !User.current.admin?
+                return { content: [{ type: "text", text: "Permission denied: admin access required." }], isError: true }
+              end
+            end
+          end
+
           result = ruby_tool_class.new.call(arguments)
 
           if result.is_a?(Hash) && result[:error]

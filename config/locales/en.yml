@@ -162,6 +162,7 @@ en:
       errors:
         disabled: "MCP server is disabled"
         unauthorized: "Unauthorized - invalid or missing API key"
+        tool_permission_denied: "Permission denied: you do not have access to this tool"
     custom_commands:
       label:
         title: Custom Commands

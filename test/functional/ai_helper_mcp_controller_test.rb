@@ -132,11 +132,11 @@ class AiHelperMcpControllerTest < ActionController::TestCase
       assert_includes names, "list_projects"
     end
 
-    should "exclude get_system_info from the tool list" do
+    should "include get_system_info for admin users" do
       post :handle_request, body: tools_list_payload, as: :json
       tools = JSON.parse(@response.body).dig("result", "tools")
       names = tools.map { |t| t["name"] }
-      assert_not_includes names, "get_system_info"
+      assert_includes names, "get_system_info", "admin users should see get_system_info"
     end
   end
 
@@ -187,6 +187,75 @@ class AiHelperMcpControllerTest < ActionController::TestCase
            as: :json
       body = JSON.parse(@response.body)
       assert_equal false, body.dig("result", "isError"), "expected isError false on success"
+    end
+  end
+
+  # ─── tools/list VectorDB filtering (US1) ───────────────────────────────────
+
+  context "tools/list VectorDB filtering" do
+    should "exclude VectorDB tools when vector_search is disabled" do
+      @setting.update_column(:vector_search_enabled, false)
+      set_valid_auth_headers
+      post :handle_request, body: tools_list_payload, as: :json
+      tools = JSON.parse(@response.body).dig("result", "tools")
+      names = tools.map { |t| t["name"] }
+      assert_not_includes names, "ask_with_filter", "ask_with_filter should be hidden when VectorDB disabled"
+      assert_not_includes names, "find_similar_issues", "find_similar_issues should be hidden when VectorDB disabled"
+    end
+
+    should "include VectorDB tools when vector_search is enabled" do
+      @setting.update_column(:vector_search_enabled, true)
+      set_valid_auth_headers
+      post :handle_request, body: tools_list_payload, as: :json
+      tools = JSON.parse(@response.body).dig("result", "tools")
+      names = tools.map { |t| t["name"] }
+      assert_includes names, "ask_with_filter", "ask_with_filter should be visible when VectorDB enabled"
+      assert_includes names, "find_similar_issues", "find_similar_issues should be visible when VectorDB enabled"
+    end
+  end
+
+  # ─── tools/list admin filtering (US2) ──────────────────────────────────────
+
+  context "tools/list admin filtering" do
+    should "exclude System tools for non-admin users" do
+      @non_admin_user = User.find(2)
+      @request.headers["X-Redmine-API-Key"] = @non_admin_user.api_key
+      @request.headers["Accept"] = "application/json, text/event-stream"
+      post :handle_request, body: tools_list_payload, as: :json
+      tools = JSON.parse(@response.body).dig("result", "tools")
+      names = tools.map { |t| t["name"] }
+      assert_not_includes names, "get_system_info", "get_system_info should be hidden for non-admin"
+      assert_not_includes names, "list_plugins", "list_plugins should be hidden for non-admin"
+    end
+
+    should "include System tools for admin users" do
+      set_valid_auth_headers  # @user is admin (User 1)
+      post :handle_request, body: tools_list_payload, as: :json
+      tools = JSON.parse(@response.body).dig("result", "tools")
+      names = tools.map { |t| t["name"] }
+      assert_includes names, "get_system_info", "get_system_info should be visible for admin"
+      assert_includes names, "list_plugins", "list_plugins should be visible for admin"
+    end
+  end
+
+  # ─── tools/call permission rejection (US3) ─────────────────────────────────
+
+  context "tools/call permission rejection" do
+    should "return isError true when calling VectorDB tool with VectorDB disabled" do
+      @setting.update_column(:vector_search_enabled, false)
+      set_valid_auth_headers
+      post :handle_request, body: tools_call_payload("ask_with_filter", { query: "test", filter: {}, target: "issue" }), as: :json
+      body = JSON.parse(@response.body)
+      assert_equal true, body.dig("result", "isError"), "expected isError true when VectorDB disabled"
+    end
+
+    should "return isError true when non-admin calls System tool" do
+      @non_admin_user = User.find(2)
+      @request.headers["X-Redmine-API-Key"] = @non_admin_user.api_key
+      @request.headers["Accept"] = "application/json, text/event-stream"
+      post :handle_request, body: tools_call_payload("get_system_info", {}), as: :json
+      body = JSON.parse(@response.body)
+      assert_equal true, body.dig("result", "isError"), "expected isError true for non-admin calling system tool"
     end
   end
 

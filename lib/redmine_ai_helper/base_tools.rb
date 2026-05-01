@@ -13,11 +13,33 @@ module RedmineAiHelper
     include RedmineAiHelper::Logger
     include ROUTE_HELPERS
 
+    # Valid keys for the {requires} class-level DSL.
+    VALID_REQUIRE_KEYS = %i[vector_db_enabled admin].freeze
+
     class << self
       # Returns the array of generated RubyLLM::Tool subclasses for this tools class.
       # @return [Array<Class>] array of RubyLLM::Tool subclasses
       def tool_classes
         @tool_classes ||= []
+      end
+
+      # Declare execution requirements for MCP Server exposure.
+      # Each call merges conditions into the class-level permission_requirements hash.
+      # Supported keys: :vector_db_enabled, :admin.
+      # @param conditions [Hash] e.g. vector_db_enabled: true, admin: true
+      # @raise [ArgumentError] if an unknown key is given
+      def requires(**conditions)
+        conditions.each_key do |key|
+          raise ArgumentError, "Unknown requires key: #{key.inspect}. Valid keys: #{VALID_REQUIRE_KEYS.inspect}" unless VALID_REQUIRE_KEYS.include?(key)
+        end
+        @permission_requirements = ((@permission_requirements || {}).merge(conditions)).freeze
+      end
+
+      # Returns the declared permission requirements for this tool class.
+      # Empty hash means no restrictions (default).
+      # @return [Hash{Symbol => Boolean}]
+      def permission_requirements
+        @permission_requirements || {}
       end
 
       # Define a function using a DSL that internally generates a RubyLLM::Tool subclass.

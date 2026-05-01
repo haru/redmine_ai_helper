@@ -9,18 +9,6 @@
 			],
 			"env": {}
 		},
-		"spec-workflow": {
-			"command": "npx",
-			"args": [
-				"-y",
-				"@pimzino/spec-workflow-mcp@latest",
-				"--AutoStartDashboard"
-			]
-		},
-		"deepwiki": {
-			"type": "sse",
-			"url": "https://mcp.deepwiki.com/sse"
-		},
 		"serena": {
 			"type": "stdio",
 			"command": "uvx",
@@ -46,6 +34,13 @@
 				"ws://browserless:3000"
 			],
 			"env": {}
+		},
+		"redmine": {
+			"type": "http",
+			"url": "http://localhost:3000/ai_helper/mcp",
+			"headers": {
+				"X-Redmine-API-Key": "${env:REDMINE_API_KEY}"
+			}
 		}
 	}
 }
