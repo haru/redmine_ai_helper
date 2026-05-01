@@ -9,6 +9,7 @@ class McpServerLoaderTest < ActiveSupport::TestCase
     @agent_list = RedmineAiHelper::AgentList.instance
     agents = @agent_list.instance_variable_get(:@agents) || []
     @original_agents = agents.dup
+    @existing_mcp_constants = Object.constants.select { |c| c.to_s.start_with?("AiHelperMcp") }
   end
 
   def teardown
@@ -67,7 +68,7 @@ class McpServerLoaderTest < ActiveSupport::TestCase
         { "type" => "invalid" },
         { "type" => "stdio" },
         { "type" => "http" },
-        { "type" => "http", "url" => "invalid-url" }
+        { "type" => "http", "url" => "invalid-url" },
       ]
 
       invalid_configs.each do |config|
@@ -79,14 +80,14 @@ class McpServerLoaderTest < ActiveSupport::TestCase
       valid_urls = [
         "http://localhost:3000",
         "https://api.example.com/mcp",
-        "https://example.com:8080/path"
+        "https://example.com:8080/path",
       ]
 
       invalid_urls = [
         "ftp://example.com",
         "invalid-url",
         "",
-        nil
+        nil,
       ]
 
       valid_urls.each do |url|
@@ -265,6 +266,7 @@ class McpServerLoaderTest < ActiveSupport::TestCase
   end
 
   private
+
   def create_mock_logger
     mock("logger").tap do |logger|
       [:debug, :info, :warn, :error].each do |level|
@@ -291,9 +293,9 @@ class McpServerLoaderTest < ActiveSupport::TestCase
   end
 
   def cleanup_dynamic_classes
-    # Delete dynamic classes generated in tests
+    # Delete only dynamic classes generated during the test, preserving pre-existing constants
     Object.constants.each do |const|
-      if const.to_s.start_with?('AiHelperMcp') && const.to_s != 'AiHelperMcpAgent'
+      if const.to_s.start_with?("AiHelperMcp") && !@existing_mcp_constants.include?(const)
         begin
           Object.send(:remove_const, const)
         rescue NameError

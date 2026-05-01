@@ -11,6 +11,8 @@ module RedmineAiHelper
       include RedmineAiHelper::Util::WikiJson
       include RedmineAiHelper::Util::IssueJson
 
+      requires vector_db_enabled: true
+
       #   raise("The vector search functionality is not enabled.") unless vector_db_enabled?
       #   raise("limit must be between 1 and 50.") unless limit.between?(1, 50)
 

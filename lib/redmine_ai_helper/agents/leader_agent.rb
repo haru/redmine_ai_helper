@@ -60,7 +60,7 @@ module RedmineAiHelper
 
         steps["steps"].each do |step|
           callback.call("- " + step["description_for_human"] + "\n") if callback
-          chat_room.send_task("leader", step["agent"], step["step"])
+          chat_room.send_task("leader", step["agent"], step["step"], { use_think_model: step["use_think_model"] })
         end
 
         callback.call(I18n.t("ai_helper.chat.generating_final_response") + "\n") if callback
@@ -139,8 +139,12 @@ module RedmineAiHelper
                     type: "string",
                     description: "Write a sentence in present progressive form to explain to the user what work is currently being done.",
                   },
+                  use_think_model: {
+                    type: "boolean",
+                    description: "Set to true if this step requires deep reasoning (e.g. creating content, code review, writing answers). Set to false for simple data retrieval.",
+                  },
                 },
-                required: ["agent", "step", "description_for_human"],
+                required: ["agent", "step", "description_for_human", "use_think_model"],
               },
               required: ["steps"],
             },
@@ -151,7 +155,24 @@ module RedmineAiHelper
 
           ----
 
-          Example JSON when appropriate agents are found:
+          Example JSON — reading/summarizing existing content (use_think_model: false):
+
+          ```json
+          {
+            "steps": [
+              {
+                "agent": "wiki_agent",
+                "step": "Read and summarize the Wiki page named 'ProjectOverview'.",
+                "description_for_human": "Reading the Wiki page 'ProjectOverview'...",
+                "use_think_model": false
+              }
+            ]
+          }
+          ```
+
+          ----
+
+          Example JSON — creating new content and retrieving data (use_think_model true/false mix):
 
           ```json
           {
@@ -159,12 +180,14 @@ module RedmineAiHelper
               {
                 "agent": "project_agent",
                 "step": "Please provide the ID of the project named 'my_project'.",
-                "description_for_human": "Retrieving the project ID for 'my_project'..."
+                "description_for_human": "Retrieving the project ID for 'my_project'...",
+                "use_think_model": false
               },
               {
-                "agent": "issue_agent",
-                "step": "Please provide the tickets related to the project ID obtained in the previous step.",
-                "description_for_human": "Fetching tickets related to the specified project..."
+                "agent": "wiki_agent",
+                "step": "Create a new Wiki page with a comprehensive introduction to the project scope.",
+                "description_for_human": "Creating the Wiki page...",
+                "use_think_model": true
               }
             ]
           }

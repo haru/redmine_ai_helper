@@ -178,4 +178,39 @@ class AiHelperSettingTest < ActiveSupport::TestCase
       assert_nil @setting.vector_model_profile_id
     end
   end
+
+  # ─── mcp_server_enabled (T025) ────────────────────────────────────────────
+
+  context "mcp_server_enabled" do
+    should "default to false" do
+      assert_equal false, @setting.mcp_server_enabled
+    end
+
+    should "be readable and writable" do
+      @setting.mcp_server_enabled = true
+      @setting.save!
+      @setting.reload
+      assert_equal true, @setting.mcp_server_enabled
+    end
+
+    should "be settable to false" do
+      @setting.update_column(:mcp_server_enabled, true)
+      @setting.mcp_server_enabled = false
+      @setting.save!
+      @setting.reload
+      assert_equal false, @setting.mcp_server_enabled
+    end
+  end
+
+  context "class method mcp_server_enabled?" do
+    should "return false when mcp_server_enabled is false" do
+      @setting.update!(mcp_server_enabled: false)
+      assert_equal false, AiHelperSetting.mcp_server_enabled?
+    end
+
+    should "return true when mcp_server_enabled is true" do
+      @setting.update!(mcp_server_enabled: true)
+      assert_equal true, AiHelperSetting.mcp_server_enabled?
+    end
+  end
 end

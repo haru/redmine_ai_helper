@@ -34,6 +34,9 @@
 - [⚙️ Advanced Configuration](#️-advanced-configuration)
   - [Nginx Reverse Proxy Settings](#nginx-reverse-proxy-settings)
   - [MCP Server Settings](#mcp-server-settings)
+    - [Using External MCP Servers](#using-external-mcp-servers)
+    - [Transport Types](#transport-types)
+    - [Exposing Redmine as an MCP Server](#exposing-redmine-as-an-mcp-server)
   - [Vector Search Settings](#vector-search-settings)
     - [Qdrant Setup](#qdrant-setup)
     - [Creating the Index](#creating-the-index)
@@ -317,7 +320,14 @@ nginx -s reload
 The "Model Context Protocol (MCP)" is an open standard protocol proposed by Anthropic that allows AI models to interact with external systems such as files, databases, tools, and APIs.
 Reference: https://github.com/modelcontextprotocol/servers
 
-The AI Helper Plugin can use the MCP Server to perform tasks, such as sending issue summaries to Slack.
+The AI Helper Plugin has two independent MCP capabilities:
+
+- **Using External MCP Servers**: Connect to external MCP servers (Slack, GitHub, etc.) and use their tools inside the AI chat.
+- **Exposing Redmine as an MCP Server**: Expose Redmine's own data and tools as an MCP endpoint so external MCP clients (e.g., Claude Desktop, other AI agents) can query Redmine directly.
+
+### Using External MCP Servers
+
+Connect to external MCP servers to perform tasks such as sending issue summaries to Slack or searching GitHub repositories from the AI chat.
 
 1. Create `config/ai_helper/config.json` under the root directory of Redmine.
 2. Configure the MCP server as follows (example for Slack, GitHub, and Context7):
@@ -351,6 +361,96 @@ The AI Helper Plugin can use the MCP Server to perform tasks, such as sending is
    }
    ```
 3. Restart Redmine.
+
+### Transport Types
+
+Three transport types are supported. The `type` field can be omitted — it is inferred automatically from the other keys:
+
+| Type | Auto-detected when | Description |
+|------|--------------------|-------------|
+| `stdio` | `command` or `args` is present | Spawns a local process and communicates via stdin/stdout |
+| `http` | `url` is present (no `type` key) | MCP Streamable HTTP transport |
+| `sse` | `type: "sse"` is specified explicitly | Server-Sent Events transport |
+
+**STDIO example** (local process):
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+    }
+  }
+}
+```
+
+**HTTP example** (remote server with authentication):
+```json
+{
+  "mcpServers": {
+    "my_api": {
+      "url": "https://mcp.example.com",
+      "headers": {
+        "Authorization": "Bearer your-token"
+      }
+    }
+  }
+}
+```
+
+### Exposing Redmine as an MCP Server
+
+The AI Helper Plugin exposes Redmine's tools as an MCP endpoint. External MCP clients such as Claude Desktop or other AI agents can connect to Redmine and call Redmine tools directly.
+
+**Endpoint:**
+```
+POST   /ai_helper/mcp    — JSON-RPC requests and responses (JSON)
+GET    /ai_helper/mcp    — MCP spec required; not used in stateless mode
+DELETE /ai_helper/mcp    — MCP spec required; not used in stateless mode
+```
+
+The server uses the MCP Streamable HTTP transport in **stateless, JSON-response mode** (`stateless: true`, `enable_json_response: true`). All communication happens via POST with JSON-RPC — SSE streaming is not used.
+
+**Enabling the endpoint:**
+
+1. Open the AI Helper settings page from the Administration menu.
+2. Enable **"MCP Server"** in the settings.
+3. Restart Redmine if required.
+
+**Authentication:**
+
+All requests must include a Redmine API key in the `X-Redmine-API-Key` header. The API key is validated per-request against the Redmine user account. Requests without a valid key return HTTP 401. If the MCP server is disabled, requests return HTTP 403.
+
+**Example — `.mcp.json` client configuration:**
+```json
+{
+  "mcpServers": {
+    "redmine": {
+      "type": "http",
+      "url": "https://your-redmine-instance.com/ai_helper/mcp",
+      "headers": {
+        "X-Redmine-API-Key": "${REDMINE_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+**Available tool groups:**
+
+| Tool Group | Example Tools | Description |
+|------------|---------------|-------------|
+| Issue | `read_issues`, `search_issues`, `create_new_issue`, `update_issue` | Read, search, create, and update issues |
+| Project | `list_projects`, `read_project`, `project_members`, `get_metrics` | Project information and metrics |
+| Wiki | `read_wiki_page`, `list_wiki_pages` | Wiki page access |
+| Repository | `repository_info`, `read_file`, `read_diff` | Source code and revision access |
+| Board | `list_boards`, `read_message` | Forum and message access |
+| User | `list_users`, `find_user` | User lookup |
+| Version | `list_versions`, `version_info` | Milestone information |
+| File | `analyze_content_files` | File content analysis via LLM |
+| Vector | `find_similar_issues`, `ask_with_filter` | Semantic search (requires vector search setup) |
+
+All tools respect Redmine's permission model. The tools available to an MCP client depend on the permissions of the API key's user account.
 
 ## Vector Search Settings
 

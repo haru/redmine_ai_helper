@@ -246,3 +246,8 @@ bundle exec rake redmine:plugins:migrate RAILS_ENV=production
 - Use proper error logging, but never silently continue with fallback behavior
 - Custom logger: `RedmineAiHelper::Logger` mixin
 - Graceful degradation when AI services unavailable
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->

@@ -105,8 +105,14 @@ document.addEventListener('DOMContentLoaded', function() {
       contentDiv.classList.add('has-report');
     }
 
-    // Server already renders the formatted HTML via textilizable(),
-    // so no client-side re-parsing is needed here.
+    // textilizable() honors Redmine's text_formatting setting, which may be
+    // Textile and therefore breaks Markdown headings/tables. Re-parse the
+    // raw Markdown stored in the hidden field to render consistently.
+    const hiddenField = document.getElementById('ai-helper-health-report-content');
+    if (hiddenField && hiddenField.value) {
+      const formattedContent = parser.parse(hiddenField.value);
+      resultDiv.innerHTML = '<div class="ai-helper-final-content">' + formattedContent + '</div>';
+    }
 
     addPdfExportButton();
   }
