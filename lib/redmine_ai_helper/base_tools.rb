@@ -13,6 +13,7 @@ module RedmineAiHelper
     include RedmineAiHelper::Logger
     include ROUTE_HELPERS
 
+    # Valid keys for the +requires:+ option in {define_function}.
     VALID_REQUIRE_KEYS = %i[vector_db_enabled admin].freeze
 
     class << self
