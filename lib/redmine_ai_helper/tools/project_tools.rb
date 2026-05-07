@@ -15,7 +15,7 @@ module RedmineAiHelper
       # definition.
       # @param dummy [String] Dummy property to satisfy the tool definition requirement.
       # @return [Array<Hash>] An array of hashes containing project information.
-      def list_projects(dummy: nil)
+      def list_projects(dummy: nil) # rubocop:disable Lint/UnusedMethodArgument
         projects = Project.all
         list = projects.select { |p| accessible_project? p }.map do |project|
           {

@@ -16,6 +16,7 @@ module RedmineAiHelper
       # @param subclass [Class] The subclass that is being inherited.
       # @return [void]
       def inherited(subclass)
+        super
         # For dynamic classes, delay registration until class name is properly set
         if subclass.name.nil?
           # Store the subclass to register later when the name is set
@@ -52,10 +53,6 @@ module RedmineAiHelper
       @langfuse = params[:langfuse]
       @llm_provider = RedmineAiHelper::LlmProvider.get_llm_provider
       @shared_messages = []
-    end
-
-    def langfuse
-      @langfuse
     end
 
     # Lazily returns the Think LLM provider, creating it on first access.

@@ -16,7 +16,7 @@ class FortuneTools < RedmineAiHelper::BaseTools
   #   => "DAI-KICHI/Great blessing"
   #
   # @note The date parameter is not used in the fortune drawing process.
-  def omikuji(date:)
+  def omikuji(date:) # rubocop:disable Lint/UnusedMethodArgument
     [ "DAI-KICHI/Great blessing", "CHU-KICHI/Middle blessing", "SHOU-KICHI/Small blessing", "SUE-KICHI/Future blessing", "KYOU/Curse", "DAI-KYOU/Great curse" ].sample
   end
 
@@ -33,7 +33,7 @@ class FortuneTools < RedmineAiHelper::BaseTools
   #   => "This month's fortune is excellent. Everything you do will go well."
   #
   # @note The birthday parameter is not used in the horoscope prediction process.
-  def horoscope(birthday:)
+  def horoscope(birthday:) # rubocop:disable Lint/UnusedMethodArgument
     fortune1 = "This month's fortune is excellent. Everything you do will go well."
     fortune2 = "This month's fortune is so-so. There are no particular problems."
     fortune3 = "This month's fortune is not very good. Caution is required."

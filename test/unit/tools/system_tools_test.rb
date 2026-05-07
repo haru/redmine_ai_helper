@@ -67,7 +67,7 @@ class SystemToolsTest < ActiveSupport::TestCase
     original_method = @provider.method(:get_system_info)
 
     # Define a modified version that simulates SCM error
-    @provider.define_singleton_method(:get_system_info) do |dummy: nil|
+    @provider.define_singleton_method(:get_system_info) do |dummy: nil| # rubocop:disable Lint/UnusedBlockArgument
       unless User.current.admin?
         raise "Permission denied. Only administrators can access system information."
       end
@@ -113,7 +113,7 @@ class SystemToolsTest < ActiveSupport::TestCase
     original_method = @provider.method(:get_system_info)
 
     # Define a modified version that simulates nil version
-    @provider.define_singleton_method(:get_system_info) do |dummy: nil|
+    @provider.define_singleton_method(:get_system_info) do |dummy: nil| # rubocop:disable Lint/UnusedBlockArgument
       unless User.current.admin?
         raise "Permission denied. Only administrators can access system information."
       end

@@ -148,7 +148,7 @@ module RedmineAiHelper
           ::Logger::WARN
       when "error"
           ::Logger::ERROR
-      else
+      else # rubocop:disable Lint/DuplicateBranch
           ::Logger::INFO
       end
       @logger.level = level

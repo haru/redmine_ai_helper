@@ -25,7 +25,7 @@ module RedmineAiHelper
       # @param options [Hash] Options for report generation
       # @param stream_proc [Proc] Optional callback proc for streaming content
       # @return [String] The project health report
-      def project_health_report(project:, options: {}, stream_proc: nil)
+      def project_health_report(project:, options: {}, stream_proc: nil) # rubocop:disable Lint/UnusedMethodArgument
         ai_helper_logger.debug "Generating project health report for project: #{project.name}"
 
         prompt = load_prompt("project_agent/health_report")

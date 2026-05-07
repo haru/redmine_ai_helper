@@ -301,9 +301,9 @@ module RedmineAiHelper
         # @param type [Symbol] :ordered or :unordered
         # @param left_margin [Integer] The base left margin
         # @param text_align [String] Text alignment ('L' or 'R')
-        def add_simple_list_item_to_pdf(pdf, text, indent_level, type, left_margin, text_align = "L")
+        def add_simple_list_item_to_pdf(pdf, text, indent_level, _type, left_margin, text_align = "L")
           indent = left_margin + (indent_level * 4)
-          bullet = type == :ordered ? "• " : "• "
+          bullet = "• "
 
           pdf.set_x(indent)
           pdf.SetFontStyle("", 10)

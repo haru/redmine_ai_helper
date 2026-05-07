@@ -509,7 +509,7 @@ module BaseAgentTestModele
       "テストエージェントのバックストーリー"
     end
 
-    def generate_response(prompt:, **_options)
+    def generate_response(_prompt:, **_options)
       "テストエージェントの応答"
     end
   end
@@ -519,7 +519,7 @@ module BaseAgentTestModele
       "テストエージェント2のバックストーリー"
     end
 
-    def generate_response(prompt:, **_options)
+    def generate_response(_prompt:, **_options)
       "テストエージェントの応答"
     end
   end
@@ -533,7 +533,7 @@ module BaseAgentTestModele
       false
     end
 
-    def generate_response(prompt:, **_options)
+    def generate_response(_prompt:, **_options)
       "無効化されたエージェントの応答"
     end
   end

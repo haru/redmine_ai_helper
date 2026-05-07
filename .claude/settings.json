@@ -16,7 +16,9 @@
       "Bash(rubocop app/ lib/ test/)",
       "Bash(rubocop app/controllers/ai_helper_controller.rb)",
       "Bash(rubocop --debug app/controllers/ai_helper_controller.rb)",
-      "Bash(rubocop -A --except Rails/ActionControllerTestCase)"
+      "Bash(rubocop -A --except Rails/ActionControllerTestCase)",
+      "Bash(rubocop plugins/redmine_ai_helper)",
+      "Bash(rubocop -A --except Rails/ActionControllerTestCase plugins/redmine_ai_helper)"
     ],
     "additionalDirectories": [
       "/usr/local/redmine/plugins/redmine_ai_helper/.claude/skills"

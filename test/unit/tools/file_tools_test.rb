@@ -31,7 +31,7 @@ class FileToolsTest < ActiveSupport::TestCase
       end
 
       teardown do
-        File.delete(@file_path) if File.exist?(@file_path)
+        FileUtils.rm_f(@file_path)
       end
 
       should "analyze files attached to an issue" do
@@ -113,7 +113,7 @@ class FileToolsTest < ActiveSupport::TestCase
       end
 
       teardown do
-        File.delete(@file_path) if File.exist?(@file_path)
+        FileUtils.rm_f(@file_path)
       end
 
       should "analyze files attached to a wiki page" do
@@ -133,7 +133,7 @@ class FileToolsTest < ActiveSupport::TestCase
       end
 
       teardown do
-        File.delete(@file_path) if File.exist?(@file_path)
+        FileUtils.rm_f(@file_path)
       end
 
       should "analyze files attached to a message" do

@@ -155,7 +155,7 @@ class AiHelperCustomCommand < ApplicationRecord
     user.admin? || self.user_id == user.id
   end
 
-  def visible_to?(user, project: nil)
+  def visible_to?(user, project: nil) # rubocop:disable Lint/UnusedMethodArgument
     return false unless user
 
     case command_type&.to_sym

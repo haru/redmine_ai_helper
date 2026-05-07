@@ -486,7 +486,7 @@ module RedmineAiHelper
           20 # Normal
         when 1
           10 # Low
-        else
+        else # rubocop:disable Lint/DuplicateBranch
           20 # Default to Normal
         end
       end

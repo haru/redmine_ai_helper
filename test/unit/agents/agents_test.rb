@@ -1,8 +1,6 @@
 require File.expand_path("../../../test_helper", __FILE__)
 
 class AgentsTest < ActiveSupport::TestCase
-  setup do
-  end
   context "BoardAgent" do
     setup do
       @agent = RedmineAiHelper::Agents::BoardAgent.new
