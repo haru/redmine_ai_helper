@@ -19,7 +19,7 @@ module RedmineAiHelper
         # @param health_report [String] The health report content
         # @param options [Hash] Optional parameters
         # @return [String] PDF content as binary string
-        def project_health_to_pdf(project, health_report, options = {})
+        def project_health_to_pdf(project, health_report, _options = {})
           pdf = Redmine::Export::PDF::ITCPDF.new(current_language)
 
           # Check if current language is RTL

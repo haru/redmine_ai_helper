@@ -187,7 +187,7 @@ module RedmineAiHelper
             event_url: event.event_url
           }
         end
-        json = { "activities": list }
+        json = { activities: list }
         ToolResponse.create_success json # TODO: Should just return json?
       end
 
@@ -410,7 +410,7 @@ module RedmineAiHelper
         }
       end
 
-      def calculate_commit_timeline(changesets, start_date = nil, end_date = nil)
+      def calculate_commit_timeline(changesets, _start_date = nil, _end_date = nil)
         by_date = changesets
           .group_by { |cs| cs.committed_on.to_date }
           .transform_values(&:count)

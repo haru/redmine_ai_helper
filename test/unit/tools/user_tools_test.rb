@@ -49,7 +49,7 @@ class UserToolsTest < ActiveSupport::TestCase
       should "success with sort" do
         result = @provider.list_users(query: { sort: { field_name: "created_on", order: "asc" } })
 
-        assert_equal @users.order(:created_on).map(&:id), result[:users].map { |u| u[:id] }
+        assert_equal(@users.order(:created_on).map(&:id), result[:users].map { |u| u[:id] })
       end
     end
 

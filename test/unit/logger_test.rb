@@ -24,7 +24,7 @@ class LoggerTest < ActiveSupport::TestCase
     # Clear any stubs - use mocha's built-in teardown
     begin
       Mocha::Mockery.instance.teardown
-    rescue => e
+    rescue
       # Ignore teardown errors
     end
   end

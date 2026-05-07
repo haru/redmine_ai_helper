@@ -75,7 +75,7 @@ class FileToolsTest < ActiveSupport::TestCase
       should "return general description without question" do
         @provider.stubs(:supported_attachment_paths).with(@issue).returns([ @file_path ])
 
-        @mock_chat.expects(:ask).with do |prompt, **kwargs|
+        @mock_chat.expects(:ask).with do |_prompt, **kwargs|
           kwargs[:with] == [ @file_path ]
         end.returns(@mock_response)
 
@@ -190,7 +190,7 @@ class FileToolsTest < ActiveSupport::TestCase
     should "analyze file from URL" do
       url = "https://example.com/document.pdf"
 
-      @mock_chat.expects(:ask).with do |prompt, **kwargs|
+      @mock_chat.expects(:ask).with do |_prompt, **kwargs|
         kwargs[:with] == [ url ]
       end.returns(@mock_response)
 

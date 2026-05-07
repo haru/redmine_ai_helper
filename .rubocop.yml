@@ -19,7 +19,7 @@ Gemspec:
 Layout:
   Enabled: false
 Lint:
-  Enabled: false
+  Enabled: true
 Metrics:
   Enabled: false
 Naming:

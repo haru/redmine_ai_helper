@@ -19,5 +19,5 @@ module RedmineAiHelper
 end
 
 unless User.included_modules.include?(RedmineAiHelper::UserPatch)
-  User.send(:include, RedmineAiHelper::UserPatch)
+  User.include RedmineAiHelper::UserPatch
 end

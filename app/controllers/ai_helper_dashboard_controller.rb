@@ -251,7 +251,6 @@ class AiHelperDashboardController < ApplicationController
     render_404
   end
 
-  private
 
   def streaming_request?
     request.post? || request.headers["Accept"].to_s.include?("text/event-stream")

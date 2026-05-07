@@ -133,7 +133,7 @@ class IssueUpdateToolsTest < ActiveSupport::TestCase
           response = @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "issue with relation", relations: [ { issue_id: target.id, relation_type: "relates" } ])
           created_issue = Issue.find(response[:id])
 
-          assert created_issue.relations.any? { |r| r.issue_from_id == created_issue.id && r.issue_to_id == target.id || r.issue_from_id == target.id && r.issue_to_id == created_issue.id }
+          assert(created_issue.relations.any? { |r| (r.issue_from_id == created_issue.id && r.issue_to_id == target.id) || (r.issue_from_id == target.id && r.issue_to_id == created_issue.id) })
         end
 
         should "raise error when relation_type is invalid" do
@@ -283,7 +283,7 @@ class IssueUpdateToolsTest < ActiveSupport::TestCase
           @provider.update_issue(issue_id: issue.id, relations_to_add: [ { issue_id: target.id, relation_type: "relates" } ])
           issue.reload
 
-          assert issue.relations.any? { |r| r.issue_from_id == target.id || r.issue_to_id == target.id }
+          assert(issue.relations.any? { |r| r.issue_from_id == target.id || r.issue_to_id == target.id })
         end
 
         should "be idempotent when adding a relation that already exists" do
@@ -318,7 +318,7 @@ class IssueUpdateToolsTest < ActiveSupport::TestCase
           @provider.update_issue(issue_id: issue.id, relations_to_remove: [ { issue_id: target.id } ])
           issue.reload
 
-          assert issue.relations.none? { |r| r.issue_from_id == target.id || r.issue_to_id == target.id }
+          assert(issue.relations.none? { |r| r.issue_from_id == target.id || r.issue_to_id == target.id })
         end
 
         should "be idempotent when removing a relation that does not exist" do

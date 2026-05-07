@@ -16,7 +16,7 @@ module RedmineAiHelper
 
       # Generates a system prompt for the Leader Agent.
       # @param conversation [Object] The conversation object (optional). TODO: Not being used
-      def prompt(conversation = nil)
+      def prompt(_conversation = nil)
         return @prompt_text if @prompt_text
         current_user_info = {
           id: User.current.id,

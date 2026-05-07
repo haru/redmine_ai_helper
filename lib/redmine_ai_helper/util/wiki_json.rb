@@ -8,7 +8,7 @@ module RedmineAiHelper
       # @param page [WikiPage] The wiki page to be represented in JSON.
       # @return [Hash] A hash representing the wiki page in JSON format.
       def generate_wiki_data(page)
-        json = {
+        {
           id: page.id,
           title: page.title,
           text: page.text,

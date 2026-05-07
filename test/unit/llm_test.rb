@@ -244,7 +244,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
   private
 
   def chat_answer_generator(message)
-    { "choices": [ { "message": { "content": message } } ] }
+    { choices: [ { message: { content: message } } ] }
   end
 
   context "wiki summary" do

@@ -209,7 +209,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
     end
 
     should "support streaming with stream_proc" do
-      issue = Issue.create!(
+      Issue.create!(
         project: @project,
         tracker_id: 1,
         subject: "Test issue",

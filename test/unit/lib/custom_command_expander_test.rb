@@ -115,7 +115,7 @@ class CustomCommandExpanderTest < ActiveSupport::TestCase
 
     should "respect command priority" do
       # Global command
-      global = AiHelperCustomCommand.create!(
+      AiHelperCustomCommand.create!(
         name: "test",
         prompt: "Global: {input}",
         command_type: :global,
@@ -123,7 +123,7 @@ class CustomCommandExpanderTest < ActiveSupport::TestCase
       )
 
       # Project command (higher priority)
-      project_cmd = AiHelperCustomCommand.create!(
+      AiHelperCustomCommand.create!(
         name: "test",
         prompt: "Project: {input}",
         command_type: :project,

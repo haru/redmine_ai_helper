@@ -142,26 +142,26 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
         markdown = "- Item 1\n- Item 2\n* Item 3\n+ Item 4"
         result = send(:convert_markdown_to_plain_text, markdown)
 
-        assert_match /• Item 1/, result
-        assert_match /• Item 2/, result
-        assert_match /• Item 3/, result
-        assert_match /• Item 4/, result
+        assert_match(/• Item 1/, result)
+        assert_match(/• Item 2/, result)
+        assert_match(/• Item 3/, result)
+        assert_match(/• Item 4/, result)
       end
 
       should "convert numbered lists" do
         markdown = "1. First item\n2. Second item"
         result = send(:convert_markdown_to_plain_text, markdown)
 
-        assert_match /First item/, result
-        assert_match /Second item/, result
+        assert_match(/First item/, result)
+        assert_match(/Second item/, result)
       end
 
       should "handle code blocks" do
         markdown = "```ruby\ndef test\nend\n```\n\nSome `inline code` here"
         result = send(:convert_markdown_to_plain_text, markdown)
 
-        assert_match /\[Code Block\]/, result
-        assert_match /inline code/, result
+        assert_match(/\[Code Block\]/, result)
+        assert_match(/inline code/, result)
       end
 
       should "handle links" do
@@ -212,13 +212,13 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
 
         result = send(:convert_markdown_to_plain_text, markdown)
 
-        assert_match /Project Health Report/, result
-        assert_match /Summary: This project is doing well/, result
-        assert_match /• Critical: 2 issues/, result
-        assert_match /• Major: 5 issues/, result
-        assert_match /Code Quality/, result
-        assert_match /\[Code Block\]/, result
-        assert_match /documentation/, result
+        assert_match(/Project Health Report/, result)
+        assert_match(/Summary: This project is doing well/, result)
+        assert_match(/• Critical: 2 issues/, result)
+        assert_match(/• Major: 5 issues/, result)
+        assert_match(/Code Quality/, result)
+        assert_match(/\[Code Block\]/, result)
+        assert_match(/documentation/, result)
       end
     end
 
@@ -242,9 +242,9 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
 
         result = send(:process_markdown_tables_for_pdf, @pdf, markdown_with_table, @left_margin)
 
-        assert_no_match /\|/, result
-        assert_match /Header/, result
-        assert_match /Some text after table/, result
+        assert_no_match(/\|/, result)
+        assert_match(/Header/, result)
+        assert_match(/Some text after table/, result)
       end
 
       should "handle content with no tables" do
@@ -274,7 +274,7 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
 
         result = send(:process_markdown_tables_for_pdf, @pdf, markdown_with_tables, @left_margin)
 
-        assert_no_match /\|/, result
+        assert_no_match(/\|/, result)
         # The method should remove tables but preserve non-table text
         assert result.include?("Before text") || result.include?("After text") || result.include?("Some text")
       end
@@ -292,9 +292,9 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
 
         result = send(:clean_remaining_table_lines, content)
 
-        assert_no_match /\|/, result
-        assert_match /Some text/, result
-        assert_match /More text/, result
+        assert_no_match(/\|/, result)
+        assert_match(/Some text/, result)
+        assert_match(/More text/, result)
       end
 
       should "handle content without table lines" do
@@ -312,9 +312,9 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
 
         result = send(:html_to_plain_text, html)
 
-        assert_match /Header/, result
-        assert_match /Some bold text/, result
-        assert_no_match /</, result
+        assert_match(/Header/, result)
+        assert_match(/Some bold text/, result)
+        assert_no_match(/</, result)
       end
 
       should "handle empty HTML" do

@@ -718,7 +718,7 @@ class AiHelperController < ApplicationController
           llm = RedmineAiHelper::Llm.new
 
           # Generate health report without streaming
-          health_report_text = llm.project_health_report(
+          llm.project_health_report(
             project: @project,
             stream_proc: nil
           )

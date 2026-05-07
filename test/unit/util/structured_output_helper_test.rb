@@ -88,7 +88,7 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
       bad_response = "This is not valid JSON at all"
       fixed_response = '{"goal": "Fixed goal", "required_flag": true}'
 
-      mock_chat_method = lambda do |messages|
+      mock_chat_method = lambda do |_messages|
         fixed_response
       end
 
@@ -117,7 +117,7 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
       bad_response = "Not JSON"
       also_bad_response = "Still not JSON"
 
-      mock_chat_method = lambda do |messages|
+      mock_chat_method = lambda do |_messages|
         also_bad_response
       end
 
@@ -168,8 +168,6 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
 
   context "parse_json_from_response" do
     should "extract JSON from response with surrounding text" do
-      response = "Here is the output:\n{\"goal\": \"Test\"}\nDone."
-
       # Since parse_json_from_response is private, test through parse
       result = Util::StructuredOutputHelper.parse(
         response: "{\"goal\": \"Direct\", \"required_flag\": true}",

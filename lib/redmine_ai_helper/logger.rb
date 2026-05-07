@@ -91,7 +91,7 @@ module RedmineAiHelper
       log_level = logger[:level] if logger[:level]
       log_file_path = Rails.root.join("log", logger[:file]) if logger[:file]
       @logger = ::Logger.new(log_file_path, "daily")
-      @logger.formatter = proc do |severity, datetime, progname, msg|
+      @logger.formatter = proc do |severity, datetime, _progname, msg|
         "[#{datetime}] #{severity} -- #{msg}\n"
       end
       set_log_level(log_level)

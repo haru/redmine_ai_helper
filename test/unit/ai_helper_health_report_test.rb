@@ -127,7 +127,7 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
         health_report: "Report for project 1"
       )
 
-      report2 = AiHelperHealthReport.create!(
+      AiHelperHealthReport.create!(
         project_id: project2.id,
         user_id: @user.id,
         health_report: "Report for project 2"
@@ -149,7 +149,7 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
         health_report: "Report by user 1"
       )
 
-      report2 = AiHelperHealthReport.create!(
+      AiHelperHealthReport.create!(
         project_id: @project.id,
         user_id: user2.id,
         health_report: "Report by user 2"

@@ -46,7 +46,7 @@ module RedmineAiHelper
         steps = generate_steps(goal, messages)
         ai_helper_logger.debug "steps: #{steps}"
 
-        if steps["steps"].empty? || steps["steps"].length == 1 && steps["steps"][0]["agent"] == "leader"
+        if steps["steps"].empty? || (steps["steps"].length == 1 && steps["steps"][0]["agent"] == "leader")
           return chat(messages, option, callback)
         end
 
