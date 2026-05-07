@@ -33,6 +33,7 @@ class RedmineAiHelper::LlmClient::OpenAiCompatibleProviderTest < ActiveSupport::
     should "memoize the context" do
       context1 = @provider.context
       context2 = @provider.context
+
       assert_same context1, context2
     end
 
@@ -72,6 +73,7 @@ class RedmineAiHelper::LlmClient::OpenAiCompatibleProviderTest < ActiveSupport::
       @provider.expects(:build_context).returns(mock_context)
 
       chat = @provider.create_chat(instructions: "Test prompt")
+
       assert_equal mock_chat, chat
     end
 
@@ -108,6 +110,7 @@ class RedmineAiHelper::LlmClient::OpenAiCompatibleProviderTest < ActiveSupport::
 
     should "set openai_use_system_role to true in context config" do
       context = @provider.context
+
       assert_equal true, context.config.openai_use_system_role,
         "openai_use_system_role should be true for OpenAI-compatible providers to avoid sending 'developer' role"
     end

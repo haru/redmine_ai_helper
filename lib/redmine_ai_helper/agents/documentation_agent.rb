@@ -75,7 +75,7 @@ module RedmineAiHelper
           {
             role: "user",
             content: formatted_prompt
-          },
+          }
         ]
 
         response = chat(messages)

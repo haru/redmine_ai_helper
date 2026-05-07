@@ -16,14 +16,16 @@ class AiHelperSummaryCacheTest < ActiveSupport::TestCase
         object_id: @issue.id,
         content: @test_content
       )
-      
+
       found_cache = AiHelperSummaryCache.issue_cache(issue_id: @issue.id)
+
       assert_equal cache.id, found_cache.id
       assert_equal @test_content, found_cache.content
     end
 
     should "return nil when no issue cache exists" do
       found_cache = AiHelperSummaryCache.issue_cache(issue_id: 999999)
+
       assert_nil found_cache
     end
 
@@ -32,7 +34,7 @@ class AiHelperSummaryCacheTest < ActiveSupport::TestCase
         issue_id: @issue.id,
         content: @test_content
       )
-      
+
       assert_not_nil cache
       assert_equal "Issue", cache.object_class
       assert_equal @issue.id, cache.object_id
@@ -45,12 +47,12 @@ class AiHelperSummaryCacheTest < ActiveSupport::TestCase
         object_id: @issue.id,
         content: "Old content"
       )
-      
+
       updated_cache = AiHelperSummaryCache.update_issue_cache(
         issue_id: @issue.id,
         content: @test_content
       )
-      
+
       assert_equal existing_cache.id, updated_cache.id
       assert_equal @test_content, updated_cache.content
     end
@@ -63,14 +65,16 @@ class AiHelperSummaryCacheTest < ActiveSupport::TestCase
         object_id: @wiki_page.id,
         content: @test_content
       )
-      
+
       found_cache = AiHelperSummaryCache.wiki_cache(wiki_page_id: @wiki_page.id)
+
       assert_equal cache.id, found_cache.id
       assert_equal @test_content, found_cache.content
     end
 
     should "return nil when no wiki cache exists" do
       found_cache = AiHelperSummaryCache.wiki_cache(wiki_page_id: 999999)
+
       assert_nil found_cache
     end
 
@@ -79,7 +83,7 @@ class AiHelperSummaryCacheTest < ActiveSupport::TestCase
         wiki_page_id: @wiki_page.id,
         content: @test_content
       )
-      
+
       assert_not_nil cache
       assert_equal "WikiPage", cache.object_class
       assert_equal @wiki_page.id, cache.object_id
@@ -92,12 +96,12 @@ class AiHelperSummaryCacheTest < ActiveSupport::TestCase
         object_id: @wiki_page.id,
         content: "Old wiki content"
       )
-      
+
       updated_cache = AiHelperSummaryCache.update_wiki_cache(
         wiki_page_id: @wiki_page.id,
         content: @test_content
       )
-      
+
       assert_equal existing_cache.id, updated_cache.id
       assert_equal @test_content, updated_cache.content
     end
@@ -107,12 +111,12 @@ class AiHelperSummaryCacheTest < ActiveSupport::TestCase
         issue_id: @issue.id,
         content: "Issue summary"
       )
-      
+
       wiki_cache = AiHelperSummaryCache.update_wiki_cache(
         wiki_page_id: @wiki_page.id,
         content: "Wiki summary"
       )
-      
+
       assert_not_equal issue_cache.id, wiki_cache.id
       assert_equal "Issue", issue_cache.object_class
       assert_equal "WikiPage", wiki_cache.object_class
@@ -122,18 +126,21 @@ class AiHelperSummaryCacheTest < ActiveSupport::TestCase
   context "Validations" do
     should "require object_class" do
       cache = AiHelperSummaryCache.new(object_id: 1, content: "test")
+
       assert_not cache.valid?
       assert_includes cache.errors[:object_class], "cannot be blank"
     end
 
     should "require object_id" do
       cache = AiHelperSummaryCache.new(object_class: "Issue", content: "test")
+
       assert_not cache.valid?
       assert_includes cache.errors[:object_id], "cannot be blank"
     end
 
     should "require content" do
       cache = AiHelperSummaryCache.new(object_class: "Issue", object_id: 1)
+
       assert_not cache.valid?
       assert_includes cache.errors[:content], "cannot be blank"
     end
@@ -144,13 +151,13 @@ class AiHelperSummaryCacheTest < ActiveSupport::TestCase
         object_id: @issue.id,
         content: "First summary"
       )
-      
+
       duplicate_cache = AiHelperSummaryCache.new(
         object_class: "Issue",
         object_id: @issue.id,
         content: "Second summary"
       )
-      
+
       assert_not duplicate_cache.valid?
       assert_includes duplicate_cache.errors[:object_id], "has already been taken"
     end
@@ -161,14 +168,14 @@ class AiHelperSummaryCacheTest < ActiveSupport::TestCase
         object_id: 1,
         content: "Issue summary"
       )
-      
+
       wiki_cache = AiHelperSummaryCache.new(
         object_class: "WikiPage",
         object_id: 1,
         content: "Wiki summary"
       )
-      
-      assert wiki_cache.valid?
+
+      assert_predicate wiki_cache, :valid?
     end
   end
 end

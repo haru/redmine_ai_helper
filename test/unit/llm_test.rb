@@ -22,6 +22,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       message = AiHelperMessage.new(content: "hello", role: "user")
       @conversation.messages << message
       response = @llm.chat(@conversation, nil, { controller_name: "issues", action_name: "show", content_id: 1 })
+
       assert_equal "assistant", response.role
     end
 
@@ -34,6 +35,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       should "deny access for non-visible issue" do
         @issue.stubs(:visible?).returns(false)
         summary = @llm.issue_summary(issue: @issue)
+
         assert_equal "Permission denied", summary
       end
     end
@@ -47,6 +49,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       should "deny access for non-visible issue" do
         @issue.stubs(:visible?).returns(false)
         reply = @llm.generate_issue_reply(issue: @issue, instructions: "test instructions")
+
         assert_equal "Permission denied", reply
       end
 
@@ -54,6 +57,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         @issue.stubs(:visible?).returns(true)
         RedmineAiHelper::Agents::IssueAgent.any_instance.stubs(:generate_issue_reply).returns("Generated reply")
         reply = @llm.generate_issue_reply(issue: @issue, instructions: "test instructions")
+
         assert_equal "Generated reply", reply
       end
     end
@@ -68,6 +72,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       should "deny access for non-visible issue" do
         @issue.stubs(:visible?).returns(false)
         sub_issues = @llm.generate_sub_issues(issue: @issue, instructions: "test instructions")
+
         assert_equal "Permission denied", sub_issues
       end
 
@@ -75,6 +80,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         @issue.stubs(:visible?).returns(true)
         RedmineAiHelper::Agents::IssueAgent.any_instance.stubs(:generate_sub_issues).returns([ Issue.new(subject: "Sub issue 1"), Issue.new(subject: "Sub issue 2") ])
         sub_issues = @llm.generate_sub_issues(issue: @issue, instructions: "test instructions")
+
         assert_equal 2, sub_issues.length
         assert_equal "Sub issue 1", sub_issues[0].subject
       end
@@ -90,12 +96,14 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
       should "generate summary for wiki page" do
         summary = @llm.wiki_summary(wiki_page: @wiki_page)
+
         assert_equal "test answer", summary
       end
 
       should "generate summary for visible wiki page" do
         @wiki_page.stubs(:visible?).returns(true)
         summary = @llm.wiki_summary(wiki_page: @wiki_page)
+
         assert_equal "test answer", summary
       end
     end
@@ -109,12 +117,14 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       should "deny access for non-visible issue" do
         @issue.stubs(:visible?).returns(false)
         result = @llm.find_similar_issues(issue: @issue)
+
         assert_equal [], result
       end
 
       should "return empty array when no similar issues found" do
         @issue.stubs(:visible?).returns(true)
         result = @llm.find_similar_issues(issue: @issue)
+
         assert_equal [], result
       end
     end
@@ -160,7 +170,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         )
 
         assert_equal 2, result.length
-        assert_equal 85.0, result.first[:similarity_score]
+        assert_in_delta(85.0, result.first[:similarity_score])
       end
 
       should "handle errors gracefully" do
@@ -185,6 +195,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         @conversation.messages << message
 
         result = @llm.chat(@conversation, nil, { controller_name: "issues", action_name: "show", content_id: 1 })
+
         assert_equal "assistant", result.role
         assert_not_nil result.content
       end
@@ -201,6 +212,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         @issue.expects(:visible?).returns(false)
 
         result = @llm.issue_summary(issue: @issue)
+
         assert_equal "Permission denied", result
       end
 
@@ -208,6 +220,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         @issue.expects(:visible?).returns(false)
 
         result = @llm.generate_issue_reply(issue: @issue, instructions: "test")
+
         assert_equal "Permission denied", result
       end
 
@@ -215,12 +228,14 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         @issue.expects(:visible?).returns(false)
 
         result = @llm.generate_sub_issues(issue: @issue, instructions: "test")
+
         assert_equal "Permission denied", result
       end
 
       should "generate wiki summary successfully" do
         RedmineAiHelper::Agents::WikiAgent.any_instance.stubs(:chat).returns("test answer")
         result = @llm.wiki_summary(wiki_page: @wiki_page)
+
         assert_equal "test answer", result
       end
     end
@@ -255,6 +270,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       RedmineAiHelper::Agents::WikiAgent.stubs(:new).returns(mock_agent)
 
       summary = @llm.wiki_summary(wiki_page: @wiki_page)
+
       assert_not_nil summary
       assert_equal "Test wiki summary content", summary
     end
@@ -264,6 +280,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       RedmineAiHelper::Agents::WikiAgent.stubs(:new).raises(StandardError.new("Test error"))
 
       summary = @llm.wiki_summary(wiki_page: @wiki_page)
+
       assert_equal "Test error", summary
     end
 
@@ -281,6 +298,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       RedmineAiHelper::Agents::WikiAgent.stubs(:new).returns(mock_agent)
 
       summary = @llm.wiki_summary(wiki_page: @wiki_page)
+
       assert_equal "Summary with langfuse", summary
     end
 
@@ -333,6 +351,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       RedmineAiHelper::Agents::IssueAgent.stubs(:new).returns(mock_agent)
 
       result = @llm.find_similar_issues(issue: @issue)
+
       assert_equal similar_issues_data, result
     end
 
@@ -360,6 +379,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       RedmineAiHelper::Agents::IssueAgent.stubs(:new).returns(mock_agent)
 
       result = @llm.find_similar_issues(issue: @issue)
+
       assert_equal similar_issues_data, result
     end
 
@@ -448,15 +468,18 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
       # Test with normal text
       result = agent.send(:parse_completion_response, "This is a suggestion.")
+
       assert_equal "This is a suggestion.", result
 
       # Test with markdown formatting
       result = agent.send(:parse_completion_response, "**Bold** and *italic* text.")
+
       assert_equal "Bold and italic text.", result
 
       # Test with too many sentences
       long_text = "First sentence. Second sentence. Third sentence. Fourth sentence."
       result = agent.send(:parse_completion_response, long_text)
+
       assert_equal "First sentence. Second sentence. Third sentence.", result
 
       # Test with empty/nil
@@ -579,7 +602,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       return "Permission denied" unless args[:issue].visible?
       [
         Issue.new(subject: "Sub issue 1", tracker_id: 1, project_id: 1),
-        Issue.new(subject: "Sub issue 2", tracker_id: 1, project_id: 1),
+        Issue.new(subject: "Sub issue 2", tracker_id: 1, project_id: 1)
       ]
     end
   end
@@ -841,6 +864,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       RedmineAiHelper::Agents::LeaderAgent.expects(:new).returns(leader_agent_mock)
 
       result = @llm.chat(@conversation, nil, { controller_name: "issues", action_name: "show", content_id: 1 })
+
       assert_equal "assistant", result.role
     end
 
@@ -866,6 +890,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       RedmineAiHelper::Agents::LeaderAgent.expects(:new).returns(leader_agent_mock)
 
       result = @llm.chat(@conversation, nil, { controller_name: "issues", action_name: "show", content_id: 1 })
+
       assert_equal "assistant", result.role
     end
 
@@ -895,6 +920,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         content_id: 1,
         project: @project
       })
+
       assert_equal "assistant", result.role
     end
 

@@ -69,15 +69,15 @@ module RedmineAiHelper
       def provider_for_profile(profile)
         case profile.llm_type
         when LLM_OPENAI
-          return RedmineAiHelper::LlmClient::OpenAiProvider.new(model_profile: profile)
+          RedmineAiHelper::LlmClient::OpenAiProvider.new(model_profile: profile)
         when LLM_OPENAI_COMPATIBLE
-          return RedmineAiHelper::LlmClient::OpenAiCompatibleProvider.new(model_profile: profile)
+          RedmineAiHelper::LlmClient::OpenAiCompatibleProvider.new(model_profile: profile)
         when LLM_GEMINI
-          return RedmineAiHelper::LlmClient::GeminiProvider.new(model_profile: profile)
+          RedmineAiHelper::LlmClient::GeminiProvider.new(model_profile: profile)
         when LLM_ANTHROPIC
-          return RedmineAiHelper::LlmClient::AnthropicProvider.new(model_profile: profile)
+          RedmineAiHelper::LlmClient::AnthropicProvider.new(model_profile: profile)
         when LLM_AZURE_OPENAI
-          return RedmineAiHelper::LlmClient::AzureOpenAiProvider.new(model_profile: profile)
+          RedmineAiHelper::LlmClient::AzureOpenAiProvider.new(model_profile: profile)
         else
           raise NotImplementedError, "LLM provider not found"
         end
@@ -91,7 +91,7 @@ module RedmineAiHelper
           [ "OpenAI Compatible(Experimental)", LLM_OPENAI_COMPATIBLE ],
           [ "Gemini(Experimental)", LLM_GEMINI ],
           [ "Anthropic", LLM_ANTHROPIC ],
-          [ "Azure OpenAI(Experimental)", LLM_AZURE_OPENAI ],
+          [ "Azure OpenAI(Experimental)", LLM_AZURE_OPENAI ]
         ]
       end
     end

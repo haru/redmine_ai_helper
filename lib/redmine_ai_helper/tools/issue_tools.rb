@@ -21,7 +21,6 @@ module RedmineAiHelper
         raise("Issue ID array is required.") if issue_ids.empty?
         issues = []
         Issue.where(id: issue_ids).each do |issue|
-
           # Check if the issue is visible to the current user
           next unless issue.visible?
 
@@ -143,7 +142,7 @@ module RedmineAiHelper
       # @return [Hash] A hash containing the validation result.
       def validate_new_issue(project_id:, tracker_id:, subject:, status_id:, priority_id: nil, category_id: nil, version_id: nil, assigned_to_id: nil, description: nil, start_date: nil, due_date: nil, done_ratio: nil, is_private: false, estimated_hours: nil, custom_fields: [])
         issue_update_provider = IssueUpdateTools.new
-        return issue_update_provider.create_new_issue(project_id: project_id, tracker_id: tracker_id, subject: subject, status_id: status_id, priority_id: priority_id, category_id: category_id, version_id: version_id, assigned_to_id: assigned_to_id, description: description, start_date: start_date, due_date: due_date, done_ratio: done_ratio, is_private: is_private, estimated_hours: estimated_hours, custom_fields: custom_fields, validate_only: true)
+        issue_update_provider.create_new_issue(project_id: project_id, tracker_id: tracker_id, subject: subject, status_id: status_id, priority_id: priority_id, category_id: category_id, version_id: version_id, assigned_to_id: assigned_to_id, description: description, start_date: start_date, due_date: due_date, done_ratio: done_ratio, is_private: is_private, estimated_hours: estimated_hours, custom_fields: custom_fields, validate_only: true)
       end
 
       define_function :validate_update_issue, description: "Validate the parameters for updating an issue. It can be used to check if the parameters are correct before updating an issue." do
@@ -189,7 +188,7 @@ module RedmineAiHelper
       # @return [Hash] A hash containing the validation result.
       def validate_update_issue(issue_id:, subject: nil, tracker_id: nil, status_id: nil, priority_id: nil, category_id: nil, version_id: nil, assigned_to_id: nil, description: nil, start_date: nil, due_date: nil, done_ratio: nil, is_private: false, estimated_hours: nil, custom_fields: [], comment_to_add: nil)
         issue_update_provider = IssueUpdateTools.new
-        return issue_update_provider.update_issue(issue_id: issue_id, subject: subject, tracker_id: tracker_id, status_id: status_id, priority_id: priority_id, category_id: category_id, version_id: version_id, assigned_to_id: assigned_to_id, description: description, start_date: start_date, due_date: due_date, done_ratio: done_ratio, is_private: is_private, estimated_hours: estimated_hours, custom_fields: custom_fields, comment_to_add: comment_to_add, validate_only: true)
+        issue_update_provider.update_issue(issue_id: issue_id, subject: subject, tracker_id: tracker_id, status_id: status_id, priority_id: priority_id, category_id: category_id, version_id: version_id, assigned_to_id: assigned_to_id, description: description, start_date: start_date, due_date: due_date, done_ratio: done_ratio, is_private: is_private, estimated_hours: estimated_hours, custom_fields: custom_fields, comment_to_add: comment_to_add, validate_only: true)
       end
     end
   end

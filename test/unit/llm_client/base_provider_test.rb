@@ -63,17 +63,17 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
 
       should "return model name from explicit profile, not from setting" do
         assert_equal "claude-3-7-sonnet-20250219", @provider_with_profile.model_name
-        refute_equal @setting.model_profile.llm_model, @provider_with_profile.model_name
+        assert_not_equal @setting.model_profile.llm_model, @provider_with_profile.model_name
       end
 
       should "return temperature from explicit profile, not from setting" do
-        assert_equal 0.5, @provider_with_profile.temperature
+        assert_in_delta(0.5, @provider_with_profile.temperature)
       end
 
       should "return max_tokens from explicit profile, not from setting" do
         assert_equal @explicit_profile.max_tokens, @provider_with_profile.max_tokens
         if @setting.model_profile && @setting.model_profile.max_tokens
-          refute_equal @setting.model_profile.max_tokens, @provider_with_profile.max_tokens
+          assert_not_equal @setting.model_profile.max_tokens, @provider_with_profile.max_tokens
         end
       end
     end
@@ -89,6 +89,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         @provider.expects(:build_context).returns(mock_context)
 
         chat = @provider.create_chat(instructions: "Test instructions")
+
         assert_equal mock_chat, chat
       end
 
@@ -170,6 +171,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         @setting.save!
 
         result = @provider.embed("test text")
+
         assert_equal [ 0.1, 0.2, 0.3 ], result
       end
 
@@ -185,6 +187,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         @setting.save!
 
         result = @provider.embed("test text")
+
         assert_equal [ 0.4, 0.5, 0.6 ], result
       end
     end
@@ -233,6 +236,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         # Register model with different provider
         other_model = RubyLLM::Model::Info.new(id: @test_model_id, provider: "anthropic", name: "Test Model")
         RubyLLM.models.instance_variable_get(:@models) << other_model
+
         assert_equal false, @concrete_provider.send(:model_in_registry?)
       end
 
@@ -240,6 +244,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
       should "model_in_registry? returns true when model ID and provider slug both match" do
         openai_model = RubyLLM::Model::Info.new(id: @test_model_id, provider: "openai", name: "Test Model")
         RubyLLM.models.instance_variable_get(:@models) << openai_model
+
         assert_equal true, @concrete_provider.send(:model_in_registry?)
       end
 
@@ -251,6 +256,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         RubyLLM::Providers::OpenAI.expects(:new).returns(mock_provider_instance)
 
         @concrete_provider.send(:fetch_and_register_model!)
+
         assert @concrete_provider.send(:model_in_registry?), "Model should be registered after fetch"
       end
 

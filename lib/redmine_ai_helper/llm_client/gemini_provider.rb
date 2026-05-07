@@ -6,7 +6,6 @@ module RedmineAiHelper
   module LlmClient
     # GeminiProvider configures RubyLLM for Google Gemini API access.
     class GeminiProvider < RedmineAiHelper::LlmClient::BaseProvider
-
       protected
 
       def ruby_llm_provider_class

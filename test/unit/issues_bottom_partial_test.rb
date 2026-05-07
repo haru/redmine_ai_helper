@@ -35,31 +35,37 @@ class IssuesBottomPartialTest < ActionView::TestCase
     context "scope toggle" do
       should "render scope toggle container" do
         html = render(partial: "ai_helper/issues/bottom", locals: {})
+
         assert_includes html, "ai-helper-similar-issues-scope"
       end
 
       should "render radio button for current project scope" do
         html = render(partial: "ai_helper/issues/bottom", locals: {})
+
         assert_match(/<input[^>]+type="radio"[^>]+name="ai_helper_scope"[^>]+value="current"/, html)
       end
 
       should "render radio button for with_subprojects scope" do
         html = render(partial: "ai_helper/issues/bottom", locals: {})
+
         assert_match(/<input[^>]+type="radio"[^>]+name="ai_helper_scope"[^>]+value="with_subprojects"/, html)
       end
 
       should "render radio button for all projects scope" do
         html = render(partial: "ai_helper/issues/bottom", locals: {})
+
         assert_match(/<input[^>]+type="radio"[^>]+name="ai_helper_scope"[^>]+value="all"/, html)
       end
 
       should "default to with_subprojects scope checked" do
         html = render(partial: "ai_helper/issues/bottom", locals: {})
+
         assert_match(/<input[^>]+type="radio"[^>]+name="ai_helper_scope"[^>]+value="with_subprojects"[^>]+checked/, html)
       end
 
       should "render scope labels in current locale" do
         html = render(partial: "ai_helper/issues/bottom", locals: {})
+
         assert_includes html, l(:ai_helper_scope_current_project)
         assert_includes html, l(:ai_helper_scope_with_subprojects)
         assert_includes html, l(:ai_helper_scope_all_projects)
@@ -69,11 +75,13 @@ class IssuesBottomPartialTest < ActionView::TestCase
     context "JavaScript" do
       should "include getSelectedScope function" do
         html = render(partial: "ai_helper/issues/bottom", locals: {})
+
         assert_includes html, "getSelectedScope"
       end
 
       should "pass scope parameter to similar issues URL" do
         html = render(partial: "ai_helper/issues/bottom", locals: {})
+
         assert_includes html, "scope"
         assert_includes html, "getSelectedScope()"
       end

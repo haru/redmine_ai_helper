@@ -59,7 +59,7 @@ module RedmineAiHelper
 
       # Load configuration file
       def load_config
-        config_file_path = Rails.root.join("config", "ai_helper", "config.json")
+        config_file_path = Rails.root.join("config/ai_helper/config.json")
 
         unless File.exist?(config_file_path)
           ai_helper_logger.warn "MCP config file not found: #{config_file_path}"

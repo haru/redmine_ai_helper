@@ -31,6 +31,7 @@ class WikiWriteToolsTest < ActiveSupport::TestCase
         parent_title: "CookBook_documentation"
       )
       page = WikiPage.find(result[:id])
+
       assert_not_nil page.parent
       assert_equal "CookBook_documentation", page.parent.title
     end
@@ -110,6 +111,7 @@ class WikiWriteToolsTest < ActiveSupport::TestCase
 
       assert_equal "Updated content", result[:text]
       page.content.reload
+
       assert_equal old_version + 1, page.content.version
       assert_equal User.current.id, result[:author][:id]
     end
@@ -117,6 +119,7 @@ class WikiWriteToolsTest < ActiveSupport::TestCase
     should "rename page only when new_title is given without content" do
       result = @provider.wiki_update_page(project_id: 1, title: "Another_page", new_title: "RenamedPage")
       page = WikiPage.find(result[:id])
+
       assert_equal "RenamedPage", page.title
     end
 
@@ -128,6 +131,7 @@ class WikiWriteToolsTest < ActiveSupport::TestCase
         new_title: "RenamedPage2"
       )
       page = WikiPage.find(result[:id])
+
       assert_equal "RenamedPage2", page.title
       assert_equal "New content", result[:text]
     end
@@ -141,6 +145,7 @@ class WikiWriteToolsTest < ActiveSupport::TestCase
         comment: "My edit comment"
       )
       page = wiki.find_page("Another_page")
+
       assert_equal "My edit comment", page.content.comments
     end
 

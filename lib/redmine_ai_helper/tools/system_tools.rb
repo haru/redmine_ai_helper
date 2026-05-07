@@ -35,7 +35,7 @@ module RedmineAiHelper
           }
         end
         json = { plugins: plugin_list }
-        return json
+        json
       end
 
       # Returns comprehensive system information.
@@ -88,7 +88,7 @@ module RedmineAiHelper
 
         # Redmine theme
         system_info[:redmine_settings] = {
-          theme: Setting.ui_theme.present? ? Setting.ui_theme : "Default"
+          theme: (Setting.ui_theme.presence || "Default")
         }
 
         # SCM information (only available SCMs)
@@ -114,7 +114,7 @@ module RedmineAiHelper
           system_info[:plugins][plugin.id.to_s] = plugin.version.to_s
         end
 
-        return system_info
+        system_info
       end
     end
   end

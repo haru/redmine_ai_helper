@@ -38,9 +38,7 @@ module RedmineAiHelper
 
     # Get all messages in the chat.
     # @return [Array] The messages in the chat.
-    def messages
-      @chat.messages
-    end
+    delegate :messages, to: :@chat
 
     # Set new instructions for the assistant.
     # @param value [String] The new instructions.

@@ -119,7 +119,7 @@ module RedmineAiHelper
         lang: I18n.t(:general_lang_name)
       )
 
-      return prompt_text
+      prompt_text
     end
 
     # List all tools as OpenAI-format hashes (used by LeaderAgent backstory etc.)

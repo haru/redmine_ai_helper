@@ -21,7 +21,7 @@ module RedmineAiHelper
           RedmineAiHelper::Tools::IssueTools,
           RedmineAiHelper::Tools::IssueUpdateTools,
           RedmineAiHelper::Tools::ProjectTools,
-          RedmineAiHelper::Tools::UserTools,
+          RedmineAiHelper::Tools::UserTools
         ]
       end
 

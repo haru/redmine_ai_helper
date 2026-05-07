@@ -24,7 +24,7 @@ class LlmWikiTest < ActiveSupport::TestCase
       wiki_page: @wiki_page
     )
 
-    assert result.is_a?(String)
+    assert_kind_of String, result
     assert_equal "test completion", result
   end
 
@@ -87,7 +87,7 @@ class LlmWikiTest < ActiveSupport::TestCase
       wiki_page: nil
     )
 
-    assert result.is_a?(String)
+    assert_kind_of String, result
   end
 
   test "generate_wiki_completion should handle section editing parameters" do

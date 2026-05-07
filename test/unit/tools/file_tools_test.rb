@@ -99,9 +99,9 @@ class FileToolsTest < ActiveSupport::TestCase
         result = @provider.analyze_content_files(content_type: "issue", content_id: @issue.id)
 
         assert_instance_of String, result
-        refute_includes result, @file_path,
+        assert_not_includes result, @file_path,
           "Return value must not contain disk path for security reasons"
-        refute_includes result, Dir.tmpdir,
+        assert_not_includes result, Dir.tmpdir,
           "Return value must not contain any directory path"
       end
     end
@@ -216,12 +216,14 @@ class FileToolsTest < ActiveSupport::TestCase
   context "tool_classes" do
     should "have analyze_content_files tool" do
       tool_names = RedmineAiHelper::Tools::FileTools.tool_classes.map(&:name)
+
       assert tool_names.any? { |name| name.include?("AnalyzeContentFiles") },
         "FileTools should have analyze_content_files tool"
     end
 
     should "have analyze_url_file tool" do
       tool_names = RedmineAiHelper::Tools::FileTools.tool_classes.map(&:name)
+
       assert tool_names.any? { |name| name.include?("AnalyzeUrlFile") },
         "FileTools should have analyze_url_file tool"
     end

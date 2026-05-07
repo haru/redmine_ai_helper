@@ -687,7 +687,6 @@ module RedmineAiHelper
         EOS
         content
       end
-
     end
   end
 end

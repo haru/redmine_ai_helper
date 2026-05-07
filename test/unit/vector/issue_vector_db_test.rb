@@ -20,6 +20,7 @@ class RedmineAiHelper::Vector::IssueVectorDbTest < ActiveSupport::TestCase
       json_data = @vector_db.data_to_json(@issue)
 
       payload = json_data[:payload]
+
       assert_equal @issue.id, payload[:issue_id]
       assert_equal @issue.project.name, payload[:project_name]
     end
@@ -56,7 +57,7 @@ class RedmineAiHelper::Vector::IssueVectorDbTest < ActiveSupport::TestCase
         content = json_data[:content]
 
         # Verify fallback to raw content (current behavior)
-        assert content.include?(@issue.subject), "Content should include the issue subject"
+        assert_includes content, @issue.subject, "Content should include the issue subject"
         # Verify it doesn't have the structured format
         assert_no_match(/^Summary:/, content)
         assert_no_match(/^Keywords:/, content)
@@ -92,11 +93,12 @@ class RedmineAiHelper::Vector::IssueVectorDbTest < ActiveSupport::TestCase
 
         # Extract the Description section from content
         description_match = content.match(/Description:\s*(.+)/m)
+
         assert description_match, "Content should have Description section"
 
         description_text = description_match[1].strip
         # Description should be truncated to 500 chars + "..."
-        assert description_text.length <= 503, "Description should be truncated to 500 characters plus ellipsis"
+        assert_operator description_text.length, :<=, 503, "Description should be truncated to 500 characters plus ellipsis"
         assert description_text.end_with?("..."), "Truncated description should end with ellipsis"
       end
     end

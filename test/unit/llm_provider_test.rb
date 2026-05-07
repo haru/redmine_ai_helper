@@ -13,8 +13,9 @@ class LlmProviderTest < ActiveSupport::TestCase
         [ "OpenAI Compatible(Experimental)", "OpenAICompatible" ],
         [ "Gemini(Experimental)", "Gemini" ],
         [ "Anthropic", "Anthropic" ],
-        [ "Azure OpenAI(Experimental)", "AzureOpenAi" ],
+        [ "Azure OpenAI(Experimental)", "AzureOpenAi" ]
       ]
+
       assert_equal expected_options, @llm_provider.option_for_select
     end
 
@@ -39,17 +40,20 @@ class LlmProviderTest < ActiveSupport::TestCase
 
       should "return nil when use_think_model is false" do
         @setting.update!(use_think_model: false, think_model_profile_id: nil)
+
         assert_nil @llm_provider.get_think_llm_provider
       end
 
       should "return nil when use_think_model is true but think_model_profile_id is nil" do
         @setting.update_columns(use_think_model: true, think_model_profile_id: nil)
+
         assert_nil @llm_provider.get_think_llm_provider
       end
 
       should "return correct provider type when fully configured" do
         @setting.update!(use_think_model: true, think_model_profile_id: @think_profile.id)
         provider = @llm_provider.get_think_llm_provider
+
         assert_not_nil provider
         assert_instance_of RedmineAiHelper::LlmClient::AnthropicProvider, provider
       end
@@ -64,13 +68,15 @@ class LlmProviderTest < ActiveSupport::TestCase
       should "return provider with think model's model_name, not regular model's" do
         @setting.update!(use_think_model: true, think_model_profile_id: @think_profile.id)
         provider = @llm_provider.get_think_llm_provider
+
         assert_equal @think_profile.llm_model, provider.model_name
-        refute_equal @setting.model_profile.llm_model, provider.model_name
+        assert_not_equal @setting.model_profile.llm_model, provider.model_name
       end
 
       should "return provider with think model's temperature" do
         @setting.update!(use_think_model: true, think_model_profile_id: @think_profile.id)
         provider = @llm_provider.get_think_llm_provider
+
         assert_equal @think_profile.temperature, provider.temperature
       end
     end
@@ -98,6 +104,7 @@ class LlmProviderTest < ActiveSupport::TestCase
         @setting.update_columns(use_vector_model_profile: false, vector_model_profile_id: nil)
         normal_provider = @llm_provider.get_llm_provider
         vector_provider = @llm_provider.get_vector_llm_provider
+
         assert_equal normal_provider.class, vector_provider.class
         assert_equal normal_provider.model_name, vector_provider.model_name
       end
@@ -105,6 +112,7 @@ class LlmProviderTest < ActiveSupport::TestCase
       should "return vector profile provider when use_vector_model_profile is true and profile exists" do
         @setting.update_columns(use_vector_model_profile: true, vector_model_profile_id: @vector_profile.id)
         provider = @llm_provider.get_vector_llm_provider
+
         assert_not_nil provider
         assert_instance_of RedmineAiHelper::LlmClient::OpenAiProvider, provider
         assert_equal @vector_profile.llm_model, provider.model_name
@@ -114,6 +122,7 @@ class LlmProviderTest < ActiveSupport::TestCase
         @setting.update_columns(use_vector_model_profile: true, vector_model_profile_id: nil)
         normal_provider = @llm_provider.get_llm_provider
         vector_provider = @llm_provider.get_vector_llm_provider
+
         assert_equal normal_provider.class, vector_provider.class
         assert_equal normal_provider.model_name, vector_provider.model_name
       end
@@ -140,6 +149,7 @@ class LlmProviderTest < ActiveSupport::TestCase
         @setting.model_profile.save!
 
         provider = @llm_provider.get_llm_provider
+
         assert_instance_of RedmineAiHelper::LlmClient::OpenAiProvider, provider
       end
 
@@ -147,6 +157,7 @@ class LlmProviderTest < ActiveSupport::TestCase
         @setting.model_profile.llm_type = "Gemini"
         @setting.model_profile.save!
         provider = @llm_provider.get_llm_provider
+
         assert_instance_of RedmineAiHelper::LlmClient::GeminiProvider, provider
       end
 
@@ -154,6 +165,7 @@ class LlmProviderTest < ActiveSupport::TestCase
         @setting.model_profile.llm_type = "Anthropic"
         @setting.model_profile.save!
         provider = @llm_provider.get_llm_provider
+
         assert_instance_of RedmineAiHelper::LlmClient::AnthropicProvider, provider
       end
 

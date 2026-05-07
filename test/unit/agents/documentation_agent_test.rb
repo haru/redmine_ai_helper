@@ -24,6 +24,7 @@ class DocumentationAgentTest < ActiveSupport::TestCase
     RedmineAiHelper::Util::StructuredOutputHelper.stubs(:parse).returns(mock_response)
 
     result = @agent.check_typos(text: "teh quick brown fox", context_type: "test")
+
     assert_equal mock_response, result
   end
 
@@ -38,6 +39,7 @@ class DocumentationAgentTest < ActiveSupport::TestCase
     RedmineAiHelper::Util::StructuredOutputHelper.stubs(:parse).returns([])
 
     result = @agent.check_typos(text: "test text", context_type: "test")
+
     assert_equal [], result
   end
 
@@ -46,6 +48,7 @@ class DocumentationAgentTest < ActiveSupport::TestCase
     RedmineAiHelper::Util::StructuredOutputHelper.stubs(:parse).returns([])
 
     result = @agent.check_typos(text: "", context_type: "test")
+
     assert_equal [], result
   end
 

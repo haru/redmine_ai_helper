@@ -27,6 +27,7 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
           index_name: "my_index",
           llm_provider: @mock_llm_provider
         )
+
         assert_equal "http://example.com", qdrant.url
         assert_equal "my_key", qdrant.api_key
         assert_equal "my_index", qdrant.index_name
@@ -44,6 +45,7 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         )
         mock_qdrant_client = mock("Qdrant::Client")
         ::Qdrant::Client.expects(:new).with(url: "http://localhost:6333", api_key: "test_key", logger: RedmineAiHelper::CustomLogger.instance).returns(mock_qdrant_client)
+
         assert_equal mock_qdrant_client, qdrant.client
       end
     end
@@ -52,6 +54,7 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
       should "delegate to llm_provider.embed" do
         @mock_llm_provider.expects(:embed).with("test text").returns([ 0.4, 0.5, 0.6 ])
         result = @qdrant.embed("test text")
+
         assert_equal [ 0.4, 0.5, 0.6 ], result
       end
     end
@@ -66,9 +69,9 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
           collection_name: "test_collection",
           points: [
             { id: "id1", vector: [ 0.1, 0.2 ], payload: { key: "val" } },
-            { id: "id2", vector: [ 0.3, 0.4 ], payload: { key: "val" } },
+            { id: "id2", vector: [ 0.3, 0.4 ], payload: { key: "val" } }
           ]
-        ).returns({"status" => "ok", "result" => {"operation_id" => 1, "status" => "acknowledged"}})
+        ).returns({ "status" => "ok", "result" => { "operation_id" => 1, "status" => "acknowledged" } })
 
         @qdrant.add_texts(texts: [ "text1", "text2" ], ids: [ "id1", "id2" ], payload: { key: "val" })
       end
@@ -80,9 +83,9 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         @mock_points.expects(:upsert).with(
           collection_name: "test_collection",
           points: [
-            { id: "id1", vector: [ 0.1, 0.2 ], payload: {} },
+            { id: "id1", vector: [ 0.1, 0.2 ], payload: {} }
           ]
-        ).returns({"status" => "ok", "result" => {"operation_id" => 1, "status" => "acknowledged"}})
+        ).returns({ "status" => "ok", "result" => { "operation_id" => 1, "status" => "acknowledged" } })
 
         @qdrant.add_texts(texts: [ "text1" ], ids: [ "id1" ])
       end
@@ -92,7 +95,7 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         @mock_client.stubs(:points).returns(@mock_points)
 
         @mock_points.expects(:upsert).returns(
-          {"status" => {"error" => "Wrong input: Vector dimension error"}, "time" => 0.0}
+          { "status" => { "error" => "Wrong input: Vector dimension error" }, "time" => 0.0 }
         )
 
         assert_raises(RuntimeError) do
@@ -119,6 +122,7 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         # Also need to stub Qdrant::Client.new to return nil
         ::Qdrant::Client.stubs(:new).returns(nil)
         results = @qdrant.ask_with_filter(query: "test", k: 5, filter: nil)
+
         assert_equal [], results
       end
 
@@ -126,7 +130,7 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         mock_response = {
           "result" => [
             { "payload" => { "id" => 1, "title" => "Issue 1" } },
-            { "payload" => { "id" => 2, "title" => "Issue 2" } },
+            { "payload" => { "id" => 2, "title" => "Issue 2" } }
           ]
         }
         @mock_client.stubs(:points).returns(@mock_points)
@@ -140,6 +144,7 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         ).returns(mock_response)
 
         results = @qdrant.ask_with_filter(query: "test", k: 2, filter: { foo: "bar" })
+
         assert_equal [ { "id" => 1, "title" => "Issue 1" }, { "id" => 2, "title" => "Issue 2" } ], results
       end
 
@@ -147,6 +152,7 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         @mock_client.stubs(:points).returns(@mock_points)
         @mock_points.stubs(:search).returns({ "result" => nil })
         results = @qdrant.ask_with_filter(query: "test", k: 1, filter: nil)
+
         assert_equal [], results
       end
 
@@ -154,6 +160,7 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         @mock_client.stubs(:points).returns(@mock_points)
         @mock_points.stubs(:search).returns({ "result" => [] })
         results = @qdrant.ask_with_filter(query: "test", k: 1, filter: nil)
+
         assert_equal [], results
       end
     end
@@ -163,7 +170,7 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         mock_response = {
           "result" => [
             { "payload" => { "issue_id" => 1 }, "score" => 0.95 },
-            { "payload" => { "issue_id" => 2 }, "score" => 0.85 },
+            { "payload" => { "issue_id" => 2 }, "score" => 0.85 }
           ]
         }
         @mock_client.stubs(:points).returns(@mock_points)
@@ -177,6 +184,7 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         ).returns(mock_response)
 
         results = @qdrant.similarity_search(query: "test query")
+
         assert_equal 2, results.length
         assert_equal({ "payload" => { "issue_id" => 1 }, "score" => 0.95 }, results[0])
         assert_equal({ "payload" => { "issue_id" => 2 }, "score" => 0.85 }, results[1])
@@ -186,6 +194,7 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         @mock_client.stubs(:points).returns(@mock_points)
         @mock_points.stubs(:search).returns({ "result" => [] })
         results = @qdrant.similarity_search(query: "test query")
+
         assert_equal [], results
       end
 
@@ -193,13 +202,14 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         @mock_client.stubs(:points).returns(@mock_points)
         @mock_points.stubs(:search).returns({ "result" => nil })
         results = @qdrant.similarity_search(query: "test query")
+
         assert_equal [], results
       end
 
       should "accept custom k parameter" do
         mock_response = {
           "result" => [
-            { "payload" => { "issue_id" => 1 }, "score" => 0.9 },
+            { "payload" => { "issue_id" => 1 }, "score" => 0.9 }
           ]
         }
         @mock_client.stubs(:points).returns(@mock_points)
@@ -213,18 +223,19 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         ).returns(mock_response)
 
         results = @qdrant.similarity_search(query: "test query", k: 10)
+
         assert_equal 1, results.length
       end
 
       should "pass filter parameter to Qdrant API" do
         filter = {
           must: [
-            { key: "project_id", match: { value: 1 } },
+            { key: "project_id", match: { value: 1 } }
           ]
         }
         mock_response = {
           "result" => [
-            { "payload" => { "issue_id" => 1, "project_id" => 1 }, "score" => 0.95 },
+            { "payload" => { "issue_id" => 1, "project_id" => 1 }, "score" => 0.95 }
           ]
         }
         @mock_client.stubs(:points).returns(@mock_points)
@@ -238,6 +249,7 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         ).returns(mock_response)
 
         results = @qdrant.similarity_search(query: "test query", filter: filter)
+
         assert_equal 1, results.length
         assert_equal({ "payload" => { "issue_id" => 1, "project_id" => 1 }, "score" => 0.95 }, results[0])
       end
@@ -245,7 +257,7 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
       should "pass nil filter when not specified" do
         mock_response = {
           "result" => [
-            { "payload" => { "issue_id" => 1 }, "score" => 0.9 },
+            { "payload" => { "issue_id" => 1 }, "score" => 0.9 }
           ]
         }
         @mock_client.stubs(:points).returns(@mock_points)
@@ -259,6 +271,7 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         ).returns(mock_response)
 
         results = @qdrant.similarity_search(query: "test query")
+
         assert_equal 1, results.length
       end
     end

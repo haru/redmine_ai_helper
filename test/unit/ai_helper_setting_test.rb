@@ -15,6 +15,7 @@ class AiHelperSettingTest < ActiveSupport::TestCase
       @setting.attachment_send_enabled = true
       @setting.save!
       @setting.reload
+
       assert_equal true, @setting.attachment_send_enabled
     end
   end
@@ -27,38 +28,44 @@ class AiHelperSettingTest < ActiveSupport::TestCase
     should "validate numericality when attachment_send_enabled is true" do
       @setting.attachment_send_enabled = true
       @setting.attachment_max_size_mb = 0
+
       assert_not @setting.valid?
-      assert @setting.errors[:attachment_max_size_mb].present?
+      assert_predicate @setting.errors[:attachment_max_size_mb], :present?
     end
 
     should "validate integer only when attachment_send_enabled is true" do
       @setting.attachment_send_enabled = true
       @setting.attachment_max_size_mb = 1.5
+
       assert_not @setting.valid?
-      assert @setting.errors[:attachment_max_size_mb].present?
+      assert_predicate @setting.errors[:attachment_max_size_mb], :present?
     end
 
     should "be valid with value >= 1 when attachment_send_enabled is true" do
       @setting.attachment_send_enabled = true
       @setting.attachment_max_size_mb = 1
-      assert @setting.valid?
+
+      assert_predicate @setting, :valid?
     end
 
     should "skip validation when attachment_send_enabled is false" do
       @setting.attachment_send_enabled = false
       @setting.attachment_max_size_mb = 0
-      assert @setting.valid?
+
+      assert_predicate @setting, :valid?
     end
   end
 
   context "class method attachment_send_enabled?" do
     should "return false when setting is disabled" do
       @setting.update!(attachment_send_enabled: false)
+
       assert_equal false, AiHelperSetting.attachment_send_enabled?
     end
 
     should "return true when setting is enabled" do
       @setting.update!(attachment_send_enabled: true)
+
       assert_equal true, AiHelperSetting.attachment_send_enabled?
     end
   end
@@ -66,6 +73,7 @@ class AiHelperSettingTest < ActiveSupport::TestCase
   context "class method attachment_max_size_mb" do
     should "return the configured value" do
       @setting.update!(attachment_send_enabled: true, attachment_max_size_mb: 5)
+
       assert_equal 5, AiHelperSetting.attachment_max_size_mb
     end
 
@@ -77,11 +85,13 @@ class AiHelperSettingTest < ActiveSupport::TestCase
   context "instance method attachment_send_enabled?" do
     should "return true when attachment_send_enabled is true" do
       @setting.attachment_send_enabled = true
-      assert @setting.attachment_send_enabled?
+
+      assert_predicate @setting, :attachment_send_enabled?
     end
 
     should "return false when attachment_send_enabled is false" do
       @setting.attachment_send_enabled = false
+
       assert_not @setting.attachment_send_enabled?
     end
   end
@@ -105,8 +115,9 @@ class AiHelperSettingTest < ActiveSupport::TestCase
       @setting.vector_search_uri = "http://localhost:6333"
       @setting.use_vector_model_profile = true
       @setting.vector_model_profile_id = nil
+
       assert_not @setting.valid?
-      assert @setting.errors[:vector_model_profile_id].present?
+      assert_predicate @setting.errors[:vector_model_profile_id], :present?
     end
 
     should "be valid when use_vector_model_profile is true, vector_search_enabled is true, and vector_model_profile_id is set" do
@@ -114,20 +125,23 @@ class AiHelperSettingTest < ActiveSupport::TestCase
       @setting.vector_search_uri = "http://localhost:6333"
       @setting.use_vector_model_profile = true
       @setting.vector_model_profile_id = @vector_profile.id
-      assert @setting.valid?
+
+      assert_predicate @setting, :valid?
     end
 
     should "be valid when use_vector_model_profile is false even without vector_model_profile_id" do
       @setting.use_vector_model_profile = false
       @setting.vector_model_profile_id = nil
-      assert @setting.valid?
+
+      assert_predicate @setting, :valid?
     end
 
     should "skip vector_model_profile_id validation when vector_search_enabled is false" do
       @setting.vector_search_enabled = false
       @setting.use_vector_model_profile = true
       @setting.vector_model_profile_id = nil
-      assert @setting.valid?
+
+      assert_predicate @setting, :valid?
     end
   end
 
@@ -151,6 +165,7 @@ class AiHelperSettingTest < ActiveSupport::TestCase
       @setting.use_vector_model_profile = false
       @setting.save!
       @setting.reload
+
       assert_nil @setting.vector_model_profile_id
     end
 
@@ -161,6 +176,7 @@ class AiHelperSettingTest < ActiveSupport::TestCase
       @setting.vector_model_profile_id = @vector_profile.id
       @setting.save!
       @setting.reload
+
       assert_equal @vector_profile.id, @setting.vector_model_profile_id
     end
 
@@ -174,6 +190,7 @@ class AiHelperSettingTest < ActiveSupport::TestCase
       @setting.vector_search_enabled = false
       @setting.save!
       @setting.reload
+
       assert_equal false, @setting.use_vector_model_profile
       assert_nil @setting.vector_model_profile_id
     end
@@ -190,6 +207,7 @@ class AiHelperSettingTest < ActiveSupport::TestCase
       @setting.mcp_server_enabled = true
       @setting.save!
       @setting.reload
+
       assert_equal true, @setting.mcp_server_enabled
     end
 
@@ -198,6 +216,7 @@ class AiHelperSettingTest < ActiveSupport::TestCase
       @setting.mcp_server_enabled = false
       @setting.save!
       @setting.reload
+
       assert_equal false, @setting.mcp_server_enabled
     end
   end
@@ -205,11 +224,13 @@ class AiHelperSettingTest < ActiveSupport::TestCase
   context "class method mcp_server_enabled?" do
     should "return false when mcp_server_enabled is false" do
       @setting.update!(mcp_server_enabled: false)
+
       assert_equal false, AiHelperSetting.mcp_server_enabled?
     end
 
     should "return true when mcp_server_enabled is true" do
       @setting.update!(mcp_server_enabled: true)
+
       assert_equal true, AiHelperSetting.mcp_server_enabled?
     end
   end

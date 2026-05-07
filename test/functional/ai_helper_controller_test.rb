@@ -27,6 +27,7 @@ class AiHelperControllerTest < ActionController::TestCase
     context "#chat_form" do
       should "render chat_form partial" do
         get :chat_form, params: { id: @project.id }
+
         assert_response :success
         assert_template partial: "ai_helper/chat/_chat_form"
       end
@@ -36,6 +37,7 @@ class AiHelperControllerTest < ActionController::TestCase
       should "render a free-input button with data-free-input attribute" do
         get :chat_form, params: { id: @project.id }
         html = @controller.render_to_string(partial: "ai_helper/chat/interactive_options")
+
         assert_match(/data-free-input="true"/, html)
       end
 
@@ -43,6 +45,7 @@ class AiHelperControllerTest < ActionController::TestCase
         get :chat_form, params: { id: @project.id }
         I18n.with_locale(:en) do
           html = @controller.render_to_string(partial: "ai_helper/chat/interactive_options")
+
           assert_match(/#{Regexp.escape(I18n.t('label_ai_helper_free_input_option', locale: :en))}/, html)
         end
       end
@@ -52,6 +55,7 @@ class AiHelperControllerTest < ActionController::TestCase
           get :chat_form, params: { id: @project.id }
           I18n.with_locale(:ja) do
             html = @controller.render_to_string(partial: "ai_helper/chat/interactive_options")
+
             assert_match(/#{Regexp.escape(I18n.t('label_ai_helper_free_input_option', locale: :ja))}/, html)
           end
         end
@@ -61,6 +65,7 @@ class AiHelperControllerTest < ActionController::TestCase
     context "#reload" do
       should "render chat partial" do
         get :reload, params: { id: @project.id }
+
         assert_response :success
         assert_template partial: "ai_helper/chat/_chat"
       end
@@ -69,6 +74,7 @@ class AiHelperControllerTest < ActionController::TestCase
     context "#chat" do
       should "create a message and render chat partial" do
         post :chat, params: { id: @project.id, ai_helper_message: { content: "Hello AI" } }
+
         assert_response :success
         assert_template partial: "ai_helper/chat/_chat"
         assert_not_nil assigns(:message)
@@ -78,6 +84,7 @@ class AiHelperControllerTest < ActionController::TestCase
       should "call cleanup_old_conversations when saving message" do
         AiHelperConversation.expects(:cleanup_old_conversations).once
         post :chat, params: { id: @project.id, ai_helper_message: { content: "Hello AI" } }
+
         assert_response :success
       end
     end
@@ -85,6 +92,7 @@ class AiHelperControllerTest < ActionController::TestCase
     context "#conversation (delete)" do
       should "delete conversation and return ok" do
         delete :conversation, params: { id: @project.id, conversation_id: @conversation.id }
+
         assert_response :success
         assert_equal "ok", JSON.parse(@response.body)["status"]
       end
@@ -93,6 +101,7 @@ class AiHelperControllerTest < ActionController::TestCase
     context "#conversation (get)" do
       should "render chat partial" do
         get :conversation, params: { id: @project.id, conversation_id: @conversation.id }
+
         assert_response :success
         assert_template partial: "ai_helper/chat/_chat"
       end
@@ -101,6 +110,7 @@ class AiHelperControllerTest < ActionController::TestCase
     context "#history" do
       should "render history partial and assign conversations" do
         get :history, params: { id: @project.id }
+
         assert_response :success
         assert_template partial: "ai_helper/chat/_history"
         assert_not_nil assigns(:conversations)
@@ -110,8 +120,10 @@ class AiHelperControllerTest < ActionController::TestCase
     context "#call_llm" do
       should "call LLM and respond successfully" do
         post :chat, params: { id: @project.id, ai_helper_message: { content: "Hello AI" } }
+
         assert_response :success
         post :call_llm, params: { id: @project.id, controller_name: "issues", action_name: "show", content_id: 1, additional_info: { key: "value" } }
+
         assert_response :success
       end
 
@@ -153,6 +165,7 @@ class AiHelperControllerTest < ActionController::TestCase
     context "#clear" do
       should "clear conversation and render chat partial" do
         post :clear, params: { id: @project.id }
+
         assert_response :success
         assert_template partial: "ai_helper/chat/_chat"
         assert_nil session[:ai_helper][:conversation_id]
@@ -167,6 +180,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
       should "render issue summary partial" do
         get :issue_summary, params: { id: @project.id, issue_id: @issue.id }
+
         assert_response :success
         assert_template partial: "ai_helper/issues/_summary"
       end
@@ -178,6 +192,7 @@ class AiHelperControllerTest < ActionController::TestCase
         AiHelperSummaryCache.stubs(:issue_cache).with(issue_id: @issue.id).returns(summary)
 
         get :issue_summary, params: { id: @project.id, issue_id: @issue.id, update: "true" }
+
         assert_response :success
         assert_template partial: "ai_helper/issues/_summary"
       end
@@ -185,6 +200,7 @@ class AiHelperControllerTest < ActionController::TestCase
       should "deny access for non-visible issue" do
         @issue.stubs(:visible?).returns(false)
         summary = @llm.issue_summary(issue: @issue)
+
         assert_equal "Permission denied", summary
       end
     end
@@ -204,6 +220,7 @@ class AiHelperControllerTest < ActionController::TestCase
         AiHelperSummaryCache.stubs(:update_issue_cache).with(issue_id: @issue.id, content: "Generated summary").returns(true)
 
         post :generate_issue_summary, params: { id: @issue.id }
+
         assert_response :success
       end
 
@@ -217,6 +234,7 @@ class AiHelperControllerTest < ActionController::TestCase
         AiHelperSummaryCache.stubs(:update_issue_cache).with(issue_id: @issue.id, content: "New summary").returns(true)
 
         post :generate_issue_summary, params: { id: @issue.id }
+
         assert_response :success
       end
     end
@@ -247,6 +265,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
       should "return Unsupported Media Type for non-JSON request" do
         post :generate_issue_reply, params: { id: @issue.id, instructions: "test instructions" }
+
         assert_response :unsupported_media_type
       end
     end
@@ -264,6 +283,7 @@ class AiHelperControllerTest < ActionController::TestCase
         json = { id: @issue.id, instructions: "test instructions" }
         @request.headers["Content-Type"] = "application/json"
         post :generate_sub_issues, params: json
+
         assert_response :success
         assert_template partial: "ai_helper/issues/subissues/_issues"
       end
@@ -281,12 +301,14 @@ class AiHelperControllerTest < ActionController::TestCase
 
       should "add sub-issues to the current issue" do
         post :add_sub_issues, params: { id: @issue.id, sub_issues: @sub_issue_params, tracker_id: 1 }
+
         assert_response :redirect
         assert_equal 1, Issue.where(parent_id: @issue.id).count
       end
 
       should "not add unchecked sub-issues" do
         post :add_sub_issues, params: { id: @issue.id, sub_issues: @sub_issue_params }
+
         assert_response :redirect
         assert_equal 1, Issue.where(parent_id: @issue.id).count
       end
@@ -303,6 +325,7 @@ class AiHelperControllerTest < ActionController::TestCase
         RedmineAiHelper::Llm.any_instance.stubs(:wiki_summary).returns("Test wiki summary")
 
         get :wiki_summary, params: { id: @wiki_page.id }
+
         assert_response :success
         assert_template partial: "ai_helper/wiki/_summary_content"
       end
@@ -315,6 +338,7 @@ class AiHelperControllerTest < ActionController::TestCase
         )
 
         get :wiki_summary, params: { id: @wiki_page.id }
+
         assert_response :success
       end
 
@@ -328,11 +352,13 @@ class AiHelperControllerTest < ActionController::TestCase
         )
 
         get :wiki_summary, params: { id: @wiki_page.id, update: "true" }
+
         assert_response :success
       end
 
       should "handle 404 for non-existent wiki page" do
         get :wiki_summary, params: { id: 999999 }
+
         assert_response :not_found
       end
     end
@@ -353,6 +379,7 @@ class AiHelperControllerTest < ActionController::TestCase
         AiHelperSummaryCache.stubs(:update_wiki_cache).with(wiki_page_id: @wiki_page.id, content: "Generated wiki summary").returns(true)
 
         post :generate_wiki_summary, params: { id: @wiki_page.id }
+
         assert_response :success
       end
 
@@ -366,11 +393,13 @@ class AiHelperControllerTest < ActionController::TestCase
         AiHelperSummaryCache.stubs(:update_wiki_cache).with(wiki_page_id: @wiki_page.id, content: "New wiki summary").returns(true)
 
         post :generate_wiki_summary, params: { id: @wiki_page.id }
+
         assert_response :success
       end
 
       should "handle wiki page not found" do
         get :generate_wiki_summary, params: { id: 999999 }
+
         assert_response :not_found
       end
     end
@@ -382,6 +411,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
       should "return unsupported media type for non-JSON request" do
         post :generate_issue_reply, params: { id: @issue.id, instructions: "test" }
+
         assert_response :unsupported_media_type
       end
     end
@@ -393,9 +423,9 @@ class AiHelperControllerTest < ActionController::TestCase
 
       should "return unsupported media type for non-JSON request" do
         post :generate_sub_issues, params: { id: @issue.id, instructions: "test" }
+
         assert_response :unsupported_media_type
       end
-
     end
 
     context "#add_sub_issues error handling" do
@@ -415,6 +445,7 @@ class AiHelperControllerTest < ActionController::TestCase
         end)
 
         post :add_sub_issues, params: { id: @issue.id, sub_issues: @sub_issue_params, tracker_id: 1 }
+
         assert_response :redirect
         assert_not_nil flash[:error]
       end
@@ -433,8 +464,10 @@ class AiHelperControllerTest < ActionController::TestCase
           "1" => { subject: "Sub Issue", description: "Desc", tracker_id: 1, check: true, assigned_to_id: @assignable_user.id }
         }
         post :add_sub_issues, params: { id: @issue.id, sub_issues: sub_issue_params, tracker_id: 1 }
+
         assert_response :redirect
         created_issue = Issue.where(parent_id: @issue.id).first
+
         assert_not_nil created_issue
         assert_equal @assignable_user.id, created_issue.assigned_to_id
       end
@@ -444,8 +477,10 @@ class AiHelperControllerTest < ActionController::TestCase
           "1" => { subject: "Sub Issue", description: "Desc", tracker_id: 1, check: true, assigned_to_id: "" }
         }
         post :add_sub_issues, params: { id: @issue.id, sub_issues: sub_issue_params, tracker_id: 1 }
+
         assert_response :redirect
         created_issue = Issue.where(parent_id: @issue.id).first
+
         assert_not_nil created_issue
         assert_nil created_issue.assigned_to_id
       end
@@ -455,6 +490,7 @@ class AiHelperControllerTest < ActionController::TestCase
           "1" => { subject: "Sub Issue", description: "Desc", tracker_id: 1, check: true, assigned_to_id: 99999 }
         }
         post :add_sub_issues, params: { id: @issue.id, sub_issues: sub_issue_params, tracker_id: 1 }
+
         assert_response :redirect
         assert_not_nil flash[:error]
         assert_equal 0, Issue.where(parent_id: @issue.id).count
@@ -468,23 +504,29 @@ class AiHelperControllerTest < ActionController::TestCase
 
       should "return assignable users as JSON for a given tracker" do
         get :assignable_users_for_tracker, params: { id: @project.id, tracker_id: @tracker.id }
+
         assert_response :success
         json = JSON.parse(response.body)
+
         assert_kind_of Array, json
         assert json.all? { |u| u.key?("id") && u.key?("name") }
       end
 
       should "return assignable users when tracker_id is not provided" do
         get :assignable_users_for_tracker, params: { id: @project.id }
+
         assert_response :success
         json = JSON.parse(response.body)
+
         assert_kind_of Array, json
       end
 
       should "return assignable users when tracker_id is invalid" do
         get :assignable_users_for_tracker, params: { id: @project.id, tracker_id: 99999 }
+
         assert_response :success
         json = JSON.parse(response.body)
+
         assert_kind_of Array, json
       end
 
@@ -530,6 +572,7 @@ class AiHelperControllerTest < ActionController::TestCase
         @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
 
         get :similar_issues, params: { id: @issue.id }
+
         assert_response :success
 
         # Check that the response contains the expected content (HTML partial)
@@ -554,6 +597,7 @@ class AiHelperControllerTest < ActionController::TestCase
         @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
 
         get :similar_issues, params: { id: @issue.id }
+
         assert_response :success
 
         # Check that only the other issue is included (current issue excluded)
@@ -568,6 +612,7 @@ class AiHelperControllerTest < ActionController::TestCase
         @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns([])
 
         get :similar_issues, params: { id: @issue.id }
+
         assert_response :success
 
         # Check that no similar issues message is displayed
@@ -579,9 +624,11 @@ class AiHelperControllerTest < ActionController::TestCase
         @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).raises(StandardError.new("Vector search failed"))
 
         get :similar_issues, params: { id: @issue.id }
+
         assert_response :internal_server_error
 
         response_data = JSON.parse(@response.body)
+
         assert_equal "Vector search failed", response_data["error"]
       end
 
@@ -601,6 +648,7 @@ class AiHelperControllerTest < ActionController::TestCase
         @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
 
         get :similar_issues, params: { id: @issue.id }
+
         assert_response :success
 
         # Check that the similar issue is displayed even without assigned_to_name
@@ -614,6 +662,7 @@ class AiHelperControllerTest < ActionController::TestCase
                  .returns([])
 
         get :similar_issues, params: { id: @issue.id, scope: "current" }
+
         assert_response :success
       end
 
@@ -623,6 +672,7 @@ class AiHelperControllerTest < ActionController::TestCase
                  .returns([])
 
         get :similar_issues, params: { id: @issue.id, scope: "all" }
+
         assert_response :success
       end
 
@@ -632,6 +682,7 @@ class AiHelperControllerTest < ActionController::TestCase
                  .returns([])
 
         get :similar_issues, params: { id: @issue.id }
+
         assert_response :success
       end
 
@@ -641,6 +692,7 @@ class AiHelperControllerTest < ActionController::TestCase
                  .returns([])
 
         get :similar_issues, params: { id: @issue.id, scope: "invalid_scope" }
+
         assert_response :success
       end
     end
@@ -651,6 +703,7 @@ class AiHelperControllerTest < ActionController::TestCase
         Rails.cache.stubs(:fetch).returns("Test health report content")
 
         get :project_health, params: { id: @project.id }
+
         assert_response :success
         assert_template partial: "ai_helper/project/_health_report"
         assert_not_nil assigns(:health_report)
@@ -664,6 +717,7 @@ class AiHelperControllerTest < ActionController::TestCase
         @controller.stubs(:project_health_to_pdf).returns("PDF content")
 
         get :project_health, params: { id: @project.id, format: :pdf }
+
         assert_response :success
         assert_equal "application/pdf", @response.content_type
       end
@@ -673,9 +727,9 @@ class AiHelperControllerTest < ActionController::TestCase
         Rails.cache.stubs(:fetch).returns({ error: "No data" })
 
         get :project_health, params: { id: @project.id, format: :pdf }
+
         assert_response :redirect
       end
-
     end
 
     context "#project_health_metadata" do
@@ -690,9 +744,11 @@ class AiHelperControllerTest < ActionController::TestCase
         @controller.expects(:generate_project_health_report).never
 
         get :project_health_metadata, params: { id: @project.id }
+
         assert_response :success
 
         response_body = JSON.parse(@response.body)
+
         assert_equal report.id, response_body["id"]
         assert_equal report.created_at.iso8601, response_body["created_at_iso8601"]
         assert_equal @controller.view_context.format_time(report.created_at), response_body["created_on_formatted"]
@@ -702,6 +758,7 @@ class AiHelperControllerTest < ActionController::TestCase
         AiHelperHealthReport.delete_all
 
         get :project_health_metadata, params: { id: @project.id }
+
         assert_response :no_content
       end
     end
@@ -714,6 +771,7 @@ class AiHelperControllerTest < ActionController::TestCase
         @controller.stubs(:project_health_to_pdf).returns("PDF content")
 
         post :project_health_pdf, params: { id: @project.id, health_report_content: health_content }
+
         assert_response :success
         assert_equal "application/pdf", @response.content_type
         assert_match /#{@project.identifier}-health-report-/, @response.headers["Content-Disposition"]
@@ -727,16 +785,19 @@ class AiHelperControllerTest < ActionController::TestCase
         @controller.expects(:project_health_to_pdf).with(@project, expected_sanitized).returns("PDF content")
 
         post :project_health_pdf, params: { id: @project.id, health_report_content: malicious_content }
+
         assert_response :success
       end
 
       should "redirect when no content provided" do
         post :project_health_pdf, params: { id: @project.id, health_report_content: "" }
+
         assert_response :redirect
       end
 
       should "redirect when content is nil" do
         post :project_health_pdf, params: { id: @project.id }
+
         assert_response :redirect
       end
     end
@@ -753,12 +814,14 @@ class AiHelperControllerTest < ActionController::TestCase
         Rails.cache.stubs(:write)
 
         get :generate_project_health, params: { id: @project.id }
+
         assert_response :success
         assert_not_nil @response.body
       end
 
       should "handle LLM errors gracefully" do
         get :generate_project_health, params: { id: @project.id }
+
         assert_response :success
         assert_match /data:/, @response.body
       end
@@ -768,12 +831,14 @@ class AiHelperControllerTest < ActionController::TestCase
       should "handle find_user method" do
         # This tests the private method indirectly through chat
         post :chat, params: { id: @project.id, ai_helper_message: { content: "Test message" } }
+
         assert_response :success
       end
 
       should "handle conversation creation and management" do
         # Test conversation creation and session management
         post :chat, params: { id: @project.id, ai_helper_message: { content: "First message" } }
+
         assert_response :success
 
         # Verify conversation ID is set in session
@@ -781,6 +846,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         # Test loading existing conversation
         get :history, params: { id: @project.id }
+
         assert_response :success
       end
 
@@ -789,23 +855,27 @@ class AiHelperControllerTest < ActionController::TestCase
         wiki_page = wiki.pages.first
 
         get :wiki_summary, params: { id: wiki_page.id }
+
         assert_response :success
       end
 
       should "handle non-existent wiki page" do
         get :wiki_summary, params: { id: 999999 }
+
         assert_response :not_found
       end
 
       should "handle project health authorization" do
         # Test with user who has permission
         get :project_health, params: { id: @project.id }
+
         assert_response :success
       end
 
       should "handle streaming response chunks" do
         # Test streaming functionality through generate_project_health
         get :generate_project_health, params: { id: @project.id }
+
         assert_response :success
 
         # Should be a streaming response
@@ -822,6 +892,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         # Test conversation deletion
         delete :conversation, params: { id: @project.id, conversation_id: conversation_id }
+
         assert_response :success
 
         # Verify conversation was deleted
@@ -848,11 +919,13 @@ class AiHelperControllerTest < ActionController::TestCase
           content_id: 1,
           additional_info: { test: "data" }
         }
+
         assert_response :success
       end
 
       should "handle generate_wiki_summary for non-existent page" do
         post :generate_wiki_summary, params: { id: 999999 }
+
         assert_response :not_found
       end
 
@@ -864,6 +937,7 @@ class AiHelperControllerTest < ActionController::TestCase
           start_date: "2025-01-01",
           end_date: "2025-12-31"
         }
+
         assert_response :success
 
         # Second request should use cache
@@ -873,6 +947,7 @@ class AiHelperControllerTest < ActionController::TestCase
           start_date: "2025-01-01",
           end_date: "2025-12-31"
         }
+
         assert_response :success
       end
 
@@ -883,6 +958,7 @@ class AiHelperControllerTest < ActionController::TestCase
           id: @project.id,
           health_report_content: malicious_content
         }
+
         assert_response :success
         assert_equal "application/pdf", @response.content_type
       end
@@ -894,6 +970,7 @@ class AiHelperControllerTest < ActionController::TestCase
           id: @project.id,
           health_report_content: long_content
         }
+
         assert_response :success
         assert_equal "application/pdf", @response.content_type
       end
@@ -905,6 +982,7 @@ class AiHelperControllerTest < ActionController::TestCase
           start_date: "2025-01-01",
           end_date: "2025-12-31"
         }
+
         assert_response :success
         assert_match /data:/, @response.body
       end
@@ -924,11 +1002,13 @@ class AiHelperControllerTest < ActionController::TestCase
       should "handle multiple chat messages in sequence" do
         # First message
         post :chat, params: { id: @project.id, ai_helper_message: { content: "Hello" } }
+
         assert_response :success
         conversation_id = session[:ai_helper][:conversation_id]
 
         # Second message in same conversation
         post :chat, params: { id: @project.id, ai_helper_message: { content: "World" } }
+
         assert_response :success
         assert_equal conversation_id, session[:ai_helper][:conversation_id]
       end
@@ -936,11 +1016,13 @@ class AiHelperControllerTest < ActionController::TestCase
       should "handle session management across requests" do
         # Clear session first
         post :clear, params: { id: @project.id }
+
         assert_response :success
         assert_nil session[:ai_helper][:conversation_id]
 
         # Start new conversation
         post :chat, params: { id: @project.id, ai_helper_message: { content: "New conversation" } }
+
         assert_response :success
         assert_not_nil session[:ai_helper][:conversation_id]
       end
@@ -952,6 +1034,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         # Test reload
         get :reload, params: { id: @project.id }
+
         assert_response :success
         assert_template partial: "ai_helper/chat/_chat"
       end
@@ -970,6 +1053,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         # Switch back to first conversation
         get :conversation, params: { id: @project.id, conversation_id: first_conversation_id }
+
         assert_response :success
         assert_equal first_conversation_id, session[:ai_helper][:conversation_id]
       end
@@ -981,6 +1065,7 @@ class AiHelperControllerTest < ActionController::TestCase
         AiHelperSummaryCache.stubs(:issue_cache).returns(nil)
 
         get :issue_summary, params: { id: @project.id, issue_id: issue.id, update: "true" }
+
         assert_response :success
       end
 
@@ -992,6 +1077,7 @@ class AiHelperControllerTest < ActionController::TestCase
         AiHelperSummaryCache.stubs(:wiki_cache).returns(nil)
 
         get :wiki_summary, params: { id: wiki_page.id, update: "true" }
+
         assert_response :success
       end
 
@@ -1003,6 +1089,7 @@ class AiHelperControllerTest < ActionController::TestCase
         User.current.stubs(:allowed_to?).returns(false)
 
         get :project_health, params: { id: project.id }
+
         assert_response :forbidden
       end
 
@@ -1011,6 +1098,7 @@ class AiHelperControllerTest < ActionController::TestCase
         project.stubs(:visible?).returns(false)
 
         get :project_health, params: { id: project.id }
+
         assert_response :forbidden
       end
 
@@ -1025,6 +1113,7 @@ class AiHelperControllerTest < ActionController::TestCase
         RedmineAiHelper::Llm.stubs(:new).returns(llm_mock)
 
         get :generate_project_health, params: { id: @project.id }
+
         assert_response :success
 
         # Check that streaming response started (initial chunk)
@@ -1037,6 +1126,7 @@ class AiHelperControllerTest < ActionController::TestCase
         session[:ai_helper] = { conversation_id: 999999 }
 
         get :chat_form, params: { id: @project.id }
+
         assert_response :success
 
         # Should create new conversation when existing one not found
@@ -1056,6 +1146,7 @@ class AiHelperControllerTest < ActionController::TestCase
         AiHelperSummaryCache.stubs(:update_issue_cache).returns(true)
 
         post :generate_issue_summary, params: { id: issue.id }
+
         assert_response :success
       end
 
@@ -1073,6 +1164,7 @@ class AiHelperControllerTest < ActionController::TestCase
         AiHelperSummaryCache.stubs(:update_wiki_cache).returns(true)
 
         post :generate_wiki_summary, params: { id: wiki_page.id }
+
         assert_response :success
       end
 
@@ -1085,6 +1177,7 @@ class AiHelperControllerTest < ActionController::TestCase
           content_id: "",
           additional_info: { test: "data" }
         }
+
         assert_response :success
       end
 
@@ -1097,12 +1190,14 @@ class AiHelperControllerTest < ActionController::TestCase
         }
 
         post :add_sub_issues, params: { id: parent_issue.id, sub_issues: sub_issue_params, tracker_id: 1 }
+
         assert_response :redirect
       end
 
       should "handle basic stream_llm_response functionality" do
         # Test the basic streaming functionality
         get :generate_project_health, params: { id: @project.id }
+
         assert_response :success
         assert_equal "text/event-stream", @response.content_type
       end
@@ -1110,6 +1205,7 @@ class AiHelperControllerTest < ActionController::TestCase
       should "handle project_health basic functionality" do
         # Test basic project_health functionality
         get :project_health, params: { id: @project.id }
+
         assert_response :success
         assert_not_nil assigns(:health_report)
       end
@@ -1117,6 +1213,7 @@ class AiHelperControllerTest < ActionController::TestCase
       should "handle write_chunk functionality" do
         # Test the write_chunk private method indirectly
         get :generate_project_health, params: { id: @project.id }
+
         assert_response :success
         # The write_chunk method is used internally during streaming
         assert_match /data:/, @response.body
@@ -1127,6 +1224,7 @@ class AiHelperControllerTest < ActionController::TestCase
         @controller.stubs(:generate_project_health_report).returns(nil)
 
         get :project_health, params: { id: @project.id, format: :pdf }
+
         assert_response :redirect
       end
 
@@ -1135,6 +1233,7 @@ class AiHelperControllerTest < ActionController::TestCase
         wiki_page = wiki.pages.first
 
         get :wiki_summary, params: { id: wiki_page.id }
+
         assert_response :success
         assert_equal wiki_page, assigns(:wiki_page)
         assert_equal wiki_page.wiki.project, assigns(:project)
@@ -1145,6 +1244,7 @@ class AiHelperControllerTest < ActionController::TestCase
         session[:ai_helper] = { conversation_id: 123 }
 
         get :chat_form, params: { id: @project.id }
+
         assert_response :success
         # The conversation_id method is used internally
       end
@@ -1152,6 +1252,7 @@ class AiHelperControllerTest < ActionController::TestCase
       should "handle set_conversation_id method" do
         # Test set_conversation_id private method
         post :chat, params: { id: @project.id, ai_helper_message: { content: "Test" } }
+
         assert_response :success
         assert_not_nil session[:ai_helper][:conversation_id]
       end
@@ -1162,6 +1263,7 @@ class AiHelperControllerTest < ActionController::TestCase
         @project.stubs(:visible?).returns(true)
 
         get :project_health, params: { id: @project.id }
+
         assert_response :success
       end
 
@@ -1173,6 +1275,7 @@ class AiHelperControllerTest < ActionController::TestCase
           start_date: "2025-01-01",
           end_date: "2025-12-31"
         }
+
         assert_response :success
       end
 
@@ -1183,6 +1286,7 @@ class AiHelperControllerTest < ActionController::TestCase
         Rails.cache.expects(:write).with(cache_key, anything, expires_in: 1.hour)
 
         get :generate_project_health, params: { id: @project.id }
+
         assert_response :success
       end
 
@@ -1195,6 +1299,7 @@ class AiHelperControllerTest < ActionController::TestCase
           content_id: 1,
           additional_info: { test: "data" }
         }
+
         assert_response :success
       end
 
@@ -1203,6 +1308,7 @@ class AiHelperControllerTest < ActionController::TestCase
         Rails.cache.stubs(:fetch).returns({ error: "No data available" })
 
         get :project_health, params: { id: @project.id, format: :pdf }
+
         assert_response :redirect
       end
 
@@ -1212,9 +1318,11 @@ class AiHelperControllerTest < ActionController::TestCase
         session[:ai_helper] = { conversation_id: conversation.id }
 
         delete :conversation, params: { id: @project.id, conversation_id: conversation.id }
+
         assert_response :success
 
         response_data = JSON.parse(@response.body)
+
         assert_equal "ok", response_data["status"]
         assert_equal true, response_data["reload"]
       end
@@ -1226,9 +1334,11 @@ class AiHelperControllerTest < ActionController::TestCase
         session[:ai_helper] = { conversation_id: current_conversation.id }
 
         delete :conversation, params: { id: @project.id, conversation_id: other_conversation.id }
+
         assert_response :success
 
         response_data = JSON.parse(@response.body)
+
         assert_equal "ok", response_data["status"]
         assert_equal false, response_data["reload"]
       end
@@ -1238,6 +1348,7 @@ class AiHelperControllerTest < ActionController::TestCase
         SecureRandom.stubs(:hex).with(12).returns("test123456789abc")
 
         get :generate_project_health, params: { id: @project.id }
+
         assert_response :success
         assert_match /chatcmpl-test123456789abc/, @response.body
       end
@@ -1248,6 +1359,7 @@ class AiHelperControllerTest < ActionController::TestCase
         session[:ai_helper] = { conversation_id: existing_conversation.id }
 
         get :chat_form, params: { id: @project.id }
+
         assert_response :success
         assert_equal existing_conversation, assigns(:conversation)
       end
@@ -1259,6 +1371,7 @@ class AiHelperControllerTest < ActionController::TestCase
         Rails.cache.stubs(:fetch).with(cache_key, expires_in: 1.hour).returns(cached_content)
 
         get :project_health, params: { id: @project.id }
+
         assert_response :success
         assert_equal cached_content, assigns(:health_report)
       end
@@ -1274,6 +1387,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         json_response = JSON.parse(response.body)
+
         assert json_response.key?("suggestion")
         assert_equal "This is a suggested completion.", json_response["suggestion"]
       end
@@ -1285,6 +1399,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :unsupported_media_type
         json_response = JSON.parse(response.body)
+
         assert_equal "Unsupported Media Type", json_response["error"]
       end
 
@@ -1298,6 +1413,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :bad_request
         json_response = JSON.parse(response.body)
+
         assert_equal "Text is required", json_response["error"]
       end
 
@@ -1311,6 +1427,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :bad_request
         json_response = JSON.parse(response.body)
+
         assert_equal "Text too long", json_response["error"]
       end
 
@@ -1324,6 +1441,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :bad_request
         json_response = JSON.parse(response.body)
+
         assert_equal "Invalid cursor position", json_response["error"]
       end
 
@@ -1337,6 +1455,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :internal_server_error
         json_response = JSON.parse(response.body)
+
         assert_equal "Failed to generate suggestion", json_response["error"]
       end
 
@@ -1350,6 +1469,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         json_response = JSON.parse(response.body)
+
         assert json_response.key?("suggestion")
         assert_equal "completion text", json_response["suggestion"]
       end
@@ -1364,6 +1484,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         json_response = JSON.parse(response.body)
+
         assert json_response.key?("suggestion")
         assert_equal "I have reviewed this issue.", json_response["suggestion"]
       end
@@ -1377,6 +1498,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :bad_request
         json_response = JSON.parse(response.body)
+
         assert_equal "Invalid context_type. Must be 'description' or 'note'", json_response["error"]
       end
 
@@ -1388,6 +1510,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :bad_request
         json_response = JSON.parse(response.body)
+
         assert_equal "Issue is required for note completion", json_response["error"]
       end
 
@@ -1409,6 +1532,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         json_response = JSON.parse(response.body)
+
         assert json_response.key?("suggestion")
         assert_equal " and I agree with the analysis.", json_response["suggestion"]
 
@@ -1429,9 +1553,10 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         json_response = JSON.parse(response.body)
+
         assert json_response.key?("suggestion")
         # The response should be a string (empty in test environment due to mocking)
-        assert json_response["suggestion"].is_a?(String)
+        assert_kind_of String, json_response["suggestion"]
       end
 
       should "test prompt loader integration through agent" do
@@ -1454,6 +1579,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         json_response = JSON.parse(response.body)
+
         assert_equal "Mocked completion", json_response["suggestion"]
       end
 
@@ -1483,6 +1609,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         json_response = JSON.parse(response.body)
+
         assert_equal "Contextual note completion", json_response["suggestion"]
 
         # Clean up
@@ -1495,7 +1622,8 @@ class AiHelperControllerTest < ActionController::TestCase
         ActionController::Base.allow_forgery_protection = true
         begin
           post :project_health_pdf, params: { id: @project.id, health_report_content: "test", format: :json }
-          assert_response 422
+
+          assert_response :unprocessable_content
         ensure
           ActionController::Base.allow_forgery_protection = false
         end
@@ -1505,7 +1633,8 @@ class AiHelperControllerTest < ActionController::TestCase
         ActionController::Base.allow_forgery_protection = true
         begin
           post :chat, params: { id: @project.id, ai_helper_message: { content: "Hello" }, format: :json }
-          assert_response 422
+
+          assert_response :unprocessable_content
         ensure
           ActionController::Base.allow_forgery_protection = false
         end
@@ -1548,6 +1677,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :unsupported_media_type
         response_data = JSON.parse(@response.body)
+
         assert_equal "Unsupported Media Type", response_data["error"]
       end
 
@@ -1558,7 +1688,8 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :bad_request
         response_data = JSON.parse(@response.body)
-        assert response_data["error"].present?
+
+        assert_predicate response_data["error"], :present?
       end
 
       should "return empty result when no similar issues found" do
@@ -1582,6 +1713,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :internal_server_error
         response_data = JSON.parse(@response.body)
+
         assert_equal "Vector search failed", response_data["error"]
       end
 
@@ -1681,7 +1813,7 @@ class AiHelperControllerTest < ActionController::TestCase
         }
 
         assert_response :success
-        refute_includes @response.body, "event: interactive_options"
+        assert_not_includes @response.body, "event: interactive_options"
       end
 
       should "save message content without options block" do
@@ -1698,8 +1830,9 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         saved_message = AiHelperMessage.where(role: "assistant").last
+
         assert_not_nil saved_message
-        refute_includes saved_message.content, "AIHELPER_OPTIONS"
+        assert_not_includes saved_message.content, "AIHELPER_OPTIONS"
       end
 
       should "include interactive_options event with 3 choices" do
@@ -1717,8 +1850,10 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_response :success
         assert_includes @response.body, "event: interactive_options"
         data_match = @response.body.match(/event: interactive_options\ndata: (.+)\n/)
+
         assert_not_nil data_match
         data = JSON.parse(data_match[1])
+
         assert_equal 3, data["choices"].length
       end
 
@@ -1737,8 +1872,10 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_response :success
         assert_includes @response.body, "event: interactive_options"
         data_match = @response.body.match(/event: interactive_options\ndata: (.+)\n/)
+
         assert_not_nil data_match
         data = JSON.parse(data_match[1])
+
         assert_equal 5, data["choices"].length
       end
 
@@ -1776,9 +1913,8 @@ class AiHelperControllerTest < ActionController::TestCase
         }
 
         assert_response :success
-        refute_includes @response.body, "event: interactive_options"
+        assert_not_includes @response.body, "event: interactive_options"
       end
     end
-
   end
 end

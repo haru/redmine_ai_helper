@@ -42,7 +42,7 @@ module RedmineAiHelper
       # Generates a string that describes the current page information.
       # @return [String] A string that describes the current page information.
       # @note This method is used to provide context to the AI about the current page.
-      def current_page_info_string()
+      def current_page_info_string
         page_name = nil
         case @controller_name
         when "projects"

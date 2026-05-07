@@ -33,6 +33,7 @@ class RedmineAiHelper::LlmClient::AzureOpenAiProviderTest < ActiveSupport::TestC
     should "memoize the context" do
       context1 = @provider.context
       context2 = @provider.context
+
       assert_same context1, context2
     end
 
@@ -62,6 +63,7 @@ class RedmineAiHelper::LlmClient::AzureOpenAiProviderTest < ActiveSupport::TestC
       @provider.expects(:build_context).returns(mock_context)
 
       chat = @provider.create_chat(instructions: "Test prompt")
+
       assert_equal mock_chat, chat
     end
 

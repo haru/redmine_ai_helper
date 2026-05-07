@@ -78,21 +78,24 @@ class BaseToolsTest < ActiveSupport::TestCase
     context "tool_classes" do
       should "generate RubyLLM::Tool subclasses for each define_function" do
         tool_classes = @simple_tool_class.tool_classes
+
         assert_equal 1, tool_classes.size
-        assert tool_classes.first < RubyLLM::Tool, "Generated class should be a subclass of RubyLLM::Tool"
+        assert_operator tool_classes.first, :<, RubyLLM::Tool, "Generated class should be a subclass of RubyLLM::Tool"
       end
 
       should "generate multiple tool classes for multiple define_functions" do
         tool_classes = @multi_tool_class.tool_classes
+
         assert_equal 2, tool_classes.size
         tool_classes.each do |tc|
-          assert tc < RubyLLM::Tool
+          assert_operator tc, :<, RubyLLM::Tool
         end
       end
 
       should "not share tool_classes between different BaseTools subclasses" do
         simple_classes = @simple_tool_class.tool_classes
         multi_classes = @multi_tool_class.tool_classes
+
         assert_equal 1, simple_classes.size
         assert_equal 2, multi_classes.size
         assert_empty simple_classes & multi_classes
@@ -104,6 +107,7 @@ class BaseToolsTest < ActiveSupport::TestCase
         tool_class = @simple_tool_class.tool_classes.first
         tool_instance = tool_class.new
         result = tool_instance.execute(name: "World")
+
         assert_equal "Hello, World!", result
       end
 
@@ -111,6 +115,7 @@ class BaseToolsTest < ActiveSupport::TestCase
         tool_class = @simple_tool_class.tool_classes.first
         tool_instance = tool_class.new
         result = tool_instance.execute(name: "Sir", formal: true)
+
         assert_equal "Good day, Sir.", result
       end
 
@@ -118,6 +123,7 @@ class BaseToolsTest < ActiveSupport::TestCase
         tool_class = @array_tool_class.tool_classes.first
         tool_instance = tool_class.new
         result = tool_instance.execute(item_ids: [ 1, 2, 3 ])
+
         assert_equal [ 2, 4, 6 ], result
       end
     end
@@ -126,6 +132,7 @@ class BaseToolsTest < ActiveSupport::TestCase
       should "set description on generated tool class" do
         tool_class = @simple_tool_class.tool_classes.first
         tool_instance = tool_class.new
+
         assert_equal "Say hello to someone", tool_instance.description
       end
     end
@@ -135,18 +142,20 @@ class BaseToolsTest < ActiveSupport::TestCase
         tool_class = @simple_tool_class.tool_classes.first
         tool_instance = tool_class.new
         schema = tool_instance.params_schema
+
         assert_equal "object", schema["type"]
         assert schema["properties"].key?("name")
         assert_equal "string", schema["properties"]["name"]["type"]
         assert_equal "The name to greet", schema["properties"]["name"]["description"]
         assert_includes schema["required"], "name"
-        refute_includes schema["required"], "formal"
+        assert_not_includes schema["required"], "formal"
       end
 
       should "generate correct JSON schema for array properties" do
         tool_class = @array_tool_class.tool_classes.first
         tool_instance = tool_class.new
         schema = tool_instance.params_schema
+
         assert_equal "array", schema["properties"]["item_ids"]["type"]
         assert_equal "integer", schema["properties"]["item_ids"]["items"]["type"]
       end
@@ -156,6 +165,7 @@ class BaseToolsTest < ActiveSupport::TestCase
         tool_instance = tool_class.new
         schema = tool_instance.params_schema
         query_schema = schema["properties"]["query"]
+
         assert_equal "object", query_schema["type"]
         assert query_schema["properties"].key?("text")
         assert_equal "string", query_schema["properties"]["text"]["type"]
@@ -166,6 +176,7 @@ class BaseToolsTest < ActiveSupport::TestCase
         tool_class = @enum_tool_class.tool_classes.first
         tool_instance = tool_class.new
         schema = tool_instance.params_schema
+
         assert_equal [ "active", "inactive" ], schema["properties"]["status"]["enum"]
       end
     end
@@ -173,11 +184,13 @@ class BaseToolsTest < ActiveSupport::TestCase
     context "backward compatibility" do
       should "provide function_schemas with to_openai_format" do
         schemas = @simple_tool_class.function_schemas
+
         assert_respond_to schemas, :to_openai_format
         format = schemas.to_openai_format
+
         assert_equal 1, format.size
         assert_equal "function", format.first[:type]
-        assert format.first[:function][:name].present?
+        assert_predicate format.first[:function][:name], :present?
         assert_equal "Say hello to someone", format.first[:function][:description]
         assert format.first[:function][:parameters].key?(:properties)
       end
@@ -186,6 +199,7 @@ class BaseToolsTest < ActiveSupport::TestCase
         schemas = @multi_tool_class.function_schemas
         format = schemas.to_openai_format
         names = format.map { |f| f[:function][:name] }
+
         assert names.any? { |n| n.include?("action_one") }
         assert names.any? { |n| n.include?("action_two") }
       end
@@ -207,6 +221,7 @@ class BaseToolsTest < ActiveSupport::TestCase
 
         assert_equal 2, builder.params.size
         city_param = builder.params.find { |p| p[:name] == :city }
+
         assert_equal "string", city_param[:type]
         assert_equal "City name", city_param[:description]
       end
@@ -229,6 +244,7 @@ class BaseToolsTest < ActiveSupport::TestCase
         builder.build_properties_from_json(json_schema)
 
         filter_param = builder.params.find { |p| p[:name] == :filter }
+
         assert_equal "object", filter_param[:type]
         assert filter_param[:children].any? { |c| c[:name] == :key }
       end
@@ -252,6 +268,7 @@ class BaseToolsTest < ActiveSupport::TestCase
         builder.build_properties_from_json(json_schema)
 
         tags_param = builder.params.find { |p| p[:name] == :tags }
+
         assert_equal "array", tags_param[:type]
         assert tags_param[:items]
         assert_equal "string", tags_param[:items][:type]
@@ -263,25 +280,29 @@ class BaseToolsTest < ActiveSupport::TestCase
         tools = @simple_tool_class.new
         project = mock("Project")
         project.stubs(:visible?).returns(false)
-        refute tools.accessible_project?(project)
+
+        assert_not tools.accessible_project?(project)
       end
     end
 
     context "requires DSL" do
       should "return empty hash by default (no restrictions)" do
         klass = Class.new(RedmineAiHelper::BaseTools)
+
         assert_equal({}, klass.permission_requirements)
       end
 
       should "store vector_db_enabled condition" do
         klass = Class.new(RedmineAiHelper::BaseTools)
         klass.requires(vector_db_enabled: true)
+
         assert_equal({ vector_db_enabled: true }, klass.permission_requirements)
       end
 
       should "store admin condition" do
         klass = Class.new(RedmineAiHelper::BaseTools)
         klass.requires(admin: true)
+
         assert_equal({ admin: true }, klass.permission_requirements)
       end
 
@@ -289,6 +310,7 @@ class BaseToolsTest < ActiveSupport::TestCase
         klass = Class.new(RedmineAiHelper::BaseTools)
         klass.requires(vector_db_enabled: true)
         klass.requires(admin: true)
+
         assert_equal({ vector_db_enabled: true, admin: true }, klass.permission_requirements)
       end
 
@@ -301,6 +323,7 @@ class BaseToolsTest < ActiveSupport::TestCase
         klass_a = Class.new(RedmineAiHelper::BaseTools)
         klass_b = Class.new(RedmineAiHelper::BaseTools)
         klass_a.requires(admin: true)
+
         assert_equal({}, klass_b.permission_requirements)
       end
     end

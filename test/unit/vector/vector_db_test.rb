@@ -23,6 +23,7 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
 
     should "return client" do
       client = @issue_vector_db.client
+
       assert client
     end
 
@@ -42,6 +43,7 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
       mock_provider = mock("llm_provider")
       mock_provider.stubs(:embed).returns([ 0.1 ] * 3072)
       issue_vector_db = RedmineAiHelper::Vector::IssueVectorDb.new(llm_provider: mock_provider)
+
       assert issue_vector_db.generate_schema
     end
 
@@ -59,11 +61,13 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
         issue.save!
         issues = Issue.all
         @issue_vector_db.add_datas(datas: issues)
+
         assert issues.length, AiHelperVectorData.all.length
         issue.subject = "aaaa"
         issue.save!
         issues = Issue.all
         @issue_vector_db.add_datas(datas: issues)
+
         assert issues.length, AiHelperVectorData.all.length
       end
 
@@ -74,6 +78,7 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
           issues.first.destroy!
           issues = Issue.all
           @issue_vector_db.clean_vector_data
+
           assert issues.length, AiHelperVectorData.all.length
           @issue_vector_db.clean_vector_data
         end
@@ -101,6 +106,7 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
       should "use vector profile provider when configured" do
         @setting.update_columns(use_vector_model_profile: true, vector_model_profile_id: @vector_profile.id)
         vector_db = RedmineAiHelper::Vector::IssueVectorDb.new
+
         assert_equal @vector_profile.llm_model, vector_db.llm_provider.model_name
       end
 
@@ -108,6 +114,7 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
         @setting.update_columns(use_vector_model_profile: false, vector_model_profile_id: nil)
         default_provider = RedmineAiHelper::LlmProvider.get_llm_provider
         vector_db = RedmineAiHelper::Vector::IssueVectorDb.new
+
         assert_equal default_provider.model_name, vector_db.llm_provider.model_name
       end
     end
@@ -115,13 +122,15 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
     context "ask_with_filter" do
       should "return array" do
         res = @issue_vector_db.ask_with_filter(query: "test")
-        assert_equal res, [ "test" ]
+
+        assert_equal [ "test" ], res
       end
     end
 
     context "similarity_search" do
       should "delegate to client similarity_search without filter" do
         res = @issue_vector_db.similarity_search(question: "test query", k: 5)
+
         assert_equal [ { "payload" => { "issue_id" => 1 }, "score" => 0.9 } ], res
       end
 
@@ -132,12 +141,14 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
           ]
         }
         res = @issue_vector_db.similarity_search(question: "test query", k: 5, filter: filter)
+
         assert_equal [ { "payload" => { "issue_id" => 1 }, "score" => 0.9 } ], res
         assert_equal filter, @qdrant_stub.last_filter
       end
 
       should "default filter to nil" do
         @issue_vector_db.similarity_search(question: "test query", k: 5)
+
         assert_nil @qdrant_stub.last_filter
       end
     end
@@ -147,7 +158,7 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
     attr_reader :last_filter
 
     def create_default_schema(vector_size: 1536)
-      return ""
+      ""
     end
 
     def destroy_default_schema
@@ -155,7 +166,7 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
     end
 
     def add_texts(texts:, ids:, payload:)
-      if (texts[0].length > 1500)
+      if texts[0].length > 1500
         raise "Error"
       end
     end

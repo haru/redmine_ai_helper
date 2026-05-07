@@ -92,7 +92,7 @@ class AiHelper::StreamingTest < ActiveSupport::TestCase
     assert_equal({}, final_chunk["choices"].first["delta"])
     assert_equal "stop", final_chunk["choices"].first["finish_reason"]
 
-    assert context.stream.closed?
+    assert_predicate context.stream, :closed?
   end
 
   def test_stream_llm_response_does_not_close_stream_when_requested
@@ -106,7 +106,7 @@ class AiHelper::StreamingTest < ActiveSupport::TestCase
       end
     end
 
-    refute context.stream.closed?
+    assert_not context.stream.closed?
   end
 
   def test_stream_llm_response_closes_stream_on_error
@@ -122,7 +122,7 @@ class AiHelper::StreamingTest < ActiveSupport::TestCase
       end
     end
 
-    assert context.stream.closed?
+    assert_predicate context.stream, :closed?
     assert_equal 1, context.stream.writes.size, "initial chunk should be written before the error"
   end
 
@@ -134,11 +134,13 @@ class AiHelper::StreamingTest < ActiveSupport::TestCase
 
     assert_equal 1, context.stream.writes.size
     written = context.stream.writes.first
+
     assert_match(/\Aevent: interactive_options\n/, written)
     assert_match(/data: /, written)
     assert_match(/\n\n\z/, written)
     data_json = written.match(/data: (.+)\n\n/)[1]
     data = JSON.parse(data_json)
+
     assert_equal 2, data["choices"].length
     assert_equal "はい", data["choices"][0]["label"]
     assert_equal "いいえ", data["choices"][1]["label"]
@@ -175,6 +177,7 @@ class AiHelper::StreamingTest < ActiveSupport::TestCase
     # 3 data chunks + 1 interactive_options event
     assert_equal 4, context.stream.writes.size
     options_event = context.stream.writes.last
+
     assert_match(/\Aevent: interactive_options\n/, options_event)
   end
 

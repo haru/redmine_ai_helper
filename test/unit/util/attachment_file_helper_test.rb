@@ -200,6 +200,7 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
     should "return 'image' for image files" do
       %w[jpg jpeg png gif webp bmp].each do |ext|
         attachment = mock_attachment("file.#{ext}")
+
         assert_equal "image", @helper.send(:attachment_file_type, attachment), "Failed for extension: #{ext}"
       end
     end
@@ -207,6 +208,7 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
     should "return 'audio' for audio files" do
       %w[mp3 wav m4a ogg flac].each do |ext|
         attachment = mock_attachment("file.#{ext}")
+
         assert_equal "audio", @helper.send(:attachment_file_type, attachment), "Failed for extension: #{ext}"
       end
     end
@@ -214,6 +216,7 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
     should "return 'document' for document files" do
       %w[pdf txt md csv json xml].each do |ext|
         attachment = mock_attachment("file.#{ext}")
+
         assert_equal "document", @helper.send(:attachment_file_type, attachment), "Failed for extension: #{ext}"
       end
     end
@@ -221,6 +224,7 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
     should "return 'code' for code files" do
       %w[rb py js html css ts tsx jsx java c cpp h hpp cs go rs sh bash zsh yml yaml toml].each do |ext|
         attachment = mock_attachment("file.#{ext}")
+
         assert_equal "code", @helper.send(:attachment_file_type, attachment), "Failed for extension: #{ext}"
       end
     end
@@ -228,6 +232,7 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
     should "return nil for unsupported files" do
       %w[exe zip tar gz mp4 mov avi dll so].each do |ext|
         attachment = mock_attachment("file.#{ext}")
+
         assert_nil @helper.send(:attachment_file_type, attachment), "Expected nil for extension: #{ext}"
       end
     end
@@ -237,6 +242,7 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
     should "return true for supported extensions" do
       %w[png pdf rb mp3 txt].each do |ext|
         attachment = mock_attachment("file.#{ext}")
+
         assert @helper.send(:supported_file?, attachment), "Expected true for extension: #{ext}"
       end
     end
@@ -244,7 +250,8 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
     should "return false for unsupported extensions" do
       %w[exe zip mp4 tar dll].each do |ext|
         attachment = mock_attachment("file.#{ext}")
-        refute @helper.send(:supported_file?, attachment), "Expected false for extension: #{ext}"
+
+        assert_not @helper.send(:supported_file?, attachment), "Expected false for extension: #{ext}"
       end
     end
   end
@@ -259,6 +266,7 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
       container.stubs(:attachments).returns([ attachment ])
 
       result = @helper.supported_attachment_paths(container)
+
       assert_equal [], result
     end
 
@@ -271,6 +279,7 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
       container.stubs(:attachments).returns([ attachment ])
 
       result = @helper.supported_attachment_paths(container)
+
       assert_equal [ "/path/to/files/image.png" ], result
     end
 
@@ -284,6 +293,7 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
       container.stubs(:attachments).returns([ small_file, large_file ])
 
       result = @helper.supported_attachment_paths(container)
+
       assert_equal [ "/path/to/files/small.png" ], result
     end
 
@@ -296,6 +306,7 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
       container.stubs(:attachments).returns([ exact_file ])
 
       result = @helper.supported_attachment_paths(container)
+
       assert_equal [ "/path/to/files/exact.png" ], result
     end
 
@@ -310,6 +321,7 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
       container.stubs(:attachments).returns([ small_supported, large_supported, small_unsupported ])
 
       result = @helper.supported_attachment_paths(container)
+
       assert_equal [ "/path/to/files/file.png" ], result
     end
   end

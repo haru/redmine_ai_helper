@@ -10,9 +10,10 @@ class FileAgentTest < ActiveSupport::TestCase
   context "FileAgent" do
     should "have correct backstory" do
       backstory = @agent.backstory
+
       assert_not_nil backstory
-      assert backstory.is_a?(String)
-      assert backstory.include?("file analysis agent")
+      assert_kind_of String, backstory
+      assert_includes backstory, "file analysis agent"
     end
 
     should "have correct available_tool_providers" do
@@ -21,6 +22,7 @@ class FileAgentTest < ActiveSupport::TestCase
 
     should "have correct available_tool_classes" do
       tool_classes = @agent.available_tool_classes
+
       RedmineAiHelper::Tools::FileTools.tool_classes.each do |tc|
         assert_includes tool_classes, tc
       end
@@ -29,6 +31,7 @@ class FileAgentTest < ActiveSupport::TestCase
     should "be registered in AgentList" do
       agent_list = RedmineAiHelper::AgentList.instance
       agent_info = agent_list.find_agent("file_agent")
+
       assert_not_nil agent_info, "FileAgent should be registered in AgentList"
       assert_equal "RedmineAiHelper::Agents::FileAgent", agent_info[:class]
     end
@@ -36,13 +39,15 @@ class FileAgentTest < ActiveSupport::TestCase
     should "appear in list_agents" do
       agents = RedmineAiHelper::AgentList.instance.list_agents
       file_agent_entry = agents.find { |a| a[:agent_name] == "file_agent" }
+
       assert_not_nil file_agent_entry, "FileAgent should appear in list_agents"
-      assert file_agent_entry[:backstory].is_a?(String)
+      assert_kind_of String, file_agent_entry[:backstory]
     end
 
     should "not have image_agent in AgentList" do
       agent_list = RedmineAiHelper::AgentList.instance
       agent_info = agent_list.find_agent("image_agent")
+
       assert_nil agent_info, "image_agent should not be registered in AgentList"
     end
   end

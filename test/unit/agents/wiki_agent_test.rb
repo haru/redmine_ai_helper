@@ -31,11 +31,12 @@ class WikiAgentTest < ActiveSupport::TestCase
 
     should "have correct backstory" do
       assert_not_nil @agent.backstory
-      assert @agent.backstory.is_a?(String)
+      assert_kind_of String, @agent.backstory
     end
 
     should "have correct available_tool_classes" do
       tool_classes = @agent.available_tool_classes
+
       RedmineAiHelper::Tools::WikiTools.tool_classes.each do |tc|
         assert_includes tool_classes, tc
       end
@@ -48,6 +49,7 @@ class WikiAgentTest < ActiveSupport::TestCase
       AiHelperSetting.any_instance.stubs(:vector_search_enabled).returns(true)
       agent = RedmineAiHelper::Agents::WikiAgent.new(project: @project)
       tool_classes = agent.available_tool_classes
+
       RedmineAiHelper::Tools::VectorTools.tool_classes.each do |tc|
         assert_includes tool_classes, tc
       end
@@ -57,6 +59,7 @@ class WikiAgentTest < ActiveSupport::TestCase
       AiHelperSetting.any_instance.stubs(:vector_search_enabled).returns(false)
       agent = RedmineAiHelper::Agents::WikiAgent.new(project: @project)
       tool_classes = agent.available_tool_classes
+
       RedmineAiHelper::Tools::VectorTools.tool_classes.each do |tc|
         assert_not_includes tool_classes, tc
       end
@@ -75,6 +78,7 @@ class WikiAgentTest < ActiveSupport::TestCase
 
       should "generate summary for wiki page" do
         result = @agent.wiki_summary(wiki_page: @wiki_page)
+
         assert_equal "Test wiki summary", result
       end
 
@@ -125,6 +129,7 @@ class WikiAgentTest < ActiveSupport::TestCase
         @agent.expects(:chat).with(expected_messages, {}, nil, with: file_paths).returns("Summary with file")
 
         result = @agent.wiki_summary(wiki_page: @wiki_page)
+
         assert_equal "Summary with file", result
       end
 
@@ -139,6 +144,7 @@ class WikiAgentTest < ActiveSupport::TestCase
         @agent.expects(:chat).with(expected_messages, {}, nil, with: nil).returns("Summary without file")
 
         result = @agent.wiki_summary(wiki_page: @wiki_page)
+
         assert_equal "Summary without file", result
       end
     end
@@ -159,8 +165,8 @@ class WikiAgentTest < ActiveSupport::TestCase
           wiki_page: @wiki_page
         )
 
-        assert completion.is_a?(String)
-        assert completion.length > 0
+        assert_kind_of String, completion
+        assert_operator completion.length, :>, 0
       end
 
       should "handle new wiki page" do
@@ -171,7 +177,7 @@ class WikiAgentTest < ActiveSupport::TestCase
           wiki_page: nil
         )
 
-        assert completion.is_a?(String)
+        assert_kind_of String, completion
       end
 
       should "handle missing project" do
@@ -182,7 +188,7 @@ class WikiAgentTest < ActiveSupport::TestCase
           wiki_page: nil
         )
 
-        assert completion.is_a?(String)
+        assert_kind_of String, completion
       end
 
       should "handle errors gracefully" do
@@ -241,7 +247,7 @@ class WikiAgentTest < ActiveSupport::TestCase
         long_text = "This is a very long response. " * 20
         cleaned = @agent.send(:parse_wiki_completion_response, long_text)
 
-        assert cleaned.length <= 500
+        assert_operator cleaned.length, :<=, 500
       end
 
       should "remove leading and trailing markers" do
@@ -256,11 +262,13 @@ class WikiAgentTest < ActiveSupport::TestCase
         cleaned = @agent.send(:parse_wiki_completion_response, many_sentences)
 
         sentences = cleaned.split(/[.!?。！？]\s*/)
-        assert sentences.length <= 6
+
+        assert_operator sentences.length, :<=, 6
       end
 
       should "handle empty response" do
         cleaned = @agent.send(:parse_wiki_completion_response, "")
+
         assert_equal "", cleaned
       end
     end

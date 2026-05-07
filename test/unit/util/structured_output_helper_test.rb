@@ -26,7 +26,7 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
     should "return instructions string containing the JSON schema" do
       instructions = Util::StructuredOutputHelper.get_format_instructions(@json_schema)
 
-      assert instructions.is_a?(String)
+      assert_kind_of String, instructions
       assert_includes instructions, "JSON Schema"
       assert_includes instructions, '"goal"'
       assert_includes instructions, '"required_flag"'
@@ -149,7 +149,7 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
         json_schema: array_schema
       )
 
-      assert result.is_a?(Array)
+      assert_kind_of Array, result
       assert_equal 2, result.length
       assert_equal "item1", result[0]["name"]
     end

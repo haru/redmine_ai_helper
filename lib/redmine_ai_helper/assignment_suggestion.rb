@@ -52,11 +52,11 @@ module RedmineAiHelper
         llm = RedmineAiHelper::Llm.new
         similar_issues = if issue
             llm.find_similar_issues(issue: issue)
-          else
+        else
             llm.find_similar_issues_by_content(
               subject: subject, description: description, project: @project
             )
-          end
+        end
 
         aggregate_history_suggestions(similar_issues)
       rescue => e

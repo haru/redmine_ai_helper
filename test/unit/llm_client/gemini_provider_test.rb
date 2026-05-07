@@ -32,6 +32,7 @@ class RedmineAiHelper::LlmClient::GeminiProviderTest < ActiveSupport::TestCase
     should "memoize the context" do
       context1 = @provider.context
       context2 = @provider.context
+
       assert_same context1, context2
     end
 
@@ -54,6 +55,7 @@ class RedmineAiHelper::LlmClient::GeminiProviderTest < ActiveSupport::TestCase
     should "configure_provider_config sets gemini_api_key" do
       config = RubyLLM::Configuration.new
       @provider.send(:configure_provider_config, config)
+
       assert_equal @gemini_profile.access_key, config.gemini_api_key
     end
 
@@ -66,6 +68,7 @@ class RedmineAiHelper::LlmClient::GeminiProviderTest < ActiveSupport::TestCase
       @provider.expects(:build_context).returns(mock_context)
 
       chat = @provider.create_chat(instructions: "Test prompt")
+
       assert_equal mock_chat, chat
     end
   end

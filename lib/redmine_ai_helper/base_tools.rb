@@ -242,7 +242,7 @@ module RedmineAiHelper
       # Build JSON schema for a single property
       def build_property_schema(param)
         schema = { type: param[:type] }
-        schema[:description] = param[:description] if param[:description] && !param[:description].empty?
+        schema[:description] = param[:description] if param[:description].present?
         schema[:enum] = param[:enum] if param[:enum]
 
         case param[:type]
@@ -272,7 +272,7 @@ module RedmineAiHelper
       # Build JSON schema for array items
       def build_items_schema(items_def)
         schema = { type: items_def[:type] }
-        schema[:description] = items_def[:description] if items_def[:description] && !items_def[:description].empty?
+        schema[:description] = items_def[:description] if items_def[:description].present?
         schema[:enum] = items_def[:enum] if items_def[:enum]
 
         if items_def[:type] == "object"

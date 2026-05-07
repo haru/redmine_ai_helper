@@ -13,6 +13,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
   should "get index" do
     get :index
+
     assert_response :success
     assert_template :index
     assert_not_nil assigns(:setting)
@@ -21,13 +22,16 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
   should "update setting with valid attributes" do
     post :update, params: { ai_helper_setting: { model_profile_id: @model_profile.id } }
+
     assert_redirected_to action: :index
     @ai_helper_setting.reload
+
     assert_equal @model_profile.id, @ai_helper_setting.model_profile_id
   end
 
   should "not update setting with invalid attributes" do
     post :update, params: { id: @ai_helper_setting,  ai_helper_setting: { some_attribute: nil } }
+
     assert_response :redirect
     assert_not_nil assigns(:setting)
     assert_not_nil assigns(:model_profiles)
@@ -37,7 +41,8 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
     ActionController::Base.allow_forgery_protection = true
     begin
       post :update, params: { ai_helper_setting: { model_profile_id: @model_profile.id } }
-      assert_response 422
+
+      assert_response :unprocessable_content
     ensure
       ActionController::Base.allow_forgery_protection = false
     end
@@ -47,7 +52,8 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
     ActionController::Base.allow_forgery_protection = true
     begin
       post :update, params: { ai_helper_setting: { model_profile_id: @model_profile.id }, format: :json }
-      assert_response 422
+
+      assert_response :unprocessable_content
     ensure
       ActionController::Base.allow_forgery_protection = false
     end
@@ -55,21 +61,26 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
   should "update attachment_send_enabled to true" do
     post :update, params: { ai_helper_setting: { attachment_send_enabled: "1", attachment_max_size_mb: "5" } }
+
     assert_redirected_to action: :index
     @ai_helper_setting.reload
+
     assert_equal true, @ai_helper_setting.attachment_send_enabled
     assert_equal 5, @ai_helper_setting.attachment_max_size_mb
   end
 
   should "update attachment_max_size_mb" do
     post :update, params: { ai_helper_setting: { attachment_send_enabled: "1", attachment_max_size_mb: "10" } }
+
     assert_redirected_to action: :index
     @ai_helper_setting.reload
+
     assert_equal 10, @ai_helper_setting.attachment_max_size_mb
   end
 
   should "skip attachment_max_size_mb validation when attachment_send_enabled is false" do
     post :update, params: { ai_helper_setting: { attachment_send_enabled: "0", attachment_max_size_mb: "0" } }
+
     assert_redirected_to action: :index
   end
 
@@ -89,30 +100,37 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
     should "save use_vector_model_profile true with valid vector_model_profile_id" do
       post :update, params: { ai_helper_setting: { vector_search_enabled: "1", vector_search_uri: "http://localhost:6333", use_vector_model_profile: "1", vector_model_profile_id: @vector_profile.id } }
+
       assert_redirected_to action: :index
       @ai_helper_setting.reload
+
       assert_equal true, @ai_helper_setting.use_vector_model_profile
       assert_equal @vector_profile.id, @ai_helper_setting.vector_model_profile_id
     end
 
     should "not save when use_vector_model_profile true but vector_model_profile_id blank" do
       post :update, params: { ai_helper_setting: { vector_search_enabled: "1", vector_search_uri: "http://localhost:6333", use_vector_model_profile: "1", vector_model_profile_id: "" } }
+
       assert_response :success
       @ai_helper_setting.reload
+
       assert_not @ai_helper_setting.use_vector_model_profile
     end
 
     should "save use_vector_model_profile false and clear vector_model_profile_id" do
       @ai_helper_setting.update_columns(use_vector_model_profile: true, vector_model_profile_id: @vector_profile.id)
       post :update, params: { ai_helper_setting: { use_vector_model_profile: "0", vector_model_profile_id: "" } }
+
       assert_redirected_to action: :index
       @ai_helper_setting.reload
+
       assert_equal false, @ai_helper_setting.use_vector_model_profile
       assert_nil @ai_helper_setting.vector_model_profile_id
     end
 
     should "render vector model profile checkbox on index" do
       get :index
+
       assert_response :success
       assert_select "input[type=checkbox][name='ai_helper_setting[use_vector_model_profile]']"
     end
@@ -134,28 +152,35 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
     should "save use_think_model true with valid think_model_profile_id" do
       post :update, params: { ai_helper_setting: { use_think_model: "1", think_model_profile_id: @think_profile.id } }
+
       assert_redirected_to action: :index
       @ai_helper_setting.reload
+
       assert_equal true, @ai_helper_setting.use_think_model
       assert_equal @think_profile.id, @ai_helper_setting.think_model_profile_id
     end
 
     should "not save when use_think_model true but think_model_profile_id blank" do
       post :update, params: { ai_helper_setting: { use_think_model: "1", think_model_profile_id: "" } }
+
       assert_response :success
       @ai_helper_setting.reload
+
       assert_not @ai_helper_setting.use_think_model
     end
 
     should "save use_think_model false regardless of think_model_profile_id" do
       post :update, params: { ai_helper_setting: { use_think_model: "0", think_model_profile_id: "" } }
+
       assert_redirected_to action: :index
       @ai_helper_setting.reload
+
       assert_equal false, @ai_helper_setting.use_think_model
     end
 
     should "render think model checkbox on index" do
       get :index
+
       assert_response :success
       assert_select "input[type=checkbox][name='ai_helper_setting[use_think_model]']"
     end
@@ -166,21 +191,26 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
   context "mcp_server_enabled setting" do
     should "save mcp_server_enabled true" do
       post :update, params: { ai_helper_setting: { mcp_server_enabled: "1" } }
+
       assert_redirected_to action: :index
       @ai_helper_setting.reload
+
       assert_equal true, @ai_helper_setting.mcp_server_enabled
     end
 
     should "save mcp_server_enabled false" do
       @ai_helper_setting.update_column(:mcp_server_enabled, true)
       post :update, params: { ai_helper_setting: { mcp_server_enabled: "0" } }
+
       assert_redirected_to action: :index
       @ai_helper_setting.reload
+
       assert_equal false, @ai_helper_setting.mcp_server_enabled
     end
 
     should "render mcp_server_enabled checkbox on index" do
       get :index
+
       assert_response :success
       assert_select "input[type=checkbox][name='ai_helper_setting[mcp_server_enabled]']"
     end

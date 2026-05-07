@@ -17,6 +17,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
         command_type: :global,
         user: @user
       )
+
       assert_equal "test-command", command.name
     end
 
@@ -27,6 +28,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
         command_type: :global,
         user: @user
       )
+
       assert_equal "mycustomcommand", command.name
     end
   end
@@ -38,8 +40,9 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
         command_type: :global,
         user: @user
       )
+
       assert_not command.valid?
-      assert command.errors[:name].present?
+      assert_predicate command.errors[:name], :present?
     end
 
     should "validate presence of prompt" do
@@ -48,8 +51,9 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
         command_type: :global,
         user: @user
       )
+
       assert_not command.valid?
-      assert command.errors[:prompt].present?
+      assert_predicate command.errors[:prompt], :present?
     end
 
     should "validate presence of command_type" do
@@ -59,8 +63,9 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
         user: @user
       )
       command.command_type = nil
+
       assert_not command.valid?
-      assert command.errors[:command_type].present?
+      assert_predicate command.errors[:command_type], :present?
     end
 
     should "validate format of name" do
@@ -72,8 +77,9 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
           command_type: :global,
           user: @user
         )
+
         assert_not command.valid?, "#{invalid_name} should be invalid"
-        assert command.errors[:name].present?
+        assert_predicate command.errors[:name], :present?
       end
     end
 
@@ -86,7 +92,8 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
           command_type: :global,
           user: @user
         )
-        assert command.valid?, "#{valid_name} should be valid"
+
+        assert_predicate command, :valid?, "#{valid_name} should be valid"
       end
     end
 
@@ -97,8 +104,9 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
         command_type: :global,
         user: @user
       )
+
       assert_not command.valid?
-      assert command.errors[:name].present?
+      assert_predicate command.errors[:name], :present?
     end
 
     should "validate uniqueness of global commands" do
@@ -115,8 +123,9 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
         command_type: :global,
         user: @another_user
       )
+
       assert_not duplicate.valid?
-      assert duplicate.errors[:name].present?
+      assert_predicate duplicate.errors[:name], :present?
     end
 
     should "validate uniqueness of project commands within project" do
@@ -135,8 +144,9 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
         project: @project,
         user: @another_user
       )
+
       assert_not duplicate.valid?
-      assert duplicate.errors[:name].present?
+      assert_predicate duplicate.errors[:name], :present?
     end
 
     should "allow same name for project commands in different projects" do
@@ -157,7 +167,8 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
         project: project2,
         user: @user
       )
-      assert command.valid?
+
+      assert_predicate command, :valid?
     end
 
     should "validate uniqueness of user commands for same user" do
@@ -176,8 +187,9 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
         user_scope: :common,
         user: @user
       )
+
       assert_not duplicate.valid?
-      assert duplicate.errors[:name].present?
+      assert_predicate duplicate.errors[:name], :present?
     end
 
     should "allow same name for user commands of different users" do
@@ -196,7 +208,8 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
         user_scope: :common,
         user: @another_user
       )
-      assert command.valid?
+
+      assert_predicate command, :valid?
     end
 
     should "validate uniqueness of user project commands within user and project" do
@@ -217,8 +230,9 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
         project: @project,
         user: @user
       )
+
       assert_not duplicate.valid?
-      assert duplicate.errors[:name].present?
+      assert_predicate duplicate.errors[:name], :present?
     end
 
     should "require project for project commands" do
@@ -228,8 +242,9 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
         command_type: :project,
         user: @user
       )
+
       assert_not command.valid?
-      assert command.errors[:project].present?
+      assert_predicate command.errors[:project], :present?
     end
 
     should "require project for user project_limited commands" do
@@ -240,8 +255,9 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
         user_scope: :project_limited,
         user: @user
       )
+
       assert_not command.valid?
-      assert command.errors[:project].present?
+      assert_predicate command.errors[:project], :present?
     end
 
     should "allow project for global commands" do
@@ -252,7 +268,8 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
         project: @project,
         user: @user
       )
-      assert command.valid?
+
+      assert_predicate command, :valid?
     end
 
     should "allow project for user common commands (project_id ignored)" do
@@ -264,7 +281,8 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
         project: @project,
         user: @user
       )
-      assert command.valid?
+
+      assert_predicate command, :valid?
     end
   end
 
@@ -277,7 +295,8 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
         command_type: :global,
         user: @user
       )
-      assert command.valid?
+
+      assert_predicate command, :valid?
     end
 
     should "accept nil description" do
@@ -288,7 +307,8 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
         command_type: :global,
         user: @user
       )
-      assert command.valid?
+
+      assert_predicate command, :valid?
     end
 
     should "accept empty description" do
@@ -299,7 +319,8 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
         command_type: :global,
         user: @user
       )
-      assert command.valid?
+
+      assert_predicate command, :valid?
     end
 
     should "reject description longer than 200 characters" do
@@ -310,8 +331,9 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
         command_type: :global,
         user: @user
       )
+
       assert_not command.valid?
-      assert command.errors[:description].present?
+      assert_predicate command.errors[:description], :present?
     end
   end
 
@@ -352,6 +374,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
 
     should "return global commands" do
       commands = AiHelperCustomCommand.global_commands
+
       assert_includes commands, @global_cmd
       assert_not_includes commands, @project_cmd
       assert_not_includes commands, @user_common_cmd
@@ -360,6 +383,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
 
     should "return project commands for specific project" do
       commands = AiHelperCustomCommand.project_commands(@project.id)
+
       assert_not_includes commands, @global_cmd
       assert_includes commands, @project_cmd
       assert_not_includes commands, @user_common_cmd
@@ -368,6 +392,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
 
     should "return user common commands" do
       commands = AiHelperCustomCommand.user_common_commands(@user.id)
+
       assert_not_includes commands, @global_cmd
       assert_not_includes commands, @project_cmd
       assert_includes commands, @user_common_cmd
@@ -376,6 +401,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
 
     should "return user project commands" do
       commands = AiHelperCustomCommand.user_project_commands(@user.id, @project.id)
+
       assert_not_includes commands, @global_cmd
       assert_not_includes commands, @project_cmd
       assert_not_includes commands, @user_common_cmd
@@ -420,6 +446,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
 
     should "return all command types when project is specified" do
       commands = AiHelperCustomCommand.available_for(user: @user, project: @project)
+
       assert_includes commands, @global_cmd
       assert_includes commands, @project_cmd
       assert_includes commands, @user_common_cmd
@@ -428,6 +455,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
 
     should "return global and user common commands when project is nil" do
       commands = AiHelperCustomCommand.available_for(user: @user, project: nil)
+
       assert_includes commands, @global_cmd
       assert_not_includes commands, @project_cmd
       assert_includes commands, @user_common_cmd
@@ -436,6 +464,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
 
     should "not return other users commands" do
       commands = AiHelperCustomCommand.available_for(user: @another_user, project: @project)
+
       assert_includes commands, @global_cmd
       assert_includes commands, @project_cmd
       assert_not_includes commands, @user_common_cmd
@@ -455,6 +484,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
 
     should "find global command by name" do
       command = AiHelperCustomCommand.find_command(name: "test", user: @user, project: nil)
+
       assert_equal @global_cmd, command
     end
 
@@ -477,6 +507,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
       )
 
       command = AiHelperCustomCommand.find_command(name: "priority", user: @user, project: @project)
+
       assert_equal user_cmd, command
     end
 
@@ -497,19 +528,23 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
       )
 
       command = AiHelperCustomCommand.find_command(name: "priority", user: @user, project: @project)
+
       assert_equal project_cmd, command
     end
 
     should "find command regardless of input case" do
       command = AiHelperCustomCommand.find_command(name: "TEST", user: @user, project: nil)
+
       assert_equal @global_cmd, command
 
       command = AiHelperCustomCommand.find_command(name: "TeSt", user: @user, project: nil)
+
       assert_equal @global_cmd, command
     end
 
     should "return nil for non-existent command" do
       command = AiHelperCustomCommand.find_command(name: "nonexistent", user: @user, project: nil)
+
       assert_nil command
     end
   end
@@ -524,6 +559,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
       )
 
       result = command.expand(input: "some text", user: @user)
+
       assert_equal "Process this: some text", result
     end
 
@@ -537,6 +573,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
       )
 
       result = command.expand(user: @user, project: @project)
+
       assert_equal "Project: #{@project.name}", result
     end
 
@@ -549,6 +586,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
       )
 
       result = command.expand(user: @user)
+
       assert_equal "User: #{@user.name}", result
     end
 
@@ -562,6 +600,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
 
       datetime = Time.zone.parse("2026-02-01 12:00:00")
       result = command.expand(user: @user, datetime: datetime)
+
       assert_includes result, "2026-02-01"
     end
 
@@ -575,6 +614,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
       )
 
       result = command.expand(input: "test data", user: @user, project: @project)
+
       assert_equal "User #{@user.name} in project #{@project.name}: test data", result
     end
 
@@ -587,6 +627,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
       )
 
       result = command.expand(user: @user)
+
       assert_equal "Process: ", result
     end
 
@@ -599,6 +640,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
       )
 
       result = command.expand(user: @user, project: nil)
+
       assert_equal "Project: ", result
     end
   end
@@ -635,6 +677,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
       )
 
       admin = User.find(1)
+
       assert command.editable_by?(admin)
     end
   end

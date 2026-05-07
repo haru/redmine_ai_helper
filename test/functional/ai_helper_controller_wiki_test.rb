@@ -41,7 +41,8 @@ class AiHelperControllerWikiTest < Redmine::ControllerTest
 
     assert_response :success
     json = JSON.parse(response.body)
-    assert json["suggestion"].is_a?(String)
+
+    assert_kind_of String, json["suggestion"]
   end
 
   test "suggest_wiki_completion should require JSON content type" do
@@ -131,7 +132,8 @@ class AiHelperControllerWikiTest < Redmine::ControllerTest
 
     assert_response :success
     json = JSON.parse(response.body)
-    assert json["suggestion"].is_a?(String)
+
+    assert_kind_of String, json["suggestion"]
   end
 
   test "suggest_wiki_completion should handle LLM errors gracefully" do
@@ -170,7 +172,8 @@ class AiHelperControllerWikiTest < Redmine::ControllerTest
 
     assert_response :success
     json = JSON.parse(response.body)
-    assert json["suggestion"].is_a?(String)
+
+    assert_kind_of String, json["suggestion"]
 
     # Verify that is_section_edit was passed correctly to the LLM
     assert_not_nil captured_params
@@ -199,7 +202,8 @@ class AiHelperControllerWikiTest < Redmine::ControllerTest
 
     assert_response :success
     json = JSON.parse(response.body)
-    assert json["suggestion"].is_a?(String)
+
+    assert_kind_of String, json["suggestion"]
 
     # Verify that is_section_edit was passed correctly to the LLM
     assert_not_nil captured_params

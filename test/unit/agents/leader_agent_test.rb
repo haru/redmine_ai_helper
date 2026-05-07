@@ -35,12 +35,14 @@ class LeaderAgentTest < ActiveSupport::TestCase
 
     should "return correct backstory" do
       backstory = @agent.backstory
-      assert backstory.include?("You are the leader agent of the RedmineAIHelper plugin")
+
+      assert_includes backstory, "You are the leader agent of the RedmineAIHelper plugin"
     end
 
     should "return correct system prompt" do
       system_prompt = @agent.system_prompt
-      assert system_prompt.include?(@agent.backstory)
+
+      assert_includes system_prompt, @agent.backstory
     end
 
     should "generate goal correctly" do
@@ -50,7 +52,8 @@ class LeaderAgentTest < ActiveSupport::TestCase
       @mock_ruby_llm_chat.stubs(:ask).returns(mock_response)
 
       goal = @agent.generate_goal(@messages)
-      assert goal.is_a?(Hash)
+
+      assert_kind_of Hash, goal
       assert_equal "test goal", goal["goal"]
     end
 
@@ -58,7 +61,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
       steps_json = {
         "steps" => [
           { "agent" => "project_agent", "step" => "my_projectのIDを教えてください", "description_for_human" => "Retrieving project information..." },
-          { "agent" => "project_agent", "step" => "my_projectの情報を取得してください", "description_for_human" => "Getting project details..." },
+          { "agent" => "project_agent", "step" => "my_projectの情報を取得してください", "description_for_human" => "Getting project details..." }
         ]
       }.to_json
       mock_response = mock("Response")
@@ -67,8 +70,9 @@ class LeaderAgentTest < ActiveSupport::TestCase
 
       goal = "test goal"
       steps = @agent.generate_steps(goal, @messages)
-      assert steps.is_a?(Hash)
-      assert steps["steps"].is_a?(Array)
+
+      assert_kind_of Hash, steps
+      assert_kind_of Array, steps["steps"]
     end
 
     should "perform user request successfully" do
@@ -84,7 +88,8 @@ class LeaderAgentTest < ActiveSupport::TestCase
       @mock_ruby_llm_chat.stubs(:ask).returns(goal_response).then.returns(chat_response)
 
       result = @agent.perform_user_request(@messages)
-      assert result.is_a?(String)
+
+      assert_kind_of String, result
     end
 
     should "include use_think_model boolean field in generate_steps JSON schema" do
@@ -95,7 +100,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
             "step" => "Create a Wiki page.",
             "description_for_human" => "Creating Wiki page...",
             "use_think_model" => true
-          },
+          }
         ]
       }.to_json
       mock_response = mock("Response")
@@ -103,6 +108,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
       @mock_ruby_llm_chat.stubs(:ask).returns(mock_response)
 
       steps = @agent.generate_steps("test goal", @messages)
+
       assert steps["steps"].first.key?("use_think_model"), "Step should have use_think_model key"
       assert_equal true, steps["steps"].first["use_think_model"]
     end
@@ -234,4 +240,3 @@ class LeaderAgentTest < ActiveSupport::TestCase
     end
   end
 end
-

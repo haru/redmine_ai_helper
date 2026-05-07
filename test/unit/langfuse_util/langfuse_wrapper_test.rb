@@ -21,11 +21,13 @@ class RedmineAiHelper::LangfuseUtil::LangfuseWrapperTest < ActiveSupport::TestCa
 
   should "create a span with correct parameters" do
     @langfuse.create_span(name: "test_span", input: "test_input")
+
     assert @langfuse.current_span
   end
 
   should "find the current span" do
     span = @langfuse.create_span(name: "test_span", input: "test_input")
+
     assert_equal span, @langfuse.current_span
     assert @langfuse.finish_current_span(output: "test output")
   end
@@ -33,12 +35,14 @@ class RedmineAiHelper::LangfuseUtil::LangfuseWrapperTest < ActiveSupport::TestCa
   context "SpanWrapper" do
     should "finish the span and return the span object" do
       span = @langfuse.create_span(name: "test_span", input: "test_input")
+
       assert span.finish(output: "end output")
     end
 
     should "create generation" do
       span = @langfuse.create_span(name: "test_span", input: "test_input")
       generation = span.create_generation(name: "aaa", messages: [ "messages" ], model: "test_model")
+
       assert generation
       assert generation
     end
@@ -48,6 +52,7 @@ class RedmineAiHelper::LangfuseUtil::LangfuseWrapperTest < ActiveSupport::TestCa
     should "finish the generation and return the generation object" do
       span = @langfuse.create_span(name: "test_span", input: "test_input")
       generation = span.create_generation(name: "test_gen", messages: [ "message1", "message2" ], model: "test_model")
+
       assert generation.finish(output: "test output", usage: { prompt_tokens: 10, completion_tokens: 5 })
     end
   end

@@ -48,11 +48,13 @@ module AiHelper
         # Use project_id param since no project-scoped index route exists;
         # find_project still handles params[:project_id] for backward compatibility
         get :index, params: { project_id: @project.id }
+
         assert_redirected_to ai_helper_dashboard_path(@project, tab: "custom_commands")
       end
 
       should "show commands without project" do
         get :index
+
         assert_response :success
         assert_not_nil assigns(:commands)
         assert_not_nil assigns(:grouped_commands)
@@ -61,7 +63,8 @@ module AiHelper
       should "require login" do
         @request.session[:user_id] = nil
         get :index, params: { id: @project.id }
-        assert_response 302
+
+        assert_response :found
       end
     end
 
@@ -70,8 +73,10 @@ module AiHelper
         @user.stubs(:allowed_to?).returns(true)
         User.stubs(:current).returns(@user)
         get :available, params: { id: @project.id, format: :json }
+
         assert_response :success
         json = JSON.parse(response.body)
+
         assert_not_nil json["commands"]
         assert_kind_of Array, json["commands"]
       end
@@ -84,8 +89,10 @@ module AiHelper
                       prefix: "global",
                       format: :json
                     }
+
         assert_response :success
         json = JSON.parse(response.body)
+
         assert_equal 1, json["commands"].select { |c| c["name"].start_with?("global") }.count
       end
 
@@ -94,8 +101,10 @@ module AiHelper
         @user.stubs(:allowed_to?).returns(true)
         User.stubs(:current).returns(@user)
         get :available, params: { format: :json }
+
         assert_response :success
         json = JSON.parse(response.body)
+
         assert_not_nil json["commands"]
       end
 
@@ -104,9 +113,11 @@ module AiHelper
         @user.stubs(:allowed_to?).returns(true)
         User.stubs(:current).returns(@user)
         get :available, params: { id: @project.id, format: :json }
+
         assert_response :success
         json = JSON.parse(response.body)
         command = json["commands"].find { |c| c["name"] == "global-test" }
+
         assert_not_nil command
         assert_equal "Test description", command["description"]
       end
@@ -115,6 +126,7 @@ module AiHelper
     context "GET new" do
       should "render new form for project" do
         get :new, params: { id: @project.id }
+
         assert_response :success
         assert_not_nil assigns(:command)
         assert_equal @project, assigns(:command).project
@@ -122,6 +134,7 @@ module AiHelper
 
       should "render new form without project" do
         get :new
+
         assert_response :success
         assert_not_nil assigns(:command)
         assert_nil assigns(:command).project
@@ -142,6 +155,7 @@ module AiHelper
         assert_redirected_to custom_commands_path
 
         command = AiHelperCustomCommand.last
+
         assert_equal "new-global", command.name
         assert_equal "global", command.command_type
         assert_equal @user.id, command.user_id
@@ -161,6 +175,7 @@ module AiHelper
         assert_redirected_to ai_helper_dashboard_path(@project, tab: "custom_commands")
 
         command = AiHelperCustomCommand.last
+
         assert_equal "new-project", command.name
         assert_equal "project", command.command_type
         assert_equal @project.id, command.project_id
@@ -180,6 +195,7 @@ module AiHelper
         assert_redirected_to custom_commands_path
 
         command = AiHelperCustomCommand.last
+
         assert_equal "new-user", command.name
         assert_equal "user", command.command_type
         assert_equal "common", command.user_scope
@@ -228,6 +244,7 @@ module AiHelper
         assert_redirected_to custom_commands_path
 
         command = AiHelperCustomCommand.last
+
         assert_equal "with-desc", command.name
         assert_equal "A helpful command", command.description
       end
@@ -245,6 +262,7 @@ module AiHelper
         assert_redirected_to custom_commands_path
 
         command = AiHelperCustomCommand.last
+
         assert_nil command.description
       end
     end
@@ -252,6 +270,7 @@ module AiHelper
     context "GET edit" do
       should "render edit form" do
         get :edit, params: { id: @global_command.id }
+
         assert_response :success
         assert_equal @global_command, assigns(:command)
       end
@@ -261,7 +280,8 @@ module AiHelper
         @request.session[:user_id] = other_user.id
 
         get :edit, params: { id: @global_command.id }
-        assert_response 403
+
+        assert_response :forbidden
       end
     end
 
@@ -273,9 +293,11 @@ module AiHelper
                      prompt: "Updated prompt"
                    }
                  }
+
         assert_redirected_to custom_commands_path
 
         @global_command.reload
+
         assert_equal "Updated prompt", @global_command.prompt
       end
 
@@ -289,9 +311,11 @@ module AiHelper
                      prompt: "Hacked prompt"
                    }
                  }
-        assert_response 403
+
+        assert_response :forbidden
 
         @global_command.reload
+
         assert_not_equal "Hacked prompt", @global_command.prompt
       end
 
@@ -302,6 +326,7 @@ module AiHelper
                      name: ""
                    }
                  }
+
         assert_response :success
         assert_not_nil assigns(:command).errors[:name]
       end
@@ -322,7 +347,7 @@ module AiHelper
         assert_no_difference "AiHelperCustomCommand.count" do
           delete :destroy, params: { id: @global_command.id }
         end
-        assert_response 403
+        assert_response :forbidden
       end
 
       should "redirect to project path when in project context" do
@@ -330,6 +355,7 @@ module AiHelper
                     id: @project.id,
                     custom_command_id: @project_command.id
                   }
+
         assert_redirected_to ai_helper_dashboard_path(@project, tab: "custom_commands")
       end
     end

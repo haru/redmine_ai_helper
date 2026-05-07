@@ -33,9 +33,7 @@ module RedmineAiHelper
       # Generate embedding via LLM provider (uses RubyLLM).
       # @param text [String] The text to embed.
       # @return [Array<Float>] The embedding vector.
-      def embed(text)
-        @llm_provider.embed(text)
-      end
+      delegate :embed, to: :@llm_provider
 
       # Upsert texts with embeddings into the Qdrant collection.
       # @param texts [Array<String>] The texts to embed and store.

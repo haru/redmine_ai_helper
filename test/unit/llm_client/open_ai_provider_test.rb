@@ -21,6 +21,7 @@ class RedmineAiHelper::LlmClient::OpenAiProviderTest < ActiveSupport::TestCase
     should "memoize the context" do
       context1 = @provider.context
       context2 = @provider.context
+
       assert_same context1, context2
     end
 
@@ -43,6 +44,7 @@ class RedmineAiHelper::LlmClient::OpenAiProviderTest < ActiveSupport::TestCase
     should "configure_provider_config sets openai_api_key" do
       config = RubyLLM::Configuration.new
       @provider.send(:configure_provider_config, config)
+
       assert_equal @setting.model_profile.access_key, config.openai_api_key
     end
 
@@ -57,6 +59,7 @@ class RedmineAiHelper::LlmClient::OpenAiProviderTest < ActiveSupport::TestCase
       provider = RedmineAiHelper::LlmClient::OpenAiProvider.new(model_profile: profile)
       config = RubyLLM::Configuration.new
       provider.send(:configure_provider_config, config)
+
       assert_equal "org-test123", config.openai_organization_id
       profile.destroy
     end
@@ -71,6 +74,7 @@ class RedmineAiHelper::LlmClient::OpenAiProviderTest < ActiveSupport::TestCase
       provider = RedmineAiHelper::LlmClient::OpenAiProvider.new(model_profile: profile)
       config = RubyLLM::Configuration.new
       provider.send(:configure_provider_config, config)
+
       assert_nil config.openai_organization_id
       profile.destroy
     end
@@ -117,6 +121,7 @@ class RedmineAiHelper::LlmClient::OpenAiProviderTest < ActiveSupport::TestCase
       @provider.expects(:build_context).returns(mock_context)
 
       chat = @provider.create_chat(instructions: "Test prompt")
+
       assert_equal mock_chat, chat
     end
   end

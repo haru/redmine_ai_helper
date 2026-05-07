@@ -7,7 +7,7 @@ class UserPatchTest < ActiveSupport::TestCase
     end
 
     should "have ai_helper_conversations association" do
-      assert @user.respond_to?(:ai_helper_conversations)
+      assert_respond_to @user, :ai_helper_conversations
     end
 
     should "destroy conversations when user is deleted" do
@@ -16,9 +16,9 @@ class UserPatchTest < ActiveSupport::TestCase
         title: "Test conversation 1",
         user: @user
       )
-      
+
       conversation2 = AiHelperConversation.create!(
-        title: "Test conversation 2", 
+        title: "Test conversation 2",
         user: @user
       )
 
@@ -37,13 +37,13 @@ class UserPatchTest < ActiveSupport::TestCase
 
     should "only delete own conversations when user is deleted" do
       other_user = User.find(2)
-      
+
       # Create conversations for both users
       user_conversation = AiHelperConversation.create!(
         title: "User conversation",
         user: @user
       )
-      
+
       other_conversation = AiHelperConversation.create!(
         title: "Other user conversation",
         user: other_user

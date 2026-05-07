@@ -6,7 +6,6 @@ module RedmineAiHelper
   module LangfuseUtil
     # Wrapper for Langfuse.
     class LangfuseWrapper
-
       # @param input [String] The input string to be processed.
       def initialize(input:)
         config_yml = RedmineAiHelper::Util::ConfigFile.load_config[:langfuse]

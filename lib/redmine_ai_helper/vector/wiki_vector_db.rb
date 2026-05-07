@@ -39,7 +39,7 @@ module RedmineAiHelper
         }
         content = "#{wiki.title} #{wiki.content.text}"
 
-        return { content: content, payload: payload }
+        { content: content, payload: payload }
       end
     end
   end

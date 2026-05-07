@@ -23,8 +23,8 @@ class RedmineAiHelper::Util::WikiJsonTest < ActiveSupport::TestCase
       assert_equal @page.text, wiki_data[:text]
       assert_equal @page.content.author.id, wiki_data[:author][:id]
       assert_equal @page.version, wiki_data[:version]
-      assert wiki_data[:attachments].is_a?(Array)
-      assert wiki_data[:attachments].length > 0
+      assert_kind_of Array, wiki_data[:attachments]
+      assert_operator wiki_data[:attachments].length, :>, 0
     end
 
     should "include type 'image' for image attachments" do

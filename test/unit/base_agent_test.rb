@@ -28,6 +28,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
   context "assistant" do
     should "return the instance of the agent" do
       assistant = @agent.assistant
+
       assert_instance_of RedmineAiHelper::Assistant, assistant
     end
   end
@@ -35,7 +36,8 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
   context "available_tool_providers" do
     should "return an array of BaseTools subclasses with agent" do
       providers = @agent.available_tool_providers
-      assert providers.is_a?(Array)
+
+      assert_kind_of Array, providers
       assert_equal [ RedmineAiHelper::Tools::BoardTools ], providers
     end
 
@@ -47,10 +49,11 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
   context "available_tool_classes" do
     should "return an array of RubyLLM::Tool subclasses derived from available_tool_providers" do
       tool_classes = @agent.available_tool_classes
-      assert tool_classes.is_a?(Array)
-      assert tool_classes.length > 0
+
+      assert_kind_of Array, tool_classes
+      assert_operator tool_classes.length, :>, 0
       tool_classes.each do |klass|
-        assert klass < RubyLLM::Tool, "#{klass} should be a subclass of RubyLLM::Tool"
+        assert_operator klass, :<, RubyLLM::Tool, "#{klass} should be a subclass of RubyLLM::Tool"
       end
       assert_equal RedmineAiHelper::Tools::BoardTools.tool_classes, tool_classes
     end
@@ -73,8 +76,9 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
   context "available_tools" do
     should "return an array of tool info hashes with agent" do
       tools = @agent.available_tools
-      assert tools.is_a?(Array)
-      assert tools.length > 0
+
+      assert_kind_of Array, tools
+      assert_operator tools.length, :>, 0
       tools.each do |tool|
         assert tool.key?(:function), "Tool should have :function key"
         assert tool[:function].key?(:name), "Function should have :name"
@@ -112,10 +116,11 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       messages = [
         { role: "user", content: "Hello" },
         { role: "assistant", content: "Hi there" },
-        { role: "user", content: "What is Redmine?" },
+        { role: "user", content: "What is Redmine?" }
       ]
 
       answer = @agent.chat(messages)
+
       assert_equal "test answer", answer
     end
 
@@ -128,6 +133,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       callback = ->(content) { chunks_received << content }
 
       answer = @agent.chat(messages, {}, callback)
+
       assert_equal [ "chunk1", "chunk2" ], chunks_received
       assert_equal "chunk1chunk2", answer
     end
@@ -161,6 +167,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
 
       messages = [ { role: "user", content: "Describe this" } ]
       answer = @agent.chat(messages, {}, nil, with: image_paths)
+
       assert_equal "image answer", answer
     end
 
@@ -177,6 +184,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
 
       messages = [ { role: "user", content: "Hello" } ]
       answer = @agent.chat(messages, {}, nil, with: nil)
+
       assert_equal "text answer", answer
     end
   end
@@ -212,6 +220,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
 
       messages = [ { role: "user", content: "Hello" } ]
       answer = agent.think_chat(messages)
+
       assert_equal "normal answer", answer
     end
 
@@ -221,12 +230,14 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
 
       messages = [ { role: "user", content: "Complex question" } ]
       answer = agent.think_chat(messages)
+
       assert_equal "think answer", answer
     end
 
     should "lazily return think_llm_provider from LlmProvider.get_think_llm_provider" do
       RedmineAiHelper::LlmProvider.stubs(:get_think_llm_provider).returns(@mock_think_provider)
       agent = BaseAgentTestModele::TestAgent.new(@params)
+
       assert_nil agent.instance_variable_get(:@think_llm_provider)
       assert_equal @mock_think_provider, agent.think_llm_provider
     end
@@ -234,6 +245,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
     should "return nil from think_llm_provider when not configured" do
       RedmineAiHelper::LlmProvider.stubs(:get_think_llm_provider).returns(nil)
       agent = BaseAgentTestModele::TestAgent.new(@params)
+
       assert_nil agent.think_llm_provider
     end
   end
@@ -241,17 +253,20 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
   context "extract_text_content" do
     should "return text as-is for plain string content" do
       result = @agent.send(:extract_text_content, "Hello world")
+
       assert_equal "Hello world", result
     end
 
     should "return nil for nil content" do
       result = @agent.send(:extract_text_content, nil)
+
       assert_nil result
     end
 
     should "return text from RubyLLM::Content object" do
       content = RubyLLM::Content.new("Image description text", [])
       result = @agent.send(:extract_text_content, content)
+
       assert_equal "Image description text", result
     end
 
@@ -265,6 +280,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
 
       content = RubyLLM::Content.new("Describe this image", [ tmpfile.path ])
       result = @agent.send(:extract_text_content, content)
+
       assert_equal "Describe this image", result
     ensure
       tmpfile&.close
@@ -281,6 +297,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       @mock_chat.stubs(:add_message)
       @agent.add_message(role: "user", content: "hello")
       shared = @agent.instance_variable_get(:@shared_messages)
+
       assert_equal 1, shared.length
       assert_equal({ role: "user", content: "hello" }, shared.first)
     end
@@ -316,6 +333,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       @mock_think_provider.expects(:create_chat).at_least_once.returns(@mock_think_chat)
 
       result = agent.send(:build_think_assistant)
+
       assert_not_nil result
     end
 
@@ -330,6 +348,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       @mock_llm_provider.expects(:create_chat).at_least_once.returns(@mock_chat)
 
       result = agent.send(:build_think_assistant)
+
       assert_not_nil result
     end
 
@@ -363,6 +382,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       agent.expects(:build_think_assistant).returns(@mock_think_assistant)
 
       response = agent.perform_task({ use_think_model: true })
+
       assert response
     end
 
@@ -375,6 +395,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       agent.expects(:build_think_assistant).never
 
       response = agent.perform_task({ use_think_model: false })
+
       assert response
     end
 
@@ -387,6 +408,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       agent.expects(:build_think_assistant).never
 
       response = agent.perform_task({})
+
       assert response
     end
   end
@@ -404,6 +426,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       @mock_chat.stubs(:add_message)
 
       response = @agent.perform_task({})
+
       assert response
     end
   end

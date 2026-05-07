@@ -51,6 +51,7 @@ class ApiHealthReportTest < Redmine::IntegrationTest
 
     assert_response :success, "Expected 200 but got #{response.status}. Body: #{response.body}"
     json = response.parsed_body
+
     assert json.key?("id")
     assert_equal @project.id, json["project_id"]
     assert json.key?("health_report")

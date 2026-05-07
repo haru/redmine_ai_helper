@@ -5,7 +5,6 @@ require_relative "base_agent"
 require_relative "langfuse_util/langfuse_wrapper"
 
 module RedmineAiHelper
-
   # A class that is directly called from the controller to interact with AI using LLM.
   # TODO: Want to change class name
   class Llm

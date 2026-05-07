@@ -8,7 +8,7 @@ AllCops:
     - 'db/**/*'
 
 
-inherit_from: .rubocop_todo.yml
+# inherit_from: .rubocop_todo.yml
 
 # All cops except your using extensions are disabled by default.
 Bundler:

@@ -15,6 +15,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
 
     should "load stuff_todo prompt template" do
       prompt = @agent.send(:load_prompt, "issue_agent/stuff_todo")
+
       assert_not_nil prompt
       assert_respond_to prompt, :format
     end
@@ -22,6 +23,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
     should "load stuff_todo_ja prompt template" do
       I18n.with_locale(:ja) do
         prompt = @agent.send(:load_prompt, "issue_agent/stuff_todo")
+
         assert_not_nil prompt
         assert_respond_to prompt, :format
       end
@@ -46,6 +48,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
       @agent.stubs(:chat).returns("Suggested tasks")
 
       result = @agent.suggest_stuff_todo
+
       assert_equal "Suggested tasks", result
     end
 
@@ -71,6 +74,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
       @agent.stubs(:chat).returns("Suggested tasks")
 
       result = @agent.suggest_stuff_todo
+
       assert_equal "Suggested tasks", result
     end
 
@@ -94,6 +98,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
 
       # Get issues that would be fetched
       issues = @agent.send(:fetch_todo_issues, project: @project)
+
       assert_not_includes issues.map(&:id), issue.id
     end
 
@@ -127,7 +132,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
       overdue_score = @agent.send(:calculate_priority_score, overdue_issue)
       future_score = @agent.send(:calculate_priority_score, future_issue)
 
-      assert overdue_score > future_score, "Overdue issue should have higher priority score"
+      assert_operator overdue_score, :>, future_score, "Overdue issue should have higher priority score"
     end
 
     should "calculate priority score correctly for overdue issue" do
@@ -226,6 +231,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
       @agent.stubs(:chat).with(anything, anything, stream_proc).returns("Final result")
 
       result = @agent.suggest_stuff_todo(stream_proc: stream_proc)
+
       assert_equal "Final result", result
     end
 
@@ -252,7 +258,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
       assert_equal issue.due_date.to_s, formatted[0]["due_date"]
       assert_equal issue.updated_on.to_s, formatted[0]["updated_on"]
       assert_equal issue.project.name, formatted[0]["project_name"]
-      assert formatted[0]["score"] > 0
+      assert_operator formatted[0]["score"], :>, 0
     end
 
     should "fetch issues from other projects with proper permissions" do
@@ -295,6 +301,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
       )
 
       issues = @agent.send(:fetch_todo_issues_from_other_projects)
+
       assert_includes issues.map(&:id), other_issue.id, "Should include issues from other projects where AI helper is enabled and user has view_ai_helper permission"
     end
 
@@ -322,6 +329,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
       )
 
       issues = @agent.send(:fetch_todo_issues_from_other_projects)
+
       assert_not_includes issues.map(&:id), other_issue.id
     end
   end

@@ -107,7 +107,7 @@ module RedmineAiHelper
               cleaned_content = clean_remaining_table_lines(content_without_tables)
 
               if cleaned_content.strip.present?
-                formatted_content = textilizable(cleaned_content, :object => project, :only_path => false)
+                formatted_content = textilizable(cleaned_content, object: project, only_path: false)
                 # Convert to plain text and process with simple formatting
                 plain_text = html_to_plain_text(formatted_content)
                 process_simple_text_for_pdf(pdf, plain_text, left_margin, is_rtl)
@@ -185,7 +185,7 @@ module RedmineAiHelper
           ai_helper_logger.debug "Total markdown tables found: #{table_count}"
           ai_helper_logger.debug "Content after table removal: #{processed_content}"
 
-          return processed_content
+          processed_content
         end
 
         # Clean any remaining table-like lines that weren't caught by the main regex
@@ -233,7 +233,7 @@ module RedmineAiHelper
           text = text.gsub(/[ \t]+/, " ") # Multiple spaces to single space
           text = text.strip
 
-          return text
+          text
         end
 
         # Process simple text for PDF with basic formatting
@@ -281,11 +281,11 @@ module RedmineAiHelper
         # @param text_align [String] Text alignment ('L' or 'R')
         def add_simple_heading_to_pdf(pdf, text, level, left_margin, text_align = "L")
           font_size = case level
-                     when 1 then 14
-                     when 2 then 12
-                     when 3 then 11
-                     else 10
-                     end
+          when 1 then 14
+          when 2 then 12
+          when 3 then 11
+          else 10
+          end
 
           pdf.ln(4)
           pdf.set_x(left_margin)
@@ -484,7 +484,6 @@ module RedmineAiHelper
           plain_text.gsub!(/\n{3,}/, "\n\n")
           plain_text.strip
         end
-
       end
     end
   end

@@ -10,12 +10,14 @@ class PromptTemplateTest < ActiveSupport::TestCase
           template: "Hello {name}",
           input_variables: [ "name" ]
         )
+
         assert_equal "Hello {name}", pt.template
         assert_equal [ "name" ], pt.input_variables
       end
 
       should "default input_variables to empty array" do
         pt = RedmineAiHelper::Util::PromptTemplate.new(template: "Hello")
+
         assert_equal [], pt.input_variables
       end
     end
@@ -26,6 +28,7 @@ class PromptTemplateTest < ActiveSupport::TestCase
           template: "Hello {name}!",
           input_variables: [ "name" ]
         )
+
         assert_equal "Hello World!", pt.format(name: "World")
       end
 
@@ -35,6 +38,7 @@ class PromptTemplateTest < ActiveSupport::TestCase
           input_variables: [ "goal", "agent_list" ]
         )
         result = pt.format(goal: "Test goal", agent_list: "agent1, agent2")
+
         assert_equal "Goal: Test goal\nAgent list: agent1, agent2", result
       end
 
@@ -43,6 +47,7 @@ class PromptTemplateTest < ActiveSupport::TestCase
           template: "You are an AI assistant.",
           input_variables: []
         )
+
         assert_equal "You are an AI assistant.", pt.format
       end
 
@@ -53,6 +58,7 @@ class PromptTemplateTest < ActiveSupport::TestCase
         )
         json_with_backslashes = '{"path": "C:\\Users\\test", "newline": "line1\\nline2"}'
         result = pt.format(issue: json_with_backslashes)
+
         assert_equal "Issue data: #{json_with_backslashes}", result
       end
 
@@ -63,6 +69,7 @@ class PromptTemplateTest < ActiveSupport::TestCase
         )
         json = '{"regex": "\\d+", "price": "$100"}'
         result = pt.format(data: json)
+
         assert_equal "Data: #{json}", result
       end
 
@@ -71,6 +78,7 @@ class PromptTemplateTest < ActiveSupport::TestCase
           template: "Count: {count}",
           input_variables: [ "count" ]
         )
+
         assert_equal "Count: 42", pt.format(count: 42)
       end
 
@@ -79,6 +87,7 @@ class PromptTemplateTest < ActiveSupport::TestCase
           template: "{name} says hello, {name}!",
           input_variables: [ "name" ]
         )
+
         assert_equal "Alice says hello, Alice!", pt.format(name: "Alice")
       end
     end
@@ -112,8 +121,9 @@ class PromptTemplateTest < ActiveSupport::TestCase
         pt = RedmineAiHelper::Util::PromptTemplate.load_from_path(file_path)
 
         result = pt.format(format_instructions: "Output JSON only.")
+
         assert_includes result, "Output JSON only."
-        refute_includes result, "{format_instructions}"
+        assert_not_includes result, "{format_instructions}"
       end
     end
   end

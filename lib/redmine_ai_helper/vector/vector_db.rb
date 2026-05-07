@@ -104,7 +104,7 @@ module RedmineAiHelper
         text = json[:content]
         text = text[0..1500] if retry_flag and text.length
         payload = json[:payload]
-        if (vector_data)
+        if vector_data
           client.add_texts(texts: [ text ], ids: [ vector_data.uuid ], payload: payload)
           vector_data.updated_at = Time.now
         else

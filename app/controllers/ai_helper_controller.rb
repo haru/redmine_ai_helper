@@ -159,7 +159,7 @@ class AiHelperController < ApplicationController
   def call_llm
     contoller_name = params[:controller_name]
     action_name = params[:action_name]
-    content_id = params[:content_id].to_i unless params[:content_id].blank?
+    content_id = params[:content_id].to_i if params[:content_id].present?
     additional_info = {}
     params[:additional_info].each do |key, value|
       additional_info[key] = value
@@ -263,7 +263,7 @@ class AiHelperController < ApplicationController
       issue.subject = issue_param[:subject]
       issue.description = issue_param[:description]
       issue.tracker_id = issue_param[:tracker_id]
-      issue.fixed_version_id = issue_param[:fixed_version_id] unless issue_param[:fixed_version_id].blank?
+      issue.fixed_version_id = issue_param[:fixed_version_id] if issue_param[:fixed_version_id].present?
 
       # Tracker-specific assignee validation
       if issue_param[:assigned_to_id].present?

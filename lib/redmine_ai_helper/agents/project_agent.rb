@@ -205,7 +205,7 @@ module RedmineAiHelper
           analysis_instructions: analysis_instructions,
           report_sections: report_sections,
           focus_guidance: focus_guidance,
-          health_report_instructions: health_report_instructions.present? ? health_report_instructions : "No specific instructions provided.",
+          health_report_instructions: (health_report_instructions.presence || "No specific instructions provided."),
           metrics: JSON.pretty_generate(metrics_list)
         )
 

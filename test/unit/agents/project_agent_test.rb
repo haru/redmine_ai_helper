@@ -15,6 +15,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
   context "ProjectAgent" do
     should "return correct available_tool_classes" do
       tool_classes = @agent.available_tool_classes
+
       RedmineAiHelper::Tools::ProjectTools.tool_classes.each do |tc|
         assert_includes tool_classes, tc
       end
@@ -61,7 +62,8 @@ class ProjectAgentTest < ActiveSupport::TestCase
         @agent.stubs(:think_chat).returns("test answer")
 
         result = @agent.project_health_report(project: @project)
-        assert result.is_a?(String)
+
+        assert_kind_of String, result
         assert_equal "test answer", result
       end
 
@@ -82,7 +84,8 @@ class ProjectAgentTest < ActiveSupport::TestCase
         @agent.stubs(:think_chat).returns("test answer")
 
         result = @agent.project_health_report(project: @project)
-        assert result.is_a?(String)
+
+        assert_kind_of String, result
         assert_equal "test answer", result
       end
 
@@ -120,6 +123,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
         @agent.stubs(:think_chat).returns("test result")
 
         result = @agent.project_health_report(project: @project)
+
         assert_equal "test result", result
       end
     end
@@ -166,7 +170,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
           new_report: @new_report
         )
 
-        assert result.is_a?(String)
+        assert_kind_of String, result
         assert_equal "Comparison analysis result", result
       end
 
@@ -345,6 +349,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
         agent.stubs(:chat).never
 
         result = agent.project_health_report(project: project)
+
         assert_equal "think health report", result
       end
 
@@ -367,6 +372,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
         agent.stubs(:chat).never
 
         result = agent.health_report_comparison(old_report: old_report, new_report: new_report)
+
         assert_equal "think comparison", result
       ensure
         old_report&.destroy
@@ -391,6 +397,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
         agent.expects(:think_chat).returns("normal answer via think_chat")
 
         result = agent.project_health_report(project: project)
+
         assert_equal "normal answer via think_chat", result
       end
     end

@@ -35,6 +35,7 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
     context "#index" do
       should "display dashboard overview tab" do
         get :index, params: { id: @project.id }
+
         assert_response :success
         assert_template :index
       end
@@ -64,6 +65,7 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
         )
 
         get :index, params: { id: @project.id, tab: "health_report" }
+
         assert_response :success
         assert_template :index
         assert_select ".ai-helper-health-report-history", 1
@@ -84,6 +86,7 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
         end
 
         get :index, params: { id: @project.id, tab: "health_report", page: 1, per_page: 10 }
+
         assert_response :success
         assert_select ".ai-helper-health-report-history table.list tbody tr", 10
       end
@@ -103,6 +106,7 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
         end
 
         get :index, params: { id: @project.id, tab: "health_report", page: 2, per_page: 10 }
+
         assert_response :success
         assert_select ".ai-helper-health-report-history table.list tbody tr", 5
       end
@@ -112,6 +116,7 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
         AiHelperHealthReport.where(project: @project).destroy_all
 
         get :index, params: { id: @project.id, tab: "health_report" }
+
         assert_response :success
         # Check for nodata message within the health report tab content area
         assert_select ".ai-helper-master-detail-layout p.nodata", 1
@@ -700,7 +705,7 @@ This is a test report."
 
         # The test will either succeed (streaming) or fail with permission issues
         # Both outcomes indicate the POST path is being executed
-        assert [ 200, 403, 404 ].include?(response.status)
+        assert_includes [ 200, 403, 404 ], response.status
       end
 
       should "detect event-stream Accept header as streaming request" do
@@ -713,7 +718,7 @@ This is a test report."
                                      }
 
         # Should attempt streaming path
-        assert [ 200, 403, 404 ].include?(response.status)
+        assert_includes [ 200, 403, 404 ], response.status
       end
 
       should "return 403 when reports belong to different project in streaming comparison" do
@@ -917,6 +922,7 @@ This is a test report."
 
         assert_response :success
         expected_filename = "#{@project.identifier}-health-report-comparison-#{expected_date}.pdf"
+
         assert_match(/filename="#{Regexp.escape(expected_filename)}"/, response.headers["Content-Disposition"])
       end
 
@@ -933,7 +939,7 @@ This is a test report."
         assert_response :success
         assert_equal "application/pdf", response.media_type
         # PDF should be generated with sanitized content (HTML tags removed)
-        assert response.body.present?
+        assert_predicate response.body, :present?
       end
 
       should "sanitize script tags from content" do
@@ -949,7 +955,7 @@ This is a test report."
         assert_response :success
         assert_equal "application/pdf", response.media_type
         # PDF should be generated with sanitized content (script tags removed)
-        assert response.body.present?
+        assert_predicate response.body, :present?
       end
 
       should "redirect with alert when no content is provided" do
@@ -1019,7 +1025,7 @@ This is a test report."
 
         assert_response :success
         assert_equal "application/pdf", response.media_type
-        assert response.body.present?
+        assert_predicate response.body, :present?
       end
     end
 
@@ -1071,6 +1077,7 @@ This is a test report."
 
         assert_response :success
         expected_filename = "#{@project.identifier}-health-report-comparison-#{expected_date}.md"
+
         assert_match(/filename="#{Regexp.escape(expected_filename)}"/, response.headers["Content-Disposition"])
       end
 
@@ -1240,7 +1247,8 @@ This is a test report."
         ActionController::Base.allow_forgery_protection = true
         begin
           post :comparison_pdf, params: { id: @project.id, comparison_content: "test" }
-          assert_response 422
+
+          assert_response :unprocessable_content
         ensure
           ActionController::Base.allow_forgery_protection = false
         end
@@ -1256,7 +1264,8 @@ This is a test report."
         ActionController::Base.allow_forgery_protection = true
         begin
           delete :health_report_destroy, params: { id: @project.id, report_id: report.id }
-          assert_response 422
+
+          assert_response :unprocessable_content
         ensure
           ActionController::Base.allow_forgery_protection = false
         end
@@ -1266,7 +1275,8 @@ This is a test report."
         ActionController::Base.allow_forgery_protection = true
         begin
           post :comparison_pdf, params: { id: @project.id, content: "test", format: :json }
-          assert_response 422
+
+          assert_response :unprocessable_content
         ensure
           ActionController::Base.allow_forgery_protection = false
         end
@@ -1282,7 +1292,8 @@ This is a test report."
         ActionController::Base.allow_forgery_protection = true
         begin
           delete :health_report_destroy, params: { id: @project.id, report_id: report.id, format: :json }
-          assert_response 422
+
+          assert_response :unprocessable_content
         ensure
           ActionController::Base.allow_forgery_protection = false
         end

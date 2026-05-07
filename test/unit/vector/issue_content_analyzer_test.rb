@@ -29,8 +29,8 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
         result = analyzer.analyze(@issue)
 
-        assert result[:summary].present?
-        assert result[:keywords].is_a?(Array)
+        assert_predicate result[:summary], :present?
+        assert_kind_of Array, result[:keywords]
         assert_equal 4, result[:keywords].length
         assert_includes result[:keywords], "login"
         assert_includes result[:keywords], "session timeout"
@@ -158,8 +158,8 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
         prompt = analyzer.send(:build_prompt, @issue, "Output JSON with summary and keywords fields.")
 
-        assert prompt.is_a?(String), "Prompt should be a string"
-        assert prompt.include?(@issue.subject), "Prompt should contain issue subject"
+        assert_kind_of String, prompt, "Prompt should be a string"
+        assert_includes prompt, @issue.subject, "Prompt should contain issue subject"
       end
 
       should "include issue description in prompt" do
@@ -171,7 +171,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
         prompt = analyzer.send(:build_prompt, @issue, "Output JSON with summary and keywords fields.")
 
-        assert prompt.include?(@issue.description), "Prompt should contain issue description"
+        assert_includes prompt, @issue.description, "Prompt should contain issue description"
       end
 
       should "include journal notes in prompt when present" do
@@ -187,7 +187,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
         prompt = analyzer.send(:build_prompt, @issue, "Output JSON with summary and keywords fields.")
 
-        assert prompt.include?("This is a comment on the issue."), "Prompt should contain journal notes"
+        assert_includes prompt, "This is a comment on the issue.", "Prompt should contain journal notes"
       end
 
       should "handle issue with no description" do
@@ -199,8 +199,8 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
         prompt = analyzer.send(:build_prompt, @issue, "Output JSON with summary and keywords fields.")
 
-        assert prompt.is_a?(String), "Prompt should still be a string"
-        assert prompt.include?(@issue.subject), "Prompt should contain issue subject"
+        assert_kind_of String, prompt, "Prompt should still be a string"
+        assert_includes prompt, @issue.subject, "Prompt should contain issue subject"
       end
 
       should "handle issue with no journals" do
@@ -211,7 +211,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
         prompt = analyzer.send(:build_prompt, @issue, "Output JSON with summary and keywords fields.")
 
-        assert prompt.is_a?(String), "Prompt should still be a string"
+        assert_kind_of String, prompt, "Prompt should still be a string"
       end
 
       should "include format instructions in prompt" do
@@ -220,7 +220,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
         prompt = analyzer.send(:build_prompt, @issue, "Output JSON with summary and keywords fields.")
 
-        assert prompt.include?("Output JSON with summary and keywords fields."), "Prompt should contain format instructions"
+        assert_includes prompt, "Output JSON with summary and keywords fields.", "Prompt should contain format instructions"
       end
     end
 

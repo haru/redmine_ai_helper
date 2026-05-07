@@ -36,9 +36,9 @@ class AiHelperDashboardController < ApplicationController
     # Determine which report should be selected (from URL params or default to most recent)
     @selected_report = if params[:report_id]
         @health_reports.find { |r| r.id.to_s == params[:report_id].to_s }
-      else
+    else
         @health_reports.first
-      end
+    end
 
     respond_to do |format|
       format.html { render partial: "ai_helper/project/health_report_history" }
@@ -270,7 +270,7 @@ class AiHelperDashboardController < ApplicationController
     # Verify the health report belongs to the current project
     unless @health_report.project_id == @project.id
       render_404
-      return
+      nil
     end
   rescue ActiveRecord::RecordNotFound
     render_404

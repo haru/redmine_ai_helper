@@ -30,7 +30,7 @@ module RedmineAiHelper
             url_for_board: "#{project_board_path(board.project, board)}"
           }
         end
-        return board_list
+        board_list
       end
 
       define_function :board_info, description: "Read a board from the database. It returns the board ID, project ID, name, description, messages_count, and messages." do

@@ -12,6 +12,7 @@ class IssueToolsTest < ActiveSupport::TestCase
       should "return issues" do
         issue = Issue.find(1)
         response = @provider.read_issues(issue_ids: [ 1 ])
+
         assert_equal 1, response[:issues].size
         assert_equal issue.id, response[:issues].first[:id]
       end
@@ -28,7 +29,7 @@ class IssueToolsTest < ActiveSupport::TestCase
         response = @provider.read_issues(issue_ids: [ issue.id ])
 
         assert_instance_of Hash, response
-        assert response[:issues].is_a?(Array)
+        assert_kind_of Array, response[:issues]
       end
     end
 
@@ -36,6 +37,7 @@ class IssueToolsTest < ActiveSupport::TestCase
       should "return properties with project id" do
         project = Project.find(1)
         response = @provider.capable_issue_properties(project_id: 1)
+
         assert_equal project.trackers.size, response[:trackers].size
         assert_equal project.issue_categories.size, response[:categories].size
       end
@@ -43,6 +45,7 @@ class IssueToolsTest < ActiveSupport::TestCase
       should "return properties with project name" do
         project = Project.find(1)
         response = @provider.capable_issue_properties(project_name: project.name)
+
         assert_equal project.trackers.size, response[:trackers].size
         assert_equal project.issue_categories.size, response[:categories].size
       end
@@ -50,6 +53,7 @@ class IssueToolsTest < ActiveSupport::TestCase
       should "return properties with project identifier" do
         project = Project.find(1)
         response = @provider.capable_issue_properties(project_identifier: project.identifier)
+
         assert_equal project.trackers.size, response[:trackers].size
         assert_equal project.issue_categories.size, response[:categories].size
       end
@@ -69,7 +73,8 @@ class IssueToolsTest < ActiveSupport::TestCase
       should "validate issue" do
         User.current = User.find(1)
         response = @provider.validate_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "test issue", description: "test description")
-        assert response[:issue_id].nil?
+
+        assert_nil response[:issue_id]
       end
 
       should "return error with invalid project" do
@@ -84,6 +89,7 @@ class IssueToolsTest < ActiveSupport::TestCase
         issue = Issue.find(1)
         original_subject = issue.subject
         @provider.validate_update_issue(issue_id: 1, subject: "test issue")
+
         assert_equal original_subject, Issue.find(issue.id).subject
       end
 

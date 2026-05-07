@@ -17,7 +17,7 @@ class McpToolsTest < ActiveSupport::TestCase
         mcp_client: @mock_client
       )
 
-      assert tools.is_a?(Array)
+      assert_kind_of Array, tools
       assert_equal 2, tools.length
       assert_equal "test_tool", tools[0].name
       assert_equal "A test tool", tools[0].description

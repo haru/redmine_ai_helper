@@ -55,7 +55,7 @@ module RedmineAiHelper
         }
         content = build_hybrid_content(issue)
 
-        return { content: content, payload: payload }
+        { content: content, payload: payload }
       end
 
       private

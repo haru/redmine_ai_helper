@@ -16,11 +16,13 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
   context "AiHelperHealthReport" do
     should "belong to project" do
       report = AiHelperHealthReport.new
+
       assert_respond_to report, :project
     end
 
     should "belong to user" do
       report = AiHelperHealthReport.new
+
       assert_respond_to report, :user
     end
 
@@ -29,8 +31,9 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
         user_id: @user.id,
         health_report: "Test report"
       )
+
       assert_not report.valid?
-      assert report.errors[:project_id].present?
+      assert_predicate report.errors[:project_id], :present?
     end
 
     should "validate presence of user_id" do
@@ -38,8 +41,9 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
         project_id: @project.id,
         health_report: "Test report"
       )
+
       assert_not report.valid?
-      assert report.errors[:user_id].present?
+      assert_predicate report.errors[:user_id], :present?
     end
 
     should "validate presence of health_report" do
@@ -47,8 +51,9 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
         project_id: @project.id,
         user_id: @user.id
       )
+
       assert_not report.valid?
-      assert report.errors[:health_report].present?
+      assert_predicate report.errors[:health_report], :present?
     end
 
     should "create a valid health report" do
@@ -57,7 +62,8 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
         user_id: @user.id,
         health_report: "Test report"
       )
-      assert report.valid?
+
+      assert_predicate report, :valid?
       assert report.save
     end
 
@@ -83,6 +89,7 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
         user_id: @user.id,
         health_report: "Test report"
       )
+
       assert_equal({}, report.metrics_hash)
     end
 
@@ -104,6 +111,7 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       )
 
       reports = AiHelperHealthReport.sorted
+
       assert_equal 2, reports.count
       assert_equal newer_report.id, reports.first.id
       assert_equal older_report.id, reports.last.id
@@ -126,6 +134,7 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       )
 
       reports = AiHelperHealthReport.for_project(@project.id)
+
       assert_equal 1, reports.count
       assert_equal report1.id, reports.first.id
     end
@@ -147,6 +156,7 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       )
 
       reports = AiHelperHealthReport.by_user(@user.id)
+
       assert_equal 1, reports.count
       assert_equal report1.id, reports.first.id
     end
@@ -162,6 +172,7 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       end
 
       reports = AiHelperHealthReport.recent(5)
+
       assert_equal 5, reports.count
     end
 
@@ -297,6 +308,7 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       )
 
       summary = report.summary_info
+
       assert_equal report.id, summary[:id]
       assert_equal report.created_at, summary[:created_at]
       assert_equal @user.name, summary[:user_name]
@@ -311,6 +323,7 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       )
 
       summary = report.summary_info
+
       assert_equal 0, summary[:total_issues]
     end
   end

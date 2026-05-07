@@ -18,6 +18,7 @@ class RedmineAiHelper::Vector::WikiVectorDbTest < ActiveSupport::TestCase
       json_data = @vector_db.data_to_json(@page)
 
       payload = json_data[:payload]
+
       assert_equal @page.id, payload[:wiki_id]
       assert_equal @page.project.name, payload[:project_name]
     end

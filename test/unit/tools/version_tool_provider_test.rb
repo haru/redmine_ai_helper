@@ -11,6 +11,7 @@ class VersionToolsTest < ActiveSupport::TestCase
 
   def test_list_versions_success
     response = @provider.list_versions(project_id: @project.id)
+
     assert_equal @project.versions.count, response.size
   end
 
@@ -22,6 +23,7 @@ class VersionToolsTest < ActiveSupport::TestCase
 
   def test_version_info_success
     response = @provider.version_info(version_ids: [ @version.id ])
+
     assert_equal @version.id, response.first[:id]
     assert_equal @version.name, response.first[:name]
   end
