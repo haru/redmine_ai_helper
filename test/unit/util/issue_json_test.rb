@@ -23,7 +23,7 @@ class RedmineAiHelper::Util::IssueJsonTest < ActiveSupport::TestCase
       attachment.save!
       @issue.reload
       @test_class = TestClass.new
-      @issue.due_date = Date.today + 7
+      @issue.due_date = Time.zone.today + 7
     end
 
     should "generate correct issue data" do

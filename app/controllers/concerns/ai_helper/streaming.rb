@@ -32,7 +32,7 @@ module AiHelper
     # @param options [Array<Hash>, nil] array of {label:, value:} hashes, or nil/empty to skip.
     # @return [void]
     def send_interactive_options_event(options)
-      return if options.nil? || options.empty?
+      return if options.blank?
 
       payload = { choices: options }.to_json
       response.stream.write("event: interactive_options\ndata: #{payload}\n\n")

@@ -13,7 +13,7 @@ module AiHelperHelper
 
     if defined?(MarkdownPipeline)
       # Redmine 6.1 and earlier
-      MarkdownPipeline.call(text)[:output].to_s.html_safe
+      MarkdownPipeline.call(text)[:output].to_s.html_safe # rubocop:disable Rails/OutputSafety
     else
       # Redmine master (future 7.x)
       html = MarkdownFilter.new(text, PIPELINE_CONFIG).call
@@ -22,7 +22,7 @@ module AiHelperHelper
       SCRUBBERS.each do |scrubber|
         fragment.scrub!(scrubber)
       end
-      fragment.to_s.html_safe
+      fragment.to_s.html_safe # rubocop:disable Rails/OutputSafety
     end
   end
 end

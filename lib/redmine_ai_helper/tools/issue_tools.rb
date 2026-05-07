@@ -20,7 +20,7 @@ module RedmineAiHelper
       def read_issues(issue_ids:)
         raise("Issue ID array is required.") if issue_ids.empty?
         issues = []
-        Issue.where(id: issue_ids).each do |issue|
+        Issue.where(id: issue_ids).find_each do |issue|
           # Check if the issue is visible to the current user
           next unless issue.visible?
 

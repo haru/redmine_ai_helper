@@ -39,7 +39,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
         assigned_to_id: @user.id,
         status_id: 1,
         priority_id: 4, # Normal
-        due_date: Date.today + 1
+        due_date: Time.zone.today + 1
       )
 
       mock_prompt = mock("Prompt")
@@ -93,7 +93,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
         assigned_to_id: @user.id,
         status_id: closed_status.id,
         priority_id: 4,
-        due_date: Date.today
+        due_date: Time.zone.today
       )
 
       # Get issues that would be fetched
@@ -112,8 +112,8 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
         assigned_to_id: @user.id,
         status_id: 1,
         priority_id: 4, # Normal
-        due_date: Date.today - 5,
-        updated_on: Date.today - 3
+        due_date: Time.zone.today - 5,
+        updated_on: Time.zone.today - 3
       )
 
       # Create future issue
@@ -125,8 +125,8 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
         assigned_to_id: @user.id,
         status_id: 1,
         priority_id: 4, # Normal
-        due_date: Date.today + 7,
-        updated_on: Date.today
+        due_date: Time.zone.today + 7,
+        updated_on: Time.zone.today
       )
 
       overdue_score = @agent.send(:calculate_priority_score, overdue_issue)
@@ -144,8 +144,8 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
         assigned_to_id: @user.id,
         status_id: 1,
         priority_id: 6, # High (30 points, position 3)
-        due_date: Date.today - 3, # 3 days overdue
-        updated_on: Date.today - 2
+        due_date: Time.zone.today - 3, # 3 days overdue
+        updated_on: Time.zone.today - 2
       )
 
       score = @agent.send(:calculate_priority_score, issue)
@@ -163,8 +163,8 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
         assigned_to_id: @user.id,
         status_id: 1,
         priority_id: 5, # Normal (20 points, position 2)
-        due_date: Date.today,
-        updated_on: Date.today - 1
+        due_date: Time.zone.today,
+        updated_on: Time.zone.today - 1
       )
 
       score = @agent.send(:calculate_priority_score, issue)
@@ -182,7 +182,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
         assigned_to_id: @user.id,
         status_id: 1,
         priority_id: 4, # Low (10 points, position 1)
-        due_date: Date.today + 5
+        due_date: Time.zone.today + 5
       )
 
       # Update updated_on directly via SQL to simulate untouched period
@@ -217,7 +217,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
         assigned_to_id: @user.id,
         status_id: 1,
         priority_id: 4,
-        due_date: Date.today + 1
+        due_date: Time.zone.today + 1
       )
 
       streamed_content = []
@@ -244,8 +244,8 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
         assigned_to_id: @user.id,
         status_id: 1,
         priority_id: 4,
-        due_date: Date.today + 1,
-        updated_on: Date.today - 2
+        due_date: Time.zone.today + 1,
+        updated_on: Time.zone.today - 2
       )
 
       formatted_json = @agent.send(:format_issues_for_prompt, [ issue ])
@@ -297,7 +297,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
         assigned_to_id: @user.id,
         status_id: 1,
         priority_id: 5,
-        due_date: Date.today
+        due_date: Time.zone.today
       )
 
       issues = @agent.send(:fetch_todo_issues_from_other_projects)
@@ -325,7 +325,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
         assigned_to_id: @user.id,
         status_id: 1,
         priority_id: 5,
-        due_date: Date.today
+        due_date: Time.zone.today
       )
 
       issues = @agent.send(:fetch_todo_issues_from_other_projects)

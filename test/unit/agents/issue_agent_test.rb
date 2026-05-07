@@ -804,30 +804,30 @@ end
     should "calculate due_date_score for various due dates" do
       issue = mock("issue")
       issue.stubs(:priority).returns(nil)
-      issue.stubs(:updated_on).returns(Time.now)
+      issue.stubs(:updated_on).returns(Time.zone.now)
 
-      issue.stubs(:due_date).returns(Date.today - 2)
+      issue.stubs(:due_date).returns(Time.zone.today - 2)
       score = @agent.send(:due_date_score, issue)
 
       assert_equal [ 100 + 2 * 10, 150 ].min, score
 
-      issue.stubs(:due_date).returns(Date.today)
+      issue.stubs(:due_date).returns(Time.zone.today)
 
       assert_equal 80, @agent.send(:due_date_score, issue)
 
-      issue.stubs(:due_date).returns(Date.today + 1)
+      issue.stubs(:due_date).returns(Time.zone.today + 1)
 
       assert_equal 60, @agent.send(:due_date_score, issue)
 
-      issue.stubs(:due_date).returns(Date.today + 2)
+      issue.stubs(:due_date).returns(Time.zone.today + 2)
 
       assert_equal 40, @agent.send(:due_date_score, issue)
 
-      issue.stubs(:due_date).returns(Date.today + 6)
+      issue.stubs(:due_date).returns(Time.zone.today + 6)
 
       assert_equal 20, @agent.send(:due_date_score, issue)
 
-      issue.stubs(:due_date).returns(Date.today + 10)
+      issue.stubs(:due_date).returns(Time.zone.today + 10)
 
       assert_equal 0, @agent.send(:due_date_score, issue)
     end
@@ -836,7 +836,7 @@ end
       issue = mock("issue")
       priority = mock("priority")
       priority.stubs(:name).returns("Immediate")
-      issue.stubs(:updated_on).returns(Time.now)
+      issue.stubs(:updated_on).returns(Time.zone.now)
 
       priority.stubs(:position).returns(5)
       issue.stubs(:priority).returns(priority)
@@ -867,19 +867,19 @@ end
     should "calculate untouched_score correctly" do
       issue = mock("issue")
 
-      issue.stubs(:updated_on).returns((Date.today - 40).to_time)
+      issue.stubs(:updated_on).returns((Time.zone.today - 40).to_time)
 
       assert_equal 30, @agent.send(:untouched_score, issue)
 
-      issue.stubs(:updated_on).returns((Date.today - 20).to_time)
+      issue.stubs(:updated_on).returns((Time.zone.today - 20).to_time)
 
       assert_equal 20, @agent.send(:untouched_score, issue)
 
-      issue.stubs(:updated_on).returns((Date.today - 8).to_time)
+      issue.stubs(:updated_on).returns((Time.zone.today - 8).to_time)
 
       assert_equal 10, @agent.send(:untouched_score, issue)
 
-      issue.stubs(:updated_on).returns(Time.now)
+      issue.stubs(:updated_on).returns(Time.zone.now)
 
       assert_equal 0, @agent.send(:untouched_score, issue)
 
@@ -898,8 +898,8 @@ end
       priority.stubs(:name).returns("High")
       priority.stubs(:position).returns(3)
       issue.stubs(:priority).returns(priority)
-      issue.stubs(:due_date).returns(Date.today + 3)
-      issue.stubs(:updated_on).returns((Date.today - 5).to_time)
+      issue.stubs(:due_date).returns(Time.zone.today + 3)
+      issue.stubs(:updated_on).returns((Time.zone.today - 5).to_time)
       proj = mock("project")
       proj.stubs(:name).returns("Proj X")
       issue.stubs(:project).returns(proj)

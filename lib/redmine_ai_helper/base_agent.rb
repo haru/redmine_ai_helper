@@ -378,7 +378,7 @@ module RedmineAiHelper
     def list_agents
       @agents.filter_map { |a|
         # Skip if class name is nil or empty
-        next if a[:class].nil? || a[:class].empty?
+        next if a[:class].blank?
 
         begin
           agent = Object.const_get(a[:class]).new

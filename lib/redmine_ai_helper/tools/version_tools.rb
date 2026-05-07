@@ -13,7 +13,7 @@ module RedmineAiHelper
       # @param project_id [Integer] The project ID of the project to return.
       # @return [Array<Hash>] An array of hashes containing version information.
       def list_versions(project_id:)
-        project = Project.find_by_id(project_id)
+        project = Project.find_by(id: project_id)
         raise("Project not found") if project.nil? or !project.visible?
         versions = project.versions.filter(&:visible?)
         version_list = versions.map do |version|
@@ -45,7 +45,7 @@ module RedmineAiHelper
         versions = []
 
         version_ids.each do |version_id|
-          version = Version.find_by_id(version_id)
+          version = Version.find_by(id: version_id)
           raise("Version not found: version_id: #{version_id}") if version.nil? or !version.visible?
           version_hash = {
             id: version.id,

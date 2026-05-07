@@ -2,7 +2,7 @@
 
 # AiHelperConversation model for managing AI Helper conversations
 class AiHelperConversation < ApplicationRecord
-  has_many :messages, class_name: "AiHelperMessage", foreign_key: "conversation_id", dependent: :destroy
+  has_many :messages, class_name: "AiHelperMessage", foreign_key: "conversation_id", inverse_of: :conversation, dependent: :destroy
   belongs_to :user
   validates :title, presence: true
 

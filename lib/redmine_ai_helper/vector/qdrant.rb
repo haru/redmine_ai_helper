@@ -44,7 +44,7 @@ module RedmineAiHelper
         points = ids.zip(vectors).map do |id, vector|
           { id: id, vector: vector, payload: payload || {} }
         end
-        response = client.points.upsert(collection_name: @index_name, points: points)
+        response = client.points.upsert(collection_name: @index_name, points: points) # rubocop:disable Rails/SkipsModelValidations
         unless response.is_a?(Hash) && response["status"] == "ok"
           raise "Qdrant upsert failed for collection '#{@index_name}' with #{points.length} points: #{response.inspect}"
         end

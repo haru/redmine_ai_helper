@@ -93,7 +93,7 @@ module RedmineAiHelper
 
         # SCM information (only available SCMs)
         system_info[:scm] = {}
-        Redmine::Scm::Base.all.each do |scm_name|
+        Redmine::Scm::Base.all.each do |scm_name| # rubocop:disable Rails/FindEach
           begin
             scm_class = "Repository::#{scm_name}".constantize
             # Check if SCM is available before getting version

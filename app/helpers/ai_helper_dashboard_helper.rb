@@ -8,7 +8,7 @@ module AiHelperDashboardHelper
       { name: "custom_commands", action: :custom_commands, label: "ai_helper.custom_commands.label.title", partial: "ai_helper_dashboard/custom_commands" }
     ]
 
-    if @project && User.current.allowed_to?(:settings_ai_helper, @project)
+    if @project && User.current.allowed_to?(:settings_ai_helper, @project) # rubocop:disable Rails/HelperInstanceVariable
       tabs << { name: "settings", action: :settings, label: :label_settings, partial: "ai_helper_project_settings/show" }
     end
 

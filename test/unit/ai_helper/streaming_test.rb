@@ -38,7 +38,7 @@ class AiHelper::StreamingTest < ActiveSupport::TestCase
 
   def setup
     super
-    @fixed_time = Time.at(1_700_000_000)
+    @fixed_time = Time.zone.at(1_700_000_000)
     @fixed_hex = "fixedhexvaluefixedhexvalue"
   end
 

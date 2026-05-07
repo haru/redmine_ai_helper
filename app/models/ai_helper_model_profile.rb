@@ -3,7 +3,7 @@
 # AiHelperModelProfile model for managing AI Helper model profiles
 class AiHelperModelProfile < ApplicationRecord
   include Redmine::SafeAttributes
-  validates :name, presence: true, uniqueness: true
+  validates :name, presence: true, uniqueness: true # rubocop:disable Rails/UniqueValidationWithoutIndex
   validates :llm_type, presence: true
   validates :access_key, presence: true, if: :access_key_required?
   validates :llm_model, presence: true

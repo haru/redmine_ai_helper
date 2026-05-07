@@ -38,7 +38,7 @@ module RedmineAiHelper
       # @param revision [String] The revision to get information about.
       # @return [Hash] A hash containing revision information.
       def get_revision_info(repository_id:, revision:)
-        repository = Repository.find_by_id(repository_id)
+        repository = Repository.find_by(id: repository_id)
         raise("Repository not found: repository_id = #{repository_id}") if repository.nil?
         changeset = repository.find_changeset_by_name(revision)
         raise("Revision not found: revision = #{revision}") if changeset.nil?

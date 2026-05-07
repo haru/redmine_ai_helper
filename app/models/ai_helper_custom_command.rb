@@ -14,7 +14,7 @@
 # @example Find and expand a command
 #   cmd = AiHelperCustomCommand.find_command(name: 'summarize', user: user, project: project)
 #   expanded = cmd.expand(input: 'some text', user: user, project: project)
-class AiHelperCustomCommand < ActiveRecord::Base
+class AiHelperCustomCommand < ApplicationRecord
   # Enum definitions
   enum :command_type, { global: 0, project: 1, user: 2 }
   enum :user_scope, { common: 0, project_limited: 1 }

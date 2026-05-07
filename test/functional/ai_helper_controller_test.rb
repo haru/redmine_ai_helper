@@ -563,7 +563,7 @@ class AiHelperControllerTest < ActionController::TestCase
           project: { name: "Test Project" },
           subject: "Similar issue",
           status: { name: "Open" },
-          updated_on: Time.now,
+          updated_on: Time.zone.now,
           assigned_to: { name: "Test User" },
           similarity_score: 85.0,
           issue_url: "/issues/2"
@@ -588,7 +588,7 @@ class AiHelperControllerTest < ActionController::TestCase
           project: { name: "Test Project" },
           subject: "Similar issue",
           status: { name: "Open" },
-          updated_on: Time.now,
+          updated_on: Time.zone.now,
           assigned_to: { name: "Test User" },
           similarity_score: 85.0,
           issue_url: "/issues/2"
@@ -639,7 +639,7 @@ class AiHelperControllerTest < ActionController::TestCase
           project: { name: "Test Project" },
           subject: "Similar issue",
           status: { name: "Open" },
-          updated_on: Time.now,
+          updated_on: Time.zone.now,
           assigned_to: nil,
           similarity_score: 85.0,
           issue_url: "/issues/2"
@@ -1653,7 +1653,7 @@ class AiHelperControllerTest < ActionController::TestCase
           project: { name: "Test Project" },
           subject: "Similar issue",
           status: { name: "Open" },
-          updated_on: Time.now,
+          updated_on: Time.zone.now,
           assigned_to: { name: "Test User" },
           similarity_score: 85.0,
           issue_url: "/issues/2"
@@ -1723,7 +1723,7 @@ class AiHelperControllerTest < ActionController::TestCase
           project: { name: "Test Project" },
           subject: "Matching issue",
           status: { name: "New" },
-          updated_on: Time.now,
+          updated_on: Time.zone.now,
           assigned_to: nil,
           similarity_score: 72.0,
           issue_url: "/issues/3"
@@ -1747,7 +1747,7 @@ class AiHelperControllerTest < ActionController::TestCase
           project: { name: "Test Project" },
           subject: "Another matching issue",
           status: { name: "In Progress" },
-          updated_on: Time.now,
+          updated_on: Time.zone.now,
           assigned_to: { name: "Developer" },
           similarity_score: 68.5,
           issue_url: "/issues/4"

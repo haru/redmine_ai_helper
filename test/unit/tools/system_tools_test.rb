@@ -91,7 +91,7 @@ class SystemToolsTest < ActiveSupport::TestCase
       system_info[:scm][:testscm] = "Error: SCM command failed"
 
       system_info[:plugins] = {}
-      Redmine::Plugin.all.each do |plugin|
+      Redmine::Plugin.all.each do |plugin| # rubocop:disable Rails/FindEach
         system_info[:plugins][plugin.id.to_s] = plugin.version.to_s
       end
 
@@ -138,7 +138,7 @@ class SystemToolsTest < ActiveSupport::TestCase
       system_info[:scm][:testscm] = version || "Unknown"
 
       system_info[:plugins] = {}
-      Redmine::Plugin.all.each do |plugin|
+      Redmine::Plugin.all.each do |plugin| # rubocop:disable Rails/FindEach
         system_info[:plugins][plugin.id.to_s] = plugin.version.to_s
       end
 

@@ -1,6 +1,7 @@
 plugins:
   - rubocop-rails
   - rubocop-performance
+  - rubocop-factory_bot
 
 AllCops:
   NewCops: enable
@@ -180,6 +181,11 @@ Performance/FlatMap:
 # Redmine plugin tests use ActionController::TestCase which provides controller-specific helpers
 Rails/ActionControllerTestCase:
   Enabled: false
+
+# Test setup intentionally bypasses validations to set specific state
+Rails/SkipsModelValidations:
+  Exclude:
+    - "test/**/*"
 
 # Prefer assert_not over assert !
 Rails/AssertNot:

@@ -147,7 +147,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
           user: User.current,
           health_report: "New health report content",
           metrics: { total_issues: 15, open_issues: 3 }.to_json,
-          created_at: Time.now
+          created_at: Time.zone.now
         )
       end
 
@@ -362,7 +362,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
         old_report = AiHelperHealthReport.create!(project: project, user: User.current,
           health_report: "old", metrics: "{}", created_at: 7.days.ago)
         new_report = AiHelperHealthReport.create!(project: project, user: User.current,
-          health_report: "new", metrics: "{}", created_at: Time.now)
+          health_report: "new", metrics: "{}", created_at: Time.zone.now)
 
         mock_prompt = mock("Prompt")
         mock_prompt.stubs(:format).returns("prompt text")

@@ -17,7 +17,7 @@ module RedmineAiHelper
           api_key = request.headers["X-Redmine-API-Key"]
           return nil if api_key.blank?
 
-          user = User.find_by_api_key(api_key)
+          user = User.find_by_api_key(api_key) # rubocop:disable Rails/DynamicFindBy
           return nil unless user&.active?
 
           user

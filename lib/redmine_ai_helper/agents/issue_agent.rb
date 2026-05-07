@@ -444,7 +444,7 @@ module RedmineAiHelper
       def due_date_score(issue)
         return 0 unless issue.due_date
 
-        days_until_due = (issue.due_date - Date.today).to_i
+        days_until_due = (issue.due_date - Time.zone.today).to_i
 
         if days_until_due < 0
           # Overdue: 100 + (days overdue * 10), max 150
@@ -497,7 +497,7 @@ module RedmineAiHelper
       def untouched_score(issue)
         return 0 unless issue.updated_on
 
-        days_untouched = (Date.today - issue.updated_on.to_date).to_i
+        days_untouched = (Time.zone.today - issue.updated_on.to_date).to_i
 
         if days_untouched >= 30
           30
