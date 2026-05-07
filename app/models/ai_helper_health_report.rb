@@ -6,8 +6,8 @@ class AiHelperHealthReport < ApplicationRecord
   belongs_to :user
 
   # Validations
-  validates :project_id, presence: true # rubocop:disable Rails/RedundantPresenceValidationOnBelongsTo
-  validates :user_id, presence: true # rubocop:disable Rails/RedundantPresenceValidationOnBelongsTo
+  validates :project_id, presence: true
+  validates :user_id, presence: true
   validates :health_report, presence: true
 
   # Scopes

@@ -614,7 +614,7 @@ module RedmineAiHelper
       def calculate_workload_balance(members_workload)
         return 0 if members_workload.empty?
 
-        issue_counts = members_workload.map { |m| m[:assigned_issues] } # rubocop:disable Rails/Pluck
+        issue_counts = members_workload.map { |m| m[:assigned_issues] }
         average_workload = issue_counts.sum.to_f / issue_counts.size
         variance = issue_counts.sum { |count| (count - average_workload) ** 2 } / issue_counts.size
 

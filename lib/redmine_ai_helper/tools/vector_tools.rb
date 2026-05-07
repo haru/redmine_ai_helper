@@ -230,6 +230,7 @@ module RedmineAiHelper
         end
       end
 
+      # Valid scope values for vector search queries.
       VALID_SCOPES = %w[current with_subprojects all].freeze
 
       private

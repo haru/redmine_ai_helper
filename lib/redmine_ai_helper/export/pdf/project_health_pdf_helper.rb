@@ -298,7 +298,6 @@ module RedmineAiHelper
         # @param pdf [Redmine::Export::PDF::ITCPDF] The PDF object
         # @param text [String] The item text
         # @param indent_level [Integer] The indentation level
-        # @param type [Symbol] :ordered or :unordered
         # @param left_margin [Integer] The base left margin
         # @param text_align [String] Text alignment ('L' or 'R')
         def add_simple_list_item_to_pdf(pdf, text, indent_level, _type, left_margin, text_align = "L")

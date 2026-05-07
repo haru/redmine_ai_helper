@@ -182,6 +182,19 @@ Performance/FlatMap:
 Rails/ActionControllerTestCase:
   Enabled: false
 
+# belongs_to implicit presence validation puts errors on the association name, not the foreign key.
+# Explicit validates :foreign_key_id keeps error keys consistent for test assertions.
+Rails/RedundantPresenceValidationOnBelongsTo:
+  Enabled: false
+
+# Unique index requirement is a DB-level concern managed separately from model validations.
+Rails/UniqueValidationWithoutIndex:
+  Enabled: false
+
+# Rails/Pluck mis-fires on plain Ruby arrays (not ActiveRecord relations).
+Rails/Pluck:
+  Enabled: false
+
 # Test setup intentionally bypasses validations to set specific state
 Rails/SkipsModelValidations:
   Exclude:
