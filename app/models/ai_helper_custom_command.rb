@@ -202,20 +202,20 @@ class AiHelperCustomCommand < ActiveRecord::Base
 
     case command_type&.to_sym
     when :global
-      if scope.where(command_type: :global, name: normalized_name).exists?
+      if scope.exists?(command_type: :global, name: normalized_name)
         errors.add(:name, :taken)
       end
     when :project
-      if scope.where(command_type: :project, project_id: project_id, name: normalized_name).exists?
+      if scope.exists?(command_type: :project, project_id: project_id, name: normalized_name)
         errors.add(:name, :taken)
       end
     when :user
       if user_scope&.to_sym == :common
-        if scope.where(command_type: :user, user_id: user_id, user_scope: :common, name: normalized_name).exists?
+        if scope.exists?(command_type: :user, user_id: user_id, user_scope: :common, name: normalized_name)
           errors.add(:name, :taken)
         end
       elsif user_scope&.to_sym == :project_limited
-        if scope.where(command_type: :user, user_id: user_id, user_scope: :project_limited, project_id: project_id, name: normalized_name).exists?
+        if scope.exists?(command_type: :user, user_id: user_id, user_scope: :project_limited, project_id: project_id, name: normalized_name)
           errors.add(:name, :taken)
         end
       end

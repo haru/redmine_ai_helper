@@ -59,7 +59,7 @@ module RedmineAiHelper
         issue_data = {
           subject: issue.subject,
           description: issue.description || "",
-          journals: issue.journals.map { |j| j.notes.to_s }.reject(&:blank?)
+          journals: issue.journals.map { |j| j.notes.to_s }.compact_blank
         }
 
         template = RedmineAiHelper::Util::PromptLoader.load_template("vector/issue_content_analysis")

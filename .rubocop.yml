@@ -177,6 +177,10 @@ Lint/UriEscapeUnescape:
 Performance/FlatMap:
   Enabled: true
 
+# Redmine plugin tests use ActionController::TestCase which provides controller-specific helpers
+Rails/ActionControllerTestCase:
+  Enabled: false
+
 # Prefer assert_not over assert !
 Rails/AssertNot:
   Include:

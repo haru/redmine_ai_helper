@@ -6,7 +6,8 @@
       "Read(//usr/local/bundle/**)",
       "Bash(RAILS_ENV=test bundle exec rails db:test:prepare)",
       "Bash(RAILS_ENV=test bundle exec rails db:migrate)",
-      "Read(//workspaces/**)"
+      "Read(//workspaces/**)",
+      "Bash(rubocop -A --only Rails/RedundantPresenceValidationOnBelongsTo,Rails/WhereRange,Rails/WhereExists,Rails/NegateInclude,Rails/CompactBlank,Rails/ResponseParsedBody,Rails/ActionControllerTestCase)"
     ]
   }
 }

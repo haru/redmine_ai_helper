@@ -71,7 +71,7 @@ class AiHelperModelProfile < ApplicationRecord
 
     # Starts with "gpt-5-" but doesn't contain "chat"
     if model_name.start_with?("gpt-5-")
-      return !model_name.include?("chat")
+      return model_name.exclude?("chat")
     end
 
     false

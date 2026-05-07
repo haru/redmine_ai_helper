@@ -295,7 +295,7 @@ class McpServerLoaderTest < ActiveSupport::TestCase
   def cleanup_dynamic_classes
     # Delete only dynamic classes generated during the test, preserving pre-existing constants
     Object.constants.each do |const|
-      if const.to_s.start_with?("AiHelperMcp") && !@existing_mcp_constants.include?(const)
+      if const.to_s.start_with?("AiHelperMcp") && @existing_mcp_constants.exclude?(const)
         begin
           Object.send(:remove_const, const)
         rescue NameError

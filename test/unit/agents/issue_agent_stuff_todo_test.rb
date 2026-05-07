@@ -20,15 +20,11 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
     end
 
     should "load stuff_todo_ja prompt template" do
-      # Change locale to Japanese
-      original_locale = I18n.locale
-      I18n.locale = :ja
-
-      prompt = @agent.send(:load_prompt, "issue_agent/stuff_todo")
-      assert_not_nil prompt
-      assert_respond_to prompt, :format
-    ensure
-      I18n.locale = original_locale
+      I18n.with_locale(:ja) do
+        prompt = @agent.send(:load_prompt, "issue_agent/stuff_todo")
+        assert_not_nil prompt
+        assert_respond_to prompt, :format
+      end
     end
 
     should "return issues assigned to the user" do
