@@ -45,7 +45,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Install RuboCop
-        run: gem install rubocop rubocop-rails rubocop-performance
+        run: gem install rubocop rubocop-rails rubocop-performance rubocop-factory_bot
       - name: RuboCop
         run: rubocop
 
