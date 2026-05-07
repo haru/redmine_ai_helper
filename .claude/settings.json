@@ -8,8 +8,6 @@
       "Bash(RAILS_ENV=test bundle exec rails db:migrate)",
       "Read(//workspaces/**)",
       "Bash(rubocop -A --only Rails/RedundantPresenceValidationOnBelongsTo,Rails/WhereRange,Rails/WhereExists,Rails/NegateInclude,Rails/CompactBlank,Rails/ResponseParsedBody,Rails/ActionControllerTestCase)",
-      "Bash(mkdir -p /usr/local/redmine/plugins/redmine_ai_helper/.claude/skills/rubocop)",
-      "Edit(/.claude/skills/rubocop/**)",
       "Bash(rubocop --list-target-files)",
       "Bash(rubocop --debug)",
       "Bash(rubocop --show-cops Rails/Date)",
@@ -20,7 +18,8 @@
       "Bash(rubocop plugins/redmine_ai_helper)",
       "Bash(rubocop -A --except Rails/ActionControllerTestCase plugins/redmine_ai_helper)",
       "Bash(rubocop --version)",
-      "Bash(rubocop --only Rails/Pluck,Rails/RedundantPresenceValidationOnBelongsTo,Rails/UniqueValidationWithoutIndex plugins/redmine_ai_helper/app/models/ai_helper_health_report.rb plugins/redmine_ai_helper/app/models/ai_helper_model_profile.rb plugins/redmine_ai_helper/app/models/ai_helper_summary_cache.rb plugins/redmine_ai_helper/lib/redmine_ai_helper/tools/project_tools.rb)"
+      "Bash(rubocop --only Rails/Pluck,Rails/RedundantPresenceValidationOnBelongsTo,Rails/UniqueValidationWithoutIndex plugins/redmine_ai_helper/app/models/ai_helper_health_report.rb plugins/redmine_ai_helper/app/models/ai_helper_model_profile.rb plugins/redmine_ai_helper/app/models/ai_helper_summary_cache.rb plugins/redmine_ai_helper/lib/redmine_ai_helper/tools/project_tools.rb)",
+      "Bash(rubocop test/unit/base_agent_test.rb --only Metrics/MethodLength)"
     ],
     "additionalDirectories": [
       "/usr/local/redmine/plugins/redmine_ai_helper/.claude/skills"

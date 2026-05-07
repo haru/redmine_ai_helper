@@ -250,34 +250,15 @@ class AiHelperController < ApplicationController
 
   # Add sub-issues to the current issue
   def add_sub_issues
-    issues_param = params[:sub_issues]
-
-    issues_param.each do |issue_param_array|
+    params[:sub_issues].each do |issue_param_array|
       issue_param = issue_param_array[1].permit(:subject, :description, :tracker_id, :check, :fixed_version_id, :assigned_to_id)
       next unless issue_param[:check]
 
-      issue = Issue.new
-      issue.author = User.current
-      issue.project = @issue.project
-      issue.parent_id = @issue.id
-      issue.subject = issue_param[:subject]
-      issue.description = issue_param[:description]
-      issue.tracker_id = issue_param[:tracker_id]
-      issue.fixed_version_id = issue_param[:fixed_version_id] if issue_param[:fixed_version_id].present?
+      issue = build_sub_issue_from_param(issue_param)
 
-      # Tracker-specific assignee validation
-      if issue_param[:assigned_to_id].present?
-        assignee_id = issue_param[:assigned_to_id].to_i
-        tracker = Tracker.find_by(id: issue.tracker_id)
-
-        # Use Redmine's built-in method to check tracker-specific permissions
-        if tracker && @issue.project.assignable_users(tracker).exists?(assignee_id)
-          issue.assigned_to_id = assignee_id
-        else
-          # Show error if assignee is not valid for this tracker
-          flash[:error] = l("ai_helper.error_invalid_assignee", subject: issue.subject)
-          redirect_to issue_path(@issue) and return # rubocop:disable Lint/NonLocalExitFromIterator
-        end
+      unless apply_assignee_to_sub_issue(issue, issue_param)
+        flash[:error] = l("ai_helper.error_invalid_assignee", subject: issue.subject)
+        redirect_to issue_path(@issue) and return # rubocop:disable Lint/NonLocalExitFromIterator
       end
 
       unless issue.save
@@ -356,58 +337,24 @@ class AiHelperController < ApplicationController
       render json: { error: "Invalid JSON" }, status: :bad_request and return
     end
 
-    text = data["text"]
-    context_type = data["context_type"] || "description" # "description" or "note"
-    cursor_position = data["cursor_position"]
+    context_type = data["context_type"] || "description"
+    error = validate_completion_input(data, context_type)
+    render json: { error: error }, status: :bad_request and return if error
 
-    # Input validation
-    if text.blank?
-      render json: { error: "Text is required" }, status: :bad_request and return
-    end
+    issue, issue_error = resolve_completion_issue(context_type)
+    render json: { error: issue_error }, status: :bad_request and return if issue_error
 
-    if text.length > 5000
-      render json: { error: "Text too long" }, status: :bad_request and return
-    end
-
-    if cursor_position && (cursor_position < 0 || cursor_position > text.length)
-      render json: { error: "Invalid cursor position" }, status: :bad_request and return
-    end
-
-    # Validate context_type
-    unless %w[description note].include?(context_type)
-      render json: { error: "Invalid context_type. Must be 'description' or 'note'" }, status: :bad_request and return
-    end
-
-    # Handle issue context
-    issue = nil
-    if params[:issue_id] != "new"
-      issue = Issue.find_by(id: params[:issue_id])
-      # Verify issue belongs to the project
-      if issue && issue.project != @project
-        render json: { error: "Issue does not belong to the specified project" }, status: :bad_request and return
-      end
-    end
-
-    # Note completion requires an existing issue
-    if context_type == "note" && !issue
-      render json: { error: "Issue is required for note completion" }, status: :bad_request and return
-    end
-
-    # Debug logging
     ai_helper_logger.info "Auto-completion request: issue_id=#{params[:issue_id]}, context_type=#{context_type}, project=#{@project&.identifier}, user=#{User.current.id}"
 
     begin
-      llm = RedmineAiHelper::Llm.new
-      suggestion = llm.generate_text_completion(
-        text: text,
+      suggestion = RedmineAiHelper::Llm.new.generate_text_completion(
+        text: data["text"],
         context_type: context_type,
-        cursor_position: cursor_position,
+        cursor_position: data["cursor_position"],
         project: @project,
         issue: issue
       )
-
-      response_data = { suggestion: suggestion }
-      render json: response_data
+      render json: { suggestion: suggestion }
     rescue => e
       ai_helper_logger.error "Auto-completion error: #{e.message}"
       ai_helper_logger.error e.backtrace.join("\n")
@@ -763,6 +710,51 @@ class AiHelperController < ApplicationController
   end
 
   private
+
+  def build_sub_issue_from_param(issue_param)
+    issue = Issue.new
+    issue.author = User.current
+    issue.project = @issue.project
+    issue.parent_id = @issue.id
+    issue.subject = issue_param[:subject]
+    issue.description = issue_param[:description]
+    issue.tracker_id = issue_param[:tracker_id]
+    issue.fixed_version_id = issue_param[:fixed_version_id] if issue_param[:fixed_version_id].present?
+    issue
+  end
+
+  def apply_assignee_to_sub_issue(issue, issue_param)
+    return true if issue_param[:assigned_to_id].blank?
+
+    assignee_id = issue_param[:assigned_to_id].to_i
+    tracker = Tracker.find_by(id: issue.tracker_id)
+    return false unless tracker && @issue.project.assignable_users(tracker).exists?(assignee_id)
+
+    issue.assigned_to_id = assignee_id
+    true
+  end
+
+  def validate_completion_input(data, context_type)
+    text = data["text"]
+    cursor_position = data["cursor_position"]
+    return "Text is required" if text.blank?
+    return "Text too long" if text.length > 5000
+    return "Invalid cursor position" if cursor_position && (cursor_position < 0 || cursor_position > text.length)
+    return "Invalid context_type. Must be 'description' or 'note'" unless %w[description note].include?(context_type)
+
+    nil
+  end
+
+  def resolve_completion_issue(context_type)
+    issue = nil
+    if params[:issue_id] != "new"
+      issue = Issue.find_by(id: params[:issue_id])
+      return [ nil, "Issue does not belong to the specified project" ] if issue && issue.project != @project
+    end
+    return [ nil, "Issue is required for note completion" ] if context_type == "note" && !issue
+
+    [ issue, nil ]
+  end
 
   # Always enforce CSRF verification for this controller.
   # Overrides Redmine's ApplicationController which conditionally skips
