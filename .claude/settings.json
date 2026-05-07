@@ -7,7 +7,12 @@
       "Bash(RAILS_ENV=test bundle exec rails db:test:prepare)",
       "Bash(RAILS_ENV=test bundle exec rails db:migrate)",
       "Read(//workspaces/**)",
-      "Bash(rubocop -A --only Rails/RedundantPresenceValidationOnBelongsTo,Rails/WhereRange,Rails/WhereExists,Rails/NegateInclude,Rails/CompactBlank,Rails/ResponseParsedBody,Rails/ActionControllerTestCase)"
+      "Bash(rubocop -A --only Rails/RedundantPresenceValidationOnBelongsTo,Rails/WhereRange,Rails/WhereExists,Rails/NegateInclude,Rails/CompactBlank,Rails/ResponseParsedBody,Rails/ActionControllerTestCase)",
+      "Bash(mkdir -p /usr/local/redmine/plugins/redmine_ai_helper/.claude/skills/rubocop)",
+      "Edit(/.claude/skills/rubocop/**)"
+    ],
+    "additionalDirectories": [
+      "/usr/local/redmine/plugins/redmine_ai_helper/.claude/skills"
     ]
   }
 }

@@ -38,6 +38,17 @@ env:
 permissions:
   contents: read
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    container:
+      image: ruby:3.4
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install RuboCop
+        run: gem install rubocop rubocop-rails rubocop-performance
+      - name: RuboCop
+        run: rubocop
+
   build:
     permissions:
       contents: read

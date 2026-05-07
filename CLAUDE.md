@@ -177,6 +177,16 @@ Testing conventions:
 - No custom colors or fonts — use Redmine's class definitions and design system
 - Use Redmine's `.box` class for container elements
 
+## Code Quality
+
+After modifying any Ruby source file, always run RuboCop and fix all offenses before finishing:
+
+```bash
+rubocop 2>&1
+```
+
+Use `/rubocop` skill for the full fix workflow including auto-correction and test verification.
+
 ## Git Workflow
 
 - Uses git-flow: `develop` is the integration branch, `main` is production
