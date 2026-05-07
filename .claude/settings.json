@@ -19,7 +19,10 @@
       "Bash(rubocop -A --except Rails/ActionControllerTestCase plugins/redmine_ai_helper)",
       "Bash(rubocop --version)",
       "Bash(rubocop --only Rails/Pluck,Rails/RedundantPresenceValidationOnBelongsTo,Rails/UniqueValidationWithoutIndex plugins/redmine_ai_helper/app/models/ai_helper_health_report.rb plugins/redmine_ai_helper/app/models/ai_helper_model_profile.rb plugins/redmine_ai_helper/app/models/ai_helper_summary_cache.rb plugins/redmine_ai_helper/lib/redmine_ai_helper/tools/project_tools.rb)",
-      "Bash(rubocop test/unit/base_agent_test.rb --only Metrics/MethodLength)"
+      "Bash(rubocop test/unit/base_agent_test.rb --only Metrics/MethodLength)",
+      "Bash(rubocop lib/redmine_ai_helper/base_agent.rb lib/redmine_ai_helper/vector/qdrant.rb lib/redmine_ai_helper/util/system_prompt.rb lib/redmine_ai_helper/export/pdf/project_health_pdf_helper.rb lib/redmine_ai_helper/user_patch.rb)",
+      "Bash(rubocop lib/redmine_ai_helper/user_patch.rb)",
+      "Bash(yard list *)"
     ],
     "additionalDirectories": [
       "/usr/local/redmine/plugins/redmine_ai_helper/.claude/skills"

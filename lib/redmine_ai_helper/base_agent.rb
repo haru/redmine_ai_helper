@@ -134,7 +134,7 @@ module RedmineAiHelper
 
     # Chat with the LLM using RubyLLM.
     # @param messages [Array<Hash>] The messages to be sent.
-    # @param option [Hash] Additional options for the chat.
+    # @param _option [Hash] Reserved for future use; currently ignored.
     # @param callback [Proc] A callback function to be called with each chunk of the response.
     # @param with [Array<String>, nil] Image file paths to attach to the request.
     # @return [String] The response from the LLM.
@@ -174,7 +174,7 @@ module RedmineAiHelper
     # implemented. A future design would need to solve cross-provider switching combined
     # with shared conversation history (no solution exists yet).
     # @param messages [Array<Hash>] The messages to be sent.
-    # @param option [Hash] Additional options for the chat.
+    # @param _option [Hash] Reserved for future use; currently ignored.
     # @param callback [Proc] A callback function to be called with each chunk of the response.
     # @param with [Array<String>, nil] Image file paths to attach to the request.
     # @return [String] The response from the LLM.
@@ -211,7 +211,7 @@ module RedmineAiHelper
     # Perform a task using the assistant.
     # When use_think_model: true, builds a fresh think assistant with shared context.
     # @param option [Hash] Additional options for the task.
-    # @param callback [Proc] A callback function to be called with each chunk of the response.
+    # @param _callback [Proc] Reserved for future use; currently ignored.
     # @return [TaskResponse] The response from the task.
     def perform_task(option = {}, _callback = nil)
       active_assistant = option[:use_think_model] ? build_think_assistant : assistant

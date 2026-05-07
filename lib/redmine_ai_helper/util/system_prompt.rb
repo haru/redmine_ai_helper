@@ -15,7 +15,7 @@ module RedmineAiHelper
       end
 
       # Generates a system prompt for the Leader Agent.
-      # @param conversation [Object] The conversation object (optional). TODO: Not being used
+      # @param _conversation [Object] Reserved for future use; currently ignored.
       def prompt(_conversation = nil)
         return @prompt_text if @prompt_text
         current_user_info = {

@@ -17,7 +17,7 @@ module RedmineAiHelper
         # Generate PDF for project health report
         # @param project [Project] The project object
         # @param health_report [String] The health report content
-        # @param options [Hash] Optional parameters
+        # @param _options [Hash] Reserved for future use; currently ignored.
         # @return [String] PDF content as binary string
         def project_health_to_pdf(project, health_report, _options = {})
           pdf = Redmine::Export::PDF::ITCPDF.new(current_language)
