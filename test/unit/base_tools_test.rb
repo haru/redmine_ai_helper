@@ -46,7 +46,7 @@ class BaseToolsTest < ActiveSupport::TestCase
     # Tool with enum property
     @enum_tool_class = Class.new(RedmineAiHelper::BaseTools) do
       define_function :filter, description: "Filter by status" do
-        property :status, type: "string", description: "Status filter", required: true, enum: ["active", "inactive"]
+        property :status, type: "string", description: "Status filter", required: true, enum: [ "active", "inactive" ]
       end
 
       def filter(status:)
@@ -117,8 +117,8 @@ class BaseToolsTest < ActiveSupport::TestCase
       should "delegate execute for array tool" do
         tool_class = @array_tool_class.tool_classes.first
         tool_instance = tool_class.new
-        result = tool_instance.execute(item_ids: [1, 2, 3])
-        assert_equal [2, 4, 6], result
+        result = tool_instance.execute(item_ids: [ 1, 2, 3 ])
+        assert_equal [ 2, 4, 6 ], result
       end
     end
 
@@ -166,7 +166,7 @@ class BaseToolsTest < ActiveSupport::TestCase
         tool_class = @enum_tool_class.tool_classes.first
         tool_instance = tool_class.new
         schema = tool_instance.params_schema
-        assert_equal ["active", "inactive"], schema["properties"]["status"]["enum"]
+        assert_equal [ "active", "inactive" ], schema["properties"]["status"]["enum"]
       end
     end
 
@@ -197,9 +197,9 @@ class BaseToolsTest < ActiveSupport::TestCase
           "type" => "object",
           "properties" => {
             "city" => { "type" => "string", "description" => "City name" },
-            "count" => { "type" => "integer", "description" => "Result count" },
+            "count" => { "type" => "integer", "description" => "Result count" }
           },
-          "required" => ["city"],
+          "required" => [ "city" ]
         }
 
         builder = RedmineAiHelper::BaseTools::ParameterBuilder.new
@@ -219,10 +219,10 @@ class BaseToolsTest < ActiveSupport::TestCase
               "type" => "object",
               "description" => "Filter options",
               "properties" => {
-                "key" => { "type" => "string", "description" => "Filter key" },
-              },
-            },
-          },
+                "key" => { "type" => "string", "description" => "Filter key" }
+              }
+            }
+          }
         }
 
         builder = RedmineAiHelper::BaseTools::ParameterBuilder.new
@@ -242,10 +242,10 @@ class BaseToolsTest < ActiveSupport::TestCase
               "description" => "Tag list",
               "items" => {
                 "type" => "string",
-                "description" => "A tag",
-              },
-            },
-          },
+                "description" => "A tag"
+              }
+            }
+          }
         }
 
         builder = RedmineAiHelper::BaseTools::ParameterBuilder.new

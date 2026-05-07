@@ -28,7 +28,7 @@ class WikiWriteToolsTest < ActiveSupport::TestCase
         project_id: 1,
         title: "ChildTestPage",
         content: "Child content",
-        parent_title: "CookBook_documentation",
+        parent_title: "CookBook_documentation"
       )
       page = WikiPage.find(result[:id])
       assert_not_nil page.parent
@@ -37,7 +37,7 @@ class WikiWriteToolsTest < ActiveSupport::TestCase
 
     should "raise error when permission denied (no :edit_wiki_pages)" do
       role = Role.find(1) # Manager
-      role.permissions = (role.permissions + [:view_ai_helper]).reject { |p| p == :edit_wiki_pages }
+      role.permissions = (role.permissions + [ :view_ai_helper ]).reject { |p| p == :edit_wiki_pages }
       role.save!
       User.current = User.find(2) # Jsmith has Manager role in project 1
 
@@ -76,7 +76,7 @@ class WikiWriteToolsTest < ActiveSupport::TestCase
           project_id: 1,
           title: "OrphanPage",
           content: "content",
-          parent_title: "NonExistentParent",
+          parent_title: "NonExistentParent"
         )
       end
     end
@@ -125,7 +125,7 @@ class WikiWriteToolsTest < ActiveSupport::TestCase
         project_id: 1,
         title: "Another_page",
         content: "New content",
-        new_title: "RenamedPage2",
+        new_title: "RenamedPage2"
       )
       page = WikiPage.find(result[:id])
       assert_equal "RenamedPage2", page.title
@@ -138,7 +138,7 @@ class WikiWriteToolsTest < ActiveSupport::TestCase
         project_id: 1,
         title: "Another_page",
         content: "With comment",
-        comment: "My edit comment",
+        comment: "My edit comment"
       )
       page = wiki.find_page("Another_page")
       assert_equal "My edit comment", page.content.comments
@@ -146,7 +146,7 @@ class WikiWriteToolsTest < ActiveSupport::TestCase
 
     should "raise error when permission denied (no :edit_wiki_pages)" do
       role = Role.find(1) # Manager
-      role.permissions = (role.permissions + [:view_ai_helper]).reject { |p| p == :edit_wiki_pages }
+      role.permissions = (role.permissions + [ :view_ai_helper ]).reject { |p| p == :edit_wiki_pages }
       role.save!
       User.current = User.find(2) # Jsmith has Manager role in project 1
 
@@ -197,7 +197,7 @@ class WikiWriteToolsTest < ActiveSupport::TestCase
 
     should "raise error when permission denied (no :delete_wiki_pages) and leave page intact" do
       role = Role.find(1) # Manager
-      role.permissions = (role.permissions + [:view_ai_helper]).reject { |p| p == :delete_wiki_pages }
+      role.permissions = (role.permissions + [ :view_ai_helper ]).reject { |p| p == :delete_wiki_pages }
       role.save!
       User.current = User.find(2) # Jsmith has Manager role in project 1
 

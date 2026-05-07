@@ -22,7 +22,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
     assert_equal 2, response.size
     project1 = Project.find(1)
     project2 = Project.find(2)
-    [project1, project2].each_with_index do |project, index|
+    [ project1, project2 ].each_with_index do |project, index|
       value = response[index]
       assert_equal project.id, value[:id]
       assert_equal project.name, value[:name]
@@ -69,7 +69,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
     project = Project.find(1)
     members = project.members
 
-    response = @provider.project_members(project_ids: [project.id])
+    response = @provider.project_members(project_ids: [ project.id ])
     assert_equal members.size, response[:projects][0][:members].size
     assert_equal members.first.user_id, response[:projects][0][:members].first[:user_id]
   end
@@ -103,13 +103,13 @@ class ProjectToolsTest < ActiveSupport::TestCase
     enabled_module.name = "ai_helper"
     enabled_module.save!
 
-    response = @provider.project_members(project_ids: [project1.id, project2.id])
+    response = @provider.project_members(project_ids: [ project1.id, project2.id ])
     assert_equal 2, response[:projects].size
     assert response[:projects].all? { |p| p.key?(:members) }
   end
 
   def test_project_members_with_invalid_project_id
-    response = @provider.project_members(project_ids: [999])
+    response = @provider.project_members(project_ids: [ 999 ])
     assert_equal "error", response.status
   end
 
@@ -163,7 +163,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
   def test_project_members_includes_member_details
     project = Project.find(1)
 
-    response = @provider.project_members(project_ids: [project.id])
+    response = @provider.project_members(project_ids: [ project.id ])
     project_data = response[:projects].first
 
     assert project_data.key?(:members)
@@ -192,7 +192,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
     project = Project.find(1)
     User.current = User.find(6) # User without permission
 
-    response = @provider.project_members(project_ids: [project.id])
+    response = @provider.project_members(project_ids: [ project.id ])
     # When user has no permission, accessible projects are filtered out, resulting in empty list
     assert_equal [], response[:projects]
   end
@@ -266,7 +266,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
     metrics = @provider.get_metrics(
       project_id: project.id,
       start_date: start_date,
-      end_date: end_date,
+      end_date: end_date
     )
 
     assert_equal Date.parse(start_date), metrics[:period][:start_date]
@@ -765,7 +765,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
       journalized: issue,
       user: User.find(1),
       notes: "Test update 1",
-      created_on: 5.days.ago,
+      created_on: 5.days.ago
     )
     journal1.save!
 
@@ -773,7 +773,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
       journalized: issue,
       user: User.find(1),
       notes: "Test update 2",
-      created_on: 2.days.ago,
+      created_on: 2.days.ago
     )
     journal2.save!
 
@@ -802,7 +802,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
       user: User.find(1),
       activity: TimeEntryActivity.first,
       hours: 12.0,
-      spent_on: Date.current,
+      spent_on: Date.current
     )
     time_entry.save!
 
@@ -829,7 +829,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
       filename: "test_document.pdf",
       author: User.find(1),
       filesize: 5000,
-      content_type: "application/pdf",
+      content_type: "application/pdf"
     )
     attachment.save!
 

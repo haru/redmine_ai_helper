@@ -17,7 +17,7 @@ class FortuneTools < RedmineAiHelper::BaseTools
   #
   # @note The date parameter is not used in the fortune drawing process.
   def omikuji(date:)
-    ["DAI-KICHI/Great blessing", "CHU-KICHI/Middle blessing", "SHOU-KICHI/Small blessing", "SUE-KICHI/Future blessing", "KYOU/Curse", "DAI-KYOU/Great curse"].sample
+    [ "DAI-KICHI/Great blessing", "CHU-KICHI/Middle blessing", "SHOU-KICHI/Small blessing", "SUE-KICHI/Future blessing", "KYOU/Curse", "DAI-KYOU/Great curse" ].sample
   end
 
   # Definition of the horoscope fortune-telling feature
@@ -38,6 +38,6 @@ class FortuneTools < RedmineAiHelper::BaseTools
     fortune2 = "This month's fortune is so-so. There are no particular problems."
     fortune3 = "This month's fortune is not very good. Caution is required."
     fortune4 = "This month's fortune is the worst. Nothing you do will go well."
-    [fortune1, fortune2, fortune3, fortune4].sample
+    [ fortune1, fortune2, fortune3, fortune4 ].sample
   end
 end

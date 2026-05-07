@@ -134,7 +134,7 @@ module RedmineAiHelper
           transport_type: :stdio,
           config: {
             command: build_command_string(server_config),
-            env: server_config["env"] || {},
+            env: server_config["env"] || {}
           }
         )
       end
@@ -146,7 +146,7 @@ module RedmineAiHelper
           transport_type: :streamable,
           config: {
             url: server_config["url"],
-            headers: server_config["headers"] || {},
+            headers: server_config["headers"] || {}
           }
         )
       end
@@ -158,7 +158,7 @@ module RedmineAiHelper
           transport_type: :sse,
           config: {
             url: server_config["url"],
-            headers: server_config["headers"] || {},
+            headers: server_config["headers"] || {}
           }
         )
       end
@@ -207,7 +207,7 @@ module RedmineAiHelper
             return @cached_tool_classes if @cached_tool_classes
             @cached_tool_classes = RedmineAiHelper::Tools::McpTools.generate_tool_classes(
               mcp_server_name: server_name,
-              mcp_client: mcp_client,
+              mcp_client: mcp_client
             )
           rescue => e
             ai_helper_logger.error "Error loading tools for MCP server '#{server_name}': #{e.message}"
@@ -221,8 +221,8 @@ module RedmineAiHelper
               {
                 function: {
                   name: tool.name,
-                  description: tool.description,
-                },
+                  description: tool.description
+                }
               }
             end
           end

@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 # AiHelperSetting Controller for managing AI Helper settings
 class AiHelperSettingsController < ApplicationController
   layout "admin"

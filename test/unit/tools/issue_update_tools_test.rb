@@ -34,17 +34,17 @@ class IssueUpdateToolsTest < ActiveSupport::TestCase
       end
 
       should "create issue with custom fields" do
-        response = @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "test issue", description: "test description", custom_fields: [{ field_id: 1, value: "MySQL" }])
+        response = @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "test issue", description: "test description", custom_fields: [ { field_id: 1, value: "MySQL" } ])
         assert response[:id].present?
       end
 
       should "create issue when custom_fields contains nil field_id" do
-        response = @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "test nil field_id", custom_fields: [{ field_id: nil, value: "x" }])
+        response = @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "test nil field_id", custom_fields: [ { field_id: nil, value: "x" } ])
         assert response[:id].present?
       end
 
       should "create issue with mixed nil and valid field_ids, processing only valid ones" do
-        response = @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "test mixed field_ids", custom_fields: [{ field_id: nil, value: "skip me" }, { field_id: 1, value: "MySQL" }])
+        response = @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "test mixed field_ids", custom_fields: [ { field_id: nil, value: "skip me" }, { field_id: 1, value: "MySQL" } ])
         assert response[:id].present?
         issue = Issue.find(response[:id])
         assert_equal "MySQL", issue.custom_field_values.find { |cfv| cfv.custom_field_id == 1 }.value
@@ -54,11 +54,11 @@ class IssueUpdateToolsTest < ActiveSupport::TestCase
         logger = mock("logger")
         logger.expects(:warn).at_least_once
         @provider.stubs(:ai_helper_logger).returns(logger)
-        @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "test warn log", custom_fields: [{ field_id: nil, value: "x" }])
+        @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "test warn log", custom_fields: [ { field_id: nil, value: "x" } ])
       end
 
       should "create issue when custom_fields contains nonexistent field_id" do
-        response = @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "test nonexistent field_id", custom_fields: [{ field_id: 99999, value: "x" }])
+        response = @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "test nonexistent field_id", custom_fields: [ { field_id: 99999, value: "x" } ])
         assert response[:id].present?
       end
 
@@ -118,14 +118,14 @@ class IssueUpdateToolsTest < ActiveSupport::TestCase
       context "relations" do
         should "create relation when valid relations are provided" do
           target = Issue.find(3)
-          response = @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "issue with relation", relations: [{ issue_id: target.id, relation_type: "relates" }])
+          response = @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "issue with relation", relations: [ { issue_id: target.id, relation_type: "relates" } ])
           created_issue = Issue.find(response[:id])
           assert created_issue.relations.any? { |r| r.issue_from_id == created_issue.id && r.issue_to_id == target.id || r.issue_from_id == target.id && r.issue_to_id == created_issue.id }
         end
 
         should "raise error when relation_type is invalid" do
           assert_raises(RuntimeError) do
-            @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "bad relation type", relations: [{ issue_id: 1, relation_type: "invalid_type" }])
+            @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "bad relation type", relations: [ { issue_id: 1, relation_type: "invalid_type" } ])
           end
         end
 
@@ -134,20 +134,20 @@ class IssueUpdateToolsTest < ActiveSupport::TestCase
           logger.stubs(:warn)
           @provider.stubs(:ai_helper_logger).returns(logger)
           logger.expects(:warn).with(regexp_matches(/issue_id/)).at_least_once
-          response = @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "nil issue_id relation", relations: [{ issue_id: nil, relation_type: "relates" }])
+          response = @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "nil issue_id relation", relations: [ { issue_id: nil, relation_type: "relates" } ])
           assert response[:id].present?
         end
 
         should "validate relation existence when validate_only is true without saving" do
           target = Issue.find(3)
           count_before = Issue.count
-          @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "validate relations", relations: [{ issue_id: target.id, relation_type: "relates" }], validate_only: true)
+          @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "validate relations", relations: [ { issue_id: target.id, relation_type: "relates" } ], validate_only: true)
           assert_equal count_before, Issue.count
         end
 
         should "raise error for non-existent issue_id in relations when validate_only is true" do
           assert_raises(RuntimeError) do
-            @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "validate bad relation", relations: [{ issue_id: 99999, relation_type: "relates" }], validate_only: true)
+            @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "validate bad relation", relations: [ { issue_id: 99999, relation_type: "relates" } ], validate_only: true)
           end
         end
       end
@@ -173,13 +173,13 @@ class IssueUpdateToolsTest < ActiveSupport::TestCase
       end
 
       should "update issue with custom fields" do
-        @provider.update_issue(issue_id: 1, subject: "test issue", custom_fields: [{ field_id: 1, value: "MySQL" }])
+        @provider.update_issue(issue_id: 1, subject: "test issue", custom_fields: [ { field_id: 1, value: "MySQL" } ])
         assert_equal "MySQL", Issue.find(1).custom_field_values.filter { |cfv| cfv.custom_field_id == 1 }.first.value
       end
 
       should "update issue when custom_fields contains nil field_id" do
         original_subject = Issue.find(1).subject
-        @provider.update_issue(issue_id: 1, subject: original_subject, custom_fields: [{ field_id: nil, value: "x" }])
+        @provider.update_issue(issue_id: 1, subject: original_subject, custom_fields: [ { field_id: nil, value: "x" } ])
         assert_equal original_subject, Issue.find(1).subject
       end
 
@@ -187,7 +187,7 @@ class IssueUpdateToolsTest < ActiveSupport::TestCase
         logger = mock("logger")
         logger.expects(:warn).at_least_once
         @provider.stubs(:ai_helper_logger).returns(logger)
-        @provider.update_issue(issue_id: 1, custom_fields: [{ field_id: nil, value: "x" }])
+        @provider.update_issue(issue_id: 1, custom_fields: [ { field_id: nil, value: "x" } ])
       end
 
       should "update issue when optional id fields are nil" do
@@ -256,7 +256,7 @@ class IssueUpdateToolsTest < ActiveSupport::TestCase
         should "add a new relation when valid relations_to_add is provided" do
           issue = Issue.find(1)
           target = Issue.find(3)
-          @provider.update_issue(issue_id: issue.id, relations_to_add: [{ issue_id: target.id, relation_type: "relates" }])
+          @provider.update_issue(issue_id: issue.id, relations_to_add: [ { issue_id: target.id, relation_type: "relates" } ])
           issue.reload
           assert issue.relations.any? { |r| r.issue_from_id == target.id || r.issue_to_id == target.id }
         end
@@ -266,20 +266,20 @@ class IssueUpdateToolsTest < ActiveSupport::TestCase
           target = Issue.find(3)
           IssueRelation.create!(issue_from_id: issue.id, issue_to_id: target.id, relation_type: "relates")
           assert_nothing_raised do
-            @provider.update_issue(issue_id: issue.id, relations_to_add: [{ issue_id: target.id, relation_type: "relates" }])
+            @provider.update_issue(issue_id: issue.id, relations_to_add: [ { issue_id: target.id, relation_type: "relates" } ])
           end
         end
 
         should "validate relation existence when validate_only is true without saving" do
           target = Issue.find(3)
           original_subject = Issue.find(1).subject
-          @provider.update_issue(issue_id: 1, relations_to_add: [{ issue_id: target.id, relation_type: "relates" }], validate_only: true)
+          @provider.update_issue(issue_id: 1, relations_to_add: [ { issue_id: target.id, relation_type: "relates" } ], validate_only: true)
           assert_equal original_subject, Issue.find(1).subject
         end
 
         should "raise error for non-existent issue_id in relations_to_add when validate_only is true" do
           assert_raises(RuntimeError) do
-            @provider.update_issue(issue_id: 1, relations_to_add: [{ issue_id: 99999, relation_type: "relates" }], validate_only: true)
+            @provider.update_issue(issue_id: 1, relations_to_add: [ { issue_id: 99999, relation_type: "relates" } ], validate_only: true)
           end
         end
       end
@@ -289,7 +289,7 @@ class IssueUpdateToolsTest < ActiveSupport::TestCase
           issue = Issue.find(1)
           target = Issue.find(3)
           IssueRelation.create!(issue_from_id: issue.id, issue_to_id: target.id, relation_type: "relates")
-          @provider.update_issue(issue_id: issue.id, relations_to_remove: [{ issue_id: target.id }])
+          @provider.update_issue(issue_id: issue.id, relations_to_remove: [ { issue_id: target.id } ])
           issue.reload
           assert issue.relations.none? { |r| r.issue_from_id == target.id || r.issue_to_id == target.id }
         end
@@ -297,7 +297,7 @@ class IssueUpdateToolsTest < ActiveSupport::TestCase
         should "be idempotent when removing a relation that does not exist" do
           issue = Issue.find(1)
           assert_nothing_raised do
-            @provider.update_issue(issue_id: issue.id, relations_to_remove: [{ issue_id: 99 }])
+            @provider.update_issue(issue_id: issue.id, relations_to_remove: [ { issue_id: 99 } ])
           end
         end
       end

@@ -1,4 +1,4 @@
-require_relative '../test_helper'
+require_relative "../test_helper"
 
 class AiHelperSettingsControllerTest < ActionController::TestCase
   setup do
@@ -6,7 +6,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
     AiHelperModelProfile.delete_all
     @request.session[:user_id] = 1 # Assuming user with ID 1 is an admin
 
-    @model_profile = AiHelperModelProfile.create!(name: 'Test Profile', access_key: 'test_key', llm_type: "OpenAI", llm_model: "gpt-3.5-turbo")
+    @model_profile = AiHelperModelProfile.create!(name: "Test Profile", access_key: "test_key", llm_type: "OpenAI", llm_model: "gpt-3.5-turbo")
     @model_profile.reload
     @ai_helper_setting = AiHelperSetting.find_or_create
   end
@@ -79,7 +79,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
         name: "Vector Profile",
         access_key: "vec_key",
         llm_type: "OpenAI",
-        llm_model: "text-embedding-3-large",
+        llm_model: "text-embedding-3-large"
       )
     end
 
@@ -124,7 +124,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
         name: "Think Profile",
         access_key: "think_key",
         llm_type: "Anthropic",
-        llm_model: "claude-3-7-sonnet",
+        llm_model: "claude-3-7-sonnet"
       )
     end
 

@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "redmine_ai_helper/base_tools"
 
 module RedmineAiHelper
@@ -25,7 +26,7 @@ module RedmineAiHelper
             sharing: version.sharing,
             wiki_page_title: version.wiki_page_title,
             created_on: version.created_on,
-            url_for_version: "#{version_url(version, only_path: true)}",
+            url_for_version: "#{version_url(version, only_path: true)}"
           }
         end
 
@@ -65,9 +66,9 @@ module RedmineAiHelper
                 subject: issue.subject,
                 status: issue.status,
                 priority: issue.priority,
-                url_for_issue: "#{issue_url(issue, only_path: true)}",
+                url_for_issue: "#{issue_url(issue, only_path: true)}"
               }
-            end,
+            end
           }
           versions << version_hash
         end

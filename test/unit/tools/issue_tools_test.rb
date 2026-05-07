@@ -11,21 +11,21 @@ class IssueToolsTest < ActiveSupport::TestCase
     context "read_issues" do
       should "return issues" do
         issue = Issue.find(1)
-        response = @provider.read_issues(issue_ids: [1])
+        response = @provider.read_issues(issue_ids: [ 1 ])
         assert_equal 1, response[:issues].size
         assert_equal issue.id, response[:issues].first[:id]
       end
 
       should "return error with invalid id" do
         assert_raises(RuntimeError, "Issue not found") do
-          @provider.read_issues(issue_ids: [999])
+          @provider.read_issues(issue_ids: [ 999 ])
         end
       end
 
       should "always return Hash regardless of image attachments" do
         issue = Issue.find(1)
 
-        response = @provider.read_issues(issue_ids: [issue.id])
+        response = @provider.read_issues(issue_ids: [ issue.id ])
 
         assert_instance_of Hash, response
         assert response[:issues].is_a?(Array)

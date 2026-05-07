@@ -21,7 +21,7 @@ module AiHelper
         name: "global-test",
         prompt: "Global test prompt",
         command_type: :global,
-        user_id: @user.id,
+        user_id: @user.id
       )
 
       @project_command = AiHelperCustomCommand.create!(
@@ -29,7 +29,7 @@ module AiHelper
         prompt: "Project test prompt",
         command_type: :project,
         project_id: @project.id,
-        user_id: @user.id,
+        user_id: @user.id
       )
 
       @user_command = AiHelperCustomCommand.create!(
@@ -37,7 +37,7 @@ module AiHelper
         prompt: "User test prompt",
         command_type: :user,
         user_scope: :common,
-        user_id: @user.id,
+        user_id: @user.id
       )
     end
 
@@ -82,7 +82,7 @@ module AiHelper
         get :available, params: {
                       id: @project.id,
                       prefix: "global",
-                      format: :json,
+                      format: :json
                     }
         assert_response :success
         json = JSON.parse(response.body)
@@ -135,8 +135,8 @@ module AiHelper
                      ai_helper_custom_command: {
                        name: "new-global",
                        prompt: "New global prompt",
-                       command_type: "global",
-                     },
+                       command_type: "global"
+                     }
                    }
         end
         assert_redirected_to custom_commands_path
@@ -154,8 +154,8 @@ module AiHelper
                      ai_helper_custom_command: {
                        name: "new-project",
                        prompt: "New project prompt",
-                       command_type: "project",
-                     },
+                       command_type: "project"
+                     }
                    }
         end
         assert_redirected_to ai_helper_dashboard_path(@project, tab: "custom_commands")
@@ -173,8 +173,8 @@ module AiHelper
                        name: "new-user",
                        prompt: "New user prompt",
                        command_type: "user",
-                       user_scope: "common",
-                     },
+                       user_scope: "common"
+                     }
                    }
         end
         assert_redirected_to custom_commands_path
@@ -191,8 +191,8 @@ module AiHelper
                      ai_helper_custom_command: {
                        name: "global-test",
                        prompt: "Duplicate prompt",
-                       command_type: "global",
-                     },
+                       command_type: "global"
+                     }
                    }
         end
         assert_response :success
@@ -205,8 +205,8 @@ module AiHelper
                      ai_helper_custom_command: {
                        name: "",
                        prompt: "",
-                       command_type: "global",
-                     },
+                       command_type: "global"
+                     }
                    }
         end
         assert_response :success
@@ -221,8 +221,8 @@ module AiHelper
               name: "with-desc",
               prompt: "Test prompt",
               description: "A helpful command",
-              command_type: "global",
-            },
+              command_type: "global"
+            }
           }
         end
         assert_redirected_to custom_commands_path
@@ -238,8 +238,8 @@ module AiHelper
             ai_helper_custom_command: {
               name: "no-desc",
               prompt: "Test prompt",
-              command_type: "global",
-            },
+              command_type: "global"
+            }
           }
         end
         assert_redirected_to custom_commands_path
@@ -270,8 +270,8 @@ module AiHelper
         patch :update, params: {
                    id: @global_command.id,
                    ai_helper_custom_command: {
-                     prompt: "Updated prompt",
-                   },
+                     prompt: "Updated prompt"
+                   }
                  }
         assert_redirected_to custom_commands_path
 
@@ -286,8 +286,8 @@ module AiHelper
         patch :update, params: {
                    id: @global_command.id,
                    ai_helper_custom_command: {
-                     prompt: "Hacked prompt",
-                   },
+                     prompt: "Hacked prompt"
+                   }
                  }
         assert_response 403
 
@@ -299,8 +299,8 @@ module AiHelper
         patch :update, params: {
                    id: @global_command.id,
                    ai_helper_custom_command: {
-                     name: "",
-                   },
+                     name: ""
+                   }
                  }
         assert_response :success
         assert_not_nil assigns(:command).errors[:name]
@@ -328,7 +328,7 @@ module AiHelper
       should "redirect to project path when in project context" do
         delete :destroy, params: {
                     id: @project.id,
-                    custom_command_id: @project_command.id,
+                    custom_command_id: @project_command.id
                   }
         assert_redirected_to ai_helper_dashboard_path(@project, tab: "custom_commands")
       end

@@ -146,7 +146,7 @@ class AiHelperMcpControllerTest < ActionController::TestCase
     setup { set_valid_auth_headers }
 
     should "return content array with type text on success" do
-      RedmineAiHelper::Tools::ProjectTools.any_instance.stubs(:list_projects).returns([{ id: 1, name: "Test" }])
+      RedmineAiHelper::Tools::ProjectTools.any_instance.stubs(:list_projects).returns([ { id: 1, name: "Test" } ])
       post :handle_request, body: tools_call_payload("list_projects", {}), as: :json
       body = JSON.parse(@response.body)
       content = body.dig("result", "content")
@@ -155,7 +155,7 @@ class AiHelperMcpControllerTest < ActionController::TestCase
     end
 
     should "return isError false on success" do
-      RedmineAiHelper::Tools::ProjectTools.any_instance.stubs(:list_projects).returns([{ id: 1, name: "Test" }])
+      RedmineAiHelper::Tools::ProjectTools.any_instance.stubs(:list_projects).returns([ { id: 1, name: "Test" } ])
       post :handle_request, body: tools_call_payload("list_projects", {}), as: :json
       body = JSON.parse(@response.body)
       assert_equal false, body.dig("result", "isError")

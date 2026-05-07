@@ -13,12 +13,12 @@ module RedmineAiHelper
       def get_assistant(llm_provider:, instructions:, tools: [])
         chat = llm_provider.create_chat(
           instructions: instructions,
-          tools: tools,
+          tools: tools
         )
         RedmineAiHelper::Assistant.new(
           chat: chat,
           instructions: instructions,
-          tools: tools,
+          tools: tools
         )
       end
     end

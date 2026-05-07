@@ -75,7 +75,7 @@ module RedmineAiHelper
           vector: embedding,
           with_payload: true,
           with_vector: true,
-          filter: filter,
+          filter: filter
         )
         results = response.dig("result")
         return [] unless results.is_a?(Array)
@@ -100,7 +100,7 @@ module RedmineAiHelper
           vector: embedding,
           with_payload: true,
           with_vector: false,
-          filter: filter,
+          filter: filter
         )
         results = response.dig("result")
         return [] unless results.is_a?(Array)
@@ -108,7 +108,7 @@ module RedmineAiHelper
         results.map do |result|
           {
             "payload" => result.dig("payload"),
-            "score" => result.dig("score"),
+            "score" => result.dig("score")
           }
         end
       end
@@ -118,7 +118,7 @@ module RedmineAiHelper
       def create_default_schema(vector_size: 1536)
         client.collections.create(
           collection_name: @index_name,
-          vectors: { size: vector_size, distance: "Cosine" },
+          vectors: { size: vector_size, distance: "Cosine" }
         )
       end
 

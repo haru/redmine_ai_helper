@@ -30,7 +30,7 @@ class LoggerTest < ActiveSupport::TestCase
   end
 
   def test_instance_logging_methods
-    mock_logger = mock('mock_logger')
+    mock_logger = mock("mock_logger")
     RedmineAiHelper::CustomLogger.stubs(:instance).returns(mock_logger)
 
     mock_logger.expects(:debug).with("[LoggerTest] debug message")
@@ -47,7 +47,7 @@ class LoggerTest < ActiveSupport::TestCase
   end
 
   def test_class_logging_methods
-    mock_logger = mock('mock_logger')
+    mock_logger = mock("mock_logger")
     RedmineAiHelper::CustomLogger.stubs(:instance).returns(mock_logger)
 
     mock_logger.expects(:debug).with("[LoggerTest] debug message")
@@ -64,7 +64,7 @@ class LoggerTest < ActiveSupport::TestCase
   end
 
   def test_ai_helper_logger_caching
-    mock_logger = mock('mock_logger')
+    mock_logger = mock("mock_logger")
     RedmineAiHelper::CustomLogger.stubs(:instance).returns(mock_logger)
     
     # Test that the logger is cached at class level
@@ -74,7 +74,7 @@ class LoggerTest < ActiveSupport::TestCase
   end
 
   def test_instance_ai_helper_logger_delegates_to_class
-    mock_logger = mock('mock_logger')
+    mock_logger = mock("mock_logger")
     RedmineAiHelper::CustomLogger.stubs(:instance).returns(mock_logger)
     
     instance_logger = ai_helper_logger
@@ -118,7 +118,7 @@ class LoggerTest < ActiveSupport::TestCase
   def test_custom_logger_logging_methods
     # Create a test object that mimics CustomLogger methods
     test_logger = Object.new
-    mock_internal_logger = mock('internal_logger_for_logging')
+    mock_internal_logger = mock("internal_logger_for_logging")
     test_logger.instance_variable_set(:@logger, mock_internal_logger)
     
     def test_logger.debug(message)
@@ -152,7 +152,7 @@ class LoggerTest < ActiveSupport::TestCase
 
   def test_set_log_level_debug
     test_logger = Object.new
-    mock_internal_logger = mock('internal_logger_for_debug')
+    mock_internal_logger = mock("internal_logger_for_debug")
     test_logger.instance_variable_set(:@logger, mock_internal_logger)
     
     def test_logger.set_log_level(level)
@@ -172,7 +172,7 @@ class LoggerTest < ActiveSupport::TestCase
 
   def test_set_log_level_info
     test_logger = Object.new
-    mock_internal_logger = mock('internal_logger_for_info')
+    mock_internal_logger = mock("internal_logger_for_info")
     test_logger.instance_variable_set(:@logger, mock_internal_logger)
     
     def test_logger.set_log_level(level)
@@ -192,7 +192,7 @@ class LoggerTest < ActiveSupport::TestCase
 
   def test_set_log_level_warn
     test_logger = Object.new
-    mock_internal_logger = mock('internal_logger_for_warn')
+    mock_internal_logger = mock("internal_logger_for_warn")
     test_logger.instance_variable_set(:@logger, mock_internal_logger)
     
     def test_logger.set_log_level(level)
@@ -212,7 +212,7 @@ class LoggerTest < ActiveSupport::TestCase
 
   def test_set_log_level_error
     test_logger = Object.new
-    mock_internal_logger = mock('internal_logger_for_error')
+    mock_internal_logger = mock("internal_logger_for_error")
     test_logger.instance_variable_set(:@logger, mock_internal_logger)
     
     def test_logger.set_log_level(level)
@@ -232,7 +232,7 @@ class LoggerTest < ActiveSupport::TestCase
 
   def test_set_log_level_unknown_defaults_to_info
     test_logger = Object.new
-    mock_internal_logger = mock('internal_logger_for_unknown')
+    mock_internal_logger = mock("internal_logger_for_unknown")
     test_logger.instance_variable_set(:@logger, mock_internal_logger)
     
     def test_logger.set_log_level(level)

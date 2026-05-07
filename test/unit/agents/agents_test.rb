@@ -9,7 +9,7 @@ class AgentsTest < ActiveSupport::TestCase
     end
 
     should "return correct tool providers" do
-      assert_equal [RedmineAiHelper::Tools::BoardTools, RedmineAiHelper::Tools::FileTools], @agent.available_tool_providers
+      assert_equal [ RedmineAiHelper::Tools::BoardTools, RedmineAiHelper::Tools::FileTools ], @agent.available_tool_providers
     end
 
     should "return correct tool classes derived from providers" do
@@ -83,7 +83,7 @@ class AgentsTest < ActiveSupport::TestCase
     end
 
     should "return correct tool providers" do
-      assert_equal [RedmineAiHelper::Tools::RepositoryTools], @agent.available_tool_providers
+      assert_equal [ RedmineAiHelper::Tools::RepositoryTools ], @agent.available_tool_providers
     end
 
     should "return correct tool classes derived from providers" do
@@ -97,7 +97,7 @@ class AgentsTest < ActiveSupport::TestCase
     end
 
     should "return correct tool providers" do
-      assert_equal [RedmineAiHelper::Tools::SystemTools], @agent.available_tool_providers
+      assert_equal [ RedmineAiHelper::Tools::SystemTools ], @agent.available_tool_providers
     end
 
     should "return correct tool classes derived from providers" do
@@ -111,7 +111,7 @@ class AgentsTest < ActiveSupport::TestCase
     end
 
     should "return correct tool providers" do
-      assert_equal [RedmineAiHelper::Tools::UserTools], @agent.available_tool_providers
+      assert_equal [ RedmineAiHelper::Tools::UserTools ], @agent.available_tool_providers
     end
 
     should "return correct tool classes derived from providers" do
@@ -125,7 +125,7 @@ class AgentsTest < ActiveSupport::TestCase
     end
 
     should "return correct tool providers" do
-      assert_equal [RedmineAiHelper::Tools::ProjectTools], @agent.available_tool_providers
+      assert_equal [ RedmineAiHelper::Tools::ProjectTools ], @agent.available_tool_providers
     end
 
     should "return correct tool classes derived from providers" do
@@ -139,7 +139,7 @@ class AgentsTest < ActiveSupport::TestCase
     end
 
     should "return correct tool providers" do
-      assert_equal [RedmineAiHelper::Tools::WikiTools, RedmineAiHelper::Tools::WikiWriteTools, RedmineAiHelper::Tools::FileTools], @agent.available_tool_providers
+      assert_equal [ RedmineAiHelper::Tools::WikiTools, RedmineAiHelper::Tools::WikiWriteTools, RedmineAiHelper::Tools::FileTools ], @agent.available_tool_providers
     end
 
     should "return correct tool classes derived from providers" do
@@ -156,7 +156,7 @@ class AgentsTest < ActiveSupport::TestCase
     end
 
     should "return correct tool providers" do
-      assert_equal [RedmineAiHelper::Tools::VersionTools], @agent.available_tool_providers
+      assert_equal [ RedmineAiHelper::Tools::VersionTools ], @agent.available_tool_providers
     end
 
     should "return correct tool classes derived from providers" do

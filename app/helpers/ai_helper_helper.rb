@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 # AiHelperHelper module for AI Helper plugin
 # frozen_string_literal: true
+
 # AiHelperHelper module for AI Helper plugin
 module AiHelperHelper
   include Redmine::WikiFormatting::CommonMark

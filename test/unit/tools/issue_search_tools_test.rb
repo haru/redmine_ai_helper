@@ -22,7 +22,7 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
 
     should "return issues matching search conditions" do
       result = @provider.search_issues(project_id: @project.id, fields: [
-        { field_name: "tracker_id", operator: "=", values: [@tracker.id.to_s] }
+        { field_name: "tracker_id", operator: "=", values: [ @tracker.id.to_s ] }
       ])
 
       assert result.key?(:issues)
@@ -126,7 +126,7 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       # Get issues with specific tracker
       result = @provider.search_issues(
         project_id: @project.id,
-        fields: [{ field_name: "tracker_id", operator: "=", values: [@tracker.id.to_s] }]
+        fields: [ { field_name: "tracker_id", operator: "=", values: [ @tracker.id.to_s ] } ]
       )
 
       # Verify all returned issues have the specified tracker
@@ -170,7 +170,7 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       result = @provider.search_issues(
         project_id: @project.id,
         limit: 3,
-        fields: [{ field_name: "tracker_id", operator: "=", values: [@tracker.id.to_s] }]
+        fields: [ { field_name: "tracker_id", operator: "=", values: [ @tracker.id.to_s ] } ]
       )
 
       assert result[:issues].length <= 3
@@ -232,13 +232,13 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       should "not raise an exception" do
         assert_nothing_raised do
           @provider.send(:validate_search_params,
-            [{ field_name: nil, operator: "=", values: ["1"] }], [])
+            [ { field_name: nil, operator: "=", values: [ "1" ] } ], [])
         end
       end
 
       should "add an error message mentioning field_name" do
         errors = @provider.send(:validate_search_params,
-          [{ field_name: nil, operator: "=", values: ["1"] }], [])
+          [ { field_name: nil, operator: "=", values: [ "1" ] } ], [])
         assert errors.any? { |e| e.include?("field_name") },
           "Expected error message to mention field_name, got: #{errors.inspect}"
       end
@@ -249,13 +249,13 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       should "not raise an exception" do
         assert_nothing_raised do
           @provider.send(:validate_search_params,
-            [{ field_name: "tracker_id", operator: "=", values: nil }], [])
+            [ { field_name: "tracker_id", operator: "=", values: nil } ], [])
         end
       end
 
       should "add an error message mentioning values" do
         errors = @provider.send(:validate_search_params,
-          [{ field_name: "tracker_id", operator: "=", values: nil }], [])
+          [ { field_name: "tracker_id", operator: "=", values: nil } ], [])
         assert errors.any? { |e| e.include?("values") },
           "Expected error message to mention values, got: #{errors.inspect}"
       end
@@ -266,13 +266,13 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       should "not raise an exception" do
         assert_nothing_raised do
           @provider.send(:validate_search_params, [],
-            [{ field_name: nil, operator: "=", values: ["2024-01-01"] }])
+            [ { field_name: nil, operator: "=", values: [ "2024-01-01" ] } ])
         end
       end
 
       should "add an error message mentioning field_name" do
         errors = @provider.send(:validate_search_params, [],
-          [{ field_name: nil, operator: "=", values: ["2024-01-01"] }])
+          [ { field_name: nil, operator: "=", values: [ "2024-01-01" ] } ])
         assert errors.any? { |e| e.include?("field_name") },
           "Expected error message to mention field_name, got: #{errors.inspect}"
       end
@@ -283,13 +283,13 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       should "not raise an exception" do
         assert_nothing_raised do
           @provider.send(:validate_search_params, [],
-            [{ field_name: "due_date", operator: "=", values: nil }])
+            [ { field_name: "due_date", operator: "=", values: nil } ])
         end
       end
 
       should "add an error message mentioning values" do
         errors = @provider.send(:validate_search_params, [],
-          [{ field_name: "due_date", operator: "=", values: nil }])
+          [ { field_name: "due_date", operator: "=", values: nil } ])
         assert errors.any? { |e| e.include?("values") },
           "Expected error message to mention values, got: #{errors.inspect}"
       end
@@ -300,13 +300,13 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       should "not raise an exception" do
         assert_nothing_raised do
           @provider.send(:validate_search_params, [],
-            [{ field_name: "due_date", operator: "=", values: [nil, "2024-01-01"] }])
+            [ { field_name: "due_date", operator: "=", values: [ nil, "2024-01-01" ] } ])
         end
       end
 
       should "add an error message for the nil value" do
         errors = @provider.send(:validate_search_params, [],
-          [{ field_name: "due_date", operator: "=", values: [nil, "2024-01-01"] }])
+          [ { field_name: "due_date", operator: "=", values: [ nil, "2024-01-01" ] } ])
         assert errors.any?,
           "Expected at least one error message, got empty array"
       end
@@ -316,8 +316,8 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
     context "when nil and valid fields are mixed" do
       should "continue validating valid fields after encountering a nil field_name" do
         errors = @provider.send(:validate_search_params, [
-          { field_name: nil, operator: "=", values: ["1"] },
-          { field_name: "tracker_id", operator: "=", values: ["not-a-number"] }
+          { field_name: nil, operator: "=", values: [ "1" ] },
+          { field_name: "tracker_id", operator: "=", values: [ "not-a-number" ] }
         ], [])
         # Expect error from nil field_name AND error from invalid numeric value
         assert errors.length >= 2,
@@ -327,8 +327,8 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       should "continue validating date_fields after encountering a nil field" do
         errors = @provider.send(:validate_search_params, [],
           [
-            { field_name: nil, operator: "=", values: ["2024-01-01"] },
-            { field_name: "due_date", operator: "=", values: ["not-a-date"] }
+            { field_name: nil, operator: "=", values: [ "2024-01-01" ] },
+            { field_name: "due_date", operator: "=", values: [ "not-a-date" ] }
           ])
         assert errors.length >= 2,
           "Expected at least 2 errors, got: #{errors.inspect}"
@@ -342,7 +342,7 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
         mock_logger.expects(:warn).at_least_once
         @provider.stubs(:ai_helper_logger).returns(mock_logger)
         @provider.send(:validate_search_params,
-          [{ field_name: nil, operator: "=", values: ["1"] }], [])
+          [ { field_name: nil, operator: "=", values: [ "1" ] } ], [])
       end
     end
 
@@ -352,7 +352,7 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
         mock_logger.expects(:warn).at_least_once
         @provider.stubs(:ai_helper_logger).returns(mock_logger)
         @provider.send(:validate_search_params,
-          [{ field_name: "tracker_id", operator: "=", values: nil }], [])
+          [ { field_name: "tracker_id", operator: "=", values: nil } ], [])
       end
 
       should "call ai_helper_logger warn when values is nil in date_fields" do
@@ -360,7 +360,7 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
         mock_logger.expects(:warn).at_least_once
         @provider.stubs(:ai_helper_logger).returns(mock_logger)
         @provider.send(:validate_search_params, [],
-          [{ field_name: "due_date", operator: "=", values: nil }])
+          [ { field_name: "due_date", operator: "=", values: nil } ])
       end
     end
   end

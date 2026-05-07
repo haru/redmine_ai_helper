@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 module RedmineAiHelper
   module Vector
     # This class is responsible for managing the vector database.
@@ -21,7 +22,7 @@ module RedmineAiHelper
           url: setting.vector_search_uri,
           api_key: setting.vector_search_api_key || "dummy",
           index_name: index_name,
-          llm_provider: @llm_provider,
+          llm_provider: @llm_provider
         )
         @client
       end
@@ -104,12 +105,12 @@ module RedmineAiHelper
         text = text[0..1500] if retry_flag and text.length
         payload = json[:payload]
         if (vector_data)
-          client.add_texts(texts: [text], ids: [vector_data.uuid], payload: payload)
+          client.add_texts(texts: [ text ], ids: [ vector_data.uuid ], payload: payload)
           vector_data.updated_at = Time.now
         else
           uuid = SecureRandom.uuid
           vector_data = AiHelperVectorData.new(object_id: data.id, index: index_name, uuid: uuid)
-          client.add_texts(texts: [text], ids: [uuid], payload: payload)
+          client.add_texts(texts: [ text ], ids: [ uuid ], payload: payload)
         end
 
         vector_data.save!
@@ -121,7 +122,7 @@ module RedmineAiHelper
           if data_exists?(vector_data.object_id)
             next
           end
-          client.remove_texts(ids: [vector_data.uuid])
+          client.remove_texts(ids: [ vector_data.uuid ])
           vector_data.destroy!
           print "." unless ENV["RAILS_ENV"] == "test"
         end
@@ -137,7 +138,7 @@ module RedmineAiHelper
         client.ask_with_filter(
           query: query,
           k: k,
-          filter: filter,
+          filter: filter
         )
       end
 

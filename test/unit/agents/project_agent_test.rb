@@ -7,7 +7,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
   setup do
     @params = {
       project: Project.find(1),
-      langfuse: DummyLangfuse.new,
+      langfuse: DummyLangfuse.new
     }
     @agent = RedmineAiHelper::Agents::ProjectAgent.new(@params)
   end
@@ -40,7 +40,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
 
         # Mock open shared versions with order method
         mock_versions = mock("OpenVersions")
-        mock_versions.stubs(:order).with(created_on: :desc).returns([version])
+        mock_versions.stubs(:order).with(created_on: :desc).returns([ version ])
         mock_shared_versions = mock("SharedVersions")
         mock_shared_versions.stubs(:open).returns(mock_versions)
         @project.stubs(:shared_versions).returns(mock_shared_versions)
@@ -112,7 +112,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
           report_sections: "Generate separate sections for 1-week and 1-month periods with comparative analysis",
           focus_guidance: "Focus on recent activity trends and identify patterns that can guide future project direction",
           health_report_instructions: "No specific instructions provided.",
-          metrics: instance_of(String),
+          metrics: instance_of(String)
         ).returns("formatted prompt")
 
         @agent.stubs(:load_prompt).with("project_agent/analysis_instructions_time_period").returns(mock_analysis_prompt)
@@ -135,7 +135,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
           user: User.current,
           health_report: "Old health report content",
           metrics: { total_issues: 10, open_issues: 5 }.to_json,
-          created_at: 7.days.ago,
+          created_at: 7.days.ago
         )
 
         @new_report = AiHelperHealthReport.create!(
@@ -143,7 +143,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
           user: User.current,
           health_report: "New health report content",
           metrics: { total_issues: 15, open_issues: 3 }.to_json,
-          created_at: Time.now,
+          created_at: Time.now
         )
       end
 
@@ -163,7 +163,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
 
         result = @agent.health_report_comparison(
           old_report: @old_report,
-          new_report: @new_report,
+          new_report: @new_report
         )
 
         assert result.is_a?(String)
@@ -181,7 +181,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
           new_health_report: "New health report content",
           old_metrics: @old_report.metrics,
           new_metrics: @new_report.metrics,
-          time_span_days: instance_of(Integer),
+          time_span_days: instance_of(Integer)
         ).returns("formatted prompt")
 
         @agent.stubs(:load_prompt).returns(mock_prompt)
@@ -190,7 +190,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
         # Pass reports in reverse chronological order
         result = @agent.health_report_comparison(
           old_report: @new_report,
-          new_report: @old_report,
+          new_report: @old_report
         )
 
         assert_equal "test result", result
@@ -202,13 +202,13 @@ class ProjectAgentTest < ActiveSupport::TestCase
           project: different_project,
           user: User.current,
           health_report: "Different project report",
-          metrics: { total_issues: 5 }.to_json,
+          metrics: { total_issues: 5 }.to_json
         )
 
         assert_raises ArgumentError do
           @agent.health_report_comparison(
             old_report: @old_report,
-            new_report: different_report,
+            new_report: different_report
           )
         end
 
@@ -228,7 +228,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
 
         result = @agent.health_report_comparison(
           old_report: @old_report,
-          new_report: @new_report,
+          new_report: @new_report
         )
 
         assert_equal "Japanese comparison result", result
@@ -247,7 +247,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
 
         result = @agent.health_report_comparison(
           old_report: @old_report,
-          new_report: @new_report,
+          new_report: @new_report
         )
 
         assert_equal "English comparison result", result
@@ -266,7 +266,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
 
         @agent.health_report_comparison(
           old_report: @old_report,
-          new_report: @new_report,
+          new_report: @new_report
         )
       end
 
@@ -284,7 +284,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
         result = @agent.health_report_comparison(
           old_report: @old_report,
           new_report: @new_report,
-          stream_proc: stream_proc,
+          stream_proc: stream_proc
         )
 
         assert_equal "Final result", result
@@ -296,7 +296,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
         mock_prompt.expects(:format).with(
           has_entries(
             old_metrics: @old_report.metrics,
-            new_metrics: @new_report.metrics,
+            new_metrics: @new_report.metrics
           )
         ).returns("formatted prompt")
 
@@ -305,7 +305,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
 
         @agent.health_report_comparison(
           old_report: @old_report,
-          new_report: @new_report,
+          new_report: @new_report
         )
       end
     end
@@ -405,7 +405,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
         parent_project = Project.create!(
           name: "Parent Project",
           identifier: "parent-proj-#{Time.now.to_i}",
-          is_public: true,
+          is_public: true
         )
 
         # Create child project
@@ -413,7 +413,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
           name: "Child Project",
           identifier: "child-proj-#{Time.now.to_i}",
           parent_id: parent_project.id,
-          is_public: true,
+          is_public: true
         )
 
         # Enable ai_helper module for child project
@@ -424,7 +424,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
           project_id: parent_project.id,
           name: "Shared Version 1.0",
           status: "open",
-          sharing: "descendants",
+          sharing: "descendants"
         )
 
         # Create an issue in child project assigned to the shared version
@@ -434,7 +434,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
           subject: "Test issue for shared version",
           author_id: 1,
           status_id: 1,
-          fixed_version_id: shared_version.id,
+          fixed_version_id: shared_version.id
         )
 
         # Mock the chat method to capture the prompt
@@ -460,13 +460,13 @@ class ProjectAgentTest < ActiveSupport::TestCase
         project_a = Project.create!(
           name: "Project A",
           identifier: "project-a-#{Time.now.to_i}",
-          is_public: true,
+          is_public: true
         )
 
         project_b = Project.create!(
           name: "Project B",
           identifier: "project-b-#{Time.now.to_i}",
-          is_public: true,
+          is_public: true
         )
 
         # Enable ai_helper for project B
@@ -477,7 +477,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
           project_id: project_a.id,
           name: "System Version 2.0",
           status: "open",
-          sharing: "system",
+          sharing: "system"
         )
 
         # Create issue in project B assigned to shared version
@@ -487,7 +487,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
           subject: "Test issue for system version",
           author_id: 1,
           status_id: 1,
-          fixed_version_id: system_version.id,
+          fixed_version_id: system_version.id
         )
 
         # Mock the chat method to capture the prompt
@@ -513,7 +513,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
         standalone_project = Project.create!(
           name: "Standalone Project",
           identifier: "standalone-#{Time.now.to_i}",
-          is_public: true,
+          is_public: true
         )
 
         # Enable ai_helper module
@@ -524,7 +524,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
           project_id: standalone_project.id,
           name: "Local Version 1.0",
           status: "open",
-          sharing: "none",
+          sharing: "none"
         )
 
         # Create issue assigned to local version
@@ -534,7 +534,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
           subject: "Test issue for local version",
           author_id: 1,
           status_id: 1,
-          fixed_version_id: local_version.id,
+          fixed_version_id: local_version.id
         )
 
         # Mock the chat method to capture the prompt
@@ -562,14 +562,14 @@ class ProjectAgentTest < ActiveSupport::TestCase
         parent_project = Project.create!(
           name: "Hierarchy Parent",
           identifier: "hierarchy-parent-#{Time.now.to_i}",
-          is_public: true,
+          is_public: true
         )
 
         child_project = Project.create!(
           name: "Hierarchy Child",
           identifier: "hierarchy-child-#{Time.now.to_i}",
           parent_id: parent_project.id,
-          is_public: true,
+          is_public: true
         )
 
         # Enable ai_helper for both
@@ -581,7 +581,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
           project_id: parent_project.id,
           name: "Hierarchy Version 3.0",
           status: "open",
-          sharing: "hierarchy",
+          sharing: "hierarchy"
         )
 
         # Create issues in child assigned to shared version
@@ -591,7 +591,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
           subject: "Child issue for hierarchy version",
           author_id: 1,
           status_id: 1,
-          fixed_version_id: hierarchy_version.id,
+          fixed_version_id: hierarchy_version.id
         )
 
         # Mock the chat method to capture the prompt
@@ -617,14 +617,14 @@ class ProjectAgentTest < ActiveSupport::TestCase
         parent_project = Project.create!(
           name: "Metrics Parent",
           identifier: "metrics-parent-#{Time.now.to_i}",
-          is_public: true,
+          is_public: true
         )
 
         child_project = Project.create!(
           name: "Metrics Child",
           identifier: "metrics-child-#{Time.now.to_i}",
           parent_id: parent_project.id,
-          is_public: true,
+          is_public: true
         )
 
         # Enable ai_helper for child project
@@ -635,7 +635,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
           project_id: parent_project.id,
           name: "Metrics Version 1.0",
           status: "open",
-          sharing: "descendants",
+          sharing: "descendants"
         )
 
         # Create multiple issues in child assigned to shared version
@@ -646,7 +646,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
             subject: "Test issue #{i + 1} for shared version",
             author_id: 1,
             status_id: 1,
-            fixed_version_id: shared_version.id,
+            fixed_version_id: shared_version.id
           )
         end
 

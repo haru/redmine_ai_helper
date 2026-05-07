@@ -48,7 +48,7 @@ module RedmineAiHelper
             response: response,
             json_schema: json_schema,
             chat_method: chat_method,
-            messages: messages,
+            messages: messages
           )
         end
 

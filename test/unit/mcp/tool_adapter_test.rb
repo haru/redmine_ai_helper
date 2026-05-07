@@ -13,7 +13,7 @@ class MCPToolAdapterTest < ActiveSupport::TestCase
       end
 
       def search_widgets(name:, limit: 10)
-        [{ id: 1, name: name }]
+        [ { id: 1, name: name } ]
       end
     end
 

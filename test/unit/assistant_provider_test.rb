@@ -11,13 +11,13 @@ class AssistantProviderTest < ActiveSupport::TestCase
     mock_chat = mock("RubyLLM::Chat")
     @mock_llm_provider.expects(:create_chat).with(
       instructions: @instructions,
-      tools: @tool_classes,
+      tools: @tool_classes
     ).returns(mock_chat)
 
     assistant = RedmineAiHelper::AssistantProvider.get_assistant(
       llm_provider: @mock_llm_provider,
       instructions: @instructions,
-      tools: @tool_classes,
+      tools: @tool_classes
     )
 
     assert_instance_of RedmineAiHelper::Assistant, assistant
@@ -28,12 +28,12 @@ class AssistantProviderTest < ActiveSupport::TestCase
     mock_chat = mock("RubyLLM::Chat")
     @mock_llm_provider.expects(:create_chat).with(
       instructions: @instructions,
-      tools: [],
+      tools: []
     ).returns(mock_chat)
 
     assistant = RedmineAiHelper::AssistantProvider.get_assistant(
       llm_provider: @mock_llm_provider,
-      instructions: @instructions,
+      instructions: @instructions
     )
 
     assert_instance_of RedmineAiHelper::Assistant, assistant
@@ -42,18 +42,18 @@ class AssistantProviderTest < ActiveSupport::TestCase
   def test_get_assistant_with_tool_classes
     tool_class1 = mock("ToolClass1")
     tool_class2 = mock("ToolClass2")
-    tools = [tool_class1, tool_class2]
+    tools = [ tool_class1, tool_class2 ]
     mock_chat = mock("RubyLLM::Chat")
 
     @mock_llm_provider.expects(:create_chat).with(
       instructions: @instructions,
-      tools: tools,
+      tools: tools
     ).returns(mock_chat)
 
     assistant = RedmineAiHelper::AssistantProvider.get_assistant(
       llm_provider: @mock_llm_provider,
       instructions: @instructions,
-      tools: tools,
+      tools: tools
     )
 
     assert_instance_of RedmineAiHelper::Assistant, assistant

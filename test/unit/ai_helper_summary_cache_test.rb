@@ -1,4 +1,4 @@
-require_relative '../test_helper'
+require_relative "../test_helper"
 
 class AiHelperSummaryCacheTest < ActiveSupport::TestCase
   fixtures :projects, :issues, :wikis, :wiki_pages, :wiki_contents

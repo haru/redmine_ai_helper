@@ -22,7 +22,7 @@ module RedmineAiHelper
             name: "ai_helper",
             user_id: User.current.login,
             input: input,
-            metadata: { source: "#{Setting.protocol}:#{Setting.host_name}" },
+            metadata: { source: "#{Setting.protocol}:#{Setting.host_name}" }
           )
           @enabled = true
         end
@@ -107,7 +107,7 @@ module RedmineAiHelper
           name: name,
           trace_id: trace.id,
           input: { query: input },
-          parent_observation_id: parent_span_id,
+          parent_observation_id: parent_span_id
         )
       end
 
@@ -138,7 +138,7 @@ module RedmineAiHelper
           messages: messages,
           model: model,
           temperature: temperature,
-          max_tokens: max_tokens,
+          max_tokens: max_tokens
         )
       end
     end
@@ -162,9 +162,9 @@ module RedmineAiHelper
           model: model,
           model_parameters: {
             temperature: temperature,
-            max_tokens: max_tokens,
+            max_tokens: max_tokens
           },
-          input: messages,
+          input: messages
         )
       end
 
@@ -178,7 +178,7 @@ module RedmineAiHelper
         @generation.usage = Langfuse::Models::Usage.new(
           prompt_tokens: usage[:prompt_tokens],
           completion_tokens: usage[:completion_tokens],
-          total_tokens: usage[:total_tokens],
+          total_tokens: usage[:total_tokens]
         )
         Langfuse.update_generation(@generation)
       end

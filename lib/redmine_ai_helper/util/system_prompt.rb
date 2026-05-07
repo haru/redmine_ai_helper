@@ -21,7 +21,7 @@ module RedmineAiHelper
         current_user_info = {
           id: User.current.id,
           name: User.current.name,
-          timezone: User.current.time_zone,
+          timezone: User.current.time_zone
         }
         prompt = RedmineAiHelper::Util::PromptLoader.load_template("leader_agent/system_prompt")
         @prompt_text = prompt.format(
@@ -31,7 +31,7 @@ module RedmineAiHelper
           current_page_info: current_page_info_string(),
           current_user: User.current,
           current_user_info: JSON.pretty_generate(current_user_info),
-          additional_system_prompt: AiHelperSetting.find_or_create.additional_instructions,
+          additional_system_prompt: AiHelperSetting.find_or_create.additional_instructions
         )
 
         @prompt_text
@@ -134,8 +134,8 @@ module RedmineAiHelper
           site: {
             title: Setting.app_title,
             welcome_text: Setting.welcome_text,
-            redmine_version: Redmine::VERSION::STRING,
-          },
+            redmine_version: Redmine::VERSION::STRING
+          }
         }
 
         if param[:project]
@@ -145,7 +145,7 @@ module RedmineAiHelper
             name: project.name,
             description: project.description,
             identifier: project.identifier,
-            created_on: project.created_on,
+            created_on: project.created_on
 
           }
         end

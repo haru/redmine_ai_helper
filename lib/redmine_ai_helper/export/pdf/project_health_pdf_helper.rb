@@ -23,7 +23,7 @@ module RedmineAiHelper
           pdf = Redmine::Export::PDF::ITCPDF.new(current_language)
 
           # Check if current language is RTL
-          is_rtl = l(:direction) == 'rtl'
+          is_rtl = l(:direction) == "rtl"
 
           # Set RTL support if needed
           if is_rtl
@@ -37,46 +37,46 @@ module RedmineAiHelper
 
           # Get margins for proper layout
           bottom_margin = pdf.get_footer_margin
-          left_margin = pdf.get_original_margins['left'] || 10
+          left_margin = pdf.get_original_margins["left"] || 10
           pdf.set_auto_page_break(true, bottom_margin)
           pdf.add_page
 
           # Determine text alignment based on language direction
-          text_align = is_rtl ? 'R' : 'L'
+          text_align = is_rtl ? "R" : "L"
 
           # Header
           pdf.set_x(left_margin)
-          pdf.SetFontStyle('B', 16)
+          pdf.SetFontStyle("B", 16)
           pdf.cell(0, 10, "#{project.name}", 0, 0, text_align)
           pdf.ln(8)
 
-          pdf.SetFontStyle('B', 14)
-          pdf.cell(0, 8, l('ai_helper.project_health.pdf_title'), 0, 0, text_align)
+          pdf.SetFontStyle("B", 14)
+          pdf.cell(0, 8, l("ai_helper.project_health.pdf_title"), 0, 0, text_align)
           pdf.ln(10)
 
           # Project information section
-          pdf.SetFontStyle('B', 12)
+          pdf.SetFontStyle("B", 12)
           pdf.cell(0, 6, l(:field_project), 0, 0, text_align)
           pdf.ln(6)
 
-          pdf.SetFontStyle('', 10)
+          pdf.SetFontStyle("", 10)
           pdf.multi_cell(0, 5, "#{project.name} (#{project.identifier})", 0, text_align)
           pdf.ln(2)
 
           if project.description.present?
-            pdf.SetFontStyle('B', 10)
+            pdf.SetFontStyle("B", 10)
             pdf.cell(0, 5, l(:field_description), 0, 0, text_align)
             pdf.ln(5)
-            pdf.SetFontStyle('', 10)
+            pdf.SetFontStyle("", 10)
             pdf.multi_cell(0, 5, project.description, 0, text_align)
             pdf.ln(2)
           end
 
           # Generation date
-          pdf.SetFontStyle('B', 10)
+          pdf.SetFontStyle("B", 10)
           pdf.cell(0, 5, l(:field_created_on), 0, 0, text_align)
           pdf.ln(5)
-          pdf.SetFontStyle('', 10)
+          pdf.SetFontStyle("", 10)
           creation_datetime = Time.current.strftime("%Y-%m-%d %H:%M:%S")
           pdf.cell(0, 5, creation_datetime, 0, 0, text_align)
           pdf.ln(5)
@@ -86,12 +86,12 @@ module RedmineAiHelper
           pdf.ln(8)
 
           # Health report content
-          pdf.SetFontStyle('B', 12)
+          pdf.SetFontStyle("B", 12)
           pdf.cell(0, 6, l(:label_ai_helper_project_health_report_content, default: "Health Report Content"), 0, 0, text_align)
           pdf.ln(8)
 
           # Use Redmine's existing text formatting for PDF
-          pdf.SetFontStyle('', 10)
+          pdf.SetFontStyle("", 10)
           # Set left margin for content and ensure auto page break with bottom margin
           pdf.set_x(left_margin)
           pdf.set_auto_page_break(true, bottom_margin)
@@ -153,10 +153,10 @@ module RedmineAiHelper
             # Parse table lines
             lines.each_with_index do |line, index|
               line = line.strip
-              next unless line.start_with?('|') && line.end_with?('|')
+              next unless line.start_with?("|") && line.end_with?("|")
 
               # Remove leading/trailing |
-              cells = line[1..-2].split('|').map(&:strip)
+              cells = line[1..-2].split("|").map(&:strip)
 
               if index == 0
                 # First line is headers
@@ -230,7 +230,7 @@ module RedmineAiHelper
 
           # Clean up whitespace while preserving structure
           text = text.gsub(/\n\s*\n/, "\n\n") # Multiple newlines to double newline
-          text = text.gsub(/[ \t]+/, ' ') # Multiple spaces to single space
+          text = text.gsub(/[ \t]+/, " ") # Multiple spaces to single space
           text = text.strip
 
           return text
@@ -245,7 +245,7 @@ module RedmineAiHelper
           return if text_content.blank?
 
           # Determine text alignment based on language direction
-          text_align = is_rtl ? 'R' : 'L'
+          text_align = is_rtl ? "R" : "L"
 
           lines = text_content.split("\n")
 
@@ -279,7 +279,7 @@ module RedmineAiHelper
         # @param level [Integer] The heading level (1-6)
         # @param left_margin [Integer] The left margin
         # @param text_align [String] Text alignment ('L' or 'R')
-        def add_simple_heading_to_pdf(pdf, text, level, left_margin, text_align = 'L')
+        def add_simple_heading_to_pdf(pdf, text, level, left_margin, text_align = "L")
           font_size = case level
                      when 1 then 14
                      when 2 then 12
@@ -289,7 +289,7 @@ module RedmineAiHelper
 
           pdf.ln(4)
           pdf.set_x(left_margin)
-          pdf.SetFontStyle('B', font_size)
+          pdf.SetFontStyle("B", font_size)
           pdf.multi_cell(0, 6, text, 0, text_align)
           pdf.ln(2)
         end
@@ -301,12 +301,12 @@ module RedmineAiHelper
         # @param type [Symbol] :ordered or :unordered
         # @param left_margin [Integer] The base left margin
         # @param text_align [String] Text alignment ('L' or 'R')
-        def add_simple_list_item_to_pdf(pdf, text, indent_level, type, left_margin, text_align = 'L')
+        def add_simple_list_item_to_pdf(pdf, text, indent_level, type, left_margin, text_align = "L")
           indent = left_margin + (indent_level * 4)
           bullet = type == :ordered ? "• " : "• "
 
           pdf.set_x(indent)
-          pdf.SetFontStyle('', 10)
+          pdf.SetFontStyle("", 10)
           pdf.multi_cell(0, 5, "#{bullet}#{text}", 0, text_align)
         end
 
@@ -315,11 +315,11 @@ module RedmineAiHelper
         # @param text [String] The paragraph text
         # @param left_margin [Integer] The left margin
         # @param text_align [String] Text alignment ('L' or 'R')
-        def add_simple_paragraph_to_pdf(pdf, text, left_margin, text_align = 'L')
+        def add_simple_paragraph_to_pdf(pdf, text, left_margin, text_align = "L")
           return if text.strip.empty?
 
           pdf.set_x(left_margin)
-          pdf.SetFontStyle('', 10)
+          pdf.SetFontStyle("", 10)
           pdf.multi_cell(0, 5, text, 0, text_align)
           pdf.ln(2)
         end
@@ -399,8 +399,8 @@ module RedmineAiHelper
           return if headers.empty? && rows.empty?
 
           # Determine text alignment based on language direction
-          header_align = 'C' # Keep headers centered for all languages
-          cell_align = is_rtl ? 'R' : 'L'
+          header_align = "C" # Keep headers centered for all languages
+          cell_align = is_rtl ? "R" : "L"
 
           # Use headers if available, otherwise use first row
           header_row = headers.any? ? headers : (rows.any? ? rows.shift : [])
@@ -416,7 +416,7 @@ module RedmineAiHelper
           pdf.set_x(left_margin)
 
           # Draw header row
-          pdf.SetFontStyle('B', 9)
+          pdf.SetFontStyle("B", 9)
           header_row.each_with_index do |header, i|
             is_last = i == header_row.length - 1
             # Truncate text if too long
@@ -425,7 +425,7 @@ module RedmineAiHelper
           end
 
           # Draw data rows
-          pdf.SetFontStyle('', 8)
+          pdf.SetFontStyle("", 8)
           rows.each do |row|
             pdf.set_x(left_margin)
 
@@ -451,7 +451,7 @@ module RedmineAiHelper
         # @param content [String] The markdown content
         # @return [String] Plain text content
         def convert_markdown_to_plain_text(content)
-          return '' if content.blank?
+          return "" if content.blank?
 
           # Remove markdown formatting and clean up content
           plain_text = content.dup
@@ -474,7 +474,7 @@ module RedmineAiHelper
           plain_text.gsub!(/^[ \t]*\d+\.\s+([^\n]+)$/, '\1')
 
           # Clean up code blocks
-          plain_text.gsub!(/```[^`]*```/m, '[Code Block]')
+          plain_text.gsub!(/```[^`]*```/m, "[Code Block]")
           plain_text.gsub!(/`([^`]+)`/, '\1')
 
           # Clean up links - use non-greedy with character class to avoid ReDoS

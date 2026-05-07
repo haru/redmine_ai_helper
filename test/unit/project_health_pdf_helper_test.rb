@@ -222,7 +222,7 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
 
     context "#process_markdown_tables_for_pdf" do
       setup do
-        @pdf = Redmine::Export::PDF::ITCPDF.new('en')
+        @pdf = Redmine::Export::PDF::ITCPDF.new("en")
         @left_margin = 10
       end
 
@@ -328,7 +328,7 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
 
     context "#process_simple_text_for_pdf" do
       setup do
-        @pdf = Redmine::Export::PDF::ITCPDF.new('en')
+        @pdf = Redmine::Export::PDF::ITCPDF.new("en")
         @pdf.add_page
         @left_margin = 10
       end
@@ -360,7 +360,7 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
 
     context "#add_simple_heading_to_pdf" do
       setup do
-        @pdf = Redmine::Export::PDF::ITCPDF.new('en')
+        @pdf = Redmine::Export::PDF::ITCPDF.new("en")
         @pdf.add_page
         @left_margin = 10
       end
@@ -376,7 +376,7 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
 
     context "#add_simple_list_item_to_pdf" do
       setup do
-        @pdf = Redmine::Export::PDF::ITCPDF.new('en')
+        @pdf = Redmine::Export::PDF::ITCPDF.new("en")
         @pdf.add_page
         @left_margin = 10
       end
@@ -391,7 +391,7 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
 
     context "#add_simple_paragraph_to_pdf" do
       setup do
-        @pdf = Redmine::Export::PDF::ITCPDF.new('en')
+        @pdf = Redmine::Export::PDF::ITCPDF.new("en")
         @pdf.add_page
         @left_margin = 10
       end
@@ -411,7 +411,7 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
 
     context "#process_table_html_for_pdf" do
       setup do
-        @pdf = Redmine::Export::PDF::ITCPDF.new('en')
+        @pdf = Redmine::Export::PDF::ITCPDF.new("en")
         @pdf.add_page
         @left_margin = 10
       end
@@ -440,14 +440,14 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
 
     context "#draw_pdf_table" do
       setup do
-        @pdf = Redmine::Export::PDF::ITCPDF.new('en')
+        @pdf = Redmine::Export::PDF::ITCPDF.new("en")
         @pdf.add_page
         @left_margin = 10
       end
 
       should "draw table with headers and rows" do
-        headers = ["Name", "Age", "City"]
-        rows = [["John", "25", "NYC"], ["Jane", "30", "LA"]]
+        headers = [ "Name", "Age", "City" ]
+        rows = [ [ "John", "25", "NYC" ], [ "Jane", "30", "LA" ] ]
         
         assert_nothing_raised do
           send(:draw_pdf_table, @pdf, headers, rows, @left_margin)
@@ -461,7 +461,7 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
       end
 
       should "handle table with only headers" do
-        headers = ["Name", "Age"]
+        headers = [ "Name", "Age" ]
         
         assert_nothing_raised do
           send(:draw_pdf_table, @pdf, headers, [], @left_margin)

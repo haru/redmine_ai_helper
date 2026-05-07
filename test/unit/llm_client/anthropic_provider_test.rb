@@ -11,7 +11,7 @@ class RedmineAiHelper::LlmClient::AnthropicProviderTest < ActiveSupport::TestCas
         name: "Test Anthropic Profile",
         llm_type: "Anthropic",
         llm_model: "claude-sonnet-4-5-20250929",
-        access_key: "test_anthropic_key",
+        access_key: "test_anthropic_key"
       )
       @setting.model_profile = @anthropic_profile
       @setting.save!

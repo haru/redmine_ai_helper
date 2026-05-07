@@ -1,17 +1,17 @@
-require_relative '../test_helper'
+require_relative "../test_helper"
 
 class AiHelperModelProfilesControllerTest < ActionController::TestCase
   setup do
     AiHelperModelProfile.delete_all
     @request.session[:user_id] = 1 # Assuming user with ID 1 is an admin
-    @model_profile = AiHelperModelProfile.create!(name: 'Test Profile', access_key: 'test_key', llm_type: "OpenAI", llm_model: "gpt-3.5-turbo")
+    @model_profile = AiHelperModelProfile.create!(name: "Test Profile", access_key: "test_key", llm_type: "OpenAI", llm_model: "gpt-3.5-turbo")
 
   end
 
   should "show model profile" do
     get :show, params: { id: @model_profile.id }
     assert_response :success
-    assert_template partial: '_show'
+    assert_template partial: "_show"
     assert_not_nil assigns(:model_profile)
   end
 
@@ -23,15 +23,15 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
   end
 
   should "create model profile with valid attributes" do
-    assert_difference('AiHelperModelProfile.count', 1) do
-      post :create, params: { ai_helper_model_profile: { name: 'New Profile', access_key: 'new_key', llm_type: "OpenAI", llm_model: "model" } }
+    assert_difference("AiHelperModelProfile.count", 1) do
+      post :create, params: { ai_helper_model_profile: { name: "New Profile", access_key: "new_key", llm_type: "OpenAI", llm_model: "model" } }
     end
     assert_redirected_to ai_helper_setting_path
   end
 
   should "not create model profile with invalid attributes" do
-    assert_no_difference('AiHelperModelProfile.count') do
-      post :create, params: { ai_helper_model_profile: { name: '', access_key: '' } }
+    assert_no_difference("AiHelperModelProfile.count") do
+      post :create, params: { ai_helper_model_profile: { name: "", access_key: "" } }
     end
     assert_response :success
     assert_template :new
@@ -45,29 +45,29 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
   end
 
   should "update model profile with valid attributes" do
-    patch :update, params: { id: @model_profile.id, ai_helper_model_profile: { name: 'Updated Profile' } }
+    patch :update, params: { id: @model_profile.id, ai_helper_model_profile: { name: "Updated Profile" } }
     assert_redirected_to ai_helper_setting_path
     @model_profile.reload
-    assert_equal 'Updated Profile', @model_profile.name
+    assert_equal "Updated Profile", @model_profile.name
   end
 
   should "not update model profile with invalid attributes" do
-    patch :update, params: { id: @model_profile.id, ai_helper_model_profile: { name: '' } }
+    patch :update, params: { id: @model_profile.id, ai_helper_model_profile: { name: "" } }
     assert_response :success
     assert_template :edit
     @model_profile.reload
-    assert_not_equal '', @model_profile.name
+    assert_not_equal "", @model_profile.name
   end
 
   should "destroy model profile" do
-    assert_difference('AiHelperModelProfile.count', -1) do
+    assert_difference("AiHelperModelProfile.count", -1) do
       delete :destroy, params: { id: @model_profile.id }
     end
     assert_redirected_to ai_helper_setting_path
   end
 
   should "handle destroy for non-existent model profile" do
-    assert_no_difference('AiHelperModelProfile.count') do
+    assert_no_difference("AiHelperModelProfile.count") do
       delete :destroy, params: { id: 9999 } # Non-existent ID
     end
     assert_response :not_found
@@ -76,7 +76,7 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
   should "reject create without CSRF token when forgery protection is enabled" do
     ActionController::Base.allow_forgery_protection = true
     begin
-      post :create, params: { ai_helper_model_profile: { name: 'New', access_key: 'key', llm_type: "OpenAI", llm_model: "model" } }
+      post :create, params: { ai_helper_model_profile: { name: "New", access_key: "key", llm_type: "OpenAI", llm_model: "model" } }
       assert_response 422
     ensure
       ActionController::Base.allow_forgery_protection = false
@@ -96,7 +96,7 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
   should "reject JSON format create without CSRF token" do
     ActionController::Base.allow_forgery_protection = true
     begin
-      post :create, params: { ai_helper_model_profile: { name: 'New', access_key: 'key', llm_type: "OpenAI", llm_model: "model" }, format: :json }
+      post :create, params: { ai_helper_model_profile: { name: "New", access_key: "key", llm_type: "OpenAI", llm_model: "model" }, format: :json }
       assert_response 422
     ensure
       ActionController::Base.allow_forgery_protection = false
@@ -286,7 +286,7 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
       name: "Unregistered Controller Test Profile",
       llm_type: "OpenAI",
       llm_model: unregistered_model_id,
-      access_key: "test_key",
+      access_key: "test_key"
     )
 
     begin
@@ -296,9 +296,9 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
 
       # Stub list_models on any OpenAI provider instance (triggered by fetch_and_register_model!)
       fetched_model = RubyLLM::Model::Info.new(
-        id: unregistered_model_id, provider: "openai", name: "GPT Unregistered Controller Test",
+        id: unregistered_model_id, provider: "openai", name: "GPT Unregistered Controller Test"
       )
-      RubyLLM::Providers::OpenAI.any_instance.expects(:list_models).at_least_once.returns([fetched_model])
+      RubyLLM::Providers::OpenAI.any_instance.expects(:list_models).at_least_once.returns([ fetched_model ])
 
       # Stub chat.ask to avoid real API calls
       RubyLLM::Chat.any_instance.stubs(:ask).returns(stub("message"))
@@ -307,7 +307,7 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
         ai_helper_model_profile: {
           llm_type: "OpenAI",
           llm_model: unregistered_model_id,
-          access_key: "test_key",
+          access_key: "test_key"
         }
       }
       assert_response :success
@@ -321,15 +321,15 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
 
   context "copy action" do
     should "copy model profile with valid name" do
-      assert_difference('AiHelperModelProfile.count', 1) do
-        post :copy, params: { id: @model_profile.id, name: 'Copied Profile' }
+      assert_difference("AiHelperModelProfile.count", 1) do
+        post :copy, params: { id: @model_profile.id, name: "Copied Profile" }
       end
       assert_response :success
       response_json = JSON.parse(response.body)
-      assert response_json['success']
+      assert response_json["success"]
       assert_equal flash[:notice], I18n.t(:notice_successful_create)
 
-      copied = AiHelperModelProfile.find_by(name: 'Copied Profile')
+      copied = AiHelperModelProfile.find_by(name: "Copied Profile")
       assert_not_nil copied
       assert_equal @model_profile.llm_type, copied.llm_type
       assert_equal @model_profile.access_key, copied.access_key
@@ -337,28 +337,28 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
     end
 
     should "not copy model profile with blank name" do
-      assert_no_difference('AiHelperModelProfile.count') do
-        post :copy, params: { id: @model_profile.id, name: '' }
+      assert_no_difference("AiHelperModelProfile.count") do
+        post :copy, params: { id: @model_profile.id, name: "" }
       end
       assert_response :unprocessable_entity
       response_json = JSON.parse(response.body)
-      assert_not response_json['success']
-      assert response_json['errors'].present?
+      assert_not response_json["success"]
+      assert response_json["errors"].present?
     end
 
     should "not copy model profile with duplicate name" do
-      AiHelperModelProfile.create!(name: 'Existing Profile', access_key: 'key2',
-                                    llm_type: 'OpenAI', llm_model: 'gpt-4')
-      assert_no_difference('AiHelperModelProfile.count') do
-        post :copy, params: { id: @model_profile.id, name: 'Existing Profile' }
+      AiHelperModelProfile.create!(name: "Existing Profile", access_key: "key2",
+                                    llm_type: "OpenAI", llm_model: "gpt-4")
+      assert_no_difference("AiHelperModelProfile.count") do
+        post :copy, params: { id: @model_profile.id, name: "Existing Profile" }
       end
       assert_response :unprocessable_entity
       response_json = JSON.parse(response.body)
-      assert_not response_json['success']
+      assert_not response_json["success"]
     end
 
     should "return 404 for non-existent source profile" do
-      post :copy, params: { id: 9999, name: 'New Profile' }
+      post :copy, params: { id: 9999, name: "New Profile" }
       assert_response :not_found
     end
   end

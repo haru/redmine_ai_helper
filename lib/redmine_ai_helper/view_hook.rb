@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 module RedmineAiHelper
   # Hook to display the chat screen in the sidebar
   class ViewHook < Redmine::Hook::ViewListener

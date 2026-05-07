@@ -1,4 +1,4 @@
-require_relative '../test_helper'
+require_relative "../test_helper"
 
 class AiHelperSettingTest < ActiveSupport::TestCase
   setup do
@@ -92,7 +92,7 @@ class AiHelperSettingTest < ActiveSupport::TestCase
         name: "Vector Profile",
         access_key: "vec_key",
         llm_type: "OpenAI",
-        llm_model: "text-embedding-3-large",
+        llm_model: "text-embedding-3-large"
       )
     end
 
@@ -137,7 +137,7 @@ class AiHelperSettingTest < ActiveSupport::TestCase
         name: "Vector Profile",
         access_key: "vec_key",
         llm_type: "OpenAI",
-        llm_model: "text-embedding-3-large",
+        llm_model: "text-embedding-3-large"
       )
     end
 
@@ -168,7 +168,7 @@ class AiHelperSettingTest < ActiveSupport::TestCase
       @setting.update_columns(
         vector_search_enabled: true,
         use_vector_model_profile: true,
-        vector_model_profile_id: @vector_profile.id,
+        vector_model_profile_id: @vector_profile.id
       )
       @setting.reload
       @setting.vector_search_enabled = false

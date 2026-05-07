@@ -29,7 +29,7 @@ class RedmineAiHelper::Vector::IssueVectorDbTest < ActiveSupport::TestCase
         @mock_analyzer = mock("IssueContentAnalyzer")
         @analysis_result = {
           summary: "This is a test summary describing the issue problem and solution.",
-          keywords: ["authentication", "login", "API", "timeout"]
+          keywords: [ "authentication", "login", "API", "timeout" ]
         }
       end
 

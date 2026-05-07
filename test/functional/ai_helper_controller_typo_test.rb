@@ -1,4 +1,4 @@
-require File.expand_path('../../test_helper', __FILE__)
+require File.expand_path("../../test_helper", __FILE__)
 
 class AiHelperControllerTypoTest < ActionController::TestCase
   fixtures :projects, :users, :roles, :members, :member_roles
@@ -20,7 +20,7 @@ class AiHelperControllerTypoTest < ActionController::TestCase
   end
 
   def test_check_typos_for_issue
-    mock_llm = mock('llm')
+    mock_llm = mock("llm")
     mock_suggestions = [
       {
         "original" => "tset",
@@ -33,7 +33,7 @@ class AiHelperControllerTypoTest < ActionController::TestCase
     ]
     mock_llm.expects(:check_typos).with(
       text: "This is a tset text",
-      context_type: 'issue',
+      context_type: "issue",
       project: @project,
       max_suggestions: 10
     ).returns(mock_suggestions)
@@ -43,30 +43,30 @@ class AiHelperControllerTypoTest < ActionController::TestCase
     post :check_typos, params: {
       id: @project.identifier,
       text: "This is a tset text",
-      context_type: 'issue'
+      context_type: "issue"
     }
     
     assert_response :success
     json_response = JSON.parse(response.body)
-    assert json_response.has_key?('suggestions')
-    assert_equal mock_suggestions, json_response['suggestions']
+    assert json_response.has_key?("suggestions")
+    assert_equal mock_suggestions, json_response["suggestions"]
   end
 
   def test_check_typos_with_blank_text
     post :check_typos, params: {
       id: @project.identifier,
       text: "",
-      context_type: 'issue'
+      context_type: "issue"
     }
     
     assert_response :success
     json_response = JSON.parse(response.body)
-    assert json_response.has_key?('suggestions')
-    assert_equal [], json_response['suggestions']
+    assert json_response.has_key?("suggestions")
+    assert_equal [], json_response["suggestions"]
   end
 
   def test_check_typos_for_wiki
-    mock_llm = mock('llm')
+    mock_llm = mock("llm")
     mock_suggestions = [
       {
         "original" => "pagge",
@@ -79,7 +79,7 @@ class AiHelperControllerTypoTest < ActionController::TestCase
     ]
     mock_llm.expects(:check_typos).with(
       text: "This is a wiki pagge",
-      context_type: 'wiki',
+      context_type: "wiki",
       project: @project,
       max_suggestions: 10
     ).returns(mock_suggestions)
@@ -89,13 +89,13 @@ class AiHelperControllerTypoTest < ActionController::TestCase
     post :check_typos, params: {
       id: @project.identifier,
       text: "This is a wiki pagge",
-      context_type: 'wiki'
+      context_type: "wiki"
     }
     
     assert_response :success
     json_response = JSON.parse(response.body)
-    assert json_response.has_key?('suggestions')
-    assert_equal mock_suggestions, json_response['suggestions']
+    assert json_response.has_key?("suggestions")
+    assert_equal mock_suggestions, json_response["suggestions"]
   end
 
   def test_check_typos_with_default_context_type
@@ -106,8 +106,8 @@ class AiHelperControllerTypoTest < ActionController::TestCase
     
     assert_response :success
     json_response = JSON.parse(response.body)
-    assert json_response.has_key?('suggestions')
-    assert_equal [], json_response['suggestions']
+    assert json_response.has_key?("suggestions")
+    assert_equal [], json_response["suggestions"]
   end
 
   def test_unauthorized_access
@@ -116,20 +116,20 @@ class AiHelperControllerTypoTest < ActionController::TestCase
     post :check_typos, params: {
       id: @project.identifier,
       text: "test",
-      context_type: 'issue'
+      context_type: "issue"
     }
     
-    assert_redirected_to '/login?back_url=' + CGI.escape("http://test.host/projects/#{@project.identifier}/ai_helper/check_typos")
+    assert_redirected_to "/login?back_url=" + CGI.escape("http://test.host/projects/#{@project.identifier}/ai_helper/check_typos")
   end
 
   def test_check_typos_without_ai_helper_module
     # Disable ai_helper module
-    EnabledModule.where(project_id: @project.id, name: 'ai_helper').destroy_all
+    EnabledModule.where(project_id: @project.id, name: "ai_helper").destroy_all
     
     post :check_typos, params: {
       id: @project.identifier,
       text: "test",
-      context_type: 'issue'
+      context_type: "issue"
     }
     
     assert_response :forbidden

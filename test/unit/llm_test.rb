@@ -10,7 +10,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       @params = {
         access_token: "test_access_token",
         uri_base: "http://example.com",
-        organization_id: "test_org_id",
+        organization_id: "test_org_id"
       }
       @llm = RedmineAiHelper::Llm.new(@params)
       @conversation = AiHelperConversation.new(title: "test task")
@@ -73,7 +73,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
       should "generate sub issues for visible issue" do
         @issue.stubs(:visible?).returns(true)
-        RedmineAiHelper::Agents::IssueAgent.any_instance.stubs(:generate_sub_issues).returns([Issue.new(subject: "Sub issue 1"), Issue.new(subject: "Sub issue 2")])
+        RedmineAiHelper::Agents::IssueAgent.any_instance.stubs(:generate_sub_issues).returns([ Issue.new(subject: "Sub issue 1"), Issue.new(subject: "Sub issue 2") ])
         sub_issues = @llm.generate_sub_issues(issue: @issue, instructions: "test instructions")
         assert_equal 2, sub_issues.length
         assert_equal "Sub issue 1", sub_issues[0].subject
@@ -129,7 +129,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         mock_agent = mock("IssueAgent")
         RedmineAiHelper::Agents::IssueAgent.stubs(:new).returns(mock_agent)
 
-        expected_results = [{ id: 2, subject: "Similar issue", similarity_score: 85.0 }]
+        expected_results = [ { id: 2, subject: "Similar issue", similarity_score: 85.0 } ]
         mock_agent.expects(:find_similar_issues_by_content)
                   .with(subject: "Test subject", description: "Test description")
                   .returns(expected_results)
@@ -229,7 +229,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
   private
 
   def chat_answer_generator(message)
-    { "choices": [{ "message": { "content": message } }] }
+    { "choices": [ { "message": { "content": message } } ] }
   end
 
   context "wiki summary" do
@@ -250,7 +250,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
     should "generate wiki summary successfully" do
       # Mock the WikiAgent and its wiki_summary method
-      mock_agent = mock('wiki_agent')
+      mock_agent = mock("wiki_agent")
       mock_agent.stubs(:wiki_summary).returns("Test wiki summary content")
       RedmineAiHelper::Agents::WikiAgent.stubs(:new).returns(mock_agent)
 
@@ -269,14 +269,14 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
     should "create langfuse trace for wiki summary" do
       # Mock langfuse wrapper
-      mock_langfuse = mock('langfuse_wrapper')
+      mock_langfuse = mock("langfuse_wrapper")
       mock_langfuse.stubs(:create_span)
       mock_langfuse.stubs(:finish_current_span)
       mock_langfuse.stubs(:flush)
       RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
 
       # Mock WikiAgent
-      mock_agent = mock('wiki_agent')
+      mock_agent = mock("wiki_agent")
       mock_agent.stubs(:wiki_summary).returns("Summary with langfuse")
       RedmineAiHelper::Agents::WikiAgent.stubs(:new).returns(mock_agent)
 
@@ -289,7 +289,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       RedmineAiHelper::Agents::WikiAgent.expects(:new).with(
         project: @wiki_page.wiki.project,
         langfuse: anything
-      ).returns(mock('agent').tap do |agent|
+      ).returns(mock("agent").tap do |agent|
         agent.stubs(:wiki_summary).with(wiki_page: @wiki_page, stream_proc: nil).returns("Summary")
       end)
 
@@ -297,12 +297,12 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
     end
 
     should "log summary result" do
-      mock_agent = mock('wiki_agent')
+      mock_agent = mock("wiki_agent")
       mock_agent.stubs(:wiki_summary).returns("Logged summary")
       RedmineAiHelper::Agents::WikiAgent.stubs(:new).returns(mock_agent)
 
       # Expect logging
-      @llm.expects(:ai_helper_logger).returns(mock('logger').tap do |logger|
+      @llm.expects(:ai_helper_logger).returns(mock("logger").tap do |logger|
         logger.expects(:info).with("answer: Logged summary")
       end)
 
@@ -318,7 +318,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
     should "find similar issues successfully" do
       # Mock langfuse wrapper
-      mock_langfuse = mock('langfuse_wrapper')
+      mock_langfuse = mock("langfuse_wrapper")
       mock_langfuse.stubs(:create_span)
       mock_langfuse.stubs(:finish_current_span)
       mock_langfuse.stubs(:flush)
@@ -328,7 +328,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       similar_issues_data = [
         { id: 2, subject: "Similar issue", similarity_score: 85.0 }
       ]
-      mock_agent = mock('issue_agent')
+      mock_agent = mock("issue_agent")
       mock_agent.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues_data)
       RedmineAiHelper::Agents::IssueAgent.stubs(:new).returns(mock_agent)
 
@@ -347,7 +347,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
     should "create langfuse trace for similar issues search" do
       # Mock langfuse wrapper with expectations
-      mock_langfuse = mock('langfuse_wrapper')
+      mock_langfuse = mock("langfuse_wrapper")
       mock_langfuse.expects(:create_span).with(name: "find_similar_issues", input: "issue_id: #{@issue.id}, scope: with_subprojects")
       mock_langfuse.expects(:finish_current_span).with(anything)
       mock_langfuse.expects(:flush)
@@ -355,7 +355,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
       # Mock IssueAgent
       similar_issues_data = []
-      mock_agent = mock('issue_agent')
+      mock_agent = mock("issue_agent")
       mock_agent.stubs(:find_similar_issues).returns(similar_issues_data)
       RedmineAiHelper::Agents::IssueAgent.stubs(:new).returns(mock_agent)
 
@@ -365,7 +365,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
     should "pass correct parameters to IssueAgent" do
       # Mock langfuse
-      mock_langfuse = mock('langfuse_wrapper')
+      mock_langfuse = mock("langfuse_wrapper")
       mock_langfuse.stubs(:create_span)
       mock_langfuse.stubs(:finish_current_span)
       mock_langfuse.stubs(:flush)
@@ -375,7 +375,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       RedmineAiHelper::Agents::IssueAgent.expects(:new).with(
         project: @issue.project,
         langfuse: mock_langfuse
-      ).returns(mock('agent').tap do |agent|
+      ).returns(mock("agent").tap do |agent|
         agent.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns([])
       end)
 
@@ -384,19 +384,19 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
     should "log errors and re-raise them" do
       # Mock langfuse
-      mock_langfuse = mock('langfuse_wrapper')
+      mock_langfuse = mock("langfuse_wrapper")
       mock_langfuse.stubs(:create_span)
       mock_langfuse.stubs(:finish_current_span)
       mock_langfuse.stubs(:flush)
       RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
 
       # Mock IssueAgent to raise an error
-      mock_agent = mock('issue_agent')
+      mock_agent = mock("issue_agent")
       mock_agent.stubs(:find_similar_issues).raises(StandardError.new("Test error"))
       RedmineAiHelper::Agents::IssueAgent.stubs(:new).returns(mock_agent)
 
       # Expect error logging
-      @llm.expects(:ai_helper_logger).returns(mock('logger').tap do |logger|
+      @llm.expects(:ai_helper_logger).returns(mock("logger").tap do |logger|
         logger.expects(:error).with(regexp_matches(/error:/))
       end)
 
@@ -468,14 +468,14 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
     context "generate_text_completion (refactored)" do
       should "delegate to IssueAgent properly" do
         # Mock LangfuseWrapper
-        mock_langfuse = mock('LangfuseWrapper')
+        mock_langfuse = mock("LangfuseWrapper")
         mock_langfuse.stubs(:create_span)
         mock_langfuse.stubs(:finish_current_span)
         mock_langfuse.stubs(:flush)
         RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
 
         # Mock IssueAgent
-        mock_agent = mock('IssueAgent')
+        mock_agent = mock("IssueAgent")
         mock_agent.expects(:generate_text_completion).with(
           text: "Test text",
           cursor_position: 4,
@@ -499,14 +499,14 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
       should "handle agent errors gracefully" do
         # Mock LangfuseWrapper
-        mock_langfuse = mock('LangfuseWrapper')
+        mock_langfuse = mock("LangfuseWrapper")
         mock_langfuse.stubs(:create_span)
         mock_langfuse.stubs(:finish_current_span)
         mock_langfuse.stubs(:flush)
         RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
 
         # Mock IssueAgent to raise an error
-        mock_agent = mock('IssueAgent')
+        mock_agent = mock("IssueAgent")
         mock_agent.expects(:generate_text_completion).raises(StandardError, "Agent failed")
 
         RedmineAiHelper::Agents::IssueAgent.expects(:new).returns(mock_agent)
@@ -524,7 +524,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
       should "pass correct options to IssueAgent" do
         # Mock LangfuseWrapper
-        mock_langfuse = mock('LangfuseWrapper')
+        mock_langfuse = mock("LangfuseWrapper")
         mock_langfuse.stubs(:create_span)
         mock_langfuse.stubs(:finish_current_span)
         mock_langfuse.stubs(:flush)
@@ -533,7 +533,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         # Verify correct options are passed to IssueAgent
         expected_options = { langfuse: mock_langfuse, project: @project }
 
-        mock_agent = mock('IssueAgent')
+        mock_agent = mock("IssueAgent")
         mock_agent.expects(:generate_text_completion).returns("Result")
 
         RedmineAiHelper::Agents::IssueAgent.expects(:new).with(expected_options).returns(mock_agent)
@@ -551,7 +551,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         test_output = "Test output"
 
         # Mock LangfuseWrapper to verify proper span handling
-        mock_langfuse = mock('LangfuseWrapper')
+        mock_langfuse = mock("LangfuseWrapper")
         mock_langfuse.expects(:create_span).with(name: "text_completion", input: test_text)
         mock_langfuse.expects(:finish_current_span).with(output: test_output)
         mock_langfuse.expects(:flush)
@@ -559,7 +559,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         RedmineAiHelper::LangfuseUtil::LangfuseWrapper.expects(:new).with(input: test_text).returns(mock_langfuse)
 
         # Mock IssueAgent
-        mock_agent = mock('IssueAgent')
+        mock_agent = mock("IssueAgent")
         mock_agent.stubs(:generate_text_completion).returns(test_output)
         RedmineAiHelper::Agents::IssueAgent.stubs(:new).returns(mock_agent)
 
@@ -595,7 +595,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         user: @user,
         health_report: "# Old Report\n\nOld content",
         metrics: { issue_statistics: { total_issues: 40 } }.to_json,
-        created_at: 5.days.ago,
+        created_at: 5.days.ago
       )
 
       @new_report = AiHelperHealthReport.create!(
@@ -603,13 +603,13 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         user: @user,
         health_report: "# New Report\n\nNew content",
         metrics: { issue_statistics: { total_issues: 50 } }.to_json,
-        created_at: 1.day.ago,
+        created_at: 1.day.ago
       )
     end
 
     should "compare health reports successfully" do
       # Mock langfuse wrapper
-      mock_langfuse = mock('langfuse_wrapper')
+      mock_langfuse = mock("langfuse_wrapper")
       mock_langfuse.stubs(:create_span)
       mock_langfuse.stubs(:finish_current_span)
       mock_langfuse.stubs(:flush)
@@ -617,7 +617,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
       # Mock ProjectAgent
       comparison_result = "# Comparison Analysis\n\nThe project health has improved."
-      mock_agent = mock('project_agent')
+      mock_agent = mock("project_agent")
       mock_agent.stubs(:health_report_comparison).with(
         old_report: @old_report,
         new_report: @new_report,
@@ -636,7 +636,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
     should "handle streaming comparison" do
       # Mock langfuse wrapper
-      mock_langfuse = mock('langfuse_wrapper')
+      mock_langfuse = mock("langfuse_wrapper")
       mock_langfuse.stubs(:create_span)
       mock_langfuse.stubs(:finish_current_span)
       mock_langfuse.stubs(:flush)
@@ -647,7 +647,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       streamed_content = []
       stream_proc = Proc.new { |content| streamed_content << content }
 
-      mock_agent = mock('project_agent')
+      mock_agent = mock("project_agent")
       mock_agent.stubs(:health_report_comparison).with(
         old_report: @old_report,
         new_report: @new_report,
@@ -667,7 +667,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
     should "create langfuse trace for comparison" do
       # Mock langfuse wrapper with expectations
-      mock_langfuse = mock('langfuse_wrapper')
+      mock_langfuse = mock("langfuse_wrapper")
       mock_langfuse.expects(:create_span).with(
         name: "compare_health_reports",
         input: "compare_health_reports: #{@old_report.id} vs #{@new_report.id}"
@@ -677,7 +677,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
 
       # Mock ProjectAgent
-      mock_agent = mock('project_agent')
+      mock_agent = mock("project_agent")
       mock_agent.stubs(:health_report_comparison).returns("Comparison result")
       RedmineAiHelper::Agents::ProjectAgent.stubs(:new).returns(mock_agent)
 
@@ -690,7 +690,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
     should "pass correct parameters to ProjectAgent" do
       # Mock langfuse
-      mock_langfuse = mock('langfuse_wrapper')
+      mock_langfuse = mock("langfuse_wrapper")
       mock_langfuse.stubs(:create_span)
       mock_langfuse.stubs(:finish_current_span)
       mock_langfuse.stubs(:flush)
@@ -698,7 +698,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
       # Verify ProjectAgent is created with correct options
       # Use hash argument format (not keyword arguments) to match the actual implementation
-      mock_agent = mock('agent')
+      mock_agent = mock("agent")
       mock_agent.stubs(:health_report_comparison).returns("Result")
       RedmineAiHelper::Agents::ProjectAgent.expects(:new).with({
         langfuse: mock_langfuse,
@@ -714,14 +714,14 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
     should "handle errors during comparison" do
       # Mock langfuse
-      mock_langfuse = mock('langfuse_wrapper')
+      mock_langfuse = mock("langfuse_wrapper")
       mock_langfuse.stubs(:create_span)
       mock_langfuse.stubs(:finish_current_span)
       mock_langfuse.stubs(:flush)
       RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
 
       # Mock ProjectAgent to raise an error
-      mock_agent = mock('project_agent')
+      mock_agent = mock("project_agent")
       mock_agent.stubs(:health_report_comparison).raises(StandardError.new("Comparison failed"))
       RedmineAiHelper::Agents::ProjectAgent.stubs(:new).returns(mock_agent)
 
@@ -736,14 +736,14 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
     should "call stream_proc with error message on failure" do
       # Mock langfuse
-      mock_langfuse = mock('langfuse_wrapper')
+      mock_langfuse = mock("langfuse_wrapper")
       mock_langfuse.stubs(:create_span)
       mock_langfuse.stubs(:finish_current_span)
       mock_langfuse.stubs(:flush)
       RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
 
       # Mock ProjectAgent to raise an error
-      mock_agent = mock('project_agent')
+      mock_agent = mock("project_agent")
       mock_agent.stubs(:health_report_comparison).raises(StandardError.new("Test error"))
       RedmineAiHelper::Agents::ProjectAgent.stubs(:new).returns(mock_agent)
 
@@ -765,19 +765,19 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
     should "log errors when comparison fails" do
       # Mock langfuse
-      mock_langfuse = mock('langfuse_wrapper')
+      mock_langfuse = mock("langfuse_wrapper")
       mock_langfuse.stubs(:create_span)
       mock_langfuse.stubs(:finish_current_span)
       mock_langfuse.stubs(:flush)
       RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
 
       # Mock ProjectAgent to raise an error
-      mock_agent = mock('project_agent')
+      mock_agent = mock("project_agent")
       mock_agent.stubs(:health_report_comparison).raises(StandardError.new("Test error"))
       RedmineAiHelper::Agents::ProjectAgent.stubs(:new).returns(mock_agent)
 
       # Expect error logging
-      @llm.expects(:ai_helper_logger).returns(mock('logger').tap do |logger|
+      @llm.expects(:ai_helper_logger).returns(mock("logger").tap do |logger|
         logger.expects(:error).with(regexp_matches(/Health report comparison error:/))
       end).at_least_once
 
@@ -795,7 +795,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       @params = {
         access_token: "test_access_token",
         uri_base: "http://example.com",
-        organization_id: "test_org_id",
+        organization_id: "test_org_id"
       }
       @llm = RedmineAiHelper::Llm.new(@params)
 
@@ -820,7 +820,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       @conversation.messages << message
 
       # Verify CustomCommandExpander#expand is called
-      expander_mock = mock('expander')
+      expander_mock = mock("expander")
       expander_mock.expects(:expand).with("/summarize issue #123").returns({
         expanded: true,
         message: "Please summarize: issue #123",
@@ -832,7 +832,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       ).returns(expander_mock)
 
       # Verify LeaderAgent receives the expanded message
-      leader_agent_mock = mock('leader_agent')
+      leader_agent_mock = mock("leader_agent")
       leader_agent_mock.expects(:perform_user_request).with(
         includes({ role: "user", content: "Please summarize: issue #123" }),
         anything,
@@ -849,7 +849,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       @conversation.messages << message
 
       # Verify CustomCommandExpander#expand is called
-      expander_mock = mock('expander')
+      expander_mock = mock("expander")
       expander_mock.expects(:expand).with("regular message").returns({
         expanded: false,
         message: "regular message"
@@ -857,7 +857,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       RedmineAiHelper::CustomCommandExpander.expects(:new).returns(expander_mock)
 
       # Verify LeaderAgent receives the original message
-      leader_agent_mock = mock('leader_agent')
+      leader_agent_mock = mock("leader_agent")
       leader_agent_mock.expects(:perform_user_request).with(
         includes({ role: "user", content: "regular message" }),
         anything,
@@ -874,7 +874,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       @conversation.messages << message
 
       # Verify CustomCommandExpander is created with project context
-      expander_mock = mock('expander')
+      expander_mock = mock("expander")
       expander_mock.expects(:expand).returns({
         expanded: true,
         message: "Review the code changes in Project 1",
@@ -885,7 +885,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         project: @project
       ).returns(expander_mock)
 
-      leader_agent_mock = mock('leader_agent')
+      leader_agent_mock = mock("leader_agent")
       leader_agent_mock.stubs(:perform_user_request).returns("test answer")
       RedmineAiHelper::Agents::LeaderAgent.stubs(:new).returns(leader_agent_mock)
 
@@ -902,7 +902,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       message = AiHelperMessage.new(content: "/summarize issue #123", role: "user")
       @conversation.messages << message
 
-      expander_mock = mock('expander')
+      expander_mock = mock("expander")
       expander_mock.stubs(:expand).returns({
         expanded: true,
         message: "Please summarize: issue #123",
@@ -910,12 +910,12 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       })
       RedmineAiHelper::CustomCommandExpander.stubs(:new).returns(expander_mock)
 
-      leader_agent_mock = mock('leader_agent')
+      leader_agent_mock = mock("leader_agent")
       leader_agent_mock.stubs(:perform_user_request).returns("test answer")
       RedmineAiHelper::Agents::LeaderAgent.stubs(:new).returns(leader_agent_mock)
 
       # Verify logging is called
-      @llm.expects(:ai_helper_logger).returns(mock('logger').tap do |logger|
+      @llm.expects(:ai_helper_logger).returns(mock("logger").tap do |logger|
         logger.stubs(:debug)
         logger.stubs(:info)
         logger.expects(:info).with("Custom command expanded: summarize")

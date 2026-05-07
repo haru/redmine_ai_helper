@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative "../base_agent"
 
 module RedmineAiHelper
@@ -16,7 +17,7 @@ module RedmineAiHelper
       # Get available RubyLLM::Tool subclasses for this agent
       # @return [Array<Class>] Array of RubyLLM::Tool subclasses
       def available_tool_providers
-        [RedmineAiHelper::Tools::ProjectTools]
+        [ RedmineAiHelper::Tools::ProjectTools ]
       end
 
       # Generate comprehensive project health report
@@ -47,7 +48,7 @@ module RedmineAiHelper
           open_versions.each do |version|
             version_metrics = project_tools.get_metrics(
               project_id: project.id,
-              version_id: version.id,
+              version_id: version.id
             )
 
             # Determine if this is a shared version from another project
@@ -55,7 +56,7 @@ module RedmineAiHelper
             version_info = {
               version_id: version.id,
               version_name: version.name,
-              metrics: version_metrics,
+              metrics: version_metrics
             }
 
             # Add sharing information if it's a shared version
@@ -63,7 +64,7 @@ module RedmineAiHelper
               version_info[:shared_from_project] = {
                 id: version.project_id,
                 name: version.project.name,
-                identifier: version.project.identifier,
+                identifier: version.project.identifier
               }
               version_info[:sharing_mode] = version.sharing
             end
@@ -124,7 +125,7 @@ module RedmineAiHelper
           analysis_instructions = analysis_instructions_prompt.format(
             one_week_ago: one_week_ago,
             one_month_ago: one_month_ago,
-            today: today,
+            today: today
           )
 
           analysis_focus = "Time-period Analysis (Last Week & Last Month)"
@@ -135,14 +136,14 @@ module RedmineAiHelper
           one_week_metrics = project_tools.get_metrics(
             project_id: project.id,
             start_date: one_week_ago,
-            end_date: today,
+            end_date: today
           )
 
           # Try to get metrics for 1 month
           one_month_metrics = project_tools.get_metrics(
             project_id: project.id,
             start_date: one_month_ago,
-            end_date: today,
+            end_date: today
           )
 
           # Check if we have any meaningful data (any issues created in these periods)
@@ -152,7 +153,7 @@ module RedmineAiHelper
           # If no recent data, fall back to all-time metrics
           unless has_recent_data
             all_time_metrics = project_tools.get_metrics(
-              project_id: project.id,
+              project_id: project.id
             )
 
             # If we have all-time data, use it; otherwise keep the empty recent metrics
@@ -162,7 +163,7 @@ module RedmineAiHelper
                 period_description: "Analysis for all periods (due to lack of recent data)",
                 start_date: nil,
                 end_date: nil,
-                metrics: all_time_metrics,
+                metrics: all_time_metrics
               }
             else
               # No data at all - add empty metrics for display
@@ -171,7 +172,7 @@ module RedmineAiHelper
                 period_description: "Recent activity (no data)",
                 start_date: one_week_ago,
                 end_date: today,
-                metrics: one_week_metrics,
+                metrics: one_week_metrics
               }
             end
           else
@@ -181,7 +182,7 @@ module RedmineAiHelper
               period_description: "Analysis for the last 1 week",
               start_date: one_week_ago,
               end_date: today,
-              metrics: one_week_metrics,
+              metrics: one_week_metrics
             }
 
             metrics_list << {
@@ -189,7 +190,7 @@ module RedmineAiHelper
               period_description: "Analysis for the last 1 month",
               start_date: one_month_ago,
               end_date: today,
-              metrics: one_month_metrics,
+              metrics: one_month_metrics
             }
           end
         end
@@ -205,10 +206,10 @@ module RedmineAiHelper
           report_sections: report_sections,
           focus_guidance: focus_guidance,
           health_report_instructions: health_report_instructions.present? ? health_report_instructions : "No specific instructions provided.",
-          metrics: JSON.pretty_generate(metrics_list),
+          metrics: JSON.pretty_generate(metrics_list)
         )
 
-        messages = [{ role: "user", content: prompt_text }]
+        messages = [ { role: "user", content: prompt_text } ]
 
         report_text = think_chat(messages, {}, stream_proc)
 
@@ -261,7 +262,7 @@ module RedmineAiHelper
           time_span_days: time_span_days
         )
 
-        messages = [{ role: "user", content: prompt_text }]
+        messages = [ { role: "user", content: prompt_text } ]
 
         comparison_text = think_chat(messages, {}, stream_proc)
         comparison_text

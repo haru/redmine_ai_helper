@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "ruby_llm"
 require "redmine_ai_helper/logger"
 
@@ -82,7 +83,7 @@ module RedmineAiHelper
         function_registry[func_name] = {
           description: description,
           param_builder: param_builder,
-          tool_class: tool_class,
+          tool_class: tool_class
         }
       end
 
@@ -232,7 +233,7 @@ module RedmineAiHelper
         {
           type: "object",
           properties: properties,
-          required: required,
+          required: required
         }
       end
 
@@ -325,8 +326,8 @@ module RedmineAiHelper
             function: {
               name: func_full_name,
               description: metadata[:description],
-              parameters: deep_symbolize_keys(schema),
-            },
+              parameters: deep_symbolize_keys(schema)
+            }
           }
         end
       end
@@ -347,10 +348,10 @@ module RedmineAiHelper
         hash.each_with_object({}) do |(key, value), result|
           sym_key = key.to_sym
           result[sym_key] = case value
-                            when Hash then deep_symbolize_keys(value)
-                            when Array then value.map { |v| v.is_a?(Hash) ? deep_symbolize_keys(v) : v }
-                            else value
-                            end
+          when Hash then deep_symbolize_keys(value)
+          when Array then value.map { |v| v.is_a?(Hash) ? deep_symbolize_keys(v) : v }
+          else value
+          end
         end
       end
     end

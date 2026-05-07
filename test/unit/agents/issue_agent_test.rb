@@ -81,10 +81,10 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
       mock_prompt.stubs(:format).returns("Summarize this issue")
       @agent.stubs(:load_prompt).with("issue_agent/summary").returns(mock_prompt)
 
-      file_paths = ["/path/to/image.png"]
+      file_paths = [ "/path/to/image.png" ]
       @agent.stubs(:supported_attachment_paths).with(@issue).returns(file_paths)
 
-      expected_messages = [{ role: "user", content: "Summarize this issue" }]
+      expected_messages = [ { role: "user", content: "Summarize this issue" } ]
       @agent.expects(:chat).with(expected_messages, {}, nil, with: file_paths).returns("Summary with file")
 
       result = @agent.issue_summary(issue: @issue)
@@ -100,7 +100,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
 
       @agent.stubs(:supported_attachment_paths).with(@issue).returns([])
 
-      expected_messages = [{ role: "user", content: "Summarize this issue" }]
+      expected_messages = [ { role: "user", content: "Summarize this issue" } ]
       @agent.expects(:chat).with(expected_messages, {}, nil, with: nil).returns("Summary without file")
 
       result = @agent.issue_summary(issue: @issue)
@@ -109,8 +109,8 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
 
     should "generate issue properties string" do
       RedmineAiHelper::Tools::IssueTools.any_instance.stubs(:capable_issue_properties).returns({
-        "priority" => ["High", "Normal", "Low"],
-        "status" => ["New", "In Progress", "Resolved"],
+        "priority" => [ "High", "Normal", "Low" ],
+        "status" => [ "New", "In Progress", "Resolved" ]
       })
 
       issue_properties = @agent.send(:issue_properties)
@@ -152,7 +152,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
           issue: instance_of(String),
           instructions: "Please provide a detailed response.",
           issue_draft_instructions: "Draft instructions for the issue.",
-          format: Setting.text_formatting,
+          format: Setting.text_formatting
         ).returns("Generate a reply for this issue with instructions.")
         @agent.stubs(:load_prompt).with("issue_agent/generate_reply").returns(mock_prompt)
 
@@ -169,7 +169,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
         mock_prompt.stubs(:format).returns("Generate a reply for this issue")
         @agent.stubs(:load_prompt).with("issue_agent/generate_reply").returns(mock_prompt)
 
-        file_paths = ["/path/to/file1.pdf", "/path/to/file2.png"]
+        file_paths = [ "/path/to/file1.pdf", "/path/to/file2.png" ]
         @agent.stubs(:supported_attachment_paths).with(@issue).returns(file_paths)
 
         @agent.expects(:think_chat).with(
@@ -257,9 +257,9 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
 
     context "generate_sub_issues_draft" do
       setup do
-        @agent.stubs(:chat).returns({ "sub_issues" => [{ "subject" => "Dummy Sub Issue", "description" => "This is a dummy sub issue description." }] }.to_json)
+        @agent.stubs(:chat).returns({ "sub_issues" => [ { "subject" => "Dummy Sub Issue", "description" => "This is a dummy sub issue description." } ] }.to_json)
         RedmineAiHelper::Util::StructuredOutputHelper.stubs(:parse).returns(
-          { "sub_issues" => [{ "subject" => "Dummy Sub Issue", "description" => "This is a dummy sub issue description." }] }
+          { "sub_issues" => [ { "subject" => "Dummy Sub Issue", "description" => "This is a dummy sub issue description." } ] }
         )
         User.current = User.find(1)
       end
@@ -277,12 +277,12 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
         User.current = User.find(1)
         @issue = Issue.find(1)
         RedmineAiHelper::Util::StructuredOutputHelper.stubs(:parse).returns(
-          { "sub_issues" => [{ "subject" => "Sub Issue", "description" => "Description", "project_id" => @issue.project_id, "tracker_id" => @issue.tracker_id }] }
+          { "sub_issues" => [ { "subject" => "Sub Issue", "description" => "Description", "project_id" => @issue.project_id, "tracker_id" => @issue.tracker_id } ] }
         )
       end
 
       should "pass attachment file paths to chat via with parameter" do
-        file_paths = ["/path/to/file1.pdf", "/path/to/file2.png"]
+        file_paths = [ "/path/to/file1.pdf", "/path/to/file2.png" ]
         @agent.stubs(:supported_attachment_paths).with(@issue).returns(file_paths)
 
         @agent.expects(:chat).with(
@@ -290,7 +290,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
           anything,
           anything,
           with: file_paths
-        ).returns({ "sub_issues" => [{ "subject" => "Sub Issue", "description" => "Description" }] }.to_json)
+        ).returns({ "sub_issues" => [ { "subject" => "Sub Issue", "description" => "Description" } ] }.to_json)
 
         result = @agent.generate_sub_issues_draft(issue: @issue, instructions: "Create sub issues considering attachments.")
         assert result.is_a?(Array)
@@ -304,7 +304,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
           anything,
           anything,
           with: nil
-        ).returns({ "sub_issues" => [{ "subject" => "Sub Issue", "description" => "Description" }] }.to_json)
+        ).returns({ "sub_issues" => [ { "subject" => "Sub Issue", "description" => "Description" } ] }.to_json)
 
         result = @agent.generate_sub_issues_draft(issue: @issue, instructions: "Create sub issues.")
         assert result.is_a?(Array)
@@ -393,7 +393,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
 
       should "log debug message with results count" do
         @issue.stubs(:visible?).returns(true)
-        similar_issues_data = [{id: 2}, {id: 3}]
+        similar_issues_data = [ {id: 2}, {id: 3} ]
         @mock_vector_tools.stubs(:find_similar_issues).returns(similar_issues_data)
 
         mock_logger = mock("logger")
@@ -448,7 +448,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
       end
 
       should "log debug message with results count" do
-        similar_issues_data = [{id: 2}, {id: 3}]
+        similar_issues_data = [ {id: 2}, {id: 3} ]
         @mock_vector_tools.stubs(:find_similar_issues_by_content).returns(similar_issues_data)
 
         mock_logger = mock("logger")
@@ -775,13 +775,13 @@ end
     end
 
     should "calculate due_date_score for various due dates" do
-      issue = mock('issue')
+      issue = mock("issue")
       issue.stubs(:priority).returns(nil)
       issue.stubs(:updated_on).returns(Time.now)
 
       issue.stubs(:due_date).returns(Date.today - 2)
       score = @agent.send(:due_date_score, issue)
-      assert_equal [100 + 2 * 10, 150].min, score
+      assert_equal [ 100 + 2 * 10, 150 ].min, score
 
       issue.stubs(:due_date).returns(Date.today)
       assert_equal 80, @agent.send(:due_date_score, issue)
@@ -800,9 +800,9 @@ end
     end
 
     should "calculate priority_field_score correctly" do
-      issue = mock('issue')
-      priority = mock('priority')
-      priority.stubs(:name).returns('Immediate')
+      issue = mock("issue")
+      priority = mock("priority")
+      priority.stubs(:name).returns("Immediate")
       issue.stubs(:updated_on).returns(Time.now)
 
       priority.stubs(:position).returns(5)
@@ -826,7 +826,7 @@ end
     end
 
     should "calculate untouched_score correctly" do
-      issue = mock('issue')
+      issue = mock("issue")
 
       issue.stubs(:updated_on).returns((Date.today - 40).to_time)
       assert_equal 30, @agent.send(:untouched_score, issue)
@@ -847,27 +847,27 @@ end
     should "format_issues_for_prompt returns No issues when list empty and JSON for issues" do
       assert_equal "No issues", @agent.send(:format_issues_for_prompt, [])
 
-      issue = mock('issue')
+      issue = mock("issue")
       issue.stubs(:id).returns(123)
-      issue.stubs(:subject).returns('Test issue')
-      priority = mock('priority')
-      priority.stubs(:name).returns('High')
+      issue.stubs(:subject).returns("Test issue")
+      priority = mock("priority")
+      priority.stubs(:name).returns("High")
       priority.stubs(:position).returns(3)
       issue.stubs(:priority).returns(priority)
       issue.stubs(:due_date).returns(Date.today + 3)
       issue.stubs(:updated_on).returns((Date.today - 5).to_time)
-      proj = mock('project')
-      proj.stubs(:name).returns('Proj X')
+      proj = mock("project")
+      proj.stubs(:name).returns("Proj X")
       issue.stubs(:project).returns(proj)
 
-      json_text = @agent.send(:format_issues_for_prompt, [issue])
+      json_text = @agent.send(:format_issues_for_prompt, [ issue ])
       parsed = JSON.parse(json_text)
       assert_equal 1, parsed.length
       item = parsed.first
-      assert_equal 123, item['id']
-      assert_equal 'Test issue', item['subject']
-      assert_equal 'High', item['priority']
-      assert_equal 'Proj X', item['project_name']
-      assert item['score'].is_a?(Integer)
+      assert_equal 123, item["id"]
+      assert_equal "Test issue", item["subject"]
+      assert_equal "High", item["priority"]
+      assert_equal "Proj X", item["project_name"]
+      assert item["score"].is_a?(Integer)
     end
   end

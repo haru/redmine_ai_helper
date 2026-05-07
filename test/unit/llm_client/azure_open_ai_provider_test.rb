@@ -12,7 +12,7 @@ class RedmineAiHelper::LlmClient::AzureOpenAiProviderTest < ActiveSupport::TestC
         llm_type: "AzureOpenAi",
         llm_model: "gpt-4o",
         access_key: "test_azure_key",
-        base_uri: "https://myresource.openai.azure.com/openai/deployments/gpt-4o",
+        base_uri: "https://myresource.openai.azure.com/openai/deployments/gpt-4o"
       )
       @setting.model_profile = @azure_profile
       @setting.save!
@@ -57,7 +57,7 @@ class RedmineAiHelper::LlmClient::AzureOpenAiProviderTest < ActiveSupport::TestC
       mock_context.expects(:chat).with(
         model: @azure_profile.llm_model,
         provider: :openai,
-        assume_model_exists: true,
+        assume_model_exists: true
       ).returns(mock_chat)
       @provider.expects(:build_context).returns(mock_context)
 
@@ -73,7 +73,7 @@ class RedmineAiHelper::LlmClient::AzureOpenAiProviderTest < ActiveSupport::TestC
       mock_context.expects(:chat).with(
         model: @azure_profile.llm_model,
         provider: :openai,
-        assume_model_exists: true,
+        assume_model_exists: true
       ).returns(mock_chat)
       @provider.expects(:build_context).returns(mock_context)
 
@@ -89,11 +89,11 @@ class RedmineAiHelper::LlmClient::AzureOpenAiProviderTest < ActiveSupport::TestC
       mock_context.expects(:chat).with(
         model: @azure_profile.llm_model,
         provider: :openai,
-        assume_model_exists: true,
+        assume_model_exists: true
       ).returns(mock_chat)
       @provider.expects(:build_context).returns(mock_context)
 
-      @provider.create_chat(tools: [tool_class])
+      @provider.create_chat(tools: [ tool_class ])
     end
   end
 end

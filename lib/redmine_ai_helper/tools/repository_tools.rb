@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "redmine_ai_helper/base_tools"
 
 module RedmineAiHelper
@@ -21,7 +22,7 @@ module RedmineAiHelper
           tags: repository.tags,
           branches: repository.branches,
           default_branch: repository.default_branch,
-          url: url_for(controller: "repositories", action: "show", id: repository.project, repository_id: repository, only_path: true),
+          url: url_for(controller: "repositories", action: "show", id: repository.project, repository_id: repository, only_path: true)
         }
 
         json
@@ -44,7 +45,7 @@ module RedmineAiHelper
         user = changeset.user
         author_info = {
           id: user.id,
-          name: user.name,
+          name: user.name
         } if user
         author_info = changeset.author if author_info.nil?
         revision_info = {
@@ -54,7 +55,7 @@ module RedmineAiHelper
           paths: changeset.filechanges.map { |f| f.path },
           comments: changeset.comments,
           revision: changeset.revision,
-          related_issues: changeset.issues.filter { |i| i.visible? }.map { |i| { id: i.id, subject: i.subject } },
+          related_issues: changeset.issues.filter { |i| i.visible? }.map { |i| { id: i.id, subject: i.subject } }
         }
         revision_info
       end
@@ -80,7 +81,7 @@ module RedmineAiHelper
           user = changeset.user
           author_info = {
             id: user.id,
-            name: user.name,
+            name: user.name
           } if user
           author_info = changeset.committer if author_info.nil?
         end
@@ -88,7 +89,7 @@ module RedmineAiHelper
           author: author_info,
           committed_on: changeset.committed_on,
           comments: changeset.comments,
-          revision: changeset.revision,
+          revision: changeset.revision
 
         } unless changeset.nil?
         json = {
@@ -96,7 +97,7 @@ module RedmineAiHelper
           type: entry.is_file? ? "file" : "directory",
           is_text: entry.is_text?,
           url_for_this_redmine: url_for(controller: "repositories", action: "entry", id: repository.project, repository_id: repository, path: path, rev: revision, only_path: true),
-          commit: commit_info,
+          commit: commit_info
         }
         json
       end
@@ -125,7 +126,7 @@ module RedmineAiHelper
         content = repository.cat(path, revision)
         json = {
           content: content,
-          url_for_this_redmine: url_for(controller: "repositories", action: "entry", id: repository.project, repository_id: repository, path: path, rev: revision, only_path: true),
+          url_for_this_redmine: url_for(controller: "repositories", action: "entry", id: repository.project, repository_id: repository, path: path, rev: revision, only_path: true)
         }
         json
       end
@@ -168,7 +169,7 @@ module RedmineAiHelper
         json = {
           repository_id: repository_id,
           revision: revision,
-          diff: diff_text,
+          diff: diff_text
         }
 
         json

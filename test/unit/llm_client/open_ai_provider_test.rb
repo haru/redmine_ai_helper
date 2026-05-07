@@ -52,7 +52,7 @@ class RedmineAiHelper::LlmClient::OpenAiProviderTest < ActiveSupport::TestCase
         llm_type: "OpenAI",
         llm_model: "gpt-4o",
         access_key: "test_key",
-        organization_id: "org-test123",
+        organization_id: "org-test123"
       )
       provider = RedmineAiHelper::LlmClient::OpenAiProvider.new(model_profile: profile)
       config = RubyLLM::Configuration.new
@@ -66,7 +66,7 @@ class RedmineAiHelper::LlmClient::OpenAiProviderTest < ActiveSupport::TestCase
         name: "OpenAI No Org Profile",
         llm_type: "OpenAI",
         llm_model: "gpt-4o",
-        access_key: "test_key",
+        access_key: "test_key"
       )
       provider = RedmineAiHelper::LlmClient::OpenAiProvider.new(model_profile: profile)
       config = RubyLLM::Configuration.new
@@ -82,7 +82,7 @@ class RedmineAiHelper::LlmClient::OpenAiProviderTest < ActiveSupport::TestCase
           name: "Test Unregistered OpenAI Profile",
           llm_type: "OpenAI",
           llm_model: @unregistered_model_id,
-          access_key: "test_openai_key",
+          access_key: "test_openai_key"
         )
         @fetch_provider = RedmineAiHelper::LlmClient::OpenAiProvider.new(model_profile: @openai_profile)
         RubyLLM.models.instance_variable_get(:@models).reject! { |m| m.id == @unregistered_model_id }
@@ -95,10 +95,10 @@ class RedmineAiHelper::LlmClient::OpenAiProviderTest < ActiveSupport::TestCase
 
       should "call list_models and register model when model is not in registry" do
         fetched_model = RubyLLM::Model::Info.new(
-          id: @unregistered_model_id, provider: "openai", name: "GPT Unregistered Test",
+          id: @unregistered_model_id, provider: "openai", name: "GPT Unregistered Test"
         )
         mock_provider_instance = mock("RubyLLMProviderInstance")
-        mock_provider_instance.expects(:list_models).returns([fetched_model])
+        mock_provider_instance.expects(:list_models).returns([ fetched_model ])
         RubyLLM::Providers::OpenAI.expects(:new).returns(mock_provider_instance)
 
         @fetch_provider.context

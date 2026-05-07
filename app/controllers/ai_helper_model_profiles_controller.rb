@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 # Controller for performing CRUD operations on ModelProfile
 class AiHelperModelProfilesController < ApplicationController
   include RedmineAiHelper::Logger
@@ -8,7 +9,7 @@ class AiHelperModelProfilesController < ApplicationController
   protect_from_forgery with: :exception
 
   before_action :require_admin
-  before_action :find_model_profile, only: [:show, :edit, :update, :destroy, :copy]
+  before_action :find_model_profile, only: [ :show, :edit, :update, :destroy, :copy ]
   self.main_menu = false
 
   # Placeholder value used to mask the actual access key in forms
@@ -27,6 +28,9 @@ class AiHelperModelProfilesController < ApplicationController
     @model_profile = AiHelperModelProfile.new
   end
 
+  # Display the form for editing an existing model profile
+  def edit
+  end
   # Create a new model profile
   def create
     @model_profile = AiHelperModelProfile.new
@@ -39,9 +43,6 @@ class AiHelperModelProfilesController < ApplicationController
     end
   end
 
-  # Display the form for editing an existing model profile
-  def edit
-  end
 
   # Update an existing model profile
   def update

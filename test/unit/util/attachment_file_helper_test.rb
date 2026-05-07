@@ -30,11 +30,11 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
 
       container = mock("container")
       container.stubs(:respond_to?).with(:attachments).returns(true)
-      container.stubs(:attachments).returns([attachment])
+      container.stubs(:attachments).returns([ attachment ])
 
       result = @helper.supported_attachment_paths(container)
 
-      assert_equal ["/path/to/files/image.png"], result
+      assert_equal [ "/path/to/files/image.png" ], result
     end
 
     should "return disk paths for various image formats" do
@@ -43,11 +43,11 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
 
         container = mock("container")
         container.stubs(:respond_to?).with(:attachments).returns(true)
-        container.stubs(:attachments).returns([attachment])
+        container.stubs(:attachments).returns([ attachment ])
 
         result = @helper.supported_attachment_paths(container)
 
-        assert_equal ["/path/to/files/image.#{ext}"], result, "Failed for extension: #{ext}"
+        assert_equal [ "/path/to/files/image.#{ext}" ], result, "Failed for extension: #{ext}"
       end
     end
 
@@ -56,11 +56,11 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
 
       container = mock("container")
       container.stubs(:respond_to?).with(:attachments).returns(true)
-      container.stubs(:attachments).returns([attachment])
+      container.stubs(:attachments).returns([ attachment ])
 
       result = @helper.supported_attachment_paths(container)
 
-      assert_equal ["/path/to/files/document.pdf"], result
+      assert_equal [ "/path/to/files/document.pdf" ], result
     end
 
     should "return disk paths for text and document files" do
@@ -69,11 +69,11 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
 
         container = mock("container")
         container.stubs(:respond_to?).with(:attachments).returns(true)
-        container.stubs(:attachments).returns([attachment])
+        container.stubs(:attachments).returns([ attachment ])
 
         result = @helper.supported_attachment_paths(container)
 
-        assert_equal ["/path/to/files/file.#{ext}"], result, "Failed for extension: #{ext}"
+        assert_equal [ "/path/to/files/file.#{ext}" ], result, "Failed for extension: #{ext}"
       end
     end
 
@@ -83,11 +83,11 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
 
         container = mock("container")
         container.stubs(:respond_to?).with(:attachments).returns(true)
-        container.stubs(:attachments).returns([attachment])
+        container.stubs(:attachments).returns([ attachment ])
 
         result = @helper.supported_attachment_paths(container)
 
-        assert_equal ["/path/to/files/code.#{ext}"], result, "Failed for extension: #{ext}"
+        assert_equal [ "/path/to/files/code.#{ext}" ], result, "Failed for extension: #{ext}"
       end
     end
 
@@ -97,11 +97,11 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
 
         container = mock("container")
         container.stubs(:respond_to?).with(:attachments).returns(true)
-        container.stubs(:attachments).returns([attachment])
+        container.stubs(:attachments).returns([ attachment ])
 
         result = @helper.supported_attachment_paths(container)
 
-        assert_equal ["/path/to/files/audio.#{ext}"], result, "Failed for extension: #{ext}"
+        assert_equal [ "/path/to/files/audio.#{ext}" ], result, "Failed for extension: #{ext}"
       end
     end
 
@@ -114,11 +114,11 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
 
       container = mock("container")
       container.stubs(:respond_to?).with(:attachments).returns(true)
-      container.stubs(:attachments).returns([supported, exe_file, zip_file, mp4_file, mov_file])
+      container.stubs(:attachments).returns([ supported, exe_file, zip_file, mp4_file, mov_file ])
 
       result = @helper.supported_attachment_paths(container)
 
-      assert_equal ["/path/to/files/image.png"], result
+      assert_equal [ "/path/to/files/image.png" ], result
     end
 
     should "exclude files that do not exist on disk" do
@@ -127,11 +127,11 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
 
       container = mock("container")
       container.stubs(:respond_to?).with(:attachments).returns(true)
-      container.stubs(:attachments).returns([existing, missing])
+      container.stubs(:attachments).returns([ existing, missing ])
 
       result = @helper.supported_attachment_paths(container)
 
-      assert_equal ["/path/to/files/existing.pdf"], result
+      assert_equal [ "/path/to/files/existing.pdf" ], result
     end
 
     should "return empty array when container has no attachments" do
@@ -160,11 +160,11 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
 
       container = mock("container")
       container.stubs(:respond_to?).with(:attachments).returns(true)
-      container.stubs(:attachments).returns([image, pdf, code])
+      container.stubs(:attachments).returns([ image, pdf, code ])
 
       result = @helper.supported_attachment_paths(container)
 
-      assert_equal ["/path/to/files/screenshot.png", "/path/to/files/report.pdf", "/path/to/files/script.rb"], result
+      assert_equal [ "/path/to/files/screenshot.png", "/path/to/files/report.pdf", "/path/to/files/script.rb" ], result
     end
 
     should "handle case-insensitive extensions" do
@@ -172,11 +172,11 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
 
       container = mock("container")
       container.stubs(:respond_to?).with(:attachments).returns(true)
-      container.stubs(:attachments).returns([attachment])
+      container.stubs(:attachments).returns([ attachment ])
 
       result = @helper.supported_attachment_paths(container)
 
-      assert_equal ["/path/to/files/IMAGE.PNG"], result
+      assert_equal [ "/path/to/files/IMAGE.PNG" ], result
     end
   end
 
@@ -187,7 +187,7 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
 
       container = mock("container")
       container.stubs(:respond_to?).with(:attachments).returns(true)
-      container.stubs(:attachments).returns([image, pdf])
+      container.stubs(:attachments).returns([ image, pdf ])
 
       supported_result = @helper.supported_attachment_paths(container)
       alias_result = @helper.image_attachment_paths(container)
@@ -256,7 +256,7 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
 
       container = mock("container")
       container.stubs(:respond_to?).with(:attachments).returns(true)
-      container.stubs(:attachments).returns([attachment])
+      container.stubs(:attachments).returns([ attachment ])
 
       result = @helper.supported_attachment_paths(container)
       assert_equal [], result
@@ -268,10 +268,10 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
 
       container = mock("container")
       container.stubs(:respond_to?).with(:attachments).returns(true)
-      container.stubs(:attachments).returns([attachment])
+      container.stubs(:attachments).returns([ attachment ])
 
       result = @helper.supported_attachment_paths(container)
-      assert_equal ["/path/to/files/image.png"], result
+      assert_equal [ "/path/to/files/image.png" ], result
     end
 
     should "exclude files exceeding attachment_max_size_mb" do
@@ -281,10 +281,10 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
 
       container = mock("container")
       container.stubs(:respond_to?).with(:attachments).returns(true)
-      container.stubs(:attachments).returns([small_file, large_file])
+      container.stubs(:attachments).returns([ small_file, large_file ])
 
       result = @helper.supported_attachment_paths(container)
-      assert_equal ["/path/to/files/small.png"], result
+      assert_equal [ "/path/to/files/small.png" ], result
     end
 
     should "include files at exactly the max size limit" do
@@ -293,10 +293,10 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
 
       container = mock("container")
       container.stubs(:respond_to?).with(:attachments).returns(true)
-      container.stubs(:attachments).returns([exact_file])
+      container.stubs(:attachments).returns([ exact_file ])
 
       result = @helper.supported_attachment_paths(container)
-      assert_equal ["/path/to/files/exact.png"], result
+      assert_equal [ "/path/to/files/exact.png" ], result
     end
 
     should "combine size filtering with extension filtering" do
@@ -307,10 +307,10 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
 
       container = mock("container")
       container.stubs(:respond_to?).with(:attachments).returns(true)
-      container.stubs(:attachments).returns([small_supported, large_supported, small_unsupported])
+      container.stubs(:attachments).returns([ small_supported, large_supported, small_unsupported ])
 
       result = @helper.supported_attachment_paths(container)
-      assert_equal ["/path/to/files/file.png"], result
+      assert_equal [ "/path/to/files/file.png" ], result
     end
   end
 end

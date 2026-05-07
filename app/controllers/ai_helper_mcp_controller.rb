@@ -44,8 +44,8 @@ class AiHelperMcpController < ApplicationController
           jsonrpc: "2.0",
           id: parsed_request["id"],
           result: {
-            content: [{ type: "text", text: l("ai_helper.mcp.errors.tool_permission_denied") }],
-            isError: true,
+            content: [ { type: "text", text: l("ai_helper.mcp.errors.tool_permission_denied") } ],
+            isError: true
           }
         }
         return

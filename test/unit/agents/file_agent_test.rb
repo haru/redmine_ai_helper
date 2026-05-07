@@ -16,7 +16,7 @@ class FileAgentTest < ActiveSupport::TestCase
     end
 
     should "have correct available_tool_providers" do
-      assert_equal [RedmineAiHelper::Tools::FileTools], @agent.available_tool_providers
+      assert_equal [ RedmineAiHelper::Tools::FileTools ], @agent.available_tool_providers
     end
 
     should "have correct available_tool_classes" do

@@ -8,10 +8,10 @@ class PromptTemplateTest < ActiveSupport::TestCase
       should "store template and input_variables" do
         pt = RedmineAiHelper::Util::PromptTemplate.new(
           template: "Hello {name}",
-          input_variables: ["name"]
+          input_variables: [ "name" ]
         )
         assert_equal "Hello {name}", pt.template
-        assert_equal ["name"], pt.input_variables
+        assert_equal [ "name" ], pt.input_variables
       end
 
       should "default input_variables to empty array" do
@@ -24,7 +24,7 @@ class PromptTemplateTest < ActiveSupport::TestCase
       should "substitute single variable" do
         pt = RedmineAiHelper::Util::PromptTemplate.new(
           template: "Hello {name}!",
-          input_variables: ["name"]
+          input_variables: [ "name" ]
         )
         assert_equal "Hello World!", pt.format(name: "World")
       end
@@ -32,7 +32,7 @@ class PromptTemplateTest < ActiveSupport::TestCase
       should "substitute multiple variables" do
         pt = RedmineAiHelper::Util::PromptTemplate.new(
           template: "Goal: {goal}\nAgent list: {agent_list}",
-          input_variables: ["goal", "agent_list"]
+          input_variables: [ "goal", "agent_list" ]
         )
         result = pt.format(goal: "Test goal", agent_list: "agent1, agent2")
         assert_equal "Goal: Test goal\nAgent list: agent1, agent2", result
@@ -49,7 +49,7 @@ class PromptTemplateTest < ActiveSupport::TestCase
       should "not consume backslashes in replacement values" do
         pt = RedmineAiHelper::Util::PromptTemplate.new(
           template: "Issue data: {issue}",
-          input_variables: ["issue"]
+          input_variables: [ "issue" ]
         )
         json_with_backslashes = '{"path": "C:\\Users\\test", "newline": "line1\\nline2"}'
         result = pt.format(issue: json_with_backslashes)
@@ -59,7 +59,7 @@ class PromptTemplateTest < ActiveSupport::TestCase
       should "handle JSON with special regex characters" do
         pt = RedmineAiHelper::Util::PromptTemplate.new(
           template: "Data: {data}",
-          input_variables: ["data"]
+          input_variables: [ "data" ]
         )
         json = '{"regex": "\\d+", "price": "$100"}'
         result = pt.format(data: json)
@@ -69,7 +69,7 @@ class PromptTemplateTest < ActiveSupport::TestCase
       should "convert non-string values to string" do
         pt = RedmineAiHelper::Util::PromptTemplate.new(
           template: "Count: {count}",
-          input_variables: ["count"]
+          input_variables: [ "count" ]
         )
         assert_equal "Count: 42", pt.format(count: 42)
       end
@@ -77,7 +77,7 @@ class PromptTemplateTest < ActiveSupport::TestCase
       should "substitute same variable multiple times" do
         pt = RedmineAiHelper::Util::PromptTemplate.new(
           template: "{name} says hello, {name}!",
-          input_variables: ["name"]
+          input_variables: [ "name" ]
         )
         assert_equal "Alice says hello, Alice!", pt.format(name: "Alice")
       end

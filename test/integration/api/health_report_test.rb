@@ -5,14 +5,14 @@ class ApiHealthReportTest < Redmine::IntegrationTest
 
   def setup
     # Enable REST API
-    Setting.rest_api_enabled = '1'
+    Setting.rest_api_enabled = "1"
 
     @project = Project.find(1)
 
     # Create role with AI Helper permission
-    @role = Role.find_or_create_by(name: 'AI Helper Test Role') do |role|
-      role.permissions = [:view_ai_helper, :view_issues, :view_project]
-      role.issues_visibility = 'all'
+    @role = Role.find_or_create_by(name: "AI Helper Test Role") do |role|
+      role.permissions = [ :view_ai_helper, :view_issues, :view_project ]
+      role.issues_visibility = "all"
     end
     @role.add_permission!(:view_ai_helper) unless @role.permissions.include?(:view_ai_helper)
     @role.save!
@@ -23,10 +23,10 @@ class ApiHealthReportTest < Redmine::IntegrationTest
 
     # Remove existing memberships and add with our role
     @project.members.where(user_id: @user.id).destroy_all
-    Member.create!(user: @user, project: @project, roles: [@role])
+    Member.create!(user: @user, project: @project, roles: [ @role ])
 
     # Enable AI Helper module
-    unless @project.module_enabled?('ai_helper')
+    unless @project.module_enabled?("ai_helper")
       EnabledModule.create!(project_id: @project.id, name: "ai_helper")
       @project.reload
     end
@@ -47,14 +47,14 @@ class ApiHealthReportTest < Redmine::IntegrationTest
     )
 
     post "/projects/#{@project.identifier}/ai_helper/health_report.json",
-         headers: { 'X-Redmine-API-Key' => @user.api_key }
+         headers: { "X-Redmine-API-Key" => @user.api_key }
 
     assert_response :success, "Expected 200 but got #{response.status}. Body: #{response.body}"
     json = JSON.parse(response.body)
-    assert json.key?('id')
-    assert_equal @project.id, json['project_id']
-    assert json.key?('health_report')
-    assert json.key?('created_at')
+    assert json.key?("id")
+    assert_equal @project.id, json["project_id"]
+    assert json.key?("health_report")
+    assert json.key?("created_at")
   end
 
   test "POST /projects/:id/ai_helper/health_report.json without API key should return 401" do

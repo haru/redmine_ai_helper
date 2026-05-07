@@ -40,7 +40,7 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
 
     should "not error with generate_schema" do
       mock_provider = mock("llm_provider")
-      mock_provider.stubs(:embed).returns([0.1] * 3072)
+      mock_provider.stubs(:embed).returns([ 0.1 ] * 3072)
       issue_vector_db = RedmineAiHelper::Vector::IssueVectorDb.new(llm_provider: mock_provider)
       assert issue_vector_db.generate_schema
     end
@@ -89,7 +89,7 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
           temperature: 0.0,
           base_uri: "https://api.openai.com",
           max_tokens: 0,
-          llm_type: "OpenAI",
+          llm_type: "OpenAI"
         )
       end
 
@@ -115,14 +115,14 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
     context "ask_with_filter" do
       should "return array" do
         res = @issue_vector_db.ask_with_filter(query: "test")
-        assert_equal res, ["test"]
+        assert_equal res, [ "test" ]
       end
     end
 
     context "similarity_search" do
       should "delegate to client similarity_search without filter" do
         res = @issue_vector_db.similarity_search(question: "test query", k: 5)
-        assert_equal [{ "payload" => { "issue_id" => 1 }, "score" => 0.9 }], res
+        assert_equal [ { "payload" => { "issue_id" => 1 }, "score" => 0.9 } ], res
       end
 
       should "pass filter parameter to client similarity_search" do
@@ -132,7 +132,7 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
           ]
         }
         res = @issue_vector_db.similarity_search(question: "test query", k: 5, filter: filter)
-        assert_equal [{ "payload" => { "issue_id" => 1 }, "score" => 0.9 }], res
+        assert_equal [ { "payload" => { "issue_id" => 1 }, "score" => 0.9 } ], res
         assert_equal filter, @qdrant_stub.last_filter
       end
 
@@ -165,12 +165,12 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
     end
 
     def ask_with_filter(query:, k: 20, filter: nil)
-      ["test"]
+      [ "test" ]
     end
 
     def similarity_search(query:, k: 4, filter: nil)
       @last_filter = filter
-      [{ "payload" => { "issue_id" => 1 }, "score" => 0.9 }]
+      [ { "payload" => { "issue_id" => 1 }, "score" => 0.9 } ]
     end
   end
 end

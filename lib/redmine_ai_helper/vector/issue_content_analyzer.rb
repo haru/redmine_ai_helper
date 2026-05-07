@@ -16,16 +16,16 @@ module RedmineAiHelper
         properties: {
           summary: {
             type: "string",
-            description: "A concise summary including the problem, background, cause, and solution (if any). Maximum 200 characters.",
+            description: "A concise summary including the problem, background, cause, and solution (if any). Maximum 200 characters."
           },
           keywords: {
             type: "array",
             items: { type: "string" },
-            description: "Array of 5-10 important keywords (technical terms, error messages, feature names, component names)",
-          },
+            description: "Array of 5-10 important keywords (technical terms, error messages, feature names, component names)"
+          }
         },
-        required: ["summary", "keywords"],
-        additionalProperties: false,
+        required: [ "summary", "keywords" ],
+        additionalProperties: false
       }.freeze
 
       # Initialize the analyzer with an optional LLM provider.
@@ -40,7 +40,7 @@ module RedmineAiHelper
       def analyze(issue)
         format_instructions = RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(JSON_SCHEMA)
         prompt = build_prompt(issue, format_instructions)
-        messages = [{ role: "user", content: prompt }]
+        messages = [ { role: "user", content: prompt } ]
         file_paths = supported_attachment_paths(issue)
         response = call_llm(messages, with: file_paths.presence)
         parse_response(response, messages)
@@ -59,13 +59,13 @@ module RedmineAiHelper
         issue_data = {
           subject: issue.subject,
           description: issue.description || "",
-          journals: issue.journals.map { |j| j.notes.to_s }.reject(&:blank?),
+          journals: issue.journals.map { |j| j.notes.to_s }.reject(&:blank?)
         }
 
         template = RedmineAiHelper::Util::PromptLoader.load_template("vector/issue_content_analysis")
         template.format(
           issue: issue_data.to_json,
-          format_instructions: format_instructions,
+          format_instructions: format_instructions
         )
       end
 
@@ -99,12 +99,12 @@ module RedmineAiHelper
           response: response,
           json_schema: JSON_SCHEMA,
           chat_method: method(:call_llm),
-          messages: messages,
+          messages: messages
         )
 
         {
           summary: result["summary"].to_s,
-          keywords: result["keywords"].is_a?(Array) ? result["keywords"] : [],
+          keywords: result["keywords"].is_a?(Array) ? result["keywords"] : []
         }
       rescue StandardError => e
         ai_helper_logger.warn("Failed to parse LLM response: #{e.message}")

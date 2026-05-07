@@ -219,7 +219,7 @@ class CustomCommandExpanderTest < ActiveSupport::TestCase
       command = commands.find { |c| c[:name] == "global_test" }
       assert command
       assert_equal "global_test", command[:name]
-      assert_equal [:description, :name], command.keys.sort
+      assert_equal [ :description, :name ], command.keys.sort
     end
 
     should "return description when present" do

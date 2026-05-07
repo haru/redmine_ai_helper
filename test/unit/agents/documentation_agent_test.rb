@@ -1,4 +1,4 @@
-require File.expand_path('../../../test_helper', __FILE__)
+require File.expand_path("../../../test_helper", __FILE__)
 
 class DocumentationAgentTest < ActiveSupport::TestCase
   fixtures :projects, :users
@@ -54,7 +54,7 @@ class DocumentationAgentTest < ActiveSupport::TestCase
   end
 
   def test_backstory_returns_prompt
-    prompt_mock = mock('prompt')
+    prompt_mock = mock("prompt")
     @agent.stubs(:load_prompt).with("documentation_agent/backstory").returns(prompt_mock)
 
     assert_equal prompt_mock, @agent.backstory
@@ -81,10 +81,10 @@ class DocumentationAgentTest < ActiveSupport::TestCase
 
     # Should fix the length to the actual length of the original text
     assert_equal 1, result.length
-    assert_equal "テストしてみたいい", result[0]['original']
-    assert_equal "テストしてみたい", result[0]['corrected']
-    assert_equal 0, result[0]['position']
-    assert_equal 9, result[0]['length']  # Corrected length (9 characters)
+    assert_equal "テストしてみたいい", result[0]["original"]
+    assert_equal "テストしてみたい", result[0]["corrected"]
+    assert_equal 0, result[0]["position"]
+    assert_equal 9, result[0]["length"]  # Corrected length (9 characters)
   end
 
   def test_check_typos_skips_unfindable_suggestions
@@ -139,7 +139,7 @@ class DocumentationAgentTest < ActiveSupport::TestCase
 
     # Should only keep the suggestion where original != corrected
     assert_equal 1, result.length
-    assert_equal "チェク", result[0]['original']
-    assert_equal "チェック", result[0]['corrected']
+    assert_equal "チェク", result[0]["original"]
+    assert_equal "チェック", result[0]["corrected"]
   end
 end

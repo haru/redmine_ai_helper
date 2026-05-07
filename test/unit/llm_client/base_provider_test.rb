@@ -52,7 +52,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
           access_key: "think_key",
           temperature: 0.5,
           llm_type: "Anthropic",
-          max_tokens: 4096,
+          max_tokens: 4096
         )
         @provider_with_profile = RedmineAiHelper::LlmClient::BaseProvider.new(model_profile: @explicit_profile)
       end
@@ -115,7 +115,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         mock_context.expects(:chat).with(model: @setting.model_profile.llm_model).returns(mock_chat)
         @provider.expects(:build_context).returns(mock_context)
 
-        @provider.create_chat(tools: [tool_class1, tool_class2])
+        @provider.create_chat(tools: [ tool_class1, tool_class2 ])
       end
 
       should "not call with_tools when tools is empty" do
@@ -161,7 +161,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
       should "generate embedding using context with default model" do
         mock_context = mock("RubyLLM::Context")
         mock_response = mock("EmbeddingResponse")
-        mock_response.expects(:vectors).returns([0.1, 0.2, 0.3])
+        mock_response.expects(:vectors).returns([ 0.1, 0.2, 0.3 ])
 
         @provider.expects(:build_context).returns(mock_context)
         mock_context.expects(:embed).with("test text").returns(mock_response)
@@ -170,13 +170,13 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         @setting.save!
 
         result = @provider.embed("test text")
-        assert_equal [0.1, 0.2, 0.3], result
+        assert_equal [ 0.1, 0.2, 0.3 ], result
       end
 
       should "use custom embedding model when configured" do
         mock_context = mock("RubyLLM::Context")
         mock_response = mock("EmbeddingResponse")
-        mock_response.expects(:vectors).returns([0.4, 0.5, 0.6])
+        mock_response.expects(:vectors).returns([ 0.4, 0.5, 0.6 ])
 
         @provider.expects(:build_context).returns(mock_context)
         mock_context.expects(:embed).with("test text", model: "text-embedding-ada-002").returns(mock_response)
@@ -185,7 +185,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         @setting.save!
 
         result = @provider.embed("test text")
-        assert_equal [0.4, 0.5, 0.6], result
+        assert_equal [ 0.4, 0.5, 0.6 ], result
       end
     end
 
@@ -196,7 +196,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
           name: "Test Fetch Profile",
           llm_type: "OpenAI",
           llm_model: @test_model_id,
-          access_key: "test_fetch_key",
+          access_key: "test_fetch_key"
         )
         # Anonymous subclass with OpenAI provider metadata
         @concrete_class = Class.new(RedmineAiHelper::LlmClient::BaseProvider) do
@@ -247,7 +247,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
       should "fetch_and_register_model! registers model when list_models contains the target" do
         fetched_model = RubyLLM::Model::Info.new(id: @test_model_id, provider: "openai", name: "New Model")
         mock_provider_instance = mock("RubyLLMProviderInstance")
-        mock_provider_instance.expects(:list_models).returns([fetched_model])
+        mock_provider_instance.expects(:list_models).returns([ fetched_model ])
         RubyLLM::Providers::OpenAI.expects(:new).returns(mock_provider_instance)
 
         @concrete_provider.send(:fetch_and_register_model!)
@@ -321,7 +321,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
           llm_type: "OpenAICompatible",
           llm_model: "my-custom-model",
           access_key: "test_compatible_key",
-          base_uri: "https://api.custom-llm.com/v1",
+          base_uri: "https://api.custom-llm.com/v1"
         )
         @setting.model_profile = compatible_profile
         @setting.save!
@@ -352,7 +352,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
           llm_type: "AzureOpenAi",
           llm_model: "gpt-4o",
           access_key: "test_azure_key",
-          base_uri: "https://myresource.openai.azure.com/openai/deployments/gpt-4o",
+          base_uri: "https://myresource.openai.azure.com/openai/deployments/gpt-4o"
         )
         @setting.model_profile = azure_profile
         @setting.save!

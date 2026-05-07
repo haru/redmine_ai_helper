@@ -9,7 +9,7 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
     @version = Version.find(1)
 
     # Enable AI Helper module for the project
-    @project.enabled_module_names = @project.enabled_module_names + ["ai_helper"]
+    @project.enabled_module_names = @project.enabled_module_names + [ "ai_helper" ]
     @project.save!
   end
 
@@ -27,7 +27,7 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
     should "validate presence of project_id" do
       report = AiHelperHealthReport.new(
         user_id: @user.id,
-        health_report: "Test report",
+        health_report: "Test report"
       )
       assert_not report.valid?
       assert report.errors[:project_id].present?
@@ -36,7 +36,7 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
     should "validate presence of user_id" do
       report = AiHelperHealthReport.new(
         project_id: @project.id,
-        health_report: "Test report",
+        health_report: "Test report"
       )
       assert_not report.valid?
       assert report.errors[:user_id].present?
@@ -45,7 +45,7 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
     should "validate presence of health_report" do
       report = AiHelperHealthReport.new(
         project_id: @project.id,
-        user_id: @user.id,
+        user_id: @user.id
       )
       assert_not report.valid?
       assert report.errors[:health_report].present?
@@ -55,7 +55,7 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       report = AiHelperHealthReport.new(
         project_id: @project.id,
         user_id: @user.id,
-        health_report: "Test report",
+        health_report: "Test report"
       )
       assert report.valid?
       assert report.save
@@ -65,7 +65,7 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       report = AiHelperHealthReport.create!(
         project_id: @project.id,
         user_id: @user.id,
-        health_report: "Test report",
+        health_report: "Test report"
       )
 
       metrics = { "total_issues" => 10, "closed_issues" => 5 }
@@ -81,7 +81,7 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       report = AiHelperHealthReport.create!(
         project_id: @project.id,
         user_id: @user.id,
-        health_report: "Test report",
+        health_report: "Test report"
       )
       assert_equal({}, report.metrics_hash)
     end
@@ -93,14 +93,14 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
         project_id: @project.id,
         user_id: @user.id,
         health_report: "Older report",
-        created_at: 2.days.ago,
+        created_at: 2.days.ago
       )
 
       newer_report = AiHelperHealthReport.create!(
         project_id: @project.id,
         user_id: @user.id,
         health_report: "Newer report",
-        created_at: 1.day.ago,
+        created_at: 1.day.ago
       )
 
       reports = AiHelperHealthReport.sorted
@@ -116,13 +116,13 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       report1 = AiHelperHealthReport.create!(
         project_id: @project.id,
         user_id: @user.id,
-        health_report: "Report for project 1",
+        health_report: "Report for project 1"
       )
 
       report2 = AiHelperHealthReport.create!(
         project_id: project2.id,
         user_id: @user.id,
-        health_report: "Report for project 2",
+        health_report: "Report for project 2"
       )
 
       reports = AiHelperHealthReport.for_project(@project.id)
@@ -137,13 +137,13 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       report1 = AiHelperHealthReport.create!(
         project_id: @project.id,
         user_id: @user.id,
-        health_report: "Report by user 1",
+        health_report: "Report by user 1"
       )
 
       report2 = AiHelperHealthReport.create!(
         project_id: @project.id,
         user_id: user2.id,
-        health_report: "Report by user 2",
+        health_report: "Report by user 2"
       )
 
       reports = AiHelperHealthReport.by_user(@user.id)
@@ -157,7 +157,7 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
           project_id: @project.id,
           user_id: @user.id,
           health_report: "Report #{i}",
-          created_at: i.days.ago,
+          created_at: i.days.ago
         )
       end
 
@@ -169,7 +169,7 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       report = AiHelperHealthReport.create!(
         project_id: @project.id,
         user_id: @user.id,
-        health_report: "Test report",
+        health_report: "Test report"
       )
 
       User.current = @user
@@ -182,10 +182,10 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       member = Member.find_by(project_id: @project.id, user_id: @user.id)
       if member.nil?
         member = Member.new(project_id: @project.id, user_id: @user.id)
-        member.role_ids = [role.id]
+        member.role_ids = [ role.id ]
         member.save!
       else
-        member.role_ids = [role.id]
+        member.role_ids = [ role.id ]
         member.save!
       end
 
@@ -196,7 +196,7 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       report = AiHelperHealthReport.create!(
         project_id: @project.id,
         user_id: @user.id,
-        health_report: "Test report",
+        health_report: "Test report"
       )
 
       User.current = @user
@@ -209,10 +209,10 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       member = Member.find_by(project_id: @project.id, user_id: @user.id)
       if member.nil?
         member = Member.new(project_id: @project.id, user_id: @user.id)
-        member.role_ids = [role.id]
+        member.role_ids = [ role.id ]
         member.save!
       else
-        member.role_ids = [role.id]
+        member.role_ids = [ role.id ]
         member.save!
       end
 
@@ -224,14 +224,14 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
         project: @project,
         user: @user,
         health_report: "Report 1",
-        metrics: {}.to_json,
+        metrics: {}.to_json
       )
 
       report2 = AiHelperHealthReport.create!(
         project: @project,
         user: @user,
         health_report: "Report 2",
-        metrics: {}.to_json,
+        metrics: {}.to_json
       )
 
       assert report1.comparable_with?(report2)
@@ -243,7 +243,7 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
         project: @project,
         user: @user,
         health_report: "Report 1",
-        metrics: {}.to_json,
+        metrics: {}.to_json
       )
 
       assert_not report.comparable_with?(report)
@@ -256,14 +256,14 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
         project: @project,
         user: @user,
         health_report: "Report 1",
-        metrics: {}.to_json,
+        metrics: {}.to_json
       )
 
       report2 = AiHelperHealthReport.create!(
         project: project2,
         user: @user,
         health_report: "Report 2",
-        metrics: {}.to_json,
+        metrics: {}.to_json
       )
 
       assert_not report1.comparable_with?(report2)
@@ -274,7 +274,7 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
         project: @project,
         user: @user,
         health_report: "Report 1",
-        metrics: {}.to_json,
+        metrics: {}.to_json
       )
 
       assert_not report.comparable_with?("not a report")
@@ -285,15 +285,15 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
     should "return summary info" do
       metrics = {
         issue_statistics: {
-          total_issues: 50,
-        },
+          total_issues: 50
+        }
       }
 
       report = AiHelperHealthReport.create!(
         project: @project,
         user: @user,
         health_report: "Test report",
-        metrics: metrics.to_json,
+        metrics: metrics.to_json
       )
 
       summary = report.summary_info
@@ -307,7 +307,7 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       report = AiHelperHealthReport.create!(
         project: @project,
         user: @user,
-        health_report: "Test report",
+        health_report: "Test report"
       )
 
       summary = report.summary_info

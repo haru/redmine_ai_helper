@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 # AiHelperModelProfile model for managing AI Helper model profiles
 class AiHelperModelProfile < ApplicationRecord
   include Redmine::SafeAttributes

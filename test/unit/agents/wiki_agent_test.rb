@@ -65,7 +65,7 @@ class WikiAgentTest < ActiveSupport::TestCase
     context "#wiki_summary" do
       setup do
         # Mock the prompt loading and formatting
-        mock_prompt = mock('prompt')
+        mock_prompt = mock("prompt")
         mock_prompt.stubs(:format).returns("Formatted prompt text")
         @agent.stubs(:load_prompt).returns(mock_prompt)
 
@@ -79,14 +79,14 @@ class WikiAgentTest < ActiveSupport::TestCase
       end
 
       should "call load_prompt with correct template name" do
-        @agent.expects(:load_prompt).with("wiki_agent/summary").returns(mock('prompt').tap do |p|
+        @agent.expects(:load_prompt).with("wiki_agent/summary").returns(mock("prompt").tap do |p|
           p.stubs(:format).returns("Formatted text")
         end)
         @agent.wiki_summary(wiki_page: @wiki_page)
       end
 
       should "format prompt with wiki page data" do
-        mock_prompt = mock('prompt')
+        mock_prompt = mock("prompt")
         # Expect JSON data structure
         expected_data = {
           title: @wiki_page.title,
@@ -102,26 +102,26 @@ class WikiAgentTest < ActiveSupport::TestCase
 
       should "call chat with formatted message" do
         formatted_text = "Formatted prompt text"
-        mock_prompt = mock('prompt')
+        mock_prompt = mock("prompt")
         mock_prompt.stubs(:format).returns(formatted_text)
         @agent.stubs(:load_prompt).returns(mock_prompt)
         @agent.stubs(:supported_attachment_paths).returns([])
 
-        expected_messages = [{ role: "user", content: formatted_text }]
+        expected_messages = [ { role: "user", content: formatted_text } ]
         @agent.expects(:chat).with(expected_messages, {}, nil, with: nil).returns("Summary")
 
         @agent.wiki_summary(wiki_page: @wiki_page)
       end
 
       should "pass file paths to chat with: parameter when files exist" do
-        mock_prompt = mock('prompt')
+        mock_prompt = mock("prompt")
         mock_prompt.stubs(:format).returns("Formatted prompt")
         @agent.stubs(:load_prompt).returns(mock_prompt)
 
-        file_paths = ["/path/to/wiki_image.png"]
+        file_paths = [ "/path/to/wiki_image.png" ]
         @agent.stubs(:supported_attachment_paths).with(@wiki_page).returns(file_paths)
 
-        expected_messages = [{ role: "user", content: "Formatted prompt" }]
+        expected_messages = [ { role: "user", content: "Formatted prompt" } ]
         @agent.expects(:chat).with(expected_messages, {}, nil, with: file_paths).returns("Summary with file")
 
         result = @agent.wiki_summary(wiki_page: @wiki_page)
@@ -129,13 +129,13 @@ class WikiAgentTest < ActiveSupport::TestCase
       end
 
       should "pass with: nil when no files exist" do
-        mock_prompt = mock('prompt')
+        mock_prompt = mock("prompt")
         mock_prompt.stubs(:format).returns("Formatted prompt")
         @agent.stubs(:load_prompt).returns(mock_prompt)
 
         @agent.stubs(:supported_attachment_paths).with(@wiki_page).returns([])
 
-        expected_messages = [{ role: "user", content: "Formatted prompt" }]
+        expected_messages = [ { role: "user", content: "Formatted prompt" } ]
         @agent.expects(:chat).with(expected_messages, {}, nil, with: nil).returns("Summary without file")
 
         result = @agent.wiki_summary(wiki_page: @wiki_page)
@@ -145,7 +145,7 @@ class WikiAgentTest < ActiveSupport::TestCase
 
     context "#generate_wiki_completion" do
       setup do
-        mock_prompt = mock('prompt')
+        mock_prompt = mock("prompt")
         mock_prompt.stubs(:format).returns("Formatted completion prompt")
         @agent.stubs(:load_prompt).returns(mock_prompt)
         @agent.stubs(:chat).returns("completion text here")
@@ -199,7 +199,7 @@ class WikiAgentTest < ActiveSupport::TestCase
       end
 
       should "call load_prompt with correct template" do
-        @agent.expects(:load_prompt).with("wiki_agent/wiki_inline_completion").returns(mock('prompt').tap do |p|
+        @agent.expects(:load_prompt).with("wiki_agent/wiki_inline_completion").returns(mock("prompt").tap do |p|
           p.stubs(:format).returns("Formatted text")
         end)
 
@@ -224,7 +224,7 @@ class WikiAgentTest < ActiveSupport::TestCase
       should "handle nil wiki page" do
         context = @agent.send(:build_wiki_completion_context, "test text", @project, nil)
 
-        assert_equal 'New Wiki Page', context[:page_title]
+        assert_equal "New Wiki Page", context[:page_title]
         assert_equal @project.name, context[:project_name]
       end
 

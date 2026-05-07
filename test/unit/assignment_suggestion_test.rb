@@ -12,10 +12,10 @@ class RedmineAiHelper::AssignmentSuggestionTest < ActiveSupport::TestCase
       @user1 = users(:users_002) # John Smith
       @user2 = users(:users_003) # Dave Lopper
       @user3 = users(:users_004) # Robert Hill
-      @assignable_users = [@user1, @user2, @user3]
+      @assignable_users = [ @user1, @user2, @user3 ]
       @suggestion = RedmineAiHelper::AssignmentSuggestion.new(
         project: @project,
-        assignable_users: @assignable_users,
+        assignable_users: @assignable_users
       )
     end
 
@@ -128,17 +128,17 @@ class RedmineAiHelper::AssignmentSuggestionTest < ActiveSupport::TestCase
             {
               id: 101, subject: "Login error fix",
               assigned_to: { id: @user1.id, name: @user1.name },
-              similarity_score: 92.0,
+              similarity_score: 92.0
             },
             {
               id: 102, subject: "Authentication bug",
               assigned_to: { id: @user1.id, name: @user1.name },
-              similarity_score: 88.0,
+              similarity_score: 88.0
             },
             {
               id: 103, subject: "Session management",
               assigned_to: { id: @user2.id, name: @user2.name },
-              similarity_score: 85.0,
+              similarity_score: 85.0
             },
           ]
           RedmineAiHelper::Llm.any_instance.stubs(:find_similar_issues_by_content).returns(similar_issues)
@@ -168,17 +168,17 @@ class RedmineAiHelper::AssignmentSuggestionTest < ActiveSupport::TestCase
             {
               id: 101, subject: "Issue A",
               assigned_to: { id: @user1.id, name: @user1.name },
-              similarity_score: 70.0,
+              similarity_score: 70.0
             },
             {
               id: 102, subject: "Issue B",
               assigned_to: { id: @user1.id, name: @user1.name },
-              similarity_score: 95.0,
+              similarity_score: 95.0
             },
             {
               id: 103, subject: "Issue C",
               assigned_to: { id: @user1.id, name: @user1.name },
-              similarity_score: 80.0,
+              similarity_score: 80.0
             },
           ]
           RedmineAiHelper::Llm.any_instance.stubs(:find_similar_issues_by_content).returns(similar_issues)
@@ -199,7 +199,7 @@ class RedmineAiHelper::AssignmentSuggestionTest < ActiveSupport::TestCase
             {
               id: 100 + i, subject: "Issue #{i}",
               assigned_to: { id: @user1.id, name: @user1.name },
-              similarity_score: 90.0 - i,
+              similarity_score: 90.0 - i
             }
           end
           RedmineAiHelper::Llm.any_instance.stubs(:find_similar_issues_by_content).returns(similar_issues)
@@ -210,7 +210,7 @@ class RedmineAiHelper::AssignmentSuggestionTest < ActiveSupport::TestCase
           # Should be limited to 5 similar issues
           assert_equal 5, user1_suggestion[:similar_issues].length
           # Should keep the top 5 by similarity score
-          assert_equal [101, 102, 103, 104, 105], user1_suggestion[:similar_issues].map { |s| s[:id] }
+          assert_equal [ 101, 102, 103, 104, 105 ], user1_suggestion[:similar_issues].map { |s| s[:id] }
         end
 
         should "handle string keys in similar_issues data" do
@@ -218,7 +218,7 @@ class RedmineAiHelper::AssignmentSuggestionTest < ActiveSupport::TestCase
             {
               "id" => 101, "subject" => "String key issue",
               "assigned_to" => { "id" => @user1.id, "name" => @user1.name },
-              "similarity_score" => 90.0,
+              "similarity_score" => 90.0
             },
           ]
           RedmineAiHelper::Llm.any_instance.stubs(:find_similar_issues_by_content).returns(similar_issues)
@@ -236,7 +236,7 @@ class RedmineAiHelper::AssignmentSuggestionTest < ActiveSupport::TestCase
     context "#suggest_from_workload" do
       should "return suggestions sorted by ascending open issue count" do
         # Clear existing issue assignments in the project for our test users
-        Issue.where(project: @project, assigned_to_id: [@user1.id, @user2.id, @user3.id]).update_all(assigned_to_id: nil)
+        Issue.where(project: @project, assigned_to_id: [ @user1.id, @user2.id, @user3.id ]).update_all(assigned_to_id: nil)
 
         open_status = IssueStatus.where(is_closed: false).first
         tracker = @project.trackers.first
@@ -250,7 +250,7 @@ class RedmineAiHelper::AssignmentSuggestionTest < ActiveSupport::TestCase
             author: users(:users_001),
             assigned_to: @user1,
             status: open_status,
-            priority: IssuePriority.first,
+            priority: IssuePriority.first
           )
         end
         Issue.create!(
@@ -260,7 +260,7 @@ class RedmineAiHelper::AssignmentSuggestionTest < ActiveSupport::TestCase
           author: users(:users_001),
           assigned_to: @user2,
           status: open_status,
-          priority: IssuePriority.first,
+          priority: IssuePriority.first
         )
 
         result = @suggestion.send(:suggest_from_workload)
@@ -296,7 +296,7 @@ class RedmineAiHelper::AssignmentSuggestionTest < ActiveSupport::TestCase
           author: users(:users_001),
           assigned_to: @user1,
           status: open_status,
-          priority: IssuePriority.first,
+          priority: IssuePriority.first
         )
 
         result = @suggestion.send(:suggest_from_workload)
@@ -316,7 +316,7 @@ class RedmineAiHelper::AssignmentSuggestionTest < ActiveSupport::TestCase
         should "return available: false" do
           result = @suggestion.send(
             :suggest_from_instructions,
-            subject: "Test", description: "desc", tracker_id: nil, category_id: nil,
+            subject: "Test", description: "desc", tracker_id: nil, category_id: nil
           )
           assert_equal false, result[:available]
           assert_empty result[:suggestions]
@@ -334,13 +334,13 @@ class RedmineAiHelper::AssignmentSuggestionTest < ActiveSupport::TestCase
             "suggestions" => [
               { "user_id" => @user1.id, "reason" => "Bug expert" },
               { "user_id" => @user2.id, "reason" => "Available" },
-            ],
+            ]
           }
           RedmineAiHelper::Llm.any_instance.stubs(:suggest_assignees_by_instructions).returns(llm_response)
 
           result = @suggestion.send(
             :suggest_from_instructions,
-            subject: "Fix bug", description: "A bug needs fixing", tracker_id: 1, category_id: nil,
+            subject: "Fix bug", description: "A bug needs fixing", tracker_id: 1, category_id: nil
           )
           assert_equal true, result[:available]
           assert_equal 2, result[:suggestions].length
@@ -355,13 +355,13 @@ class RedmineAiHelper::AssignmentSuggestionTest < ActiveSupport::TestCase
             "suggestions" => [
               { "user_id" => non_assignable_user.id, "reason" => "Admin" },
               { "user_id" => @user1.id, "reason" => "Developer" },
-            ],
+            ]
           }
           RedmineAiHelper::Llm.any_instance.stubs(:suggest_assignees_by_instructions).returns(llm_response)
 
           result = @suggestion.send(
             :suggest_from_instructions,
-            subject: "Fix bug", description: "desc", tracker_id: 1, category_id: nil,
+            subject: "Fix bug", description: "desc", tracker_id: 1, category_id: nil
           )
           user_ids = result[:suggestions].map { |s| s[:user_id] }
           assert_not_includes user_ids, non_assignable_user.id

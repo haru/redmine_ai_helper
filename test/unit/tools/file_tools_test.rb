@@ -35,7 +35,7 @@ class FileToolsTest < ActiveSupport::TestCase
       end
 
       should "analyze files attached to an issue" do
-        @provider.stubs(:supported_attachment_paths).with(@issue).returns([@file_path])
+        @provider.stubs(:supported_attachment_paths).with(@issue).returns([ @file_path ])
 
         result = @provider.analyze_content_files(content_type: "issue", content_id: @issue.id)
 
@@ -46,7 +46,7 @@ class FileToolsTest < ActiveSupport::TestCase
       should "analyze PDF files attached to an issue" do
         pdf_path = File.join(Dir.tmpdir, "test_report.pdf")
         File.write(pdf_path, "fake pdf content")
-        @provider.stubs(:supported_attachment_paths).with(@issue).returns([pdf_path])
+        @provider.stubs(:supported_attachment_paths).with(@issue).returns([ pdf_path ])
 
         result = @provider.analyze_content_files(content_type: "issue", content_id: @issue.id)
 
@@ -57,10 +57,10 @@ class FileToolsTest < ActiveSupport::TestCase
       end
 
       should "pass question to LLM when provided" do
-        @provider.stubs(:supported_attachment_paths).with(@issue).returns([@file_path])
+        @provider.stubs(:supported_attachment_paths).with(@issue).returns([ @file_path ])
 
         @mock_chat.expects(:ask).with do |prompt, **kwargs|
-          prompt.include?("What does this document describe?") && kwargs[:with] == [@file_path]
+          prompt.include?("What does this document describe?") && kwargs[:with] == [ @file_path ]
         end.returns(@mock_response)
 
         result = @provider.analyze_content_files(
@@ -73,10 +73,10 @@ class FileToolsTest < ActiveSupport::TestCase
       end
 
       should "return general description without question" do
-        @provider.stubs(:supported_attachment_paths).with(@issue).returns([@file_path])
+        @provider.stubs(:supported_attachment_paths).with(@issue).returns([ @file_path ])
 
         @mock_chat.expects(:ask).with do |prompt, **kwargs|
-          kwargs[:with] == [@file_path]
+          kwargs[:with] == [ @file_path ]
         end.returns(@mock_response)
 
         result = @provider.analyze_content_files(content_type: "issue", content_id: @issue.id)
@@ -94,7 +94,7 @@ class FileToolsTest < ActiveSupport::TestCase
       end
 
       should "not include disk path in return value" do
-        @provider.stubs(:supported_attachment_paths).with(@issue).returns([@file_path])
+        @provider.stubs(:supported_attachment_paths).with(@issue).returns([ @file_path ])
 
         result = @provider.analyze_content_files(content_type: "issue", content_id: @issue.id)
 
@@ -117,7 +117,7 @@ class FileToolsTest < ActiveSupport::TestCase
       end
 
       should "analyze files attached to a wiki page" do
-        @provider.stubs(:supported_attachment_paths).with(@wiki_page).returns([@file_path])
+        @provider.stubs(:supported_attachment_paths).with(@wiki_page).returns([ @file_path ])
 
         result = @provider.analyze_content_files(content_type: "wiki_page", content_id: @wiki_page.id)
 
@@ -137,7 +137,7 @@ class FileToolsTest < ActiveSupport::TestCase
       end
 
       should "analyze files attached to a message" do
-        @provider.stubs(:supported_attachment_paths).with(@message).returns([@file_path])
+        @provider.stubs(:supported_attachment_paths).with(@message).returns([ @file_path ])
 
         result = @provider.analyze_content_files(content_type: "message", content_id: @message.id)
 
@@ -191,7 +191,7 @@ class FileToolsTest < ActiveSupport::TestCase
       url = "https://example.com/document.pdf"
 
       @mock_chat.expects(:ask).with do |prompt, **kwargs|
-        kwargs[:with] == [url]
+        kwargs[:with] == [ url ]
       end.returns(@mock_response)
 
       result = @provider.analyze_url_file(url: url)
@@ -204,7 +204,7 @@ class FileToolsTest < ActiveSupport::TestCase
       url = "https://example.com/chart.png"
 
       @mock_chat.expects(:ask).with do |prompt, **kwargs|
-        prompt.include?("What trend does this chart show?") && kwargs[:with] == [url]
+        prompt.include?("What trend does this chart show?") && kwargs[:with] == [ url ]
       end.returns(@mock_response)
 
       result = @provider.analyze_url_file(url: url, question: "What trend does this chart show?")

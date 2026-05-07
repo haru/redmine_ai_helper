@@ -12,7 +12,7 @@ class RedmineAiHelper::LlmClient::OpenAiCompatibleProviderTest < ActiveSupport::
         llm_type: "OpenAICompatible",
         llm_model: "my-custom-model",
         access_key: "test_compatible_key",
-        base_uri: "https://api.custom-llm.com/v1",
+        base_uri: "https://api.custom-llm.com/v1"
       )
       @setting.model_profile = @compatible_profile
       @setting.save!
@@ -67,7 +67,7 @@ class RedmineAiHelper::LlmClient::OpenAiCompatibleProviderTest < ActiveSupport::
       mock_context.expects(:chat).with(
         model: @compatible_profile.llm_model,
         provider: :openai,
-        assume_model_exists: true,
+        assume_model_exists: true
       ).returns(mock_chat)
       @provider.expects(:build_context).returns(mock_context)
 
@@ -83,7 +83,7 @@ class RedmineAiHelper::LlmClient::OpenAiCompatibleProviderTest < ActiveSupport::
       mock_context.expects(:chat).with(
         model: @compatible_profile.llm_model,
         provider: :openai,
-        assume_model_exists: true,
+        assume_model_exists: true
       ).returns(mock_chat)
       @provider.expects(:build_context).returns(mock_context)
 
@@ -99,11 +99,11 @@ class RedmineAiHelper::LlmClient::OpenAiCompatibleProviderTest < ActiveSupport::
       mock_context.expects(:chat).with(
         model: @compatible_profile.llm_model,
         provider: :openai,
-        assume_model_exists: true,
+        assume_model_exists: true
       ).returns(mock_chat)
       @provider.expects(:build_context).returns(mock_context)
 
-      @provider.create_chat(tools: [tool_class])
+      @provider.create_chat(tools: [ tool_class ])
     end
 
     should "set openai_use_system_role to true in context config" do

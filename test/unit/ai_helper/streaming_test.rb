@@ -128,7 +128,7 @@ class AiHelper::StreamingTest < ActiveSupport::TestCase
 
   def test_send_interactive_options_event_writes_sse_event_when_options_present
     context = DummyContext.new
-    options = [{ label: "はい", value: "はい" }, { label: "いいえ", value: "いいえ" }]
+    options = [ { label: "はい", value: "はい" }, { label: "いいえ", value: "いいえ" } ]
 
     context.send(:send_interactive_options_event, options)
 

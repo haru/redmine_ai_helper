@@ -136,7 +136,7 @@ class AiHelperControllerTest < ActionController::TestCase
       should "handle nil additional_info parameter" do
         # Mock conversation to avoid LLM calls
         @controller.stubs(:find_conversation)
-        @conversation.stubs(:messages).returns(mock('messages').tap { |m| m.stubs(:<<) })
+        @conversation.stubs(:messages).returns(mock("messages").tap { |m| m.stubs(:<<) })
         @conversation.stubs(:save!)
         AiHelperConversation.stubs(:cleanup_old_conversations)
 
@@ -258,7 +258,7 @@ class AiHelperControllerTest < ActionController::TestCase
         @issue = Issue.find_by(project_id: @project.id)
         @llm = RedmineAiHelper::Llm.new
         issue = Issue.new(subject: "Test Issue", project: @project, author: @user)
-        @llm.stubs(:generate_sub_issues).returns([issue])
+        @llm.stubs(:generate_sub_issues).returns([ issue ])
         RedmineAiHelper::Llm.stubs(:new).returns(@llm)
       end
 
@@ -277,7 +277,7 @@ class AiHelperControllerTest < ActionController::TestCase
         @issue.save!
         @sub_issue_params = {
           "1" => { subject: "Sub Issue 1", description: "Description 1", tracker_id: 1, check: true, fixed_version_id: nil },
-          "2" => { subject: "Sub Issue 2", description: "Description 2", tracker_id: 1, fixed_version_id: nil },
+          "2" => { subject: "Sub Issue 2", description: "Description 2", tracker_id: 1, fixed_version_id: nil }
         }
       end
 
@@ -405,15 +405,15 @@ class AiHelperControllerTest < ActionController::TestCase
         @issue = Issue.new(subject: "Parent Issue", project: @project, author: @user, tracker_id: 1, status_id: 1)
         @issue.save!
         @sub_issue_params = {
-          "1" => { subject: "", description: "Invalid issue", tracker_id: 1, check: true },
+          "1" => { subject: "", description: "Invalid issue", tracker_id: 1, check: true }
         }
       end
 
       should "handle validation errors when creating sub-issues" do
         # Mock issue save failure
         Issue.any_instance.stubs(:save).returns(false)
-        Issue.any_instance.stubs(:errors).returns(mock('errors').tap do |errors|
-          errors.stubs(:full_messages).returns(["Subject can't be blank"])
+        Issue.any_instance.stubs(:errors).returns(mock("errors").tap do |errors|
+          errors.stubs(:full_messages).returns([ "Subject can't be blank" ])
         end)
 
         post :add_sub_issues, params: { id: @issue.id, sub_issues: @sub_issue_params, tracker_id: 1 }
@@ -432,7 +432,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
       should "assign a valid assignee to the sub-issue" do
         sub_issue_params = {
-          "1" => { subject: "Sub Issue", description: "Desc", tracker_id: 1, check: true, assigned_to_id: @assignable_user.id },
+          "1" => { subject: "Sub Issue", description: "Desc", tracker_id: 1, check: true, assigned_to_id: @assignable_user.id }
         }
         post :add_sub_issues, params: { id: @issue.id, sub_issues: sub_issue_params, tracker_id: 1 }
         assert_response :redirect
@@ -443,7 +443,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
       should "create sub-issue without assignee when assigned_to_id is blank" do
         sub_issue_params = {
-          "1" => { subject: "Sub Issue", description: "Desc", tracker_id: 1, check: true, assigned_to_id: "" },
+          "1" => { subject: "Sub Issue", description: "Desc", tracker_id: 1, check: true, assigned_to_id: "" }
         }
         post :add_sub_issues, params: { id: @issue.id, sub_issues: sub_issue_params, tracker_id: 1 }
         assert_response :redirect
@@ -454,7 +454,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
       should "show error when assigned_to_id is not a valid assignable user" do
         sub_issue_params = {
-          "1" => { subject: "Sub Issue", description: "Desc", tracker_id: 1, check: true, assigned_to_id: 99999 },
+          "1" => { subject: "Sub Issue", description: "Desc", tracker_id: 1, check: true, assigned_to_id: 99999 }
         }
         post :add_sub_issues, params: { id: @issue.id, sub_issues: sub_issue_params, tracker_id: 1 }
         assert_response :redirect
@@ -518,7 +518,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
       should "return similar issues successfully" do
         # Mock LLM find_similar_issues method with proper structure
-        similar_issues = [{
+        similar_issues = [ {
           id: 2,
           project: { name: "Test Project" },
           subject: "Similar issue",
@@ -527,7 +527,7 @@ class AiHelperControllerTest < ActionController::TestCase
           assigned_to: { name: "Test User" },
           similarity_score: 85.0,
           issue_url: "/issues/2"
-        }]
+        } ]
 
         @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
 
@@ -542,7 +542,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
       should "exclude current issue from results" do
         # Mock LLM find_similar_issues method (should already exclude current issue)
-        similar_issues = [{
+        similar_issues = [ {
           id: 2,
           project: { name: "Test Project" },
           subject: "Similar issue",
@@ -551,7 +551,7 @@ class AiHelperControllerTest < ActionController::TestCase
           assigned_to: { name: "Test User" },
           similarity_score: 85.0,
           issue_url: "/issues/2"
-        }]
+        } ]
 
         @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
 
@@ -589,7 +589,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
       should "handle missing assigned_to_name gracefully" do
         # Mock LLM find_similar_issues method with nil assigned_to
-        similar_issues = [{
+        similar_issues = [ {
           id: 2,
           project: { name: "Test Project" },
           subject: "Similar issue",
@@ -598,7 +598,7 @@ class AiHelperControllerTest < ActionController::TestCase
           assigned_to: nil,
           similarity_score: 85.0,
           issue_url: "/issues/2"
-        }]
+        } ]
 
         @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
 
@@ -718,7 +718,7 @@ class AiHelperControllerTest < ActionController::TestCase
         post :project_health_pdf, params: { id: @project.id, health_report_content: health_content }
         assert_response :success
         assert_equal "application/pdf", @response.content_type
-        assert_match /#{@project.identifier}-health-report-/, @response.headers['Content-Disposition']
+        assert_match /#{@project.identifier}-health-report-/, @response.headers["Content-Disposition"]
       end
 
       should "sanitize malicious content" do
@@ -1019,10 +1019,10 @@ class AiHelperControllerTest < ActionController::TestCase
       should "handle streaming response errors in generate_project_health" do
         # Mock the error condition that triggers lines 328-351
         error = StandardError.new("LLM Error")
-        error.set_backtrace(["line1", "line2", "line3"])
+        error.set_backtrace([ "line1", "line2", "line3" ])
 
         # Mock to avoid actual LLM calls but still trigger error path
-        llm_mock = mock('llm')
+        llm_mock = mock("llm")
         llm_mock.stubs(:project_health_report).raises(error)
         RedmineAiHelper::Llm.stubs(:new).returns(llm_mock)
 
@@ -1095,7 +1095,7 @@ class AiHelperControllerTest < ActionController::TestCase
         parent_issue.save!
 
         sub_issue_params = {
-          "1" => { subject: "Sub Issue", description: "Description", tracker_id: 1, check: true, fixed_version_id: "" },
+          "1" => { subject: "Sub Issue", description: "Description", tracker_id: 1, check: true, fixed_version_id: "" }
         }
 
         post :add_sub_issues, params: { id: parent_issue.id, sub_issues: sub_issue_params, tracker_id: 1 }
@@ -1276,8 +1276,8 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         json_response = JSON.parse(response.body)
-        assert json_response.key?('suggestion')
-        assert_equal "This is a suggested completion.", json_response['suggestion']
+        assert json_response.key?("suggestion")
+        assert_equal "This is a suggested completion.", json_response["suggestion"]
       end
 
       should "return error for non-JSON request in suggest_completion" do
@@ -1287,7 +1287,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :unsupported_media_type
         json_response = JSON.parse(response.body)
-        assert_equal "Unsupported Media Type", json_response['error']
+        assert_equal "Unsupported Media Type", json_response["error"]
       end
 
 
@@ -1300,7 +1300,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :bad_request
         json_response = JSON.parse(response.body)
-        assert_equal "Text is required", json_response['error']
+        assert_equal "Text is required", json_response["error"]
       end
 
       should "return error for text too long in suggest_completion" do
@@ -1313,7 +1313,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :bad_request
         json_response = JSON.parse(response.body)
-        assert_equal "Text too long", json_response['error']
+        assert_equal "Text too long", json_response["error"]
       end
 
       should "return error for invalid cursor position in suggest_completion" do
@@ -1326,7 +1326,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :bad_request
         json_response = JSON.parse(response.body)
-        assert_equal "Invalid cursor position", json_response['error']
+        assert_equal "Invalid cursor position", json_response["error"]
       end
 
       should "handle LLM error gracefully in suggest_completion" do
@@ -1339,7 +1339,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :internal_server_error
         json_response = JSON.parse(response.body)
-        assert_equal "Failed to generate suggestion", json_response['error']
+        assert_equal "Failed to generate suggestion", json_response["error"]
       end
 
       should "handle suggest_completion with nil cursor position" do
@@ -1352,8 +1352,8 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         json_response = JSON.parse(response.body)
-        assert json_response.key?('suggestion')
-        assert_equal "completion text", json_response['suggestion']
+        assert json_response.key?("suggestion")
+        assert_equal "completion text", json_response["suggestion"]
       end
 
       should "suggest completion for notes context type" do
@@ -1366,8 +1366,8 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         json_response = JSON.parse(response.body)
-        assert json_response.key?('suggestion')
-        assert_equal "I have reviewed this issue.", json_response['suggestion']
+        assert json_response.key?("suggestion")
+        assert_equal "I have reviewed this issue.", json_response["suggestion"]
       end
 
       should "return error for invalid context_type" do
@@ -1379,18 +1379,18 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :bad_request
         json_response = JSON.parse(response.body)
-        assert_equal "Invalid context_type. Must be 'description' or 'note'", json_response['error']
+        assert_equal "Invalid context_type. Must be 'description' or 'note'", json_response["error"]
       end
 
       should "return error for note context_type without existing issue" do
         issue = Issue.find(1)
         @request.headers["Content-Type"] = "application/json"
-        post :suggest_completion, params: { id: issue.project.id, issue_id: 'new' },
+        post :suggest_completion, params: { id: issue.project.id, issue_id: "new" },
              body: { text: "Test note", cursor_position: 5, context_type: "note" }.to_json
 
         assert_response :bad_request
         json_response = JSON.parse(response.body)
-        assert_equal "Issue is required for note completion", json_response['error']
+        assert_equal "Issue is required for note completion", json_response["error"]
       end
 
       should "handle note completion with issue context" do
@@ -1411,8 +1411,8 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         json_response = JSON.parse(response.body)
-        assert json_response.key?('suggestion')
-        assert_equal " and I agree with the analysis.", json_response['suggestion']
+        assert json_response.key?("suggestion")
+        assert_equal " and I agree with the analysis.", json_response["suggestion"]
 
         # Clean up
         journal.destroy
@@ -1431,9 +1431,9 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         json_response = JSON.parse(response.body)
-        assert json_response.key?('suggestion')
+        assert json_response.key?("suggestion")
         # The response should be a string (empty in test environment due to mocking)
-        assert json_response['suggestion'].is_a?(String)
+        assert json_response["suggestion"].is_a?(String)
       end
 
       should "test prompt loader integration through agent" do
@@ -1456,7 +1456,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         json_response = JSON.parse(response.body)
-        assert_equal "Mocked completion", json_response['suggestion']
+        assert_equal "Mocked completion", json_response["suggestion"]
       end
 
       should "test note context integration" do
@@ -1485,7 +1485,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         json_response = JSON.parse(response.body)
-        assert_equal "Contextual note completion", json_response['suggestion']
+        assert_equal "Contextual note completion", json_response["suggestion"]
 
         # Clean up
         journal.destroy
@@ -1521,7 +1521,7 @@ class AiHelperControllerTest < ActionController::TestCase
       end
 
       should "return similar issues successfully" do
-        similar_issues = [{
+        similar_issues = [ {
           id: 2,
           project: { name: "Test Project" },
           subject: "Similar issue",
@@ -1530,7 +1530,7 @@ class AiHelperControllerTest < ActionController::TestCase
           assigned_to: { name: "Test User" },
           similarity_score: 85.0,
           issue_url: "/issues/2"
-        }]
+        } ]
 
         @llm_mock.expects(:find_similar_issues_by_content)
                  .with(subject: "Test subject", description: "Test description", project: @project)
@@ -1588,7 +1588,7 @@ class AiHelperControllerTest < ActionController::TestCase
       end
 
       should "work with only subject provided" do
-        similar_issues = [{
+        similar_issues = [ {
           id: 3,
           project: { name: "Test Project" },
           subject: "Matching issue",
@@ -1597,7 +1597,7 @@ class AiHelperControllerTest < ActionController::TestCase
           assigned_to: nil,
           similarity_score: 72.0,
           issue_url: "/issues/3"
-        }]
+        } ]
 
         @llm_mock.expects(:find_similar_issues_by_content)
                  .with(subject: "Test subject", description: "", project: @project)
@@ -1612,7 +1612,7 @@ class AiHelperControllerTest < ActionController::TestCase
       end
 
       should "work with only description provided" do
-        similar_issues = [{
+        similar_issues = [ {
           id: 4,
           project: { name: "Test Project" },
           subject: "Another matching issue",
@@ -1621,7 +1621,7 @@ class AiHelperControllerTest < ActionController::TestCase
           assigned_to: { name: "Developer" },
           similarity_score: 68.5,
           issue_url: "/issues/4"
-        }]
+        } ]
 
         @llm_mock.expects(:find_similar_issues_by_content)
                  .with(subject: "", description: "Test description", project: @project)
@@ -1662,7 +1662,7 @@ class AiHelperControllerTest < ActionController::TestCase
           controller_name: "issues",
           action_name: "show",
           content_id: 1,
-          additional_info: { key: "value" },
+          additional_info: { key: "value" }
         }
 
         assert_response :success
@@ -1679,7 +1679,7 @@ class AiHelperControllerTest < ActionController::TestCase
           controller_name: "issues",
           action_name: "show",
           content_id: 1,
-          additional_info: { key: "value" },
+          additional_info: { key: "value" }
         }
 
         assert_response :success
@@ -1695,7 +1695,7 @@ class AiHelperControllerTest < ActionController::TestCase
           controller_name: "issues",
           action_name: "show",
           content_id: 1,
-          additional_info: { key: "value" },
+          additional_info: { key: "value" }
         }
 
         assert_response :success
@@ -1713,7 +1713,7 @@ class AiHelperControllerTest < ActionController::TestCase
           controller_name: "issues",
           action_name: "show",
           content_id: 1,
-          additional_info: { key: "value" },
+          additional_info: { key: "value" }
         }
 
         assert_response :success
@@ -1733,7 +1733,7 @@ class AiHelperControllerTest < ActionController::TestCase
           controller_name: "issues",
           action_name: "show",
           content_id: 1,
-          additional_info: { key: "value" },
+          additional_info: { key: "value" }
         }
 
         assert_response :success
@@ -1756,7 +1756,7 @@ class AiHelperControllerTest < ActionController::TestCase
           controller_name: "issues",
           action_name: "show",
           content_id: 1,
-          additional_info: { key: "value" },
+          additional_info: { key: "value" }
         }
 
         assert_response :success
@@ -1774,7 +1774,7 @@ class AiHelperControllerTest < ActionController::TestCase
           controller_name: "issues",
           action_name: "show",
           content_id: 1,
-          additional_info: { key: "value" },
+          additional_info: { key: "value" }
         }
 
         assert_response :success

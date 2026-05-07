@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "redmine_ai_helper/base_tools"
 require "redmine_ai_helper/util/issue_json"
 require "redmine_ai_helper/util/attachment_file_helper"
@@ -60,31 +61,31 @@ module RedmineAiHelper
           trackers: project.trackers.map do |tracker|
             {
               id: tracker.id,
-              name: tracker.name,
+              name: tracker.name
             }
           end,
           statuses: IssueStatus.all.map do |status|
             {
               id: status.id,
-              name: status.name,
+              name: status.name
             }
           end,
           priorities: IssuePriority.all.map do |priority|
             {
               id: priority.id,
-              name: priority.name,
+              name: priority.name
             }
           end,
           categories: project.issue_categories.map do |category|
             {
               id: category.id,
-              name: category.name,
+              name: category.name
             }
           end,
           versions: project.versions.map do |version|
             {
               id: version.id,
-              name: version.name,
+              name: version.name
             }
           end,
           issue_custom_fields: project.issue_custom_fields.map do |field|
@@ -93,9 +94,9 @@ module RedmineAiHelper
               name: field.name,
               type: field.field_format,
               possible_values: field.possible_values,
-              is_required: field.is_required,
+              is_required: field.is_required
             }
-          end,
+          end
         }
 
         properties

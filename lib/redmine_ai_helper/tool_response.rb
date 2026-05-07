@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 module RedmineAiHelper
   # Class to store responses from tools
   # TODO: May not be needed

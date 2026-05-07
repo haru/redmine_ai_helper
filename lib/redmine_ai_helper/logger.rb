@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 module RedmineAiHelper
   # Logger mixin for AI Helper plugin
   module Logger

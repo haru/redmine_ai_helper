@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative "llm_client/open_ai_provider"
 require_relative "llm_client/anthropic_provider"
 require_relative "llm_client/gemini_provider"
@@ -86,11 +87,11 @@ module RedmineAiHelper
       # @return [Array] An array of options for the select menu.
       def option_for_select
         [
-          ["OpenAI", LLM_OPENAI],
-          ["OpenAI Compatible(Experimental)", LLM_OPENAI_COMPATIBLE],
-          ["Gemini(Experimental)", LLM_GEMINI],
-          ["Anthropic", LLM_ANTHROPIC],
-          ["Azure OpenAI(Experimental)", LLM_AZURE_OPENAI],
+          [ "OpenAI", LLM_OPENAI ],
+          [ "OpenAI Compatible(Experimental)", LLM_OPENAI_COMPATIBLE ],
+          [ "Gemini(Experimental)", LLM_GEMINI ],
+          [ "Anthropic", LLM_ANTHROPIC ],
+          [ "Azure OpenAI(Experimental)", LLM_AZURE_OPENAI ],
         ]
       end
     end

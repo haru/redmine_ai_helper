@@ -51,7 +51,7 @@ class McpServerLoaderTest < ActiveSupport::TestCase
 
     should "validate server configurations correctly" do
       # Valid stdio configuration
-      valid_stdio = { "type" => "stdio", "command" => "npx", "args" => ["-y", "@modelcontextprotocol/server-slack"] }
+      valid_stdio = { "type" => "stdio", "command" => "npx", "args" => [ "-y", "@modelcontextprotocol/server-slack" ] }
       assert @loader.send(:valid_server_config?, valid_stdio)
 
       # Valid HTTP configuration
@@ -100,14 +100,14 @@ class McpServerLoaderTest < ActiveSupport::TestCase
     end
 
     should "build command string correctly" do
-      config_with_both = { "command" => "npx", "args" => ["-y", "@modelcontextprotocol/server-slack"] }
+      config_with_both = { "command" => "npx", "args" => [ "-y", "@modelcontextprotocol/server-slack" ] }
       expected = "npx -y @modelcontextprotocol/server-slack"
       assert_equal expected, @loader.send(:build_command_string, config_with_both)
 
       config_command_only = { "command" => "node server.js" }
       assert_equal "node server.js", @loader.send(:build_command_string, config_command_only)
 
-      config_args_only = { "args" => ["node", "server.js"] }
+      config_args_only = { "args" => [ "node", "server.js" ] }
       assert_equal "node server.js", @loader.send(:build_command_string, config_args_only)
     end
 
@@ -123,9 +123,9 @@ class McpServerLoaderTest < ActiveSupport::TestCase
         "mcpServers" => {
           "filesystem" => {
             "command" => "node",
-            "args" => ["server.js"],
-          },
-        },
+            "args" => [ "server.js" ]
+          }
+        }
       }
       server_config = config["mcpServers"]["filesystem"]
 
@@ -140,7 +140,7 @@ class McpServerLoaderTest < ActiveSupport::TestCase
       fake_tools = build_fake_tool_instances
       RedmineAiHelper::Tools::McpTools.expects(:generate_tool_classes).with(
         mcp_server_name: "filesystem",
-        mcp_client: fake_client,
+        mcp_client: fake_client
       ).once.returns(fake_tools)
 
       stub_llm_provider
@@ -176,9 +176,9 @@ class McpServerLoaderTest < ActiveSupport::TestCase
         "mcpServers" => {
           "filesystem" => {
             "command" => "node",
-            "args" => ["server.js"],
-          },
-        },
+            "args" => [ "server.js" ]
+          }
+        }
       }
       server_config = config["mcpServers"]["filesystem"]
 
@@ -207,9 +207,9 @@ class McpServerLoaderTest < ActiveSupport::TestCase
         "mcpServers" => {
           "filesystem" => {
             "command" => "node",
-            "args" => ["server.js"],
-          },
-        },
+            "args" => [ "server.js" ]
+          }
+        }
       }
 
       fake_client = mock("mcp_client")
@@ -237,7 +237,7 @@ class McpServerLoaderTest < ActiveSupport::TestCase
       stdio_config = { "type" => "stdio", "command" => "node" }
       http_config = { "type" => "http", "url" => "https://api.example.com" }
       sse_config = { "type" => "sse", "url" => "https://stream.example.com" }
-      inferred_config = { "command" => "node", "args" => ["worker.js"] }
+      inferred_config = { "command" => "node", "args" => [ "worker.js" ] }
 
       @loader.expects(:create_stdio_client).with("stdio_server", stdio_config).returns(:stdio_client)
       @loader.expects(:create_http_client).with("http_server", http_config).returns(:http_client)
@@ -255,7 +255,7 @@ class McpServerLoaderTest < ActiveSupport::TestCase
     end
 
     should "infer missing server type during validation" do
-      config = { "command" => "node", "args" => ["server.js"] }
+      config = { "command" => "node", "args" => [ "server.js" ] }
       assert @loader.send(:valid_server_config?, config)
       assert_equal "stdio", config["type"]
 
@@ -269,7 +269,7 @@ class McpServerLoaderTest < ActiveSupport::TestCase
 
   def create_mock_logger
     mock("logger").tap do |logger|
-      [:debug, :info, :warn, :error].each do |level|
+      [ :debug, :info, :warn, :error ].each do |level|
         logger.stubs(level)
       end
     end

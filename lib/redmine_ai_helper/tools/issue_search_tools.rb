@@ -81,7 +81,7 @@ module RedmineAiHelper
       # @param custom_fields [Array] Custom field search filters.
       # @return [Hash] A hash containing issues array and total_count.
       def search_issues(project_id:, limit: 50, fields: [], date_fields: [], time_fields: [], number_fields: [], text_fields: [], status_field: [], custom_fields: [])
-        limit = [limit.to_i, 1].max
+        limit = [ limit.to_i, 1 ].max
         project = Project.find(project_id)
 
         if fields.empty? && date_fields.empty? && time_fields.empty? && number_fields.empty? && text_fields.empty? && status_field.empty? && custom_fields.empty?
@@ -99,7 +99,7 @@ module RedmineAiHelper
         params = { fields: [], operators: {}, values: {} }
         params[:fields] << "project_id"
         params[:operators]["project_id"] = "="
-        params[:values]["project_id"] = [project_id.to_s]
+        params[:values]["project_id"] = [ project_id.to_s ]
 
         fields.each do |field|
           params[:fields] << field[:field_name]
@@ -276,8 +276,8 @@ module RedmineAiHelper
         def initialize(params)
           @query = IssueQuery.new(name: "_")
           @params = params
-          @query.column_names = ["project", "tracker", "status", "subject", "priority", "assigned_to", "updated_on"]
-          @query.sort_criteria = [["id", "desc"]]
+          @query.column_names = [ "project", "tracker", "status", "subject", "priority", "assigned_to", "updated_on" ]
+          @query.sort_criteria = [ [ "id", "desc" ] ]
           # Keep the default status filter (open issues only) unless explicitly specified
         end
 

@@ -14,7 +14,7 @@ class McpToolsTest < ActiveSupport::TestCase
     should "return tool instances from MCP client" do
       tools = Tools::McpTools.generate_tool_classes(
         mcp_server_name: @server_name,
-        mcp_client: @mock_client,
+        mcp_client: @mock_client
       )
 
       assert tools.is_a?(Array)
@@ -28,12 +28,12 @@ class McpToolsTest < ActiveSupport::TestCase
     should "cache tool instances per server name" do
       tools1 = Tools::McpTools.generate_tool_classes(
         mcp_server_name: @server_name,
-        mcp_client: @mock_client,
+        mcp_client: @mock_client
       )
 
       tools2 = Tools::McpTools.generate_tool_classes(
         mcp_server_name: @server_name,
-        mcp_client: @mock_client,
+        mcp_client: @mock_client
       )
 
       assert_same tools1, tools2
@@ -44,12 +44,12 @@ class McpToolsTest < ActiveSupport::TestCase
 
       tools1 = Tools::McpTools.generate_tool_classes(
         mcp_server_name: "server1",
-        mcp_client: @mock_client,
+        mcp_client: @mock_client
       )
 
       tools2 = Tools::McpTools.generate_tool_classes(
         mcp_server_name: "server2",
-        mcp_client: other_client,
+        mcp_client: other_client
       )
 
       assert_not_same tools1, tools2
@@ -63,7 +63,7 @@ class McpToolsTest < ActiveSupport::TestCase
 
       tools = Tools::McpTools.generate_tool_classes(
         mcp_server_name: "error_server",
-        mcp_client: error_client,
+        mcp_client: error_client
       )
 
       assert_equal [], tools
@@ -78,7 +78,7 @@ class McpToolsTest < ActiveSupport::TestCase
 
     mock_client = Object.new
     mock_client.define_singleton_method(:tools) do
-      [mock_tool1, mock_tool2]
+      [ mock_tool1, mock_tool2 ]
     end
 
     mock_client

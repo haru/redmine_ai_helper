@@ -12,7 +12,7 @@ class AiHelperSettingTest < ActiveSupport::TestCase
       temperature: 0.7,
       base_uri: "https://api.openai.com/v1",
       max_tokens: 2048,
-      llm_type: RedmineAiHelper::LlmProvider::LLM_OPENAI_COMPATIBLE,
+      llm_type: RedmineAiHelper::LlmProvider::LLM_OPENAI_COMPATIBLE
     )
     @setting.model_profile = model_profile
   end
@@ -30,7 +30,7 @@ class AiHelperSettingTest < ActiveSupport::TestCase
         temperature: 0.7,
         base_uri: "https://api.anthropic.com",
         max_tokens: 4096,
-        llm_type: RedmineAiHelper::LlmProvider::LLM_ANTHROPIC,
+        llm_type: RedmineAiHelper::LlmProvider::LLM_ANTHROPIC
       )
     end
 

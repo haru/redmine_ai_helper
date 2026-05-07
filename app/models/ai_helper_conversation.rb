@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 # AiHelperConversation model for managing AI Helper conversations
 class AiHelperConversation < ApplicationRecord
   has_many :messages, class_name: "AiHelperMessage", foreign_key: "conversation_id", dependent: :destroy
@@ -11,7 +12,7 @@ class AiHelperConversation < ApplicationRecord
     messages.map do |message|
       {
         role: message.role,
-        content: message.content,
+        content: message.content
       }
     end
   end

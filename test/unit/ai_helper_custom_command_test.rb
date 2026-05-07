@@ -64,7 +64,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
     end
 
     should "validate format of name" do
-      invalid_names = ["test space", "test@", "test!", "test#", "テスト"]
+      invalid_names = [ "test space", "test@", "test!", "test#", "テスト" ]
       invalid_names.each do |invalid_name|
         command = AiHelperCustomCommand.new(
           name: invalid_name,
@@ -78,7 +78,7 @@ class AiHelperCustomCommandTest < ActiveSupport::TestCase
     end
 
     should "accept valid name formats" do
-      valid_names = ["test", "test_command", "test-command", "Test123", "test_123-cmd"]
+      valid_names = [ "test", "test_command", "test-command", "Test123", "test_123-cmd" ]
       valid_names.each do |valid_name|
         command = AiHelperCustomCommand.new(
           name: valid_name,

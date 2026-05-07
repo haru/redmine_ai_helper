@@ -41,7 +41,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
         assigned_to_id: @user.id,
         status_id: 1,
         priority_id: 4, # Normal
-        due_date: Date.today + 1,
+        due_date: Date.today + 1
       )
 
       mock_prompt = mock("Prompt")
@@ -66,8 +66,8 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
       @agent.send(:fetch_todo_issues, project: @project)
 
       # The query should look for assigned_to_id in both user.id and user.group_ids
-      assert_includes [User.current.id] + User.current.group_ids, User.current.id
-      assert_includes [User.current.id] + User.current.group_ids, group.id
+      assert_includes [ User.current.id ] + User.current.group_ids, User.current.id
+      assert_includes [ User.current.id ] + User.current.group_ids, group.id
 
       mock_prompt = mock("Prompt")
       mock_prompt.stubs(:format).returns("Mock prompt")
@@ -93,7 +93,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
         assigned_to_id: @user.id,
         status_id: closed_status.id,
         priority_id: 4,
-        due_date: Date.today,
+        due_date: Date.today
       )
 
       # Get issues that would be fetched
@@ -112,7 +112,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
         status_id: 1,
         priority_id: 4, # Normal
         due_date: Date.today - 5,
-        updated_on: Date.today - 3,
+        updated_on: Date.today - 3
       )
 
       # Create future issue
@@ -125,7 +125,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
         status_id: 1,
         priority_id: 4, # Normal
         due_date: Date.today + 7,
-        updated_on: Date.today,
+        updated_on: Date.today
       )
 
       overdue_score = @agent.send(:calculate_priority_score, overdue_issue)
@@ -144,7 +144,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
         status_id: 1,
         priority_id: 6, # High (30 points, position 3)
         due_date: Date.today - 3, # 3 days overdue
-        updated_on: Date.today - 2,
+        updated_on: Date.today - 2
       )
 
       score = @agent.send(:calculate_priority_score, issue)
@@ -163,7 +163,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
         status_id: 1,
         priority_id: 5, # Normal (20 points, position 2)
         due_date: Date.today,
-        updated_on: Date.today - 1,
+        updated_on: Date.today - 1
       )
 
       score = @agent.send(:calculate_priority_score, issue)
@@ -181,7 +181,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
         assigned_to_id: @user.id,
         status_id: 1,
         priority_id: 4, # Low (10 points, position 1)
-        due_date: Date.today + 5,
+        due_date: Date.today + 5
       )
 
       # Update updated_on directly via SQL to simulate untouched period
@@ -216,7 +216,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
         assigned_to_id: @user.id,
         status_id: 1,
         priority_id: 4,
-        due_date: Date.today + 1,
+        due_date: Date.today + 1
       )
 
       streamed_content = []
@@ -243,10 +243,10 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
         status_id: 1,
         priority_id: 4,
         due_date: Date.today + 1,
-        updated_on: Date.today - 2,
+        updated_on: Date.today - 2
       )
 
-      formatted_json = @agent.send(:format_issues_for_prompt, [issue])
+      formatted_json = @agent.send(:format_issues_for_prompt, [ issue ])
       formatted = JSON.parse(formatted_json)
 
       assert_equal 1, formatted.length
@@ -284,7 +284,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
       # Add user as member with view_ai_helper permission
       role = Role.find(1) # Manager role
       role.add_permission!(:view_ai_helper) unless role.has_permission?(:view_ai_helper)
-      Member.create!(user: @user, project: other_project, roles: [role])
+      Member.create!(user: @user, project: other_project, roles: [ role ])
 
       # Create issue assigned to user
       other_issue = Issue.create!(
@@ -295,7 +295,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
         assigned_to_id: @user.id,
         status_id: 1,
         priority_id: 5,
-        due_date: Date.today,
+        due_date: Date.today
       )
 
       issues = @agent.send(:fetch_todo_issues_from_other_projects)
@@ -311,7 +311,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
 
       # Add user as member
       role = Role.find(1)
-      Member.create!(user: @user, project: other_project, roles: [role])
+      Member.create!(user: @user, project: other_project, roles: [ role ])
 
       # Create issue
       other_issue = Issue.create!(
@@ -322,7 +322,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
         assigned_to_id: @user.id,
         status_id: 1,
         priority_id: 5,
-        due_date: Date.today,
+        due_date: Date.today
       )
 
       issues = @agent.send(:fetch_todo_issues_from_other_projects)

@@ -9,11 +9,11 @@ class LlmProviderTest < ActiveSupport::TestCase
 
     should "return correct options for select" do
       expected_options = [
-        ["OpenAI", "OpenAI"],
-        ["OpenAI Compatible(Experimental)", "OpenAICompatible"],
-        ["Gemini(Experimental)", "Gemini"],
-        ["Anthropic", "Anthropic"],
-        ["Azure OpenAI(Experimental)", "AzureOpenAi"],
+        [ "OpenAI", "OpenAI" ],
+        [ "OpenAI Compatible(Experimental)", "OpenAICompatible" ],
+        [ "Gemini(Experimental)", "Gemini" ],
+        [ "Anthropic", "Anthropic" ],
+        [ "Azure OpenAI(Experimental)", "AzureOpenAi" ],
       ]
       assert_equal expected_options, @llm_provider.option_for_select
     end
@@ -28,7 +28,7 @@ class LlmProviderTest < ActiveSupport::TestCase
           temperature: 0.7,
           base_uri: "https://api.anthropic.com",
           max_tokens: 4096,
-          llm_type: RedmineAiHelper::LlmProvider::LLM_ANTHROPIC,
+          llm_type: RedmineAiHelper::LlmProvider::LLM_ANTHROPIC
         )
       end
 
@@ -85,7 +85,7 @@ class LlmProviderTest < ActiveSupport::TestCase
           temperature: 0.0,
           base_uri: "https://api.openai.com",
           max_tokens: 0,
-          llm_type: RedmineAiHelper::LlmProvider::LLM_OPENAI,
+          llm_type: RedmineAiHelper::LlmProvider::LLM_OPENAI
         )
       end
 

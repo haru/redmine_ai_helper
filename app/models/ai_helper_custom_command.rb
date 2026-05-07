@@ -106,7 +106,7 @@ class AiHelperCustomCommand < ActiveRecord::Base
         user_id: user.id,
         user_scope: :project_limited,
         project_id: project.id,
-        name: normalized_name,
+        name: normalized_name
       ).first
       return command if command
     end
@@ -116,7 +116,7 @@ class AiHelperCustomCommand < ActiveRecord::Base
       command_type: :user,
       user_id: user.id,
       user_scope: :common,
-      name: normalized_name,
+      name: normalized_name
     ).first
     return command if command
 
@@ -125,7 +125,7 @@ class AiHelperCustomCommand < ActiveRecord::Base
       command = where(
         command_type: :project,
         project_id: project.id,
-        name: normalized_name,
+        name: normalized_name
       ).first
       return command if command
     end
@@ -133,7 +133,7 @@ class AiHelperCustomCommand < ActiveRecord::Base
     # Priority 4: Global commands
     where(
       command_type: :global,
-      name: normalized_name,
+      name: normalized_name
     ).first
   end
 

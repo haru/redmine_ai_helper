@@ -6,8 +6,8 @@ class RedmineAiHelper::LangfuseUtil::LangfuseWrapperTest < ActiveSupport::TestCa
     RedmineAiHelper::Util::ConfigFile.stubs(:load_config).returns({
       langfuse: {
         public_key: "test_public_key",
-        endpoint: nil,
-      },
+        endpoint: nil
+      }
     })
     Langfuse::Client.stubs(:instance).returns(DummyClient.new)
 
@@ -38,7 +38,7 @@ class RedmineAiHelper::LangfuseUtil::LangfuseWrapperTest < ActiveSupport::TestCa
 
     should "create generation" do
       span = @langfuse.create_span(name: "test_span", input: "test_input")
-      generation = span.create_generation(name: "aaa", messages: ["messages"], model: "test_model")
+      generation = span.create_generation(name: "aaa", messages: [ "messages" ], model: "test_model")
       assert generation
       assert generation
     end
@@ -47,7 +47,7 @@ class RedmineAiHelper::LangfuseUtil::LangfuseWrapperTest < ActiveSupport::TestCa
   context "GenerationWrapper" do
     should "finish the generation and return the generation object" do
       span = @langfuse.create_span(name: "test_span", input: "test_input")
-      generation = span.create_generation(name: "test_gen", messages: ["message1", "message2"], model: "test_model")
+      generation = span.create_generation(name: "test_gen", messages: [ "message1", "message2" ], model: "test_model")
       assert generation.finish(output: "test output", usage: { prompt_tokens: 10, completion_tokens: 5 })
     end
   end
@@ -89,7 +89,7 @@ class RedmineAiHelper::LangfuseUtil::LangfuseWrapperTest < ActiveSupport::TestCa
         name: attr[:name],
         user_id: attr[:user_id],
         input: attr[:input],
-        metadata: attr[:metadata],
+        metadata: attr[:metadata]
       )
     end
 
@@ -103,7 +103,7 @@ class RedmineAiHelper::LangfuseUtil::LangfuseWrapperTest < ActiveSupport::TestCa
         name: attr[:name],
         trace_id: 1,
         input: attr[:input],
-        parent_span_id: attr[:parent_span_id],
+        parent_span_id: attr[:parent_span_id]
       )
     end
 
@@ -114,7 +114,7 @@ class RedmineAiHelper::LangfuseUtil::LangfuseWrapperTest < ActiveSupport::TestCa
         messages: attr[:messages],
         model: attr[:model],
         output: "test output",
-        span_id: "test_span_id",
+        span_id: "test_span_id"
       )
     end
 

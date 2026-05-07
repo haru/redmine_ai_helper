@@ -10,7 +10,7 @@ class RepositoryToolsTest < ActiveSupport::TestCase
     @repository = @project.create_repository(
       type: "Repository::Git",
       url: repo_dir,
-      identifier: "test",
+      identifier: "test"
     )
     @repository.fetch_changesets
     @repository.save!

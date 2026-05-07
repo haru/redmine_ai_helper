@@ -22,8 +22,8 @@ class AiHelperProjectSettingsControllerTest < ActionController::TestCase
                        setting: {
                          issue_draft_instructions: "New instructions",
                          subtask_instructions: "New subtask",
-                         lock_version: @settings.lock_version,
-                       },
+                         lock_version: @settings.lock_version
+                       }
                      }
       assert_redirected_to ai_helper_dashboard_path(id: @project, tab: "settings")
       assert_equal I18n.t(:notice_successful_update), flash[:notice]
@@ -45,8 +45,8 @@ class AiHelperProjectSettingsControllerTest < ActionController::TestCase
                        setting: {
                          issue_draft_instructions: "Invalid instructions",
                          subtask_instructions: "Invalid subtask",
-                         lock_version: lock_version,
-                       },
+                         lock_version: lock_version
+                       }
                      }
       assert_redirected_to ai_helper_dashboard_path(id: @project, tab: "settings")
       assert_equal I18n.t(:notice_locking_conflict), flash[:error]
@@ -61,8 +61,8 @@ class AiHelperProjectSettingsControllerTest < ActionController::TestCase
                        setting: {
                          issue_draft_instructions: "Invalid instructions",
                          subtask_instructions: "Invalid subtask",
-                         lock_version: @settings.lock_version,
-                       },
+                         lock_version: @settings.lock_version
+                       }
                      }
       assert_redirected_to ai_helper_dashboard_path(id: @project, tab: "settings")
     end

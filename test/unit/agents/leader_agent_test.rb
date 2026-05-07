@@ -22,10 +22,10 @@ class LeaderAgentTest < ActiveSupport::TestCase
 
     @params = {
       project: Project.find(1),
-      langfuse: DummyLangfuse.new,
+      langfuse: DummyLangfuse.new
     }
     @agent = RedmineAiHelper::Agents::LeaderAgent.new(@params)
-    @messages = [{ role: "user", content: "Hello" }]
+    @messages = [ { role: "user", content: "Hello" } ]
   end
 
   context "LeaderAgent" do
@@ -59,7 +59,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
         "steps" => [
           { "agent" => "project_agent", "step" => "my_projectのIDを教えてください", "description_for_human" => "Retrieving project information..." },
           { "agent" => "project_agent", "step" => "my_projectの情報を取得してください", "description_for_human" => "Getting project details..." },
-        ],
+        ]
       }.to_json
       mock_response = mock("Response")
       mock_response.stubs(:content).returns(steps_json)
@@ -94,9 +94,9 @@ class LeaderAgentTest < ActiveSupport::TestCase
             "agent" => "wiki_agent",
             "step" => "Create a Wiki page.",
             "description_for_human" => "Creating Wiki page...",
-            "use_think_model" => true,
+            "use_think_model" => true
           },
-        ],
+        ]
       }.to_json
       mock_response = mock("Response")
       mock_response.stubs(:content).returns(steps_json)
@@ -112,15 +112,15 @@ class LeaderAgentTest < ActiveSupport::TestCase
         "agent" => "issue_agent",
         "step" => "Write a detailed answer to Issue #42.",
         "description_for_human" => "Writing answer to Issue #42...",
-        "use_think_model" => true,
+        "use_think_model" => true
       }
       retrieval_step = {
         "agent" => "project_agent",
         "step" => "Get the project ID.",
         "description_for_human" => "Retrieving project ID...",
-        "use_think_model" => false,
+        "use_think_model" => false
       }
-      steps_hash = { "steps" => [issue_answer_step, retrieval_step] }
+      steps_hash = { "steps" => [ issue_answer_step, retrieval_step ] }
 
       @agent.stubs(:generate_goal).returns({ "goal" => "test goal", "generate_steps_required" => true })
       @agent.stubs(:generate_steps).returns(steps_hash)
@@ -152,9 +152,9 @@ class LeaderAgentTest < ActiveSupport::TestCase
         "agent" => "repository_agent",
         "step" => "Review the code changes in the pull request.",
         "description_for_human" => "Performing code review...",
-        "use_think_model" => true,
+        "use_think_model" => true
       }
-      steps_hash = { "steps" => [code_review_step] }
+      steps_hash = { "steps" => [ code_review_step ] }
 
       @agent.stubs(:generate_goal).returns({ "goal" => "review code", "generate_steps_required" => true })
       @agent.stubs(:generate_steps).returns(steps_hash)
@@ -182,15 +182,15 @@ class LeaderAgentTest < ActiveSupport::TestCase
         "agent" => "wiki_agent",
         "step" => "Create a Wiki page.",
         "description_for_human" => "Creating Wiki page...",
-        "use_think_model" => true,
+        "use_think_model" => true
       }
       retrieval_step = {
         "agent" => "project_agent",
         "step" => "Get project info.",
         "description_for_human" => "Retrieving project...",
-        "use_think_model" => false,
+        "use_think_model" => false
       }
-      steps_hash = { "steps" => [wiki_step, retrieval_step] }
+      steps_hash = { "steps" => [ wiki_step, retrieval_step ] }
 
       @agent.stubs(:generate_goal).returns({ "goal" => "test goal", "generate_steps_required" => true })
       @agent.stubs(:generate_steps).returns(steps_hash)

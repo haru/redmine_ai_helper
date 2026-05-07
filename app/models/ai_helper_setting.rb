@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 #
 # AiHelperSetting model for storing settings related to AI helper
 class AiHelperSetting < ApplicationRecord

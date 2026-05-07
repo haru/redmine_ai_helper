@@ -8,10 +8,10 @@ module AiHelper
     menu_item :ai_helper_dashboard
 
     before_action :require_login
-    before_action :find_project, only: [:index, :new, :create, :edit, :update, :destroy, :available]
-    before_action :authorize_ai_helper, only: [:index, :available]
-    before_action :find_command, only: [:edit, :update, :destroy]
-    before_action :authorize_command_edit, only: [:edit, :update, :destroy]
+    before_action :find_project, only: [ :index, :new, :create, :edit, :update, :destroy, :available ]
+    before_action :authorize_ai_helper, only: [ :index, :available ]
+    before_action :find_command, only: [ :edit, :update, :destroy ]
+    before_action :authorize_command_edit, only: [ :edit, :update, :destroy ]
 
     # GET /projects/:project_id/ai_helper/custom_commands
     # GET /ai_helper/custom_commands
@@ -23,7 +23,7 @@ module AiHelper
 
       @commands = AiHelperCustomCommand.available_for(
         user: User.current,
-        project: nil,
+        project: nil
       ).order(:command_type, :name)
 
       @grouped_commands = @commands.group_by(&:command_type)
@@ -34,7 +34,7 @@ module AiHelper
     def available
       expander = RedmineAiHelper::CustomCommandExpander.new(
         user: User.current,
-        project: @project,
+        project: @project
       )
 
       prefix = params[:prefix]
@@ -48,10 +48,14 @@ module AiHelper
     def new
       @command = AiHelperCustomCommand.new(
         user: User.current,
-        project: @project,
+        project: @project
       )
     end
 
+    # GET /projects/:project_id/ai_helper/custom_commands/:id/edit
+    # GET /ai_helper/custom_commands/:id/edit
+    def edit
+    end
     # POST /projects/:project_id/ai_helper/custom_commands
     # POST /ai_helper/custom_commands
     def create
@@ -68,10 +72,6 @@ module AiHelper
       end
     end
 
-    # GET /projects/:project_id/ai_helper/custom_commands/:id/edit
-    # GET /ai_helper/custom_commands/:id/edit
-    def edit
-    end
 
     # PATCH/PUT /projects/:project_id/ai_helper/custom_commands/:id
     # PATCH/PUT /ai_helper/custom_commands/:id
@@ -100,15 +100,15 @@ module AiHelper
     def find_project
       project_id = if params[:project_id]
                      params[:project_id]
-                   elsif params[:custom_command_id]
+      elsif params[:custom_command_id]
                      # Project-scoped member route (edit/update/destroy):
                      # params[:id] is the project, params[:custom_command_id] is the command
                      params[:id]
-                   elsif %w[index new create available].include?(action_name)
+      elsif %w[index new create available].include?(action_name)
                      # Project-scoped collection route:
                      # params[:id] is the project (nil for non-project routes)
                      params[:id]
-                   end
+      end
       @project = Project.find(project_id) if project_id
     rescue ActiveRecord::RecordNotFound
       render_404
