@@ -33,7 +33,7 @@ class AiHelperControllerSuggestAssigneesTest < ActionController::TestCase
           available: true,
           suggestions: [
             { user_id: 2, user_name: "John Smith", open_issues_count: 3 },
-            { user_id: 3, user_name: "Dave Lopper", open_issues_count: 5 },
+            { user_id: 3, user_name: "Dave Lopper", open_issues_count: 5 }
           ]
         },
         instruction_based: { available: false, suggestions: [] }
@@ -46,6 +46,7 @@ class AiHelperControllerSuggestAssigneesTest < ActionController::TestCase
         @request.headers["Content-Type"] = "application/json"
         post :suggest_assignees, params: { id: @project.id, issue_id: "new" },
              body: { subject: "Test issue", description: "Test description" }.to_json
+
         assert_response :success
         # Response is now HTML, not JSON
         assert_includes @response.body, "ai-helper-suggest-assignee"
@@ -58,6 +59,7 @@ class AiHelperControllerSuggestAssigneesTest < ActionController::TestCase
         @request.headers["Content-Type"] = "application/json"
         post :suggest_assignees, params: { id: @project.id, issue_id: issue.id.to_s },
              body: { subject: "Test issue", description: "Test description" }.to_json
+
         assert_response :success
         # Response is HTML with workload-based suggestions
         assert_includes @response.body, "ai-helper-suggest-assignee"
@@ -67,6 +69,7 @@ class AiHelperControllerSuggestAssigneesTest < ActionController::TestCase
         @request.headers["Content-Type"] = "application/json"
         post :suggest_assignees, params: { id: @project.id, issue_id: "new" },
              body: { description: "Test description" }.to_json
+
         assert_response :bad_request
         # Response is HTML error, not JSON
         assert_includes @response.body, "ai-helper-suggest-assignee-error"
@@ -74,6 +77,7 @@ class AiHelperControllerSuggestAssigneesTest < ActionController::TestCase
 
       should "return error for non-JSON content type" do
         post :suggest_assignees, params: { id: @project.id, issue_id: "new", subject: "Test" }
+
         assert_response :unsupported_media_type
       end
 
@@ -83,6 +87,7 @@ class AiHelperControllerSuggestAssigneesTest < ActionController::TestCase
           @request.headers["Content-Type"] = "application/json"
           post :suggest_assignees, params: { id: @project.id, issue_id: other_project_issue.id.to_s },
                body: { subject: "Test" }.to_json
+
           assert_response :bad_request
         end
       end
@@ -91,6 +96,7 @@ class AiHelperControllerSuggestAssigneesTest < ActionController::TestCase
         @request.headers["Content-Type"] = "application/json"
         post :suggest_assignees, params: { id: @project.id, issue_id: "new" },
              body: { subject: "Test issue" }.to_json
+
         assert_response :success
         # HTML should contain close button
         assert_includes @response.body, "ai-helper-suggest-assignee-close-btn"
@@ -111,7 +117,8 @@ class AiHelperControllerSuggestAssigneesTest < ActionController::TestCase
         @request.headers["Content-Type"] = "application/json"
         post :suggest_assignees, params: { id: @project.id, issue_id: "new" },
              body: { subject: "Test issue" }.to_json
-        assert_response 403
+
+        assert_response :forbidden
       end
     end
   end

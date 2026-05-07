@@ -19,11 +19,13 @@ class RedmineAiHelper::ChatRoomTest < ActiveSupport::TestCase
 
     should "add agent" do
       @chat_room.add_agent(@mock_agent)
+
       assert_includes @chat_room.agents, @mock_agent
     end
 
     should "add message" do
       @chat_room.add_message("user", "leader", "Test message", "all")
+
       assert_equal 1, @chat_room.messages.size
       assert_match "Test message", @chat_room.messages.last[:content]
     end
@@ -31,12 +33,14 @@ class RedmineAiHelper::ChatRoomTest < ActiveSupport::TestCase
     should "get agent by role" do
       @chat_room.add_agent(@mock_agent)
       agent = @chat_room.get_agent("mock_agent")
+
       assert_equal @mock_agent, agent
     end
 
     should "send task to agent and receive response" do
       @chat_room.add_agent(@mock_agent)
       response = @chat_room.send_task("leader", "mock_agent", "Perform this task")
+
       assert_equal "Task completed", response
       assert_equal 2, @chat_room.messages.size
       assert_match "Perform this task", @chat_room.messages[-2][:content]

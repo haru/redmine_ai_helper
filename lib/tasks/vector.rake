@@ -1,11 +1,12 @@
 # frozen_string_literal: true
+
 namespace :redmine do
   namespace :plugins do
     namespace :ai_helper do
       # Rake tasks for initializing, registering, and deleting the vector DB
       namespace :vector do
         desc "Register vector data for Redmine AI Helper"
-        task :regist => :environment do
+        task regist: :environment do
           if enabled?
             setting = AiHelperSetting.find_or_create
             puts "Embedding model: #{setting.embedding_model || '(default)'}"
@@ -25,7 +26,7 @@ namespace :redmine do
         end
 
         desc "generate"
-        task :generate => :environment do
+        task generate: :environment do
           if enabled?
             puts "Generating vector index for Redmine AI Helper..."
             issue_vector_db.generate_schema
@@ -36,7 +37,7 @@ namespace :redmine do
         end
 
         desc "Destroy vector data for Redmine AI Helper"
-        task :destroy => :environment do
+        task destroy: :environment do
           if enabled?
             puts "Destroying vector data for Redmine AI Helper..."
             issue_vector_db.destroy_schema

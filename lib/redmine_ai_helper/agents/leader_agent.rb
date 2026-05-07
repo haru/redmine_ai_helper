@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "redmine_ai_helper/base_agent"
 require "redmine_ai_helper/util/system_prompt"
 
@@ -84,19 +85,19 @@ module RedmineAiHelper
           properties: {
             goal: {
               type: "string",
-              description: "A concise and clear goal derived from the user's request",
+              description: "A concise and clear goal derived from the user's request"
             },
             generate_steps_required: {
               type: "boolean",
               description: "Indicates whether step-by-step instructions are necessary to achieve the goal",
-              default: true,
-            },
+              default: true
+            }
           },
-          required: ["goal", "generate_steps_required"],
+          required: [ "goal", "generate_steps_required" ]
         }
 
         prompt_text = prompt.format(
-          format_instructions: RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(json_schema),
+          format_instructions: RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(json_schema)
         )
 
         newmessages = messages.dup
@@ -107,7 +108,7 @@ module RedmineAiHelper
           response: json,
           json_schema: json_schema,
           chat_method: method(:chat),
-          messages: newmessages,
+          messages: newmessages
         )
         langfuse.finish_current_span(output: fixed_json)
         fixed_json
@@ -129,26 +130,26 @@ module RedmineAiHelper
                 properties: {
                   agent: {
                     type: "string",
-                    description: "The role of the agent to assign the task to",
+                    description: "The role of the agent to assign the task to"
                   },
                   step: {
                     type: "string",
-                    description: "The content of the instruction",
+                    description: "The content of the instruction"
                   },
                   description_for_human: {
                     type: "string",
-                    description: "Write a sentence in present progressive form to explain to the user what work is currently being done.",
+                    description: "Write a sentence in present progressive form to explain to the user what work is currently being done."
                   },
                   use_think_model: {
                     type: "boolean",
-                    description: "Set to true if this step requires deep reasoning (e.g. creating content, code review, writing answers). Set to false for simple data retrieval.",
-                  },
+                    description: "Set to true if this step requires deep reasoning (e.g. creating content, code review, writing answers). Set to false for simple data retrieval."
+                  }
                 },
-                required: ["agent", "step", "description_for_human", "use_think_model"],
+                required: [ "agent", "step", "description_for_human", "use_think_model" ]
               },
-              required: ["steps"],
-            },
-          },
+              required: [ "steps" ]
+            }
+          }
         }
 
         json_examples = <<~EOS
@@ -210,7 +211,7 @@ module RedmineAiHelper
           agent_list: agent_list_string,
           format_instructions: RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(json_schema),
           json_examples: json_examples,
-          lang: I18n.locale.to_s,
+          lang: I18n.locale.to_s
         )
 
         ai_helper_logger.debug "prompt_text: #{prompt_text}"
@@ -223,7 +224,7 @@ module RedmineAiHelper
           response: json,
           json_schema: json_schema,
           chat_method: method(:chat),
-          messages: newmessages,
+          messages: newmessages
         )
         langfuse.finish_current_span(output: fixed_json)
         fixed_json

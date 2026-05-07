@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "ruby_llm"
 require "redmine_ai_helper/logger"
 require "redmine_ai_helper/assistant"
@@ -29,7 +30,7 @@ module RedmineAiHelper
         agent_list = AgentList.instance
         agent_list.add_agent(
           @myname,
-          subclass.name,
+          subclass.name
         )
       end
 
@@ -40,7 +41,7 @@ module RedmineAiHelper
         agent_list = AgentList.instance
         agent_list.add_agent(
           agent_name,
-          class_name,
+          class_name
         )
       end
     end
@@ -72,7 +73,7 @@ module RedmineAiHelper
       @assistant = RedmineAiHelper::AssistantProvider.get_assistant(
         llm_provider: @llm_provider,
         instructions: system_prompt,
-        tools: tool_classes,
+        tools: tool_classes
       )
       setup_langfuse_callbacks(@assistant.chat, provider: @llm_provider)
       @assistant
@@ -115,10 +116,10 @@ module RedmineAiHelper
         role: role,
         backstory: backstory,
         time: time,
-        lang: I18n.t(:general_lang_name),
+        lang: I18n.t(:general_lang_name)
       )
 
-      return prompt_text
+      prompt_text
     end
 
     # List all tools as OpenAI-format hashes (used by LeaderAgent backstory etc.)
@@ -128,8 +129,8 @@ module RedmineAiHelper
         {
           function: {
             name: tool_class.name.demodulize.underscore,
-            description: tool_class.description,
-          },
+            description: tool_class.description
+          }
         }
       end
     end
@@ -260,7 +261,7 @@ module RedmineAiHelper
       think_asst = RedmineAiHelper::AssistantProvider.get_assistant(
         llm_provider: provider,
         instructions: system_prompt,
-        tools: available_tool_classes,
+        tools: available_tool_classes
       )
       setup_langfuse_callbacks(think_asst.chat, provider: provider)
       @shared_messages.each do |msg|
@@ -287,7 +288,7 @@ module RedmineAiHelper
           usage = {
             prompt_tokens: message.input_tokens,
             completion_tokens: message.output_tokens,
-            total_tokens: (message.input_tokens || 0) + (message.output_tokens || 0),
+            total_tokens: (message.input_tokens || 0) + (message.output_tokens || 0)
           }
         end
 
@@ -309,7 +310,7 @@ module RedmineAiHelper
           messages: input_messages,
           model: provider.model_name,
           temperature: provider.temperature,
-          max_tokens: provider.max_tokens,
+          max_tokens: provider.max_tokens
         )&.finish(output: output, usage: usage)
       end
     end
@@ -353,7 +354,7 @@ module RedmineAiHelper
     def add_agent(name, class_name)
       agent = {
         name: name,
-        class: class_name,
+        class: class_name
       }
       @agents.delete_if { |a| a[:name] == name }
       @agents << agent
@@ -377,14 +378,14 @@ module RedmineAiHelper
     def list_agents
       @agents.filter_map { |a|
         # Skip if class name is nil or empty
-        next if a[:class].nil? || a[:class].empty?
+        next if a[:class].blank?
 
         begin
           agent = Object.const_get(a[:class]).new
           next unless agent.enabled?
           {
             agent_name: a[:name],
-            backstory: agent.backstory,
+            backstory: agent.backstory
           }
         rescue NameError => e
           # Skip agents whose classes don't exist or can't be loaded

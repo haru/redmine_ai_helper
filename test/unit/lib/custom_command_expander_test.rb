@@ -11,6 +11,7 @@ class CustomCommandExpanderTest < ActiveSupport::TestCase
   context "#command?" do
     should "return true for messages starting with /" do
       expander = RedmineAiHelper::CustomCommandExpander.new(user: @user)
+
       assert expander.command?("/test")
       assert expander.command?("/test with args")
       assert expander.command?("  /test")
@@ -18,6 +19,7 @@ class CustomCommandExpanderTest < ActiveSupport::TestCase
 
     should "return false for normal messages" do
       expander = RedmineAiHelper::CustomCommandExpander.new(user: @user)
+
       assert_not expander.command?("test")
       assert_not expander.command?("this is a /test")
       assert_not expander.command?("")
@@ -103,9 +105,11 @@ class CustomCommandExpanderTest < ActiveSupport::TestCase
       expander = RedmineAiHelper::CustomCommandExpander.new(user: @user, project: nil)
 
       result = expander.expand("/SUMMARIZE test")
+
       assert result[:expanded]
 
       result = expander.expand("/Summarize test")
+
       assert result[:expanded]
     end
 
@@ -176,8 +180,9 @@ class CustomCommandExpanderTest < ActiveSupport::TestCase
       expander = RedmineAiHelper::CustomCommandExpander.new(user: @user, project: @project)
       commands = expander.available_commands
 
-      assert commands.length >= 3
+      assert_operator commands.length, :>=, 3
       command_names = commands.map { |c| c[:name] }
+
       assert_includes command_names, "global_test"
       assert_includes command_names, "project_test"
       assert_includes command_names, "user_test"
@@ -187,8 +192,9 @@ class CustomCommandExpanderTest < ActiveSupport::TestCase
       expander = RedmineAiHelper::CustomCommandExpander.new(user: @user, project: @project)
       commands = expander.available_commands(prefix: "global")
 
-      assert commands.length >= 1
+      assert_operator commands.length, :>=, 1
       command_names = commands.map { |c| c[:name] }
+
       assert_includes command_names, "global_test"
       assert_not_includes command_names, "user_test"
     end
@@ -197,8 +203,9 @@ class CustomCommandExpanderTest < ActiveSupport::TestCase
       expander = RedmineAiHelper::CustomCommandExpander.new(user: @user, project: @project)
       commands = expander.available_commands(prefix: "GLOBAL")
 
-      assert commands.length >= 1
+      assert_operator commands.length, :>=, 1
       command_names = commands.map { |c| c[:name] }
+
       assert_includes command_names, "global_test"
     end
 
@@ -207,6 +214,7 @@ class CustomCommandExpanderTest < ActiveSupport::TestCase
       commands = expander.available_commands
 
       command_names = commands.map { |c| c[:name] }
+
       assert_includes command_names, "global_test"
       assert_includes command_names, "user_test"
       assert_not_includes command_names, "project_test"
@@ -217,9 +225,10 @@ class CustomCommandExpanderTest < ActiveSupport::TestCase
       commands = expander.available_commands(prefix: "global")
 
       command = commands.find { |c| c[:name] == "global_test" }
+
       assert command
       assert_equal "global_test", command[:name]
-      assert_equal [:description, :name], command.keys.sort
+      assert_equal [ :description, :name ], command.keys.sort
     end
 
     should "return description when present" do
@@ -228,6 +237,7 @@ class CustomCommandExpanderTest < ActiveSupport::TestCase
       commands = expander.available_commands(prefix: "global")
 
       command = commands.find { |c| c[:name] == "global_test" }
+
       assert_equal "A test command", command[:description]
     end
   end

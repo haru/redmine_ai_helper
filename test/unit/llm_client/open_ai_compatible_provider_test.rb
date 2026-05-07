@@ -12,7 +12,7 @@ class RedmineAiHelper::LlmClient::OpenAiCompatibleProviderTest < ActiveSupport::
         llm_type: "OpenAICompatible",
         llm_model: "my-custom-model",
         access_key: "test_compatible_key",
-        base_uri: "https://api.custom-llm.com/v1",
+        base_uri: "https://api.custom-llm.com/v1"
       )
       @setting.model_profile = @compatible_profile
       @setting.save!
@@ -33,6 +33,7 @@ class RedmineAiHelper::LlmClient::OpenAiCompatibleProviderTest < ActiveSupport::
     should "memoize the context" do
       context1 = @provider.context
       context2 = @provider.context
+
       assert_same context1, context2
     end
 
@@ -67,11 +68,12 @@ class RedmineAiHelper::LlmClient::OpenAiCompatibleProviderTest < ActiveSupport::
       mock_context.expects(:chat).with(
         model: @compatible_profile.llm_model,
         provider: :openai,
-        assume_model_exists: true,
+        assume_model_exists: true
       ).returns(mock_chat)
       @provider.expects(:build_context).returns(mock_context)
 
       chat = @provider.create_chat(instructions: "Test prompt")
+
       assert_equal mock_chat, chat
     end
 
@@ -83,7 +85,7 @@ class RedmineAiHelper::LlmClient::OpenAiCompatibleProviderTest < ActiveSupport::
       mock_context.expects(:chat).with(
         model: @compatible_profile.llm_model,
         provider: :openai,
-        assume_model_exists: true,
+        assume_model_exists: true
       ).returns(mock_chat)
       @provider.expects(:build_context).returns(mock_context)
 
@@ -99,15 +101,16 @@ class RedmineAiHelper::LlmClient::OpenAiCompatibleProviderTest < ActiveSupport::
       mock_context.expects(:chat).with(
         model: @compatible_profile.llm_model,
         provider: :openai,
-        assume_model_exists: true,
+        assume_model_exists: true
       ).returns(mock_chat)
       @provider.expects(:build_context).returns(mock_context)
 
-      @provider.create_chat(tools: [tool_class])
+      @provider.create_chat(tools: [ tool_class ])
     end
 
     should "set openai_use_system_role to true in context config" do
       context = @provider.context
+
       assert_equal true, context.config.openai_use_system_role,
         "openai_use_system_role should be true for OpenAI-compatible providers to avoid sending 'developer' role"
     end

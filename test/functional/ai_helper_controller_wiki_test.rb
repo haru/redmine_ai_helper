@@ -36,12 +36,13 @@ class AiHelperControllerWikiTest < Redmine::ControllerTest
          params: { id: @project.identifier },
          body: JSON.generate({
            text: "This project documentation",
-           cursor_position: 26,
+           cursor_position: 26
          })
 
     assert_response :success
     json = JSON.parse(response.body)
-    assert json["suggestion"].is_a?(String)
+
+    assert_kind_of String, json["suggestion"]
   end
 
   test "suggest_wiki_completion should require JSON content type" do
@@ -86,7 +87,7 @@ class AiHelperControllerWikiTest < Redmine::ControllerTest
          params: { id: @project.identifier },
          body: JSON.generate({
            text: "test",
-           cursor_position: 10,
+           cursor_position: 10
          })
 
     assert_response :bad_request
@@ -122,16 +123,17 @@ class AiHelperControllerWikiTest < Redmine::ControllerTest
     post :suggest_wiki_completion,
          params: {
            id: @project.identifier,
-           page_name: @wiki_page.title,
+           page_name: @wiki_page.title
          },
          body: JSON.generate({
            text: "Page content",
-           cursor_position: 12,
+           cursor_position: 12
          })
 
     assert_response :success
     json = JSON.parse(response.body)
-    assert json["suggestion"].is_a?(String)
+
+    assert_kind_of String, json["suggestion"]
   end
 
   test "suggest_wiki_completion should handle LLM errors gracefully" do
@@ -142,7 +144,7 @@ class AiHelperControllerWikiTest < Redmine::ControllerTest
          params: { id: @project.identifier },
          body: JSON.generate({
            text: "Error test",
-           cursor_position: 10,
+           cursor_position: 10
          })
 
     assert_response :internal_server_error
@@ -160,17 +162,18 @@ class AiHelperControllerWikiTest < Redmine::ControllerTest
     post :suggest_wiki_completion,
          params: {
            id: @project.identifier,
-           page_name: @wiki_page.title,
+           page_name: @wiki_page.title
          },
          body: JSON.generate({
            text: "Section content",
            cursor_position: 15,
-           is_section_edit: true,
+           is_section_edit: true
          })
 
     assert_response :success
     json = JSON.parse(response.body)
-    assert json["suggestion"].is_a?(String)
+
+    assert_kind_of String, json["suggestion"]
 
     # Verify that is_section_edit was passed correctly to the LLM
     assert_not_nil captured_params
@@ -189,17 +192,18 @@ class AiHelperControllerWikiTest < Redmine::ControllerTest
     post :suggest_wiki_completion,
          params: {
            id: @project.identifier,
-           page_name: @wiki_page.title,
+           page_name: @wiki_page.title
          },
          body: JSON.generate({
            text: "Full page content",
            cursor_position: 17,
-           is_section_edit: false,
+           is_section_edit: false
          })
 
     assert_response :success
     json = JSON.parse(response.body)
-    assert json["suggestion"].is_a?(String)
+
+    assert_kind_of String, json["suggestion"]
 
     # Verify that is_section_edit was passed correctly to the LLM
     assert_not_nil captured_params

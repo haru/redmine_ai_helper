@@ -27,7 +27,7 @@ class AiHelperControllerStuffTodoTest < ActionController::TestCase
 
       get :stuff_todo, params: { id: @project.identifier }
 
-      assert_response 403
+      assert_response :forbidden
     end
 
     should "return SSE streaming response with markdown content" do

@@ -35,6 +35,7 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
     context "#index" do
       should "display dashboard overview tab" do
         get :index, params: { id: @project.id }
+
         assert_response :success
         assert_template :index
       end
@@ -54,16 +55,17 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
           project: @project,
           user: @user,
           health_report: "Test report 1",
-          created_at: 2.days.ago,
+          created_at: 2.days.ago
         )
         AiHelperHealthReport.create!(
           project: @project,
           user: @user,
           health_report: "Test report 2",
-          created_at: 1.day.ago,
+          created_at: 1.day.ago
         )
 
         get :index, params: { id: @project.id, tab: "health_report" }
+
         assert_response :success
         assert_template :index
         assert_select ".ai-helper-health-report-history", 1
@@ -79,11 +81,12 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
             project: @project,
             user: @user,
             health_report: "Test report #{i}",
-            created_at: (i + 1).days.ago,
+            created_at: (i + 1).days.ago
           )
         end
 
         get :index, params: { id: @project.id, tab: "health_report", page: 1, per_page: 10 }
+
         assert_response :success
         assert_select ".ai-helper-health-report-history table.list tbody tr", 10
       end
@@ -98,11 +101,12 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
             project: @project,
             user: @user,
             health_report: "Test report #{i}",
-            created_at: (i + 1).days.ago,
+            created_at: (i + 1).days.ago
           )
         end
 
         get :index, params: { id: @project.id, tab: "health_report", page: 2, per_page: 10 }
+
         assert_response :success
         assert_select ".ai-helper-health-report-history table.list tbody tr", 5
       end
@@ -112,6 +116,7 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
         AiHelperHealthReport.where(project: @project).destroy_all
 
         get :index, params: { id: @project.id, tab: "health_report" }
+
         assert_response :success
         # Check for nodata message within the health report tab content area
         assert_select ".ai-helper-master-detail-layout p.nodata", 1
@@ -127,14 +132,14 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
           project: @project,
           user: @user,
           health_report: "Test report 1",
-          created_at: 2.days.ago,
+          created_at: 2.days.ago
         )
 
         @report2 = AiHelperHealthReport.create!(
           project: @project,
           user: @user,
           health_report: "Test report 2",
-          created_at: 1.day.ago,
+          created_at: 1.day.ago
         )
       end
 
@@ -158,7 +163,7 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
             project: @project,
             user: @user,
             health_report: "Test report #{i}",
-            created_at: (i + 3).days.ago,
+            created_at: (i + 3).days.ago
           )
         end
 
@@ -176,7 +181,7 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
           user: @user,
           health_report: "# Test Report
 
-This is a test report.",
+This is a test report."
         )
       end
 
@@ -199,7 +204,7 @@ This is a test report.",
         get :health_report_show, params: {
                                    id: @project.id,
                                    report_id: @report.id,
-                                   format: :pdf,
+                                   format: :pdf
                                  }
 
         assert_response :success
@@ -221,7 +226,7 @@ This is a test report.",
         @report = AiHelperHealthReport.create!(
           project: @project,
           user: @user,
-          health_report: "Test report",
+          health_report: "Test report"
         )
       end
 
@@ -229,7 +234,7 @@ This is a test report.",
         assert_difference "AiHelperHealthReport.count", -1 do
           delete :health_report_destroy, params: {
                                            id: @project.id,
-                                           report_id: @report.id,
+                                           report_id: @report.id
                                          }
         end
 
@@ -259,7 +264,7 @@ This is a test report.",
         assert_no_difference "AiHelperHealthReport.count" do
           delete :health_report_destroy, params: {
                                            id: @project.id,
-                                           report_id: @report.id,
+                                           report_id: @report.id
                                          }
         end
 
@@ -275,7 +280,7 @@ This is a test report.",
         assert_difference "AiHelperHealthReport.count", -1 do
           delete :health_report_destroy, params: {
                                            id: @project.id,
-                                           report_id: @report.id,
+                                           report_id: @report.id
                                          }
         end
 
@@ -292,14 +297,14 @@ This is a test report.",
           project: @project,
           user: @user,
           health_report: "# Report 1\n\nFirst report content",
-          created_at: 2.days.ago,
+          created_at: 2.days.ago
         )
 
         @report2 = AiHelperHealthReport.create!(
           project: @project,
           user: @user,
           health_report: "# Report 2\n\nSecond report content",
-          created_at: 1.day.ago,
+          created_at: 1.day.ago
         )
       end
 
@@ -355,7 +360,7 @@ This is a test report.",
 
         get :health_report_history, params: {
                                       id: @project.id,
-                                      report_id: @report1.id,
+                                      report_id: @report1.id
                                     }
 
         assert_response :success
@@ -406,7 +411,7 @@ This is a test report.",
             project: @project,
             user: @user,
             health_report: "Test report #{i}",
-            created_at: (i + 1).days.ago,
+            created_at: (i + 1).days.ago
           )
         end
 
@@ -426,7 +431,7 @@ This is a test report.",
           user: @user,
           health_report: "# Old Report\n\nOld content",
           metrics: { issue_statistics: { total_issues: 40 } }.to_json,
-          created_at: 5.days.ago,
+          created_at: 5.days.ago
         )
 
         @new_report = AiHelperHealthReport.create!(
@@ -434,7 +439,7 @@ This is a test report.",
           user: @user,
           health_report: "# New Report\n\nNew content",
           metrics: { issue_statistics: { total_issues: 50 } }.to_json,
-          created_at: 1.day.ago,
+          created_at: 1.day.ago
         )
 
         # Ensure user is logged in for all tests
@@ -448,7 +453,7 @@ This is a test report.",
         get :compare_health_reports, params: {
                                        id: @project.id,
                                        old_id: @old_report.id,
-                                       new_id: @new_report.id,
+                                       new_id: @new_report.id
                                      }
 
         assert_response :success
@@ -475,7 +480,7 @@ This is a test report.",
 
         get :compare_health_reports, params: {
                                        id: @project.id,
-                                       new_id: @new_report.id,
+                                       new_id: @new_report.id
                                      }
 
         assert_redirected_to ai_helper_dashboard_path(@project, tab: "health_report")
@@ -488,7 +493,7 @@ This is a test report.",
 
         get :compare_health_reports, params: {
                                        id: @project.id,
-                                       old_id: @old_report.id,
+                                       old_id: @old_report.id
                                      }
 
         assert_redirected_to ai_helper_dashboard_path(@project, tab: "health_report")
@@ -503,7 +508,7 @@ This is a test report.",
         get :compare_health_reports, params: {
                                        id: @project.id,
                                        old_id: @new_report.id,
-                                       new_id: @old_report.id,
+                                       new_id: @old_report.id
                                      }
 
         assert_response :success
@@ -518,7 +523,7 @@ This is a test report.",
         get :compare_health_reports, params: {
                                        id: @project.id,
                                        old_id: 99999,
-                                       new_id: @new_report.id,
+                                       new_id: @new_report.id
                                      }
 
         assert_response :not_found
@@ -531,7 +536,7 @@ This is a test report.",
         get :compare_health_reports, params: {
                                        id: @project.id,
                                        old_id: @old_report.id,
-                                       new_id: @new_report.id,
+                                       new_id: @new_report.id
                                      }
 
         assert_response :forbidden
@@ -539,14 +544,14 @@ This is a test report.",
 
       should "return 403 when reports belong to different project" do
         project2 = Project.find(2)
-        project2.enabled_module_names = project2.enabled_module_names + ["ai_helper"]
+        project2.enabled_module_names = project2.enabled_module_names + [ "ai_helper" ]
         project2.save!
 
         other_report = AiHelperHealthReport.create!(
           project: project2,
           user: @user,
           health_report: "Other project report",
-          metrics: {}.to_json,
+          metrics: {}.to_json
         )
 
         role = Role.find(1)
@@ -555,7 +560,7 @@ This is a test report.",
         get :compare_health_reports, params: {
                                        id: @project.id,
                                        old_id: @old_report.id,
-                                       new_id: other_report.id,
+                                       new_id: other_report.id
                                      }
 
         assert_response :forbidden
@@ -568,7 +573,7 @@ This is a test report.",
         get :compare_health_reports, params: {
                                        id: @project.id,
                                        old_id: @old_report.id,
-                                       new_id: @new_report.id,
+                                       new_id: @new_report.id
                                      }
 
         assert_response :success
@@ -582,7 +587,7 @@ This is a test report.",
         get :compare_health_reports, params: {
                                        id: @project.id,
                                        old_id: @old_report.id,
-                                       new_id: @new_report.id,
+                                       new_id: @new_report.id
                                      }
 
         assert_response :success
@@ -614,13 +619,13 @@ This is a test report.",
 
       should "return 404 when health report belongs to different project" do
         other_project = Project.find(2)
-        other_project.enabled_module_names = other_project.enabled_module_names + ["ai_helper"]
+        other_project.enabled_module_names = other_project.enabled_module_names + [ "ai_helper" ]
         other_project.save!
 
         other_report = AiHelperHealthReport.create!(
           project: other_project,
           user: @user,
-          health_report: "Other project report",
+          health_report: "Other project report"
         )
 
         get :health_report_show, params: { id: @project.id, report_id: other_report.id }
@@ -632,7 +637,7 @@ This is a test report.",
         report = AiHelperHealthReport.create!(
           project: @project,
           user: @user,
-          health_report: "Test report",
+          health_report: "Test report"
         )
 
         # Remove permission
@@ -651,7 +656,7 @@ This is a test report.",
         report = AiHelperHealthReport.create!(
           project: @project,
           user: @user,
-          health_report: "Test report",
+          health_report: "Test report"
         )
 
         non_member_user = User.find(4)
@@ -670,7 +675,7 @@ This is a test report.",
           user: @user,
           health_report: "# Old Report\n\nOld content",
           metrics: { issue_statistics: { total_issues: 40 } }.to_json,
-          created_at: 5.days.ago,
+          created_at: 5.days.ago
         )
 
         @new_report = AiHelperHealthReport.create!(
@@ -678,7 +683,7 @@ This is a test report.",
           user: @user,
           health_report: "# New Report\n\nNew content",
           metrics: { issue_statistics: { total_issues: 50 } }.to_json,
-          created_at: 1.day.ago,
+          created_at: 1.day.ago
         )
 
         role = Role.find(1)
@@ -695,12 +700,12 @@ This is a test report.",
         post :compare_health_reports, params: {
                                         id: @project.id,
                                         old_report_id: @old_report.id,
-                                        new_report_id: @new_report.id,
+                                        new_report_id: @new_report.id
                                       }
 
         # The test will either succeed (streaming) or fail with permission issues
         # Both outcomes indicate the POST path is being executed
-        assert [200, 403, 404].include?(response.status)
+        assert_includes [ 200, 403, 404 ], response.status
       end
 
       should "detect event-stream Accept header as streaming request" do
@@ -709,28 +714,28 @@ This is a test report.",
         get :compare_health_reports, params: {
                                        id: @project.id,
                                        old_report_id: @old_report.id,
-                                       new_report_id: @new_report.id,
+                                       new_report_id: @new_report.id
                                      }
 
         # Should attempt streaming path
-        assert [200, 403, 404].include?(response.status)
+        assert_includes [ 200, 403, 404 ], response.status
       end
 
       should "return 403 when reports belong to different project in streaming comparison" do
         other_project = Project.find(2)
-        other_project.enabled_module_names = other_project.enabled_module_names + ["ai_helper"]
+        other_project.enabled_module_names = other_project.enabled_module_names + [ "ai_helper" ]
         other_project.save!
 
         other_report = AiHelperHealthReport.create!(
           project: other_project,
           user: @user,
-          health_report: "Other project report",
+          health_report: "Other project report"
         )
 
         post :compare_health_reports, params: {
                                         id: @project.id,
                                         old_report_id: @old_report.id,
-                                        new_report_id: other_report.id,
+                                        new_report_id: other_report.id
                                       }
 
         assert_response :forbidden
@@ -740,7 +745,7 @@ This is a test report.",
         post :compare_health_reports, params: {
                                         id: @project.id,
                                         old_report_id: 99999,
-                                        new_report_id: @new_report.id,
+                                        new_report_id: @new_report.id
                                       }
 
         assert_response :not_found
@@ -748,13 +753,13 @@ This is a test report.",
 
       should "use streaming comparison when GET request includes event-stream accept header" do
         other_project = Project.find(2)
-        other_project.enabled_module_names = other_project.enabled_module_names + ["ai_helper"]
+        other_project.enabled_module_names = other_project.enabled_module_names + [ "ai_helper" ]
         other_project.save!
 
         other_report = AiHelperHealthReport.create!(
           project: other_project,
           user: @user,
-          health_report: "Other project report",
+          health_report: "Other project report"
         )
 
         original_accept = @request.headers["Accept"]
@@ -763,7 +768,7 @@ This is a test report.",
         get :compare_health_reports, params: {
                                        id: @project.id,
                                        old_report_id: @old_report.id,
-                                       new_report_id: other_report.id,
+                                       new_report_id: other_report.id
                                      }
 
         assert_response :forbidden
@@ -787,14 +792,14 @@ This is a test report.",
           project: @project,
           user: @user,
           health_report: "Report 1",
-          created_at: 1.day.ago,
+          created_at: 1.day.ago
         )
 
         AiHelperHealthReport.create!(
           project: @project,
           user: @user,
           health_report: "Report 2",
-          created_at: 2.days.ago,
+          created_at: 2.days.ago
         )
 
         # Test with invalid report_id - should result in nil selected_report
@@ -813,7 +818,7 @@ This is a test report.",
             project: @project,
             user: @user,
             health_report: "Report #{i}",
-            created_at: (i + 1).days.ago,
+            created_at: (i + 1).days.ago
           )
         end
 
@@ -821,7 +826,7 @@ This is a test report.",
         get :health_report_history, params: {
                                       id: @project.id,
                                       page: 2,
-                                      report_id: reports.first.id.to_s,
+                                      report_id: reports.first.id.to_s
                                     }
 
         assert_response :success
@@ -845,21 +850,21 @@ This is a test report.",
           project: @project,
           user: @user,
           health_report: "Newer report",
-          created_at: 1.day.ago,
+          created_at: 1.day.ago
         )
 
         older_report = AiHelperHealthReport.create!(
           project: @project,
           user: @user,
           health_report: "Older report",
-          created_at: 5.days.ago,
+          created_at: 5.days.ago
         )
 
         # Pass newer report as old_id and older as new_id
         get :compare_health_reports, params: {
                                        id: @project.id,
                                        old_id: newer_report.id,
-                                       new_id: older_report.id,
+                                       new_id: older_report.id
                                      }
 
         assert_response :success
@@ -875,14 +880,14 @@ This is a test report.",
           project: @project,
           user: @user,
           health_report: "# Old Report\n\nOld content",
-          created_at: 5.days.ago,
+          created_at: 5.days.ago
         )
 
         @new_report = AiHelperHealthReport.create!(
           project: @project,
           user: @user,
           health_report: "# New Report\n\nNew content",
-          created_at: 1.day.ago,
+          created_at: 1.day.ago
         )
 
         role = Role.find(1)
@@ -896,7 +901,7 @@ This is a test report.",
                                 id: @project.id,
                                 comparison_content: comparison_content,
                                 old_report_id: @old_report.id,
-                                new_report_id: @new_report.id,
+                                new_report_id: @new_report.id
                               }
 
         assert_response :success
@@ -912,11 +917,12 @@ This is a test report.",
                                 id: @project.id,
                                 comparison_content: comparison_content,
                                 old_report_id: @old_report.id,
-                                new_report_id: @new_report.id,
+                                new_report_id: @new_report.id
                               }
 
         assert_response :success
         expected_filename = "#{@project.identifier}-health-report-comparison-#{expected_date}.pdf"
+
         assert_match(/filename="#{Regexp.escape(expected_filename)}"/, response.headers["Content-Disposition"])
       end
 
@@ -927,13 +933,13 @@ This is a test report.",
                                 id: @project.id,
                                 comparison_content: comparison_content,
                                 old_report_id: @old_report.id,
-                                new_report_id: @new_report.id,
+                                new_report_id: @new_report.id
                               }
 
         assert_response :success
         assert_equal "application/pdf", response.media_type
         # PDF should be generated with sanitized content (HTML tags removed)
-        assert response.body.present?
+        assert_predicate response.body, :present?
       end
 
       should "sanitize script tags from content" do
@@ -943,13 +949,13 @@ This is a test report.",
                                 id: @project.id,
                                 comparison_content: comparison_content,
                                 old_report_id: @old_report.id,
-                                new_report_id: @new_report.id,
+                                new_report_id: @new_report.id
                               }
 
         assert_response :success
         assert_equal "application/pdf", response.media_type
         # PDF should be generated with sanitized content (script tags removed)
-        assert response.body.present?
+        assert_predicate response.body, :present?
       end
 
       should "redirect with alert when no content is provided" do
@@ -957,7 +963,7 @@ This is a test report.",
                                 id: @project.id,
                                 comparison_content: "",
                                 old_report_id: @old_report.id,
-                                new_report_id: @new_report.id,
+                                new_report_id: @new_report.id
                               }
 
         assert_redirected_to ai_helper_health_report_compare_path(@project, old_id: @old_report.id, new_id: @new_report.id)
@@ -968,7 +974,7 @@ This is a test report.",
         post :comparison_pdf, params: {
                                 id: @project.id,
                                 old_report_id: @old_report.id,
-                                new_report_id: @new_report.id,
+                                new_report_id: @new_report.id
                               }
 
         assert_redirected_to ai_helper_health_report_compare_path(@project, old_id: @old_report.id, new_id: @new_report.id)
@@ -991,7 +997,7 @@ This is a test report.",
                                 id: @project.id,
                                 comparison_content: comparison_content,
                                 old_report_id: @old_report.id,
-                                new_report_id: @new_report.id,
+                                new_report_id: @new_report.id
                               }
 
         assert_response :success
@@ -1014,12 +1020,12 @@ This is a test report.",
                                 id: @project.id,
                                 comparison_content: comparison_content,
                                 old_report_id: @old_report.id,
-                                new_report_id: @new_report.id,
+                                new_report_id: @new_report.id
                               }
 
         assert_response :success
         assert_equal "application/pdf", response.media_type
-        assert response.body.present?
+        assert_predicate response.body, :present?
       end
     end
 
@@ -1029,14 +1035,14 @@ This is a test report.",
           project: @project,
           user: @user,
           health_report: "# Old Report\n\nOld content",
-          created_at: 5.days.ago,
+          created_at: 5.days.ago
         )
 
         @new_report = AiHelperHealthReport.create!(
           project: @project,
           user: @user,
           health_report: "# New Report\n\nNew content",
-          created_at: 1.day.ago,
+          created_at: 1.day.ago
         )
 
         role = Role.find(1)
@@ -1050,7 +1056,7 @@ This is a test report.",
                                      id: @project.id,
                                      comparison_content: comparison_content,
                                      old_report_id: @old_report.id,
-                                     new_report_id: @new_report.id,
+                                     new_report_id: @new_report.id
                                    }
 
         assert_response :success
@@ -1066,11 +1072,12 @@ This is a test report.",
                                      id: @project.id,
                                      comparison_content: comparison_content,
                                      old_report_id: @old_report.id,
-                                     new_report_id: @new_report.id,
+                                     new_report_id: @new_report.id
                                    }
 
         assert_response :success
         expected_filename = "#{@project.identifier}-health-report-comparison-#{expected_date}.md"
+
         assert_match(/filename="#{Regexp.escape(expected_filename)}"/, response.headers["Content-Disposition"])
       end
 
@@ -1082,7 +1089,7 @@ This is a test report.",
                                      id: @project.id,
                                      comparison_content: comparison_content,
                                      old_report_id: @old_report.id,
-                                     new_report_id: @new_report.id,
+                                     new_report_id: @new_report.id
                                    }
 
         assert_response :success
@@ -1098,7 +1105,7 @@ This is a test report.",
                                      id: @project.id,
                                      comparison_content: comparison_content,
                                      old_report_id: @old_report.id,
-                                     new_report_id: @new_report.id,
+                                     new_report_id: @new_report.id
                                    }
 
         assert_response :success
@@ -1111,7 +1118,7 @@ This is a test report.",
                                      id: @project.id,
                                      comparison_content: "",
                                      old_report_id: @old_report.id,
-                                     new_report_id: @new_report.id,
+                                     new_report_id: @new_report.id
                                    }
 
         assert_redirected_to ai_helper_health_report_compare_path(@project, old_id: @old_report.id, new_id: @new_report.id)
@@ -1122,7 +1129,7 @@ This is a test report.",
         post :comparison_markdown, params: {
                                      id: @project.id,
                                      old_report_id: @old_report.id,
-                                     new_report_id: @new_report.id,
+                                     new_report_id: @new_report.id
                                    }
 
         assert_redirected_to ai_helper_health_report_compare_path(@project, old_id: @old_report.id, new_id: @new_report.id)
@@ -1145,7 +1152,7 @@ This is a test report.",
                                      id: @project.id,
                                      comparison_content: comparison_content,
                                      old_report_id: @old_report.id,
-                                     new_report_id: @new_report.id,
+                                     new_report_id: @new_report.id
                                    }
 
         assert_response :success
@@ -1171,7 +1178,7 @@ This is a test report.",
                                      id: @project.id,
                                      comparison_content: comparison_content,
                                      old_report_id: @old_report.id,
-                                     new_report_id: @new_report.id,
+                                     new_report_id: @new_report.id
                                    }
 
         assert_response :success
@@ -1191,7 +1198,7 @@ This is a test report.",
                                      id: @project.id,
                                      comparison_content: comparison_content,
                                      old_report_id: @old_report.id,
-                                     new_report_id: @new_report.id,
+                                     new_report_id: @new_report.id
                                    }
 
         assert_response :success
@@ -1219,7 +1226,7 @@ This is a test report.",
                                      id: @project.id,
                                      comparison_content: comparison_content,
                                      old_report_id: @old_report.id,
-                                     new_report_id: @new_report.id,
+                                     new_report_id: @new_report.id
                                    }
 
         assert_response :success
@@ -1240,7 +1247,8 @@ This is a test report.",
         ActionController::Base.allow_forgery_protection = true
         begin
           post :comparison_pdf, params: { id: @project.id, comparison_content: "test" }
-          assert_response 422
+
+          assert_response :unprocessable_content
         ensure
           ActionController::Base.allow_forgery_protection = false
         end
@@ -1256,7 +1264,8 @@ This is a test report.",
         ActionController::Base.allow_forgery_protection = true
         begin
           delete :health_report_destroy, params: { id: @project.id, report_id: report.id }
-          assert_response 422
+
+          assert_response :unprocessable_content
         ensure
           ActionController::Base.allow_forgery_protection = false
         end
@@ -1266,7 +1275,8 @@ This is a test report.",
         ActionController::Base.allow_forgery_protection = true
         begin
           post :comparison_pdf, params: { id: @project.id, content: "test", format: :json }
-          assert_response 422
+
+          assert_response :unprocessable_content
         ensure
           ActionController::Base.allow_forgery_protection = false
         end
@@ -1282,7 +1292,8 @@ This is a test report.",
         ActionController::Base.allow_forgery_protection = true
         begin
           delete :health_report_destroy, params: { id: @project.id, report_id: report.id, format: :json }
-          assert_response 422
+
+          assert_response :unprocessable_content
         ensure
           ActionController::Base.allow_forgery_protection = false
         end

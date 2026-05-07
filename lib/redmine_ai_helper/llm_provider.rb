@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative "llm_client/open_ai_provider"
 require_relative "llm_client/anthropic_provider"
 require_relative "llm_client/gemini_provider"
@@ -68,15 +69,15 @@ module RedmineAiHelper
       def provider_for_profile(profile)
         case profile.llm_type
         when LLM_OPENAI
-          return RedmineAiHelper::LlmClient::OpenAiProvider.new(model_profile: profile)
+          RedmineAiHelper::LlmClient::OpenAiProvider.new(model_profile: profile)
         when LLM_OPENAI_COMPATIBLE
-          return RedmineAiHelper::LlmClient::OpenAiCompatibleProvider.new(model_profile: profile)
+          RedmineAiHelper::LlmClient::OpenAiCompatibleProvider.new(model_profile: profile)
         when LLM_GEMINI
-          return RedmineAiHelper::LlmClient::GeminiProvider.new(model_profile: profile)
+          RedmineAiHelper::LlmClient::GeminiProvider.new(model_profile: profile)
         when LLM_ANTHROPIC
-          return RedmineAiHelper::LlmClient::AnthropicProvider.new(model_profile: profile)
+          RedmineAiHelper::LlmClient::AnthropicProvider.new(model_profile: profile)
         when LLM_AZURE_OPENAI
-          return RedmineAiHelper::LlmClient::AzureOpenAiProvider.new(model_profile: profile)
+          RedmineAiHelper::LlmClient::AzureOpenAiProvider.new(model_profile: profile)
         else
           raise NotImplementedError, "LLM provider not found"
         end
@@ -86,11 +87,11 @@ module RedmineAiHelper
       # @return [Array] An array of options for the select menu.
       def option_for_select
         [
-          ["OpenAI", LLM_OPENAI],
-          ["OpenAI Compatible(Experimental)", LLM_OPENAI_COMPATIBLE],
-          ["Gemini(Experimental)", LLM_GEMINI],
-          ["Anthropic", LLM_ANTHROPIC],
-          ["Azure OpenAI(Experimental)", LLM_AZURE_OPENAI],
+          [ "OpenAI", LLM_OPENAI ],
+          [ "OpenAI Compatible(Experimental)", LLM_OPENAI_COMPATIBLE ],
+          [ "Gemini(Experimental)", LLM_GEMINI ],
+          [ "Anthropic", LLM_ANTHROPIC ],
+          [ "Azure OpenAI(Experimental)", LLM_AZURE_OPENAI ]
         ]
       end
     end

@@ -32,7 +32,7 @@ module AiHelper
     # @param options [Array<Hash>, nil] array of {label:, value:} hashes, or nil/empty to skip.
     # @return [void]
     def send_interactive_options_event(options)
-      return if options.nil? || options.empty?
+      return if options.blank?
 
       payload = { choices: options }.to_json
       response.stream.write("event: interactive_options\ndata: #{payload}\n\n")
@@ -57,13 +57,13 @@ module AiHelper
         object: "chat.completion.chunk",
         created: Time.now.to_i,
         model: "gpt-3.5-turbo-0613",
-        choices: [{
+        choices: [ {
           index: 0,
           delta: {
-            role: "assistant",
+            role: "assistant"
           },
-          finish_reason: nil,
-        }],
+          finish_reason: nil
+        } ]
       })
 
       full_content = String.new
@@ -75,13 +75,13 @@ module AiHelper
           object: "chat.completion.chunk",
           created: Time.now.to_i,
           model: "gpt-3.5-turbo-0613",
-          choices: [{
+          choices: [ {
             index: 0,
             delta: {
-              content: content,
+              content: content
             },
-            finish_reason: nil,
-          }],
+            finish_reason: nil
+          } ]
         })
       end
 
@@ -92,11 +92,11 @@ module AiHelper
         object: "chat.completion.chunk",
         created: Time.now.to_i,
         model: "gpt-3.5-turbo-0613",
-        choices: [{
+        choices: [ {
           index: 0,
           delta: {},
-          finish_reason: "stop",
-        }],
+          finish_reason: "stop"
+        } ]
       })
 
       options = RedmineAiHelper::Util::InteractiveOptionsParser.extract_options(full_content)

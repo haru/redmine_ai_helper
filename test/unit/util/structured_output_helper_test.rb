@@ -11,14 +11,14 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
       properties: {
         goal: {
           type: "string",
-          description: "A concise goal",
+          description: "A concise goal"
         },
         required_flag: {
           type: "boolean",
-          description: "Whether steps are required",
-        },
+          description: "Whether steps are required"
+        }
       },
-      required: ["goal", "required_flag"],
+      required: [ "goal", "required_flag" ]
     }
   end
 
@@ -26,7 +26,7 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
     should "return instructions string containing the JSON schema" do
       instructions = Util::StructuredOutputHelper.get_format_instructions(@json_schema)
 
-      assert instructions.is_a?(String)
+      assert_kind_of String, instructions
       assert_includes instructions, "JSON Schema"
       assert_includes instructions, '"goal"'
       assert_includes instructions, '"required_flag"'
@@ -46,7 +46,7 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
 
       result = Util::StructuredOutputHelper.parse(
         response: response,
-        json_schema: @json_schema,
+        json_schema: @json_schema
       )
 
       assert_equal "Test goal", result["goal"]
@@ -66,7 +66,7 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
 
       result = Util::StructuredOutputHelper.parse(
         response: response,
-        json_schema: @json_schema,
+        json_schema: @json_schema
       )
 
       assert_equal "Test goal", result["goal"]
@@ -78,7 +78,7 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
 
       result = Util::StructuredOutputHelper.parse(
         response: response,
-        json_schema: @json_schema,
+        json_schema: @json_schema
       )
 
       assert_equal "Test", result["goal"]
@@ -96,7 +96,7 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
         response: bad_response,
         json_schema: @json_schema,
         chat_method: mock_chat_method,
-        messages: [{ role: "user", content: "test" }],
+        messages: [ { role: "user", content: "test" } ]
       )
 
       assert_equal "Fixed goal", result["goal"]
@@ -108,7 +108,7 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
       assert_raises(JSON::ParserError) do
         Util::StructuredOutputHelper.parse(
           response: bad_response,
-          json_schema: @json_schema,
+          json_schema: @json_schema
         )
       end
     end
@@ -126,7 +126,7 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
           response: bad_response,
           json_schema: @json_schema,
           chat_method: mock_chat_method,
-          messages: [{ role: "user", content: "test" }],
+          messages: [ { role: "user", content: "test" } ]
         )
       end
     end
@@ -137,19 +137,19 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
         items: {
           type: "object",
           properties: {
-            name: { type: "string" },
-          },
-        },
+            name: { type: "string" }
+          }
+        }
       }
 
       response = '[{"name": "item1"}, {"name": "item2"}]'
 
       result = Util::StructuredOutputHelper.parse(
         response: response,
-        json_schema: array_schema,
+        json_schema: array_schema
       )
 
-      assert result.is_a?(Array)
+      assert_kind_of Array, result
       assert_equal 2, result.length
       assert_equal "item1", result[0]["name"]
     end
@@ -159,7 +159,7 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
 
       result = Util::StructuredOutputHelper.parse(
         response: response,
-        json_schema: @json_schema,
+        json_schema: @json_schema
       )
 
       assert_equal "Trimmed", result["goal"]
@@ -173,7 +173,7 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
       # Since parse_json_from_response is private, test through parse
       result = Util::StructuredOutputHelper.parse(
         response: "{\"goal\": \"Direct\", \"required_flag\": true}",
-        json_schema: @json_schema,
+        json_schema: @json_schema
       )
 
       assert_equal "Direct", result["goal"]

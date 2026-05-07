@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative "base_provider"
 
 module RedmineAiHelper
@@ -15,7 +16,7 @@ module RedmineAiHelper
         chat = context.chat(
           model: model_name,
           provider: :openai,
-          assume_model_exists: true,
+          assume_model_exists: true
         )
         chat.with_instructions(instructions) if instructions
         chat.with_tools(*tools) unless tools.empty?

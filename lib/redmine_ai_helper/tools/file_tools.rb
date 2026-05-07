@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "redmine_ai_helper/base_tools"
 require "redmine_ai_helper/util/attachment_file_helper"
 
@@ -16,7 +17,7 @@ module RedmineAiHelper
                      "Use this when you need to understand what is in attached files." do
         property :content_type, type: "string",
                  description: "The type of content: 'issue', 'wiki_page', or 'message'",
-                 required: true, enum: ["issue", "wiki_page", "message"]
+                 required: true, enum: [ "issue", "wiki_page", "message" ]
         property :content_id, type: "integer",
                  description: "The ID of the content", required: true
         property :question, type: "string",
@@ -64,7 +65,7 @@ module RedmineAiHelper
       # @return [String] Text description/analysis of the file content
       def analyze_url_file(url:, question: nil)
         prompt = build_analysis_prompt(question: question, file_count: 1)
-        analyze_with_llm(prompt: prompt, file_paths: [url])
+        analyze_with_llm(prompt: prompt, file_paths: [ url ])
       end
 
       private

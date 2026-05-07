@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "redmine_ai_helper/base_tools"
 
 module RedmineAiHelper
@@ -23,7 +24,7 @@ module RedmineAiHelper
             identifier: project.identifier,
             description: project.description,
             created_on: project.created_on,
-            last_activity_date: project.last_activity_date,
+            last_activity_date: project.last_activity_date
           }
         end
         list
@@ -69,10 +70,10 @@ module RedmineAiHelper
               id: child.id,
               name: child.name,
               identifier: child.identifier,
-              description: child.description,
+              description: child.description
             }
           end,
-          last_activity_date: project.last_activity_date,
+          last_activity_date: project.last_activity_date
         }
         project_json
       end
@@ -101,15 +102,15 @@ module RedmineAiHelper
               roles: member.roles.map do |role|
                 {
                   id: role.id,
-                  name: role.name,
+                  name: role.name
                 }
-              end,
+              end
             }
           end
           {
             project_id: project.id,
             project_name: project.name,
-            members: members,
+            members: members
           }
         end
         { projects: list }
@@ -130,12 +131,12 @@ module RedmineAiHelper
 
         enabled_modules = project.enabled_modules.map do |enabled_module|
           {
-            name: enabled_module.name,
+            name: enabled_module.name
           }
         end
         json = {
           project_id: project_id,
-          enabled_modules: enabled_modules,
+          enabled_modules: enabled_modules
         }
         json
       end
@@ -169,7 +170,7 @@ module RedmineAiHelper
         fetcher = Redmine::Activity::Fetcher.new(
           current_user,
           project: project,
-          author: author,
+          author: author
         )
         ai_helper_logger.debug "current_user: #{current_user}, project: #{project}, author: #{author}, start_date: #{start_date}, end_date: #{end_date}, limit: #{limit}"
         events = fetcher.events(start_date, end_date).sort_by(&:event_datetime).reverse.first(limit)
@@ -183,7 +184,7 @@ module RedmineAiHelper
             event_type: event.event_type,
             event_title: event.event_title,
             event_description: event.event_description,
-            event_url: event.event_url,
+            event_url: event.event_url
           }
         end
         json = { "activities": list }
@@ -217,7 +218,7 @@ module RedmineAiHelper
           commit_frequency: {},
           committer_distribution: {},
           commit_timeline: {},
-          commit_size_metrics: {},
+          commit_size_metrics: {}
         }
 
         base_metrics = {
@@ -225,9 +226,9 @@ module RedmineAiHelper
           repository_info: extract_repository_info(repositories),
           period: {
             start_date: start_date,
-            end_date: end_date,
+            end_date: end_date
           },
-          total_commits: changesets.size,
+          total_commits: changesets.size
         }
 
         if changesets.empty?
@@ -240,21 +241,21 @@ module RedmineAiHelper
           commit_frequency: calculate_commit_frequency(changesets, start_date, end_date),
           committer_distribution: calculate_committer_distribution(changesets),
           commit_timeline: calculate_commit_timeline(changesets, start_date, end_date),
-          commit_size_metrics: calculate_commit_size_metrics(changesets),
+          commit_size_metrics: calculate_commit_size_metrics(changesets)
         )
       rescue ActiveRecord::RecordNotFound => e
         ai_helper_logger.error "calculate_repository_metrics record not found: #{e.message}"
         ai_helper_logger.error e.backtrace.join("\n")
         {
           repository_available: true,
-          error: "Repository data not found",
+          error: "Repository data not found"
         }
       rescue => e
         ai_helper_logger.error "calculate_repository_metrics error: #{e.message}"
         ai_helper_logger.error e.backtrace.join("\n")
         {
           repository_available: true,
-          error: e.message,
+          error: e.message
         }
       end
 
@@ -314,12 +315,12 @@ module RedmineAiHelper
               name: project.name,
               identifier: project.identifier,
               created_on: project.created_on,
-              last_activity_date: project.last_activity_date,
+              last_activity_date: project.last_activity_date
             },
             period: {
               start_date: start_date_obj,
               end_date: end_date_obj,
-              version_id: version_id,
+              version_id: version_id
             },
             issue_statistics: calculate_issue_statistics(issues),
             timing_metrics: calculate_timing_metrics(issues),
@@ -330,7 +331,7 @@ module RedmineAiHelper
             update_frequency_metrics: calculate_update_frequency_metrics(issues),
             estimation_accuracy_metrics: calculate_estimation_accuracy_metrics(issues),
             attachment_metrics: calculate_attachment_metrics(issues),
-            repository_metrics: repository_metrics,
+            repository_metrics: repository_metrics
           }
 
           ai_helper_logger.info "get_metrics returning: #{metrics.to_json}"
@@ -352,7 +353,7 @@ module RedmineAiHelper
             identifier: repo.identifier,
             type: repo.type,
             url: repo.url,
-            is_default: repo.is_default,
+            is_default: repo.is_default
           }
         end
       end
@@ -376,7 +377,7 @@ module RedmineAiHelper
           daily_average: (total_commits.to_f / total_days).round(2),
           weekly_average: (total_commits.to_f / total_days * 7).round(2),
           monthly_average: (total_commits.to_f / total_days * 30).round(2),
-          period_days: total_days,
+          period_days: total_days
         }
       end
 
@@ -405,7 +406,7 @@ module RedmineAiHelper
           unique_committers: by_committer.size,
           mapped_commits: mapped_users,
           unmapped_commits: unmapped_commits,
-          mapping_rate: changesets.empty? ? 0 : (mapped_users.to_f / changesets.size * 100).round(2),
+          mapping_rate: changesets.empty? ? 0 : (mapped_users.to_f / changesets.size * 100).round(2)
         }
       end
 
@@ -438,7 +439,7 @@ module RedmineAiHelper
           by_weekday: by_weekday,
           by_hour: by_hour,
           most_active_date: by_date.max_by { |_, count| count }&.first,
-          least_active_date: by_date.min_by { |_, count| count }&.first,
+          least_active_date: by_date.min_by { |_, count| count }&.first
         }
       end
 
@@ -452,7 +453,7 @@ module RedmineAiHelper
           min_comment_length: comment_lengths.min,
           max_comment_length: comment_lengths.max,
           empty_comments_count: changesets.count { |cs| cs.comments.blank? },
-          empty_comments_ratio: (changesets.count { |cs| cs.comments.blank? }.to_f / changesets.size * 100).round(2),
+          empty_comments_ratio: (changesets.count { |cs| cs.comments.blank? }.to_f / changesets.size * 100).round(2)
         }
       end
 
@@ -476,7 +477,7 @@ module RedmineAiHelper
           by_tracker: by_tracker,
           by_status: by_status,
           by_assigned_to: by_assigned_to,
-          by_author: by_author,
+          by_author: by_author
         }
       end
 
@@ -506,8 +507,8 @@ module RedmineAiHelper
             under_1_day: resolution_times.count { |t| t < 1 },
             one_to_7_days: resolution_times.count { |t| t >= 1 && t < 7 },
             one_to_4_weeks: resolution_times.count { |t| t >= 7 && t < 28 },
-            over_4_weeks: resolution_times.count { |t| t >= 28 },
-          },
+            over_4_weeks: resolution_times.count { |t| t >= 28 }
+          }
         }
       end
 
@@ -525,7 +526,7 @@ module RedmineAiHelper
             issue_id: issue.id,
             estimated_hours: estimated,
             spent_hours: spent,
-            variance_percentage: ((spent - estimated) / estimated * 100).round(2),
+            variance_percentage: ((spent - estimated) / estimated * 100).round(2)
           }
         end
 
@@ -539,7 +540,7 @@ module RedmineAiHelper
           issues_with_estimates: issues_with_estimates.count,
           issues_with_time_entries: issues_with_time_entries.count,
           estimated_vs_actual_details: estimated_vs_actual,
-          average_estimation_variance: estimated_vs_actual.empty? ? 0 : estimated_vs_actual.sum { |e| e[:variance_percentage] } / estimated_vs_actual.size,
+          average_estimation_variance: estimated_vs_actual.empty? ? 0 : estimated_vs_actual.sum { |e| e[:variance_percentage] } / estimated_vs_actual.size
         }
       end
 
@@ -559,7 +560,7 @@ module RedmineAiHelper
           by_tracker: by_tracker,
           tracker_ratios: by_tracker.transform_values { |count| issue_list.count > 0 ? (count.to_f / issue_list.count * 100).round(2) : 0 },
           reopened_issues_count: reopened_issues.count,
-          reopened_ratio: issue_list.count > 0 ? (reopened_issues.count.to_f / issue_list.count * 100).round(2) : 0,
+          reopened_ratio: issue_list.count > 0 ? (reopened_issues.count.to_f / issue_list.count * 100).round(2) : 0
         }
       end
 
@@ -579,8 +580,8 @@ module RedmineAiHelper
           completion_distribution: {
             not_started: not_started.count,
             in_progress: in_progress.count,
-            completed: completed.count,
-          },
+            completed: completed.count
+          }
         }
       end
 
@@ -598,7 +599,7 @@ module RedmineAiHelper
             user_name: user.name,
             user_id: user.id,
             assigned_issues: user_issues.count,
-            average_progress: average_progress,
+            average_progress: average_progress
           }
         end
 
@@ -606,14 +607,14 @@ module RedmineAiHelper
           members_workload: members_workload,
           unassigned_issues: unassigned_issues.count,
           total_active_members: members_workload.size,
-          workload_balance: calculate_workload_balance(members_workload),
+          workload_balance: calculate_workload_balance(members_workload)
         }
       end
 
       def calculate_workload_balance(members_workload)
         return 0 if members_workload.empty?
 
-        issue_counts = members_workload.map { |m| m[:assigned_issues] }
+        issue_counts = members_workload.map { |m| m[:assigned_issues] } # rubocop:disable Rails/Pluck
         average_workload = issue_counts.sum.to_f / issue_counts.size
         variance = issue_counts.sum { |count| (count - average_workload) ** 2 } / issue_counts.size
 
@@ -621,7 +622,7 @@ module RedmineAiHelper
           average_issues_per_member: average_workload.round(2),
           workload_variance: variance.round(2),
           max_workload: issue_counts.max,
-          min_workload: issue_counts.min,
+          min_workload: issue_counts.min
         }
       end
 
@@ -638,7 +639,7 @@ module RedmineAiHelper
             author: issue.author&.name,
             assigned_to: issue.assigned_to&.name,
             due_date: issue.due_date,
-            done_ratio: issue.done_ratio,
+            done_ratio: issue.done_ratio
           }
         end
       end
@@ -655,7 +656,7 @@ module RedmineAiHelper
           {
             issue_id: issue.id,
             update_count: journal_count,
-            days_since_last_update: days_since_update,
+            days_since_last_update: days_since_update
           }
         end
 
@@ -674,10 +675,10 @@ module RedmineAiHelper
           update_recency_distribution: {
             within_1_week: within_week,
             within_1_month: within_month,
-            over_1_month: over_month,
+            over_1_month: over_month
           },
           actively_updated_tickets: actively_updated,
-          active_update_ratio: issue_list.count > 0 ? (actively_updated.to_f / issue_list.count * 100).round(2) : 0,
+          active_update_ratio: issue_list.count > 0 ? (actively_updated.to_f / issue_list.count * 100).round(2) : 0
         }
       end
 
@@ -705,7 +706,7 @@ module RedmineAiHelper
             accuracy_percentage: accuracy,
             variance_percentage: variance,
             tracker: issue.tracker&.name,
-            assignee: issue.assigned_to&.name,
+            assignee: issue.assigned_to&.name
           }
         end
 
@@ -718,7 +719,7 @@ module RedmineAiHelper
           avg_accuracy = tracker_data.sum { |d| d[:accuracy_percentage] } / tracker_data.size
           {
             count: tracker_data.size,
-            average_accuracy: avg_accuracy.round(2),
+            average_accuracy: avg_accuracy.round(2)
           }
         end
 
@@ -726,7 +727,7 @@ module RedmineAiHelper
           avg_accuracy = assignee_data.sum { |d| d[:accuracy_percentage] } / assignee_data.size
           {
             count: assignee_data.size,
-            average_accuracy: avg_accuracy.round(2),
+            average_accuracy: avg_accuracy.round(2)
           }
         end
 
@@ -739,11 +740,11 @@ module RedmineAiHelper
             accurate_count: accurate,
             overestimated_ratio: (overestimated.to_f / accuracy_data.size * 100).round(2),
             underestimated_ratio: (underestimated.to_f / accuracy_data.size * 100).round(2),
-            accurate_ratio: (accurate.to_f / accuracy_data.size * 100).round(2),
+            accurate_ratio: (accurate.to_f / accuracy_data.size * 100).round(2)
           },
           accuracy_by_tracker: by_tracker,
           accuracy_by_assignee: by_assignee,
-          total_analyzed_issues: accuracy_data.size,
+          total_analyzed_issues: accuracy_data.size
         }
       end
 
@@ -788,8 +789,8 @@ module RedmineAiHelper
             total_size_mb: (total_size_bytes.to_f / 1.megabyte).round(2),
             average_size_kb: (average_size_bytes.to_f / 1.kilobyte).round(2),
             large_files_count: large_files.count,
-            large_files_ratio: (large_files.count.to_f / all_attachments.count * 100).round(2),
-          },
+            large_files_ratio: (large_files.count.to_f / all_attachments.count * 100).round(2)
+          }
         }
       end
     end

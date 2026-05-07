@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "redmine_ai_helper/base_tools"
 require "redmine_ai_helper/util/attachment_file_helper"
 
@@ -26,10 +27,10 @@ module RedmineAiHelper
             description: board.description,
             messages_count: board.messages_count,
             parent_board_id: board.parent_id,
-            url_for_board: "#{project_board_path(board.project, board)}",
+            url_for_board: "#{project_board_path(board.project, board)}"
           }
         end
-        return board_list
+        board_list
       end
 
       define_function :board_info, description: "Read a board from the database. It returns the board ID, project ID, name, description, messages_count, and messages." do
@@ -53,14 +54,14 @@ module RedmineAiHelper
               id: message.id,
               content: message.content,
               created_on: message.created_on,
-              url_for_message: "#{board_message_path(message.board, message)}",
+              url_for_message: "#{board_message_path(message.board, message)}"
             }
             hash[:author] = {
               id: message.author.id,
-              name: message.author.name,
+              name: message.author.name
             } if message.author
             hash
-          end,
+          end
         }
         board_hash
       end
@@ -82,7 +83,7 @@ module RedmineAiHelper
           content: message.content,
           author: {
             id: message.author.id,
-            name: message.author.name,
+            name: message.author.name
           },
           created_on: message.created_on,
           updated_on: message.updated_on,
@@ -94,7 +95,7 @@ module RedmineAiHelper
               filesize: attachment.filesize,
               content_type: attachment.content_type,
               type: attachment_file_type(attachment),
-              created_on: attachment.created_on,
+              created_on: attachment.created_on
             }
           end,
           replies: message.children.filter(&:visible?).map do |reply|
@@ -103,12 +104,12 @@ module RedmineAiHelper
               content: reply.content,
               author: {
                 id: reply.author.id,
-                name: reply.author.name,
+                name: reply.author.name
               },
               created_on: reply.created_on,
-              updated_on: reply.updated_on,
+              updated_on: reply.updated_on
             }
-          end,
+          end
         }
 
         message_hash

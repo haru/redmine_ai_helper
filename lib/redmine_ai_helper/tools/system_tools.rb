@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "redmine_ai_helper/base_tools"
 
 module RedmineAiHelper
@@ -30,11 +31,11 @@ module RedmineAiHelper
             version: plugin.version,
             author: plugin.author,
             url: plugin.url,
-            author_url: plugin.author_url,
+            author_url: plugin.author_url
           }
         end
         json = { plugins: plugin_list }
-        return json
+        json
       end
 
       # Returns comprehensive system information.
@@ -51,7 +52,7 @@ module RedmineAiHelper
         # Redmine version and environment
         system_info[:redmine] = {
           version: Redmine::VERSION::STRING,
-          environment: Rails.env,
+          environment: Rails.env
         }
 
         # Ruby information
@@ -59,40 +60,40 @@ module RedmineAiHelper
           version: RUBY_VERSION,
           patchlevel: RUBY_PATCHLEVEL,
           release_date: RUBY_RELEASE_DATE,
-          platform: RUBY_PLATFORM,
+          platform: RUBY_PLATFORM
         }
 
         # Rails version
         system_info[:rails] = {
-          version: Rails::VERSION::STRING,
+          version: Rails::VERSION::STRING
         }
 
         # Database information
         begin
           system_info[:database] = {
-            adapter: ActiveRecord::Base.connection.adapter_name,
+            adapter: ActiveRecord::Base.connection.adapter_name
           }
         rescue => e
           system_info[:database] = {
             adapter: "Unknown",
-            error: e.message,
+            error: e.message
           }
         end
 
         # Mailer configuration
         system_info[:mailer] = {
           queue: defined?(ActiveJob) ? "ActiveJob::#{Rails.application.config.active_job.queue_adapter}" : "Unknown",
-          delivery: ActionMailer::Base.delivery_method.to_s,
+          delivery: ActionMailer::Base.delivery_method.to_s
         }
 
         # Redmine theme
         system_info[:redmine_settings] = {
-          theme: Setting.ui_theme.present? ? Setting.ui_theme : "Default",
+          theme: (Setting.ui_theme.presence || "Default")
         }
 
         # SCM information (only available SCMs)
         system_info[:scm] = {}
-        Redmine::Scm::Base.all.each do |scm_name|
+        Redmine::Scm::Base.all.each do |scm_name| # rubocop:disable Rails/FindEach
           begin
             scm_class = "Repository::#{scm_name}".constantize
             # Check if SCM is available before getting version
@@ -113,7 +114,7 @@ module RedmineAiHelper
           system_info[:plugins][plugin.id.to_s] = plugin.version.to_s
         end
 
-        return system_info
+        system_info
       end
     end
   end

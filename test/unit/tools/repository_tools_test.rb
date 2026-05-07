@@ -5,12 +5,12 @@ class RepositoryToolsTest < ActiveSupport::TestCase
 
   def setup
     @provider = RedmineAiHelper::Tools::RepositoryTools.new
-    repo_dir = Rails.root.join("plugins/redmine_ai_helper/tmp", "redmine_ai_helper_test_repo.git").to_s
+    repo_dir = Rails.root.join("plugins/redmine_ai_helper/tmp/redmine_ai_helper_test_repo.git").to_s
     @project = Project.find(1)
     @repository = @project.create_repository(
       type: "Repository::Git",
       url: repo_dir,
-      identifier: "test",
+      identifier: "test"
     )
     @repository.fetch_changesets
     @repository.save!
@@ -18,6 +18,7 @@ class RepositoryToolsTest < ActiveSupport::TestCase
 
   def test_repository_info_success
     response = @provider.repository_info(repository_id: @repository.id)
+
     assert_equal @repository.id, response[:id]
     assert_equal "Git", response[:type]
     assert_equal "test", response[:name]
@@ -31,6 +32,7 @@ class RepositoryToolsTest < ActiveSupport::TestCase
 
   def test_get_file_info_success
     response = @provider.get_file_info(repository_id: @repository.id, path: "README.md", revision: "main")
+
     assert_equal 119, response[:size]
     assert_equal "file", response[:type]
     assert response[:is_text]
@@ -44,7 +46,8 @@ class RepositoryToolsTest < ActiveSupport::TestCase
 
   def test_read_file_success
     response = @provider.read_file(repository_id: @repository.id, path: "README.md", revision: "main")
-    assert response[:content].include?("some text")
+
+    assert_includes response[:content], "some text"
   end
 
   def test_read_file_not_found
@@ -63,6 +66,7 @@ class RepositoryToolsTest < ActiveSupport::TestCase
     changeset = @repository.changesets.second
     revision = changeset.revision
     response = @provider.get_revision_info(repository_id: @repository.id, revision: revision)
+
     assert_equal revision, response[:revision]
     assert_equal changeset.committed_on, response[:committed_on]
     assert_equal changeset.comments, response[:comments]
@@ -82,6 +86,7 @@ class RepositoryToolsTest < ActiveSupport::TestCase
     changeset = @repository.changesets.second
     revision = changeset.revision
     response = @provider.read_diff(repository_id: @repository.id, revision: revision)
-    assert response[:diff].include?("diff --git")
+
+    assert_includes response[:diff], "diff --git"
   end
 end

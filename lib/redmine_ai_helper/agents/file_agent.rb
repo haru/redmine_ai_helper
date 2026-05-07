@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative "../base_agent"
 
 module RedmineAiHelper
@@ -17,7 +18,7 @@ module RedmineAiHelper
       # Returns the tool providers available to this agent.
       # @return [Array<Class>] Array containing FileTools
       def available_tool_providers
-        [RedmineAiHelper::Tools::FileTools]
+        [ RedmineAiHelper::Tools::FileTools ]
       end
     end
   end

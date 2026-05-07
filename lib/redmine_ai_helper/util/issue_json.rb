@@ -15,27 +15,27 @@ module RedmineAiHelper
           subject: issue.subject,
           project: issue.project ? {
             id: issue.project.id,
-            name: issue.project.name,
+            name: issue.project.name
           } : nil,
           tracker: issue.tracker ? {
             id: issue.tracker.id,
-            name: issue.tracker.name,
+            name: issue.tracker.name
           } : nil,
           status: issue.status ? {
             id: issue.status.id,
-            name: issue.status.name,
+            name: issue.status.name
           } : nil,
           priority: issue.priority ? {
             id: issue.priority.id,
-            name: issue.priority.name,
+            name: issue.priority.name
           } : nil,
           author: issue.author ? {
             id: issue.author.id,
-            name: issue.author.name,
+            name: issue.author.name
           } : nil,
           assigned_to: issue.assigned_to ? {
             id: issue.assigned_to.id,
-            name: issue.assigned_to.name,
+            name: issue.assigned_to.name
           } : nil,
           description: issue.description,
           start_date: issue.start_date,
@@ -58,7 +58,7 @@ module RedmineAiHelper
               content_type: attachment.content_type,
               type: attachment_file_type(attachment),
               created_on: attachment.created_on,
-              attachment_url: attachment_path(attachment, only_path: false),
+              attachment_url: attachment_path(attachment, only_path: false)
             }
           end,
           children: issue.children.filter { |child| child.visible? }.map do |child|
@@ -66,15 +66,15 @@ module RedmineAiHelper
               id: child.id,
               tracker: child.tracker ? {
                 id: child.tracker.id,
-                name: child.tracker.name,
+                name: child.tracker.name
               } : nil,
               subject: child.subject,
-              issue_url: issue_url(child, only_path: true),
+              issue_url: issue_url(child, only_path: true)
             }
           end,
           parent: (issue.parent && issue.parent.visible?) ? {
             id: issue.parent.id,
-            subject: issue.parent.subject,
+            subject: issue.parent.subject
           } : nil,
           relations: issue.relations.filter { |relation| relation.visible? }.map do |relation|
             other_issue_id = relation.issue_from_id == issue.id ? relation.issue_to_id : relation.issue_from_id
@@ -85,7 +85,7 @@ module RedmineAiHelper
               relation_type: relation.relation_type,
               delay: relation.delay,
               other_issue_id: other_issue_id,
-              other_issue_subject: Issue.find_by(id: other_issue_id)&.subject,
+              other_issue_subject: Issue.find_by(id: other_issue_id)&.subject
             }
           end,
           journals: issue.journals.filter { |journal| journal.visible? }.map do |journal|
@@ -93,7 +93,7 @@ module RedmineAiHelper
               id: journal.id,
               user: journal.user ? {
                 id: journal.user.id,
-                name: journal.user.name,
+                name: journal.user.name
               } : nil,
               notes: journal.notes,
               created_on: journal.created_on,
@@ -105,18 +105,18 @@ module RedmineAiHelper
                   property: detail.property,
                   prop_key: detail.prop_key,
                   value: detail.value,
-                  old_value: detail.old_value,
+                  old_value: detail.old_value
                 }
-              end,
+              end
             }
           end,
           revisions: issue.changesets.map do |changeset|
             {
               repository_id: changeset.repository_id,
               revision: changeset.revision,
-              committed_on: changeset.committed_on,
+              committed_on: changeset.committed_on
             }
-          end,
+          end
 
         }
         json[:issue_url] = issue_url(issue, only_path: true) if issue.id

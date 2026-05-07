@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "redmine_ai_helper/base_tools"
 require "redmine_ai_helper/util/wiki_json"
 require "redmine_ai_helper/util/attachment_file_helper"
@@ -45,10 +46,10 @@ module RedmineAiHelper
             title: page.title,
             author: {
               id: page.content.author.id,
-              name: page.content.author.name,
+              name: page.content.author.name
             },
             created_on: page.created_on,
-            updated_on: page.updated_on,
+            updated_on: page.updated_on
           }
         end
         json

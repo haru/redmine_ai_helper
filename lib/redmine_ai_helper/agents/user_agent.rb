@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative "../base_agent"
 
 module RedmineAiHelper
@@ -16,7 +17,7 @@ module RedmineAiHelper
       # Get available RubyLLM::Tool subclasses for this agent
       # @return [Array<Class>] Array of RubyLLM::Tool subclasses
       def available_tool_providers
-        [RedmineAiHelper::Tools::UserTools]
+        [ RedmineAiHelper::Tools::UserTools ]
       end
     end
   end

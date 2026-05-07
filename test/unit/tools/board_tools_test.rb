@@ -12,6 +12,7 @@ class BoardToolsTest < ActiveSupport::TestCase
 
   def test_list_boards_success
     response = @provider.list_boards(project_id: @project.id)
+
     assert_equal @project.boards.count, response.size
   end
 
@@ -23,6 +24,7 @@ class BoardToolsTest < ActiveSupport::TestCase
 
   def test_board_info_success
     response = @provider.board_info(board_id: @board.id)
+
     assert_equal @board.id, response[:id]
     assert_equal @board.name, response[:name]
   end
@@ -35,6 +37,7 @@ class BoardToolsTest < ActiveSupport::TestCase
 
   def test_read_message_success
     response = @provider.read_message(message_id: @message.id)
+
     assert_equal @message.id, response[:id]
     assert_equal @message.content, response[:content]
   end
@@ -47,6 +50,7 @@ class BoardToolsTest < ActiveSupport::TestCase
 
   def test_generate_board_url
     response = @provider.generate_board_url(board_id: @board.id)
+
     assert_match(%r{boards/\d+}, response[:url])
   end
 
@@ -64,6 +68,7 @@ class BoardToolsTest < ActiveSupport::TestCase
 
   def test_generate_message_url
     response = @provider.generate_message_url(message_id: @message.id)
+
     assert_match(%r{/boards/\d+/topics/\d+}, response[:url])
   end
 
@@ -80,9 +85,10 @@ class BoardToolsTest < ActiveSupport::TestCase
 
       response = @provider.read_message(message_id: @message.id)
 
-      assert response[:attachments].is_a?(Array)
-      assert response[:attachments].length > 0
+      assert_kind_of Array, response[:attachments]
+      assert_operator response[:attachments].length, :>, 0
       attachment_data = response[:attachments].first
+
       assert_equal "image", attachment_data[:type]
       assert attachment_data.key?(:id)
       assert attachment_data.key?(:filename)
@@ -95,6 +101,7 @@ class BoardToolsTest < ActiveSupport::TestCase
       response = @provider.read_message(message_id: @message.id)
 
       attachment_data = response[:attachments].first
+
       assert_nil attachment_data[:type]
     end
 

@@ -86,3 +86,4 @@ Gemfile.local
 .ruby-lsp
 .serena/
 .qlty/
+.rubocop_todo.yml

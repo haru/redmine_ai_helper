@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "json"
 require_relative "issue_content_analyzer"
 
@@ -50,11 +51,11 @@ module RedmineAiHelper
           version_id: issue.fixed_version&.id,
           version_name: issue.fixed_version&.name,
           category_name: issue.category&.name,
-          issue_url: issue_url(issue, only_path: true),
+          issue_url: issue_url(issue, only_path: true)
         }
         content = build_hybrid_content(issue)
 
-        return { content: content, payload: payload }
+        { content: content, payload: payload }
       end
 
       private

@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "set"
 require "redmine_ai_helper/base_tools"
 require "redmine_ai_helper/util/issue_json"

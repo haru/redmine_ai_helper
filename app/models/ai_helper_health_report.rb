@@ -6,8 +6,8 @@ class AiHelperHealthReport < ApplicationRecord
   belongs_to :user
 
   # Validations
-  validates :project_id, presence: true
-  validates :user_id, presence: true
+  validates :project_id, presence: true # rubocop:disable Rails/RedundantPresenceValidationOnBelongsTo
+  validates :user_id, presence: true # rubocop:disable Rails/RedundantPresenceValidationOnBelongsTo
   validates :health_report, presence: true
 
   # Scopes
@@ -64,7 +64,7 @@ class AiHelperHealthReport < ApplicationRecord
       id: id,
       created_at: created_at,
       user_name: user.name,
-      total_issues: metrics_hash.dig(:issue_statistics, :total_issues) || 0,
+      total_issues: metrics_hash.dig(:issue_statistics, :total_issues) || 0
     }
   end
 end

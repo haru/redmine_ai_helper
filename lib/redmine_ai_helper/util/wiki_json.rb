@@ -15,14 +15,14 @@ module RedmineAiHelper
           page_url: project_wiki_page_path(page.wiki.project, page.title),
           author: {
             id: page.content.author.id,
-            name: page.content.author.name,
+            name: page.content.author.name
           },
           version: page.version,
           created_on: page.created_on,
           updated_on: page.updated_on,
           children: page.children.filter(&:visible?).map do |child|
             {
-              title: child.title,
+              title: child.title
             }
           end,
           parent: page.parent ? { title: page.parent.title } : nil,
@@ -35,9 +35,9 @@ module RedmineAiHelper
               type: attachment_file_type(attachment),
               description: attachment.description,
               created_on: attachment.created_on,
-              attachment_url: attachment_path(attachment),
+              attachment_url: attachment_path(attachment)
             }
-          end,
+          end
         }
       end
     end

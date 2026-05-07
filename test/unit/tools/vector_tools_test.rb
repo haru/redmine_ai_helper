@@ -36,16 +36,18 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
 
     should "call vector_db and return response when target is issue" do
       @vector_tools.stubs(:vector_db).with(target: "issue").returns(@mock_db)
-      @mock_db.expects(:ask_with_filter).with(query: "foo bar", k: 10, filter: {}).returns([{ "issue_id" => 1 }])
+      @mock_db.expects(:ask_with_filter).with(query: "foo bar", k: 10, filter: {}).returns([ { "issue_id" => 1 } ])
       result = @vector_tools.ask_with_filter(query: "foo bar", k: 10, filter: {}, target: "issue")
+
       assert_equal 1, result.first[:id]
     end
 
     should "call vector_db and return response when target is wiki" do
       @vector_tools.stubs(:vector_db).with(target: "wiki").returns(@mock_db)
-      @mock_db.expects(:ask_with_filter).with(query: "foo bar", k: 10, filter: {}).returns([{ "wiki_id" => 1 }])
+      @mock_db.expects(:ask_with_filter).with(query: "foo bar", k: 10, filter: {}).returns([ { "wiki_id" => 1 } ])
       result = @vector_tools.ask_with_filter(query: "foo bar", k: 10, filter: {}, target: "wiki")
       wiki = WikiPage.find_by(id: 1)
+
       assert_equal wiki.title, result.first[:title]
     end
 
@@ -68,9 +70,10 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         User.current.stubs(:allowed_to?).returns(true)
         User.current.stubs(:allowed_to?).with(:view_ai_helper, issue.project).returns(false)
         @vector_tools.stubs(:vector_db).with(target: "issue").returns(@mock_db)
-        @mock_db.expects(:ask_with_filter).returns([{ "issue_id" => issue.id }])
+        @mock_db.expects(:ask_with_filter).returns([ { "issue_id" => issue.id } ])
 
         result = @vector_tools.ask_with_filter(query: "foo", k: 10, filter: {}, target: "issue")
+
         assert_equal 0, result.length
       end
 
@@ -80,9 +83,10 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         User.current.stubs(:allowed_to?).returns(true)
         User.current.stubs(:allowed_to?).with(:view_ai_helper, issue.project).returns(true)
         @vector_tools.stubs(:vector_db).with(target: "issue").returns(@mock_db)
-        @mock_db.expects(:ask_with_filter).returns([{ "issue_id" => issue.id }])
+        @mock_db.expects(:ask_with_filter).returns([ { "issue_id" => issue.id } ])
 
         result = @vector_tools.ask_with_filter(query: "foo", k: 10, filter: {}, target: "issue")
+
         assert_equal 1, result.length
       end
 
@@ -92,9 +96,10 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         User.current.stubs(:allowed_to?).returns(true)
         User.current.stubs(:allowed_to?).with(:view_ai_helper, wiki.project).returns(false)
         @vector_tools.stubs(:vector_db).with(target: "wiki").returns(@mock_db)
-        @mock_db.expects(:ask_with_filter).returns([{ "wiki_id" => wiki.id }])
+        @mock_db.expects(:ask_with_filter).returns([ { "wiki_id" => wiki.id } ])
 
         result = @vector_tools.ask_with_filter(query: "foo", k: 10, filter: {}, target: "wiki")
+
         assert_equal 0, result.length
       end
 
@@ -104,9 +109,10 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         User.current.stubs(:allowed_to?).returns(true)
         User.current.stubs(:allowed_to?).with(:view_ai_helper, wiki.project).returns(true)
         @vector_tools.stubs(:vector_db).with(target: "wiki").returns(@mock_db)
-        @mock_db.expects(:ask_with_filter).returns([{ "wiki_id" => wiki.id }])
+        @mock_db.expects(:ask_with_filter).returns([ { "wiki_id" => wiki.id } ])
 
         result = @vector_tools.ask_with_filter(query: "foo", k: 10, filter: {}, target: "wiki")
+
         assert_equal 1, result.length
         assert_equal wiki.title, result.first[:title]
       end
@@ -115,26 +121,29 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
     context "#create_filter" do
       should "convert filter items with _id to integer" do
         filter = [
-          { key: "project_id", condition: "match", value: "123" },
+          { key: "project_id", condition: "match", value: "123" }
         ]
         result = @vector_tools.send(:create_filter, filter)
-        assert_equal [{ key: "project_id", match: { value: 123 } }], result
+
+        assert_equal [ { key: "project_id", match: { value: 123 } } ], result
       end
 
       should "convert filter items with other keys to string" do
         filter = [
-          { key: "created_on", condition: "match", value: "2024-01-01" },
+          { key: "created_on", condition: "match", value: "2024-01-01" }
         ]
         result = @vector_tools.send(:create_filter, filter)
-        assert_equal [{ key: "created_on", match: { value: "2024-01-01" } }], result
+
+        assert_equal [ { key: "created_on", match: { value: "2024-01-01" } } ], result
       end
 
       should "handle lt/lte/gt/gte conditions" do
         filter = [
-          { key: "priority_id", condition: "lt", value: "5" },
+          { key: "priority_id", condition: "lt", value: "5" }
         ]
         result = @vector_tools.send(:create_filter, filter)
-        assert_equal [{ key: "priority_id", rante: { "lt" => 5 } }], result
+
+        assert_equal [ { key: "priority_id", rante: { "lt" => 5 } } ], result
       end
     end
 
@@ -142,12 +151,14 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
       should "return IssueVectorDb for target issue" do
         RedmineAiHelper::Vector::IssueVectorDb.expects(:new).returns(:issue_db)
         @vector_tools.instance_variable_set(:@vector_db, nil)
+
         assert_equal :issue_db, @vector_tools.send(:vector_db, target: "issue")
       end
 
       should "return WikiVectorDb for target wiki" do
         RedmineAiHelper::Vector::WikiVectorDb.expects(:new).returns(:wiki_db)
         @vector_tools.instance_variable_set(:@vector_db, nil)
+
         assert_equal :wiki_db, @vector_tools.send(:vector_db, target: "wiki")
       end
 
@@ -160,11 +171,13 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
 
     should "vector_db_enabled? returns true if setting is enabled" do
       @setting.stubs(:vector_search_enabled).returns(true)
+
       assert_equal true, @vector_tools.send(:vector_db_enabled?)
     end
 
     should "vector_db_enabled? returns false if setting is disabled" do
       @setting.stubs(:vector_search_enabled).returns(false)
+
       assert_equal false, @vector_tools.send(:vector_db_enabled?)
     end
 
@@ -182,7 +195,7 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         @mock_analyzer = mock("issue_content_analyzer")
         @mock_analyzer.stubs(:analyze).returns({
           summary: "Test summary",
-          keywords: ["keyword1", "keyword2"],
+          keywords: [ "keyword1", "keyword2" ]
         })
         RedmineAiHelper::Vector::IssueContentAnalyzer.stubs(:new).returns(@mock_analyzer)
       end
@@ -234,16 +247,16 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         mock_results = [
           {
             "payload" => {
-              "issue_id" => @issue.id,  # Current issue - should be filtered out
+              "issue_id" => @issue.id  # Current issue - should be filtered out
             },
-            "score" => 1.0,
+            "score" => 1.0
           },
           {
             "payload" => {
-              "issue_id" => other_issue.id,
+              "issue_id" => other_issue.id
             },
-            "score" => 0.85,
-          },
+            "score" => 0.85
+          }
         ]
 
         @mock_db.expects(:similarity_search).returns(mock_results)
@@ -252,7 +265,7 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
 
         assert_equal 1, result.length
         assert_equal other_issue.id, result.first[:id]
-        assert_equal 85.0, result.first[:similarity_score]
+        assert_in_delta(85.0, result.first[:similarity_score])
       end
 
       should "filter out issues from projects without ai_helper module" do
@@ -263,10 +276,10 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         mock_results = [
           {
             "payload" => {
-              "issue_id" => other_issue.id,
+              "issue_id" => other_issue.id
             },
-            "score" => 0.85,
-          },
+            "score" => 0.85
+          }
         ]
 
         @mock_db.expects(:similarity_search).returns(mock_results)
@@ -285,12 +298,13 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         mock_results = [
           {
             "payload" => { "issue_id" => other_issue.id },
-            "score" => 0.85,
-          },
+            "score" => 0.85
+          }
         ]
         @mock_db.expects(:similarity_search).returns(mock_results)
 
         result = @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
+
         assert_equal 0, result.length
       end
 
@@ -303,12 +317,13 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         mock_results = [
           {
             "payload" => { "issue_id" => other_issue.id },
-            "score" => 0.85,
-          },
+            "score" => 0.85
+          }
         ]
         @mock_db.expects(:similarity_search).returns(mock_results)
 
         result = @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
+
         assert_equal 1, result.length
       end
 
@@ -319,10 +334,10 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         mock_results = [
           {
             "payload" => {
-              "issue_id" => other_issue.id,
+              "issue_id" => other_issue.id
             },
-            "score" => 0.85,
-          },
+            "score" => 0.85
+          }
         ]
 
         @mock_db.expects(:similarity_search).returns(mock_results)
@@ -366,7 +381,7 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         @mock_analyzer = mock("issue_content_analyzer")
         @mock_analyzer.stubs(:analyze).returns({
           summary: "Test summary",
-          keywords: ["keyword1", "keyword2"],
+          keywords: [ "keyword1", "keyword2" ]
         })
         RedmineAiHelper::Vector::IssueContentAnalyzer.stubs(:new).returns(@mock_analyzer)
       end
@@ -374,7 +389,7 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
       should "pass scope filter to similarity_search for scope current" do
         User.current.stubs(:allowed_to?).returns(true)
         @mock_db.expects(:similarity_search).with { |args|
-          args[:filter] == { must: [{ key: "project_id", match: { value: @issue.project.id } }] }
+          args[:filter] == { must: [ { key: "project_id", match: { value: @issue.project.id } } ] }
         }.returns([])
 
         @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10, scope: "current", project: @issue.project)
@@ -406,7 +421,7 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         @issue.project.descendants.active.each { |p| p.enable_module!(:ai_helper) }
         User.current.stubs(:allowed_to?).returns(true)
 
-        expected_ids = [@issue.project.id] + @issue.project.descendants.active.pluck(:id)
+        expected_ids = [ @issue.project.id ] + @issue.project.descendants.active.pluck(:id)
         @mock_db.expects(:similarity_search).with { |args|
           filter = args[:filter]
           if expected_ids.length == 1
@@ -434,7 +449,7 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         @mock_analyzer = mock("issue_content_analyzer")
         @analysis_result = {
           summary: "Test issue about login functionality",
-          keywords: ["authentication", "login", "session"],
+          keywords: [ "authentication", "login", "session" ]
         }
       end
 
@@ -467,11 +482,11 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
 
         # Verify the query contains summary, keywords, and title
-        assert captured_query.include?("Summary: Test issue about login functionality"),
+        assert_includes captured_query, "Summary: Test issue about login functionality",
                "Query should include the summary"
-        assert captured_query.include?("Keywords: authentication, login, session"),
+        assert_includes captured_query, "Keywords: authentication, login, session",
                "Query should include the keywords"
-        assert captured_query.include?("Title: #{@issue.subject}"),
+        assert_includes captured_query, "Title: #{@issue.subject}",
                "Query should include the issue title"
       end
 
@@ -489,6 +504,7 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
 
         # Should not raise error, should fallback gracefully
         result = @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
+
         assert_equal [], result
       end
     end
@@ -503,25 +519,28 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
       should "return only current project id for scope current" do
         User.current.stubs(:allowed_to?).with(:view_ai_helper, @project).returns(true)
         result = @vector_tools.send(:collect_permitted_project_ids, "current", @project)
-        assert_equal [@project.id], result
+
+        assert_equal [ @project.id ], result
       end
 
       should "return empty array when user lacks permission for scope current" do
         User.current.stubs(:allowed_to?).returns(false)
         result = @vector_tools.send(:collect_permitted_project_ids, "current", @project)
+
         assert_equal [], result
       end
 
       should "return project and subproject ids for scope with_subprojects" do
         # Enable ai_helper for subprojects and stub permissions
         subproject_ids = @project.descendants.active.pluck(:id)
-        all_project_ids = [@project.id] + subproject_ids
+        all_project_ids = [ @project.id ] + subproject_ids
         all_project_ids.each do |pid|
           Project.find(pid).enable_module!(:ai_helper)
         end
         User.current.stubs(:allowed_to?).returns(true)
 
         result = @vector_tools.send(:collect_permitted_project_ids, "with_subprojects", @project)
+
         assert_includes result, @project.id
         subproject_ids.each do |sid|
           assert_includes result, sid
@@ -535,8 +554,9 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         User.current.stubs(:allowed_to?).with(:view_ai_helper, subproject).returns(false)
 
         result = @vector_tools.send(:collect_permitted_project_ids, "with_subprojects", @project)
+
         assert_includes result, @project.id
-        refute_includes result, subproject.id
+        assert_not_includes result, subproject.id
       end
 
       should "return all active project ids with permission for scope all" do
@@ -544,6 +564,7 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         User.current.stubs(:allowed_to?).returns(true)
 
         result = @vector_tools.send(:collect_permitted_project_ids, "all", @project)
+
         Project.active.each do |p|
           assert_includes result, p.id
         end
@@ -556,7 +577,8 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         User.current.stubs(:allowed_to?).with(:view_ai_helper, excluded_project).returns(false)
 
         result = @vector_tools.send(:collect_permitted_project_ids, "all", @project)
-        refute_includes result, excluded_project.id
+
+        assert_not_includes result, excluded_project.id
       end
 
       should "raise ArgumentError for invalid scope" do
@@ -581,24 +603,28 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
             { key: "project_id", match: { value: @project.id } }
           ]
         }
+
         assert_equal expected, result
       end
 
       should "return nil when no permitted projects for scope current" do
         User.current.stubs(:allowed_to?).returns(false)
         result = @vector_tools.send(:build_scope_filter, "current", @project)
+
         assert_nil result
       end
 
       should "return should filter with multiple project ids for scope with_subprojects" do
         subproject_ids = @project.descendants.active.pluck(:id)
-        all_ids = [@project.id] + subproject_ids
+        all_ids = [ @project.id ] + subproject_ids
         all_ids.each { |pid| Project.find(pid).enable_module!(:ai_helper) }
         User.current.stubs(:allowed_to?).returns(true)
 
         result = @vector_tools.send(:build_scope_filter, "with_subprojects", @project)
+
         assert result.key?(:should)
         result_ids = result[:should].map { |f| f[:match][:value] }
+
         all_ids.each { |id| assert_includes result_ids, id }
       end
 
@@ -613,6 +639,7 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
             { key: "project_id", match: { value: @project.id } }
           ]
         }
+
         assert_equal expected, result
       end
 
@@ -621,8 +648,10 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         User.current.stubs(:allowed_to?).returns(true)
 
         result = @vector_tools.send(:build_scope_filter, "all", @project)
+
         assert result.key?(:should)
         result_ids = result[:should].map { |f| f[:match][:value] }
+
         Project.active.each { |p| assert_includes result_ids, p.id }
       end
 
@@ -638,6 +667,7 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
             { key: "project_id", match: { value: permitted_project.id } }
           ]
         }
+
         assert_equal expected, result
       end
 
@@ -690,10 +720,10 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         mock_results = [
           {
             "payload" => {
-              "issue_id" => other_issue.id,
+              "issue_id" => other_issue.id
             },
-            "score" => 0.85,
-          },
+            "score" => 0.85
+          }
         ]
 
         @mock_db.expects(:similarity_search).returns(mock_results)
@@ -701,12 +731,12 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         result = @vector_tools.find_similar_issues_by_content(
           subject: "Test subject",
           description: "Test description",
-          k: 10,
+          k: 10
         )
 
         assert_equal 1, result.length
         assert_equal other_issue.id, result.first[:id]
-        assert_equal 85.0, result.first[:similarity_score]
+        assert_in_delta(85.0, result.first[:similarity_score])
       end
 
       should "build content query correctly" do
@@ -721,7 +751,7 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         @vector_tools.find_similar_issues_by_content(
           subject: "Test subject",
           description: "Test description",
-          k: 10,
+          k: 10
         )
       end
 
@@ -732,10 +762,10 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         mock_results = [
           {
             "payload" => {
-              "issue_id" => other_issue.id,
+              "issue_id" => other_issue.id
             },
-            "score" => 0.85,
-          },
+            "score" => 0.85
+          }
         ]
 
         @mock_db.expects(:similarity_search).returns(mock_results)
@@ -743,7 +773,7 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         result = @vector_tools.find_similar_issues_by_content(
           subject: "Test",
           description: "Test",
-          k: 10,
+          k: 10
         )
 
         assert_equal 0, result.length
@@ -758,16 +788,17 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         mock_results = [
           {
             "payload" => { "issue_id" => other_issue.id },
-            "score" => 0.85,
-          },
+            "score" => 0.85
+          }
         ]
         @mock_db.expects(:similarity_search).returns(mock_results)
 
         result = @vector_tools.find_similar_issues_by_content(
           subject: "Test",
           description: "Test",
-          k: 10,
+          k: 10
         )
+
         assert_equal 0, result.length
       end
 
@@ -780,16 +811,17 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         mock_results = [
           {
             "payload" => { "issue_id" => other_issue.id },
-            "score" => 0.85,
-          },
+            "score" => 0.85
+          }
         ]
         @mock_db.expects(:similarity_search).returns(mock_results)
 
         result = @vector_tools.find_similar_issues_by_content(
           subject: "Test",
           description: "Test",
-          k: 10,
+          k: 10
         )
+
         assert_equal 1, result.length
       end
 
@@ -801,10 +833,10 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         mock_results = [
           {
             "payload" => {
-              "issue_id" => other_issue.id,
+              "issue_id" => other_issue.id
             },
-            "score" => 0.85,
-          },
+            "score" => 0.85
+          }
         ]
 
         @mock_db.expects(:similarity_search).returns(mock_results)
@@ -812,7 +844,7 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         result = @vector_tools.find_similar_issues_by_content(
           subject: "Test",
           description: "Test",
-          k: 10,
+          k: 10
         )
 
         assert_equal 0, result.length
@@ -824,7 +856,7 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         result = @vector_tools.find_similar_issues_by_content(
           subject: "Test",
           description: "Test",
-          k: 10,
+          k: 10
         )
 
         assert_equal 0, result.length
@@ -836,7 +868,7 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         result = @vector_tools.find_similar_issues_by_content(
           subject: "Test",
           description: "Test",
-          k: 10,
+          k: 10
         )
 
         assert_equal 0, result.length
@@ -851,14 +883,14 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         }.returns([
           {
             "payload" => { "issue_id" => other_issue.id },
-            "score" => 0.75,
-          },
+            "score" => 0.75
+          }
         ])
 
         result = @vector_tools.find_similar_issues_by_content(
           subject: "Test subject",
           description: "",
-          k: 10,
+          k: 10
         )
 
         assert_equal 1, result.length
@@ -873,14 +905,14 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         }.returns([
           {
             "payload" => { "issue_id" => other_issue.id },
-            "score" => 0.75,
-          },
+            "score" => 0.75
+          }
         ])
 
         result = @vector_tools.find_similar_issues_by_content(
           subject: "",
           description: "Test description",
-          k: 10,
+          k: 10
         )
 
         assert_equal 1, result.length

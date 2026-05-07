@@ -19,11 +19,13 @@ class ProjectToolsTest < ActiveSupport::TestCase
     enabled_module.save!
 
     response = @provider.list_projects()
+
     assert_equal 2, response.size
     project1 = Project.find(1)
     project2 = Project.find(2)
-    [project1, project2].each_with_index do |project, index|
+    [ project1, project2 ].each_with_index do |project, index|
       value = response[index]
+
       assert_equal project.id, value[:id]
       assert_equal project.name, value[:name]
     end
@@ -33,6 +35,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
     project = Project.find(1)
 
     response = @provider.read_project(project_id: project.id)
+
     assert_equal project.id, response[:id]
     assert_equal project.name, response[:name]
   end
@@ -41,6 +44,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
     project = Project.find(1)
 
     response = @provider.read_project(project_name: project.name)
+
     assert_equal project.id, response[:id]
     assert_equal project.name, response[:name]
   end
@@ -49,6 +53,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
     project = Project.find(1)
 
     response = @provider.read_project(project_identifier: project.identifier)
+
     assert_equal project.id, response[:id]
     assert_equal project.name, response[:name]
   end
@@ -69,7 +74,8 @@ class ProjectToolsTest < ActiveSupport::TestCase
     project = Project.find(1)
     members = project.members
 
-    response = @provider.project_members(project_ids: [project.id])
+    response = @provider.project_members(project_ids: [ project.id ])
+
     assert_equal members.size, response[:projects][0][:members].size
     assert_equal members.first.user_id, response[:projects][0][:members].first[:user_id]
   end
@@ -79,6 +85,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
     enabled_modules = project.enabled_modules
 
     response = @provider.project_enabled_modules(project_id: project.id)
+
     assert_equal enabled_modules.size, response[:enabled_modules].size
     assert_equal enabled_modules.first.name, response[:enabled_modules].first[:name]
   end
@@ -103,13 +110,15 @@ class ProjectToolsTest < ActiveSupport::TestCase
     enabled_module.name = "ai_helper"
     enabled_module.save!
 
-    response = @provider.project_members(project_ids: [project1.id, project2.id])
+    response = @provider.project_members(project_ids: [ project1.id, project2.id ])
+
     assert_equal 2, response[:projects].size
     assert response[:projects].all? { |p| p.key?(:members) }
   end
 
   def test_project_members_with_invalid_project_id
-    response = @provider.project_members(project_ids: [999])
+    response = @provider.project_members(project_ids: [ 999 ])
+
     assert_equal "error", response.status
   end
 
@@ -163,11 +172,11 @@ class ProjectToolsTest < ActiveSupport::TestCase
   def test_project_members_includes_member_details
     project = Project.find(1)
 
-    response = @provider.project_members(project_ids: [project.id])
+    response = @provider.project_members(project_ids: [ project.id ])
     project_data = response[:projects].first
 
     assert project_data.key?(:members)
-    assert project_data[:members].is_a?(Array)
+    assert_kind_of Array, project_data[:members]
   end
 
   def test_read_project_without_permission
@@ -185,14 +194,14 @@ class ProjectToolsTest < ActiveSupport::TestCase
     response = @provider.read_project(project_id: project.id)
 
     assert response.key?(:subprojects)
-    assert response[:subprojects].is_a?(Array)
+    assert_kind_of Array, response[:subprojects]
   end
 
   def test_project_members_permission_check
     project = Project.find(1)
     User.current = User.find(6) # User without permission
 
-    response = @provider.project_members(project_ids: [project.id])
+    response = @provider.project_members(project_ids: [ project.id ])
     # When user has no permission, accessible projects are filtered out, resulting in empty list
     assert_equal [], response[:projects]
   end
@@ -202,7 +211,8 @@ class ProjectToolsTest < ActiveSupport::TestCase
     User.current = User.find(6) # User without permission
 
     result = @provider.project_enabled_modules(project_id: project.id)
-    assert result.is_a?(RedmineAiHelper::ToolResponse)
+
+    assert_kind_of RedmineAiHelper::ToolResponse, result
     assert_equal "error", result.status
     assert_equal "You don't have permission to view this project", result.error
   end
@@ -212,7 +222,8 @@ class ProjectToolsTest < ActiveSupport::TestCase
     User.current = User.find(6) # User without permission
 
     result = @provider.list_project_activities(project_id: project.id)
-    assert result.is_a?(RedmineAiHelper::ToolResponse)
+
+    assert_kind_of RedmineAiHelper::ToolResponse, result
     assert_equal "error", result.status
     assert_equal "You don't have permission to view this project", result.error
   end
@@ -233,12 +244,14 @@ class ProjectToolsTest < ActiveSupport::TestCase
 
     # Test project_info structure
     project_info = metrics[:project_info]
+
     assert_equal project.id, project_info[:id]
     assert_equal project.name, project_info[:name]
     assert_equal project.identifier, project_info[:identifier]
 
     # Test issue_statistics structure
     issue_stats = metrics[:issue_statistics]
+
     assert issue_stats.key?(:total_issues)
     assert issue_stats.key?(:open_issues)
     assert issue_stats.key?(:closed_issues)
@@ -266,7 +279,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
     metrics = @provider.get_metrics(
       project_id: project.id,
       start_date: start_date,
-      end_date: end_date,
+      end_date: end_date
     )
 
     assert_equal Date.parse(start_date), metrics[:period][:start_date]
@@ -279,7 +292,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
     metrics = @provider.send(:calculate_repository_metrics, project)
 
     assert_equal true, metrics[:repository_available]
-    assert metrics[:total_commits] >= 0
+    assert_operator metrics[:total_commits], :>=, 0
     assert metrics[:commit_frequency].key?(:total_commits)
     assert metrics[:committer_distribution].key?(:unique_users)
     assert metrics[:commit_timeline].key?(:by_date)
@@ -297,7 +310,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
     if metrics[:commit_frequency].empty?
       assert_equal({}, metrics[:commit_frequency])
     else
-      assert metrics[:commit_frequency][:period_days] <= 8
+      assert_operator metrics[:commit_frequency][:period_days], :<=, 8
     end
   end
 
@@ -322,10 +335,10 @@ class ProjectToolsTest < ActiveSupport::TestCase
 
     frequency = @provider.send(:calculate_commit_frequency, changesets, start_date, end_date)
 
-    assert frequency[:total_commits] >= 0
-    assert frequency[:daily_average] >= 0
-    assert frequency[:weekly_average] >= 0
-    assert frequency[:monthly_average] >= 0
+    assert_operator frequency[:total_commits], :>=, 0
+    assert_operator frequency[:daily_average], :>=, 0
+    assert_operator frequency[:weekly_average], :>=, 0
+    assert_operator frequency[:monthly_average], :>=, 0
   end
 
   def test_calculate_commit_timeline
@@ -467,6 +480,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
     assert progress_metrics.key?(:completion_distribution)
 
     completion_dist = progress_metrics[:completion_distribution]
+
     assert completion_dist.key?(:not_started)
     assert completion_dist.key?(:in_progress)
     assert completion_dist.key?(:completed)
@@ -492,6 +506,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
 
     # The closed issue should not appear in not_started
     open_issues_with_zero_ratio = project.issues.reload.select { |i| !i.status.is_closed? && (i.done_ratio || 0) == 0 }
+
     assert_equal open_issues_with_zero_ratio.count, completion_dist[:not_started]
   end
 
@@ -516,10 +531,12 @@ class ProjectToolsTest < ActiveSupport::TestCase
     # The closed issue should appear in completed, not in_progress
     all_issues = project.issues.includes(:status).reload.to_a
     expected_completed = all_issues.select { |i| i.status.is_closed? || (i.done_ratio || 0) == 100 }.count
+
     assert_equal expected_completed, completion_dist[:completed]
 
     # in_progress should not include the closed issue
     expected_in_progress = all_issues.select { |i| !i.status.is_closed? && (r = (i.done_ratio || 0); r > 0 && r < 100) }.count
+
     assert_equal expected_in_progress, completion_dist[:in_progress]
   end
 
@@ -552,7 +569,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
     progress_metrics = metrics[:progress_metrics]
 
     # total_done_ratio = 0 (open) + 100 (closed) = 100, average = 100/2 = 50.0
-    assert_equal 50.0, progress_metrics[:average_completion_percentage]
+    assert_in_delta(50.0, progress_metrics[:average_completion_percentage])
     # issues_with_progress: closed issue counts as having progress
     assert_equal 1, progress_metrics[:issues_with_progress]
   end
@@ -570,6 +587,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
 
     if member_metrics[:members_workload].any?
       workload = member_metrics[:members_workload].first
+
       assert workload.key?(:user_name)
       assert workload.key?(:user_id)
       assert workload.key?(:assigned_issues)
@@ -595,14 +613,16 @@ class ProjectToolsTest < ActiveSupport::TestCase
 
   def test_list_projects_with_dummy_parameter
     response = @provider.list_projects(dummy: "test")
-    assert response.is_a?(Array)
-    assert response.size >= 1
+
+    assert_kind_of Array, response
+    assert_operator response.size, :>=, 1
   end
 
   def test_read_project_finds_by_name
     project = Project.find(1)
 
     response = @provider.read_project(project_name: project.name)
+
     assert_equal project.id, response[:id]
     assert_equal project.name, response[:name]
   end
@@ -611,6 +631,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
     project = Project.find(1)
 
     response = @provider.read_project(project_identifier: project.identifier)
+
     assert_equal project.id, response[:id]
     assert_equal project.identifier, response[:identifier]
   end
@@ -644,7 +665,8 @@ class ProjectToolsTest < ActiveSupport::TestCase
 
     assert_equal "success", response.status
     activities = response.value[:activities]
-    assert activities.size <= 5
+
+    assert_operator activities.size, :<=, 5
   end
 
   def test_project_enabled_modules_structure
@@ -653,10 +675,11 @@ class ProjectToolsTest < ActiveSupport::TestCase
     response = @provider.project_enabled_modules(project_id: project.id)
 
     assert_equal project.id, response[:project_id]
-    assert response[:enabled_modules].is_a?(Array)
+    assert_kind_of Array, response[:enabled_modules]
 
     if response[:enabled_modules].any?
       module_info = response[:enabled_modules].first
+
       assert module_info.key?(:name)
     end
   end
@@ -684,14 +707,15 @@ class ProjectToolsTest < ActiveSupport::TestCase
     assert update_metrics.key?(:active_update_ratio)
 
     recency_dist = update_metrics[:update_recency_distribution]
+
     assert recency_dist.key?(:within_1_week)
     assert recency_dist.key?(:within_1_month)
     assert recency_dist.key?(:over_1_month)
 
-    assert update_metrics[:average_updates_per_ticket].is_a?(Numeric)
-    assert update_metrics[:total_updates].is_a?(Integer)
-    assert update_metrics[:actively_updated_tickets].is_a?(Integer)
-    assert update_metrics[:active_update_ratio].is_a?(Numeric)
+    assert_kind_of Numeric, update_metrics[:average_updates_per_ticket]
+    assert_kind_of Integer, update_metrics[:total_updates]
+    assert_kind_of Integer, update_metrics[:actively_updated_tickets]
+    assert_kind_of Numeric, update_metrics[:active_update_ratio]
   end
 
   def test_get_metrics_estimation_accuracy_metrics_structure
@@ -710,6 +734,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
       assert accuracy_metrics.key?(:total_analyzed_issues)
 
       estimation_ratios = accuracy_metrics[:estimation_ratios]
+
       assert estimation_ratios.key?(:overestimated_count)
       assert estimation_ratios.key?(:underestimated_count)
       assert estimation_ratios.key?(:accurate_count)
@@ -717,8 +742,8 @@ class ProjectToolsTest < ActiveSupport::TestCase
       assert estimation_ratios.key?(:underestimated_ratio)
       assert estimation_ratios.key?(:accurate_ratio)
 
-      assert accuracy_metrics[:average_accuracy_percentage].is_a?(Numeric)
-      assert accuracy_metrics[:total_analyzed_issues].is_a?(Integer)
+      assert_kind_of Numeric, accuracy_metrics[:average_accuracy_percentage]
+      assert_kind_of Integer, accuracy_metrics[:total_analyzed_issues]
     else
       assert_equal false, accuracy_metrics[:accuracy_data_available]
     end
@@ -741,15 +766,16 @@ class ProjectToolsTest < ActiveSupport::TestCase
       assert attachment_metrics.key?(:file_size_statistics)
 
       file_size_stats = attachment_metrics[:file_size_statistics]
+
       assert file_size_stats.key?(:total_size_mb)
       assert file_size_stats.key?(:average_size_kb)
       assert file_size_stats.key?(:large_files_count)
       assert file_size_stats.key?(:large_files_ratio)
 
-      assert attachment_metrics[:document_attachment_rate].is_a?(Numeric)
-      assert attachment_metrics[:total_attachments].is_a?(Integer)
-      assert attachment_metrics[:average_attachments_per_ticket].is_a?(Numeric)
-      assert attachment_metrics[:file_type_distribution].is_a?(Hash)
+      assert_kind_of Numeric, attachment_metrics[:document_attachment_rate]
+      assert_kind_of Integer, attachment_metrics[:total_attachments]
+      assert_kind_of Numeric, attachment_metrics[:average_attachments_per_ticket]
+      assert_kind_of Hash, attachment_metrics[:file_type_distribution]
     else
       assert_equal false, attachment_metrics[:attachments_available]
     end
@@ -765,7 +791,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
       journalized: issue,
       user: User.find(1),
       notes: "Test update 1",
-      created_on: 5.days.ago,
+      created_on: 5.days.ago
     )
     journal1.save!
 
@@ -773,7 +799,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
       journalized: issue,
       user: User.find(1),
       notes: "Test update 2",
-      created_on: 2.days.ago,
+      created_on: 2.days.ago
     )
     journal2.save!
 
@@ -782,9 +808,9 @@ class ProjectToolsTest < ActiveSupport::TestCase
     metrics = @provider.get_metrics(project_id: project.id)
     update_metrics = metrics[:update_frequency_metrics]
 
-    assert update_metrics[:total_updates] >= original_journal_count + 2
-    assert update_metrics[:average_updates_per_ticket] > 0
-    assert update_metrics[:actively_updated_tickets] >= 1
+    assert_operator update_metrics[:total_updates], :>=, original_journal_count + 2
+    assert_operator update_metrics[:average_updates_per_ticket], :>, 0
+    assert_operator update_metrics[:actively_updated_tickets], :>=, 1
 
     journal1.destroy
     journal2.destroy
@@ -802,7 +828,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
       user: User.find(1),
       activity: TimeEntryActivity.first,
       hours: 12.0,
-      spent_on: Date.current,
+      spent_on: Date.current
     )
     time_entry.save!
 
@@ -810,9 +836,9 @@ class ProjectToolsTest < ActiveSupport::TestCase
     accuracy_metrics = metrics[:estimation_accuracy_metrics]
 
     if accuracy_metrics[:accuracy_data_available]
-      assert accuracy_metrics[:total_analyzed_issues] >= 1
-      assert accuracy_metrics[:average_accuracy_percentage] > 0
-      assert accuracy_metrics[:estimation_ratios][:underestimated_count] >= 1
+      assert_operator accuracy_metrics[:total_analyzed_issues], :>=, 1
+      assert_operator accuracy_metrics[:average_accuracy_percentage], :>, 0
+      assert_operator accuracy_metrics[:estimation_ratios][:underestimated_count], :>=, 1
     end
 
     time_entry.destroy
@@ -829,7 +855,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
       filename: "test_document.pdf",
       author: User.find(1),
       filesize: 5000,
-      content_type: "application/pdf",
+      content_type: "application/pdf"
     )
     attachment.save!
 
@@ -837,10 +863,11 @@ class ProjectToolsTest < ActiveSupport::TestCase
     attachment_metrics = metrics[:attachment_metrics]
 
     if attachment_metrics[:attachments_available]
-      assert attachment_metrics[:total_attachments] >= 1
-      assert attachment_metrics[:document_attachment_rate] > 0
-      assert attachment_metrics[:file_type_distribution]["PDF"] >= 1 if attachment_metrics[:file_type_distribution]["PDF"]
-      assert attachment_metrics[:file_size_statistics][:total_size_mb] > 0
+      assert_operator attachment_metrics[:total_attachments], :>=, 1
+      assert_operator attachment_metrics[:document_attachment_rate], :>, 0
+      assert_operator attachment_metrics[:file_type_distribution]["PDF"], :>=, 1 if attachment_metrics[:file_type_distribution]["PDF"]
+
+      assert_operator attachment_metrics[:file_size_statistics][:total_size_mb], :>, 0
     end
 
     attachment.destroy
@@ -852,10 +879,10 @@ class ProjectToolsTest < ActiveSupport::TestCase
     metrics = @provider.get_metrics(project_id: project.id)
     update_metrics = metrics[:update_frequency_metrics]
 
-    assert update_metrics[:average_updates_per_ticket] >= 0
-    assert update_metrics[:total_updates] >= 0
-    assert update_metrics[:active_update_ratio] >= 0
-    assert update_metrics[:active_update_ratio] <= 100
+    assert_operator update_metrics[:average_updates_per_ticket], :>=, 0
+    assert_operator update_metrics[:total_updates], :>=, 0
+    assert_operator update_metrics[:active_update_ratio], :>=, 0
+    assert_operator update_metrics[:active_update_ratio], :<=, 100
   end
 
   def test_get_metrics_estimation_accuracy_no_data
@@ -889,6 +916,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
     project = Project.find(1)
     # Should be able to call without send
     metrics = @provider.calculate_repository_metrics(project)
+
     assert metrics[:repository_available]
   end
 

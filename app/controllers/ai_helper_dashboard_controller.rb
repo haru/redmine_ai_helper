@@ -9,8 +9,8 @@ class AiHelperDashboardController < ApplicationController
   protect_from_forgery with: :exception
 
   before_action :find_project, :authorize, :find_user
-  before_action :find_health_report_and_project, only: [:health_report_show, :health_report_destroy]
-  before_action :set_per_page_limit, only: [:index]
+  before_action :find_health_report_and_project, only: [ :health_report_show, :health_report_destroy ]
+  before_action :set_per_page_limit, only: [ :index ]
 
   # Render the dashboard landing page for the current project.
   def index
@@ -36,9 +36,9 @@ class AiHelperDashboardController < ApplicationController
     # Determine which report should be selected (from URL params or default to most recent)
     @selected_report = if params[:report_id]
         @health_reports.find { |r| r.id.to_s == params[:report_id].to_s }
-      else
+    else
         @health_reports.first
-      end
+    end
 
     respond_to do |format|
       format.html { render partial: "ai_helper/project/health_report_history" }
@@ -79,7 +79,7 @@ class AiHelperDashboardController < ApplicationController
         render json: {
           status: "ok",
           deleted_report_id: report_id,
-          message: l(:notice_successful_delete),
+          message: l(:notice_successful_delete)
         }
       end
     end
@@ -224,7 +224,7 @@ class AiHelperDashboardController < ApplicationController
           old_report: old_report,
           new_report: new_report,
           project: @project,
-          stream_proc: stream_proc,
+          stream_proc: stream_proc
         )
       end
     rescue => e
@@ -238,11 +238,11 @@ class AiHelperDashboardController < ApplicationController
         object: "chat.completion.chunk",
         created: Time.now.to_i,
         model: "error",
-        choices: [{
+        choices: [ {
           index: 0,
           delta: { content: "Error: #{e.message}" },
-          finish_reason: "stop",
-        }],
+          finish_reason: "stop"
+        } ]
       })
     ensure
       response.stream.close
@@ -270,7 +270,7 @@ class AiHelperDashboardController < ApplicationController
     # Verify the health report belongs to the current project
     unless @health_report.project_id == @project.id
       render_404
-      return
+      nil
     end
   rescue ActiveRecord::RecordNotFound
     render_404

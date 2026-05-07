@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 module RedmineAiHelper
   # Class to store responses from tools
   # TODO: May not be needed
@@ -35,9 +36,7 @@ module RedmineAiHelper
 
     # Convert to string
     # @return [String] String representation
-    def to_s
-      to_hash.to_s
-    end
+    delegate :to_s, to: :to_hash
 
     def is_success?
       status == ToolResponse::STATUS_SUCCESS

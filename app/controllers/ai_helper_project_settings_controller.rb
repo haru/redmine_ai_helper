@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 # This controller manages AI helper project settings in Redmine.
 class AiHelperProjectSettingsController < ApplicationController
   protect_from_forgery with: :exception

@@ -17,7 +17,7 @@ module RedmineAiHelper
       # Get the path to the configuration file.
       # @return [Pathname] The path to the configuration file (config/ai_helper/config.yml).
       def self.config_file_path
-        Rails.root.join("config", "ai_helper", "config.yml")
+        Rails.root.join("config/ai_helper/config.yml")
       end
     end
   end

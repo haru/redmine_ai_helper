@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative "../base_agent"
 require "redmine_ai_helper/tools/wiki_write_tools"
 
@@ -49,7 +50,7 @@ module RedmineAiHelper
         prompt_text = prompt.format(wiki_data: json_string)
 
         message = { role: "user", content: prompt_text }
-        messages = [message]
+        messages = [ message ]
 
         file_paths = supported_attachment_paths(wiki_page)
         chat(messages, {}, stream_proc, with: file_paths.presence)
@@ -72,26 +73,26 @@ module RedmineAiHelper
           suffix_text = (cursor_position && cursor_position < text.length) ? text[cursor_position..-1] : ""
 
           # Determine editing mode text based on locale
-          editing_mode = is_section_edit ? 'Section Edit' : 'Full Page Edit'
+          editing_mode = is_section_edit ? "Section Edit" : "Full Page Edit"
 
 
           template_vars = {
             prefix_text: prefix_text,
             suffix_text: suffix_text,
-            page_title: context[:page_title] || 'New Wiki Page',
-            project_name: context[:project_name] || 'Unknown Project',
+            page_title: context[:page_title] || "New Wiki Page",
+            project_name: context[:project_name] || "Unknown Project",
             cursor_position: cursor_position.to_s,
-            max_sentences: '5',
+            max_sentences: "5",
             format: Setting.text_formatting,
-            project_description: context[:project_description] || '',
-            existing_content: context[:existing_content] || '',
+            project_description: context[:project_description] || "",
+            existing_content: context[:existing_content] || "",
             is_section_edit: editing_mode
           }
 
           prompt_text = prompt.format(**template_vars)
 
           message = { role: "user", content: prompt_text }
-          messages = [message]
+          messages = [ message ]
 
           completion = chat(messages, {})
 
@@ -109,7 +110,7 @@ module RedmineAiHelper
 
       def build_wiki_completion_context(text, project, wiki_page, is_section_edit: false)
         context = {
-          page_title: wiki_page&.title || 'New Wiki Page',
+          page_title: wiki_page&.title || "New Wiki Page",
           project_name: project&.name,
           text_length: text.length,
           is_section_edit: is_section_edit
@@ -124,7 +125,7 @@ module RedmineAiHelper
         if is_section_edit
           context.merge!(build_existing_wiki_context(project, wiki_page))
         else
-          context[:existing_content] = ''
+          context[:existing_content] = ""
         end
 
         context
@@ -132,13 +133,13 @@ module RedmineAiHelper
 
       def build_existing_wiki_context(project, current_wiki_page)
         wiki_context = {
-          existing_content: ''
+          existing_content: ""
         }
 
         return wiki_context unless project&.wiki
 
         if current_wiki_page&.content
-          wiki_context[:existing_content] = current_wiki_page.content.text || ''
+          wiki_context[:existing_content] = current_wiki_page.content.text || ""
         end
 
         wiki_context
@@ -156,12 +157,12 @@ module RedmineAiHelper
 
         cleaned_response = cleaned_response.gsub(/\n{3,}/, "\n\n")
 
-        cleaned_response = cleaned_response.gsub(/^[*-]+\s*/, '')
-                                         .gsub(/\s*[*-]+$/, '')
+        cleaned_response = cleaned_response.gsub(/^[*-]+\s*/, "")
+                                         .gsub(/\s*[*-]+$/, "")
 
         sentences = cleaned_response.split(/[.!?。！？]\s+/)
         if sentences.length > 5
-          cleaned_response = sentences[0..4].join('. ') + '.'
+          cleaned_response = sentences[0..4].join(". ") + "."
         end
 
         cleaned_response = cleaned_response[0..499] if cleaned_response.length > 500

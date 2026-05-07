@@ -21,10 +21,10 @@ class LlmWikiTest < ActiveSupport::TestCase
       text: "This project",
       cursor_position: 12,
       project: @project,
-      wiki_page: @wiki_page,
+      wiki_page: @wiki_page
     )
 
-    assert result.is_a?(String)
+    assert_kind_of String, result
     assert_equal "test completion", result
   end
 
@@ -35,7 +35,7 @@ class LlmWikiTest < ActiveSupport::TestCase
       text: "Error test",
       cursor_position: 10,
       project: @project,
-      wiki_page: @wiki_page,
+      wiki_page: @wiki_page
     )
 
     assert_equal "", result
@@ -52,7 +52,7 @@ class LlmWikiTest < ActiveSupport::TestCase
     @llm.generate_wiki_completion(
       text: "test",
       project: @project,
-      wiki_page: @wiki_page,
+      wiki_page: @wiki_page
     )
   end
 
@@ -64,7 +64,7 @@ class LlmWikiTest < ActiveSupport::TestCase
       cursor_position: 12,
       project: @project,
       wiki_page: @wiki_page,
-      is_section_edit: false,
+      is_section_edit: false
     ).returns("completion")
 
     RedmineAiHelper::Agents::WikiAgent.stubs(:new).returns(mock_agent)
@@ -73,7 +73,7 @@ class LlmWikiTest < ActiveSupport::TestCase
       text: "test content",
       cursor_position: 12,
       project: @project,
-      wiki_page: @wiki_page,
+      wiki_page: @wiki_page
     )
   end
 
@@ -84,10 +84,10 @@ class LlmWikiTest < ActiveSupport::TestCase
       text: "test",
       cursor_position: nil,
       project: nil,
-      wiki_page: nil,
+      wiki_page: nil
     )
 
-    assert result.is_a?(String)
+    assert_kind_of String, result
   end
 
   test "generate_wiki_completion should handle section editing parameters" do
@@ -98,7 +98,7 @@ class LlmWikiTest < ActiveSupport::TestCase
       cursor_position: 12,
       project: @project,
       wiki_page: @wiki_page,
-      is_section_edit: true,
+      is_section_edit: true
     ).returns("section completion")
 
     RedmineAiHelper::Agents::WikiAgent.stubs(:new).returns(mock_agent)
@@ -108,7 +108,7 @@ class LlmWikiTest < ActiveSupport::TestCase
       cursor_position: 12,
       project: @project,
       wiki_page: @wiki_page,
-      is_section_edit: true,
+      is_section_edit: true
     )
 
     assert_equal "section completion", result

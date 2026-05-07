@@ -51,10 +51,10 @@ module RedmineAiHelper
             reqs = source_tools_class.permission_requirements
             unless reqs.empty?
               if reqs[:vector_db_enabled] && !AiHelperSetting.vector_search_enabled?
-                return { content: [{ type: "text", text: "Permission denied: VectorDB is not enabled." }], isError: true }
+                return { content: [ { type: "text", text: "Permission denied: VectorDB is not enabled." } ], isError: true }
               end
               if reqs[:admin] && !User.current.admin?
-                return { content: [{ type: "text", text: "Permission denied: admin access required." }], isError: true }
+                return { content: [ { type: "text", text: "Permission denied: admin access required." } ], isError: true }
               end
             end
           end
@@ -62,12 +62,12 @@ module RedmineAiHelper
           result = ruby_tool_class.new.call(arguments)
 
           if result.is_a?(Hash) && result[:error]
-            { content: [{ type: "text", text: result[:error].to_s }], isError: true }
+            { content: [ { type: "text", text: result[:error].to_s } ], isError: true }
           else
-            { content: [{ type: "text", text: JSON.generate(result) }], isError: false }
+            { content: [ { type: "text", text: JSON.generate(result) } ], isError: false }
           end
         rescue => e
-          { content: [{ type: "text", text: e.message }], isError: true }
+          { content: [ { type: "text", text: e.message } ], isError: true }
         end
 
         private

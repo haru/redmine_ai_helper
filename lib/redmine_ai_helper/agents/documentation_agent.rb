@@ -28,35 +28,35 @@ module RedmineAiHelper
             properties: {
               original: {
                 type: "string",
-                description: "Original incorrect text",
+                description: "Original incorrect text"
               },
               corrected: {
                 type: "string",
-                description: "Corrected text",
+                description: "Corrected text"
               },
               position: {
                 type: "number",
-                description: "Character position in original text",
+                description: "Character position in original text"
               },
               length: {
                 type: "number",
-                description: "Length of text to replace",
+                description: "Length of text to replace"
               },
               reason: {
                 type: "string",
-                description: "Brief explanation of the correction",
+                description: "Brief explanation of the correction"
               },
               confidence: {
                 type: "string",
-                enum: ["high", "medium", "low"],
-                description: "Confidence level",
-              },
+                enum: [ "high", "medium", "low" ],
+                description: "Confidence level"
+              }
             },
-            required: ["original", "corrected", "position", "length", "reason", "confidence"],
-            additionalProperties: false,
+            required: [ "original", "corrected", "position", "length", "reason", "confidence" ],
+            additionalProperties: false
           },
           minItems: 0,
-          description: "Array of typo correction suggestions",
+          description: "Array of typo correction suggestions"
         }
 
         format_instructions = RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(json_schema)
@@ -67,15 +67,15 @@ module RedmineAiHelper
           text: text,
           context_type: context_type,
           max_suggestions: options[:max_suggestions] || 10,
-          format_instructions: format_instructions,
+          format_instructions: format_instructions
         )
 
         # Create proper message array for BaseAgent#chat
         messages = [
           {
             role: "user",
-            content: formatted_prompt,
-          },
+            content: formatted_prompt
+          }
         ]
 
         response = chat(messages)
@@ -84,7 +84,7 @@ module RedmineAiHelper
           response: response,
           json_schema: json_schema,
           chat_method: method(:chat),
-          messages: messages,
+          messages: messages
         )
 
         # Validate and fix suggestions data
@@ -198,7 +198,7 @@ module RedmineAiHelper
             "position" => position,
             "length" => actual_length,  # Always use actual length
             "reason" => suggestion["reason"].to_s,
-            "confidence" => suggestion["confidence"].to_s,
+            "confidence" => suggestion["confidence"].to_s
           }
         end
 

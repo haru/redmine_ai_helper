@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "redmine_ai_helper/base_tools"
 require "redmine_ai_helper/util/issue_json"
 require "redmine_ai_helper/util/attachment_file_helper"
@@ -19,8 +20,7 @@ module RedmineAiHelper
       def read_issues(issue_ids:)
         raise("Issue ID array is required.") if issue_ids.empty?
         issues = []
-        Issue.where(id: issue_ids).each do |issue|
-
+        Issue.where(id: issue_ids).find_each do |issue|
           # Check if the issue is visible to the current user
           next unless issue.visible?
 
@@ -60,31 +60,31 @@ module RedmineAiHelper
           trackers: project.trackers.map do |tracker|
             {
               id: tracker.id,
-              name: tracker.name,
+              name: tracker.name
             }
           end,
           statuses: IssueStatus.all.map do |status|
             {
               id: status.id,
-              name: status.name,
+              name: status.name
             }
           end,
           priorities: IssuePriority.all.map do |priority|
             {
               id: priority.id,
-              name: priority.name,
+              name: priority.name
             }
           end,
           categories: project.issue_categories.map do |category|
             {
               id: category.id,
-              name: category.name,
+              name: category.name
             }
           end,
           versions: project.versions.map do |version|
             {
               id: version.id,
-              name: version.name,
+              name: version.name
             }
           end,
           issue_custom_fields: project.issue_custom_fields.map do |field|
@@ -93,9 +93,9 @@ module RedmineAiHelper
               name: field.name,
               type: field.field_format,
               possible_values: field.possible_values,
-              is_required: field.is_required,
+              is_required: field.is_required
             }
-          end,
+          end
         }
 
         properties
@@ -142,7 +142,7 @@ module RedmineAiHelper
       # @return [Hash] A hash containing the validation result.
       def validate_new_issue(project_id:, tracker_id:, subject:, status_id:, priority_id: nil, category_id: nil, version_id: nil, assigned_to_id: nil, description: nil, start_date: nil, due_date: nil, done_ratio: nil, is_private: false, estimated_hours: nil, custom_fields: [])
         issue_update_provider = IssueUpdateTools.new
-        return issue_update_provider.create_new_issue(project_id: project_id, tracker_id: tracker_id, subject: subject, status_id: status_id, priority_id: priority_id, category_id: category_id, version_id: version_id, assigned_to_id: assigned_to_id, description: description, start_date: start_date, due_date: due_date, done_ratio: done_ratio, is_private: is_private, estimated_hours: estimated_hours, custom_fields: custom_fields, validate_only: true)
+        issue_update_provider.create_new_issue(project_id: project_id, tracker_id: tracker_id, subject: subject, status_id: status_id, priority_id: priority_id, category_id: category_id, version_id: version_id, assigned_to_id: assigned_to_id, description: description, start_date: start_date, due_date: due_date, done_ratio: done_ratio, is_private: is_private, estimated_hours: estimated_hours, custom_fields: custom_fields, validate_only: true)
       end
 
       define_function :validate_update_issue, description: "Validate the parameters for updating an issue. It can be used to check if the parameters are correct before updating an issue." do
@@ -188,7 +188,7 @@ module RedmineAiHelper
       # @return [Hash] A hash containing the validation result.
       def validate_update_issue(issue_id:, subject: nil, tracker_id: nil, status_id: nil, priority_id: nil, category_id: nil, version_id: nil, assigned_to_id: nil, description: nil, start_date: nil, due_date: nil, done_ratio: nil, is_private: false, estimated_hours: nil, custom_fields: [], comment_to_add: nil)
         issue_update_provider = IssueUpdateTools.new
-        return issue_update_provider.update_issue(issue_id: issue_id, subject: subject, tracker_id: tracker_id, status_id: status_id, priority_id: priority_id, category_id: category_id, version_id: version_id, assigned_to_id: assigned_to_id, description: description, start_date: start_date, due_date: due_date, done_ratio: done_ratio, is_private: is_private, estimated_hours: estimated_hours, custom_fields: custom_fields, comment_to_add: comment_to_add, validate_only: true)
+        issue_update_provider.update_issue(issue_id: issue_id, subject: subject, tracker_id: tracker_id, status_id: status_id, priority_id: priority_id, category_id: category_id, version_id: version_id, assigned_to_id: assigned_to_id, description: description, start_date: start_date, due_date: due_date, done_ratio: done_ratio, is_private: is_private, estimated_hours: estimated_hours, custom_fields: custom_fields, comment_to_add: comment_to_add, validate_only: true)
       end
     end
   end

@@ -28,7 +28,7 @@ module RedmineAiHelper
       messages = @chat.messages
       last_user_message = messages.reverse.find { |m| m.role == :user }
       response = @chat.ask(last_user_message&.content || "")
-      [response]
+      [ response ]
     end
 
     # Clear all messages from the chat.
@@ -38,9 +38,7 @@ module RedmineAiHelper
 
     # Get all messages in the chat.
     # @return [Array] The messages in the chat.
-    def messages
-      @chat.messages
-    end
+    delegate :messages, to: :@chat
 
     # Set new instructions for the assistant.
     # @param value [String] The new instructions.

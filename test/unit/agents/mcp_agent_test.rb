@@ -18,8 +18,9 @@ class McpAgentTest < ActiveSupport::TestCase
 
     should "return backstory" do
       backstory = @agent.backstory
+
       assert_not_nil backstory
-      assert backstory.is_a?(String)
+      assert_kind_of String, backstory
     end
   end
 end
