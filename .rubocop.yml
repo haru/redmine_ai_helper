@@ -31,7 +31,7 @@ Performance:
 Rails:
   Enabled: true
 Security:
-  Enabled: false
+  Enabled: true
 Style:
   Enabled: false
 
