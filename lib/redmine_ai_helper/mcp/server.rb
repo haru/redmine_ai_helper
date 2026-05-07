@@ -57,7 +57,7 @@ module RedmineAiHelper
         # all subclasses are registered before we enumerate them.
         def load_all_tool_files
           tools_dir = File.expand_path("../../tools", __FILE__)
-          Dir[File.join(tools_dir, "*.rb")].each { |f| require f }
+          Dir[File.join(tools_dir, "*.rb")].sort.each { |f| require f }
         end
 
         # Collects and adapts all BaseTools subclasses into MCP::Tool subclasses,

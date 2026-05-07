@@ -16,6 +16,7 @@ module RedmineAiHelper
       # @param subclass [Class] The subclass that is being inherited.
       # @return [void]
       def inherited(subclass)
+        super
         # For dynamic classes, delay registration until class name is properly set
         if subclass.name.nil?
           # Store the subclass to register later when the name is set
@@ -35,7 +36,7 @@ module RedmineAiHelper
       end
 
       # Method to register pending dynamic classes
-      def register_pending_dynamic_class(subclass, class_name)
+      def register_pending_dynamic_class(_subclass, class_name)
         real_class_name = class_name.split("::").last
         agent_name = real_class_name.underscore
         agent_list = AgentList.instance
@@ -52,10 +53,6 @@ module RedmineAiHelper
       @langfuse = params[:langfuse]
       @llm_provider = RedmineAiHelper::LlmProvider.get_llm_provider
       @shared_messages = []
-    end
-
-    def langfuse
-      @langfuse
     end
 
     # Lazily returns the Think LLM provider, creating it on first access.
@@ -141,7 +138,7 @@ module RedmineAiHelper
     # @param callback [Proc] A callback function to be called with each chunk of the response.
     # @param with [Array<String>, nil] Image file paths to attach to the request.
     # @return [String] The response from the LLM.
-    def chat(messages, option = {}, callback = nil, with: nil)
+    def chat(messages, _option = {}, callback = nil, with: nil)
       chat_instance = @llm_provider.create_chat(instructions: system_prompt)
       setup_langfuse_callbacks(chat_instance, provider: @llm_provider)
 
@@ -181,7 +178,7 @@ module RedmineAiHelper
     # @param callback [Proc] A callback function to be called with each chunk of the response.
     # @param with [Array<String>, nil] Image file paths to attach to the request.
     # @return [String] The response from the LLM.
-    def think_chat(messages, option = {}, callback = nil, with: nil)
+    def think_chat(messages, _option = {}, callback = nil, with: nil)
       provider = think_llm_provider || @llm_provider
       chat_instance = provider.create_chat(instructions: system_prompt)
       setup_langfuse_callbacks(chat_instance, provider: provider)
@@ -216,7 +213,7 @@ module RedmineAiHelper
     # @param option [Hash] Additional options for the task.
     # @param callback [Proc] A callback function to be called with each chunk of the response.
     # @return [TaskResponse] The response from the task.
-    def perform_task(option = {}, callback = nil)
+    def perform_task(option = {}, _callback = nil)
       active_assistant = option[:use_think_model] ? build_think_assistant : assistant
       task = active_assistant.messages.last
       langfuse.create_span(name: "perform_task", input: task.content)

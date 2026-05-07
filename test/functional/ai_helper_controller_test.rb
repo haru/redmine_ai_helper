@@ -509,7 +509,7 @@ class AiHelperControllerTest < ActionController::TestCase
         json = JSON.parse(response.body)
 
         assert_kind_of Array, json
-        assert json.all? { |u| u.key?("id") && u.key?("name") }
+        assert(json.all? { |u| u.key?("id") && u.key?("name") })
       end
 
       should "return assignable users when tracker_id is not provided" do
@@ -576,9 +576,9 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_response :success
 
         # Check that the response contains the expected content (HTML partial)
-        assert_match /Similar issue/, @response.body
-        assert_match /85\.0%/, @response.body
-        assert_match /Updated/, @response.body
+        assert_match(/Similar issue/, @response.body)
+        assert_match(/85\.0%/, @response.body)
+        assert_match(/Updated/, @response.body)
       end
 
       should "exclude current issue from results" do
@@ -601,10 +601,10 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_response :success
 
         # Check that only the other issue is included (current issue excluded)
-        assert_match /Similar issue/, @response.body
+        assert_match(/Similar issue/, @response.body)
         # Check that only issue ID 2 is present, not the current issue ID 1
-        assert_match />2</, @response.body
-        assert_no_match />#{@issue.id}</, @response.body
+        assert_match(/>2</, @response.body)
+        assert_no_match(/>#{@issue.id}</, @response.body)
       end
 
       should "return empty array when no similar issues found" do
@@ -616,7 +616,7 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_response :success
 
         # Check that no similar issues message is displayed
-        assert_match /No similar issues found/, @response.body
+        assert_match(/No similar issues found/, @response.body)
       end
 
       should "handle vector search errors gracefully" do
@@ -652,8 +652,8 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_response :success
 
         # Check that the similar issue is displayed even without assigned_to_name
-        assert_match /Similar issue/, @response.body
-        assert_match /85\.0%/, @response.body
+        assert_match(/Similar issue/, @response.body)
+        assert_match(/85\.0%/, @response.body)
       end
 
       should "pass scope parameter to Llm" do
@@ -774,7 +774,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         assert_equal "application/pdf", @response.content_type
-        assert_match /#{@project.identifier}-health-report-/, @response.headers["Content-Disposition"]
+        assert_match(/#{@project.identifier}-health-report-/, @response.headers["Content-Disposition"])
       end
 
       should "sanitize malicious content" do
@@ -823,7 +823,7 @@ class AiHelperControllerTest < ActionController::TestCase
         get :generate_project_health, params: { id: @project.id }
 
         assert_response :success
-        assert_match /data:/, @response.body
+        assert_match(/data:/, @response.body)
       end
     end
 
@@ -984,7 +984,7 @@ class AiHelperControllerTest < ActionController::TestCase
         }
 
         assert_response :success
-        assert_match /data:/, @response.body
+        assert_match(/data:/, @response.body)
       end
 
       should "handle chat with empty message" do
@@ -1030,7 +1030,7 @@ class AiHelperControllerTest < ActionController::TestCase
       should "handle reload with existing conversation" do
         # Create conversation first
         post :chat, params: { id: @project.id, ai_helper_message: { content: "Test" } }
-        conversation_id = session[:ai_helper][:conversation_id]
+        session[:ai_helper][:conversation_id]
 
         # Test reload
         get :reload, params: { id: @project.id }
@@ -1117,7 +1117,7 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_response :success
 
         # Check that streaming response started (initial chunk)
-        assert_match /chatcmpl-/, @response.body
+        assert_match(/chatcmpl-/, @response.body)
         assert_equal "text/event-stream", @response.content_type
       end
 
@@ -1216,7 +1216,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         # The write_chunk method is used internally during streaming
-        assert_match /data:/, @response.body
+        assert_match(/data:/, @response.body)
       end
 
       should "handle project health with nil health report" do
@@ -1350,7 +1350,7 @@ class AiHelperControllerTest < ActionController::TestCase
         get :generate_project_health, params: { id: @project.id }
 
         assert_response :success
-        assert_match /chatcmpl-test123456789abc/, @response.body
+        assert_match(/chatcmpl-test123456789abc/, @response.body)
       end
 
       should "handle conversation find_by in find_conversation" do
@@ -1668,8 +1668,8 @@ class AiHelperControllerTest < ActionController::TestCase
              body: { subject: "Test subject", description: "Test description" }.to_json
 
         assert_response :success
-        assert_match /Similar issue/, @response.body
-        assert_match /85\.0%/, @response.body
+        assert_match(/Similar issue/, @response.body)
+        assert_match(/85\.0%/, @response.body)
       end
 
       should "return error when content type is not JSON" do
@@ -1700,7 +1700,7 @@ class AiHelperControllerTest < ActionController::TestCase
              body: { subject: "Unique subject", description: "Unique description" }.to_json
 
         assert_response :success
-        assert_match /No similar issues found|類似するチケットが見つかりませんでした/, @response.body
+        assert_match(/No similar issues found|類似するチケットが見つかりませんでした/, @response.body)
       end
 
       should "handle vector search errors gracefully" do
@@ -1738,7 +1738,7 @@ class AiHelperControllerTest < ActionController::TestCase
              body: { subject: "Test subject", description: "" }.to_json
 
         assert_response :success
-        assert_match /Matching issue/, @response.body
+        assert_match(/Matching issue/, @response.body)
       end
 
       should "work with only description provided" do
@@ -1762,7 +1762,7 @@ class AiHelperControllerTest < ActionController::TestCase
              body: { subject: "", description: "Test description" }.to_json
 
         assert_response :success
-        assert_match /Another matching issue/, @response.body
+        assert_match(/Another matching issue/, @response.body)
       end
     end
 

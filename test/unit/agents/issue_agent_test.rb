@@ -16,8 +16,8 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
     should "generate backstory including issue properties" do
       backstory = @agent.backstory
 
-      assert_match /issue properties are available/, backstory
-      assert_match /Project ID: #{@project.id}/, backstory
+      assert_match(/issue properties are available/, backstory)
+      assert_match(/Project ID: #{@project.id}/, backstory)
     end
 
     should "include vector tools when vector db is enabled" do
@@ -122,10 +122,10 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
 
       issue_properties = @agent.send(:issue_properties)
 
-      assert_match /The following issue properties are available/, issue_properties
-      assert_match /Project ID: #{@project.id}/, issue_properties
-      assert_match /"priority"/, issue_properties
-      assert_match /"status"/, issue_properties
+      assert_match(/The following issue properties are available/, issue_properties)
+      assert_match(/Project ID: #{@project.id}/, issue_properties)
+      assert_match(/"priority"/, issue_properties)
+      assert_match(/"status"/, issue_properties)
     end
 
     context "generate_issue_reply" do
@@ -521,7 +521,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
 
       should "build completion context for note" do
         # Create some journals for the issue
-        journal = Journal.create!(
+        Journal.create!(
           journalized: @issue,
           user: @user,
           notes: "This is a test note."
@@ -542,12 +542,12 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
 
       should "build note specific context" do
         # Create some test data
-        journal1 = Journal.create!(
+        Journal.create!(
           journalized: @issue,
           user: @user,
           notes: "First note"
         )
-        journal2 = Journal.create!(
+        Journal.create!(
           journalized: @issue,
           user: User.find(2),
           notes: "Second note from another user"
@@ -809,7 +809,7 @@ end
       issue.stubs(:due_date).returns(Time.zone.today - 2)
       score = @agent.send(:due_date_score, issue)
 
-      assert_equal [ 100 + 2 * 10, 150 ].min, score
+      assert_equal [ 100 + (2 * 10), 150 ].min, score
 
       issue.stubs(:due_date).returns(Time.zone.today)
 

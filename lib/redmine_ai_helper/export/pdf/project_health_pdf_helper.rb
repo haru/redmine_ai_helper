@@ -19,7 +19,7 @@ module RedmineAiHelper
         # @param health_report [String] The health report content
         # @param options [Hash] Optional parameters
         # @return [String] PDF content as binary string
-        def project_health_to_pdf(project, health_report, options = {})
+        def project_health_to_pdf(project, health_report, _options = {})
           pdf = Redmine::Export::PDF::ITCPDF.new(current_language)
 
           # Check if current language is RTL
@@ -298,12 +298,11 @@ module RedmineAiHelper
         # @param pdf [Redmine::Export::PDF::ITCPDF] The PDF object
         # @param text [String] The item text
         # @param indent_level [Integer] The indentation level
-        # @param type [Symbol] :ordered or :unordered
         # @param left_margin [Integer] The base left margin
         # @param text_align [String] Text alignment ('L' or 'R')
-        def add_simple_list_item_to_pdf(pdf, text, indent_level, type, left_margin, text_align = "L")
+        def add_simple_list_item_to_pdf(pdf, text, indent_level, _type, left_margin, text_align = "L")
           indent = left_margin + (indent_level * 4)
-          bullet = type == :ordered ? "• " : "• "
+          bullet = "• "
 
           pdf.set_x(indent)
           pdf.SetFontStyle("", 10)

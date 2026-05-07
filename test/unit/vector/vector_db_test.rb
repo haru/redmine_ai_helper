@@ -52,9 +52,6 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
     end
 
     context "add_datas" do
-      setup do
-      end
-
       should "add vector data" do
         issue = Issue.first
         issue.description = "#{"a" * 2000}"
@@ -157,7 +154,7 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
   class QdrantStub
     attr_reader :last_filter
 
-    def create_default_schema(vector_size: 1536)
+    def create_default_schema(vector_size: 1536) # rubocop:disable Lint/UnusedMethodArgument
       ""
     end
 
@@ -165,21 +162,21 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
       true
     end
 
-    def add_texts(texts:, ids:, payload:)
+    def add_texts(texts:, ids:, payload:) # rubocop:disable Lint/UnusedMethodArgument
       if texts[0].length > 1500
         raise "Error"
       end
     end
 
-    def remove_texts(ids:)
+    def remove_texts(ids:) # rubocop:disable Lint/UnusedMethodArgument
       true
     end
 
-    def ask_with_filter(query:, k: 20, filter: nil)
+    def ask_with_filter(query:, k: 20, filter: nil) # rubocop:disable Lint/UnusedMethodArgument
       [ "test" ]
     end
 
-    def similarity_search(query:, k: 4, filter: nil)
+    def similarity_search(query:, k: 4, filter: nil) # rubocop:disable Lint/UnusedMethodArgument
       @last_filter = filter
       [ { "payload" => { "issue_id" => 1 }, "score" => 0.9 } ]
     end

@@ -446,7 +446,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
 
         # Mock the chat method to capture the prompt
         captured_prompt = nil
-        @agent.define_singleton_method(:think_chat) do |messages, options = {}, stream_proc = nil|
+        @agent.define_singleton_method(:think_chat) do |messages, _options = {}, _stream_proc = nil|
           captured_prompt = messages.is_a?(Array) ? messages.first[:content] : messages
           "Mock health report with shared version"
         end
@@ -499,7 +499,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
 
         # Mock the chat method to capture the prompt
         captured_prompt = nil
-        @agent.define_singleton_method(:think_chat) do |messages, options = {}, stream_proc = nil|
+        @agent.define_singleton_method(:think_chat) do |messages, _options = {}, _stream_proc = nil|
           captured_prompt = messages.is_a?(Array) ? messages.first[:content] : messages
           "Mock health report with system version"
         end
@@ -546,7 +546,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
 
         # Mock the chat method to capture the prompt
         captured_prompt = nil
-        @agent.define_singleton_method(:think_chat) do |messages, options = {}, stream_proc = nil|
+        @agent.define_singleton_method(:think_chat) do |messages, _options = {}, _stream_proc = nil|
           captured_prompt = messages.is_a?(Array) ? messages.first[:content] : messages
           "Mock health report with local version"
         end
@@ -603,7 +603,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
 
         # Mock the chat method to capture the prompt
         captured_prompt = nil
-        @agent.define_singleton_method(:think_chat) do |messages, options = {}, stream_proc = nil|
+        @agent.define_singleton_method(:think_chat) do |messages, _options = {}, _stream_proc = nil|
           captured_prompt = messages.is_a?(Array) ? messages.first[:content] : messages
           "Mock health report with hierarchy version"
         end
@@ -659,7 +659,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
 
         # Mock the chat method to capture the prompt with metrics
         captured_prompt = nil
-        @agent.define_singleton_method(:think_chat) do |messages, options = {}, stream_proc = nil|
+        @agent.define_singleton_method(:think_chat) do |messages, _options = {}, _stream_proc = nil|
           captured_prompt = messages.is_a?(Array) ? messages.first[:content] : messages
           "Mock health report with correct metrics"
         end

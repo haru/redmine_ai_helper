@@ -200,8 +200,8 @@ class BaseToolsTest < ActiveSupport::TestCase
         format = schemas.to_openai_format
         names = format.map { |f| f[:function][:name] }
 
-        assert names.any? { |n| n.include?("action_one") }
-        assert names.any? { |n| n.include?("action_two") }
+        assert(names.any? { |n| n.include?("action_one") })
+        assert(names.any? { |n| n.include?("action_two") })
       end
     end
 
@@ -246,7 +246,7 @@ class BaseToolsTest < ActiveSupport::TestCase
         filter_param = builder.params.find { |p| p[:name] == :filter }
 
         assert_equal "object", filter_param[:type]
-        assert filter_param[:children].any? { |c| c[:name] == :key }
+        assert(filter_param[:children].any? { |c| c[:name] == :key })
       end
 
       should "build array with items from JSON schema" do

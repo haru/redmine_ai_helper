@@ -276,13 +276,13 @@ class AiHelperController < ApplicationController
         else
           # Show error if assignee is not valid for this tracker
           flash[:error] = l("ai_helper.error_invalid_assignee", subject: issue.subject)
-          redirect_to issue_path(@issue) and return
+          redirect_to issue_path(@issue) and return # rubocop:disable Lint/NonLocalExitFromIterator
         end
       end
 
       unless issue.save
         flash[:error] = issue.errors.full_messages.join("\n")
-        redirect_to issue_path(@issue) and return
+        redirect_to issue_path(@issue) and return # rubocop:disable Lint/NonLocalExitFromIterator
       end
     end
 
@@ -718,7 +718,7 @@ class AiHelperController < ApplicationController
           llm = RedmineAiHelper::Llm.new
 
           # Generate health report without streaming
-          health_report_text = llm.project_health_report(
+          llm.project_health_report(
             project: @project,
             stream_proc: nil
           )

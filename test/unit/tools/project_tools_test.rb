@@ -113,7 +113,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
     response = @provider.project_members(project_ids: [ project1.id, project2.id ])
 
     assert_equal 2, response[:projects].size
-    assert response[:projects].all? { |p| p.key?(:members) }
+    assert(response[:projects].all? { |p| p.key?(:members) })
   end
 
   def test_project_members_with_invalid_project_id
@@ -548,7 +548,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
     # Remove existing issues to have a controlled set
     project.issues.destroy_all
 
-    open_issue = Issue.create!(
+    Issue.create!(
       project: project,
       tracker: project.trackers.first,
       author: User.find(1),
@@ -556,7 +556,7 @@ class ProjectToolsTest < ActiveSupport::TestCase
       status: open_status,
       done_ratio: 0
     )
-    closed_issue = Issue.create!(
+    Issue.create!(
       project: project,
       tracker: project.trackers.first,
       author: User.find(1),

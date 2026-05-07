@@ -15,7 +15,7 @@ module RedmineAiHelper
       # definition.
       # @param dummy [String] Dummy property to satisfy the tool definition requirement.
       # @return [Array<Hash>] An array of hashes containing project information.
-      def list_projects(dummy: nil)
+      def list_projects(dummy: nil) # rubocop:disable Lint/UnusedMethodArgument
         projects = Project.all
         list = projects.select { |p| accessible_project? p }.map do |project|
           {
@@ -187,7 +187,7 @@ module RedmineAiHelper
             event_url: event.event_url
           }
         end
-        json = { "activities": list }
+        json = { activities: list }
         ToolResponse.create_success json # TODO: Should just return json?
       end
 
@@ -410,7 +410,7 @@ module RedmineAiHelper
         }
       end
 
-      def calculate_commit_timeline(changesets, start_date = nil, end_date = nil)
+      def calculate_commit_timeline(changesets, _start_date = nil, _end_date = nil)
         by_date = changesets
           .group_by { |cs| cs.committed_on.to_date }
           .transform_values(&:count)
@@ -614,7 +614,7 @@ module RedmineAiHelper
       def calculate_workload_balance(members_workload)
         return 0 if members_workload.empty?
 
-        issue_counts = members_workload.map { |m| m[:assigned_issues] } # rubocop:disable Rails/Pluck
+        issue_counts = members_workload.map { |m| m[:assigned_issues] }
         average_workload = issue_counts.sum.to_f / issue_counts.size
         variance = issue_counts.sum { |count| (count - average_workload) ** 2 } / issue_counts.size
 

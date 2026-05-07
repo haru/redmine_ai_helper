@@ -100,13 +100,8 @@ module AiHelper
     def find_project
       project_id = if params[:project_id]
                      params[:project_id]
-      elsif params[:custom_command_id]
-                     # Project-scoped member route (edit/update/destroy):
-                     # params[:id] is the project, params[:custom_command_id] is the command
-                     params[:id]
-      elsif %w[index new create available].include?(action_name)
-                     # Project-scoped collection route:
-                     # params[:id] is the project (nil for non-project routes)
+      elsif params[:custom_command_id] || %w[index new create available].include?(action_name)
+                     # Project-scoped routes: params[:id] is the project
                      params[:id]
       end
       @project = Project.find(project_id) if project_id

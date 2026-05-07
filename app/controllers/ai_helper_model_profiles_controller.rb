@@ -144,7 +144,7 @@ class AiHelperModelProfilesController < ApplicationController
 
   # Find the model profile based on the provided ID
   def find_model_profile
-    id = params[:id] # TODO: remove this line
+    params[:id] # TODO: remove this line
     return if params[:id].blank?
     @model_profile = AiHelperModelProfile.find(params[:id])
   rescue ActiveRecord::RecordNotFound

@@ -1,7 +1,7 @@
 # Cache for AI-generated summaries of issues and wiki pages
 class AiHelperSummaryCache < ApplicationRecord
   validates :object_class, presence: true
-  validates :object_id, presence: true, uniqueness: { scope: :object_class } # rubocop:disable Rails/UniqueValidationWithoutIndex
+  validates :object_id, presence: true, uniqueness: { scope: :object_class }
   validates :content, presence: true
 
   # Get cached summary for an issue

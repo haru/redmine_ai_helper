@@ -12,7 +12,7 @@ class MCPToolAdapterTest < ActiveSupport::TestCase
         property :limit, type: "integer", description: "Maximum results", required: false
       end
 
-      def search_widgets(name:, limit: 10)
+      def search_widgets(name:, limit: 10) # rubocop:disable Lint/UnusedMethodArgument
         [ { id: 1, name: name } ]
       end
     end
@@ -80,7 +80,7 @@ class MCPToolAdapterTest < ActiveSupport::TestCase
             property :dummy, type: "string", description: "Dummy", required: false
           end
 
-          def explode(dummy: nil)
+          def explode(dummy: nil) # rubocop:disable Lint/UnusedMethodArgument
             raise "Something went wrong"
           end
         end

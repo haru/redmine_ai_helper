@@ -425,7 +425,5 @@ module RedmineAiHelper
       ai_helper_logger.info "answer: #{answer}"
       answer
     end
-
-    private
   end
 end

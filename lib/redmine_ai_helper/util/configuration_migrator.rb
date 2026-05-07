@@ -117,7 +117,7 @@ module RedmineAiHelper
           # Check for STDIO indicators
           elsif config["command"] || config["args"]
             "stdio"
-          else
+          else # rubocop:disable Lint/DuplicateBranch
             "stdio" # Default to stdio for backward compatibility
           end
         end
@@ -140,13 +140,8 @@ module RedmineAiHelper
           return false unless config.is_a?(Hash)
 
           # Check if command/args structure needs normalization
-          if config["command"] && config["args"].nil?
-            true
-          elsif !config["command"] && config["args"] && config["args"].any?
-            true
-          else
-            false
-          end
+          (config["command"] && config["args"].nil?) ||
+            (!config["command"] && config["args"] && config["args"].any?)
         end
 
         # Migrate STDIO specific configuration

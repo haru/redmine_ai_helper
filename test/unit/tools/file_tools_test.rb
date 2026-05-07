@@ -31,7 +31,7 @@ class FileToolsTest < ActiveSupport::TestCase
       end
 
       teardown do
-        File.delete(@file_path) if File.exist?(@file_path)
+        FileUtils.rm_f(@file_path)
       end
 
       should "analyze files attached to an issue" do
@@ -75,7 +75,7 @@ class FileToolsTest < ActiveSupport::TestCase
       should "return general description without question" do
         @provider.stubs(:supported_attachment_paths).with(@issue).returns([ @file_path ])
 
-        @mock_chat.expects(:ask).with do |prompt, **kwargs|
+        @mock_chat.expects(:ask).with do |_prompt, **kwargs|
           kwargs[:with] == [ @file_path ]
         end.returns(@mock_response)
 
@@ -113,7 +113,7 @@ class FileToolsTest < ActiveSupport::TestCase
       end
 
       teardown do
-        File.delete(@file_path) if File.exist?(@file_path)
+        FileUtils.rm_f(@file_path)
       end
 
       should "analyze files attached to a wiki page" do
@@ -133,7 +133,7 @@ class FileToolsTest < ActiveSupport::TestCase
       end
 
       teardown do
-        File.delete(@file_path) if File.exist?(@file_path)
+        FileUtils.rm_f(@file_path)
       end
 
       should "analyze files attached to a message" do
@@ -190,7 +190,7 @@ class FileToolsTest < ActiveSupport::TestCase
     should "analyze file from URL" do
       url = "https://example.com/document.pdf"
 
-      @mock_chat.expects(:ask).with do |prompt, **kwargs|
+      @mock_chat.expects(:ask).with do |_prompt, **kwargs|
         kwargs[:with] == [ url ]
       end.returns(@mock_response)
 

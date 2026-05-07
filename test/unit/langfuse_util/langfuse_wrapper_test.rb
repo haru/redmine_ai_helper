@@ -98,7 +98,7 @@ class RedmineAiHelper::LangfuseUtil::LangfuseWrapperTest < ActiveSupport::TestCa
       )
     end
 
-    def shutdown(**args)
+    def shutdown(**_args)
       true
     end
 

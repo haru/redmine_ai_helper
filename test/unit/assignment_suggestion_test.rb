@@ -222,7 +222,7 @@ class RedmineAiHelper::AssignmentSuggestionTest < ActiveSupport::TestCase
           # Should be limited to 5 similar issues
           assert_equal 5, user1_suggestion[:similar_issues].length
           # Should keep the top 5 by similarity score
-          assert_equal [ 101, 102, 103, 104, 105 ], user1_suggestion[:similar_issues].map { |s| s[:id] }
+          assert_equal([ 101, 102, 103, 104, 105 ], user1_suggestion[:similar_issues].map { |s| s[:id] })
         end
 
         should "handle string keys in similar_issues data" do

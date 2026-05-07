@@ -8,7 +8,7 @@ class AiHelperSetting < ApplicationRecord
   belongs_to :think_model_profile, class_name: "AiHelperModelProfile", optional: true
   belongs_to :vector_model_profile, class_name: "AiHelperModelProfile", optional: true
   validates :vector_search_uri, presence: true, if: :vector_search_enabled?
-  validates :vector_search_uri, format: { with: URI.regexp(%w[http https]), message: l("ai_helper.model_profiles.messages.must_be_valid_url") }, if: :vector_search_enabled?
+  validates :vector_search_uri, format: { with: URI::DEFAULT_PARSER.make_regexp(%w[http https]), message: l("ai_helper.model_profiles.messages.must_be_valid_url") }, if: :vector_search_enabled?
   validates :think_model_profile_id, presence: true, if: :use_think_model?
   validates :vector_model_profile_id, presence: true, if: -> { use_vector_model_profile? && vector_search_enabled? }
 

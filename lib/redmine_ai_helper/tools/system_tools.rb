@@ -21,7 +21,7 @@ module RedmineAiHelper
       # definition.
       # @param dummy [String] Dummy property to satisfy the tool definition requirement.
       # @return [Array<Hash>] An array of hashes containing plugin information.
-      def list_plugins(dummy: nil)
+      def list_plugins(dummy: nil) # rubocop:disable Lint/UnusedMethodArgument
         plugins = Redmine::Plugin.all
         plugin_list = []
         plugins.map do |plugin|
@@ -42,7 +42,7 @@ module RedmineAiHelper
       # Only accessible to administrators.
       # @param dummy [String] Dummy property to satisfy the tool definition requirement.
       # @return [Hash] A hash containing detailed system information.
-      def get_system_info(dummy: nil)
+      def get_system_info(dummy: nil) # rubocop:disable Lint/UnusedMethodArgument
         unless User.current.admin?
           raise "Permission denied. Only administrators can access system information."
         end

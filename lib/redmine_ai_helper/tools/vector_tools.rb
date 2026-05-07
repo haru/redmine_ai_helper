@@ -230,6 +230,9 @@ module RedmineAiHelper
         end
       end
 
+      # Valid scope values for vector search queries.
+      VALID_SCOPES = %w[current with_subprojects all].freeze
+
       private
 
       # Build a content query for vector similarity search from subject and description.
@@ -307,8 +310,6 @@ module RedmineAiHelper
         end
         @vector_db
       end
-
-      VALID_SCOPES = %w[current with_subprojects all].freeze
 
       def collect_permitted_project_ids(scope, project)
         candidate_ids = case scope

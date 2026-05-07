@@ -24,7 +24,7 @@ class LoggerTest < ActiveSupport::TestCase
     # Clear any stubs - use mocha's built-in teardown
     begin
       Mocha::Mockery.instance.teardown
-    rescue => e
+    rescue
       # Ignore teardown errors
     end
   end
@@ -164,7 +164,7 @@ class LoggerTest < ActiveSupport::TestCase
       when "info" then ::Logger::INFO
       when "warn" then ::Logger::WARN
       when "error" then ::Logger::ERROR
-      else ::Logger::INFO
+      else ::Logger::INFO # rubocop:disable Lint/DuplicateBranch
       end
       @logger.level = level_const
     end
@@ -184,7 +184,7 @@ class LoggerTest < ActiveSupport::TestCase
       when "info" then ::Logger::INFO
       when "warn" then ::Logger::WARN
       when "error" then ::Logger::ERROR
-      else ::Logger::INFO
+      else ::Logger::INFO # rubocop:disable Lint/DuplicateBranch
       end
       @logger.level = level_const
     end
@@ -204,7 +204,7 @@ class LoggerTest < ActiveSupport::TestCase
       when "info" then ::Logger::INFO
       when "warn" then ::Logger::WARN
       when "error" then ::Logger::ERROR
-      else ::Logger::INFO
+      else ::Logger::INFO # rubocop:disable Lint/DuplicateBranch
       end
       @logger.level = level_const
     end
@@ -224,7 +224,7 @@ class LoggerTest < ActiveSupport::TestCase
       when "info" then ::Logger::INFO
       when "warn" then ::Logger::WARN
       when "error" then ::Logger::ERROR
-      else ::Logger::INFO
+      else ::Logger::INFO # rubocop:disable Lint/DuplicateBranch
       end
       @logger.level = level_const
     end
@@ -244,7 +244,7 @@ class LoggerTest < ActiveSupport::TestCase
       when "info" then ::Logger::INFO
       when "warn" then ::Logger::WARN
       when "error" then ::Logger::ERROR
-      else ::Logger::INFO
+      else ::Logger::INFO # rubocop:disable Lint/DuplicateBranch
       end
       @logger.level = level_const
     end
