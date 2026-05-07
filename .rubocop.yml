@@ -21,7 +21,58 @@ Layout:
 Lint:
   Enabled: true
 Metrics:
-  Enabled: false
+  Enabled: true
+
+Metrics/AbcSize:
+  Max: 50
+  Exclude:
+    - "test/**/*"
+    - "lib/redmine_ai_helper/tools/**/*"
+
+Metrics/BlockLength:
+  Max: 70
+  Exclude:
+    - "test/**/*"
+    - "config/routes.rb"
+    - "lib/tasks/**/*"
+
+Metrics/BlockNesting:
+  Exclude:
+    - "test/**/*"
+
+Metrics/ClassLength:
+  Max: 650
+  Exclude:
+    - "test/**/*"
+
+Metrics/CyclomaticComplexity:
+  Max: 30
+  Exclude:
+    - "test/**/*"
+    - "lib/redmine_ai_helper/tools/**/*"
+
+Metrics/MethodLength:
+  Max: 100
+  Exclude:
+    - "test/**/*"
+    - "lib/redmine_ai_helper/tools/**/*"
+
+Metrics/ModuleLength:
+  Max: 300
+  Exclude:
+    - "test/**/*"
+
+Metrics/ParameterLists:
+  Max: 8
+  Exclude:
+    - "test/**/*"
+    - "lib/redmine_ai_helper/tools/**/*"
+
+Metrics/PerceivedComplexity:
+  Max: 40
+  Exclude:
+    - "test/**/*"
+    - "lib/redmine_ai_helper/tools/**/*"
 Naming:
   Enabled: false
 Performance:
