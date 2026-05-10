@@ -30,9 +30,10 @@ module RedmineAiHelper
         @client ||= ::Qdrant::Client.new(url: @url, api_key: @api_key, logger: RedmineAiHelper::CustomLogger.instance)
       end
 
-      # Generate embedding via LLM provider (uses RubyLLM).
-      # @param text [String] The text to embed.
-      # @return [Array<Float>] The embedding vector.
+      # @!method embed(text)
+      #   Generate embedding via LLM provider (uses RubyLLM).
+      #   @param text [String] The text to embed.
+      #   @return [Array<Float>] The embedding vector.
       delegate :embed, to: :@llm_provider
 
       # Upsert texts with embeddings into the Qdrant collection.

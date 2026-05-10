@@ -37,9 +37,7 @@ module RedmineAiHelper
       def perform_user_request(messages, option = {}, callback = nil)
         goal_json = generate_goal(messages)
         goal = goal_json["goal"]
-        generate_steps_required = goal_json["generate_steps_required"]
-
-        return chat(messages, option, callback) unless generate_steps_required
+        return chat(messages, option, callback) unless goal_json["generate_steps_required"]
 
         ai_helper_logger.debug "goal: #{goal}"
         callback.call(I18n.t("ai_helper.chat.planning") + "\n") if callback
@@ -50,27 +48,13 @@ module RedmineAiHelper
           return chat(messages, option, callback)
         end
 
-        chat_room = RedmineAiHelper::ChatRoom.new(goal)
-        agent_list = RedmineAiHelper::AgentList.instance
-        steps["steps"].map { |step| step["agent"] }.uniq.reject { |a| a == "leader_agent" }.each do |agent|
-          agent_instance = agent_list.get_agent_instance(agent, { project: @project, langfuse: langfuse })
-          chat_room.add_agent(agent_instance)
-        end
-
-        chat_room.share_goal
-
-        steps["steps"].each do |step|
-          callback.call("- " + step["description_for_human"] + "\n") if callback
-          chat_room.send_task("leader", step["agent"], step["step"], { use_think_model: step["use_think_model"] })
-        end
+        chat_room = execute_chat_room_steps(goal, steps, callback)
 
         callback.call(I18n.t("ai_helper.chat.generating_final_response") + "\n") if callback
 
-        newmessages = messages
-        newmessages += chat_room.messages if steps["steps"].any?
+        newmessages = messages + chat_room.messages
         newmessages << { role: "user", content: I18n.t("ai_helper.prompts.leader_agent.generate_final_response") }
         langfuse.create_span(name: "final_response", input: newmessages.last[:content])
-        ai_helper_logger.debug "newmessages: #{newmessages}"
 
         answer = chat(newmessages, option, callback)
         langfuse.finish_current_span(output: answer)
@@ -228,6 +212,23 @@ module RedmineAiHelper
         )
         langfuse.finish_current_span(output: fixed_json)
         fixed_json
+      end
+
+      private
+
+      def execute_chat_room_steps(goal, steps, callback)
+        chat_room = RedmineAiHelper::ChatRoom.new(goal)
+        agent_list = RedmineAiHelper::AgentList.instance
+        steps["steps"].map { |step| step["agent"] }.uniq.reject { |a| a == "leader_agent" }.each do |agent|
+          agent_instance = agent_list.get_agent_instance(agent, { project: @project, langfuse: langfuse })
+          chat_room.add_agent(agent_instance)
+        end
+        chat_room.share_goal
+        steps["steps"].each do |step|
+          callback.call("- " + step["description_for_human"] + "\n") if callback
+          chat_room.send_task("leader", step["agent"], step["step"], { use_think_model: step["use_think_model"] })
+        end
+        chat_room
       end
     end
   end

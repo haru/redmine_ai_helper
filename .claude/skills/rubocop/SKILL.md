@@ -27,12 +27,16 @@ Exclude `Rails/ActionControllerTestCase` — Redmine plugin tests require `Actio
 
 Address any offenses that remain after auto-correction using the guidelines below.
 
+> **IMPORTANT: Never modify `.rubocop.yml` thresholds (`Max:` values) or `Exclude:` settings without explicit user approval.**
+> If offenses cannot be fixed in the source code, report them to the user and ask how to proceed.
+> Do not raise `Max:` values, add new `Exclude:` entries, or run `git checkout -- .rubocop.yml` to work around violations.
+
 | Cop | Action |
 |-----|--------|
 | `Rails/Pluck` | If called on a plain Ruby array (not ActiveRecord), add `# rubocop:disable Rails/Pluck` inline |
 | `Rails/RedundantPresenceValidationOnBelongsTo` | If tests assert `errors[:foreign_key_id]`, the explicit validation is needed — add `# rubocop:disable` inline |
 | `Rails/I18nLocaleAssignment` | Rewrite `I18n.locale = x` as an `I18n.with_locale(x) { ... }` block |
-| Cop disabled project-wide | Add `Enabled: false` under the cop name in `.rubocop.yml` |
+| Cop disabled project-wide | Add `Enabled: false` under the cop name in `.rubocop.yml` — **only with user approval** |
 
 ### Step 4: Run tests to verify
 

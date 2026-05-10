@@ -15,7 +15,7 @@ module RedmineAiHelper
       end
 
       # Generates a system prompt for the Leader Agent.
-      # @param conversation [Object] The conversation object (optional). TODO: Not being used
+      # @param _conversation [Object] Reserved for future use; currently ignored.
       def prompt(_conversation = nil)
         return @prompt_text if @prompt_text
         current_user_info = {
@@ -43,90 +43,94 @@ module RedmineAiHelper
       # @return [String] A string that describes the current page information.
       # @note This method is used to provide context to the AI about the current page.
       def current_page_info_string
-        page_name = nil
-        case @controller_name
-        when "projects"
-          page_name = I18n.t("ai_helper.prompts.current_page_info.project_page", project_name: @project.name)
-        when "issues"
-          case @action_name
-          when "show"
-            issue = Issue.find(@content_id)
-            page_name = I18n.t("ai_helper.prompts.current_page_info.issue_detail_page", issue_id: issue.id)
-          when "index"
-            page_name = I18n.t("ai_helper.prompts.current_page_info.issue_list_page")
-          else
-            page_name = I18n.t("ai_helper.prompts.current_page_info.issue_with_action_page", action_name: @action_name)
-          end
-        when "wiki"
-          case @action_name
-          when "show"
-            page = WikiPage.find(@content_id)
-            page_name = I18n.t("ai_helper.prompts.current_page_info.wiki_page", page_title: page.title)
-          end
-        when "repositories"
-          repo = Repository.find(@content_id)
-          case @action_name
-          when "show"
-            page_name = I18n.t("ai_helper.prompts.current_page_info.repository_page", repo_name: repo.name, repo_id: repo.id)
-          when "entry"
-            page_name = I18n.t("ai_helper.prompts.current_page_info.repository_file_page", path: @additional_info["path"], rev: @additional_info["rev"], repo_name: repo.name, repo_id: repo.id)
-          when "diff"
-            page_name = I18n.t("ai_helper.prompts.current_page_info.repository_diff.page", repo_name: repo.name, repo_id: repo.id)
-
-            if @additional_info["rev_to"]
-              page_name += I18n.t("ai_helper.prompts.current_page_info.repository_diff.rev_to", rev: @additional_info["rev"], rev_to: @additional_info["rev_to"])
-            else
-              page_name += I18n.t("ai_helper.prompts.current_page_info.repository_diff.rev", rev: @additional_info["rev"])
-            end
-
-            page_name += I18n.t("ai_helper.prompts.current_page_info.repository_diff.path", path: @additional_info["path"]) if @additional_info["path"]
-          when "revision"
-            page_name = I18n.t("ai_helper.prompts.current_page_info.repository_revision_page", repo_name: repo.name, repo_id: repo.id, rev: @additional_info["rev"])
-          else
-            page_name = I18n.t("ai_helper.prompts.current_page_info.repository_other_page")
-          end
-        when "boards"
-          board = Board.find(@content_id) if @content_id
-          case @action_name
-          when "show"
-            page_name = I18n.t("ai_helper.prompts.current_page_info.boards.show", board_name: board.name, board_id: board.id)
-          when "index"
-            if board
-              page_name = I18n.t("ai_helper.prompts.current_page_info.boards.show", board_name: board.name, board_id: board.id)
-            else
-              page_name = I18n.t("ai_helper.prompts.current_page_info.boards.index")
-            end
-          else
-            page_name = I18n.t("ai_helper.prompts.current_page_info.boards.other")
-          end
-        when "messages"
-          message = Message.find(@content_id) if @content_id
-          if message
-            page_name = I18n.t("ai_helper.prompts.current_page_info.messages.show", subject: message.subject, message_id: message.id)
-          else
-            page_name = I18n.t("ai_helper.prompts.current_page_info.messages.other")
-          end
-        when "versions"
-          version = Version.find(@content_id) if @content_id
-          if version
-            page_name = I18n.t("ai_helper.prompts.current_page_info.versions.show", version_name: version.name, version_id: version.id)
-          else
-            page_name = I18n.t("ai_helper.prompts.current_page_info.versions.other")
-          end
-        else
-          page_name = I18n.t("ai_helper.prompts.current_page_info.other_page", controller_name: @controller_name, action_name: @action_name)
+        page_name = case @controller_name
+        when "projects" then I18n.t("ai_helper.prompts.current_page_info.project_page", project_name: @project.name)
+        when "issues" then issues_page_name
+        when "wiki" then wiki_page_name
+        when "repositories" then repositories_page_name
+        when "boards" then boards_page_name
+        when "messages" then messages_page_name
+        when "versions" then versions_page_name
+        else I18n.t("ai_helper.prompts.current_page_info.other_page", controller_name: @controller_name, action_name: @action_name)
         end
 
         return "" if page_name.nil?
-        string = <<~EOS
+
+        <<~EOS
 
           ----
 
           Information about the Redmine page currently being viewed by the user
           Page name: #{page_name}
         EOS
+      end
 
-        string
+      def issues_page_name
+        case @action_name
+        when "show"
+          issue = Issue.find(@content_id)
+          I18n.t("ai_helper.prompts.current_page_info.issue_detail_page", issue_id: issue.id)
+        when "index"
+          I18n.t("ai_helper.prompts.current_page_info.issue_list_page")
+        else
+          I18n.t("ai_helper.prompts.current_page_info.issue_with_action_page", action_name: @action_name)
+        end
+      end
+
+      def wiki_page_name
+        return nil unless @action_name == "show"
+
+        page = WikiPage.find(@content_id)
+        I18n.t("ai_helper.prompts.current_page_info.wiki_page", page_title: page.title)
+      end
+
+      def repositories_page_name
+        repo = Repository.find(@content_id)
+        case @action_name
+        when "show"
+          I18n.t("ai_helper.prompts.current_page_info.repository_page", repo_name: repo.name, repo_id: repo.id)
+        when "entry"
+          I18n.t("ai_helper.prompts.current_page_info.repository_file_page", path: @additional_info["path"], rev: @additional_info["rev"], repo_name: repo.name, repo_id: repo.id)
+        when "diff"
+          repositories_diff_page_name(repo)
+        when "revision"
+          I18n.t("ai_helper.prompts.current_page_info.repository_revision_page", repo_name: repo.name, repo_id: repo.id, rev: @additional_info["rev"])
+        else
+          I18n.t("ai_helper.prompts.current_page_info.repository_other_page")
+        end
+      end
+
+      def repositories_diff_page_name(repo)
+        name = I18n.t("ai_helper.prompts.current_page_info.repository_diff.page", repo_name: repo.name, repo_id: repo.id)
+        name += if @additional_info["rev_to"]
+                  I18n.t("ai_helper.prompts.current_page_info.repository_diff.rev_to", rev: @additional_info["rev"], rev_to: @additional_info["rev_to"])
+        else
+                  I18n.t("ai_helper.prompts.current_page_info.repository_diff.rev", rev: @additional_info["rev"])
+        end
+        name += I18n.t("ai_helper.prompts.current_page_info.repository_diff.path", path: @additional_info["path"]) if @additional_info["path"]
+        name
+      end
+
+      def boards_page_name
+        board = Board.find(@content_id) if @content_id
+        case @action_name
+        when "show"
+          I18n.t("ai_helper.prompts.current_page_info.boards.show", board_name: board.name, board_id: board.id)
+        when "index"
+          board ? I18n.t("ai_helper.prompts.current_page_info.boards.show", board_name: board.name, board_id: board.id) : I18n.t("ai_helper.prompts.current_page_info.boards.index")
+        else
+          I18n.t("ai_helper.prompts.current_page_info.boards.other")
+        end
+      end
+
+      def messages_page_name
+        message = Message.find(@content_id) if @content_id
+        message ? I18n.t("ai_helper.prompts.current_page_info.messages.show", subject: message.subject, message_id: message.id) : I18n.t("ai_helper.prompts.current_page_info.messages.other")
+      end
+
+      def versions_page_name
+        version = Version.find(@content_id) if @content_id
+        version ? I18n.t("ai_helper.prompts.current_page_info.versions.show", version_name: version.name, version_id: version.id) : I18n.t("ai_helper.prompts.current_page_info.versions.other")
       end
 
       def site_info_json(param = {})
