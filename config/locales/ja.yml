@@ -75,6 +75,13 @@ ja:
       title: "AIヘルパーで子チケットを作成"
       instructions: "指示を入力してください。"
       generate_draft: "ドラフトを生成"
+    completion_errors:
+      text_required: "テキストが必要です"
+      text_too_long: "テキストが長すぎます"
+      invalid_cursor_position: "カーソル位置が無効です"
+      invalid_context_type: "context_typeが無効です。'description' または 'note' である必要があります"
+      issue_not_in_project: "チケットは指定されたプロジェクトに属していません"
+      issue_required_for_note: "ノート補完にはチケットが必要です"
     autocompletion:
       loading: "AI提案を生成中..."
       no_suggestions: "提案がありません"

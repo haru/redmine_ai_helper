@@ -737,10 +737,10 @@ class AiHelperController < ApplicationController
   def validate_completion_input(data, context_type)
     text = data["text"]
     cursor_position = data["cursor_position"]
-    return "Text is required" if text.blank?
-    return "Text too long" if text.length > 5000
-    return "Invalid cursor position" if cursor_position && (cursor_position < 0 || cursor_position > text.length)
-    return "Invalid context_type. Must be 'description' or 'note'" unless %w[description note].include?(context_type)
+    return I18n.t("ai_helper.completion_errors.text_required") if text.blank?
+    return I18n.t("ai_helper.completion_errors.text_too_long") if text.length > 5000
+    return I18n.t("ai_helper.completion_errors.invalid_cursor_position") if cursor_position && (cursor_position < 0 || cursor_position > text.length)
+    return I18n.t("ai_helper.completion_errors.invalid_context_type") unless %w[description note].include?(context_type)
 
     nil
   end
@@ -749,9 +749,9 @@ class AiHelperController < ApplicationController
     issue = nil
     if params[:issue_id] != "new"
       issue = Issue.find_by(id: params[:issue_id])
-      return [ nil, "Issue does not belong to the specified project" ] if issue && issue.project != @project
+      return [ nil, I18n.t("ai_helper.completion_errors.issue_not_in_project") ] if issue && issue.project != @project
     end
-    return [ nil, "Issue is required for note completion" ] if context_type == "note" && !issue
+    return [ nil, I18n.t("ai_helper.completion_errors.issue_required_for_note") ] if context_type == "note" && !issue
 
     [ issue, nil ]
   end
