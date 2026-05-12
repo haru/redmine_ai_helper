@@ -4,9 +4,20 @@
 module AiHelperHelper
   include Redmine::WikiFormatting::CommonMark
 
+  # @api private
+  # Matches <a>, <pre>, and <code> blocks to exclude from issue reference linkification.
   ISSUE_REFERENCE_MASK_PATTERN = /<a\b[^>]*>.*?<\/a>|<pre\b[^>]*>.*?<\/pre>|<code\b[^>]*>.*?<\/code>/mi.freeze
+
+  # @api private
+  # Matches a bare #NNN issue reference preceded by a non-word character or line start.
   ISSUE_REFERENCE_PATTERN = /(^|[^\w])#(\d+)/.freeze
+
+  # @api private
+  # SOH control character used as mask token boundary (non-word char, not present in normal HTML).
   ISSUE_REFERENCE_MASK_BOUNDARY = "\u0001"
+
+  # @api private
+  # Pattern to restore masked blocks after issue reference substitution.
   ISSUE_REFERENCE_MASK_RESTORE_PATTERN = /\u0001AIH_MASK_(\d+)\u0001/.freeze
 
   # Converts a given Markdown text to HTML using the Markdown pipeline.
