@@ -129,7 +129,7 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       )
 
       assert result.key?(:issues)
-      assert result[:issues].all? { |i| i[:tracker][:id] == @tracker.id }
+      assert(result[:issues].all? { |i| i[:tracker][:id] == @tracker.id })
     end
 
     should "handle string keys in date_fields from RubyLLM" do
@@ -404,104 +404,6 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
         @provider.stubs(:ai_helper_logger).returns(mock_logger)
         @provider.send(:validate_search_params, [],
           [ { field_name: "due_date", operator: "=", values: nil } ])
-      end
-    end
-  end
-
-  context "schema enums" do
-    setup do
-      @schema = RedmineAiHelper::Tools::IssueSearchTools.function_schemas.to_openai_format.first
-      @params = @schema[:function][:parameters]
-    end
-
-    context "date_fields" do
-      should "include field_name enum with date field names" do
-        field_name_enum = @params[:properties][:"date_fields"][:items][:properties][:"field_name"][:enum]
-        expected = ["due_date", "start_date", "created_on", "updated_on", "closed_on", "fixed_version.due_date"]
-        assert_equal expected, field_name_enum
-      end
-
-      should "include operator enum with date operators" do
-        operator_enum = @params[:properties][:"date_fields"][:items][:properties][:"operator"][:enum]
-        assert_includes operator_enum, "="
-        assert_includes operator_enum, ">="
-        assert_includes operator_enum, "<="
-        assert_includes operator_enum, "><"
-        assert_includes operator_enum, "<t+"
-        assert_includes operator_enum, ">t+"
-        assert_includes operator_enum, "t+"
-        assert_includes operator_enum, "nd"
-        assert_includes operator_enum, "t"
-        assert_includes operator_enum, "ld"
-        assert_includes operator_enum, "!*"
-        assert_includes operator_enum, "*"
-      end
-    end
-
-    context "fields" do
-      should "include field_name enum with list field names" do
-        field_name_enum = @params[:properties][:"fields"][:items][:properties][:"field_name"][:enum]
-        expected = ["status_id", "tracker_id", "priority_id", "author_id", "assigned_to_id", "category_id", "fixed_version_id", "author.group", "author.role", "member_of_group", "assigned_to_role", "is_private", "watcher_id", "updated_by", "last_updated_by", "subproject_id", "project.status"]
-        assert_equal expected, field_name_enum
-      end
-
-      should "include operator enum with list operators" do
-        operator_enum = @params[:properties][:"fields"][:items][:properties][:"operator"][:enum]
-        assert_equal ["=", "!", "!*", "*"], operator_enum
-      end
-    end
-
-    context "status_field" do
-      should "include field_name enum with status_id" do
-        field_name_enum = @params[:properties][:"status_field"][:items][:properties][:"field_name"][:enum]
-        assert_equal ["status_id"], field_name_enum
-      end
-
-      should "include operator enum with status operators" do
-        operator_enum = @params[:properties][:"status_field"][:items][:properties][:"operator"][:enum]
-        expected = ["o", "=", "!", "c", "*", "ev", "!ev", "cf"]
-        assert_equal expected, operator_enum
-      end
-    end
-
-    context "text_fields" do
-      should "include field_name enum with text field names" do
-        field_name_enum = @params[:properties][:"text_fields"][:items][:properties][:"field_name"][:enum]
-        expected = ["subject", "description", "notes", "attachment", "attachment_description"]
-        assert_equal expected, field_name_enum
-      end
-
-      should "include operator enum with text operators" do
-        operator_enum = @params[:properties][:"text_fields"][:items][:properties][:"operator"][:enum]
-        expected = ["~", "*~", "!~", "^", "$", "!*", "*"]
-        assert_equal expected, operator_enum
-      end
-    end
-
-    context "time_fields" do
-      should "include field_name enum with time field names" do
-        field_name_enum = @params[:properties][:"time_fields"][:items][:properties][:"field_name"][:enum]
-        assert_equal ["estimated_hours", "spent_time"], field_name_enum
-      end
-
-      should "include operator enum with time operators" do
-        operator_enum = @params[:properties][:"time_fields"][:items][:properties][:"operator"][:enum]
-        expected = ["=", ">=", "<=", "><", "!*", "*"]
-        assert_equal expected, operator_enum
-      end
-    end
-
-    context "number_fields" do
-      should "include field_name enum with number field names" do
-        field_name_enum = @params[:properties][:"number_fields"][:items][:properties][:"field_name"][:enum]
-        expected = ["done_ratio", "issue_id", "estimated_hours", "spent_time"]
-        assert_equal expected, field_name_enum
-      end
-
-      should "include operator enum with number operators" do
-        operator_enum = @params[:properties][:"number_fields"][:items][:properties][:"operator"][:enum]
-        expected = ["=", ">=", "<=", "><", "!*", "*"]
-        assert_equal expected, operator_enum
       end
     end
   end

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module RedmineAiHelper
   module Tools
     # A class that provides functionality to the Agent for retrieving issue information
@@ -7,90 +9,54 @@ module RedmineAiHelper
         property :limit, type: "integer", description: "Maximum number of issues to return. Default is 50.", required: false
         property :fields, type: "array", description: "Search fields for the issue." do
           item type: "object", description: "Search field for the issue." do
-            property :field_name, type: "string",
-              enum: ["status_id", "tracker_id", "priority_id", "author_id", "assigned_to_id", "category_id", "fixed_version_id", "author.group", "author.role", "member_of_group", "assigned_to_role", "is_private", "watcher_id", "updated_by", "last_updated_by", "subproject_id", "project.status"],
-              description: "The list-type field to filter on. Use the field's ID value for matching.",
-              required: true
-            property :operator, type: "string",
-              enum: ["=", "!", "!*", "*"],
-              description: "The comparison operator: '=' (is), '!' (is not), '!*' (none), '*' (any).",
-              required: true
+            property :field_name, type: "string", description: "The name of the field to search.", required: true
+            property :operator, type: "string", description: "The operator to use for the search.", required: true
             property :values, type: "array", description: "The values to search for.", required: true do
               item type: "string", description: "The value to search for."
             end
           end
         end
-        property :date_fields, type: "array", description: "Date fields for filtering issues." do
-          item type: "object", description: "A date field filter." do
-            property :field_name, type: "string",
-              enum: ["due_date", "start_date", "created_on", "updated_on", "closed_on", "fixed_version.due_date"],
-              description: "The date field to filter on. Valid values: due_date, start_date, created_on, updated_on, closed_on, fixed_version.due_date.",
-              required: true
-            property :operator, type: "string",
-              enum: ["=", ">=", "<=", "><", "<t+", ">t+", "><t+", "t+", "nd", "t", "ld", "nw", "w", "lw", "l2w", "nm", "m", "lm", "y", ">t-", "<t-", "><t-", "t-", "!*", "*"],
-              description: "The comparison operator for the date field. Absolute operators: =, >=, <=, >< (between). Relative operators: <t+, >t+, t+ (in next N days), >t-, <t-, t- (in past N days). Shortcuts: t (today), ld (last day), w (this week), lw (last week), l2w (last 2 weeks), m (this month), lm (last month), y (this year), nd (none date).",
-              required: true
-            property :values, type: "array", description: "The values to search for (date string YYYY-MM-DD or number of days for relative operators).", required: true do
+        property :date_fields, type: "array", description: "Search fields for the issue." do
+          item type: "object", description: "Search field for the issue." do
+            property :field_name, type: "string", description: "The name of the field to search.", required: true
+            property :operator, type: "string", description: "The operator to use for the search.", required: true
+            property :values, type: "array", description: "The values to search for.", required: true do
               item type: "string", description: "The value to search for."
             end
           end
         end
-        property :time_fields, type: "array", description: "Time fields for filtering issues." do
-          item type: "object", description: "A time field filter." do
-            property :field_name, type: "string",
-              enum: ["estimated_hours", "spent_time"],
-              description: "The time field to filter on. Valid values: estimated_hours, spent_time.",
-              required: true
-            property :operator, type: "string",
-              enum: ["=", ">=", "<=", "><", "!*", "*"],
-              description: "The comparison operator for the time field: '=' (equals), '>=' (at least), '<=' (at most), '><' (between), '!*' (none), '*' (any).",
-              required: true
-            property :values, type: "array", description: "The values to search for (numeric strings).", required: true do
+        property :time_fields, type: "array", description: "Search fields for the issue." do
+          item type: "object", description: "Search field for the issue." do
+            property :field_name, type: "string", description: "The name of the field to search.", required: true
+            property :operator, type: "string", description: "The operator to use for the search.", required: true
+            property :values, type: "array", description: "The values to search for.", required: true do
               item type: "string", description: "The value to search for."
             end
           end
         end
-        property :number_fields, type: "array", description: "Numeric fields for filtering issues." do
-          item type: "object", description: "A numeric field filter." do
-            property :field_name, type: "string",
-              enum: ["done_ratio", "issue_id", "estimated_hours", "spent_time"],
-              description: "The numeric field to filter on. Valid values: done_ratio (0-100), issue_id, estimated_hours, spent_time.",
-              required: true
-            property :operator, type: "string",
-              enum: ["=", ">=", "<=", "><", "!*", "*"],
-              description: "The comparison operator for the numeric field: '=' (equals), '>=' (at least), '<=' (at most), '><' (between), '!*' (none), '*' (any).",
-              required: true
+        property :number_fields, type: "array", description: "Search fields for the issue." do
+          item type: "object", description: "Search field for the issue." do
+            property :field_name, type: "string", description: "The name of the field to search.", required: true
+            property :operator, type: "string", description: "The operator to use for the search.", required: true
             property :values, type: "array", description: "The values to search for.", required: true do
               item type: "integer", description: "The value to search for."
             end
           end
         end
-        property :text_fields, type: "array", description: "Text fields for filtering issues." do
-          item type: "object", description: "A text field filter." do
-            property :field_name, type: "string",
-              enum: ["subject", "description", "notes", "attachment", "attachment_description"],
-              description: "The text field to filter on. Valid values: subject, description, notes, attachment, attachment_description.",
-              required: true
-            property :operator, type: "string",
-              enum: ["~", "*~", "!~", "^", "$", "!*", "*"],
-              description: "The text matching operator: '~' (contains), '*~' (contains all words), '!~' (does not contain), '^' (starts with), '$' (ends with), '!*' (none), '*' (any).",
-              required: true
-            property :value, type: "array", description: "The text values to search for.", required: true do
+        property :text_fields, type: "array", description: "Search fields for the issue." do
+          item type: "object", description: "Search field for the issue." do
+            property :field_name, type: "string", description: "The name of the field to search.", required: true
+            property :operator, type: "string", description: "The operator to use for the search.", required: true
+            property :value, type: "array", description: "The values to search for.", required: true do
               item type: "string", description: "The value to search for."
             end
           end
         end
-        property :status_field, type: "array", description: "Status field for filtering issues with status-specific operators." do
-          item type: "object", description: "A status field filter." do
-            property :field_name, type: "string",
-              enum: ["status_id"],
-              description: "The status field. Only 'status_id' is valid.",
-              required: true
-            property :operator, type: "string",
-              enum: ["o", "=", "!", "c", "*", "ev", "!ev", "cf"],
-              description: "The status operator: 'o' (open), '=' (is), '!' (is not), 'c' (closed), '*' (any), 'ev' (has been), '!ev' (has never been), 'cf' (changed from).",
-              required: true
-            property :values, type: "array", description: "The status ID values to search for.", required: true do
+        property :status_field, type: "array", description: "Search fields for the issue." do
+          item type: "object", description: "Search field for the issue." do
+            property :field_name, type: "string", description: "The name of the field to search.", required: true
+            property :operator, type: "string", description: "The operator to use for the search.", required: true
+            property :values, type: "array", description: "The values to search for.", required: true do
               item type: "integer", description: "The value to search for."
             end
           end
@@ -370,7 +336,7 @@ module RedmineAiHelper
 
         # Returns the total count of matching issues
         # @param project [Project] The project to search in
-        # @param user [User] The user to check visibility for
+        # @param user [User] The user for visibility check
         # @return [Integer] Total count of matching issues
         def count(project, user: User.current)
           setup_query(project, user)
