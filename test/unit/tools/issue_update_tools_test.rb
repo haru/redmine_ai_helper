@@ -40,6 +40,21 @@ class IssueUpdateToolsTest < ActiveSupport::TestCase
         assert_predicate response[:id], :present?
       end
 
+      should "create issue with string-key custom fields from RubyLLM" do
+        response = @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "string key cf", custom_fields: [ { "field_id" => 1, "value" => "MySQL" } ])
+        issue = Issue.find(response[:id])
+
+        assert_equal "MySQL", issue.custom_field_values.find { |cfv| cfv.custom_field_id == 1 }.value
+      end
+
+      should "create issue with string-key relations from RubyLLM" do
+        target = Issue.find(3)
+        response = @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "string key relation", relations: [ { "issue_id" => target.id, "relation_type" => "relates" } ])
+        created_issue = Issue.find(response[:id])
+
+        assert(created_issue.relations.any? { |r| (r.issue_from_id == created_issue.id && r.issue_to_id == target.id) || (r.issue_from_id == target.id && r.issue_to_id == created_issue.id) })
+      end
+
       should "create issue when custom_fields contains nil field_id" do
         response = @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "test nil field_id", custom_fields: [ { field_id: nil, value: "x" } ])
 
@@ -192,6 +207,20 @@ class IssueUpdateToolsTest < ActiveSupport::TestCase
         @provider.update_issue(issue_id: 1, subject: "test issue", custom_fields: [ { field_id: 1, value: "MySQL" } ])
 
         assert_equal "MySQL", Issue.find(1).custom_field_values.filter { |cfv| cfv.custom_field_id == 1 }.first.value
+      end
+
+      should "update issue with string-key custom fields from RubyLLM" do
+        @provider.update_issue(issue_id: 1, subject: "string key cf update", custom_fields: [ { "field_id" => 1, "value" => "PostgreSQL" } ])
+
+        assert_equal "PostgreSQL", Issue.find(1).custom_field_values.filter { |cfv| cfv.custom_field_id == 1 }.first.value
+      end
+
+      should "update issue with string-key relations_to_add from RubyLLM" do
+        target = Issue.find(3)
+        issue = Issue.find(1)
+        @provider.update_issue(issue_id: issue.id, relations_to_add: [ { "issue_id" => target.id, "relation_type" => "relates" } ])
+
+        assert(issue.relations.any? { |r| (r.issue_from_id == issue.id && r.issue_to_id == target.id) || (r.issue_from_id == target.id && r.issue_to_id == issue.id) })
       end
 
       should "update issue when custom_fields contains nil field_id" do

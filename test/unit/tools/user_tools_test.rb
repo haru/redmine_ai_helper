@@ -51,6 +51,20 @@ class UserToolsTest < ActiveSupport::TestCase
 
         assert_equal(@users.order(:created_on).map(&:id), result[:users].map { |u| u[:id] })
       end
+
+      should "handle string-key query from RubyLLM" do
+        result = @provider.list_users(query: { "limit" => 3, "sort" => { "field_name" => "created_on", "order" => "asc" } })
+
+        assert_equal 3, result[:users].size
+        assert_equal(@users.order(:created_on).limit(3).map(&:id), result[:users].map { |u| u[:id] })
+      end
+
+      should "handle string-key date_fields from RubyLLM" do
+        @users.update_all(last_login_on: 1.day.ago)
+        result = @provider.list_users(query: { "date_fields" => [ { "field_name" => "last_login_on", "operator" => ">=", "value" => 1.year.ago.to_s } ] })
+
+        assert_operator result[:users].size, :>, 0
+      end
     end
 
     context "find user" do
