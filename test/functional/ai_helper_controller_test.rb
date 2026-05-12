@@ -1916,5 +1916,25 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_not_includes @response.body, "event: interactive_options"
       end
     end
+
+    context "chat sidebar" do
+      should "render issue base URL meta tag" do
+        get :reload, params: { id: @project.id }
+        RedmineAiHelper::Util::PermissionChecker.stubs(:module_enabled?).returns(true)
+        setting_mock = stub("AiHelperSetting", model_profile: stub("AiHelperModelProfile"))
+        AiHelperSetting.stubs(:find_or_create).returns(setting_mock)
+        html = @controller.render_to_string(partial: "ai_helper/chat/sidebar")
+        assert_match %r{<meta[^>]*name="ai-helper-issue-base-url"}, html
+      end
+
+      should "render meta tag content ending with /issues/__ID__" do
+        get :reload, params: { id: @project.id }
+        RedmineAiHelper::Util::PermissionChecker.stubs(:module_enabled?).returns(true)
+        setting_mock = stub("AiHelperSetting", model_profile: stub("AiHelperModelProfile"))
+        AiHelperSetting.stubs(:find_or_create).returns(setting_mock)
+        html = @controller.render_to_string(partial: "ai_helper/chat/sidebar")
+        assert_match %r{content="[^"]*\/issues\/__ID__"}, html
+      end
+    end
   end
 end

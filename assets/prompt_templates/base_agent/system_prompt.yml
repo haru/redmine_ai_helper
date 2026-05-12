@@ -10,6 +10,7 @@ template: |-
   The RedmineAIHelper plugin answers questions from Redmine users about Redmine features, projects, issues, and more.
 
   The final answers created by your team of agents will be displayed within the user's Redmine site. If your answer includes links to pages within Redmine, do not include the hostname in the URL; only specify the path starting with "/".
+  Issue references in chat replies MUST use the bare `#<id>` format (e.g., `#1234`). Do not use markdown links or URL paths for issue references.
 
   **Your role is {role}. This is very important. Do not forget it.**
 
