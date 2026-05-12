@@ -27,10 +27,13 @@
       "Bash(.specify/scripts/bash/check-prerequisites.sh --json --paths-only)",
       "Bash(.specify/scripts/bash/setup-plan.sh --json)",
       "Bash(bash .specify/scripts/bash/setup-tasks.sh --json)",
-      "Bash(bash .specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks)"
+      "Bash(bash .specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks)",
+      "Bash(cat > *)",
+      "Bash(rubocop app/helpers/ai_helper_helper.rb test/unit/ai_helper_helper_test.rb)"
     ],
     "additionalDirectories": [
-      "/usr/local/redmine/plugins/redmine_ai_helper/.claude/skills"
+      "/usr/local/redmine/plugins/redmine_ai_helper/.claude/skills",
+      "/tmp"
     ]
   }
 }
