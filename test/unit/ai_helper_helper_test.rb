@@ -95,5 +95,24 @@ class AiHelperHelperTest < ActionView::TestCase
       assert_includes html, 'alt="#1234"'
       assert_no_match(/<a href.*>#1234/, html)
     end
+
+    should "not linkify #NNN inside nested element within <a>" do
+      input = %(<a href="/issues/1234"><span>#1234</span></a>)
+      html = linkify_issue_references(input)
+      assert_equal input, html
+    end
+
+    should "not linkify #NNN inside nested element within <pre>" do
+      input = "<pre><span>#1234</span></pre>"
+      html = linkify_issue_references(input)
+      assert_equal input, html
+    end
+
+    should "preserve escaped entities in text without injecting markup" do
+      input = "<p>&lt;script&gt; #1234 &lt;/script&gt;</p>"
+      html = linkify_issue_references(input)
+      assert_includes html, %(<a href="/issues/1234">#1234</a>)
+      assert_no_match(/<script>/, html)
+    end
   end
 end

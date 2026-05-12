@@ -41,19 +41,40 @@ module AiHelperHelper
 
     doc.traverse do |node|
       next unless node.text?
-      next if ISSUE_REFERENCE_EXCLUDED_TAGS.include?(node.parent&.name)
+      next if excluded_ancestor?(node)
 
       next unless node.content =~ ISSUE_REFERENCE_PATTERN
 
-      new_html = node.content.gsub(ISSUE_REFERENCE_PATTERN) do
-        prefix = Regexp.last_match(1)
-        id = Regexp.last_match(2)
-        %(#{prefix}<a href="#{issue_path(id: id)}">##{id}</a>)
+      parts = node.content.split(ISSUE_REFERENCE_PATTERN)
+      ndoc = doc.document
+      replacement = Nokogiri::HTML::DocumentFragment.new(ndoc)
+      replacement << Nokogiri::XML::Text.new(parts[0], ndoc) if parts[0].present?
+
+      i = 1
+      while i < parts.length
+        prefix = parts[i]
+        id = parts[i + 1]
+        after_text = parts[i + 2]
+
+        replacement << Nokogiri::XML::Text.new(prefix, ndoc)
+        link = Nokogiri::XML::Node.new("a", ndoc)
+        link["href"] = issue_path(id: id)
+        link.content = "##{id}"
+        replacement << link
+        replacement << Nokogiri::XML::Text.new(after_text, ndoc) if after_text.present?
+
+        i += 3
       end
 
-      node.replace(new_html)
+      node.replace(replacement)
     end
 
     doc.to_s.html_safe # rubocop:disable Rails/OutputSafety
+  end
+
+  private
+
+  def excluded_ancestor?(node)
+    node.ancestors.any? { |a| ISSUE_REFERENCE_EXCLUDED_TAGS.include?(a.name) }
   end
 end
