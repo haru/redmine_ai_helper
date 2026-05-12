@@ -216,8 +216,5 @@ Use `/rubocop` skill for the full fix workflow including auto-correction and tes
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the relevant current
-plan in the `specs/` directory.
-
-Current feature plan: `specs/014-workflow-think-model/plan.md`
+shell commands, and other important information, read the current plan
 <!-- SPECKIT END -->
