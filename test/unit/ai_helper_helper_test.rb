@@ -88,5 +88,12 @@ class AiHelperHelperTest < ActionView::TestCase
       assert_equal 1, html.scan(%(<a href="/issues/1234">#1234</a>)).size
       assert_includes html, %(<a href="/issues/5678">#5678</a>)
     end
+
+    should "not linkify #NNN inside HTML attribute values" do
+      input = %(<img alt="#1234" src="photo.jpg">)
+      html = linkify_issue_references(input)
+      assert_includes html, 'alt="#1234"'
+      assert_no_match(/<a href.*>#1234/, html)
+    end
   end
 end

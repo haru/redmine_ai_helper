@@ -1,5 +1,4 @@
 require File.expand_path("../../test_helper", __FILE__)
-require "yaml"
 
 class PromptTemplatesIssueLinkTest < ActiveSupport::TestCase
   PROMPT_DIR = File.expand_path("../../../assets/prompt_templates", __FILE__)

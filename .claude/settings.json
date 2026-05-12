@@ -28,7 +28,6 @@
       "Bash(.specify/scripts/bash/setup-plan.sh --json)",
       "Bash(bash .specify/scripts/bash/setup-tasks.sh --json)",
       "Bash(bash .specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks)",
-      "Bash(cat > *)",
       "Bash(rubocop app/helpers/ai_helper_helper.rb test/unit/ai_helper_helper_test.rb)",
       "Bash(rubocop app/helpers/ai_helper_helper.rb)"
     ],
