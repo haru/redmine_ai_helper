@@ -53,6 +53,7 @@ module RedmineAiHelper
       # @param target [String] The target to filter. 'issue' means issue, 'wiki' means wiki page.
       # @return [Array<Hash>] An array of hashes containing issue or wiki information.
       def ask_with_filter(query:, k: 10, filter: {}, target:)
+        filter = deep_symbolize_hash(filter)
         raise("The vector search functionality is not enabled.") unless vector_db_enabled?
         raise("limit must be between 1 and 50.") unless k.between?(1, 50)
 

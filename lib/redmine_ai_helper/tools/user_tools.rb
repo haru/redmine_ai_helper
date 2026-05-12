@@ -36,6 +36,7 @@ module RedmineAiHelper
       # @option query [String] :sort.order The order to sort in. Can be 'asc' or 'desc'.
       # @return [Hash] A hash containing the list of users and the total count.
       def list_users(query: {})
+        query = deep_symbolize_hash(query)
         limit = query[:limit] || 100
         status = query[:status] || "active"
         status_value = { "active" => 1, "registered" => 2, "locked" => 3 }

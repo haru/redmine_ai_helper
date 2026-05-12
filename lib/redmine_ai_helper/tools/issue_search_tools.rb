@@ -194,13 +194,6 @@ module RedmineAiHelper
 
       private
 
-      def deep_symbolize_array(arr)
-        arr.map do |item|
-          next item unless item.is_a?(Hash)
-          item.transform_keys(&:to_sym)
-        end
-      end
-
       # Format issues for API response
       # @param issues [Array<Issue>] Array of Issue objects
       # @return [Array<Hash>] Formatted issue hashes
