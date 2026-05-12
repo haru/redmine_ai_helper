@@ -42,6 +42,16 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
       assert_equal 1, result.first[:id]
     end
 
+    should "handle string-key filter from RubyLLM" do
+      string_key_filter = { "must" => [ { "key" => "project_id", "condition" => "match", "value" => "1" } ] }
+      expected_filter = { must: [ { key: "project_id", match: { value: 1 } } ] }
+      @vector_tools.stubs(:vector_db).with(target: "issue").returns(@mock_db)
+      @mock_db.expects(:ask_with_filter).with(query: "test", k: 10, filter: expected_filter).returns([ { "issue_id" => 1 } ])
+      result = @vector_tools.ask_with_filter(query: "test", k: 10, filter: string_key_filter, target: "issue")
+
+      assert_equal 1, result.first[:id]
+    end
+
     should "call vector_db and return response when target is wiki" do
       @vector_tools.stubs(:vector_db).with(target: "wiki").returns(@mock_db)
       @mock_db.expects(:ask_with_filter).with(query: "foo bar", k: 10, filter: {}).returns([ { "wiki_id" => 1 } ])

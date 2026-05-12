@@ -122,6 +122,43 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       issue&.destroy
     end
 
+    should "handle string keys in nested hashes from RubyLLM" do
+      result = @provider.search_issues(
+        project_id: @project.id,
+        fields: [ { "field_name" => "tracker_id", "operator" => "=", "values" => [ @tracker.id.to_s ] } ]
+      )
+
+      assert result.key?(:issues)
+      assert(result[:issues].all? { |i| i[:tracker][:id] == @tracker.id })
+    end
+
+    should "handle string keys in date_fields from RubyLLM" do
+      result = @provider.search_issues(
+        project_id: @project.id,
+        date_fields: [ { "field_name" => "due_date", "operator" => "!*", "values" => [] } ]
+      )
+
+      assert result.key?(:issues)
+    end
+
+    should "accept ><t+ relative date range operator with values" do
+      result = @provider.search_issues(
+        project_id: @project.id,
+        date_fields: [ { field_name: "due_date", operator: "><t+", values: [ "1", "7" ] } ]
+      )
+
+      assert result.key?(:issues)
+    end
+
+    should "accept ><t- relative date range operator with values" do
+      result = @provider.search_issues(
+        project_id: @project.id,
+        date_fields: [ { field_name: "due_date", operator: "><t-", values: [ "1", "7" ] } ]
+      )
+
+      assert result.key?(:issues)
+    end
+
     should "filter issues by tracker condition" do
       # Get issues with specific tracker
       result = @provider.search_issues(

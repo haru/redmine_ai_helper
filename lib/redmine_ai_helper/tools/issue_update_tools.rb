@@ -41,6 +41,8 @@ module RedmineAiHelper
       end
       # Create a new issue in the database.
       def create_new_issue(project_id:, tracker_id:, subject:, status_id:, priority_id: nil, category_id: nil, version_id: nil, assigned_to_id: nil, description: nil, start_date: nil, due_date: nil, done_ratio: nil, is_private: false, estimated_hours: nil, custom_fields: [], parent_issue_id: nil, relations: [], validate_only: false)
+        custom_fields = deep_symbolize_array(custom_fields)
+        relations = deep_symbolize_array(relations)
         project = Project.find_by(id: project_id)
         raise("Project not found. id = #{project_id}") unless project
         raise("Permission denied") unless User.current.allowed_to?(:add_issues, project)
@@ -139,6 +141,9 @@ module RedmineAiHelper
       end
       # Update an issue in the database.
       def update_issue(issue_id:, subject: nil, tracker_id: nil, status_id: nil, priority_id: nil, category_id: nil, version_id: nil, assigned_to_id: nil, description: nil, start_date: nil, due_date: nil, done_ratio: nil, is_private: false, estimated_hours: nil, custom_fields: [], parent_issue_id: nil, relations_to_add: [], relations_to_remove: [], comment_to_add: nil, validate_only: false)
+        custom_fields = deep_symbolize_array(custom_fields)
+        relations_to_add = deep_symbolize_array(relations_to_add)
+        relations_to_remove = deep_symbolize_array(relations_to_remove)
         issue = Issue.find_by(id: issue_id)
         raise("Issue not found. id = #{issue_id}") unless issue
         raise("Permission denied") unless issue.editable?(User.current)

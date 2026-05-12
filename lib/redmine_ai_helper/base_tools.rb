@@ -364,5 +364,26 @@ module RedmineAiHelper
       return false unless project.module_enabled?(:ai_helper)
       User.current.allowed_to?({ controller: :ai_helper, action: :chat_form }, project)
     end
+
+    private
+
+    def deep_symbolize_array(arr)
+      arr.map do |item|
+        next item unless item.is_a?(Hash)
+        item.transform_keys(&:to_sym)
+      end
+    end
+
+    def deep_symbolize_hash(hash)
+      return hash unless hash.is_a?(Hash)
+      hash.each_with_object({}) do |(key, value), result|
+        sym_key = key.to_sym
+        result[sym_key] = case value
+        when Hash then deep_symbolize_hash(value)
+        when Array then deep_symbolize_array(value)
+        else value
+        end
+      end
+    end
   end
 end
