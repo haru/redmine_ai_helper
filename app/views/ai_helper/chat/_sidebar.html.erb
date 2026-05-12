@@ -1,4 +1,5 @@
 <% if RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: @project, permission: { controller: :ai_helper, action: :chat_form }) and AiHelperSetting.find_or_create.model_profile %>
+  <meta name="ai-helper-issue-base-url" content="<%= url_for(controller: 'issues', action: 'show', id: '__ID__', only_path: true) %>">
   <% content_for :sidebar do %>
     <div id="aihelper-sidebar">
       <div class="aihelper-header">

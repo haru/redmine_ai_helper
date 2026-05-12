@@ -10,7 +10,7 @@
       <pre><%= message.content %></pre>
     <% else %>
       <div>
-        <%= md_to_html(message.content) %>
+        <%= linkify_issue_references(md_to_html(message.content)) %>
       </div>
     <% end %>
   </div>

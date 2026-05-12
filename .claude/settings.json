@@ -22,10 +22,18 @@
       "Bash(rubocop test/unit/base_agent_test.rb --only Metrics/MethodLength)",
       "Bash(rubocop lib/redmine_ai_helper/base_agent.rb lib/redmine_ai_helper/vector/qdrant.rb lib/redmine_ai_helper/util/system_prompt.rb lib/redmine_ai_helper/export/pdf/project_health_pdf_helper.rb lib/redmine_ai_helper/user_patch.rb)",
       "Bash(rubocop lib/redmine_ai_helper/user_patch.rb)",
-      "Bash(yard list *)"
+      "Bash(yard list *)",
+      "Bash(.specify/scripts/bash/create-new-feature.sh --json --short-name \"issue-link-rendering\" \"チャットエリアのチケット番号の表示方法を、マークダウンリンクから #チケット番号 形式に変更し、フロントエンドで自動的にリンクとしてレンダリングする\")",
+      "Bash(.specify/scripts/bash/check-prerequisites.sh --json --paths-only)",
+      "Bash(.specify/scripts/bash/setup-plan.sh --json)",
+      "Bash(bash .specify/scripts/bash/setup-tasks.sh --json)",
+      "Bash(bash .specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks)",
+      "Bash(rubocop app/helpers/ai_helper_helper.rb test/unit/ai_helper_helper_test.rb)",
+      "Bash(rubocop app/helpers/ai_helper_helper.rb)"
     ],
     "additionalDirectories": [
-      "/usr/local/redmine/plugins/redmine_ai_helper/.claude/skills"
+      "/usr/local/redmine/plugins/redmine_ai_helper/.claude/skills",
+      "/tmp"
     ]
   }
 }
