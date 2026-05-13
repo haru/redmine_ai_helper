@@ -95,8 +95,7 @@ if (typeof AiHelperMarkdownParser === "undefined") {
     }
 
     linkifyIssueReferences(html) {
-      const meta = document.querySelector('meta[name="ai-helper-issue-base-url"]');
-      const template = meta?.getAttribute('content');
+      const template = (typeof ai_helper_urls !== 'undefined') ? ai_helper_urls.issue_base : null;
       if (!template) return html;
 
       const masks = [];

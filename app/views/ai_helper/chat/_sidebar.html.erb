@@ -1,5 +1,4 @@
 <% if RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: @project, permission: { controller: :ai_helper, action: :chat_form }) and AiHelperSetting.find_or_create.model_profile %>
-  <meta name="ai-helper-issue-base-url" content="<%= url_for(controller: 'issues', action: 'show', id: '__ID__', only_path: true) %>">
   <% content_for :sidebar do %>
     <div id="aihelper-sidebar">
       <div class="aihelper-header">
@@ -91,7 +90,8 @@
           reload: '<%= ai_helper_reload_path(@project) %>',
           clear: '<%= ai_helper_clear_path(@project) %>',
           call_llm: '<%= ai_helper_call_llm_path(@project) %>',
-          history: '<%= ai_helper_history_path(@project) %>'
+          history: '<%= ai_helper_history_path(@project) %>',
+          issue_base: '<%= issue_path("__ID__") %>'
         };
         ai_helper.reload_chat();
 
