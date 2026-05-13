@@ -1,0 +1,226 @@
+it:
+  project_module_ai_helper: "AI Helper"
+  label_ai_helper: "AI Helper"
+  label_chat_placeholder: "Scrivi qui il tuo messaggio..."
+  label_ai_helper_input_newline: "Premi Shift + Invio per andare a capo."
+  label_ai_helper_custom_command_hint: "Digita '/' per usare i comandi personalizzati."
+  label_ai_helper_start_new_chat: "Avvia una nuova chat"
+  label_ai_helper_free_input_option: "Altro (inserisci manualmente)"
+  ai_helper_summary: "Riepiloga con AI Helper"
+  ai_helper_similar_issues: "Trova ticket simili con AI Helper"
+  ai_helper_find_similar_issues: "Trova ticket simili"
+  ai_helper_similarity: "Somiglianza"
+  ai_helper_no_similar_issues_found: "Nessun ticket simile trovato"
+  ai_helper_scope_current_project: "Progetto corrente"
+  ai_helper_scope_with_subprojects: "Includi sottoprogetti"
+  ai_helper_scope_all_projects: "Tutti i progetti"
+  ai_helper_text_summary_generated_time: "Generato il %{time}"
+  ai_helper_error_occurred: "Si è verificato un errore"
+  permission_view_ai_helper: "Visualizza AI Helper"
+  permission_settings_ai_helper: "Impostazioni progetto"
+  permission_delete_ai_helper_health_reports: "Elimina report di salute"
+  label_ai_helper_error: "Errore"
+  label_ai_helper_health_report_history: "Storico report"
+  label_ai_helper_health_report_detail: "Dettaglio report"
+  label_ai_helper_report_period: "Periodo"
+  label_ai_helper_select_report_to_view: "Genera un report o selezionane uno dallo storico a sinistra"
+  label_ai_helper_report_detail_mobile: "Dettaglio report"
+  label_ai_helper_close_detail: "Chiudi dettaglio"
+
+  ai_helper:
+    notice_sub_issues_added: "I sotto-ticket sono stati aggiunti"
+    error_invalid_assignee: "Assegnatario non valido per '%{subject}' - l'utente non è autorizzato per questo tracker"
+
+    chat:
+      planning: "Creazione del piano di esecuzione..."
+      generating_final_response: "Generazione della risposta finale..."
+
+    project_health:
+      title: "Report di salute del progetto"
+      pdf_title: "Report di salute del progetto"
+      generate_report: "Genera report"
+      generating: "Generazione in corso"
+      placeholder: "Clicca su 'Genera report' per analizzare le metriche del progetto e ottenere insight."
+      note: "Il report analizza statistiche dei ticket, metriche temporali, distribuzione dei carichi di lavoro e fornisce raccomandazioni operative."
+      no_report_available: "Nessun report di salute disponibile per l'esportazione PDF"
+      report_content: "Contenuto del report di salute"
+
+    health_report_comparison:
+      compare_button: "Confronta report"
+      comparison_column: "Confronto"
+      page_title: "Confronto report di salute"
+      old_report: "Report precedente"
+      new_report: "Nuovo report"
+      analyze_button: "Analizza le modifiche"
+      placeholder: "L'analisi del confronto parte automaticamente"
+      analysis_title: "Analisi del confronto"
+      error_select_two_reports: "Seleziona due report diversi da confrontare"
+
+    generate_issue_reply:
+      title: "Crea una bozza di commento con AI Helper"
+      instructions: "Inserisci i punti chiave o le istruzioni per la risposta."
+      generated_reply: "Note generate"
+      apply: "Applica"
+
+    typo_check:
+      toggle_label: "Controllo refusi AI"
+      check_button: "Controllo refusi con AI Helper"
+      suggestions_title: "Suggerimenti di correzione"
+      no_suggestions: "Nessun refuso o errore trovato"
+      accept_suggestion: "Accetta"
+      dismiss_suggestion: "Rifiuta"
+      accept_all: "Accetta tutto"
+      dismiss_all: "Rifiuta tutto"
+      close: "Chiudi"
+      checking: "Controllo in corso..."
+      error_occurred: "Si è verificato un errore"
+      copy_to_clipboard: "Copia negli appunti"
+      correction_tooltip: "Suggerimento di correzione"
+      apply_failed: "Impossibile applicare la correzione. Posizione del testo non trovata"
+
+    generate_sub_issues:
+      title: "Crea sotto-attività con AI Helper"
+      instructions: "Inserisci le tue istruzioni."
+      generate_draft: "Genera bozza"
+
+    autocompletion:
+      loading: "Generazione suggerimenti AI..."
+      no_suggestions: "Nessun suggerimento disponibile"
+      accept_suggestion: "Accetta suggerimento"
+      dismiss: "Rifiuta"
+      enabled_tooltip: "Il completamento automatico AI è attivo. Premi Tab per accettare o Esc per rifiutare."
+      disabled_tooltip: "Il completamento automatico AI è disattivato. Spunta la casella per abilitarlo."
+      note_enabled_tooltip: "Il completamento automatico AI delle note è attivo. Premi Tab per accettare o Esc per rifiutare."
+      note_disabled_tooltip: "Il completamento automatico AI delle note è disattivato. Spunta la casella per abilitarlo."
+      common_toggle_label: "Completamento AI Helper"
+
+    assignment_suggestion:
+      link_label: "Suggerisci assegnatario con AI Helper"
+      loading: "Analisi degli assegnatari..."
+      close: "Chiudi"
+      no_suggestions: "Nessun suggerimento"
+
+      history_based:
+        title: "Suggerimenti basati sulla cronologia di ticket simili"
+        score: "Somiglianza"
+        similar_count: "Ticket simili"
+        similar_issues: "Ticket simili utilizzati per il suggerimento"
+        more_issues: "%{count} altri"
+
+      workload_based:
+        title: "Suggerimenti basati sul carico di lavoro attuale"
+        open_issues: "Ticket aperti"
+        issues_unit: ""
+
+      instruction_based:
+        title: "Suggerimenti basati sulle istruzioni dell'utente"
+        reason: "Motivazione"
+
+      error: "Errore durante il recupero dei suggerimenti di assegnazione"
+      empty_content: "Inserisci un oggetto o una descrizione"
+
+    stuff_todo:
+      menu_label: "Da fare"
+      modal_title: "Suggerimenti attività"
+      loading: "Caricamento..."
+      error: "Si è verificato un errore"
+
+    duplicate_check:
+      title: "Verifica duplicati con AI Helper"
+      button: "Verifica duplicati con AI Helper"
+      loading: "Ricerca di ticket simili..."
+      empty_content: "Inserisci oggetto o descrizione prima di verificare i duplicati"
+
+    model_profiles:
+      create_profile_title: "Nuovo profilo modello"
+      edit_profile_title: "Modifica profilo modello"
+      test_connection: "Test connessione"
+      test_connection_success: "Connessione riuscita"
+      test_connection_failed: "Connessione non riuscita"
+
+      messages:
+        confirm_delete: "Sei sicuro di voler eliminare questo profilo modello?"
+        must_be_valid_url: "deve essere un URL valido"
+        required_fields_missing: "Campi obbligatori mancanti."
+        access_key_required: "La chiave di accesso è obbligatoria per testare la connessione."
+
+    custom_commands:
+      label:
+        title: "Comandi personalizzati"
+        new: "Nuovo comando personalizzato"
+        no_data: "Nessun comando personalizzato registrato"
+
+      command_type:
+        global: "Comandi globali"
+        project: "Comandi di progetto"
+        user: "Comandi utente"
+
+      command_type_description:
+        global: "Comandi condivisi tra tutti i progetti in cui AI Helper è abilitato."
+        project: "Comandi condivisi solo all'interno di questo progetto."
+        user: "Comandi utilizzabili solo da te."
+
+      user_scope:
+        common: "Comune"
+        project_limited: "Limitato al progetto"
+
+      field:
+        scope: "Ambito"
+
+      text:
+        name_format: "Sono consentiti solo caratteri alfanumerici, underscore e trattino"
+        variables_help: "Variabili disponibili: {input}, {project_name}, {user_name}, {datetime}"
+
+      error:
+        name_duplicate: "Il nome del comando è già in uso"
+        project_required: "I comandi di progetto richiedono un progetto"
+
+  activerecord:
+    models:
+      ai_helper_model_profile: "Profilo modello"
+      ai_helper_setting: "Impostazioni AI Helper"
+      ai_helper_custom_command: "Comando personalizzato"
+
+    attributes:
+      ai_helper_model_profile:
+        llm_type: "Tipo"
+        llm_model: "Nome modello"
+        access_key: "Chiave di accesso"
+        temperature: "Temperatura"
+        organization_id: "ID organizzazione"
+        base_uri: "URI base"
+        max_tokens: "Numero massimo di token"
+
+      ai_helper_setting:
+        model_profile_id: "Profilo modello"
+        additional_instructions: "Istruzioni aggiuntive"
+        attachment_send_enabled: "Invia allegati al LLM"
+        attachment_max_size_mb: "Dimensione massima allegato (MB)"
+        vector_search_enabled: "Abilita ricerca vettoriale"
+        vector_search_uri: "URI"
+        vector_search_api_key: "Chiave API"
+        embedding_model: "Modello di embedding"
+        dimension: "Dimensione"
+        use_think_model: "Usa modello di ragionamento"
+        think_model_profile_id: "Profilo modello di ragionamento"
+        think_model_description: "Usa un modello separato per attività che richiedono un ragionamento più profondo, come la generazione del report di salute e le bozze di risposta ai ticket."
+        use_vector_model_profile: "Usa profilo modello vettoriale"
+        vector_model_profile_id: "Profilo modello vettoriale"
+        vector_model_profile_description: "Usa un profilo modello separato per le operazioni di ricerca vettoriale (credenziali API e analisi del contenuto). Nota: il nome del modello di embedding è comunque controllato dall'impostazione 'Modello di embedding'."
+        mcp_server_enabled: "Abilita server MCP"
+
+      ai_helper_project_setting:
+        issue_draft_instructions: "Istruzioni per la generazione dei commenti ai ticket"
+        subtask_instructions: "Istruzioni per la generazione dei sotto-task"
+        health_report_instructions: "Istruzioni per la generazione del report di salute"
+        assignment_suggestion_instructions: "Istruzioni per il suggerimento dell'assegnatario"
+
+      ai_helper_custom_command:
+        name: "Nome comando"
+        command_type: "Tipo comando"
+        project_id: "Progetto"
+        prompt: "Prompt"
+        description: "Descrizione"
+        user_scope: "Ambito"
+
+  field_id: "ID"
