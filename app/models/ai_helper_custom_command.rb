@@ -14,7 +14,7 @@
 # @example Find and expand a command
 #   cmd = AiHelperCustomCommand.find_command(name: 'summarize', user: user, project: project)
 #   expanded = cmd.expand(input: 'some text', user: user, project: project)
-class AiHelperCustomCommand < ActiveRecord::Base
+class AiHelperCustomCommand < ApplicationRecord
   # Enum definitions
   enum :command_type, { global: 0, project: 1, user: 2 }
   enum :user_scope, { common: 0, project_limited: 1 }
@@ -106,7 +106,7 @@ class AiHelperCustomCommand < ActiveRecord::Base
         user_id: user.id,
         user_scope: :project_limited,
         project_id: project.id,
-        name: normalized_name,
+        name: normalized_name
       ).first
       return command if command
     end
@@ -116,7 +116,7 @@ class AiHelperCustomCommand < ActiveRecord::Base
       command_type: :user,
       user_id: user.id,
       user_scope: :common,
-      name: normalized_name,
+      name: normalized_name
     ).first
     return command if command
 
@@ -125,7 +125,7 @@ class AiHelperCustomCommand < ActiveRecord::Base
       command = where(
         command_type: :project,
         project_id: project.id,
-        name: normalized_name,
+        name: normalized_name
       ).first
       return command if command
     end
@@ -133,7 +133,7 @@ class AiHelperCustomCommand < ActiveRecord::Base
     # Priority 4: Global commands
     where(
       command_type: :global,
-      name: normalized_name,
+      name: normalized_name
     ).first
   end
 
@@ -155,7 +155,7 @@ class AiHelperCustomCommand < ActiveRecord::Base
     user.admin? || self.user_id == user.id
   end
 
-  def visible_to?(user, project: nil)
+  def visible_to?(user, project: nil) # rubocop:disable Lint/UnusedMethodArgument
     return false unless user
 
     case command_type&.to_sym
@@ -202,20 +202,20 @@ class AiHelperCustomCommand < ActiveRecord::Base
 
     case command_type&.to_sym
     when :global
-      if scope.where(command_type: :global, name: normalized_name).exists?
+      if scope.exists?(command_type: :global, name: normalized_name)
         errors.add(:name, :taken)
       end
     when :project
-      if scope.where(command_type: :project, project_id: project_id, name: normalized_name).exists?
+      if scope.exists?(command_type: :project, project_id: project_id, name: normalized_name)
         errors.add(:name, :taken)
       end
     when :user
       if user_scope&.to_sym == :common
-        if scope.where(command_type: :user, user_id: user_id, user_scope: :common, name: normalized_name).exists?
+        if scope.exists?(command_type: :user, user_id: user_id, user_scope: :common, name: normalized_name)
           errors.add(:name, :taken)
         end
       elsif user_scope&.to_sym == :project_limited
-        if scope.where(command_type: :user, user_id: user_id, user_scope: :project_limited, project_id: project_id, name: normalized_name).exists?
+        if scope.exists?(command_type: :user, user_id: user_id, user_scope: :project_limited, project_id: project_id, name: normalized_name)
           errors.add(:name, :taken)
         end
       end

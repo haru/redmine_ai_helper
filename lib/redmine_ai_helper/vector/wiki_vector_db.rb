@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "json"
 
 module RedmineAiHelper
@@ -34,11 +35,11 @@ module RedmineAiHelper
           updated_on: wiki.updated_on,
           parent_id: wiki.parent_id,
           parent_title: wiki.parent_title,
-          page_url: "#{project_wiki_page_path(wiki.project, wiki.title)}",
+          page_url: "#{project_wiki_page_path(wiki.project, wiki.title)}"
         }
         content = "#{wiki.title} #{wiki.content.text}"
 
-        return { content: content, payload: payload }
+        { content: content, payload: payload }
       end
     end
   end

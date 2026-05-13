@@ -64,7 +64,7 @@ class AiHelperHealthReport < ApplicationRecord
       id: id,
       created_at: created_at,
       user_name: user.name,
-      total_issues: metrics_hash.dig(:issue_statistics, :total_issues) || 0,
+      total_issues: metrics_hash.dig(:issue_statistics, :total_issues) || 0
     }
   end
 end

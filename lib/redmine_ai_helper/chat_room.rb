@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "redmine_ai_helper/logger"
 
 module RedmineAiHelper

@@ -7,6 +7,6 @@ class FortuneAgent < RedmineAiHelper::BaseAgent
   end
 
   def available_tool_providers
-    [FortuneTools]
+    [ FortuneTools ]
   end
 end

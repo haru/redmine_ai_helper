@@ -13,7 +13,7 @@ class RedmineAiHelper::LlmStuffTodoTest < ActiveSupport::TestCase
       @params = {
         access_token: "test_access_token",
         uri_base: "http://example.com",
-        organization_id: "test_org_id",
+        organization_id: "test_org_id"
       }
       @llm = RedmineAiHelper::Llm.new(@params)
     end

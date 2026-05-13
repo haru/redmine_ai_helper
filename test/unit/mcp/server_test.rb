@@ -15,22 +15,26 @@ class McpServerBuilderTest < ActiveSupport::TestCase
   context "McpServerBuilder.build" do
     should "return an MCP::Server instance" do
       server = RedmineAiHelper::Mcp::Server.build
+
       assert_instance_of MCP::Server, server
     end
 
     should "include tools from registered BaseTools subclasses" do
       server = RedmineAiHelper::Mcp::Server.build
-      assert server.tools.size >= 1, "server should have at least one tool"
+
+      assert_operator server.tools.size, :>=, 1, "server should have at least one tool"
     end
 
     should "include search_issues from IssueSearchTools" do
       server = RedmineAiHelper::Mcp::Server.build
+
       assert server.tools.key?("search_issues"),
              "expected search_issues tool to be present"
     end
 
     should "include list_projects from ProjectTools" do
       server = RedmineAiHelper::Mcp::Server.build
+
       assert server.tools.key?("list_projects"),
              "expected list_projects tool to be present"
     end
@@ -40,6 +44,7 @@ class McpServerBuilderTest < ActiveSupport::TestCase
     should "return true when tool has no requirements" do
       klass = Class.new(RedmineAiHelper::BaseTools)
       result = RedmineAiHelper::Mcp::Server.send(:mcp_tool_allowed?, klass, user: @admin_user)
+
       assert result, "expected true when no requirements"
     end
 
@@ -48,20 +53,23 @@ class McpServerBuilderTest < ActiveSupport::TestCase
       klass = Class.new(RedmineAiHelper::BaseTools)
       klass.requires(vector_db_enabled: true)
       result = RedmineAiHelper::Mcp::Server.send(:mcp_tool_allowed?, klass, user: @admin_user)
-      refute result, "expected false when vector_db_enabled required but disabled"
+
+      assert_not result, "expected false when vector_db_enabled required but disabled"
     end
 
     should "return false when admin required but user is non-admin" do
       klass = Class.new(RedmineAiHelper::BaseTools)
       klass.requires(admin: true)
       result = RedmineAiHelper::Mcp::Server.send(:mcp_tool_allowed?, klass, user: @non_admin_user)
-      refute result, "expected false when admin required but user is non-admin"
+
+      assert_not result, "expected false when admin required but user is non-admin"
     end
 
     should "return true when admin required and user is admin" do
       klass = Class.new(RedmineAiHelper::BaseTools)
       klass.requires(admin: true)
       result = RedmineAiHelper::Mcp::Server.send(:mcp_tool_allowed?, klass, user: @admin_user)
+
       assert result, "expected true when admin required and user is admin"
     end
 
@@ -70,6 +78,7 @@ class McpServerBuilderTest < ActiveSupport::TestCase
       klass = Class.new(RedmineAiHelper::BaseTools)
       klass.requires(vector_db_enabled: true)
       result = RedmineAiHelper::Mcp::Server.send(:mcp_tool_allowed?, klass, user: @non_admin_user)
+
       assert result, "expected true when vector_db_enabled required and enabled"
     end
 
@@ -78,6 +87,7 @@ class McpServerBuilderTest < ActiveSupport::TestCase
       klass = Class.new(RedmineAiHelper::BaseTools)
       klass.requires(vector_db_enabled: true, admin: true)
       result = RedmineAiHelper::Mcp::Server.send(:mcp_tool_allowed?, klass, user: @admin_user)
+
       assert result, "expected true when all conditions met"
     end
 
@@ -86,7 +96,8 @@ class McpServerBuilderTest < ActiveSupport::TestCase
       klass = Class.new(RedmineAiHelper::BaseTools)
       klass.requires(vector_db_enabled: true, admin: true)
       result = RedmineAiHelper::Mcp::Server.send(:mcp_tool_allowed?, klass, user: @admin_user)
-      refute result, "expected false when vector_db_enabled not met"
+
+      assert_not result, "expected false when vector_db_enabled not met"
     end
   end
 end

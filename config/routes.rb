@@ -93,7 +93,7 @@ RedmineApp::Application.routes.draw do
 
   # Project-independent custom commands
   scope :ai_helper, module: :ai_helper do
-    resources :custom_commands, controller: 'custom_commands', except: [:show] do
+    resources :custom_commands, controller: "custom_commands", except: [ :show ] do
       collection do
         get :available
       end
@@ -102,5 +102,5 @@ RedmineApp::Application.routes.draw do
 
   # MCP (Model Context Protocol) server endpoint
   match "ai_helper/mcp", to: "ai_helper_mcp#handle_request",
-        via: [:get, :post, :delete], as: "ai_helper_mcp"
+        via: [ :get, :post, :delete ], as: "ai_helper_mcp"
 end

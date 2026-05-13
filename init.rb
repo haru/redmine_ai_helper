@@ -18,7 +18,7 @@ require "redmine_ai_helper/util/config_file"
 require "redmine_ai_helper/util/permission_checker"
 require "redmine_ai_helper/user_patch"
 require_dependency "redmine_ai_helper/view_hook"
-Dir[File.join(File.dirname(__FILE__), "lib/redmine_ai_helper/agents", "*_agent.rb")].each do |file|
+Dir[File.join(File.dirname(__FILE__), "lib/redmine_ai_helper/agents", "*_agent.rb")].sort.each do |file|
   require file
 end
 
@@ -44,7 +44,7 @@ Redmine::Plugin.register :redmine_ai_helper do
   description "This plugin adds an AI assistant to Redmine."
   url "https://github.com/haru/redmine_ai_helper"
   author_url "https://github.com/haru"
-  requires_redmine :version_or_higher => "6.0.0"
+  requires_redmine version_or_higher: "6.0.0"
 
   version RedmineAiHelper::VERSION
 
@@ -58,41 +58,41 @@ Redmine::Plugin.register :redmine_ai_helper do
                    :project_health_metadata,
                    :suggest_completion, :suggest_wiki_completion, :check_typos,
                    :api_create_health_report, :suggest_assignees, :stuff_todo,
-                   :assignable_users_for_tracker,
+                   :assignable_users_for_tracker
                  ],
                  ai_helper_dashboard: [
-                   :index, :health_report_history, :health_report_show, :compare_health_reports, :comparison_pdf, :comparison_markdown,
-                 ],
+                   :index, :health_report_history, :health_report_show, :compare_health_reports, :comparison_pdf, :comparison_markdown
+                 ]
                }
     permission :settings_ai_helper,
                {
-                 ai_helper_project_settings: [:show, :update],
-               }, :require => :member
+                 ai_helper_project_settings: [ :show, :update ]
+               }, require: :member
     permission :delete_ai_helper_health_reports,
                {
-                 ai_helper_dashboard: [:health_report_destroy],
-               }, :require => :member
+                 ai_helper_dashboard: [ :health_report_destroy ]
+               }, require: :member
   end
 
   menu :admin_menu, "icon ai_helper", {
-         controller: "ai_helper_settings", action: "index",
-       }, caption: :label_ai_helper, :icon => "ai-helper-robot",
-          :plugin => :redmine_ai_helper
+         controller: "ai_helper_settings", action: "index"
+       }, caption: :label_ai_helper, icon: "ai-helper-robot",
+          plugin: :redmine_ai_helper
 
   menu :project_menu, :ai_helper_dashboard, {
-         controller: "ai_helper_dashboard", action: "index",
+         controller: "ai_helper_dashboard", action: "index"
        }, caption: :label_ai_helper
 
   # Add "To Do" menu item to account menu (appears near login info)
   # URL is "#" because the actual API call is handled by JavaScript via meta tag.
   # The link is hidden on non-project pages by JavaScript.
   menu :account_menu, :ai_helper_stuff_todo, "#",
-       :caption => Proc.new { I18n.t("ai_helper.stuff_todo.menu_label") },
-       :if => Proc.new {
+       caption: Proc.new { I18n.t("ai_helper.stuff_todo.menu_label") },
+       if: Proc.new {
          User.current.logged?
        },
-       :first => true,
-       :icon => "ai-helper-robot",
-       :plugin => :redmine_ai_helper,
-       :html => { id: "ai-helper-stuff-todo-link", style: "display:none;" }
+       first: true,
+       icon: "ai-helper-robot",
+       plugin: :redmine_ai_helper,
+       html: { id: "ai-helper-stuff-todo-link", style: "display:none;" }
 end

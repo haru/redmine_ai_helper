@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 # This controller is responsible for handling the chat messages between the user and the AI.
 require "redmine_ai_helper/llm"
 require "redmine_ai_helper/logger"
@@ -26,10 +27,10 @@ class AiHelperController < ApplicationController
 
   protect_from_forgery with: :exception
   accept_api_auth :api_create_health_report
-  before_action :find_issue, only: [:issue_summary, :update_issue_summary, :generate_issue_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues]
-  before_action :find_wiki_page, only: [:wiki_summary, :generate_wiki_summary]
-  before_action :find_project, except: [:issue_summary, :wiki_summary, :generate_issue_summary, :generate_wiki_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues]
-  before_action :find_user, :create_session, :find_conversation, except: [:api_create_health_report]
+  before_action :find_issue, only: [ :issue_summary, :generate_issue_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues ]
+  before_action :find_wiki_page, only: [ :wiki_summary, :generate_wiki_summary ]
+  before_action :find_project, except: [ :issue_summary, :wiki_summary, :generate_issue_summary, :generate_wiki_summary, :generate_issue_reply, :generate_sub_issues, :add_sub_issues, :similar_issues ]
+  before_action :find_user, :create_session, :find_conversation, except: [ :api_create_health_report ]
   before_action :authorize
 
   # Display the chat form in the sidebar
@@ -158,7 +159,7 @@ class AiHelperController < ApplicationController
   def call_llm
     contoller_name = params[:controller_name]
     action_name = params[:action_name]
-    content_id = params[:content_id].to_i unless params[:content_id].blank?
+    content_id = params[:content_id].to_i if params[:content_id].present?
     additional_info = {}
     params[:additional_info].each do |key, value|
       additional_info[key] = value
@@ -169,7 +170,7 @@ class AiHelperController < ApplicationController
       action_name: action_name,
       content_id: content_id,
       project: @project,
-      additional_info: additional_info,
+      additional_info: additional_info
     }
 
     stream_llm_response do |stream_proc|
@@ -230,10 +231,10 @@ class AiHelperController < ApplicationController
     trackers = trackers.reject do |tracker|
       @issue.tracker_id != tracker.id && tracker.disabled_core_fields.include?("parent_issue_id")
     end
-    trackers_options_for_select = trackers.collect { |t| [t.name, t.id] }
+    trackers_options_for_select = trackers.collect { |t| [ t.name, t.id ] }
 
     versions = @issue.assignable_versions || []
-    versions_options_for_select = versions.collect { |v| [v.name, v.id] }
+    versions_options_for_select = versions.collect { |v| [ v.name, v.id ] }
 
     # Initially empty - will be populated via AJAX based on tracker selection
     assignable_users_options_for_select = []
@@ -243,45 +244,26 @@ class AiHelperController < ApplicationController
       subissues: subissues,
       trackers_options_for_select: trackers_options_for_select,
       versions_options_for_select: versions_options_for_select,
-      assignable_users_options_for_select: assignable_users_options_for_select,
+      assignable_users_options_for_select: assignable_users_options_for_select
     }
   end
 
   # Add sub-issues to the current issue
   def add_sub_issues
-    issues_param = params[:sub_issues]
-
-    issues_param.each do |issue_param_array|
+    params[:sub_issues].each do |issue_param_array|
       issue_param = issue_param_array[1].permit(:subject, :description, :tracker_id, :check, :fixed_version_id, :assigned_to_id)
       next unless issue_param[:check]
 
-      issue = Issue.new
-      issue.author = User.current
-      issue.project = @issue.project
-      issue.parent_id = @issue.id
-      issue.subject = issue_param[:subject]
-      issue.description = issue_param[:description]
-      issue.tracker_id = issue_param[:tracker_id]
-      issue.fixed_version_id = issue_param[:fixed_version_id] unless issue_param[:fixed_version_id].blank?
+      issue = build_sub_issue_from_param(issue_param)
 
-      # Tracker-specific assignee validation
-      if issue_param[:assigned_to_id].present?
-        assignee_id = issue_param[:assigned_to_id].to_i
-        tracker = Tracker.find_by(id: issue.tracker_id)
-
-        # Use Redmine's built-in method to check tracker-specific permissions
-        if tracker && @issue.project.assignable_users(tracker).exists?(assignee_id)
-          issue.assigned_to_id = assignee_id
-        else
-          # Show error if assignee is not valid for this tracker
-          flash[:error] = l("ai_helper.error_invalid_assignee", subject: issue.subject)
-          redirect_to issue_path(@issue) and return
-        end
+      unless apply_assignee_to_sub_issue(issue, issue_param)
+        flash[:error] = l("ai_helper.error_invalid_assignee", subject: issue.subject)
+        redirect_to issue_path(@issue) and return # rubocop:disable Lint/NonLocalExitFromIterator
       end
 
       unless issue.save
         flash[:error] = issue.errors.full_messages.join("\n")
-        redirect_to issue_path(@issue) and return
+        redirect_to issue_path(@issue) and return # rubocop:disable Lint/NonLocalExitFromIterator
       end
     end
 
@@ -332,7 +314,7 @@ class AiHelperController < ApplicationController
       similar_issues = llm.find_similar_issues_by_content(
         subject: subject,
         description: description,
-        project: @project,
+        project: @project
       )
 
       render partial: "ai_helper/issues/similar_issues",
@@ -355,58 +337,24 @@ class AiHelperController < ApplicationController
       render json: { error: "Invalid JSON" }, status: :bad_request and return
     end
 
-    text = data["text"]
-    context_type = data["context_type"] || "description" # "description" or "note"
-    cursor_position = data["cursor_position"]
+    context_type = data["context_type"] || "description"
+    error = validate_completion_input(data, context_type)
+    render json: { error: error }, status: :bad_request and return if error
 
-    # Input validation
-    if text.blank?
-      render json: { error: "Text is required" }, status: :bad_request and return
-    end
+    issue, issue_error = resolve_completion_issue(context_type)
+    render json: { error: issue_error }, status: :bad_request and return if issue_error
 
-    if text.length > 5000
-      render json: { error: "Text too long" }, status: :bad_request and return
-    end
-
-    if cursor_position && (cursor_position < 0 || cursor_position > text.length)
-      render json: { error: "Invalid cursor position" }, status: :bad_request and return
-    end
-
-    # Validate context_type
-    unless %w[description note].include?(context_type)
-      render json: { error: "Invalid context_type. Must be 'description' or 'note'" }, status: :bad_request and return
-    end
-
-    # Handle issue context
-    issue = nil
-    if params[:issue_id] != "new"
-      issue = Issue.find_by(id: params[:issue_id])
-      # Verify issue belongs to the project
-      if issue && issue.project != @project
-        render json: { error: "Issue does not belong to the specified project" }, status: :bad_request and return
-      end
-    end
-
-    # Note completion requires an existing issue
-    if context_type == "note" && !issue
-      render json: { error: "Issue is required for note completion" }, status: :bad_request and return
-    end
-
-    # Debug logging
     ai_helper_logger.info "Auto-completion request: issue_id=#{params[:issue_id]}, context_type=#{context_type}, project=#{@project&.identifier}, user=#{User.current.id}"
 
     begin
-      llm = RedmineAiHelper::Llm.new
-      suggestion = llm.generate_text_completion(
-        text: text,
+      suggestion = RedmineAiHelper::Llm.new.generate_text_completion(
+        text: data["text"],
         context_type: context_type,
-        cursor_position: cursor_position,
+        cursor_position: data["cursor_position"],
         project: @project,
-        issue: issue,
+        issue: issue
       )
-
-      response_data = { suggestion: suggestion }
-      render json: response_data
+      render json: { suggestion: suggestion }
     rescue => e
       ai_helper_logger.error "Auto-completion error: #{e.message}"
       ai_helper_logger.error e.backtrace.join("\n")
@@ -461,7 +409,7 @@ class AiHelperController < ApplicationController
         cursor_position: cursor_position,
         project: @project,
         wiki_page: wiki_page,
-        is_section_edit: is_section_edit,
+        is_section_edit: is_section_edit
       )
 
       response_data = { suggestion: suggestion }
@@ -513,7 +461,7 @@ class AiHelperController < ApplicationController
         id: latest_report.id,
         created_at: latest_report.created_at,
         created_at_iso8601: latest_report.created_at&.iso8601,
-        created_on_formatted: view_context.format_time(latest_report.created_at),
+        created_on_formatted: view_context.format_time(latest_report.created_at)
       }
     else
       head :no_content
@@ -579,7 +527,7 @@ class AiHelperController < ApplicationController
 
         content = llm.project_health_report(
           project: @project,
-          stream_proc: cache_proc,
+          stream_proc: cache_proc
         )
 
         Rails.cache.write(cache_key, content, expires_in: 1.hour)
@@ -596,13 +544,13 @@ class AiHelperController < ApplicationController
         object: "chat.completion.chunk",
         created: Time.now.to_i,
         model: "error",
-        choices: [{
+        choices: [ {
           index: 0,
           delta: {
-            content: "Error generating project health report: #{e.message}",
+            content: "Error generating project health report: #{e.message}"
           },
-          finish_reason: "stop",
-        }],
+          finish_reason: "stop"
+        } ]
       })
 
       response.stream.close
@@ -622,7 +570,7 @@ class AiHelperController < ApplicationController
       text: text,
       context_type: context_type,
       project: @project,
-      max_suggestions: 10,
+      max_suggestions: 10
     )
 
     render json: { suggestions: suggestions }
@@ -680,7 +628,7 @@ class AiHelperController < ApplicationController
       assignable_users = issue ? issue.assignable_users : @project.assignable_users
       suggestion_service = RedmineAiHelper::AssignmentSuggestion.new(
         project: @project,
-        assignable_users: assignable_users,
+        assignable_users: assignable_users
       )
 
       result = suggestion_service.suggest(
@@ -688,14 +636,14 @@ class AiHelperController < ApplicationController
         description: description,
         tracker_id: tracker_id,
         category_id: category_id,
-        issue: issue,
+        issue: issue
       )
 
       render partial: "ai_helper/issues/assignment_suggestions",
              locals: {
                history_based: result[:history_based],
                workload_based: result[:workload_based],
-               instruction_based: result[:instruction_based],
+               instruction_based: result[:instruction_based]
              }
     rescue => e
       ai_helper_logger.error "Assignee suggestion error: #{e.message}"
@@ -717,9 +665,9 @@ class AiHelperController < ApplicationController
           llm = RedmineAiHelper::Llm.new
 
           # Generate health report without streaming
-          health_report_text = llm.project_health_report(
+          llm.project_health_report(
             project: @project,
-            stream_proc: nil,
+            stream_proc: nil
           )
 
           # Get the latest saved report
@@ -734,7 +682,7 @@ class AiHelperController < ApplicationController
             project_id: @project.id,
             project_identifier: @project.identifier,
             health_report: latest_report.health_report,
-            created_at: latest_report.created_at.iso8601,
+            created_at: latest_report.created_at.iso8601
           }, status: :ok
         rescue => e
           ai_helper_logger.error "API health report generation error: #{e.message}"
@@ -742,7 +690,7 @@ class AiHelperController < ApplicationController
 
           render json: {
             error: "Failed to generate health report",
-            message: e.message,
+            message: e.message
           }, status: :internal_server_error
         end
       end
@@ -762,6 +710,51 @@ class AiHelperController < ApplicationController
   end
 
   private
+
+  def build_sub_issue_from_param(issue_param)
+    issue = Issue.new
+    issue.author = User.current
+    issue.project = @issue.project
+    issue.parent_id = @issue.id
+    issue.subject = issue_param[:subject]
+    issue.description = issue_param[:description]
+    issue.tracker_id = issue_param[:tracker_id]
+    issue.fixed_version_id = issue_param[:fixed_version_id] if issue_param[:fixed_version_id].present?
+    issue
+  end
+
+  def apply_assignee_to_sub_issue(issue, issue_param)
+    return true if issue_param[:assigned_to_id].blank?
+
+    assignee_id = issue_param[:assigned_to_id].to_i
+    tracker = Tracker.find_by(id: issue.tracker_id)
+    return false unless tracker && @issue.project.assignable_users(tracker).exists?(assignee_id)
+
+    issue.assigned_to_id = assignee_id
+    true
+  end
+
+  def validate_completion_input(data, context_type)
+    text = data["text"]
+    cursor_position = data["cursor_position"]
+    return I18n.t("ai_helper.completion_errors.text_required") if text.blank?
+    return I18n.t("ai_helper.completion_errors.text_too_long") if text.length > 5000
+    return I18n.t("ai_helper.completion_errors.invalid_cursor_position") if cursor_position && (cursor_position < 0 || cursor_position > text.length)
+    return I18n.t("ai_helper.completion_errors.invalid_context_type") unless %w[description note].include?(context_type)
+
+    nil
+  end
+
+  def resolve_completion_issue(context_type)
+    issue = nil
+    if params[:issue_id] != "new"
+      issue = Issue.find_by(id: params[:issue_id])
+      return [ nil, I18n.t("ai_helper.completion_errors.issue_not_in_project") ] if issue && issue.project != @project
+    end
+    return [ nil, I18n.t("ai_helper.completion_errors.issue_required_for_note") ] if context_type == "note" && !issue
+
+    [ issue, nil ]
+  end
 
   # Always enforce CSRF verification for this controller.
   # Overrides Redmine's ApplicationController which conditionally skips
@@ -836,7 +829,7 @@ class AiHelperController < ApplicationController
       project: @project,
       version_id: params[:version_id],
       start_date: params[:start_date],
-      end_date: params[:end_date],
+      end_date: params[:end_date]
     )
   rescue => e
     ai_helper_logger.error "Project health report error: #{e.message}"

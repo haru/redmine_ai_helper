@@ -1,10 +1,10 @@
 # frozen_string_literal: true
+
 require_relative "logger"
 require_relative "base_agent"
 require_relative "langfuse_util/langfuse_wrapper"
 
 module RedmineAiHelper
-
   # A class that is directly called from the controller to interact with AI using LLM.
   # TODO: Want to change class name
   class Llm
@@ -153,11 +153,11 @@ module RedmineAiHelper
         agent = RedmineAiHelper::Agents::IssueAgent.new(project: project, langfuse: langfuse)
         langfuse.create_span(
           name: "find_similar_issues_by_content",
-          input: "subject: #{subject[0..50]}",
+          input: "subject: #{subject[0..50]}"
         )
         results = agent.find_similar_issues_by_content(
           subject: subject,
-          description: description,
+          description: description
         )
         langfuse.finish_current_span(output: "found: #{results.length}")
         langfuse.flush(output: "found: #{results.length}")
@@ -207,7 +207,7 @@ module RedmineAiHelper
         answer = agent.project_health_report(
           project: project,
           options: options,
-          stream_proc: stream_proc,
+          stream_proc: stream_proc
         )
         langfuse.finish_current_span(output: answer)
         langfuse.flush(output: answer)
@@ -243,7 +243,7 @@ module RedmineAiHelper
           cursor_position: cursor_position,
           project: project,
           wiki_page: wiki_page,
-          is_section_edit: is_section_edit,
+          is_section_edit: is_section_edit
         )
 
         ai_helper_logger.info "WikiAgent returned completion: '#{completion}' (length: #{completion.length})"
@@ -280,7 +280,7 @@ module RedmineAiHelper
           cursor_position: cursor_position,
           context_type: context_type,
           project: project,
-          issue: issue,
+          issue: issue
         )
 
         ai_helper_logger.info "Agent returned completion: '#{completion}' (length: #{completion.length})"
@@ -316,7 +316,7 @@ module RedmineAiHelper
         suggestions = agent.check_typos(
           text: text,
           context_type: context_type,
-          max_suggestions: max_suggestions,
+          max_suggestions: max_suggestions
         )
 
         ai_helper_logger.info "DocumentationAgent returned suggestions: #{suggestions}"
@@ -344,7 +344,7 @@ module RedmineAiHelper
         langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: prompt)
         options = {
           langfuse: langfuse,
-          project_id: project.id,
+          project_id: project.id
         }
 
         agent = RedmineAiHelper::Agents::ProjectAgent.new(options)
@@ -353,7 +353,7 @@ module RedmineAiHelper
         answer = agent.health_report_comparison(
           old_report: old_report,
           new_report: new_report,
-          stream_proc: stream_proc,
+          stream_proc: stream_proc
         )
 
         langfuse.finish_current_span(output: answer)
@@ -390,7 +390,7 @@ module RedmineAiHelper
           subject: subject,
           description: description,
           tracker_id: tracker_id,
-          category_id: category_id,
+          category_id: category_id
         )
 
         langfuse.finish_current_span(output: "suggestions: #{result}")
@@ -425,7 +425,5 @@ module RedmineAiHelper
       ai_helper_logger.info "answer: #{answer}"
       answer
     end
-
-    private
   end
 end

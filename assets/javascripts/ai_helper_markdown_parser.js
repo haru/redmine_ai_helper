@@ -86,10 +86,34 @@ if (typeof AiHelperMarkdownParser === "undefined") {
         }
       });
 
+      html = this.linkifyIssueReferences(html);
+
       // Sanitize output to remove dangerous HTML patterns
       html = this.sanitizeOutput(html);
 
       return html;
+    }
+
+    linkifyIssueReferences(html) {
+      const meta = document.querySelector('meta[name="ai-helper-issue-base-url"]');
+      const template = meta?.getAttribute('content');
+      if (!template) return html;
+
+      const masks = [];
+      // Mask existing <a>, <pre>, and <code> blocks so their content is not re-linked
+      const maskPattern = /<a\b[^>]*>[\s\S]*?<\/a>|<pre>[\s\S]*?<\/pre>|<code>[\s\S]*?<\/code>/gi;
+      let masked = html.replace(maskPattern, (match) => {
+        const token = `\x00AIH_MASK_${masks.length}\x00`;
+        masks.push(match);
+        return token;
+      });
+
+      masked = masked.replace(/(^|[^\w])#(\d+)/g, (_full, prefix, id) => {
+        const href = template.replace('__ID__', id);
+        return `${prefix}<a href="${href}">#${id}</a>`;
+      });
+
+      return masked.replace(/\x00AIH_MASK_(\d+)\x00/g, (_full, idx) => masks[parseInt(idx, 10)]);
     }
 
     // Remove dangerous HTML patterns from the output using DOMParser

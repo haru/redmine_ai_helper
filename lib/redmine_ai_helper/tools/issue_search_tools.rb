@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module RedmineAiHelper
   module Tools
     # A class that provides functionality to the Agent for retrieving issue information
@@ -81,7 +83,15 @@ module RedmineAiHelper
       # @param custom_fields [Array] Custom field search filters.
       # @return [Hash] A hash containing issues array and total_count.
       def search_issues(project_id:, limit: 50, fields: [], date_fields: [], time_fields: [], number_fields: [], text_fields: [], status_field: [], custom_fields: [])
-        limit = [limit.to_i, 1].max
+        fields = deep_symbolize_array(fields)
+        date_fields = deep_symbolize_array(date_fields)
+        time_fields = deep_symbolize_array(time_fields)
+        number_fields = deep_symbolize_array(number_fields)
+        text_fields = deep_symbolize_array(text_fields)
+        status_field = deep_symbolize_array(status_field)
+        custom_fields = deep_symbolize_array(custom_fields)
+
+        limit = [ limit.to_i, 1 ].max
         project = Project.find(project_id)
 
         if fields.empty? && date_fields.empty? && time_fields.empty? && number_fields.empty? && text_fields.empty? && status_field.empty? && custom_fields.empty?
@@ -99,7 +109,7 @@ module RedmineAiHelper
         params = { fields: [], operators: {}, values: {} }
         params[:fields] << "project_id"
         params[:operators]["project_id"] = "="
-        params[:values]["project_id"] = [project_id.to_s]
+        params[:values]["project_id"] = [ project_id.to_s ]
 
         fields.each do |field|
           params[:fields] << field[:field_name]
@@ -240,7 +250,7 @@ module RedmineAiHelper
                 errors << "The #{field[:field_name]} and #{field[:operator]} requires an absolute date value in the format YYYY-MM-DD. But the value is #{value}."
               end
             end
-          when "<t+", ">t+", "t+", ">t-", "<t-", "t-"
+          when "<t+", ">t+", "><t+", "t+", ">t-", "<t-", "><t-", "t-"
             if field[:values].length == 0
               errors << "The #{field[:field_name]} and #{field[:operator]} requires a relative date value. But no value is specified."
             end
@@ -276,8 +286,8 @@ module RedmineAiHelper
         def initialize(params)
           @query = IssueQuery.new(name: "_")
           @params = params
-          @query.column_names = ["project", "tracker", "status", "subject", "priority", "assigned_to", "updated_on"]
-          @query.sort_criteria = [["id", "desc"]]
+          @query.column_names = [ "project", "tracker", "status", "subject", "priority", "assigned_to", "updated_on" ]
+          @query.sort_criteria = [ [ "id", "desc" ] ]
           # Keep the default status filter (open issues only) unless explicitly specified
         end
 
@@ -326,7 +336,7 @@ module RedmineAiHelper
 
         # Returns the total count of matching issues
         # @param project [Project] The project to search in
-        # @param user [User] The user to check visibility for
+        # @param user [User] The user for visibility check
         # @return [Integer] Total count of matching issues
         def count(project, user: User.current)
           setup_query(project, user)

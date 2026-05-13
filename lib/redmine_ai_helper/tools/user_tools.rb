@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "redmine_ai_helper/base_tools"
 
 module RedmineAiHelper
@@ -8,17 +9,17 @@ module RedmineAiHelper
       define_function :list_users, description: "Returns a list of all users who have logged in within the past year. The user information includes the following items: id, login, firstname, lastname, created_on, last_login_on." do
         property :query, type: "object", description: "The query to filter the users.", required: true do
           property :limit, type: "integer", description: "The maximum number of users to return. The default is 100."
-          property :status, type: "string", enum: ["active", "locked", "registered"], description: "The status of the users to return. The default is 'active'."
+          property :status, type: "string", enum: [ "active", "locked", "registered" ], description: "The status of the users to return. The default is 'active'."
           property :date_fields, type: "array", description: "The date fields to filter on." do
             item type: "object", description: "The date field" do
-              property :field_name, type: "string", enum: ["created_on", "last_login_on"], description: "The date field to filter on.", required: true
-              property :operator, type: "string", enum: ["=", "!=", ">", "<", ">=", "<="], description: "The operator to use for the filter.", required: true
+              property :field_name, type: "string", enum: [ "created_on", "last_login_on" ], description: "The date field to filter on.", required: true
+              property :operator, type: "string", enum: [ "=", "!=", ">", "<", ">=", "<=" ], description: "The operator to use for the filter.", required: true
               property :value, type: "string", description: "The value to filter on.", required: true
             end
           end
           property :sort, type: "object", description: "The field to sort on." do
-            property :field_name, type: "string", enum: ["id", "login", "firstname", "lastname", "created_on", "last_login_on"], description: "The field to sort on.", required: true
-            property :order, type: "string", enum: ["asc", "desc"], description: "The order to sort in.", required: true
+            property :field_name, type: "string", enum: [ "id", "login", "firstname", "lastname", "created_on", "last_login_on" ], description: "The field to sort on.", required: true
+            property :order, type: "string", enum: [ "asc", "desc" ], description: "The order to sort in.", required: true
           end
         end
       end
@@ -35,6 +36,7 @@ module RedmineAiHelper
       # @option query [String] :sort.order The order to sort in. Can be 'asc' or 'desc'.
       # @return [Hash] A hash containing the list of users and the total count.
       def list_users(query: {})
+        query = deep_symbolize_hash(query)
         limit = query[:limit] || 100
         status = query[:status] || "active"
         status_value = { "active" => 1, "registered" => 2, "locked" => 3 }
@@ -47,7 +49,7 @@ module RedmineAiHelper
           field_name = date_field[:field_name]
           operator = date_field[:operator]
           value = date_field[:value]
-          if ["<", "<="].include?(operator)
+          if [ "<", "<=" ].include?(operator)
             users = users.where("#{field_name} #{operator} ? OR #{field_name} IS NULL", value)
           else
             users = users.where("#{field_name} #{operator} ?", value)
@@ -65,7 +67,7 @@ module RedmineAiHelper
             firstname: user.firstname,
             lastname: user.lastname,
             created_on: user.created_on,
-            last_login_on: user.last_login_on,
+            last_login_on: user.last_login_on
           }
         end
         json = { users: user_list, total: count }
@@ -91,7 +93,7 @@ module RedmineAiHelper
             firstname: user.firstname,
             lastname: user.lastname,
             created_on: user.created_on,
-            last_login_on: user.last_login_on,
+            last_login_on: user.last_login_on
           }
         end
         json = { users: user_list }

@@ -75,6 +75,13 @@ en:
       title: "Create subtasks with AI Helper"
       instructions: "Please enter your instructions."
       generate_draft: "Generate draft"
+    completion_errors:
+      text_required: "Text is required"
+      text_too_long: "Text too long"
+      invalid_cursor_position: "Invalid cursor position"
+      invalid_context_type: "Invalid context_type. Must be 'description' or 'note'"
+      issue_not_in_project: "Issue does not belong to the specified project"
+      issue_required_for_note: "Issue is required for note completion"
     autocompletion:
       loading: "Generating AI suggestions..."
       no_suggestions: "No suggestions available"

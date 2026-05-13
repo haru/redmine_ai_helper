@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 module RedmineAiHelper
   # Logger mixin for AI Helper plugin
   module Logger
@@ -45,9 +46,7 @@ module RedmineAiHelper
 
     # Get the AI Helper logger instance
     # @return [CustomLogger] The logger instance
-    def ai_helper_logger
-      self.class.ai_helper_logger
-    end
+    delegate :ai_helper_logger, to: :class
 
     # Log debug message
     # @param message [String] The message to log
@@ -79,7 +78,7 @@ module RedmineAiHelper
     include Singleton
 
     def initialize
-      log_file_path = Rails.root.join("log", "ai_helper.log")
+      log_file_path = Rails.root.join("log/ai_helper.log")
 
       config = RedmineAiHelper::Util::ConfigFile.load_config
 
@@ -92,7 +91,7 @@ module RedmineAiHelper
       log_level = logger[:level] if logger[:level]
       log_file_path = Rails.root.join("log", logger[:file]) if logger[:file]
       @logger = ::Logger.new(log_file_path, "daily")
-      @logger.formatter = proc do |severity, datetime, progname, msg|
+      @logger.formatter = proc do |severity, datetime, _progname, msg|
         "[#{datetime}] #{severity} -- #{msg}\n"
       end
       set_log_level(log_level)
@@ -127,41 +126,31 @@ module RedmineAiHelper
     end
 
     # Predicate methods required by libraries such as RubyLLM (e.g. logger.debug?)
-    def debug?
-      @logger.debug?
-    end
+    delegate :debug?, to: :@logger
 
-    def info?
-      @logger.info?
-    end
+    delegate :info?, to: :@logger
 
-    def warn?
-      @logger.warn?
-    end
+    delegate :warn?, to: :@logger
 
-    def error?
-      @logger.error?
-    end
+    delegate :error?, to: :@logger
 
-    def fatal?
-      @logger.fatal?
-    end
+    delegate :fatal?, to: :@logger
 
     # Set the log level
     # @param log_level [String, Integer] The log level
     def set_log_level(log_level)
       level = case log_level.to_s
-        when "debug"
+      when "debug"
           ::Logger::DEBUG
-        when "info"
+      when "info"
           ::Logger::INFO
-        when "warn"
+      when "warn"
           ::Logger::WARN
-        when "error"
+      when "error"
           ::Logger::ERROR
-        else
+      else # rubocop:disable Lint/DuplicateBranch
           ::Logger::INFO
-        end
+      end
       @logger.level = level
     end
   end

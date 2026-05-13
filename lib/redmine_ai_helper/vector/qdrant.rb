@@ -30,12 +30,11 @@ module RedmineAiHelper
         @client ||= ::Qdrant::Client.new(url: @url, api_key: @api_key, logger: RedmineAiHelper::CustomLogger.instance)
       end
 
-      # Generate embedding via LLM provider (uses RubyLLM).
-      # @param text [String] The text to embed.
-      # @return [Array<Float>] The embedding vector.
-      def embed(text)
-        @llm_provider.embed(text)
-      end
+      # @!method embed(text)
+      #   Generate embedding via LLM provider (uses RubyLLM).
+      #   @param text [String] The text to embed.
+      #   @return [Array<Float>] The embedding vector.
+      delegate :embed, to: :@llm_provider
 
       # Upsert texts with embeddings into the Qdrant collection.
       # @param texts [Array<String>] The texts to embed and store.
@@ -46,7 +45,7 @@ module RedmineAiHelper
         points = ids.zip(vectors).map do |id, vector|
           { id: id, vector: vector, payload: payload || {} }
         end
-        response = client.points.upsert(collection_name: @index_name, points: points)
+        response = client.points.upsert(collection_name: @index_name, points: points) # rubocop:disable Rails/SkipsModelValidations
         unless response.is_a?(Hash) && response["status"] == "ok"
           raise "Qdrant upsert failed for collection '#{@index_name}' with #{points.length} points: #{response.inspect}"
         end
@@ -75,7 +74,7 @@ module RedmineAiHelper
           vector: embedding,
           with_payload: true,
           with_vector: true,
-          filter: filter,
+          filter: filter
         )
         results = response.dig("result")
         return [] unless results.is_a?(Array)
@@ -100,7 +99,7 @@ module RedmineAiHelper
           vector: embedding,
           with_payload: true,
           with_vector: false,
-          filter: filter,
+          filter: filter
         )
         results = response.dig("result")
         return [] unless results.is_a?(Array)
@@ -108,7 +107,7 @@ module RedmineAiHelper
         results.map do |result|
           {
             "payload" => result.dig("payload"),
-            "score" => result.dig("score"),
+            "score" => result.dig("score")
           }
         end
       end
@@ -118,7 +117,7 @@ module RedmineAiHelper
       def create_default_schema(vector_size: 1536)
         client.collections.create(
           collection_name: @index_name,
-          vectors: { size: vector_size, distance: "Cosine" },
+          vectors: { size: vector_size, distance: "Cosine" }
         )
       end
 

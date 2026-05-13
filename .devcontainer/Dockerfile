@@ -21,3 +21,4 @@ USER vscode
 
 RUN curl -fsSL https://claude.ai/install.sh | bash
 RUN curl -fsSL https://opencode.ai/install | bash
+RUN curl https://qlty.sh | sh

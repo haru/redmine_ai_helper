@@ -1,11 +1,11 @@
 # frozen_string_literal: true
+
 require_relative "base_provider"
 
 module RedmineAiHelper
   module LlmClient
     # OpenAiProvider configures RubyLLM for OpenAI API access.
     class OpenAiProvider < RedmineAiHelper::LlmClient::BaseProvider
-
       protected
 
       def ruby_llm_provider_class

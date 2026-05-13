@@ -19,7 +19,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
 
     @params = {
       project: @project,
-      langfuse: DummyLangfuse.new,
+      langfuse: DummyLangfuse.new
     }
     @agent = BaseAgentTestModele::TestAgent.new(@params)
     @agent2 = BaseAgentTestModele::TestAgent2.new(@params)
@@ -28,6 +28,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
   context "assistant" do
     should "return the instance of the agent" do
       assistant = @agent.assistant
+
       assert_instance_of RedmineAiHelper::Assistant, assistant
     end
   end
@@ -35,8 +36,9 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
   context "available_tool_providers" do
     should "return an array of BaseTools subclasses with agent" do
       providers = @agent.available_tool_providers
-      assert providers.is_a?(Array)
-      assert_equal [RedmineAiHelper::Tools::BoardTools], providers
+
+      assert_kind_of Array, providers
+      assert_equal [ RedmineAiHelper::Tools::BoardTools ], providers
     end
 
     should "return an empty array with agent2" do
@@ -47,10 +49,11 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
   context "available_tool_classes" do
     should "return an array of RubyLLM::Tool subclasses derived from available_tool_providers" do
       tool_classes = @agent.available_tool_classes
-      assert tool_classes.is_a?(Array)
-      assert tool_classes.length > 0
+
+      assert_kind_of Array, tool_classes
+      assert_operator tool_classes.length, :>, 0
       tool_classes.each do |klass|
-        assert klass < RubyLLM::Tool, "#{klass} should be a subclass of RubyLLM::Tool"
+        assert_operator klass, :<, RubyLLM::Tool, "#{klass} should be a subclass of RubyLLM::Tool"
       end
       assert_equal RedmineAiHelper::Tools::BoardTools.tool_classes, tool_classes
     end
@@ -73,8 +76,9 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
   context "available_tools" do
     should "return an array of tool info hashes with agent" do
       tools = @agent.available_tools
-      assert tools.is_a?(Array)
-      assert tools.length > 0
+
+      assert_kind_of Array, tools
+      assert_operator tools.length, :>, 0
       tools.each do |tool|
         assert tool.key?(:function), "Tool should have :function key"
         assert tool[:function].key?(:name), "Function should have :name"
@@ -112,23 +116,25 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       messages = [
         { role: "user", content: "Hello" },
         { role: "assistant", content: "Hi there" },
-        { role: "user", content: "What is Redmine?" },
+        { role: "user", content: "What is Redmine?" }
       ]
 
       answer = @agent.chat(messages)
+
       assert_equal "test answer", answer
     end
 
     should "support streaming with callback" do
-      streaming_chat = StreamingMockChat.new(["chunk1", "chunk2"])
+      streaming_chat = StreamingMockChat.new([ "chunk1", "chunk2" ])
       @mock_llm_provider.stubs(:create_chat).returns(streaming_chat)
 
-      messages = [{ role: "user", content: "Hello" }]
+      messages = [ { role: "user", content: "Hello" } ]
       chunks_received = []
       callback = ->(content) { chunks_received << content }
 
       answer = @agent.chat(messages, {}, callback)
-      assert_equal ["chunk1", "chunk2"], chunks_received
+
+      assert_equal [ "chunk1", "chunk2" ], chunks_received
       assert_equal "chunk1chunk2", answer
     end
 
@@ -143,7 +149,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
 
       @mock_llm_provider.expects(:create_chat).with(instructions: @agent.system_prompt).returns(mock_chat_instance)
 
-      messages = [{ role: "user", content: "Hello" }]
+      messages = [ { role: "user", content: "Hello" } ]
       @agent.chat(messages)
     end
 
@@ -154,13 +160,14 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
 
       mock_response = mock("Response")
       mock_response.stubs(:content).returns("image answer")
-      image_paths = ["/path/to/image.png"]
+      image_paths = [ "/path/to/image.png" ]
       mock_chat_instance.expects(:ask).with("Describe this", with: image_paths).returns(mock_response)
 
       @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
 
-      messages = [{ role: "user", content: "Describe this" }]
+      messages = [ { role: "user", content: "Describe this" } ]
       answer = @agent.chat(messages, {}, nil, with: image_paths)
+
       assert_equal "image answer", answer
     end
 
@@ -175,8 +182,9 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
 
       @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
 
-      messages = [{ role: "user", content: "Hello" }]
+      messages = [ { role: "user", content: "Hello" } ]
       answer = @agent.chat(messages, {}, nil, with: nil)
+
       assert_equal "text answer", answer
     end
   end
@@ -210,8 +218,9 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       mock_chat_instance.stubs(:ask).returns(mock_response)
       @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
 
-      messages = [{ role: "user", content: "Hello" }]
+      messages = [ { role: "user", content: "Hello" } ]
       answer = agent.think_chat(messages)
+
       assert_equal "normal answer", answer
     end
 
@@ -219,14 +228,16 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       RedmineAiHelper::LlmProvider.stubs(:get_think_llm_provider).returns(@mock_think_provider)
       agent = BaseAgentTestModele::TestAgent.new(@params)
 
-      messages = [{ role: "user", content: "Complex question" }]
+      messages = [ { role: "user", content: "Complex question" } ]
       answer = agent.think_chat(messages)
+
       assert_equal "think answer", answer
     end
 
     should "lazily return think_llm_provider from LlmProvider.get_think_llm_provider" do
       RedmineAiHelper::LlmProvider.stubs(:get_think_llm_provider).returns(@mock_think_provider)
       agent = BaseAgentTestModele::TestAgent.new(@params)
+
       assert_nil agent.instance_variable_get(:@think_llm_provider)
       assert_equal @mock_think_provider, agent.think_llm_provider
     end
@@ -234,6 +245,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
     should "return nil from think_llm_provider when not configured" do
       RedmineAiHelper::LlmProvider.stubs(:get_think_llm_provider).returns(nil)
       agent = BaseAgentTestModele::TestAgent.new(@params)
+
       assert_nil agent.think_llm_provider
     end
   end
@@ -241,30 +253,34 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
   context "extract_text_content" do
     should "return text as-is for plain string content" do
       result = @agent.send(:extract_text_content, "Hello world")
+
       assert_equal "Hello world", result
     end
 
     should "return nil for nil content" do
       result = @agent.send(:extract_text_content, nil)
+
       assert_nil result
     end
 
     should "return text from RubyLLM::Content object" do
       content = RubyLLM::Content.new("Image description text", [])
       result = @agent.send(:extract_text_content, content)
+
       assert_equal "Image description text", result
     end
 
     should "return text from RubyLLM::Content with attachments, stripping binary data" do
       # Create a temporary image file
-      tmpfile = Tempfile.new(["test_image", ".png"])
+      tmpfile = Tempfile.new([ "test_image", ".png" ])
       tmpfile.binmode
       # PNG header bytes
       tmpfile.write("\x89PNG\r\n\x1a\n")
       tmpfile.flush
 
-      content = RubyLLM::Content.new("Describe this image", [tmpfile.path])
+      content = RubyLLM::Content.new("Describe this image", [ tmpfile.path ])
       result = @agent.send(:extract_text_content, content)
+
       assert_equal "Describe this image", result
     ensure
       tmpfile&.close
@@ -281,6 +297,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       @mock_chat.stubs(:add_message)
       @agent.add_message(role: "user", content: "hello")
       shared = @agent.instance_variable_get(:@shared_messages)
+
       assert_equal 1, shared.length
       assert_equal({ role: "user", content: "hello" }, shared.first)
     end
@@ -311,11 +328,12 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
 
       mock_think_response = mock("response")
       mock_think_response.stubs(:content).returns("think result")
-      @mock_think_chat.stubs(:run).returns([mock_think_response])
+      @mock_think_chat.stubs(:run).returns([ mock_think_response ])
 
       @mock_think_provider.expects(:create_chat).at_least_once.returns(@mock_think_chat)
 
       result = agent.send(:build_think_assistant)
+
       assert_not_nil result
     end
 
@@ -325,11 +343,12 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
 
       mock_response = mock("response")
       mock_response.stubs(:content).returns("regular result")
-      @mock_chat.stubs(:run).returns([mock_response])
+      @mock_chat.stubs(:run).returns([ mock_response ])
 
       @mock_llm_provider.expects(:create_chat).at_least_once.returns(@mock_chat)
 
       result = agent.send(:build_think_assistant)
+
       assert_not_nil result
     end
 
@@ -353,7 +372,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       @mock_think_assistant = mock("think_assistant")
       mock_msg = mock("think_msg")
       mock_msg.stubs(:content).returns("think task")
-      @mock_think_assistant.stubs(:messages).returns([mock_msg])
+      @mock_think_assistant.stubs(:messages).returns([ mock_msg ])
       @mock_task_response = RedmineAiHelper::BaseAgent::TaskResponse.create_success("ok")
     end
 
@@ -363,6 +382,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       agent.expects(:build_think_assistant).returns(@mock_think_assistant)
 
       response = agent.perform_task({ use_think_model: true })
+
       assert response
     end
 
@@ -370,11 +390,12 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       agent = BaseAgentTestModele::TestAgent.new(@params)
       mock_msg = mock("reg_msg")
       mock_msg.stubs(:content).returns("task")
-      @mock_chat.stubs(:messages).returns([mock_msg])
+      @mock_chat.stubs(:messages).returns([ mock_msg ])
       agent.stubs(:dispatch).returns(@mock_task_response)
       agent.expects(:build_think_assistant).never
 
       response = agent.perform_task({ use_think_model: false })
+
       assert response
     end
 
@@ -382,11 +403,12 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       agent = BaseAgentTestModele::TestAgent.new(@params)
       mock_msg = mock("reg_msg")
       mock_msg.stubs(:content).returns("task")
-      @mock_chat.stubs(:messages).returns([mock_msg])
+      @mock_chat.stubs(:messages).returns([ mock_msg ])
       agent.stubs(:dispatch).returns(@mock_task_response)
       agent.expects(:build_think_assistant).never
 
       response = agent.perform_task({})
+
       assert response
     end
   end
@@ -396,7 +418,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       mock_message = mock("message")
       mock_message.stubs(:role).returns(:user)
       mock_message.stubs(:content).returns("テストメッセージ")
-      @mock_chat.stubs(:messages).returns([mock_message])
+      @mock_chat.stubs(:messages).returns([ mock_message ])
 
       mock_response = mock("response")
       mock_response.stubs(:content).returns("test response")
@@ -404,6 +426,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       @mock_chat.stubs(:add_message)
 
       response = @agent.perform_task({})
+
       assert response
     end
   end
@@ -479,14 +502,14 @@ end
 module BaseAgentTestModele
   class TestAgent < RedmineAiHelper::BaseAgent
     def available_tool_providers
-      [RedmineAiHelper::Tools::BoardTools]
+      [ RedmineAiHelper::Tools::BoardTools ]
     end
 
     def backstory
       "テストエージェントのバックストーリー"
     end
 
-    def generate_response(prompt:, **options)
+    def generate_response(_prompt:, **_options)
       "テストエージェントの応答"
     end
   end
@@ -496,7 +519,7 @@ module BaseAgentTestModele
       "テストエージェント2のバックストーリー"
     end
 
-    def generate_response(prompt:, **options)
+    def generate_response(_prompt:, **_options)
       "テストエージェントの応答"
     end
   end
@@ -510,7 +533,7 @@ module BaseAgentTestModele
       false
     end
 
-    def generate_response(prompt:, **options)
+    def generate_response(_prompt:, **_options)
       "無効化されたエージェントの応答"
     end
   end

@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "redmine_ai_helper/base_tools"
 require "redmine_ai_helper/util/wiki_json"
 
@@ -52,7 +53,7 @@ module RedmineAiHelper
 
         wiki_content = WikiContent.new(
           text: content,
-          author: User.current,
+          author: User.current
         )
         page.content = wiki_content
 

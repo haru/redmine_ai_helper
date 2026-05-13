@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative "../base_agent"
 
 module RedmineAiHelper
@@ -20,7 +21,7 @@ module RedmineAiHelper
           RedmineAiHelper::Tools::IssueTools,
           RedmineAiHelper::Tools::IssueUpdateTools,
           RedmineAiHelper::Tools::ProjectTools,
-          RedmineAiHelper::Tools::UserTools,
+          RedmineAiHelper::Tools::UserTools
         ]
       end
 

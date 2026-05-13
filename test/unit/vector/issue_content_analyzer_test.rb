@@ -20,7 +20,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
       should "analyze issue and return summary and keywords" do
         valid_response = {
           "summary" => "This issue is about a bug in the login system. The user cannot log in due to a session timeout error.",
-          "keywords" => ["login", "session timeout", "authentication", "bug"],
+          "keywords" => [ "login", "session timeout", "authentication", "bug" ]
         }.to_json
 
         analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
@@ -29,8 +29,8 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
         result = analyzer.analyze(@issue)
 
-        assert result[:summary].present?
-        assert result[:keywords].is_a?(Array)
+        assert_predicate result[:summary], :present?
+        assert_kind_of Array, result[:keywords]
         assert_equal 4, result[:keywords].length
         assert_includes result[:keywords], "login"
         assert_includes result[:keywords], "session timeout"
@@ -39,7 +39,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
       should "parse valid JSON response from LLM" do
         valid_json = {
           "summary" => "A test summary for the issue.",
-          "keywords" => ["keyword1", "keyword2", "keyword3"],
+          "keywords" => [ "keyword1", "keyword2", "keyword3" ]
         }.to_json
 
         analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
@@ -49,13 +49,13 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
         result = analyzer.analyze(@issue)
 
         assert_equal "A test summary for the issue.", result[:summary]
-        assert_equal ["keyword1", "keyword2", "keyword3"], result[:keywords]
+        assert_equal [ "keyword1", "keyword2", "keyword3" ], result[:keywords]
       end
 
       should "parse JSON wrapped in markdown code block" do
         json_data = {
           "summary" => "This is a summary extracted from markdown.",
-          "keywords" => ["markdown", "code block", "json"],
+          "keywords" => [ "markdown", "code block", "json" ]
         }
         json_in_code_block = <<~RESPONSE
           Here is the analysis:
@@ -74,7 +74,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
         result = analyzer.analyze(@issue)
 
         assert_equal "This is a summary extracted from markdown.", result[:summary]
-        assert_equal ["markdown", "code block", "json"], result[:keywords]
+        assert_equal [ "markdown", "code block", "json" ], result[:keywords]
       end
 
       should "return empty result when LLM call fails" do
@@ -104,7 +104,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
       should "return empty result when JSON is missing required fields" do
         incomplete_json = {
-          "other_field" => "some value",
+          "other_field" => "some value"
         }.to_json
 
         analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
@@ -121,7 +121,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
       should "handle empty keywords array in response" do
         response_data = {
           "summary" => "A summary without keywords.",
-          "keywords" => [],
+          "keywords" => []
         }
 
         analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
@@ -137,7 +137,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
       should "handle null summary in response" do
         response_data = {
           "summary" => nil,
-          "keywords" => ["keyword1"],
+          "keywords" => [ "keyword1" ]
         }
 
         analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
@@ -147,7 +147,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
         result = analyzer.analyze(@issue)
 
         assert_equal "", result[:summary]
-        assert_equal ["keyword1"], result[:keywords]
+        assert_equal [ "keyword1" ], result[:keywords]
       end
     end
 
@@ -158,8 +158,8 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
         prompt = analyzer.send(:build_prompt, @issue, "Output JSON with summary and keywords fields.")
 
-        assert prompt.is_a?(String), "Prompt should be a string"
-        assert prompt.include?(@issue.subject), "Prompt should contain issue subject"
+        assert_kind_of String, prompt, "Prompt should be a string"
+        assert_includes prompt, @issue.subject, "Prompt should contain issue subject"
       end
 
       should "include issue description in prompt" do
@@ -171,14 +171,14 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
         prompt = analyzer.send(:build_prompt, @issue, "Output JSON with summary and keywords fields.")
 
-        assert prompt.include?(@issue.description), "Prompt should contain issue description"
+        assert_includes prompt, @issue.description, "Prompt should contain issue description"
       end
 
       should "include journal notes in prompt when present" do
         journal = Journal.new(
           journalized: @issue,
           user: User.find(1),
-          notes: "This is a comment on the issue.",
+          notes: "This is a comment on the issue."
         )
         journal.save!
 
@@ -187,7 +187,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
         prompt = analyzer.send(:build_prompt, @issue, "Output JSON with summary and keywords fields.")
 
-        assert prompt.include?("This is a comment on the issue."), "Prompt should contain journal notes"
+        assert_includes prompt, "This is a comment on the issue.", "Prompt should contain journal notes"
       end
 
       should "handle issue with no description" do
@@ -199,8 +199,8 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
         prompt = analyzer.send(:build_prompt, @issue, "Output JSON with summary and keywords fields.")
 
-        assert prompt.is_a?(String), "Prompt should still be a string"
-        assert prompt.include?(@issue.subject), "Prompt should contain issue subject"
+        assert_kind_of String, prompt, "Prompt should still be a string"
+        assert_includes prompt, @issue.subject, "Prompt should contain issue subject"
       end
 
       should "handle issue with no journals" do
@@ -211,7 +211,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
         prompt = analyzer.send(:build_prompt, @issue, "Output JSON with summary and keywords fields.")
 
-        assert prompt.is_a?(String), "Prompt should still be a string"
+        assert_kind_of String, prompt, "Prompt should still be a string"
       end
 
       should "include format instructions in prompt" do
@@ -220,7 +220,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
         prompt = analyzer.send(:build_prompt, @issue, "Output JSON with summary and keywords fields.")
 
-        assert prompt.include?("Output JSON with summary and keywords fields."), "Prompt should contain format instructions"
+        assert_includes prompt, "Output JSON with summary and keywords fields.", "Prompt should contain format instructions"
       end
     end
 
@@ -263,7 +263,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
         valid_response = {
           "summary" => "Summary of long content.",
-          "keywords" => ["long", "content"],
+          "keywords" => [ "long", "content" ]
         }.to_json
 
         analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
@@ -273,7 +273,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
         result = analyzer.analyze(@issue)
 
         assert_equal "Summary of long content.", result[:summary]
-        assert_equal ["long", "content"], result[:keywords]
+        assert_equal [ "long", "content" ], result[:keywords]
       end
 
       should "handle issue with special characters in content" do
@@ -283,7 +283,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
         valid_response = {
           "summary" => "Summary with special characters.",
-          "keywords" => ["unicode", "special chars"],
+          "keywords" => [ "unicode", "special chars" ]
         }.to_json
 
         analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
@@ -298,7 +298,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
       should "handle JSON response with extra whitespace" do
         response_data = {
           "summary" => "Summary with whitespace.",
-          "keywords" => ["test"],
+          "keywords" => [ "test" ]
         }
         response_with_whitespace = "  \n  " + response_data.to_json + "  \n  "
 
@@ -309,7 +309,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
         result = analyzer.analyze(@issue)
 
         assert_equal "Summary with whitespace.", result[:summary]
-        assert_equal ["test"], result[:keywords]
+        assert_equal [ "test" ], result[:keywords]
       end
 
       should "handle malformed JSON in markdown code block" do
@@ -333,7 +333,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
       should "handle response with multiple JSON blocks and use first valid one" do
         first_block_data = {
           "summary" => "First block summary.",
-          "keywords" => ["first"],
+          "keywords" => [ "first" ]
         }
         multiple_json_blocks = <<~RESPONSE
           ```json
@@ -358,7 +358,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
         # Should use the first valid JSON block
         assert_equal "First block summary.", result[:summary]
-        assert_equal ["first"], result[:keywords]
+        assert_equal [ "first" ], result[:keywords]
       end
     end
 
@@ -368,20 +368,20 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
         @mock_attachment.stubs(:filename).returns("document.pdf")
         @mock_attachment.stubs(:diskfile).returns("/path/to/document.pdf")
         @mock_attachment.stubs(:filesize).returns(1.megabyte)
-        @issue.stubs(:attachments).returns([@mock_attachment])
+        @issue.stubs(:attachments).returns([ @mock_attachment ])
       end
 
       should "pass attachment file paths to call_llm via with: parameter" do
         analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
-        analyzer.stubs(:supported_attachment_paths).with(@issue).returns(["/path/to/document.pdf"])
+        analyzer.stubs(:supported_attachment_paths).with(@issue).returns([ "/path/to/document.pdf" ])
 
-        valid_response = { "summary" => "Summary with attachment.", "keywords" => ["pdf"] }.to_json
+        valid_response = { "summary" => "Summary with attachment.", "keywords" => [ "pdf" ] }.to_json
 
         # Verify that call_llm is called with with: containing the attachment path
         analyzer.expects(:call_llm).with(
           anything,
-          with: ["/path/to/document.pdf"],
+          with: [ "/path/to/document.pdf" ]
         ).returns(valid_response)
 
         analyzer.analyze(@issue)
@@ -392,12 +392,12 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
         analyzer.stubs(:supported_attachment_paths).with(@issue).returns([])
 
-        valid_response = { "summary" => "Summary.", "keywords" => ["word"] }.to_json
+        valid_response = { "summary" => "Summary.", "keywords" => [ "word" ] }.to_json
 
         # Verify that call_llm is called with with: nil (presence of empty array is nil)
         analyzer.expects(:call_llm).with(
           anything,
-          with: nil,
+          with: nil
         ).returns(valid_response)
 
         analyzer.analyze(@issue)
@@ -408,12 +408,12 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
         AiHelperSetting.stubs(:attachment_send_enabled?).returns(false)
 
-        valid_response = { "summary" => "Summary.", "keywords" => ["word"] }.to_json
+        valid_response = { "summary" => "Summary.", "keywords" => [ "word" ] }.to_json
 
         # Verify that call_llm is called with with: nil when attachment_send is disabled
         analyzer.expects(:call_llm).with(
           anything,
-          with: nil,
+          with: nil
         ).returns(valid_response)
 
         analyzer.analyze(@issue)
@@ -430,13 +430,13 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
       should "pass with: parameter to chat_instance.ask when file paths given" do
         @mock_chat.stubs(:add_message)
-        @mock_chat.expects(:ask).with("prompt text", with: ["/path/to/file.pdf"]).returns(@mock_response)
+        @mock_chat.expects(:ask).with("prompt text", with: [ "/path/to/file.pdf" ]).returns(@mock_response)
 
         analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
 
-        messages = [{ role: "user", content: "prompt text" }]
-        analyzer.send(:call_llm, messages, with: ["/path/to/file.pdf"])
+        messages = [ { role: "user", content: "prompt text" } ]
+        analyzer.send(:call_llm, messages, with: [ "/path/to/file.pdf" ])
       end
 
       should "not include with: in ask options when with is nil" do
@@ -447,7 +447,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
         analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
 
-        messages = [{ role: "user", content: "prompt text" }]
+        messages = [ { role: "user", content: "prompt text" } ]
         analyzer.send(:call_llm, messages, with: nil)
       end
 
@@ -458,7 +458,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
         analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
 
-        messages = [{ role: "user", content: "prompt text" }]
+        messages = [ { role: "user", content: "prompt text" } ]
         analyzer.send(:call_llm, messages)
       end
     end

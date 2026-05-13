@@ -23,12 +23,13 @@ class McpServerLoaderTest < ActiveSupport::TestCase
     should "be singleton" do
       loader1 = Util::McpServerLoader.instance
       loader2 = Util::McpServerLoader.instance
+
       assert_same loader1, loader2
     end
 
     should "handle missing config file gracefully" do
       # Test case when config file doesn't exist
-      original_path = Rails.root.join("config", "ai_helper", "config.json")
+      original_path = Rails.root.join("config/ai_helper/config.json")
       backup_path = "#{original_path}.backup"
 
       # Temporarily move config file
@@ -51,15 +52,18 @@ class McpServerLoaderTest < ActiveSupport::TestCase
 
     should "validate server configurations correctly" do
       # Valid stdio configuration
-      valid_stdio = { "type" => "stdio", "command" => "npx", "args" => ["-y", "@modelcontextprotocol/server-slack"] }
+      valid_stdio = { "type" => "stdio", "command" => "npx", "args" => [ "-y", "@modelcontextprotocol/server-slack" ] }
+
       assert @loader.send(:valid_server_config?, valid_stdio)
 
       # Valid HTTP configuration
       valid_http = { "type" => "http", "url" => "https://api.example.com/mcp" }
+
       assert @loader.send(:valid_server_config?, valid_http)
 
       # Valid SSE configuration
       valid_sse = { "type" => "sse", "url" => "https://api.example.com/sse" }
+
       assert @loader.send(:valid_server_config?, valid_sse)
 
       # Invalid configurations
@@ -68,7 +72,7 @@ class McpServerLoaderTest < ActiveSupport::TestCase
         { "type" => "invalid" },
         { "type" => "stdio" },
         { "type" => "http" },
-        { "type" => "http", "url" => "invalid-url" },
+        { "type" => "http", "url" => "invalid-url" }
       ]
 
       invalid_configs.each do |config|
@@ -80,14 +84,14 @@ class McpServerLoaderTest < ActiveSupport::TestCase
       valid_urls = [
         "http://localhost:3000",
         "https://api.example.com/mcp",
-        "https://example.com:8080/path",
+        "https://example.com:8080/path"
       ]
 
       invalid_urls = [
         "ftp://example.com",
         "invalid-url",
         "",
-        nil,
+        nil
       ]
 
       valid_urls.each do |url|
@@ -100,14 +104,17 @@ class McpServerLoaderTest < ActiveSupport::TestCase
     end
 
     should "build command string correctly" do
-      config_with_both = { "command" => "npx", "args" => ["-y", "@modelcontextprotocol/server-slack"] }
+      config_with_both = { "command" => "npx", "args" => [ "-y", "@modelcontextprotocol/server-slack" ] }
       expected = "npx -y @modelcontextprotocol/server-slack"
+
       assert_equal expected, @loader.send(:build_command_string, config_with_both)
 
       config_command_only = { "command" => "node server.js" }
+
       assert_equal "node server.js", @loader.send(:build_command_string, config_command_only)
 
-      config_args_only = { "args" => ["node", "server.js"] }
+      config_args_only = { "args" => [ "node", "server.js" ] }
+
       assert_equal "node server.js", @loader.send(:build_command_string, config_args_only)
     end
 
@@ -123,9 +130,9 @@ class McpServerLoaderTest < ActiveSupport::TestCase
         "mcpServers" => {
           "filesystem" => {
             "command" => "node",
-            "args" => ["server.js"],
-          },
-        },
+            "args" => [ "server.js" ]
+          }
+        }
       }
       server_config = config["mcpServers"]["filesystem"]
 
@@ -140,7 +147,7 @@ class McpServerLoaderTest < ActiveSupport::TestCase
       fake_tools = build_fake_tool_instances
       RedmineAiHelper::Tools::McpTools.expects(:generate_tool_classes).with(
         mcp_server_name: "filesystem",
-        mcp_client: fake_client,
+        mcp_client: fake_client
       ).once.returns(fake_tools)
 
       stub_llm_provider
@@ -158,15 +165,17 @@ class McpServerLoaderTest < ActiveSupport::TestCase
       assert_equal "ai_helper_mcp_filesystem", agent.role
       assert_equal "AiHelperMcpFilesystem", agent.name
       assert_equal "AiHelperMcpFilesystem", agent.to_s
-      assert agent.enabled?
+      assert_predicate agent, :enabled?
 
       # available_tools should return tool info hashes
       tools_info = agent.available_tools
+
       assert_equal 1, tools_info.length
       assert_equal "list_dir", tools_info[0].dig(:function, :name)
       assert_equal "List directory contents", tools_info[0].dig(:function, :description)
 
       backstory = agent.backstory
+
       assert_includes backstory, "List directory contents"
       assert_same backstory, agent.backstory
     end
@@ -176,9 +185,9 @@ class McpServerLoaderTest < ActiveSupport::TestCase
         "mcpServers" => {
           "filesystem" => {
             "command" => "node",
-            "args" => ["server.js"],
-          },
-        },
+            "args" => [ "server.js" ]
+          }
+        }
       }
       server_config = config["mcpServers"]["filesystem"]
 
@@ -207,9 +216,9 @@ class McpServerLoaderTest < ActiveSupport::TestCase
         "mcpServers" => {
           "filesystem" => {
             "command" => "node",
-            "args" => ["server.js"],
-          },
-        },
+            "args" => [ "server.js" ]
+          }
+        }
       }
 
       fake_client = mock("mcp_client")
@@ -237,7 +246,7 @@ class McpServerLoaderTest < ActiveSupport::TestCase
       stdio_config = { "type" => "stdio", "command" => "node" }
       http_config = { "type" => "http", "url" => "https://api.example.com" }
       sse_config = { "type" => "sse", "url" => "https://stream.example.com" }
-      inferred_config = { "command" => "node", "args" => ["worker.js"] }
+      inferred_config = { "command" => "node", "args" => [ "worker.js" ] }
 
       @loader.expects(:create_stdio_client).with("stdio_server", stdio_config).returns(:stdio_client)
       @loader.expects(:create_http_client).with("http_server", http_config).returns(:http_client)
@@ -255,11 +264,13 @@ class McpServerLoaderTest < ActiveSupport::TestCase
     end
 
     should "infer missing server type during validation" do
-      config = { "command" => "node", "args" => ["server.js"] }
+      config = { "command" => "node", "args" => [ "server.js" ] }
+
       assert @loader.send(:valid_server_config?, config)
       assert_equal "stdio", config["type"]
 
       http_config = { "url" => "https://example.com" }
+
       assert @loader.send(:valid_server_config?, http_config)
       assert_equal "http", http_config["type"]
     end
@@ -269,7 +280,7 @@ class McpServerLoaderTest < ActiveSupport::TestCase
 
   def create_mock_logger
     mock("logger").tap do |logger|
-      [:debug, :info, :warn, :error].each do |level|
+      [ :debug, :info, :warn, :error ].each do |level|
         logger.stubs(level)
       end
     end
@@ -288,14 +299,14 @@ class McpServerLoaderTest < ActiveSupport::TestCase
     # Create fake tool instances that respond to .name and .description
     # (like RubyLLM::MCP::Tool instances)
     [
-      Struct.new(:name, :description).new("list_dir", "List directory contents"),
+      Struct.new(:name, :description).new("list_dir", "List directory contents")
     ]
   end
 
   def cleanup_dynamic_classes
     # Delete only dynamic classes generated during the test, preserving pre-existing constants
     Object.constants.each do |const|
-      if const.to_s.start_with?("AiHelperMcp") && !@existing_mcp_constants.include?(const)
+      if const.to_s.start_with?("AiHelperMcp") && @existing_mcp_constants.exclude?(const)
         begin
           Object.send(:remove_const, const)
         rescue NameError

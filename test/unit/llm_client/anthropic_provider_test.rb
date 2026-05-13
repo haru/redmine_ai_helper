@@ -11,7 +11,7 @@ class RedmineAiHelper::LlmClient::AnthropicProviderTest < ActiveSupport::TestCas
         name: "Test Anthropic Profile",
         llm_type: "Anthropic",
         llm_model: "claude-sonnet-4-5-20250929",
-        access_key: "test_anthropic_key",
+        access_key: "test_anthropic_key"
       )
       @setting.model_profile = @anthropic_profile
       @setting.save!
@@ -32,6 +32,7 @@ class RedmineAiHelper::LlmClient::AnthropicProviderTest < ActiveSupport::TestCas
     should "memoize the context" do
       context1 = @provider.context
       context2 = @provider.context
+
       assert_same context1, context2
     end
 
@@ -54,6 +55,7 @@ class RedmineAiHelper::LlmClient::AnthropicProviderTest < ActiveSupport::TestCas
     should "configure_provider_config sets anthropic_api_key" do
       config = RubyLLM::Configuration.new
       @provider.send(:configure_provider_config, config)
+
       assert_equal @anthropic_profile.access_key, config.anthropic_api_key
     end
 
@@ -66,6 +68,7 @@ class RedmineAiHelper::LlmClient::AnthropicProviderTest < ActiveSupport::TestCas
       @provider.expects(:build_context).returns(mock_context)
 
       chat = @provider.create_chat(instructions: "Test prompt")
+
       assert_equal mock_chat, chat
     end
   end

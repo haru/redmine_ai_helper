@@ -24,19 +24,22 @@ class AiHelperMcpControllerTest < ActionController::TestCase
   context "authentication" do
     should "return 401 when X-Redmine-API-Key header is missing" do
       post :handle_request, body: initialize_payload, as: :json
-      assert_response 401
+
+      assert_response :unauthorized
     end
 
     should "return 401 when X-Redmine-API-Key is invalid" do
       @request.headers["X-Redmine-API-Key"] = "definitely_invalid_key_xyz"
       @request.headers["Accept"] = "application/json, text/event-stream"
       post :handle_request, body: initialize_payload, as: :json
-      assert_response 401
+
+      assert_response :unauthorized
     end
 
     should "succeed when X-Redmine-API-Key is valid" do
       set_valid_auth_headers
       post :handle_request, body: initialize_payload, as: :json
+
       assert_response :success
     end
   end
@@ -48,12 +51,14 @@ class AiHelperMcpControllerTest < ActionController::TestCase
       @setting.update_column(:mcp_server_enabled, false)
       set_valid_auth_headers
       post :handle_request, body: initialize_payload, as: :json
-      assert_response 403
+
+      assert_response :forbidden
     end
 
     should "allow requests when MCP server is enabled" do
       set_valid_auth_headers
       post :handle_request, body: initialize_payload, as: :json
+
       assert_response :success
     end
   end
@@ -66,21 +71,24 @@ class AiHelperMcpControllerTest < ActionController::TestCase
     should "return protocolVersion in result" do
       post :handle_request, body: initialize_payload, as: :json
       body = JSON.parse(@response.body)
-      assert body.dig("result", "protocolVersion").present?,
+
+      assert_predicate body.dig("result", "protocolVersion"), :present?,
              "expected protocolVersion in result"
     end
 
     should "return capabilities in result" do
       post :handle_request, body: initialize_payload, as: :json
       body = JSON.parse(@response.body)
-      assert body.dig("result", "capabilities").present?,
+
+      assert_predicate body.dig("result", "capabilities"), :present?,
              "expected capabilities in result"
     end
 
     should "return serverInfo in result" do
       post :handle_request, body: initialize_payload, as: :json
       body = JSON.parse(@response.body)
-      assert body.dig("result", "serverInfo", "name").present?,
+
+      assert_predicate body.dig("result", "serverInfo", "name"), :present?,
              "expected serverInfo.name in result"
     end
   end
@@ -92,7 +100,8 @@ class AiHelperMcpControllerTest < ActionController::TestCase
 
     should "return 202 Accepted" do
       post :handle_request, body: notification_initialized_payload, as: :json
-      assert_response 202
+
+      assert_response :accepted
     end
   end
 
@@ -105,6 +114,7 @@ class AiHelperMcpControllerTest < ActionController::TestCase
       post :handle_request, body: tools_list_payload, as: :json
       body = JSON.parse(@response.body)
       tools = body.dig("result", "tools")
+
       assert tools.is_a?(Array) && tools.any?,
              "expected non-empty tools array, got: #{tools.inspect}"
     end
@@ -113,8 +123,8 @@ class AiHelperMcpControllerTest < ActionController::TestCase
       post :handle_request, body: tools_list_payload, as: :json
       tools = JSON.parse(@response.body).dig("result", "tools")
       tools.each do |tool|
-        assert tool["name"].present?, "tool missing name"
-        assert tool["inputSchema"].present?, "tool missing inputSchema"
+        assert_predicate tool["name"], :present?, "tool missing name"
+        assert_predicate tool["inputSchema"], :present?, "tool missing inputSchema"
       end
     end
 
@@ -122,6 +132,7 @@ class AiHelperMcpControllerTest < ActionController::TestCase
       post :handle_request, body: tools_list_payload, as: :json
       tools = JSON.parse(@response.body).dig("result", "tools")
       names = tools.map { |t| t["name"] }
+
       assert_includes names, "search_issues"
     end
 
@@ -129,6 +140,7 @@ class AiHelperMcpControllerTest < ActionController::TestCase
       post :handle_request, body: tools_list_payload, as: :json
       tools = JSON.parse(@response.body).dig("result", "tools")
       names = tools.map { |t| t["name"] }
+
       assert_includes names, "list_projects"
     end
 
@@ -136,6 +148,7 @@ class AiHelperMcpControllerTest < ActionController::TestCase
       post :handle_request, body: tools_list_payload, as: :json
       tools = JSON.parse(@response.body).dig("result", "tools")
       names = tools.map { |t| t["name"] }
+
       assert_includes names, "get_system_info", "admin users should see get_system_info"
     end
   end
@@ -146,18 +159,20 @@ class AiHelperMcpControllerTest < ActionController::TestCase
     setup { set_valid_auth_headers }
 
     should "return content array with type text on success" do
-      RedmineAiHelper::Tools::ProjectTools.any_instance.stubs(:list_projects).returns([{ id: 1, name: "Test" }])
+      RedmineAiHelper::Tools::ProjectTools.any_instance.stubs(:list_projects).returns([ { id: 1, name: "Test" } ])
       post :handle_request, body: tools_call_payload("list_projects", {}), as: :json
       body = JSON.parse(@response.body)
       content = body.dig("result", "content")
+
       assert content.is_a?(Array) && content.any?, "expected content array"
       assert_equal "text", content.first["type"]
     end
 
     should "return isError false on success" do
-      RedmineAiHelper::Tools::ProjectTools.any_instance.stubs(:list_projects).returns([{ id: 1, name: "Test" }])
+      RedmineAiHelper::Tools::ProjectTools.any_instance.stubs(:list_projects).returns([ { id: 1, name: "Test" } ])
       post :handle_request, body: tools_call_payload("list_projects", {}), as: :json
       body = JSON.parse(@response.body)
+
       assert_equal false, body.dig("result", "isError")
     end
   end
@@ -174,8 +189,10 @@ class AiHelperMcpControllerTest < ActionController::TestCase
            body: tools_call_payload("create_new_issue", { project_id: 1, tracker_id: 1, subject: "Test", status_id: 1 }),
            as: :json
       body = JSON.parse(@response.body)
+
       assert_equal false, body.dig("result", "isError"), "expected isError false on success"
       content = body.dig("result", "content")
+
       assert content.is_a?(Array) && content.any?, "expected non-empty content array"
     end
 
@@ -186,6 +203,7 @@ class AiHelperMcpControllerTest < ActionController::TestCase
            body: tools_call_payload("update_issue", { issue_id: 1, subject: "Updated Subject" }),
            as: :json
       body = JSON.parse(@response.body)
+
       assert_equal false, body.dig("result", "isError"), "expected isError false on success"
     end
   end
@@ -199,6 +217,7 @@ class AiHelperMcpControllerTest < ActionController::TestCase
       post :handle_request, body: tools_list_payload, as: :json
       tools = JSON.parse(@response.body).dig("result", "tools")
       names = tools.map { |t| t["name"] }
+
       assert_not_includes names, "ask_with_filter", "ask_with_filter should be hidden when VectorDB disabled"
       assert_not_includes names, "find_similar_issues", "find_similar_issues should be hidden when VectorDB disabled"
     end
@@ -209,6 +228,7 @@ class AiHelperMcpControllerTest < ActionController::TestCase
       post :handle_request, body: tools_list_payload, as: :json
       tools = JSON.parse(@response.body).dig("result", "tools")
       names = tools.map { |t| t["name"] }
+
       assert_includes names, "ask_with_filter", "ask_with_filter should be visible when VectorDB enabled"
       assert_includes names, "find_similar_issues", "find_similar_issues should be visible when VectorDB enabled"
     end
@@ -224,6 +244,7 @@ class AiHelperMcpControllerTest < ActionController::TestCase
       post :handle_request, body: tools_list_payload, as: :json
       tools = JSON.parse(@response.body).dig("result", "tools")
       names = tools.map { |t| t["name"] }
+
       assert_not_includes names, "get_system_info", "get_system_info should be hidden for non-admin"
       assert_not_includes names, "list_plugins", "list_plugins should be hidden for non-admin"
     end
@@ -233,6 +254,7 @@ class AiHelperMcpControllerTest < ActionController::TestCase
       post :handle_request, body: tools_list_payload, as: :json
       tools = JSON.parse(@response.body).dig("result", "tools")
       names = tools.map { |t| t["name"] }
+
       assert_includes names, "get_system_info", "get_system_info should be visible for admin"
       assert_includes names, "list_plugins", "list_plugins should be visible for admin"
     end
@@ -246,6 +268,7 @@ class AiHelperMcpControllerTest < ActionController::TestCase
       set_valid_auth_headers
       post :handle_request, body: tools_call_payload("ask_with_filter", { query: "test", filter: {}, target: "issue" }), as: :json
       body = JSON.parse(@response.body)
+
       assert_equal true, body.dig("result", "isError"), "expected isError true when VectorDB disabled"
     end
 
@@ -255,6 +278,7 @@ class AiHelperMcpControllerTest < ActionController::TestCase
       @request.headers["Accept"] = "application/json, text/event-stream"
       post :handle_request, body: tools_call_payload("get_system_info", {}), as: :json
       body = JSON.parse(@response.body)
+
       assert_equal true, body.dig("result", "isError"), "expected isError true for non-admin calling system tool"
     end
   end
@@ -270,8 +294,10 @@ class AiHelperMcpControllerTest < ActionController::TestCase
            body: tools_call_payload("create_new_issue", { project_id: 1, tracker_id: 1, subject: "Test", status_id: 1 }),
            as: :json
       body = JSON.parse(@response.body)
+
       assert_equal true, body.dig("result", "isError"), "expected isError true on permission denied"
       content = body.dig("result", "content")
+
       assert content.is_a?(Array) && content.any?, "expected error content array"
       assert_equal "text", content.first["type"]
       assert_match(/Permission denied/, content.first["text"])
@@ -282,8 +308,10 @@ class AiHelperMcpControllerTest < ActionController::TestCase
       post :handle_request,
            body: tools_call_payload("update_issue", { issue_id: 99999, subject: "x" }),
            as: :json
+
       assert_response :success
       body = JSON.parse(@response.body)
+
       assert_equal true, body.dig("result", "isError"), "expected isError true on record not found"
     end
   end

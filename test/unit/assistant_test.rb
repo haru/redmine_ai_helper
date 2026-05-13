@@ -7,7 +7,7 @@ class RedmineAiHelper::AssistantTest < ActiveSupport::TestCase
     @assistant = RedmineAiHelper::Assistant.new(
       chat: @mock_chat,
       instructions: "Test instructions",
-      tools: [],
+      tools: []
     )
   end
 
@@ -18,6 +18,7 @@ class RedmineAiHelper::AssistantTest < ActiveSupport::TestCase
 
     should "have llm_provider accessor" do
       @assistant.llm_provider = "test_provider"
+
       assert_equal "test_provider", @assistant.llm_provider
     end
 
@@ -42,11 +43,12 @@ class RedmineAiHelper::AssistantTest < ActiveSupport::TestCase
         mock_response = mock("Response")
         mock_response.stubs(:content).returns("test answer")
 
-        @mock_chat.stubs(:messages).returns([mock_message])
+        @mock_chat.stubs(:messages).returns([ mock_message ])
         @mock_chat.expects(:ask).with("test question").returns(mock_response)
 
         result = @assistant.run(auto_tool_execution: true)
-        assert_equal [mock_response], result
+
+        assert_equal [ mock_response ], result
       end
     end
 
@@ -59,8 +61,9 @@ class RedmineAiHelper::AssistantTest < ActiveSupport::TestCase
 
     context "messages" do
       should "delegate to chat" do
-        mock_messages = [mock("Message1"), mock("Message2")]
+        mock_messages = [ mock("Message1"), mock("Message2") ]
         @mock_chat.expects(:messages).returns(mock_messages)
+
         assert_equal mock_messages, @assistant.messages
       end
     end
@@ -68,6 +71,7 @@ class RedmineAiHelper::AssistantTest < ActiveSupport::TestCase
     context "instructions=" do
       should "store new instructions" do
         @assistant.instructions = "New instructions"
+
         assert_equal "New instructions", @assistant.instance_variable_get(:@instructions)
       end
     end

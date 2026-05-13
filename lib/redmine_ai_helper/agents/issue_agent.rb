@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative "../base_agent"
 
 module RedmineAiHelper
@@ -51,7 +52,7 @@ module RedmineAiHelper
         json_string = JSON.pretty_generate(issue_json)
         prompt_text = prompt.format(issue: json_string)
         message = { role: "user", content: prompt_text }
-        messages = [message]
+        messages = [ message ]
 
         file_paths = supported_attachment_paths(issue)
         chat(messages, {}, stream_proc, with: file_paths.presence)
@@ -74,10 +75,10 @@ module RedmineAiHelper
           issue: JSON.pretty_generate(issue_json),
           instructions: instructions,
           issue_draft_instructions: project_setting.issue_draft_instructions,
-          format: Setting.text_formatting,
+          format: Setting.text_formatting
         )
         message = { role: "user", content: prompt_text }
-        messages = [message]
+        messages = [ message ]
 
         file_paths = supported_attachment_paths(issue)
         think_chat(messages, {}, stream_proc, with: file_paths.presence)
@@ -103,38 +104,38 @@ module RedmineAiHelper
                 properties: {
                   subject: {
                     type: "string",
-                    description: "The subject of the sub-issue",
+                    description: "The subject of the sub-issue"
                   },
                   description: {
                     type: "string",
-                    description: "The description of the sub-issue",
+                    description: "The description of the sub-issue"
                   },
                   project_id: {
                     type: "integer",
-                    description: "The ID of the project to which the sub-issue belongs",
+                    description: "The ID of the project to which the sub-issue belongs"
                   },
                   tracker_id: {
                     type: "integer",
-                    description: "The ID of the tracker for the sub-issue",
+                    description: "The ID of the tracker for the sub-issue"
                   },
                   priority_id: {
                     type: "integer",
-                    description: "The ID of the priority for the sub-issue",
+                    description: "The ID of the priority for the sub-issue"
                   },
                   fixed_version_id: {
                     type: "integer",
-                    description: "The ID of the fixed version for the sub-issue",
+                    description: "The ID of the fixed version for the sub-issue"
                   },
                   due_date: {
                     type: "string",
                     format: "date",
-                    description: "The due date for the sub-issue. YYYY-MM-DD format",
-                  },
+                    description: "The due date for the sub-issue. YYYY-MM-DD format"
+                  }
                 },
-                required: ["subject", "description", "project_id", "tracker_id"],
-              },
-            },
-          },
+                required: [ "subject", "description", "project_id", "tracker_id" ]
+              }
+            }
+          }
         }
         issue_json = generate_issue_data(issue)
         project_setting = AiHelperProjectSetting.settings(issue.project)
@@ -143,19 +144,19 @@ module RedmineAiHelper
           parent_issue: JSON.pretty_generate(issue_json),
           instructions: instructions,
           subtask_instructions: project_setting.subtask_instructions,
-          format_instructions: RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(json_schema),
+          format_instructions: RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(json_schema)
         )
         ai_helper_logger.debug "prompt_text: #{prompt_text}"
 
         message = { role: "user", content: prompt_text }
-        messages = [message]
+        messages = [ message ]
         file_paths = supported_attachment_paths(issue)
         answer = chat(messages, {}, nil, with: file_paths.presence)
         fixed_json = RedmineAiHelper::Util::StructuredOutputHelper.parse(
           response: answer,
           json_schema: json_schema,
           chat_method: method(:chat),
-          messages: messages,
+          messages: messages
         )
 
         # Convert the answer to an array of Issue objects
@@ -211,7 +212,7 @@ module RedmineAiHelper
         similar_issues = vector_tools.find_similar_issues_by_content(
           subject: subject,
           description: description,
-          k: 10,
+          k: 10
         )
 
         ai_helper_logger.debug "Found #{similar_issues.length} similar issues by content"
@@ -236,13 +237,13 @@ module RedmineAiHelper
                 type: "object",
                 properties: {
                   user_id: { type: "integer" },
-                  reason: { type: "string" },
+                  reason: { type: "string" }
                 },
-                required: ["user_id", "reason"],
-              },
-            },
+                required: [ "user_id", "reason" ]
+              }
+            }
           },
-          required: ["suggestions"],
+          required: [ "suggestions" ]
         }
         users_text = assignable_users.map { |u| "- #{u.name} (ID: #{u.id})" }.join("\n")
         tracker_name = tracker_id ? Tracker.find_by(id: tracker_id)&.name : ""
@@ -256,18 +257,18 @@ module RedmineAiHelper
           description: description || "",
           tracker: tracker_name || "",
           category: category_name || "",
-          format_instructions: RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(json_schema),
+          format_instructions: RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(json_schema)
         )
 
         message = { role: "user", content: prompt_text }
-        messages = [message]
+        messages = [ message ]
         answer = chat(messages)
 
         RedmineAiHelper::Util::StructuredOutputHelper.parse(
           response: answer,
           json_schema: json_schema,
           chat_method: method(:chat),
-          messages: messages,
+          messages: messages
         )
       end
 
@@ -304,7 +305,7 @@ module RedmineAiHelper
             project_name: context[:project_name] || "Unknown Project",
             cursor_position: cursor_position.to_s,
             max_sentences: "3",
-            format: Setting.text_formatting,
+            format: Setting.text_formatting
           }
 
           # Add note-specific variables
@@ -314,7 +315,7 @@ module RedmineAiHelper
               issue_status: context[:issue_status] || "",
               issue_assigned_to: context[:issue_assigned_to] || "None",
               current_user_name: context[:current_user_name] || "",
-              user_role: context.dig(:user_role_context, :suggested_role) || "participant",
+              user_role: context.dig(:user_role_context, :suggested_role) || "participant"
             })
 
             # Add recent notes
@@ -331,7 +332,7 @@ module RedmineAiHelper
           prompt_text = prompt.format(**template_vars)
 
           message = { role: "user", content: prompt_text }
-          messages = [message]
+          messages = [ message ]
 
           # Use the base chat method without streaming for fast response
           completion = chat(messages, {})
@@ -376,7 +377,7 @@ module RedmineAiHelper
         )
 
         message = { role: "user", content: prompt_text }
-        messages = [message]
+        messages = [ message ]
 
         # Call LLM with streaming support
         chat(messages, {}, stream_proc)
@@ -391,14 +392,14 @@ module RedmineAiHelper
       # @return [ActiveRecord::Relation] Issues matching the criteria
       def fetch_todo_issues(options = {})
         project = options[:project] || @project
-        projects = options[:projects] || [project]
+        projects = options[:projects] || [ project ]
 
         # Get current user's group IDs
         group_ids = User.current.group_ids
 
         Issue.visible
           .where(project: projects)
-          .where(assigned_to_id: [User.current.id] + group_ids)
+          .where(assigned_to_id: [ User.current.id ] + group_ids)
           .joins(:status)
           .where.not(issue_statuses: { is_closed: true })
       end
@@ -443,11 +444,11 @@ module RedmineAiHelper
       def due_date_score(issue)
         return 0 unless issue.due_date
 
-        days_until_due = (issue.due_date - Date.today).to_i
+        days_until_due = (issue.due_date - Time.zone.today).to_i
 
         if days_until_due < 0
           # Overdue: 100 + (days overdue * 10), max 150
-          [100 + (days_until_due.abs * 10), 150].min
+          [ 100 + (days_until_due.abs * 10), 150 ].min
         elsif days_until_due == 0
           # Due today
           80
@@ -485,7 +486,7 @@ module RedmineAiHelper
           20 # Normal
         when 1
           10 # Low
-        else
+        else # rubocop:disable Lint/DuplicateBranch
           20 # Default to Normal
         end
       end
@@ -496,7 +497,7 @@ module RedmineAiHelper
       def untouched_score(issue)
         return 0 unless issue.updated_on
 
-        days_untouched = (Date.today - issue.updated_on.to_date).to_i
+        days_untouched = (Time.zone.today - issue.updated_on.to_date).to_i
 
         if days_untouched >= 30
           30
@@ -541,7 +542,7 @@ module RedmineAiHelper
           context_type: context_type,
           project_name: project&.name,
           issue_title: issue&.subject,
-          text_length: text.length,
+          text_length: text.length
         }
 
         # Add project-specific context if available
@@ -581,7 +582,7 @@ module RedmineAiHelper
           issue_author: issue_data.dig(:author, :name) || "",
           issue_created_on: issue_data[:created_on],
           current_user_name: current_user.name,
-          current_user_id: current_user.id,
+          current_user_id: current_user.id
         }
 
         # Extract recent notes from journals (limit to latest 20 with notes)
@@ -595,7 +596,7 @@ module RedmineAiHelper
             user_id: journal.dig(:user, :id),
             notes: journal[:notes][0..300], # First 300 characters only
             created_on: journal[:created_on],
-            is_current_user: journal.dig(:user, :id) == current_user.id,
+            is_current_user: journal.dig(:user, :id) == current_user.id
           }
         end
 
@@ -618,7 +619,7 @@ module RedmineAiHelper
           is_assignee: issue_data.dig(:assigned_to, :id) == current_user.id,
           participation_count: journals.count { |j| j.dig(:user, :id) == current_user.id },
           last_participation_date: journals.find { |j| j.dig(:user, :id) == current_user.id }&.dig(:created_on),
-          conversation_participants: journals.map { |j| j.dig(:user, :name) }.uniq.compact,
+          conversation_participants: journals.map { |j| j.dig(:user, :name) }.uniq.compact
         }
 
         # User's role in the conversation flow
@@ -686,7 +687,6 @@ module RedmineAiHelper
         EOS
         content
       end
-
     end
   end
 end

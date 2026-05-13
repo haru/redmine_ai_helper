@@ -32,10 +32,10 @@ class LangfuseCallbackTest < ActiveSupport::TestCase
       # Expect generation to be created with actual input messages (excluding the response)
       mock_span.expects(:create_generation).with(
         name: "chat",
-        messages: [{ role: "user", content: "What can you do?" }],
+        messages: [ { role: "user", content: "What can you do?" } ],
         model: "gpt-4",
         temperature: 0.7,
-        max_tokens: 4096,
+        max_tokens: 4096
       ).returns(mock_generation)
 
       mock_generation.expects(:finish).with(
@@ -43,12 +43,12 @@ class LangfuseCallbackTest < ActiveSupport::TestCase
         usage: {
           prompt_tokens: 10,
           completion_tokens: 20,
-          total_tokens: 30,
-        },
+          total_tokens: 30
+        }
       )
 
       agent = create_agent_with_langfuse(mock_langfuse)
-      chat_instance = CallbackCapture.new([user_msg, assistant_msg])
+      chat_instance = CallbackCapture.new([ user_msg, assistant_msg ])
       agent.send(:setup_langfuse_callbacks, chat_instance)
 
       # Simulate on_end_message callback with assistant message
@@ -66,28 +66,28 @@ class LangfuseCallbackTest < ActiveSupport::TestCase
       # RubyLLM tool_calls is a Hash { call_id => ToolCall }
       assistant_msg = create_mock_message(
         role: :assistant, content: nil, input_tokens: 15, output_tokens: 10,
-        tool_calls: { "call_1" => tool_call },
+        tool_calls: { "call_1" => tool_call }
       )
 
       mock_span.expects(:create_generation).with(
         name: "chat",
-        messages: [{ role: "user", content: "Get issue #1" }],
+        messages: [ { role: "user", content: "Get issue #1" } ],
         model: "gpt-4",
         temperature: 0.7,
-        max_tokens: 4096,
+        max_tokens: 4096
       ).returns(mock_generation)
 
       mock_generation.expects(:finish).with(
-        output: [{ id: "call_1", name: "get_issue", arguments: { issue_id: 1 } }].to_json,
+        output: [ { id: "call_1", name: "get_issue", arguments: { issue_id: 1 } } ].to_json,
         usage: {
           prompt_tokens: 15,
           completion_tokens: 10,
-          total_tokens: 25,
-        },
+          total_tokens: 25
+        }
       )
 
       agent = create_agent_with_langfuse(mock_langfuse)
-      chat_instance = CallbackCapture.new([user_msg, assistant_msg])
+      chat_instance = CallbackCapture.new([ user_msg, assistant_msg ])
       agent.send(:setup_langfuse_callbacks, chat_instance)
 
       chat_instance.fire_end_message(assistant_msg)
@@ -144,11 +144,11 @@ class LangfuseCallbackTest < ActiveSupport::TestCase
       mock_span.expects(:create_generation).returns(mock_generation)
       mock_generation.expects(:finish).with(
         output: "response without tokens",
-        usage: {},
+        usage: {}
       )
 
       agent = create_agent_with_langfuse(mock_langfuse)
-      chat_instance = CallbackCapture.new([user_msg, assistant_msg])
+      chat_instance = CallbackCapture.new([ user_msg, assistant_msg ])
       agent.send(:setup_langfuse_callbacks, chat_instance)
 
       chat_instance.fire_end_message(assistant_msg)

@@ -24,11 +24,11 @@ module RedmineAiHelper
     # Run the assistant with automatic tool execution.
     # @param auto_tool_execution [Boolean] Whether to auto-execute tools (always true with ruby_llm).
     # @return [Array] Array containing the response (for Langchain compatibility).
-    def run(auto_tool_execution: true)
+    def run(auto_tool_execution: true) # rubocop:disable Lint/UnusedMethodArgument
       messages = @chat.messages
       last_user_message = messages.reverse.find { |m| m.role == :user }
       response = @chat.ask(last_user_message&.content || "")
-      [response]
+      [ response ]
     end
 
     # Clear all messages from the chat.
@@ -38,9 +38,7 @@ module RedmineAiHelper
 
     # Get all messages in the chat.
     # @return [Array] The messages in the chat.
-    def messages
-      @chat.messages
-    end
+    delegate :messages, to: :@chat
 
     # Set new instructions for the assistant.
     # @param value [String] The new instructions.

@@ -7,13 +7,13 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
       @mock_points = mock("points")
       @mock_collections = mock("collections")
       @mock_llm_provider = mock("llm_provider")
-      @mock_llm_provider.stubs(:embed).returns([0.1, 0.2, 0.3])
+      @mock_llm_provider.stubs(:embed).returns([ 0.1, 0.2, 0.3 ])
 
       @qdrant = RedmineAiHelper::Vector::Qdrant.new(
         url: "http://localhost:6333",
         api_key: "test_key",
         index_name: "test_collection",
-        llm_provider: @mock_llm_provider,
+        llm_provider: @mock_llm_provider
       )
       # Inject mock client
       @qdrant.instance_variable_set(:@client, @mock_client)
@@ -25,8 +25,9 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
           url: "http://example.com",
           api_key: "my_key",
           index_name: "my_index",
-          llm_provider: @mock_llm_provider,
+          llm_provider: @mock_llm_provider
         )
+
         assert_equal "http://example.com", qdrant.url
         assert_equal "my_key", qdrant.api_key
         assert_equal "my_index", qdrant.index_name
@@ -40,63 +41,65 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
           url: "http://localhost:6333",
           api_key: "test_key",
           index_name: "test_collection",
-          llm_provider: @mock_llm_provider,
+          llm_provider: @mock_llm_provider
         )
         mock_qdrant_client = mock("Qdrant::Client")
         ::Qdrant::Client.expects(:new).with(url: "http://localhost:6333", api_key: "test_key", logger: RedmineAiHelper::CustomLogger.instance).returns(mock_qdrant_client)
+
         assert_equal mock_qdrant_client, qdrant.client
       end
     end
 
     context "embed" do
       should "delegate to llm_provider.embed" do
-        @mock_llm_provider.expects(:embed).with("test text").returns([0.4, 0.5, 0.6])
+        @mock_llm_provider.expects(:embed).with("test text").returns([ 0.4, 0.5, 0.6 ])
         result = @qdrant.embed("test text")
-        assert_equal [0.4, 0.5, 0.6], result
+
+        assert_equal [ 0.4, 0.5, 0.6 ], result
       end
     end
 
     context "add_texts" do
       should "embed texts and upsert to qdrant" do
-        @mock_llm_provider.stubs(:embed).with("text1").returns([0.1, 0.2])
-        @mock_llm_provider.stubs(:embed).with("text2").returns([0.3, 0.4])
+        @mock_llm_provider.stubs(:embed).with("text1").returns([ 0.1, 0.2 ])
+        @mock_llm_provider.stubs(:embed).with("text2").returns([ 0.3, 0.4 ])
         @mock_client.stubs(:points).returns(@mock_points)
 
         @mock_points.expects(:upsert).with(
           collection_name: "test_collection",
           points: [
-            { id: "id1", vector: [0.1, 0.2], payload: { key: "val" } },
-            { id: "id2", vector: [0.3, 0.4], payload: { key: "val" } },
-          ],
-        ).returns({"status" => "ok", "result" => {"operation_id" => 1, "status" => "acknowledged"}})
+            { id: "id1", vector: [ 0.1, 0.2 ], payload: { key: "val" } },
+            { id: "id2", vector: [ 0.3, 0.4 ], payload: { key: "val" } }
+          ]
+        ).returns({ "status" => "ok", "result" => { "operation_id" => 1, "status" => "acknowledged" } })
 
-        @qdrant.add_texts(texts: ["text1", "text2"], ids: ["id1", "id2"], payload: { key: "val" })
+        @qdrant.add_texts(texts: [ "text1", "text2" ], ids: [ "id1", "id2" ], payload: { key: "val" })
       end
 
       should "use empty hash as default payload" do
-        @mock_llm_provider.stubs(:embed).with("text1").returns([0.1, 0.2])
+        @mock_llm_provider.stubs(:embed).with("text1").returns([ 0.1, 0.2 ])
         @mock_client.stubs(:points).returns(@mock_points)
 
         @mock_points.expects(:upsert).with(
           collection_name: "test_collection",
           points: [
-            { id: "id1", vector: [0.1, 0.2], payload: {} },
-          ],
-        ).returns({"status" => "ok", "result" => {"operation_id" => 1, "status" => "acknowledged"}})
+            { id: "id1", vector: [ 0.1, 0.2 ], payload: {} }
+          ]
+        ).returns({ "status" => "ok", "result" => { "operation_id" => 1, "status" => "acknowledged" } })
 
-        @qdrant.add_texts(texts: ["text1"], ids: ["id1"])
+        @qdrant.add_texts(texts: [ "text1" ], ids: [ "id1" ])
       end
 
       should "raise error when upsert fails" do
-        @mock_llm_provider.stubs(:embed).with("text1").returns([0.1, 0.2])
+        @mock_llm_provider.stubs(:embed).with("text1").returns([ 0.1, 0.2 ])
         @mock_client.stubs(:points).returns(@mock_points)
 
         @mock_points.expects(:upsert).returns(
-          {"status" => {"error" => "Wrong input: Vector dimension error"}, "time" => 0.0},
+          { "status" => { "error" => "Wrong input: Vector dimension error" }, "time" => 0.0 }
         )
 
         assert_raises(RuntimeError) do
-          @qdrant.add_texts(texts: ["text1"], ids: ["id1"])
+          @qdrant.add_texts(texts: [ "text1" ], ids: [ "id1" ])
         end
       end
     end
@@ -106,10 +109,10 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         @mock_client.stubs(:points).returns(@mock_points)
         @mock_points.expects(:delete).with(
           collection_name: "test_collection",
-          points: ["uuid1", "uuid2"],
+          points: [ "uuid1", "uuid2" ]
         )
 
-        @qdrant.remove_texts(ids: ["uuid1", "uuid2"])
+        @qdrant.remove_texts(ids: [ "uuid1", "uuid2" ])
       end
     end
 
@@ -119,6 +122,7 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         # Also need to stub Qdrant::Client.new to return nil
         ::Qdrant::Client.stubs(:new).returns(nil)
         results = @qdrant.ask_with_filter(query: "test", k: 5, filter: nil)
+
         assert_equal [], results
       end
 
@@ -126,27 +130,29 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         mock_response = {
           "result" => [
             { "payload" => { "id" => 1, "title" => "Issue 1" } },
-            { "payload" => { "id" => 2, "title" => "Issue 2" } },
-          ],
+            { "payload" => { "id" => 2, "title" => "Issue 2" } }
+          ]
         }
         @mock_client.stubs(:points).returns(@mock_points)
         @mock_points.expects(:search).with(
           collection_name: "test_collection",
           limit: 2,
-          vector: [0.1, 0.2, 0.3],
+          vector: [ 0.1, 0.2, 0.3 ],
           with_payload: true,
           with_vector: true,
-          filter: { foo: "bar" },
+          filter: { foo: "bar" }
         ).returns(mock_response)
 
         results = @qdrant.ask_with_filter(query: "test", k: 2, filter: { foo: "bar" })
-        assert_equal [{ "id" => 1, "title" => "Issue 1" }, { "id" => 2, "title" => "Issue 2" }], results
+
+        assert_equal [ { "id" => 1, "title" => "Issue 1" }, { "id" => 2, "title" => "Issue 2" } ], results
       end
 
       should "return empty array if result is nil" do
         @mock_client.stubs(:points).returns(@mock_points)
         @mock_points.stubs(:search).returns({ "result" => nil })
         results = @qdrant.ask_with_filter(query: "test", k: 1, filter: nil)
+
         assert_equal [], results
       end
 
@@ -154,6 +160,7 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         @mock_client.stubs(:points).returns(@mock_points)
         @mock_points.stubs(:search).returns({ "result" => [] })
         results = @qdrant.ask_with_filter(query: "test", k: 1, filter: nil)
+
         assert_equal [], results
       end
     end
@@ -163,20 +170,21 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         mock_response = {
           "result" => [
             { "payload" => { "issue_id" => 1 }, "score" => 0.95 },
-            { "payload" => { "issue_id" => 2 }, "score" => 0.85 },
-          ],
+            { "payload" => { "issue_id" => 2 }, "score" => 0.85 }
+          ]
         }
         @mock_client.stubs(:points).returns(@mock_points)
         @mock_points.expects(:search).with(
           collection_name: "test_collection",
           limit: 4,
-          vector: [0.1, 0.2, 0.3],
+          vector: [ 0.1, 0.2, 0.3 ],
           with_payload: true,
           with_vector: false,
-          filter: nil,
+          filter: nil
         ).returns(mock_response)
 
         results = @qdrant.similarity_search(query: "test query")
+
         assert_equal 2, results.length
         assert_equal({ "payload" => { "issue_id" => 1 }, "score" => 0.95 }, results[0])
         assert_equal({ "payload" => { "issue_id" => 2 }, "score" => 0.85 }, results[1])
@@ -186,6 +194,7 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         @mock_client.stubs(:points).returns(@mock_points)
         @mock_points.stubs(:search).returns({ "result" => [] })
         results = @qdrant.similarity_search(query: "test query")
+
         assert_equal [], results
       end
 
@@ -193,51 +202,54 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         @mock_client.stubs(:points).returns(@mock_points)
         @mock_points.stubs(:search).returns({ "result" => nil })
         results = @qdrant.similarity_search(query: "test query")
+
         assert_equal [], results
       end
 
       should "accept custom k parameter" do
         mock_response = {
           "result" => [
-            { "payload" => { "issue_id" => 1 }, "score" => 0.9 },
-          ],
+            { "payload" => { "issue_id" => 1 }, "score" => 0.9 }
+          ]
         }
         @mock_client.stubs(:points).returns(@mock_points)
         @mock_points.expects(:search).with(
           collection_name: "test_collection",
           limit: 10,
-          vector: [0.1, 0.2, 0.3],
+          vector: [ 0.1, 0.2, 0.3 ],
           with_payload: true,
           with_vector: false,
-          filter: nil,
+          filter: nil
         ).returns(mock_response)
 
         results = @qdrant.similarity_search(query: "test query", k: 10)
+
         assert_equal 1, results.length
       end
 
       should "pass filter parameter to Qdrant API" do
         filter = {
           must: [
-            { key: "project_id", match: { value: 1 } },
-          ],
+            { key: "project_id", match: { value: 1 } }
+          ]
         }
         mock_response = {
           "result" => [
-            { "payload" => { "issue_id" => 1, "project_id" => 1 }, "score" => 0.95 },
-          ],
+            { "payload" => { "issue_id" => 1, "project_id" => 1 }, "score" => 0.95 }
+          ]
         }
         @mock_client.stubs(:points).returns(@mock_points)
         @mock_points.expects(:search).with(
           collection_name: "test_collection",
           limit: 4,
-          vector: [0.1, 0.2, 0.3],
+          vector: [ 0.1, 0.2, 0.3 ],
           with_payload: true,
           with_vector: false,
-          filter: filter,
+          filter: filter
         ).returns(mock_response)
 
         results = @qdrant.similarity_search(query: "test query", filter: filter)
+
         assert_equal 1, results.length
         assert_equal({ "payload" => { "issue_id" => 1, "project_id" => 1 }, "score" => 0.95 }, results[0])
       end
@@ -245,20 +257,21 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
       should "pass nil filter when not specified" do
         mock_response = {
           "result" => [
-            { "payload" => { "issue_id" => 1 }, "score" => 0.9 },
-          ],
+            { "payload" => { "issue_id" => 1 }, "score" => 0.9 }
+          ]
         }
         @mock_client.stubs(:points).returns(@mock_points)
         @mock_points.expects(:search).with(
           collection_name: "test_collection",
           limit: 4,
-          vector: [0.1, 0.2, 0.3],
+          vector: [ 0.1, 0.2, 0.3 ],
           with_payload: true,
           with_vector: false,
-          filter: nil,
+          filter: nil
         ).returns(mock_response)
 
         results = @qdrant.similarity_search(query: "test query")
+
         assert_equal 1, results.length
       end
     end
@@ -268,7 +281,7 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         @mock_client.stubs(:collections).returns(@mock_collections)
         @mock_collections.expects(:create).with(
           collection_name: "test_collection",
-          vectors: { size: 1536, distance: "Cosine" },
+          vectors: { size: 1536, distance: "Cosine" }
         )
         @qdrant.create_default_schema
       end
@@ -277,7 +290,7 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         @mock_client.stubs(:collections).returns(@mock_collections)
         @mock_collections.expects(:create).with(
           collection_name: "test_collection",
-          vectors: { size: 3072, distance: "Cosine" },
+          vectors: { size: 3072, distance: "Cosine" }
         )
         @qdrant.create_default_schema(vector_size: 3072)
       end

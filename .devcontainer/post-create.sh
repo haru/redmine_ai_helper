@@ -16,6 +16,7 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> $HOME/.bashrc
 
 rm -rf .ruby-lsp
 ln -s /dev/null .ruby-lsp
+rm -f /usr/local/redmine/.rubocop.yml
 
 cd $REDMINE_ROOT
 

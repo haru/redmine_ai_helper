@@ -35,8 +35,8 @@ module RedmineAiHelper
         workload_based: suggest_from_workload,
         instruction_based: suggest_from_instructions(
           subject: subject, description: description,
-          tracker_id: tracker_id, category_id: category_id,
-        ),
+          tracker_id: tracker_id, category_id: category_id
+        )
       }
     end
 
@@ -52,11 +52,11 @@ module RedmineAiHelper
         llm = RedmineAiHelper::Llm.new
         similar_issues = if issue
             llm.find_similar_issues(issue: issue)
-          else
+        else
             llm.find_similar_issues_by_content(
-              subject: subject, description: description, project: @project,
+              subject: subject, description: description, project: @project
             )
-          end
+        end
 
         aggregate_history_suggestions(similar_issues)
       rescue => e
@@ -77,7 +77,7 @@ module RedmineAiHelper
         {
           user_id: user.id,
           user_name: user.name,
-          open_issues_count: open_issue_counts[user.id] || 0,
+          open_issues_count: open_issue_counts[user.id] || 0
         }
       end
 
@@ -105,7 +105,7 @@ module RedmineAiHelper
           subject: subject,
           description: description,
           tracker_id: tracker_id,
-          category_id: category_id,
+          category_id: category_id
         )
 
         parse_instruction_suggestions(llm_response)
@@ -137,7 +137,7 @@ module RedmineAiHelper
         user_scores[user_id][:similar_issues] << {
           id: issue_id,
           subject: issue_subject,
-          similarity_score: score,
+          similarity_score: score
         }
       end
 
@@ -152,7 +152,7 @@ module RedmineAiHelper
           user_name: data[:user_name],
           score: (data[:total_score] / data[:count]).round(1),
           similar_issue_count: data[:count],
-          similar_issues: sorted_similar_issues,
+          similar_issues: sorted_similar_issues
         }
       end
 
@@ -175,7 +175,7 @@ module RedmineAiHelper
         {
           user_id: user_id,
           user_name: user.name,
-          reason: s["reason"],
+          reason: s["reason"]
         }
       end
 

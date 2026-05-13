@@ -85,3 +85,5 @@ Gemfile.local
 .playwright-mcp/
 .ruby-lsp
 .serena/
+.qlty/
+.rubocop_todo.yml

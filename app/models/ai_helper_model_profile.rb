@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 # AiHelperModelProfile model for managing AI Helper model profiles
 class AiHelperModelProfile < ApplicationRecord
   include Redmine::SafeAttributes
@@ -7,7 +8,7 @@ class AiHelperModelProfile < ApplicationRecord
   validates :access_key, presence: true, if: :access_key_required?
   validates :llm_model, presence: true
   validates :base_uri, presence: true, if: :base_uri_required?
-  validates :base_uri, format: { with: URI::regexp(%w[http https]), message: l("ai_helper.model_profiles.messages.must_be_valid_url") }, if: :base_uri_required?
+  validates :base_uri, format: { with: URI::DEFAULT_PARSER.make_regexp(%w[http https]), message: l("ai_helper.model_profiles.messages.must_be_valid_url") }, if: :base_uri_required?
   validates :temperature, presence: true, numericality: { greater_than_or_equal_to: 0.0 }
 
   safe_attributes "name", "llm_type", "access_key", "organization_id", "base_uri", "version", "llm_model", "temperature", "max_tokens"
@@ -70,7 +71,7 @@ class AiHelperModelProfile < ApplicationRecord
 
     # Starts with "gpt-5-" but doesn't contain "chat"
     if model_name.start_with?("gpt-5-")
-      return !model_name.include?("chat")
+      return model_name.exclude?("chat")
     end
 
     false

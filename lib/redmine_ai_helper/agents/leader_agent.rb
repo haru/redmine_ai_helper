@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "redmine_ai_helper/base_agent"
 require "redmine_ai_helper/util/system_prompt"
 
@@ -36,40 +37,24 @@ module RedmineAiHelper
       def perform_user_request(messages, option = {}, callback = nil)
         goal_json = generate_goal(messages)
         goal = goal_json["goal"]
-        generate_steps_required = goal_json["generate_steps_required"]
-
-        return chat(messages, option, callback) unless generate_steps_required
+        return chat(messages, option, callback) unless goal_json["generate_steps_required"]
 
         ai_helper_logger.debug "goal: #{goal}"
         callback.call(I18n.t("ai_helper.chat.planning") + "\n") if callback
         steps = generate_steps(goal, messages)
         ai_helper_logger.debug "steps: #{steps}"
 
-        if steps["steps"].empty? || steps["steps"].length == 1 && steps["steps"][0]["agent"] == "leader"
+        if steps["steps"].empty? || (steps["steps"].length == 1 && steps["steps"][0]["agent"] == "leader")
           return chat(messages, option, callback)
         end
 
-        chat_room = RedmineAiHelper::ChatRoom.new(goal)
-        agent_list = RedmineAiHelper::AgentList.instance
-        steps["steps"].map { |step| step["agent"] }.uniq.reject { |a| a == "leader_agent" }.each do |agent|
-          agent_instance = agent_list.get_agent_instance(agent, { project: @project, langfuse: langfuse })
-          chat_room.add_agent(agent_instance)
-        end
-
-        chat_room.share_goal
-
-        steps["steps"].each do |step|
-          callback.call("- " + step["description_for_human"] + "\n") if callback
-          chat_room.send_task("leader", step["agent"], step["step"], { use_think_model: step["use_think_model"] })
-        end
+        chat_room = execute_chat_room_steps(goal, steps, callback)
 
         callback.call(I18n.t("ai_helper.chat.generating_final_response") + "\n") if callback
 
-        newmessages = messages
-        newmessages += chat_room.messages if steps["steps"].any?
+        newmessages = messages + chat_room.messages
         newmessages << { role: "user", content: I18n.t("ai_helper.prompts.leader_agent.generate_final_response") }
         langfuse.create_span(name: "final_response", input: newmessages.last[:content])
-        ai_helper_logger.debug "newmessages: #{newmessages}"
 
         answer = chat(newmessages, option, callback)
         langfuse.finish_current_span(output: answer)
@@ -84,19 +69,19 @@ module RedmineAiHelper
           properties: {
             goal: {
               type: "string",
-              description: "A concise and clear goal derived from the user's request",
+              description: "A concise and clear goal derived from the user's request"
             },
             generate_steps_required: {
               type: "boolean",
               description: "Indicates whether step-by-step instructions are necessary to achieve the goal",
-              default: true,
-            },
+              default: true
+            }
           },
-          required: ["goal", "generate_steps_required"],
+          required: [ "goal", "generate_steps_required" ]
         }
 
         prompt_text = prompt.format(
-          format_instructions: RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(json_schema),
+          format_instructions: RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(json_schema)
         )
 
         newmessages = messages.dup
@@ -107,7 +92,7 @@ module RedmineAiHelper
           response: json,
           json_schema: json_schema,
           chat_method: method(:chat),
-          messages: newmessages,
+          messages: newmessages
         )
         langfuse.finish_current_span(output: fixed_json)
         fixed_json
@@ -129,26 +114,26 @@ module RedmineAiHelper
                 properties: {
                   agent: {
                     type: "string",
-                    description: "The role of the agent to assign the task to",
+                    description: "The role of the agent to assign the task to"
                   },
                   step: {
                     type: "string",
-                    description: "The content of the instruction",
+                    description: "The content of the instruction"
                   },
                   description_for_human: {
                     type: "string",
-                    description: "Write a sentence in present progressive form to explain to the user what work is currently being done.",
+                    description: "Write a sentence in present progressive form to explain to the user what work is currently being done."
                   },
                   use_think_model: {
                     type: "boolean",
-                    description: "Set to true if this step requires deep reasoning (e.g. creating content, code review, writing answers). Set to false for simple data retrieval.",
-                  },
+                    description: "Set to true if this step requires deep reasoning (e.g. creating content, code review, writing answers). Set to false for simple data retrieval."
+                  }
                 },
-                required: ["agent", "step", "description_for_human", "use_think_model"],
+                required: [ "agent", "step", "description_for_human", "use_think_model" ]
               },
-              required: ["steps"],
-            },
-          },
+              required: [ "steps" ]
+            }
+          }
         }
 
         json_examples = <<~EOS
@@ -210,7 +195,7 @@ module RedmineAiHelper
           agent_list: agent_list_string,
           format_instructions: RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(json_schema),
           json_examples: json_examples,
-          lang: I18n.locale.to_s,
+          lang: I18n.locale.to_s
         )
 
         ai_helper_logger.debug "prompt_text: #{prompt_text}"
@@ -223,10 +208,27 @@ module RedmineAiHelper
           response: json,
           json_schema: json_schema,
           chat_method: method(:chat),
-          messages: newmessages,
+          messages: newmessages
         )
         langfuse.finish_current_span(output: fixed_json)
         fixed_json
+      end
+
+      private
+
+      def execute_chat_room_steps(goal, steps, callback)
+        chat_room = RedmineAiHelper::ChatRoom.new(goal)
+        agent_list = RedmineAiHelper::AgentList.instance
+        steps["steps"].map { |step| step["agent"] }.uniq.reject { |a| a == "leader_agent" }.each do |agent|
+          agent_instance = agent_list.get_agent_instance(agent, { project: @project, langfuse: langfuse })
+          chat_room.add_agent(agent_instance)
+        end
+        chat_room.share_goal
+        steps["steps"].each do |step|
+          callback.call("- " + step["description_for_human"] + "\n") if callback
+          chat_room.send_task("leader", step["agent"], step["step"], { use_think_model: step["use_think_model"] })
+        end
+        chat_room
       end
     end
   end

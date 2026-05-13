@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "redmine_ai_helper/base_tools"
 require "redmine_ai_helper/util/wiki_json"
 require "redmine_ai_helper/util/issue_json"
@@ -22,27 +23,27 @@ module RedmineAiHelper
         property :filter, type: "object", description: "The filter to apply to the question.", required: true do
           property :must, type: "array", description: "The must filter. All conditions must be met. AND condition.", required: false do
             item :filter_item, type: "object", description: "The filter item.", required: true do
-              item :key, type: "string", description: "The key to filter.", required: true, enum: ["project_id", "tracker_id", "status_id", "priority_id", "author_id", "assigned_to_id", "created_on", "updated_on", "due_date", "version_id"]
-              item :condition, type: "string", description: "The condition to filter. 'match' means exact match, 'lt' means less than, 'lte' means less than or equal to, 'gt' means greater than, 'gte' means greater than or equal to.", required: true, enum: ["match", "lt", "lte", "gt", "gte"]
+              item :key, type: "string", description: "The key to filter.", required: true, enum: [ "project_id", "tracker_id", "status_id", "priority_id", "author_id", "assigned_to_id", "created_on", "updated_on", "due_date", "version_id" ]
+              item :condition, type: "string", description: "The condition to filter. 'match' means exact match, 'lt' means less than, 'lte' means less than or equal to, 'gt' means greater than, 'gte' means greater than or equal to.", required: true, enum: [ "match", "lt", "lte", "gt", "gte" ]
               item :value, type: "string", description: "The value to filter. The value must be a string.", required: true
             end
           end
           property :should, type: "array", description: "At least one condition must be met. OR condition.", required: false do
             item :filter_item, type: "object", description: "The filter item.", required: true do
-              item :key, type: "string", description: "The key to filter.", required: true, enum: ["project_id", "tracker_id", "status_id", "priority_id", "author_id", "assigned_to_id", "created_on", "updated_on", "due_date", "version_id"]
-              item :condition, type: "string", description: "The condition to filter. 'match' means exact match, 'lt' means less than, 'lte' means less than or equal to, 'gt' means greater than, 'gte' means greater than or equal to.", required: true, enum: ["match", "lt", "lte", "gt", "gte"]
+              item :key, type: "string", description: "The key to filter.", required: true, enum: [ "project_id", "tracker_id", "status_id", "priority_id", "author_id", "assigned_to_id", "created_on", "updated_on", "due_date", "version_id" ]
+              item :condition, type: "string", description: "The condition to filter. 'match' means exact match, 'lt' means less than, 'lte' means less than or equal to, 'gt' means greater than, 'gte' means greater than or equal to.", required: true, enum: [ "match", "lt", "lte", "gt", "gte" ]
               item :value, type: "string", description: "The value to filter. The value must be a string.", required: true
             end
           end
           property :must_not, type: "array", description: "None of the conditions must be met. NOT operation. ", required: false do
             item :filter_item, type: "object", description: "The filter item.", required: true do
-              item :key, type: "string", description: "The key to filter.", required: true, enum: ["project_id", "tracker_id", "status_id", "priority_id", "author_id", "assigned_to_id", "created_on", "updated_on", "due_date", "version_id"]
-              item :condition, type: "string", description: "The condition to filter. 'match' means exact match, 'lt' means less than, 'lte' means less than or equal to, 'gt' means greater than, 'gte' means greater than or equal to.", required: true, enum: ["match", "lt", "lte", "gt", "gte"]
+              item :key, type: "string", description: "The key to filter.", required: true, enum: [ "project_id", "tracker_id", "status_id", "priority_id", "author_id", "assigned_to_id", "created_on", "updated_on", "due_date", "version_id" ]
+              item :condition, type: "string", description: "The condition to filter. 'match' means exact match, 'lt' means less than, 'lte' means less than or equal to, 'gt' means greater than, 'gte' means greater than or equal to.", required: true, enum: [ "match", "lt", "lte", "gt", "gte" ]
               item :value, type: "string", description: "The value to filter. The value must be a string.", required: true
             end
           end
         end
-        property :target, type: "string", description: "The target to filter. 'issue' means issue, 'wiki' means wiki page.", required: true, enum: ["issue", "wiki"]
+        property :target, type: "string", description: "The target to filter. 'issue' means issue, 'wiki' means wiki page.", required: true, enum: [ "issue", "wiki" ]
       end
 
       # Ask to vector database with a query text and filter.
@@ -52,6 +53,7 @@ module RedmineAiHelper
       # @param target [String] The target to filter. 'issue' means issue, 'wiki' means wiki page.
       # @return [Array<Hash>] An array of hashes containing issue or wiki information.
       def ask_with_filter(query:, k: 10, filter: {}, target:)
+        filter = deep_symbolize_hash(filter)
         raise("The vector search functionality is not enabled.") unless vector_db_enabled?
         raise("limit must be between 1 and 50.") unless k.between?(1, 50)
 
@@ -229,6 +231,9 @@ module RedmineAiHelper
         end
       end
 
+      # Valid scope values for vector search queries.
+      VALID_SCOPES = %w[current with_subprojects all].freeze
+
       private
 
       # Build a content query for vector similarity search from subject and description.
@@ -276,7 +281,7 @@ module RedmineAiHelper
             item[:match] = { value: value }
           when "lt", "lte", "gt", "gte"
             item[:rante] = {
-              f[:condition] => value,
+              f[:condition] => value
             }
           end
 
@@ -307,19 +312,17 @@ module RedmineAiHelper
         @vector_db
       end
 
-      VALID_SCOPES = %w[current with_subprojects all].freeze
-
       def collect_permitted_project_ids(scope, project)
         candidate_ids = case scope
-                        when "current"
-                          [project.id]
-                        when "with_subprojects"
-                          [project.id] + project.descendants.active.pluck(:id)
-                        when "all"
+        when "current"
+                          [ project.id ]
+        when "with_subprojects"
+                          [ project.id ] + project.descendants.active.pluck(:id)
+        when "all"
                           Project.active.pluck(:id)
-                        else
+        else
                           raise ArgumentError, "Invalid scope: #{scope}"
-                        end
+        end
 
         Project.where(id: candidate_ids).select { |p|
           User.current.allowed_to?(:view_ai_helper, p)

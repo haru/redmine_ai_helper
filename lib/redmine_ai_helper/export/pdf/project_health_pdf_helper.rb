@@ -17,113 +17,84 @@ module RedmineAiHelper
         # Generate PDF for project health report
         # @param project [Project] The project object
         # @param health_report [String] The health report content
-        # @param options [Hash] Optional parameters
+        # @param _options [Hash] Reserved for future use; currently ignored.
         # @return [String] PDF content as binary string
-        def project_health_to_pdf(project, health_report, options = {})
+        def project_health_to_pdf(project, health_report, _options = {})
           pdf = Redmine::Export::PDF::ITCPDF.new(current_language)
-
-          # Check if current language is RTL
-          is_rtl = l(:direction) == 'rtl'
-
-          # Set RTL support if needed
-          if is_rtl
-            # Enable RTL support in PDF
-            pdf.set_rtl(true) if pdf.respond_to?(:set_rtl)
-          end
-
+          is_rtl = l(:direction) == "rtl"
+          pdf.set_rtl(true) if is_rtl && pdf.respond_to?(:set_rtl)
           pdf.set_title("#{project.name} - #{l('ai_helper.project_health.pdf_title')}")
           pdf.alias_nb_pages
           pdf.footer_date = format_date(User.current.today)
 
-          # Get margins for proper layout
           bottom_margin = pdf.get_footer_margin
-          left_margin = pdf.get_original_margins['left'] || 10
+          left_margin = pdf.get_original_margins["left"] || 10
           pdf.set_auto_page_break(true, bottom_margin)
           pdf.add_page
 
-          # Determine text alignment based on language direction
-          text_align = is_rtl ? 'R' : 'L'
+          text_align = is_rtl ? "R" : "L"
+          render_pdf_header_section(pdf, project, left_margin, text_align)
 
-          # Header
-          pdf.set_x(left_margin)
-          pdf.SetFontStyle('B', 16)
-          pdf.cell(0, 10, "#{project.name}", 0, 0, text_align)
-          pdf.ln(8)
-
-          pdf.SetFontStyle('B', 14)
-          pdf.cell(0, 8, l('ai_helper.project_health.pdf_title'), 0, 0, text_align)
-          pdf.ln(10)
-
-          # Project information section
-          pdf.SetFontStyle('B', 12)
-          pdf.cell(0, 6, l(:field_project), 0, 0, text_align)
-          pdf.ln(6)
-
-          pdf.SetFontStyle('', 10)
-          pdf.multi_cell(0, 5, "#{project.name} (#{project.identifier})", 0, text_align)
-          pdf.ln(2)
-
-          if project.description.present?
-            pdf.SetFontStyle('B', 10)
-            pdf.cell(0, 5, l(:field_description), 0, 0, text_align)
-            pdf.ln(5)
-            pdf.SetFontStyle('', 10)
-            pdf.multi_cell(0, 5, project.description, 0, text_align)
-            pdf.ln(2)
-          end
-
-          # Generation date
-          pdf.SetFontStyle('B', 10)
-          pdf.cell(0, 5, l(:field_created_on), 0, 0, text_align)
-          pdf.ln(5)
-          pdf.SetFontStyle('', 10)
-          creation_datetime = Time.current.strftime("%Y-%m-%d %H:%M:%S")
-          pdf.cell(0, 5, creation_datetime, 0, 0, text_align)
-          pdf.ln(5)
-
-          # Add separator line
-          pdf.line(pdf.get_x, pdf.get_y, pdf.get_x + 180, pdf.get_y)
-          pdf.ln(8)
-
-          # Health report content
-          pdf.SetFontStyle('B', 12)
-          pdf.cell(0, 6, l(:label_ai_helper_project_health_report_content, default: "Health Report Content"), 0, 0, text_align)
-          pdf.ln(8)
-
-          # Use Redmine's existing text formatting for PDF
-          pdf.SetFontStyle('', 10)
-          # Set left margin for content and ensure auto page break with bottom margin
+          pdf.SetFontStyle("", 10)
           pdf.set_x(left_margin)
           pdf.set_auto_page_break(true, bottom_margin)
-
-          # Process the content with table formatting support
-          begin
-            # First, process any markdown tables in the raw content
-            content_without_tables = process_markdown_tables_for_pdf(pdf, health_report, left_margin, is_rtl)
-
-            # Then process remaining content via textilizable if there's non-table content
-            if content_without_tables.strip.present?
-              # Remove any remaining table-like lines that might not have been caught
-              cleaned_content = clean_remaining_table_lines(content_without_tables)
-
-              if cleaned_content.strip.present?
-                formatted_content = textilizable(cleaned_content, :object => project, :only_path => false)
-                # Convert to plain text and process with simple formatting
-                plain_text = html_to_plain_text(formatted_content)
-                process_simple_text_for_pdf(pdf, plain_text, left_margin, is_rtl)
-              end
-            end
-          rescue => e
-            ai_helper_logger.error "Error processing content for PDF: #{e.message}"
-            # Fallback to simple text processing if textilizable fails
-            plain_text = convert_markdown_to_plain_text(health_report)
-            pdf.multi_cell(0, 5, plain_text, 0, text_align)
-          end
+          render_pdf_report_content(pdf, project, health_report, left_margin, is_rtl, text_align)
 
           pdf.output
         end
 
         private
+
+        def render_pdf_header_section(pdf, project, left_margin, text_align)
+          pdf.set_x(left_margin)
+          pdf.SetFontStyle("B", 16)
+          pdf.cell(0, 10, project.name.to_s, 0, 0, text_align)
+          pdf.ln(8)
+          pdf.SetFontStyle("B", 14)
+          pdf.cell(0, 8, l("ai_helper.project_health.pdf_title"), 0, 0, text_align)
+          pdf.ln(10)
+          pdf.SetFontStyle("B", 12)
+          pdf.cell(0, 6, l(:field_project), 0, 0, text_align)
+          pdf.ln(6)
+          pdf.SetFontStyle("", 10)
+          pdf.multi_cell(0, 5, "#{project.name} (#{project.identifier})", 0, text_align)
+          pdf.ln(2)
+          if project.description.present?
+            pdf.SetFontStyle("B", 10)
+            pdf.cell(0, 5, l(:field_description), 0, 0, text_align)
+            pdf.ln(5)
+            pdf.SetFontStyle("", 10)
+            pdf.multi_cell(0, 5, project.description, 0, text_align)
+            pdf.ln(2)
+          end
+          pdf.SetFontStyle("B", 10)
+          pdf.cell(0, 5, l(:field_created_on), 0, 0, text_align)
+          pdf.ln(5)
+          pdf.SetFontStyle("", 10)
+          pdf.cell(0, 5, Time.current.strftime("%Y-%m-%d %H:%M:%S"), 0, 0, text_align)
+          pdf.ln(5)
+          pdf.line(pdf.get_x, pdf.get_y, pdf.get_x + 180, pdf.get_y)
+          pdf.ln(8)
+          pdf.SetFontStyle("B", 12)
+          pdf.cell(0, 6, l(:label_ai_helper_project_health_report_content, default: "Health Report Content"), 0, 0, text_align)
+          pdf.ln(8)
+        end
+
+        def render_pdf_report_content(pdf, project, health_report, left_margin, is_rtl, text_align)
+          begin
+            content_without_tables = process_markdown_tables_for_pdf(pdf, health_report, left_margin, is_rtl)
+            if content_without_tables.strip.present?
+              cleaned_content = clean_remaining_table_lines(content_without_tables)
+              if cleaned_content.strip.present?
+                formatted_content = textilizable(cleaned_content, object: project, only_path: false)
+                process_simple_text_for_pdf(pdf, html_to_plain_text(formatted_content), left_margin, is_rtl)
+              end
+            end
+          rescue => e
+            ai_helper_logger.error "Error processing content for PDF: #{e.message}"
+            pdf.multi_cell(0, 5, convert_markdown_to_plain_text(health_report), 0, text_align)
+          end
+        end
 
         # Process Markdown tables directly for PDF
         # @param pdf [Redmine::Export::PDF::ITCPDF] The PDF object
@@ -153,10 +124,10 @@ module RedmineAiHelper
             # Parse table lines
             lines.each_with_index do |line, index|
               line = line.strip
-              next unless line.start_with?('|') && line.end_with?('|')
+              next unless line.start_with?("|") && line.end_with?("|")
 
               # Remove leading/trailing |
-              cells = line[1..-2].split('|').map(&:strip)
+              cells = line[1..-2].split("|").map(&:strip)
 
               if index == 0
                 # First line is headers
@@ -185,7 +156,7 @@ module RedmineAiHelper
           ai_helper_logger.debug "Total markdown tables found: #{table_count}"
           ai_helper_logger.debug "Content after table removal: #{processed_content}"
 
-          return processed_content
+          processed_content
         end
 
         # Clean any remaining table-like lines that weren't caught by the main regex
@@ -230,10 +201,10 @@ module RedmineAiHelper
 
           # Clean up whitespace while preserving structure
           text = text.gsub(/\n\s*\n/, "\n\n") # Multiple newlines to double newline
-          text = text.gsub(/[ \t]+/, ' ') # Multiple spaces to single space
+          text = text.gsub(/[ \t]+/, " ") # Multiple spaces to single space
           text = text.strip
 
-          return text
+          text
         end
 
         # Process simple text for PDF with basic formatting
@@ -245,7 +216,7 @@ module RedmineAiHelper
           return if text_content.blank?
 
           # Determine text alignment based on language direction
-          text_align = is_rtl ? 'R' : 'L'
+          text_align = is_rtl ? "R" : "L"
 
           lines = text_content.split("\n")
 
@@ -279,17 +250,17 @@ module RedmineAiHelper
         # @param level [Integer] The heading level (1-6)
         # @param left_margin [Integer] The left margin
         # @param text_align [String] Text alignment ('L' or 'R')
-        def add_simple_heading_to_pdf(pdf, text, level, left_margin, text_align = 'L')
+        def add_simple_heading_to_pdf(pdf, text, level, left_margin, text_align = "L")
           font_size = case level
-                     when 1 then 14
-                     when 2 then 12
-                     when 3 then 11
-                     else 10
-                     end
+          when 1 then 14
+          when 2 then 12
+          when 3 then 11
+          else 10
+          end
 
           pdf.ln(4)
           pdf.set_x(left_margin)
-          pdf.SetFontStyle('B', font_size)
+          pdf.SetFontStyle("B", font_size)
           pdf.multi_cell(0, 6, text, 0, text_align)
           pdf.ln(2)
         end
@@ -298,15 +269,14 @@ module RedmineAiHelper
         # @param pdf [Redmine::Export::PDF::ITCPDF] The PDF object
         # @param text [String] The item text
         # @param indent_level [Integer] The indentation level
-        # @param type [Symbol] :ordered or :unordered
         # @param left_margin [Integer] The base left margin
         # @param text_align [String] Text alignment ('L' or 'R')
-        def add_simple_list_item_to_pdf(pdf, text, indent_level, type, left_margin, text_align = 'L')
+        def add_simple_list_item_to_pdf(pdf, text, indent_level, _type, left_margin, text_align = "L")
           indent = left_margin + (indent_level * 4)
-          bullet = type == :ordered ? "• " : "• "
+          bullet = "• "
 
           pdf.set_x(indent)
-          pdf.SetFontStyle('', 10)
+          pdf.SetFontStyle("", 10)
           pdf.multi_cell(0, 5, "#{bullet}#{text}", 0, text_align)
         end
 
@@ -315,11 +285,11 @@ module RedmineAiHelper
         # @param text [String] The paragraph text
         # @param left_margin [Integer] The left margin
         # @param text_align [String] Text alignment ('L' or 'R')
-        def add_simple_paragraph_to_pdf(pdf, text, left_margin, text_align = 'L')
+        def add_simple_paragraph_to_pdf(pdf, text, left_margin, text_align = "L")
           return if text.strip.empty?
 
           pdf.set_x(left_margin)
-          pdf.SetFontStyle('', 10)
+          pdf.SetFontStyle("", 10)
           pdf.multi_cell(0, 5, text, 0, text_align)
           pdf.ln(2)
         end
@@ -330,63 +300,43 @@ module RedmineAiHelper
         # @param left_margin [Integer] The left margin for content
         def process_table_html_for_pdf(pdf, table_html, left_margin)
           ai_helper_logger.debug "Processing table HTML: #{table_html}"
+          headers, rows = extract_table_data_from_html(table_html)
+          ai_helper_logger.debug "Final headers: #{headers}, rows: #{rows.length}"
+          if headers.any? || rows.any?
+            draw_pdf_table(pdf, headers, rows, left_margin, false)
+          else
+            ai_helper_logger.debug "No table data to draw"
+          end
+        end
 
-          # Extract table rows using regex
-          rows = []
+        def extract_table_data_from_html(table_html)
           headers = []
+          rows = []
 
-          # Extract header from <thead> if present
           thead_match = table_html.match(/<thead[^>]*>(.*?)<\/thead>/m)
           if thead_match
-            ai_helper_logger.debug "Found thead: #{thead_match[1]}"
-            header_row = thead_match[1]
-            header_cells = header_row.scan(/<th[^>]*>(.*?)<\/th>/m).flatten
+            header_cells = thead_match[1].scan(/<th[^>]*>(.*?)<\/th>/m).flatten
             headers = header_cells.map { |cell| html_to_plain_text(cell).strip }
             ai_helper_logger.debug "Extracted headers: #{headers}"
           end
 
-          # Extract rows from <tbody> or all <tr> if no thead
           tbody_match = table_html.match(/<tbody[^>]*>(.*?)<\/tbody>/m)
           row_content = tbody_match ? tbody_match[1] : table_html
-          ai_helper_logger.debug "Row content: #{row_content[0..200]}"
-
-          # Find all <tr> elements
           tr_matches = row_content.scan(/<tr[^>]*>(.*?)<\/tr>/m)
-          ai_helper_logger.debug "Found #{tr_matches.length} tr elements"
 
           tr_matches.each do |row_match|
             row_html = row_match[0]
-            # Extract <td> cells
             cells = row_html.scan(/<td[^>]*>(.*?)<\/td>/m).flatten
             if cells.any?
-              row_data = cells.map { |cell| html_to_plain_text(cell).strip }
-              rows << row_data
-              ai_helper_logger.debug "Added row: #{row_data}"
+              rows << cells.map { |cell| html_to_plain_text(cell).strip }
             elsif headers.empty?
-              # If no headers and this might be a header row with <th>
               th_cells = row_html.scan(/<th[^>]*>(.*?)<\/th>/m).flatten
-              if th_cells.any?
-                headers = th_cells.map { |cell| html_to_plain_text(cell).strip }
-                ai_helper_logger.debug "Headers from th: #{headers}"
-              end
+              headers = th_cells.map { |cell| html_to_plain_text(cell).strip } if th_cells.any?
             end
           end
 
-          # If no headers found, use first row as headers
-          if headers.empty? && rows.any?
-            headers = rows.shift
-            ai_helper_logger.debug "Using first row as headers: #{headers}"
-          end
-
-          ai_helper_logger.debug "Final headers: #{headers}, rows: #{rows.length}"
-
-          # Draw the table if we have data
-          if headers.any? || rows.any?
-            ai_helper_logger.debug "Drawing table with #{headers.length} headers and #{rows.length} rows"
-            draw_pdf_table(pdf, headers, rows, left_margin, false) # Default to LTR for HTML tables unless we add RTL parameter
-          else
-            ai_helper_logger.debug "No table data to draw"
-          end
+          headers = rows.shift if headers.empty? && rows.any?
+          [ headers, rows ]
         end
 
         # Draw table in PDF
@@ -399,8 +349,8 @@ module RedmineAiHelper
           return if headers.empty? && rows.empty?
 
           # Determine text alignment based on language direction
-          header_align = 'C' # Keep headers centered for all languages
-          cell_align = is_rtl ? 'R' : 'L'
+          header_align = "C" # Keep headers centered for all languages
+          cell_align = is_rtl ? "R" : "L"
 
           # Use headers if available, otherwise use first row
           header_row = headers.any? ? headers : (rows.any? ? rows.shift : [])
@@ -416,7 +366,7 @@ module RedmineAiHelper
           pdf.set_x(left_margin)
 
           # Draw header row
-          pdf.SetFontStyle('B', 9)
+          pdf.SetFontStyle("B", 9)
           header_row.each_with_index do |header, i|
             is_last = i == header_row.length - 1
             # Truncate text if too long
@@ -425,7 +375,7 @@ module RedmineAiHelper
           end
 
           # Draw data rows
-          pdf.SetFontStyle('', 8)
+          pdf.SetFontStyle("", 8)
           rows.each do |row|
             pdf.set_x(left_margin)
 
@@ -451,7 +401,7 @@ module RedmineAiHelper
         # @param content [String] The markdown content
         # @return [String] Plain text content
         def convert_markdown_to_plain_text(content)
-          return '' if content.blank?
+          return "" if content.blank?
 
           # Remove markdown formatting and clean up content
           plain_text = content.dup
@@ -474,7 +424,7 @@ module RedmineAiHelper
           plain_text.gsub!(/^[ \t]*\d+\.\s+([^\n]+)$/, '\1')
 
           # Clean up code blocks
-          plain_text.gsub!(/```[^`]*```/m, '[Code Block]')
+          plain_text.gsub!(/```[^`]*```/m, "[Code Block]")
           plain_text.gsub!(/`([^`]+)`/, '\1')
 
           # Clean up links - use non-greedy with character class to avoid ReDoS
@@ -484,7 +434,6 @@ module RedmineAiHelper
           plain_text.gsub!(/\n{3,}/, "\n\n")
           plain_text.strip
         end
-
       end
     end
   end

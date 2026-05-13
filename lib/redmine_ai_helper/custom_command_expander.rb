@@ -21,7 +21,7 @@ module RedmineAiHelper
 
     # Check if the message is a command
     def command?(message)
-      message.to_s.strip.start_with?('/')
+      message.to_s.strip.start_with?("/")
     end
 
     # Expand the command
@@ -34,7 +34,7 @@ module RedmineAiHelper
       return { expanded: false, message: message } unless match
 
       command_name = match[1].downcase
-      input_text = match[2] || ''
+      input_text = match[2] || ""
 
       custom_command = AiHelperCustomCommand.find_command(
         name: command_name,
@@ -64,7 +64,7 @@ module RedmineAiHelper
       )
 
       if prefix.present?
-        commands = commands.where('LOWER(name) LIKE ?', "#{prefix.downcase}%")
+        commands = commands.where("LOWER(name) LIKE ?", "#{prefix.downcase}%")
       end
 
       commands.order(:name).map do |cmd|

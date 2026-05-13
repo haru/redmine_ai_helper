@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "ruby_llm"
 require "redmine_ai_helper/logger"
 require "redmine_ai_helper/assistant"
@@ -15,6 +16,7 @@ module RedmineAiHelper
       # @param subclass [Class] The subclass that is being inherited.
       # @return [void]
       def inherited(subclass)
+        super
         # For dynamic classes, delay registration until class name is properly set
         if subclass.name.nil?
           # Store the subclass to register later when the name is set
@@ -29,18 +31,18 @@ module RedmineAiHelper
         agent_list = AgentList.instance
         agent_list.add_agent(
           @myname,
-          subclass.name,
+          subclass.name
         )
       end
 
       # Method to register pending dynamic classes
-      def register_pending_dynamic_class(subclass, class_name)
+      def register_pending_dynamic_class(_subclass, class_name)
         real_class_name = class_name.split("::").last
         agent_name = real_class_name.underscore
         agent_list = AgentList.instance
         agent_list.add_agent(
           agent_name,
-          class_name,
+          class_name
         )
       end
     end
@@ -51,10 +53,6 @@ module RedmineAiHelper
       @langfuse = params[:langfuse]
       @llm_provider = RedmineAiHelper::LlmProvider.get_llm_provider
       @shared_messages = []
-    end
-
-    def langfuse
-      @langfuse
     end
 
     # Lazily returns the Think LLM provider, creating it on first access.
@@ -72,7 +70,7 @@ module RedmineAiHelper
       @assistant = RedmineAiHelper::AssistantProvider.get_assistant(
         llm_provider: @llm_provider,
         instructions: system_prompt,
-        tools: tool_classes,
+        tools: tool_classes
       )
       setup_langfuse_callbacks(@assistant.chat, provider: @llm_provider)
       @assistant
@@ -115,10 +113,10 @@ module RedmineAiHelper
         role: role,
         backstory: backstory,
         time: time,
-        lang: I18n.t(:general_lang_name),
+        lang: I18n.t(:general_lang_name)
       )
 
-      return prompt_text
+      prompt_text
     end
 
     # List all tools as OpenAI-format hashes (used by LeaderAgent backstory etc.)
@@ -128,19 +126,19 @@ module RedmineAiHelper
         {
           function: {
             name: tool_class.name.demodulize.underscore,
-            description: tool_class.description,
-          },
+            description: tool_class.description
+          }
         }
       end
     end
 
     # Chat with the LLM using RubyLLM.
     # @param messages [Array<Hash>] The messages to be sent.
-    # @param option [Hash] Additional options for the chat.
+    # @param _option [Hash] Reserved for future use; currently ignored.
     # @param callback [Proc] A callback function to be called with each chunk of the response.
     # @param with [Array<String>, nil] Image file paths to attach to the request.
     # @return [String] The response from the LLM.
-    def chat(messages, option = {}, callback = nil, with: nil)
+    def chat(messages, _option = {}, callback = nil, with: nil)
       chat_instance = @llm_provider.create_chat(instructions: system_prompt)
       setup_langfuse_callbacks(chat_instance, provider: @llm_provider)
 
@@ -176,11 +174,11 @@ module RedmineAiHelper
     # implemented. A future design would need to solve cross-provider switching combined
     # with shared conversation history (no solution exists yet).
     # @param messages [Array<Hash>] The messages to be sent.
-    # @param option [Hash] Additional options for the chat.
+    # @param _option [Hash] Reserved for future use; currently ignored.
     # @param callback [Proc] A callback function to be called with each chunk of the response.
     # @param with [Array<String>, nil] Image file paths to attach to the request.
     # @return [String] The response from the LLM.
-    def think_chat(messages, option = {}, callback = nil, with: nil)
+    def think_chat(messages, _option = {}, callback = nil, with: nil)
       provider = think_llm_provider || @llm_provider
       chat_instance = provider.create_chat(instructions: system_prompt)
       setup_langfuse_callbacks(chat_instance, provider: provider)
@@ -213,9 +211,9 @@ module RedmineAiHelper
     # Perform a task using the assistant.
     # When use_think_model: true, builds a fresh think assistant with shared context.
     # @param option [Hash] Additional options for the task.
-    # @param callback [Proc] A callback function to be called with each chunk of the response.
+    # @param _callback [Proc] Reserved for future use; currently ignored.
     # @return [TaskResponse] The response from the task.
-    def perform_task(option = {}, callback = nil)
+    def perform_task(option = {}, _callback = nil)
       active_assistant = option[:use_think_model] ? build_think_assistant : assistant
       task = active_assistant.messages.last
       langfuse.create_span(name: "perform_task", input: task.content)
@@ -260,7 +258,7 @@ module RedmineAiHelper
       think_asst = RedmineAiHelper::AssistantProvider.get_assistant(
         llm_provider: provider,
         instructions: system_prompt,
-        tools: available_tool_classes,
+        tools: available_tool_classes
       )
       setup_langfuse_callbacks(think_asst.chat, provider: provider)
       @shared_messages.each do |msg|
@@ -287,7 +285,7 @@ module RedmineAiHelper
           usage = {
             prompt_tokens: message.input_tokens,
             completion_tokens: message.output_tokens,
-            total_tokens: (message.input_tokens || 0) + (message.output_tokens || 0),
+            total_tokens: (message.input_tokens || 0) + (message.output_tokens || 0)
           }
         end
 
@@ -309,7 +307,7 @@ module RedmineAiHelper
           messages: input_messages,
           model: provider.model_name,
           temperature: provider.temperature,
-          max_tokens: provider.max_tokens,
+          max_tokens: provider.max_tokens
         )&.finish(output: output, usage: usage)
       end
     end
@@ -353,7 +351,7 @@ module RedmineAiHelper
     def add_agent(name, class_name)
       agent = {
         name: name,
-        class: class_name,
+        class: class_name
       }
       @agents.delete_if { |a| a[:name] == name }
       @agents << agent
@@ -377,14 +375,14 @@ module RedmineAiHelper
     def list_agents
       @agents.filter_map { |a|
         # Skip if class name is nil or empty
-        next if a[:class].nil? || a[:class].empty?
+        next if a[:class].blank?
 
         begin
           agent = Object.const_get(a[:class]).new
           next unless agent.enabled?
           {
             agent_name: a[:name],
-            backstory: agent.backstory,
+            backstory: agent.backstory
           }
         rescue NameError => e
           # Skip agents whose classes don't exist or can't be loaded

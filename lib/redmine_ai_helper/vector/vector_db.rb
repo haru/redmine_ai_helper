@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 module RedmineAiHelper
   module Vector
     # This class is responsible for managing the vector database.
@@ -21,7 +22,7 @@ module RedmineAiHelper
           url: setting.vector_search_uri,
           api_key: setting.vector_search_api_key || "dummy",
           index_name: index_name,
-          llm_provider: @llm_provider,
+          llm_provider: @llm_provider
         )
         @client
       end
@@ -81,16 +82,16 @@ module RedmineAiHelper
               add_data(vector_data: vector_data, data: data, retry_flag: true)
             rescue => e
               unless ENV["RAILS_ENV"] == "test"
-                puts ""
-                puts "Error: #{index_name} ##{data.id}"
-                puts e.message
+                Rails.logger.debug ""
+                Rails.logger.debug { "Error: #{index_name} ##{data.id}" }
+                Rails.logger.debug e.message
               end
             end
           end
-          print "."
+          Rails.logger.debug "."
         end
         clean_vector_data
-        puts "" unless ENV["RAILS_ENV"] == "test"
+        Rails.logger.debug "" unless ENV["RAILS_ENV"] == "test"
       end
 
       # Registers a single data into the vector database.
@@ -103,13 +104,13 @@ module RedmineAiHelper
         text = json[:content]
         text = text[0..1500] if retry_flag and text.length
         payload = json[:payload]
-        if (vector_data)
-          client.add_texts(texts: [text], ids: [vector_data.uuid], payload: payload)
-          vector_data.updated_at = Time.now
+        if vector_data
+          client.add_texts(texts: [ text ], ids: [ vector_data.uuid ], payload: payload)
+          vector_data.updated_at = Time.zone.now
         else
           uuid = SecureRandom.uuid
           vector_data = AiHelperVectorData.new(object_id: data.id, index: index_name, uuid: uuid)
-          client.add_texts(texts: [text], ids: [uuid], payload: payload)
+          client.add_texts(texts: [ text ], ids: [ uuid ], payload: payload)
         end
 
         vector_data.save!
@@ -117,13 +118,13 @@ module RedmineAiHelper
 
       # Cleans up the vector data by removing any data that no longer exists in Redmine.
       def clean_vector_data
-        AiHelperVectorData.where(index: index_name).each do |vector_data|
+        AiHelperVectorData.where(index: index_name).find_each do |vector_data|
           if data_exists?(vector_data.object_id)
             next
           end
-          client.remove_texts(ids: [vector_data.uuid])
+          client.remove_texts(ids: [ vector_data.uuid ])
           vector_data.destroy!
-          print "." unless ENV["RAILS_ENV"] == "test"
+          Rails.logger.debug "." unless ENV["RAILS_ENV"] == "test"
         end
       end
 
@@ -137,7 +138,7 @@ module RedmineAiHelper
         client.ask_with_filter(
           query: query,
           k: k,
-          filter: filter,
+          filter: filter
         )
       end
 

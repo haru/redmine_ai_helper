@@ -23,7 +23,7 @@ module RedmineAiHelper
         yaml = YAML.safe_load(File.read(file_path))
         new(
           template: yaml["template"],
-          input_variables: yaml["input_variables"] || [],
+          input_variables: yaml["input_variables"] || []
         )
       end
 

@@ -12,8 +12,8 @@ class MCPToolAdapterTest < ActiveSupport::TestCase
         property :limit, type: "integer", description: "Maximum results", required: false
       end
 
-      def search_widgets(name:, limit: 10)
-        [{ id: 1, name: name }]
+      def search_widgets(name:, limit: 10) # rubocop:disable Lint/UnusedMethodArgument
+        [ { id: 1, name: name } ]
       end
     end
 
@@ -23,22 +23,26 @@ class MCPToolAdapterTest < ActiveSupport::TestCase
   context "MCPToolAdapter.adapt" do
     should "return an MCP::Tool subclass" do
       mcp_tool = RedmineAiHelper::Mcp::MCPToolAdapter.adapt(@ruby_tool_class)
-      assert mcp_tool < MCP::Tool
+
+      assert_operator mcp_tool, :<, MCP::Tool
     end
 
     should "map the tool name correctly" do
       mcp_tool = RedmineAiHelper::Mcp::MCPToolAdapter.adapt(@ruby_tool_class)
+
       assert_equal "search_widgets", mcp_tool.name_value
     end
 
     should "map the tool description correctly" do
       mcp_tool = RedmineAiHelper::Mcp::MCPToolAdapter.adapt(@ruby_tool_class)
+
       assert_equal "Search for widgets by name", mcp_tool.description_value
     end
 
     should "map the input_schema with required properties" do
       mcp_tool = RedmineAiHelper::Mcp::MCPToolAdapter.adapt(@ruby_tool_class)
       schema = mcp_tool.input_schema_value.to_h
+
       assert_equal "object", schema[:type].to_s
       assert schema[:properties].key?(:name) || schema[:properties].key?("name"),
              "input schema should contain 'name' property"
@@ -51,19 +55,22 @@ class MCPToolAdapterTest < ActiveSupport::TestCase
 
       should "return isError false on success" do
         result = @mcp_tool.call(name: "gizmo")
+
         assert_equal false, result[:isError]
       end
 
       should "return content array with type text on success" do
         result = @mcp_tool.call(name: "gizmo")
-        assert result[:content].is_a?(Array)
+
+        assert_kind_of Array, result[:content]
         assert_equal "text", result[:content].first[:type]
       end
 
       should "return JSON-encoded result in text content" do
         result = @mcp_tool.call(name: "gizmo")
         parsed = JSON.parse(result[:content].first[:text])
-        assert parsed.is_a?(Array)
+
+        assert_kind_of Array, parsed
         assert_equal "gizmo", parsed.first["name"]
       end
 
@@ -73,7 +80,7 @@ class MCPToolAdapterTest < ActiveSupport::TestCase
             property :dummy, type: "string", description: "Dummy", required: false
           end
 
-          def explode(dummy: nil)
+          def explode(dummy: nil) # rubocop:disable Lint/UnusedMethodArgument
             raise "Something went wrong"
           end
         end
@@ -81,6 +88,7 @@ class MCPToolAdapterTest < ActiveSupport::TestCase
         error_tool = error_tools_class.tool_classes.first
         mcp_tool = RedmineAiHelper::Mcp::MCPToolAdapter.adapt(error_tool)
         result = mcp_tool.call
+
         assert_equal true, result[:isError]
         assert_includes result[:content].first[:text], "Something went wrong"
       end

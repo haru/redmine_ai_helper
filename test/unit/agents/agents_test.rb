@@ -1,20 +1,19 @@
 require File.expand_path("../../../test_helper", __FILE__)
 
 class AgentsTest < ActiveSupport::TestCase
-  setup do
-  end
   context "BoardAgent" do
     setup do
       @agent = RedmineAiHelper::Agents::BoardAgent.new
     end
 
     should "return correct tool providers" do
-      assert_equal [RedmineAiHelper::Tools::BoardTools, RedmineAiHelper::Tools::FileTools], @agent.available_tool_providers
+      assert_equal [ RedmineAiHelper::Tools::BoardTools, RedmineAiHelper::Tools::FileTools ], @agent.available_tool_providers
     end
 
     should "return correct tool classes derived from providers" do
       expected = RedmineAiHelper::Tools::BoardTools.tool_classes +
                  RedmineAiHelper::Tools::FileTools.tool_classes
+
       assert_equal expected, @agent.available_tool_classes
     end
   end
@@ -30,8 +29,9 @@ class AgentsTest < ActiveSupport::TestCase
         RedmineAiHelper::Tools::ProjectTools,
         RedmineAiHelper::Tools::UserTools,
         RedmineAiHelper::Tools::IssueSearchTools,
-        RedmineAiHelper::Tools::FileTools,
+        RedmineAiHelper::Tools::FileTools
       ]
+
       assert_equal expected, @agent.available_tool_providers
     end
 
@@ -41,11 +41,12 @@ class AgentsTest < ActiveSupport::TestCase
                  RedmineAiHelper::Tools::UserTools.tool_classes +
                  RedmineAiHelper::Tools::IssueSearchTools.tool_classes +
                  RedmineAiHelper::Tools::FileTools.tool_classes
+
       assert_equal expected, @agent.available_tool_classes
     end
 
     should "return correct backstory" do
-      assert @agent.backstory.include?("You are a issue agent for the RedmineAIHelper plugin")
+      assert_includes @agent.backstory, "You are a issue agent for the RedmineAIHelper plugin"
     end
   end
 
@@ -59,8 +60,9 @@ class AgentsTest < ActiveSupport::TestCase
         RedmineAiHelper::Tools::IssueTools,
         RedmineAiHelper::Tools::IssueUpdateTools,
         RedmineAiHelper::Tools::ProjectTools,
-        RedmineAiHelper::Tools::UserTools,
+        RedmineAiHelper::Tools::UserTools
       ]
+
       assert_equal expected, @agent.available_tool_providers
     end
 
@@ -69,11 +71,12 @@ class AgentsTest < ActiveSupport::TestCase
                  RedmineAiHelper::Tools::IssueUpdateTools.tool_classes +
                  RedmineAiHelper::Tools::ProjectTools.tool_classes +
                  RedmineAiHelper::Tools::UserTools.tool_classes
+
       assert_equal expected, @agent.available_tool_classes
     end
 
     should "return correct backstory" do
-      assert @agent.backstory.include?("You are the issue update agent of the RedmineAIHelper plugin")
+      assert_includes @agent.backstory, "You are the issue update agent of the RedmineAIHelper plugin"
     end
   end
 
@@ -83,7 +86,7 @@ class AgentsTest < ActiveSupport::TestCase
     end
 
     should "return correct tool providers" do
-      assert_equal [RedmineAiHelper::Tools::RepositoryTools], @agent.available_tool_providers
+      assert_equal [ RedmineAiHelper::Tools::RepositoryTools ], @agent.available_tool_providers
     end
 
     should "return correct tool classes derived from providers" do
@@ -97,7 +100,7 @@ class AgentsTest < ActiveSupport::TestCase
     end
 
     should "return correct tool providers" do
-      assert_equal [RedmineAiHelper::Tools::SystemTools], @agent.available_tool_providers
+      assert_equal [ RedmineAiHelper::Tools::SystemTools ], @agent.available_tool_providers
     end
 
     should "return correct tool classes derived from providers" do
@@ -111,7 +114,7 @@ class AgentsTest < ActiveSupport::TestCase
     end
 
     should "return correct tool providers" do
-      assert_equal [RedmineAiHelper::Tools::UserTools], @agent.available_tool_providers
+      assert_equal [ RedmineAiHelper::Tools::UserTools ], @agent.available_tool_providers
     end
 
     should "return correct tool classes derived from providers" do
@@ -125,7 +128,7 @@ class AgentsTest < ActiveSupport::TestCase
     end
 
     should "return correct tool providers" do
-      assert_equal [RedmineAiHelper::Tools::ProjectTools], @agent.available_tool_providers
+      assert_equal [ RedmineAiHelper::Tools::ProjectTools ], @agent.available_tool_providers
     end
 
     should "return correct tool classes derived from providers" do
@@ -139,13 +142,14 @@ class AgentsTest < ActiveSupport::TestCase
     end
 
     should "return correct tool providers" do
-      assert_equal [RedmineAiHelper::Tools::WikiTools, RedmineAiHelper::Tools::WikiWriteTools, RedmineAiHelper::Tools::FileTools], @agent.available_tool_providers
+      assert_equal [ RedmineAiHelper::Tools::WikiTools, RedmineAiHelper::Tools::WikiWriteTools, RedmineAiHelper::Tools::FileTools ], @agent.available_tool_providers
     end
 
     should "return correct tool classes derived from providers" do
       expected = RedmineAiHelper::Tools::WikiTools.tool_classes +
                  RedmineAiHelper::Tools::WikiWriteTools.tool_classes +
                  RedmineAiHelper::Tools::FileTools.tool_classes
+
       assert_equal expected, @agent.available_tool_classes
     end
   end
@@ -156,7 +160,7 @@ class AgentsTest < ActiveSupport::TestCase
     end
 
     should "return correct tool providers" do
-      assert_equal [RedmineAiHelper::Tools::VersionTools], @agent.available_tool_providers
+      assert_equal [ RedmineAiHelper::Tools::VersionTools ], @agent.available_tool_providers
     end
 
     should "return correct tool classes derived from providers" do
@@ -175,8 +179,9 @@ class AgentsTest < ActiveSupport::TestCase
 
     should "return backstory" do
       backstory = @agent.backstory
+
       assert_not_nil backstory
-      assert backstory.is_a?(String)
+      assert_kind_of String, backstory
     end
 
     should "be disabled by default" do
@@ -192,7 +197,7 @@ class AgentsTest < ActiveSupport::TestCase
           [
             { function: { name: "tool_without_desc" } },
             { function: { description: "Description without name" } },
-            { function: {} },
+            { function: {} }
           ]
         end
 
@@ -227,10 +232,10 @@ class AgentsTest < ActiveSupport::TestCase
       backstory = agent.backstory
 
       # Should still generate backstory without crashing
-      assert backstory.include?("I am an AI agent specialized in using the test_server MCP server")
-      assert backstory.include?("I have access to the following tools:")
+      assert_includes backstory, "I am an AI agent specialized in using the test_server MCP server"
+      assert_includes backstory, "I have access to the following tools:"
       # Should handle missing data gracefully
-      assert backstory.include?("- No valid tools found")
+      assert_includes backstory, "- No valid tools found"
     end
   end
 end
