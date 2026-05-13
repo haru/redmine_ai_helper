@@ -112,7 +112,7 @@ class AiHelperHelperTest < ActionView::TestCase
       input = "<p>&lt;script&gt; #1234 &lt;/script&gt;</p>"
       html = linkify_issue_references(input)
       assert_includes html, %(<a href="/issues/1234">#1234</a>)
-      assert_no_match(/<script>/, html)
+      assert_no_match(/<script>/i, html)
     end
   end
 end
