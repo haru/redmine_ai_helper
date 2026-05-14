@@ -85,6 +85,14 @@ class AiHelper {
       return; // Chat input not present on this page
     }
 
+    // Prevent Redmine's "unsaved changes" beforeunload dialog from triggering
+    // for the chat input. Redmine listens for `change` on all textareas via a
+    // delegated handler on `document`. Stopping propagation here keeps the event
+    // local and the flag never gets set.
+    chatInput.addEventListener("change", function (e) {
+      e.stopPropagation();
+    });
+
     chatInput.addEventListener("keydown", function (e) {
       if (e.key === "Enter") {
         if (e.shiftKey) {
