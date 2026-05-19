@@ -207,6 +207,7 @@ en:
         temperature: "Temperature"
         organization_id: "Organization ID"
         base_uri: "Base URI"
+        http_proxy: "HTTP Proxy"
         max_tokens: "Max tokens"
       ai_helper_setting:
         model_profile_id: "Model profile"
