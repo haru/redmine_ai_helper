@@ -57,6 +57,12 @@
   <% end %>
 </p>
 <% end %>
+<% if @model_profile.http_proxy.present? %>
+<p>
+  <%= label_tag AiHelperModelProfile.human_attribute_name(:http_proxy) %>
+  <%= @model_profile.http_proxy %>
+</p>
+<% end %>
 <div id="ai_helper_model_type" style="display: none;"><%= @model_profile.llm_type %></div>
 
 <script>

@@ -18,6 +18,7 @@ module RedmineAiHelper
 
       def configure_provider_config(config)
         config.gemini_api_key = resolved_model_profile.access_key
+        configure_http_proxy(config)
       end
 
       # Build a RubyLLM::Context with Gemini API key.
@@ -27,6 +28,7 @@ module RedmineAiHelper
         raise "Model Profile not found" unless profile
         RubyLLM.context do |config|
           config.gemini_api_key = profile.access_key
+          configure_http_proxy(config)
         end
       end
     end

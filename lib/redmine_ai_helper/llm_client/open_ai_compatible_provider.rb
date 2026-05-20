@@ -35,6 +35,7 @@ module RedmineAiHelper
           config.openai_api_key = profile.access_key
           config.openai_api_base = profile.base_uri
           config.openai_use_system_role = true
+          configure_http_proxy(config)
         end
       end
     end
