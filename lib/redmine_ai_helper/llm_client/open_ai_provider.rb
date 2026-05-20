@@ -20,6 +20,7 @@ module RedmineAiHelper
         profile = resolved_model_profile
         config.openai_api_key = profile.access_key
         config.openai_organization_id = profile.organization_id if profile.organization_id
+        configure_http_proxy(config)
       end
 
       # Build a RubyLLM::Context with OpenAI API key and organization.
@@ -30,6 +31,7 @@ module RedmineAiHelper
         RubyLLM.context do |config|
           config.openai_api_key = profile.access_key
           config.openai_organization_id = profile.organization_id if profile.organization_id
+          configure_http_proxy(config)
         end
       end
     end

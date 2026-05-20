@@ -207,6 +207,7 @@ ja:
         temperature: "Temperature"
         organization_id: "Organization ID"
         base_uri: "ベースURI"
+        http_proxy: "HTTPプロキシ"
         max_tokens: "MAXトークン数"
       ai_helper_setting:
         model_profile_id: "モデル定義"

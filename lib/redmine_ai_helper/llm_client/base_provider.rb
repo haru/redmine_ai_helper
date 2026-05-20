@@ -114,6 +114,13 @@ module RedmineAiHelper
         # no-op
       end
 
+      # Configure HTTP proxy for the current profile if present.
+      # @param config [RubyLLM::Configuration]
+      def configure_http_proxy(config)
+        proxy = resolved_model_profile&.http_proxy
+        config.http_proxy = proxy if proxy.present? && config.respond_to?(:http_proxy=)
+      end
+
       # Build a RubyLLM::Context with provider-specific configuration.
       # Must be implemented by subclasses.
       # @return [RubyLLM::Context] provider-specific configuration context
