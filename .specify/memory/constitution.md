@@ -1,14 +1,13 @@
 <!--
 SYNC IMPACT REPORT
-==================
-Version change: 1.1.0 → 1.2.0
-Modified principles: N/A
+=================
+Version change: 1.2.0 → 1.3.0
+Modified principles:
+  - III. Simplicity (YAGNI) → III. Simplicity (KISS, DRY, YAGNI): expanded
+      to explicitly include KISS and DRY principles.
 Added sections:
-  - Development Workflow step 6: RuboCop check (mandatory gate)
-Modified sections:
-  - Development Workflow: added mandatory RuboCop gate after Refactor phase;
-      renumbered former steps 6–8 to steps 7–9.
-  - Code Standards: added "Code linting" row for RuboCop requirement.
+  - VI. Documentation & Architecture Decision Records: ADR requirements,
+      docs/ directory conventions, English-only policy.
 Removed sections: N/A
 Templates requiring updates:
   - .specify/templates/plan-template.md  ✅ No structural change needed.
@@ -54,10 +53,25 @@ Specifications in the `specs/` directory are AUTHORITATIVE and MANDATORY.
 **Rationale**: Design authority prevents drift between intent and
 implementation, especially in a multi-agent workflow where assumptions compound.
 
-### III. Simplicity (YAGNI)
+### III. Simplicity (KISS, DRY, YAGNI)
 
-Only implement what is directly requested or demonstrably necessary.
+Only implement what is directly requested or demonstrably necessary. Prefer
+straightforward solutions over clever ones.
 
+**KISS — Keep It Simple, Stupid**:
+- MUST NOT add complexity beyond what the task requires.
+- Straightforward, readable code is preferred over clever abstractions.
+- If a solution can be expressed in fewer, simpler lines without sacrificing
+  correctness, it MUST be preferred.
+
+**DRY — Don't Repeat Yourself**:
+- MUST NOT duplicate logic across the codebase; extract shared behaviour into
+  methods, modules, or concerns when the same pattern appears three or more
+  times.
+- MUST NOT create premature abstractions for two similar lines — three similar
+  occurrences justify extraction.
+
+**YAGNI — You Aren't Gonna Need It**:
 - MUST NOT add features, refactor surrounding code, or make "improvements"
   beyond the stated task scope.
 - MUST NOT implement fallback error handling — errors MUST surface immediately
@@ -65,7 +79,6 @@ Only implement what is directly requested or demonstrably necessary.
 - MUST NOT add backwards-compatibility shims, re-exports, or deprecation
   stubs for removed code — delete cleanly.
 - MUST NOT design for hypothetical future requirements.
-- Three similar lines of code is preferable to a premature abstraction.
 - Complexity beyond the minimum MUST be justified in the Complexity Tracking
   table of `plan.md`.
 
@@ -112,6 +125,32 @@ Security vulnerabilities MUST be treated as blocking defects.
 external AI services. A security failure could expose Redmine project data or
 allow privilege escalation.
 
+### VI. Documentation & Architecture Decision Records
+
+Project documentation MUST be maintained proactively and consistently.
+
+**Documentation directory (`docs/`)**:
+- Agents MUST reference existing documentation in `docs/` when relevant.
+  Document content MUST be inferred from filenames before reading.
+- New documentation files MUST have descriptive, self-explanatory filenames
+  that clearly convey the topic (e.g.,
+  `mcp_transport_configuration_examples.md`, not `notes.md`).
+- All documentation under `docs/` MUST be written in English.
+
+**Architecture Decision Records (`docs/adr/`)**:
+- ADRs MUST be written in `docs/adr/` for every significant design decision.
+- ADRs are append-only; existing records MUST NEVER be modified. Reversals
+  or supersessions MUST be recorded as new ADRs referencing the prior one.
+- If an agent is uncertain whether a decision warrants an ADR, it MUST ask
+  the user before proceeding.
+- ADRs MUST follow the standard format: title, context, decision, status,
+  and consequences.
+
+**Rationale**: ADRs preserve the reasoning behind architectural choices for
+future maintainers. An append-only policy ensures decision history is never
+lost or rewritten. English documentation ensures accessibility across the
+open-source contributor base.
+
 ## Development Workflow
 
 All feature work MUST follow this sequence:
@@ -135,6 +174,9 @@ Claude Code or any AI tooling in commit messages.
 Design documents in `specs/` MUST be created or updated before implementation
 begins for any non-trivial feature (see Principle II).
 
+ADR records in `docs/adr/` MUST be created when significant design decisions
+are made during planning or implementation (see Principle VI).
+
 ## Code Standards
 
 | Area | Requirement |
@@ -148,6 +190,8 @@ begins for any non-trivial feature (see Principle II).
 | Documentation | YARD for all public APIs; MUST run `yard stats --list-undoc` after implementation and fix all undocumented items before PR review |
 | File creation | Prefer editing existing files; create new files only when necessary |
 | Error handling | Surface errors immediately; NEVER add silent fallbacks |
+| ADR | Write in `docs/adr/` for significant design decisions; append-only |
+| docs/ files | Descriptive English filenames; all content in English |
 
 ## Governance
 
@@ -172,4 +216,4 @@ section in `plan.md` serves this purpose for planned features.
 For runtime development guidance not covered by this constitution, refer to
 `CLAUDE.md`.
 
-**Version**: 1.2.0 | **Ratified**: 2026-02-27 | **Last Amended**: 2026-05-07
+**Version**: 1.3.0 | **Ratified**: 2026-02-27 | **Last Amended**: 2026-05-23

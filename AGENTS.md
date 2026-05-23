@@ -12,6 +12,28 @@ Core Rails plugin code lives under `app/`, following standard MVC groupings (`ap
 - `yard stats --list-undoc` — check YARD documentation coverage.
 - Vector maintenance (production only): `bundle exec rake redmine:plugins:ai_helper:vector:generate`, `:regist`, `:destroy`.
 
+## Design Principles
+
+Follow **KISS** (Keep It Simple), **DRY** (Don't Repeat Yourself), and **YAGNI** (You Aren't Gonna Need It):
+- Write the simplest code that satisfies the requirement — no speculative abstractions
+- Extract shared logic only when duplication is proven (≥3 occurrences), not preemptively
+- Never add features, helpers, or error handling that aren't required by the current task
+
+## Documentation
+
+Technical documentation lives in `docs/`. Use file names to determine the topic before opening a file.
+- When adding a new doc, use a clear, descriptive English file name (e.g., `docs/vector_search_overview.md`)
+- **All docs/ content must be written in English**
+- MCP transport examples: [`docs/mcp_transport_configuration_examples.md`](docs/mcp_transport_configuration_examples.md)
+
+### Architecture Decision Records (ADR)
+
+ADRs live in `docs/adr/`. Write an ADR for every significant architectural decision.
+- **When to write**: new architectural pattern, key library choice, non-obvious trade-off, deliberate deviation from defaults
+- **When unsure**: ask the user before proceeding
+- **Format**: use the template in [`docs/adr/README.md`](docs/adr/README.md)
+- **Append-only**: never modify or delete past ADRs — add a new one to supersede
+
 ## Coding Style & Naming Conventions
 
 ### Ruby
