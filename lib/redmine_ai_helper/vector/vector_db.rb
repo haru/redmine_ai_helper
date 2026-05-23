@@ -4,6 +4,8 @@ module RedmineAiHelper
   module Vector
     # This class is responsible for managing the vector database.
     class VectorDb
+      include RedmineAiHelper::Logger
+
       attr_accessor :llm_provider
 
       # Initializes the VectorDb with an optional LLM provider.
@@ -47,6 +49,41 @@ module RedmineAiHelper
       def generate_schema
         vector_size = detect_vector_size
         client.create_default_schema(vector_size: vector_size)
+        ensure_payload_indexes
+      end
+
+      # Declarations of payload indexes required by this collection.
+      # Subclasses must override to return an array of
+      # { field_name: String, field_schema: String } hashes.
+      # @return [Array<Hash>] declarations
+      def payload_index_declarations
+        raise NotImplementedError, "payload_index_declarations method must be implemented in subclass"
+      end
+
+      # Ensure the payload indexes declared by this collection exist on Qdrant.
+      # Fetches the current payload schema once, then for each declaration either
+      # creates a missing index, skips a matching one, or reports a type mismatch.
+      # @return [Hash<String, Symbol>] field_name => :created | :matching | :mismatch
+      def ensure_payload_indexes
+        existing = client.fetch_payload_schema
+        payload_index_declarations.each_with_object({}) do |declaration, result|
+          field_name = declaration[:field_name]
+          expected_schema = declaration[:field_schema]
+          existing_schema = existing[field_name]
+
+          state =
+            if existing_schema.nil?
+              client.create_payload_index(field_name: field_name, field_schema: expected_schema)
+              :created
+            elsif existing_schema == expected_schema
+              :matching
+            else
+              :mismatch
+            end
+
+          log_payload_index_result(field_name, expected_schema, existing_schema, state)
+          result[field_name] = state
+        end
       end
 
       # Detects the vector dimension by embedding a short test text.
@@ -155,6 +192,21 @@ module RedmineAiHelper
       # @return [String] The JSON representation of the data.
       def data_to_jsontext(data)
         data.to_json
+      end
+
+      private
+
+      # Emit a single line describing the per-field payload index decision.
+      def log_payload_index_result(field_name, expected_schema, existing_schema, state)
+        message = case state
+        when :created
+                    "[#{index_name}] #{field_name} #{expected_schema} created"
+        when :matching
+                    "[#{index_name}] #{field_name} #{expected_schema} matching"
+        when :mismatch
+                    "[#{index_name}] #{field_name} MISMATCH (existing: #{existing_schema}, expected: #{expected_schema})"
+        end
+        ai_helper_logger.info(message)
       end
     end
   end

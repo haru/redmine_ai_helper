@@ -12,10 +12,30 @@ module RedmineAiHelper
       include ROUTE_HELPERS
       include RedmineAiHelper::Logger
 
+      PAYLOAD_INDEX_DECLARATIONS = [
+        { field_name: "project_id",     field_schema: "integer" },
+        { field_name: "tracker_id",     field_schema: "integer" },
+        { field_name: "status_id",      field_schema: "integer" },
+        { field_name: "priority_id",    field_schema: "integer" },
+        { field_name: "author_id",      field_schema: "integer" },
+        { field_name: "assigned_to_id", field_schema: "integer" },
+        { field_name: "version_id",     field_schema: "integer" },
+        { field_name: "created_on",     field_schema: "datetime" },
+        { field_name: "updated_on",     field_schema: "datetime" },
+        { field_name: "due_date",       field_schema: "datetime" }
+      ].freeze
+
       # Return the name of the vector index used for this store.
       # @return [String] the canonical index identifier for the issue embedding index.
       def index_name
         "RedmineIssue"
+      end
+
+      # Payload fields that require a Qdrant index so filtered searches work
+      # under strict-mode Qdrant Cloud (FR-001 / FR-003).
+      # @return [Array<Hash>] field_name / field_schema entries
+      def payload_index_declarations
+        PAYLOAD_INDEX_DECLARATIONS
       end
 
       # Checks whether an Issue with the specified ID exists.

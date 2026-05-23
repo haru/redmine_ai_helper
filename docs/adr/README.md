@@ -53,4 +53,4 @@ Briefly describe alternatives that were rejected and why.
 
 | ADR | Title | Status |
 |-----|-------|--------|
-| (none yet) | | |
+| [001](./001-qdrant-payload-index-strategy.md) | Auto-create Qdrant payload indexes for filtered fields | Proposed |
