@@ -5,6 +5,7 @@ class VectorRakeTest < ActiveSupport::TestCase
   TASK_NAME = "redmine:plugins:ai_helper:vector:ensure_indexes"
 
   setup do
+    @original_rake_application = Rake.application
     Rake.application = Rake::Application.new
     Rails.application.load_tasks
     @task = Rake::Task[TASK_NAME]
@@ -30,17 +31,12 @@ class VectorRakeTest < ActiveSupport::TestCase
     @wiki_db.stubs(:payload_index_declarations).returns([
       { field_name: "project_id", field_schema: "integer" }
     ])
-    @issue_client = mock("issue_client")
-    @wiki_client = mock("wiki_client")
-    @issue_db.stubs(:client).returns(@issue_client)
-    @wiki_db.stubs(:client).returns(@wiki_client)
-    @issue_client.stubs(:fetch_payload_schema).returns({})
-    @wiki_client.stubs(:fetch_payload_schema).returns({})
   end
 
   teardown do
     @setting.vector_search_enabled = false
     @setting.save!
+    Rake.application = @original_rake_application
   end
 
   context "ensure_indexes rake task" do
@@ -55,27 +51,29 @@ class VectorRakeTest < ActiveSupport::TestCase
     end
 
     should "invoke ensure_payload_indexes on both vector dbs when enabled" do
-      @issue_db.expects(:ensure_payload_indexes).returns({ "project_id" => :matching, "tracker_id" => :created }).once
-      @wiki_db.expects(:ensure_payload_indexes).returns({ "project_id" => :created }).once
+      @issue_db.expects(:ensure_payload_indexes).returns({ results: { "project_id" => :matching, "tracker_id" => :created }, schema: {} }).once
+      @wiki_db.expects(:ensure_payload_indexes).returns({ results: { "project_id" => :created }, schema: {} }).once
 
       capture_io_from_task
     end
 
     should "exit 0 when every result is :created or :matching" do
-      @issue_db.stubs(:ensure_payload_indexes).returns({ "project_id" => :matching, "tracker_id" => :created })
-      @wiki_db.stubs(:ensure_payload_indexes).returns({ "project_id" => :created })
+      @issue_db.stubs(:ensure_payload_indexes).returns({ results: { "project_id" => :matching, "tracker_id" => :created }, schema: {} })
+      @wiki_db.stubs(:ensure_payload_indexes).returns({ results: { "project_id" => :created }, schema: {} })
 
       output = capture_io_from_task
       assert_match(/ensure_indexes completed\./, output[:stdout])
     end
 
     should "continue processing and exit non-zero when any field is :mismatch (FR-008)" do
-      @issue_client.stubs(:fetch_payload_schema).returns({ "tracker_id" => "keyword" })
       @issue_db.stubs(:ensure_payload_indexes).returns({
-        "project_id" => :matching,
-        "tracker_id" => :mismatch
+        results: {
+          "project_id" => :matching,
+          "tracker_id" => :mismatch
+        },
+        schema: { "tracker_id" => "keyword" }
       })
-      @wiki_db.stubs(:ensure_payload_indexes).returns({ "project_id" => :created })
+      @wiki_db.stubs(:ensure_payload_indexes).returns({ results: { "project_id" => :created }, schema: {} })
 
       error = assert_raises(SystemExit) do
         capture_io_from_task

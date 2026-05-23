@@ -195,9 +195,9 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
 
         result = @instance.ensure_payload_indexes
 
-        assert_equal :matching, result["project_id"]
-        assert_equal :mismatch, result["tracker_id"]
-        assert_equal :created, result["created_on"]
+        assert_equal :matching, result[:results]["project_id"]
+        assert_equal :mismatch, result[:results]["tracker_id"]
+        assert_equal :created, result[:results]["created_on"]
       end
 
       should "log each per-field result via ai_helper_logger.info" do
@@ -230,7 +230,8 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
 
         result = @instance.ensure_payload_indexes
 
-        assert_equal({ "project_id" => :matching, "tracker_id" => :matching, "created_on" => :matching }, result)
+        assert_equal({ "project_id" => :matching, "tracker_id" => :matching, "created_on" => :matching }, result[:results])
+        assert_equal({ "project_id" => "integer", "tracker_id" => "integer", "created_on" => "datetime" }, result[:schema])
       end
     end
 

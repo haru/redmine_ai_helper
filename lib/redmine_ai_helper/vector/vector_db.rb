@@ -63,10 +63,12 @@ module RedmineAiHelper
       # Ensure the payload indexes declared by this collection exist on Qdrant.
       # Fetches the current payload schema once, then for each declaration either
       # creates a missing index, skips a matching one, or reports a type mismatch.
-      # @return [Hash<String, Symbol>] field_name => :created | :matching | :mismatch
+      # @return [Hash{ results: Hash<String, Symbol>, schema: Hash }]
+      #   results: field_name => :created | :matching | :mismatch
+      #   schema:  the fetched payload schema
       def ensure_payload_indexes
         existing = client.fetch_payload_schema
-        payload_index_declarations.each_with_object({}) do |declaration, result|
+        results = payload_index_declarations.each_with_object({}) do |declaration, result|
           field_name = declaration[:field_name]
           expected_schema = declaration[:field_schema]
           existing_schema = existing[field_name]
@@ -84,6 +86,7 @@ module RedmineAiHelper
           log_payload_index_result(field_name, expected_schema, existing_schema, state)
           result[field_name] = state
         end
+        { results: results, schema: existing }
       end
 
       # Detects the vector dimension by embedding a short test text.

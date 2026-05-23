@@ -50,9 +50,9 @@ namespace :redmine do
             declarations = vector_db.payload_index_declarations.each_with_object({}) do |decl, h|
               h[decl[:field_name]] = decl[:field_schema]
             end
-            existing_schema = vector_db.client.fetch_payload_schema
-            results = vector_db.ensure_payload_indexes
-            results.each do |field_name, state|
+            payload_result = vector_db.ensure_payload_indexes
+            existing_schema = payload_result[:schema]
+            payload_result[:results].each do |field_name, state|
               expected = declarations[field_name]
               case state
               when :created, :matching
