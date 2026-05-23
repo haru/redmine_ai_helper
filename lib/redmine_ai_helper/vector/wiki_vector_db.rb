@@ -10,6 +10,7 @@ module RedmineAiHelper
     class WikiVectorDb < VectorDb
       include ROUTE_HELPERS
 
+      # @!visibility private
       PAYLOAD_INDEX_DECLARATIONS = [
         { field_name: "project_id", field_schema: "integer" },
         { field_name: "created_on", field_schema: "datetime" },

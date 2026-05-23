@@ -12,6 +12,7 @@ module RedmineAiHelper
       include ROUTE_HELPERS
       include RedmineAiHelper::Logger
 
+      # @!visibility private
       PAYLOAD_INDEX_DECLARATIONS = [
         { field_name: "project_id",     field_schema: "integer" },
         { field_name: "tracker_id",     field_schema: "integer" },
