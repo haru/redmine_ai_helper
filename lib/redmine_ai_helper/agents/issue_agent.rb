@@ -343,6 +343,7 @@ module RedmineAiHelper
 
         notes[0..4].map { |note| "#{note[:user_name]} (#{note[:created_on]}): #{note[:notes]}" }.join("\n")
       end
+      private :format_recent_notes
 
       # Suggest stuff to do today with streaming support
       # @param stream_proc [Proc] Optional callback proc for streaming content
