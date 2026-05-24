@@ -49,6 +49,16 @@ class RedmineAiHelper::Vector::IssueVectorDbTest < ActiveSupport::TestCase
       end
     end
 
+    context "data_exists?" do
+      should "return true when issue exists" do
+        assert_equal true, @vector_db.data_exists?(@issue.id)
+      end
+
+      should "return false when issue does not exist" do
+        assert_equal false, @vector_db.data_exists?(999999)
+      end
+    end
+
     context "payload_index_declarations" do
       should "return the 10-entry declaration list in stable order" do
         expected = [
@@ -104,19 +114,13 @@ class RedmineAiHelper::Vector::IssueVectorDbTest < ActiveSupport::TestCase
         assert_match(/Keywords:\s*authentication, login, API, timeout/, content)
       end
 
-      should "fallback to raw content when analyzer fails" do
-        # Mock IssueContentAnalyzer to raise an error
+      should "raise error when analyzer fails (no fallback)" do
         @mock_analyzer.expects(:analyze).with(@issue).raises(StandardError.new("LLM call failed"))
         RedmineAiHelper::Vector::IssueContentAnalyzer.expects(:new).returns(@mock_analyzer)
 
-        json_data = @vector_db.data_to_json(@issue)
-        content = json_data[:content]
-
-        # Verify fallback to raw content (current behavior)
-        assert_includes content, @issue.subject, "Content should include the issue subject"
-        # Verify it doesn't have the structured format
-        assert_no_match(/^Summary:/, content)
-        assert_no_match(/^Keywords:/, content)
+        assert_raises(StandardError, "LLM call failed") do
+          @vector_db.data_to_json(@issue)
+        end
       end
 
       should "include Title, Summary, Keywords, Description sections in content" do
@@ -137,7 +141,6 @@ class RedmineAiHelper::Vector::IssueVectorDbTest < ActiveSupport::TestCase
       end
 
       should "truncate description to 500 characters" do
-        # Create a long description
         long_description = "A" * 600
         @issue.description = long_description
 
@@ -147,15 +150,25 @@ class RedmineAiHelper::Vector::IssueVectorDbTest < ActiveSupport::TestCase
         json_data = @vector_db.data_to_json(@issue)
         content = json_data[:content]
 
-        # Extract the Description section from content
         description_match = content.match(/Description:\s*(.+)/m)
 
         assert description_match, "Content should have Description section"
 
         description_text = description_match[1].strip
-        # Description should be truncated to 500 chars + "..."
         assert_operator description_text.length, :<=, 503, "Description should be truncated to 500 characters plus ellipsis"
         assert description_text.end_with?("..."), "Truncated description should end with ellipsis"
+      end
+
+      should "truncate nil description to empty string" do
+        @issue.description = nil
+
+        @mock_analyzer.expects(:analyze).with(@issue).returns(@analysis_result)
+        RedmineAiHelper::Vector::IssueContentAnalyzer.expects(:new).returns(@mock_analyzer)
+
+        json_data = @vector_db.data_to_json(@issue)
+        content = json_data[:content]
+
+        assert_match(/Description:\s*$/, content)
       end
     end
   end

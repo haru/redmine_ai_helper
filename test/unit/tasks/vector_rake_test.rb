@@ -97,6 +97,128 @@ class VectorRakeTest < ActiveSupport::TestCase
   end
 end
 
+class VectorGenerateRakeTest < ActiveSupport::TestCase
+  GENERATE_TASK = "redmine:plugins:ai_helper:vector:generate"
+
+  setup do
+    @original_rake_application = Rake.application
+    Rake.application = Rake::Application.new
+    Rails.application.load_tasks
+    @task = Rake::Task[GENERATE_TASK]
+
+    TOPLEVEL_BINDING.eval("@issue_vector_db = nil; @wiki_vector_db = nil; @llm_provider = nil")
+
+    @setting = AiHelperSetting.find_or_create
+    @setting.vector_search_enabled = true
+    @setting.vector_search_uri = "http://example.com"
+    @setting.save!
+
+    @issue_db = mock("IssueVectorDb")
+    @wiki_db = mock("WikiVectorDb")
+    RedmineAiHelper::Vector::IssueVectorDb.stubs(:new).returns(@issue_db)
+    RedmineAiHelper::Vector::WikiVectorDb.stubs(:new).returns(@wiki_db)
+  end
+
+  teardown do
+    @setting.vector_search_enabled = false
+    @setting.save!
+    Rake.application = @original_rake_application
+  end
+
+  context "generate rake task" do
+    should "invoke generate_schema on both vector dbs when enabled" do
+      @issue_db.expects(:generate_schema).once
+      @wiki_db.expects(:generate_schema).once
+
+      capture_generate_output
+    end
+
+    should "skip with message when vector_search_enabled is false" do
+      @setting.vector_search_enabled = false
+      @setting.save!
+
+      output = capture_generate_output
+      assert_match(/Vector search is not enabled\. Skipping generation\./, output[:stdout])
+    end
+  end
+
+  private
+
+  def capture_generate_output
+    @task.reenable
+    stdout = StringIO.new
+    original_stdout = $stdout
+    $stdout = stdout
+    begin
+      @task.invoke
+    ensure
+      $stdout = original_stdout
+    end
+    { stdout: stdout.string }
+  end
+end
+
+class VectorDestroyRakeTest < ActiveSupport::TestCase
+  DESTROY_TASK = "redmine:plugins:ai_helper:vector:destroy"
+
+  setup do
+    @original_rake_application = Rake.application
+    Rake.application = Rake::Application.new
+    Rails.application.load_tasks
+    @task = Rake::Task[DESTROY_TASK]
+
+    TOPLEVEL_BINDING.eval("@issue_vector_db = nil; @wiki_vector_db = nil; @llm_provider = nil")
+
+    @setting = AiHelperSetting.find_or_create
+    @setting.vector_search_enabled = true
+    @setting.vector_search_uri = "http://example.com"
+    @setting.save!
+
+    @issue_db = mock("IssueVectorDb")
+    @wiki_db = mock("WikiVectorDb")
+    RedmineAiHelper::Vector::IssueVectorDb.stubs(:new).returns(@issue_db)
+    RedmineAiHelper::Vector::WikiVectorDb.stubs(:new).returns(@wiki_db)
+  end
+
+  teardown do
+    @setting.vector_search_enabled = false
+    @setting.save!
+    Rake.application = @original_rake_application
+  end
+
+  context "destroy rake task" do
+    should "invoke destroy_schema on both vector dbs when enabled" do
+      @issue_db.expects(:destroy_schema).once
+      @wiki_db.expects(:destroy_schema).once
+
+      capture_destroy_output
+    end
+
+    should "skip with message when vector_search_enabled is false" do
+      @setting.vector_search_enabled = false
+      @setting.save!
+
+      output = capture_destroy_output
+      assert_match(/Vector search is not enabled\. Skipping destruction\./, output[:stdout])
+    end
+  end
+
+  private
+
+  def capture_destroy_output
+    @task.reenable
+    stdout = StringIO.new
+    original_stdout = $stdout
+    $stdout = stdout
+    begin
+      @task.invoke
+    ensure
+      $stdout = original_stdout
+    end
+    { stdout: stdout.string }
+  end
+end
+
 class VectorRegistRakeTest < ActiveSupport::TestCase
   fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :enabled_modules, :wikis, :wiki_pages, :wiki_contents
 
@@ -139,7 +261,7 @@ class VectorRegistRakeTest < ActiveSupport::TestCase
     should "only register issues from ai_helper enabled projects" do
       enabled_issues = @project_with_module.issues.to_a
 
-      @issue_db.expects(:add_datas).once
+      @issue_db.expects(:add_datas).with(datas: enabled_issues).once
       @wiki_db.stubs(:add_datas)
       @issue_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
       @wiki_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
@@ -152,7 +274,7 @@ class VectorRegistRakeTest < ActiveSupport::TestCase
       enabled_wikis = WikiPage.joins(wiki: :project).where(wikis: { project_id: @project_with_module.id }).to_a
 
       @issue_db.stubs(:add_datas)
-      @wiki_db.expects(:add_datas).once
+      @wiki_db.expects(:add_datas).with(datas: enabled_wikis).once
       @issue_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
       @wiki_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
 

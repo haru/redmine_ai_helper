@@ -6,7 +6,7 @@ module RedmineAiHelper
   module Vector
     # @!visibility private
     ROUTE_HELPERS = Rails.application.routes.url_helpers unless const_defined?(:ROUTE_HELPERS)
-    # This class is responsible for managing the vector database for issues in Redmine.
+    # This class is responsible for managing the vector database for wiki pages in Redmine.
     class WikiVectorDb < VectorDb
       include ROUTE_HELPERS
 
@@ -30,8 +30,9 @@ module RedmineAiHelper
         PAYLOAD_INDEX_DECLARATIONS
       end
 
-      # Checks whether an Issue with the specified ID exists.
-      # @param object_id [Integer] The ID of the issue to check.
+      # Checks whether a WikiPage with the specified ID exists.
+      # @param object_id [Integer] The ID of the wiki page to check.
+      # @return [Boolean] true if the wiki page exists in Redmine's database.
       def data_exists?(object_id)
         WikiPage.exists?(id: object_id)
       end
@@ -39,11 +40,7 @@ module RedmineAiHelper
       # @param object_id [Integer] The ID of the wiki page to check.
       # @return [Boolean] true if the wiki page exists and its project has ai_helper module enabled.
       def data_in_scope?(object_id)
-        wiki_page = WikiPage.find_by(id: object_id)
-        return false unless wiki_page
-        project = wiki_page.wiki&.project
-        return false unless project
-        project.module_enabled?(:ai_helper)
+        WikiPage.find_by(id: object_id)&.wiki&.project&.module_enabled?(:ai_helper) || false
       end
 
       # A method to generate content and payload for registering a wiki page into the vector database
@@ -61,7 +58,7 @@ module RedmineAiHelper
           parent_title: wiki.parent_title,
           page_url: "#{project_wiki_page_path(wiki.project, wiki.title)}"
         }
-        content = "#{wiki.title} #{wiki.content.text}"
+        content = "#{wiki.title} #{wiki.content&.text}"
 
         { content: content, payload: payload }
       end

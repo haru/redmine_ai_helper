@@ -35,7 +35,7 @@ namespace :redmine do
           end
         end
 
-        desc "generate"
+        desc "Generate vector index schema for Redmine AI Helper"
         task generate: :environment do
           if enabled?
             puts "Generating vector index for Redmine AI Helper..."

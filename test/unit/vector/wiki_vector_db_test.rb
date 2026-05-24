@@ -14,6 +14,16 @@ class RedmineAiHelper::Vector::WikiVectorDbTest < ActiveSupport::TestCase
       assert_equal "RedmineWiki", @vector_db.index_name
     end
 
+    context "data_exists?" do
+      should "return true when wiki page exists" do
+        assert_equal true, @vector_db.data_exists?(@page.id)
+      end
+
+      should "return false when wiki page does not exist" do
+        assert_equal false, @vector_db.data_exists?(999999)
+      end
+    end
+
     should "convert wiki data to JSON text" do
       json_data = @vector_db.data_to_json(@page)
 

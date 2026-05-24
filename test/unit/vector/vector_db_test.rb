@@ -57,22 +57,36 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
       assert @issue_vector_db.destroy_schema
     end
 
-    context "add_datas" do
-      should "add vector data" do
-        issue = Issue.first
-        issue.description = "#{"a" * 2000}"
-        issue.save!
-        issues = Issue.all
-        @issue_vector_db.add_datas(datas: issues)
+      context "add_datas" do
+        should "add vector data" do
+          issue = Issue.first
+          issue.description = "#{"a" * 2000}"
+          issue.save!
+          issues = Issue.all
+          @issue_vector_db.add_datas(datas: issues)
 
-        assert issues.length, AiHelperVectorData.all.length
-        issue.subject = "aaaa"
-        issue.save!
-        issues = Issue.all
-        @issue_vector_db.add_datas(datas: issues)
+          assert issues.length, AiHelperVectorData.all.length
+          issue.subject = "aaaa"
+          issue.save!
+          issues = Issue.all
+          @issue_vector_db.add_datas(datas: issues)
 
-        assert issues.length, AiHelperVectorData.all.length
-      end
+          assert issues.length, AiHelperVectorData.all.length
+        end
+
+        should "skip data that is already up-to-date" do
+          issue = Issue.first
+          issue.description = "#{"a" * 2000}"
+          issue.save!
+
+          @issue_vector_db.add_datas(datas: [ issue ])
+
+          client_mock = mock("client")
+          client_mock.expects(:add_texts).never
+          @issue_vector_db.stubs(:client).returns(client_mock)
+
+          @issue_vector_db.add_datas(datas: [ issue ])
+        end
 
       should "not call clean_vector_data internally" do
         issue = Issue.first

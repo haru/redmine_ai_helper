@@ -16,17 +16,15 @@ module RedmineAiHelper
 
       # Returns the vector search client.
       # Currently, it uses Qdrant as the vector search client.
-      # @return [Object] The vector search client.
+      # @return [Object, nil] The vector search client, or nil if vector search is disabled.
       def client
         return nil unless setting.vector_search_enabled
-        return @client if @client
-        @client = RedmineAiHelper::Vector::Qdrant.new(
+        @client ||= RedmineAiHelper::Vector::Qdrant.new(
           url: setting.vector_search_uri,
           api_key: setting.vector_search_api_key || "dummy",
           index_name: index_name,
           llm_provider: @llm_provider
         )
-        @client
       end
 
       # Returns the setting for the vector database.
@@ -41,6 +39,8 @@ module RedmineAiHelper
 
       # This method checks whether the object stored in the vector DB exists in Redmine's database.
       # It is necessary to implement this method because objects stored in the vector DB may have been deleted in Redmine.
+      # @param object_id [Integer] The ID of the object to check.
+      # @return [Boolean] true if the object exists in Redmine's database.
       def data_exists?(object_id)
         raise NotImplementedError, "data_exists? method must be implemented in subclass"
       end
@@ -55,6 +55,7 @@ module RedmineAiHelper
 
       # Generates the schema for the vector database. Must be executed once before registering data.
       def generate_schema
+        return unless client
         vector_size = detect_vector_size
         client.create_default_schema(vector_size: vector_size)
         ensure_payload_indexes
@@ -75,6 +76,7 @@ module RedmineAiHelper
       #   results: field_name => :created | :matching | :mismatch
       #   schema:  the fetched payload schema
       def ensure_payload_indexes
+        return unless client
         existing = client.fetch_payload_schema
         results = payload_index_declarations.each_with_object({}) do |declaration, result|
           field_name = declaration[:field_name]
@@ -111,7 +113,7 @@ module RedmineAiHelper
         begin
           client.destroy_default_schema
         rescue Faraday::ResourceNotFound
-          # do nothing
+          ai_helper_logger.info("[#{index_name}] destroy_schema: collection not found (already destroyed)")
         end
         AiHelperVectorData.where(index: index_name).destroy_all
       end
@@ -125,20 +127,14 @@ module RedmineAiHelper
           next if vector_data and data.updated_on < vector_data.updated_at
           begin
             add_data(vector_data: vector_data, data: data)
-          rescue => e
+          rescue Faraday::Error
             begin
               add_data(vector_data: vector_data, data: data, retry_flag: true)
-            rescue => e
-              unless ENV["RAILS_ENV"] == "test"
-                Rails.logger.debug ""
-                Rails.logger.debug { "Error: #{index_name} ##{data.id}" }
-                Rails.logger.debug e.message
-              end
+            rescue Faraday::Error => e
+              ai_helper_logger.error("[#{index_name}] add_data failed ##{data.id}: #{e.class}: #{e.message}")
             end
           end
-          Rails.logger.debug "."
         end
-        Rails.logger.debug "" unless ENV["RAILS_ENV"] == "test"
       end
 
       # Remove vector data whose source object is no longer in scope (deleted source
@@ -171,7 +167,7 @@ module RedmineAiHelper
       def add_data(vector_data:, data:, retry_flag: false)
         json = data_to_json(data)
         text = json[:content]
-        text = text[0..1500] if retry_flag and text.length
+        text = text[0..1500] if retry_flag && text.length > 1500
         payload = json[:payload]
         if vector_data
           client.add_texts(texts: [ text ], ids: [ vector_data.uuid ], payload: payload)
@@ -185,11 +181,11 @@ module RedmineAiHelper
         vector_data.save!
       end
 
-      # search issues from vector db with filter fo payload.
+      # Search data from vector database with filter for payload.
       # @param query [String] The query string to search for.
       # @param filter [Hash] The filter to apply to the search.
       # @param k [Integer] The number of results to return.
-      # @return [Array] An array of issues that match the query and filter.
+      # @return [Array] An array of results that match the query and filter.
       def ask_with_filter(query:, filter: nil, k: 20)
         return [] unless client
         client.ask_with_filter(
@@ -202,8 +198,10 @@ module RedmineAiHelper
       # Searches for similar data in the vector database.
       # @param question [String] The query string to search for.
       # @param k [Integer] The number of results to return.
+      # @param filter [Hash, nil] The filter to apply to the search.
       # @return [Array] An array of similar data that match the query.
       def similarity_search(question:, k: 10, filter: nil)
+        return [] unless client
         client.similarity_search(query: question, k: k, filter: filter)
       end
 
