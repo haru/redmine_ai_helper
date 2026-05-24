@@ -178,6 +178,7 @@ module RedmineAiHelper
 
       # Dynamically create MCP agent subclass
       def create_mcp_agent_subclass(class_name, server_name, mcp_client)
+        loader = self
         sub_agent_class = Class.new(RedmineAiHelper::BaseAgent) do
           @server_name = server_name
           @mcp_client = mcp_client
@@ -186,22 +187,10 @@ module RedmineAiHelper
             attr_reader :server_name, :mcp_client
           end
 
-          define_method :role do
-            # Use the same identifier as registration (class underscored), e.g. AiHelperMcpSlack -> ai_helper_mcp_slack
-            self.class.name.split("::").last.underscore
-          end
-
-          define_method :name do
-            class_name
-          end
-
-          define_method :to_s do
-            class_name
-          end
-
-          define_method :enabled? do
-            true
-          end
+          define_method(:role) { self.class.name.split("::").last.underscore }
+          define_method(:name) { class_name }
+          define_method(:to_s) { class_name }
+          define_method(:enabled?) { true }
 
           define_method :available_tool_classes do
             return @cached_tool_classes if @cached_tool_classes
@@ -218,61 +207,43 @@ module RedmineAiHelper
           # (MCP tools are RubyLLM::Tool instances, not classes)
           define_method :available_tools do
             available_tool_classes.map do |tool|
-              {
-                function: {
-                  name: tool.name,
-                  description: tool.description
-                }
-              }
+              { function: { name: tool.name, description: tool.description } }
             end
           end
 
           define_method :backstory do
-            # Cache backstory to avoid regeneration for the same MCP agent class
             return @cached_backstory if @cached_backstory
 
-            # Generate backstory strictly from prompt template (no fallback)
-            prompt = load_prompt("mcp_agent/backstory")
-            base_backstory = prompt.format(server_name: server_name)
-
-            tools_info = ""
+            base = load_prompt("mcp_agent/backstory").format(server_name: server_name)
             begin
-              tools_list = available_tools
-              if tools_list.is_a?(Array) && !tools_list.empty?
-                tools_info += "\n\nAvailable tools (#{server_name}):\n"
-                tools_list.each do |tool|
-                  if tool.is_a?(Hash) && tool.dig(:function, :description)
-                    description = tool.dig(:function, :description)
-                    tools_info += "- #{description}\n"
-                  end
-                end
-              else
-                tools_info += "\n\nNo tools available at the moment for #{server_name}."
-              end
+              tools_info = loader.format_mcp_tools_info(server_name, available_tools)
             rescue => e
-              # Log tool info retrieval errors but do not mask prompt issues
               ai_helper_logger.error "Error retrieving tools information for '#{server_name}': #{e.message}"
               raise
             end
-
-            @cached_backstory = base_backstory + tools_info
+            @cached_backstory = base + tools_info
           end
 
-          # Set class name with singleton method
-          define_singleton_method :name do
-            class_name
-          end
-
-          define_singleton_method :to_s do
-            class_name
-          end
+          define_singleton_method(:name) { class_name }
+          define_singleton_method(:to_s) { class_name }
         end
 
-        # Set as constant
         Object.const_set(class_name, sub_agent_class)
-
-        # Register with BaseAgent
         RedmineAiHelper::BaseAgent.register_pending_dynamic_class(sub_agent_class, class_name)
+      end
+
+      public
+
+      # Format the tools info section of an MCP agent backstory.
+      def format_mcp_tools_info(server_name, tools_list)
+        return "\n\nNo tools available at the moment for #{server_name}." unless tools_list.is_a?(Array) && !tools_list.empty?
+
+        info = "\n\nAvailable tools (#{server_name}):\n"
+        tools_list.each do |tool|
+          description = tool.is_a?(Hash) ? tool.dig(:function, :description) : nil
+          info += "- #{description}\n" if description
+        end
+        info
       end
     end
   end

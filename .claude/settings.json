@@ -36,7 +36,8 @@
       "Bash(.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks)",
       "Bash(rubocop lib/redmine_ai_helper/vector/qdrant.rb lib/redmine_ai_helper/vector/vector_db.rb lib/redmine_ai_helper/vector/issue_vector_db.rb lib/redmine_ai_helper/vector/wiki_vector_db.rb lib/tasks/vector.rake test/unit/vector/qdrant_test.rb test/unit/vector/vector_db_test.rb test/unit/vector/issue_vector_db_test.rb test/unit/vector/wiki_vector_db_test.rb test/unit/tasks/vector_rake_test.rb)",
       "Bash(rubocop -a lib/redmine_ai_helper/vector/qdrant.rb lib/redmine_ai_helper/vector/vector_db.rb lib/redmine_ai_helper/vector/issue_vector_db.rb lib/redmine_ai_helper/vector/wiki_vector_db.rb lib/tasks/vector.rake test/unit/vector/qdrant_test.rb test/unit/vector/vector_db_test.rb test/unit/vector/issue_vector_db_test.rb test/unit/vector/wiki_vector_db_test.rb test/unit/tasks/vector_rake_test.rb)",
-      "Bash(bash .specify/extensions/git/scripts/bash/create-new-feature.sh --json --short-name \"vector-scope-by-module\" \"Limit vectorDB registration to projects with ai_helper module enabled\")"
+      "Bash(bash .specify/extensions/git/scripts/bash/create-new-feature.sh --json --short-name \"vector-scope-by-module\" \"Limit vectorDB registration to projects with ai_helper module enabled\")",
+      "Bash(sh .devcontainer/regression-check.sh)"
     ],
     "additionalDirectories": [
       "/usr/local/redmine/plugins/redmine_ai_helper/.claude/skills",
