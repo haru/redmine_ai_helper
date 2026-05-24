@@ -303,5 +303,93 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         @qdrant.destroy_default_schema
       end
     end
+
+    context "create_payload_index" do
+      should "delegate to client.collections.create_index and return response body" do
+        response_body = { "status" => "ok", "time" => 0.0, "result" => { "operation_id" => 1, "status" => "acknowledged" } }
+        @mock_client.stubs(:collections).returns(@mock_collections)
+        @mock_collections.expects(:create_index).with(
+          collection_name: "test_collection",
+          field_name: "project_id",
+          field_schema: "integer"
+        ).returns(response_body)
+
+        result = @qdrant.create_payload_index(field_name: "project_id", field_schema: "integer")
+
+        assert_equal response_body, result
+      end
+
+      should "re-raise Faraday errors without fallback" do
+        @mock_client.stubs(:collections).returns(@mock_collections)
+        @mock_collections.expects(:create_index).raises(Faraday::ServerError.new("boom"))
+
+        assert_raises(Faraday::ServerError) do
+          @qdrant.create_payload_index(field_name: "project_id", field_schema: "integer")
+        end
+      end
+    end
+
+    context "fetch_payload_schema" do
+      should "return field_name => data_type hash" do
+        @mock_client.stubs(:collections).returns(@mock_collections)
+        @mock_collections.expects(:get).with(collection_name: "test_collection").returns(
+          {
+            "status" => "ok",
+            "result" => {
+              "payload_schema" => {
+                "project_id" => { "data_type" => "integer", "points" => 100 },
+                "created_on" => { "data_type" => "datetime", "points" => 100 }
+              }
+            }
+          }
+        )
+
+        result = @qdrant.fetch_payload_schema
+
+        assert_equal({ "project_id" => "integer", "created_on" => "datetime" }, result)
+      end
+
+      should "return empty hash when payload_schema is missing" do
+        @mock_client.stubs(:collections).returns(@mock_collections)
+        @mock_collections.expects(:get).with(collection_name: "test_collection").returns(
+          { "status" => "ok", "result" => {} }
+        )
+
+        assert_equal({}, @qdrant.fetch_payload_schema)
+      end
+
+      should "return empty hash when payload_schema is an empty hash" do
+        @mock_client.stubs(:collections).returns(@mock_collections)
+        @mock_collections.expects(:get).with(collection_name: "test_collection").returns(
+          { "status" => "ok", "result" => { "payload_schema" => {} } }
+        )
+
+        assert_equal({}, @qdrant.fetch_payload_schema)
+      end
+
+      should "re-raise Faraday errors without fallback" do
+        @mock_client.stubs(:collections).returns(@mock_collections)
+        @mock_collections.expects(:get).raises(Faraday::ConnectionFailed.new("boom"))
+
+        assert_raises(Faraday::ConnectionFailed) do
+          @qdrant.fetch_payload_schema
+        end
+      end
+    end
+
+    context "delete_payload_index" do
+      should "delegate to client.collections.delete_index" do
+        response_body = { "status" => "ok", "result" => true }
+        @mock_client.stubs(:collections).returns(@mock_collections)
+        @mock_collections.expects(:delete_index).with(
+          collection_name: "test_collection",
+          field_name: "project_id"
+        ).returns(response_body)
+
+        result = @qdrant.delete_payload_index(field_name: "project_id")
+
+        assert_equal response_body, result
+      end
+    end
   end
 end

@@ -10,10 +10,24 @@ module RedmineAiHelper
     class WikiVectorDb < VectorDb
       include ROUTE_HELPERS
 
+      # @!visibility private
+      PAYLOAD_INDEX_DECLARATIONS = [
+        { field_name: "project_id", field_schema: "integer" },
+        { field_name: "created_on", field_schema: "datetime" },
+        { field_name: "updated_on", field_schema: "datetime" }
+      ].freeze
+
       # Return the name of the vector index used for this store.
       # @return [String] the canonical index identifier for the wiki embedding index.
       def index_name
         "RedmineWiki"
+      end
+
+      # Payload fields that require a Qdrant index so filtered searches work
+      # under strict-mode Qdrant Cloud (FR-002 / FR-003).
+      # @return [Array<Hash>] field_name / field_schema entries
+      def payload_index_declarations
+        PAYLOAD_INDEX_DECLARATIONS
       end
 
       # Checks whether an Issue with the specified ID exists.

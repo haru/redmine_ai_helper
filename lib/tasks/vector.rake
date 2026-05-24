@@ -36,6 +36,43 @@ namespace :redmine do
           end
         end
 
+        desc "Ensure Qdrant payload indexes exist for existing collections (retrofit)"
+        task ensure_indexes: :environment do
+          unless enabled?
+            puts "Vector search is not enabled. Skipping."
+            next
+          end
+
+          mismatch_found = false
+
+          [ issue_vector_db, wiki_vector_db ].each do |vector_db|
+            puts "[#{vector_db.index_name}]"
+            declarations = vector_db.payload_index_declarations.each_with_object({}) do |decl, h|
+              h[decl[:field_name]] = decl[:field_schema]
+            end
+            payload_result = vector_db.ensure_payload_indexes
+            existing_schema = payload_result[:schema]
+            payload_result[:results].each do |field_name, state|
+              expected = declarations[field_name]
+              case state
+              when :created, :matching
+                puts "  #{field_name.ljust(15)} #{expected.ljust(9)} #{state}"
+              when :mismatch
+                existing = existing_schema[field_name]
+                puts "  #{field_name.ljust(15)} #{expected.ljust(9)} MISMATCH (existing: #{existing}, expected: #{expected})"
+                mismatch_found = true
+              end
+            end
+          end
+
+          if mismatch_found
+            puts "ensure_indexes completed with mismatch. Manual action required."
+            exit 1
+          else
+            puts "ensure_indexes completed."
+          end
+        end
+
         desc "Destroy vector data for Redmine AI Helper"
         task destroy: :environment do
           if enabled?

@@ -61,6 +61,8 @@ services:
       - 6333:6333
     volumes:
       - ./qdrant/storage:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__ENABLE_STRICT_MODE: "true"
 
   browserless:
     image: browserless/chrome
