@@ -46,7 +46,7 @@ Metrics/ClassLength:
     - "test/**/*"
 
 Metrics/CyclomaticComplexity:
-  Max: 30
+  Max: 20
   Exclude:
     - "test/**/*"
     - "lib/redmine_ai_helper/tools/**/*"
