@@ -39,6 +39,12 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
       end
     end
 
+    should "raise NotImplementedError with data_in_scope?" do
+      assert_raises NotImplementedError do
+        @vector_db.data_in_scope?(1)
+      end
+    end
+
     should "not error with generate_schema" do
       mock_provider = mock("llm_provider")
       mock_provider.stubs(:embed).returns([ 0.1 ] * 3072)
@@ -68,16 +74,52 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
         assert issues.length, AiHelperVectorData.all.length
       end
 
-      context "clean_vector_data" do
-        should "deletes data" do
-          issues = Issue.all
-          @issue_vector_db.add_datas(datas: issues)
-          issues.first.destroy!
-          issues = Issue.all
-          @issue_vector_db.clean_vector_data
+      should "not call clean_vector_data internally" do
+        issue = Issue.first
+        issue.description = "#{"a" * 2000}"
+        issue.save!
 
-          assert issues.length, AiHelperVectorData.all.length
-          @issue_vector_db.clean_vector_data
+        @issue_vector_db.expects(:clean_vector_data).never
+        @issue_vector_db.add_datas(datas: [ issue ])
+      end
+
+      context "clean_vector_data" do
+        should "deletes data whose source is no longer in scope" do
+          issue = Issue.first
+          issue.description = "#{"a" * 2000}"
+          issue.save!
+          @issue_vector_db.add_datas(datas: [ issue ])
+
+          issue.destroy!
+          result = @issue_vector_db.clean_vector_data
+
+          assert_equal({ deleted: 1, failed: 0 }, result)
+        end
+
+        should "return hash with deleted and failed counts" do
+          result = @issue_vector_db.clean_vector_data
+
+          assert_instance_of Hash, result
+          assert result.key?(:deleted)
+          assert result.key?(:failed)
+          assert_kind_of Integer, result[:deleted]
+          assert_kind_of Integer, result[:failed]
+        end
+
+        should "log warn and increment failed counter on individual Qdrant failure" do
+          issue = Issue.first
+          @issue_vector_db.add_datas(datas: [ issue ])
+
+          @qdrant_stub.instance_variable_set(:@next_remove_fails, true)
+
+          logger = RedmineAiHelper::CustomLogger.instance
+          logger.expects(:warn).at_least_once.with(regexp_matches(/failed to remove vector_data/))
+
+          @issue_vector_db.stubs(:data_in_scope?).returns(false)
+          result = @issue_vector_db.clean_vector_data
+
+          assert_equal 1, result[:failed]
+          assert_equal 0, result[:deleted]
         end
       end
     end
@@ -257,6 +299,10 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
   class QdrantStub
     attr_reader :last_filter
 
+    def initialize
+      @next_remove_fails = false
+    end
+
     def create_default_schema(vector_size: 1536) # rubocop:disable Lint/UnusedMethodArgument
       ""
     end
@@ -272,6 +318,10 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
     end
 
     def remove_texts(ids:) # rubocop:disable Lint/UnusedMethodArgument
+      if @next_remove_fails
+        @next_remove_fails = false
+        raise Faraday::ServerError.new("Qdrant remove failed")
+      end
       true
     end
 

@@ -3,7 +3,7 @@ require "redmine_ai_helper/vector/issue_vector_db"
 require "redmine_ai_helper/vector/issue_content_analyzer"
 
 class RedmineAiHelper::Vector::IssueVectorDbTest < ActiveSupport::TestCase
-  fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :journals
+  fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :journals, :enabled_modules
 
   context "IssueVectorDb" do
     setup do
@@ -23,6 +23,30 @@ class RedmineAiHelper::Vector::IssueVectorDbTest < ActiveSupport::TestCase
 
       assert_equal @issue.id, payload[:issue_id]
       assert_equal @issue.project.name, payload[:project_name]
+    end
+
+    context "data_in_scope?" do
+      setup do
+        @project = Project.find(1)
+        @issue = Issue.find(1)
+      end
+
+      should "return true when project has ai_helper module enabled" do
+        @project.enabled_modules.create!(name: "ai_helper")
+        assert_equal true, @vector_db.data_in_scope?(@issue.id)
+      end
+
+      should "return false when project does not have ai_helper module enabled" do
+        @project.enabled_modules.where(name: "ai_helper").destroy_all
+        assert_equal false, @vector_db.data_in_scope?(@issue.id)
+      end
+
+      should "return false when issue has been deleted" do
+        @project.enabled_modules.create!(name: "ai_helper")
+        issue_id = @issue.id
+        @issue.destroy!
+        assert_equal false, @vector_db.data_in_scope?(issue_id)
+      end
     end
 
     context "payload_index_declarations" do

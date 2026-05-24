@@ -45,6 +45,15 @@ module RedmineAiHelper
         Issue.exists?(id: object_id)
       end
 
+      # @param object_id [Integer] The ID of the issue to check.
+      # @return [Boolean] true if the issue exists and its project has ai_helper module enabled.
+      def data_in_scope?(object_id)
+        issue = Issue.find_by(id: object_id)
+        return false unless issue
+        return false unless issue.project
+        issue.project.module_enabled?(:ai_helper)
+      end
+
       # A method to generate content and payload for registering an issue into the vector database
       # @param issue [Issue] The issue to be registered.
       # @return [Hash] A hash containing the content and payload for the issue.

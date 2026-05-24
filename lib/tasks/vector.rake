@@ -13,12 +13,22 @@ namespace :redmine do
             issue_vector_db.generate_schema
             wiki_vector_db.generate_schema
             puts "Registering vector data for Redmine AI Helper..."
-            issues = Issue.order(:id).all
+
+            ai_helper_projects = Project.joins(:enabled_modules).where(enabled_modules: { name: "ai_helper" })
+            issues = Issue.where(project_id: ai_helper_projects).order(:id).to_a
             puts "Issues: #{issues.count} items"
             issue_vector_db.add_datas(datas: issues)
-            wikis = WikiPage.order(:id).all
+
+            wikis = WikiPage.joins(wiki: :project).where(wikis: { project_id: ai_helper_projects }).order(:id).to_a
             puts "Wiki Pages: #{wikis.count} items"
             wiki_vector_db.add_datas(datas: wikis)
+
+            issue_result = issue_vector_db.clean_vector_data
+            puts "Removed issue vector data: #{issue_result[:deleted]} (failed: #{issue_result[:failed]})"
+
+            wiki_result = wiki_vector_db.clean_vector_data
+            puts "Removed wiki vector data: #{wiki_result[:deleted]} (failed: #{wiki_result[:failed]})"
+
             puts "Vector data registration completed."
           else
             puts "Vector search is not enabled. Skipping registration."

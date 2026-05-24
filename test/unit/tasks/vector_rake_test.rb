@@ -10,7 +10,6 @@ class VectorRakeTest < ActiveSupport::TestCase
     Rails.application.load_tasks
     @task = Rake::Task[TASK_NAME]
 
-    # Clear memoized rake-task helpers (defined on TOPLEVEL_BINDING via `def` in vector.rake).
     TOPLEVEL_BINDING.eval("@issue_vector_db = nil; @wiki_vector_db = nil; @llm_provider = nil")
 
     @setting = AiHelperSetting.find_or_create
@@ -85,6 +84,221 @@ class VectorRakeTest < ActiveSupport::TestCase
   private
 
   def capture_io_from_task
+    @task.reenable
+    stdout = StringIO.new
+    original_stdout = $stdout
+    $stdout = stdout
+    begin
+      @task.invoke
+    ensure
+      $stdout = original_stdout
+    end
+    { stdout: stdout.string }
+  end
+end
+
+class VectorRegistRakeTest < ActiveSupport::TestCase
+  fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :enabled_modules, :wikis, :wiki_pages, :wiki_contents
+
+  REGIST_TASK = "redmine:plugins:ai_helper:vector:regist"
+
+  setup do
+    @original_rake_application = Rake.application
+    Rake.application = Rake::Application.new
+    Rails.application.load_tasks
+    @task = Rake::Task[REGIST_TASK]
+
+    TOPLEVEL_BINDING.eval("@issue_vector_db = nil; @wiki_vector_db = nil; @llm_provider = nil")
+
+    @setting = AiHelperSetting.find_or_create
+    @setting.vector_search_enabled = true
+    @setting.vector_search_uri = "http://example.com"
+    @setting.save!
+
+    @project_with_module = Project.find(1)
+    @project_with_module.enabled_modules.create!(name: "ai_helper")
+    @project_without_module = Project.find(2)
+
+    @issue_db = mock("IssueVectorDb")
+    @wiki_db = mock("WikiVectorDb")
+    RedmineAiHelper::Vector::IssueVectorDb.stubs(:new).returns(@issue_db)
+    RedmineAiHelper::Vector::WikiVectorDb.stubs(:new).returns(@wiki_db)
+    @issue_db.stubs(:index_name).returns("RedmineIssue")
+    @wiki_db.stubs(:index_name).returns("RedmineWiki")
+    @issue_db.stubs(:generate_schema)
+    @wiki_db.stubs(:generate_schema)
+  end
+
+  teardown do
+    @setting.vector_search_enabled = false
+    @setting.save!
+    Rake.application = @original_rake_application
+  end
+
+  context "regist rake task - US1" do
+    should "only register issues from ai_helper enabled projects" do
+      enabled_issues = @project_with_module.issues.to_a
+
+      @issue_db.expects(:add_datas).once
+      @wiki_db.stubs(:add_datas)
+      @issue_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+      @wiki_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+
+      output = capture_regist_output
+      assert_match(/Issues: #{enabled_issues.count} items/, output[:stdout])
+    end
+
+    should "only register wiki pages from ai_helper enabled projects" do
+      enabled_wikis = WikiPage.joins(wiki: :project).where(wikis: { project_id: @project_with_module.id }).to_a
+
+      @issue_db.stubs(:add_datas)
+      @wiki_db.expects(:add_datas).once
+      @issue_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+      @wiki_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+
+      output = capture_regist_output
+      assert_match(/Wiki Pages: #{enabled_wikis.count} items/, output[:stdout])
+    end
+
+    should "register 0 items and exit normally when no projects have ai_helper enabled" do
+      @project_with_module.enabled_modules.where(name: "ai_helper").destroy_all
+      @project_without_module.enabled_modules.where(name: "ai_helper").destroy_all
+
+      @issue_db.expects(:add_datas).once
+      @wiki_db.expects(:add_datas).once
+      @issue_db.expects(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+      @wiki_db.expects(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+
+      output = capture_regist_output
+      assert_match(/Issues: 0 items/, output[:stdout])
+      assert_match(/Wiki Pages: 0 items/, output[:stdout])
+      assert_match(/Vector data registration completed\./, output[:stdout])
+    end
+
+    should "register all issues and wiki when all projects have ai_helper enabled" do
+      @project_without_module.enabled_modules.create!(name: "ai_helper")
+      enabled_project_ids = Project.joins(:enabled_modules).where(enabled_modules: { name: "ai_helper" }).pluck(:id)
+      expected_issue_count = Issue.where(project_id: enabled_project_ids).count
+      expected_wiki_count = WikiPage.joins(wiki: :project).where(wikis: { project_id: enabled_project_ids }).count
+
+      @issue_db.expects(:add_datas).once
+      @wiki_db.expects(:add_datas).once
+      @issue_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+      @wiki_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+
+      output = capture_regist_output
+      assert_match(/Issues: #{expected_issue_count} items/, output[:stdout])
+      assert_match(/Wiki Pages: #{expected_wiki_count} items/, output[:stdout])
+    end
+
+    should "log cleanup counts after registration" do
+      @issue_db.stubs(:add_datas)
+      @wiki_db.stubs(:add_datas)
+      @issue_db.expects(:clean_vector_data).returns({ deleted: 3, failed: 1 })
+      @wiki_db.expects(:clean_vector_data).returns({ deleted: 2, failed: 0 })
+
+      output = capture_regist_output
+      assert_match(/Removed issue vector data: 3 \(failed: 1\)/, output[:stdout])
+      assert_match(/Removed wiki vector data: 2 \(failed: 0\)/, output[:stdout])
+    end
+  end
+
+  context "regist rake task - US2" do
+    should "register pre-existing issues from a newly enabled project" do
+      @project_without_module.enabled_modules.create!(name: "ai_helper")
+      enabled_project_ids = Project.joins(:enabled_modules).where(enabled_modules: { name: "ai_helper" }).pluck(:id)
+      expected_issue_count = Issue.where(project_id: enabled_project_ids).count
+
+      @issue_db.expects(:add_datas).once
+      @wiki_db.stubs(:add_datas)
+      @issue_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+      @wiki_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+
+      output = capture_regist_output
+      assert_match(/Issues: #{expected_issue_count} items/, output[:stdout])
+    end
+
+    should "register pre-existing wiki pages from a newly enabled project" do
+      @project_without_module.enabled_modules.create!(name: "ai_helper")
+      enabled_project_ids = Project.joins(:enabled_modules).where(enabled_modules: { name: "ai_helper" }).pluck(:id)
+      expected_wiki_count = WikiPage.joins(wiki: :project).where(wikis: { project_id: enabled_project_ids }).count
+
+      @issue_db.stubs(:add_datas)
+      @wiki_db.expects(:add_datas).once
+      @issue_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+      @wiki_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+
+      output = capture_regist_output
+      assert_match(/Wiki Pages: #{expected_wiki_count} items/, output[:stdout])
+    end
+  end
+
+  context "regist rake task - US3" do
+    should "delete issue vector data from projects where ai_helper was disabled" do
+      @project_with_module.enabled_modules.where(name: "ai_helper").destroy_all
+
+      @issue_db.stubs(:add_datas)
+      @wiki_db.stubs(:add_datas)
+      @issue_db.expects(:clean_vector_data).returns({ deleted: 5, failed: 0 })
+      @wiki_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+
+      output = capture_regist_output
+      assert_match(/Removed issue vector data: 5 \(failed: 0\)/, output[:stdout])
+    end
+
+    should "delete wiki vector data from projects where ai_helper was disabled" do
+      @project_with_module.enabled_modules.where(name: "ai_helper").destroy_all
+
+      @issue_db.stubs(:add_datas)
+      @wiki_db.stubs(:add_datas)
+      @issue_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+      @wiki_db.expects(:clean_vector_data).returns({ deleted: 3, failed: 0 })
+
+      output = capture_regist_output
+      assert_match(/Removed wiki vector data: 3 \(failed: 0\)/, output[:stdout])
+    end
+
+    should "not delete vector data from projects that remain ai_helper enabled" do
+      @issue_db.stubs(:add_datas)
+      @wiki_db.stubs(:add_datas)
+      @issue_db.expects(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+      @wiki_db.expects(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+
+      output = capture_regist_output
+      assert_match(/Removed issue vector data: 0 \(failed: 0\)/, output[:stdout])
+      assert_match(/Removed wiki vector data: 0 \(failed: 0\)/, output[:stdout])
+    end
+
+    should "re-register data after re-enabling a disabled project" do
+      @project_with_module.enabled_modules.where(name: "ai_helper").destroy_all
+      @project_without_module.enabled_modules.create!(name: "ai_helper")
+
+      enabled_issues = @project_without_module.issues.order(:id).to_a
+      WikiPage.joins(wiki: :project).where(wikis: { project_id: @project_without_module.id }).order(:id).to_a
+
+      @issue_db.expects(:add_datas).once
+      @wiki_db.expects(:add_datas).once
+      @issue_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+      @wiki_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+
+      output = capture_regist_output
+      assert_match(/Issues: #{enabled_issues.count} items/, output[:stdout])
+    end
+  end
+
+  context "regist rake task - edge cases" do
+    should "skip with message when vector_search_enabled is false" do
+      @setting.vector_search_enabled = false
+      @setting.save!
+
+      output = capture_regist_output
+      assert_match(/Vector search is not enabled\. Skipping registration\./, output[:stdout])
+    end
+  end
+
+  private
+
+  def capture_regist_output
     @task.reenable
     stdout = StringIO.new
     original_stdout = $stdout

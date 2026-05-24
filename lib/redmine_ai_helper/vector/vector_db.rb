@@ -45,6 +45,14 @@ module RedmineAiHelper
         raise NotImplementedError, "data_exists? method must be implemented in subclass"
       end
 
+      # Whether the source object identified by object_id still belongs to a project
+      # whose ai_helper module is enabled. Subclasses MUST implement this.
+      # @param object_id [Integer] Issue.id or WikiPage.id
+      # @return [Boolean] true if the source exists AND its project has ai_helper module enabled
+      def data_in_scope?(object_id)
+        raise NotImplementedError, "data_in_scope? method must be implemented in subclass"
+      end
+
       # Generates the schema for the vector database. Must be executed once before registering data.
       def generate_schema
         vector_size = detect_vector_size
@@ -130,8 +138,29 @@ module RedmineAiHelper
           end
           Rails.logger.debug "."
         end
-        clean_vector_data
         Rails.logger.debug "" unless ENV["RAILS_ENV"] == "test"
+      end
+
+      # Remove vector data whose source object is no longer in scope (deleted source
+      # or project with ai_helper module disabled). Returns aggregated counts.
+      # @return [Hash{Symbol => Integer}] { deleted: Integer, failed: Integer }
+      def clean_vector_data
+        deleted = 0
+        failed = 0
+        AiHelperVectorData.where(index: index_name).find_each do |vector_data|
+          next if data_in_scope?(vector_data.object_id)
+          begin
+            client.remove_texts(ids: [ vector_data.uuid ])
+            vector_data.destroy!
+            deleted += 1
+          rescue => e
+            failed += 1
+            ai_helper_logger.warn(
+              "[#{index_name}] failed to remove vector_data id=#{vector_data.id} uuid=#{vector_data.uuid}: #{e.class}: #{e.message}"
+            )
+          end
+        end
+        { deleted: deleted, failed: failed }
       end
 
       # Registers a single data into the vector database.
@@ -154,18 +183,6 @@ module RedmineAiHelper
         end
 
         vector_data.save!
-      end
-
-      # Cleans up the vector data by removing any data that no longer exists in Redmine.
-      def clean_vector_data
-        AiHelperVectorData.where(index: index_name).find_each do |vector_data|
-          if data_exists?(vector_data.object_id)
-            next
-          end
-          client.remove_texts(ids: [ vector_data.uuid ])
-          vector_data.destroy!
-          Rails.logger.debug "." unless ENV["RAILS_ENV"] == "test"
-        end
       end
 
       # search issues from vector db with filter fo payload.

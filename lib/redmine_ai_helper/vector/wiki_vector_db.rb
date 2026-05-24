@@ -36,6 +36,16 @@ module RedmineAiHelper
         WikiPage.exists?(id: object_id)
       end
 
+      # @param object_id [Integer] The ID of the wiki page to check.
+      # @return [Boolean] true if the wiki page exists and its project has ai_helper module enabled.
+      def data_in_scope?(object_id)
+        wiki_page = WikiPage.find_by(id: object_id)
+        return false unless wiki_page
+        project = wiki_page.wiki&.project
+        return false unless project
+        project.module_enabled?(:ai_helper)
+      end
+
       # A method to generate content and payload for registering a wiki page into the vector database
       # @param wiki [WikiPage] The wiki page to be registered
       # @return [Hash] A hash containing the content and payload for the wiki page
