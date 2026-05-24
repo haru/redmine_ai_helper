@@ -271,7 +271,7 @@ class VectorRegistRakeTest < ActiveSupport::TestCase
     end
 
     should "only register wiki pages from ai_helper enabled projects" do
-      enabled_wikis = WikiPage.joins(wiki: :project).where(wikis: { project_id: @project_with_module.id }).to_a
+      enabled_wikis = WikiPage.joins(wiki: :project).where(wikis: { project_id: @project_with_module.id }).order(:id).to_a
 
       @issue_db.stubs(:add_datas)
       @wiki_db.expects(:add_datas).with(datas: enabled_wikis).once
