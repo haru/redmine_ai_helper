@@ -41,7 +41,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     container:
-      image: ruby:3.4
+      image: ruby:4.0
     steps:
       - uses: actions/checkout@v6
       - name: Install RuboCop
