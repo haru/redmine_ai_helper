@@ -24,7 +24,7 @@ Metrics:
   Enabled: true
 
 Metrics/AbcSize:
-  Max: 50
+  Max: 45
   Exclude:
     - "test/**/*"
     - "lib/redmine_ai_helper/tools/**/*"

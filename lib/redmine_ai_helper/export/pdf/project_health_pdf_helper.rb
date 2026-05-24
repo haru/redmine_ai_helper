@@ -47,32 +47,50 @@ module RedmineAiHelper
 
         def render_pdf_header_section(pdf, project, left_margin, text_align)
           pdf.set_x(left_margin)
+          render_pdf_header_titles(pdf, project, text_align)
+          render_pdf_project_info(pdf, project, text_align)
+          render_pdf_project_description(pdf, project, text_align) if project.description.present?
+          render_pdf_created_on(pdf, text_align)
+          render_pdf_section_separator(pdf, text_align)
+        end
+
+        def render_pdf_header_titles(pdf, project, text_align)
           pdf.SetFontStyle("B", 16)
           pdf.cell(0, 10, project.name.to_s, 0, 0, text_align)
           pdf.ln(8)
           pdf.SetFontStyle("B", 14)
           pdf.cell(0, 8, l("ai_helper.project_health.pdf_title"), 0, 0, text_align)
           pdf.ln(10)
+        end
+
+        def render_pdf_project_info(pdf, project, text_align)
           pdf.SetFontStyle("B", 12)
           pdf.cell(0, 6, l(:field_project), 0, 0, text_align)
           pdf.ln(6)
           pdf.SetFontStyle("", 10)
           pdf.multi_cell(0, 5, "#{project.name} (#{project.identifier})", 0, text_align)
           pdf.ln(2)
-          if project.description.present?
-            pdf.SetFontStyle("B", 10)
-            pdf.cell(0, 5, l(:field_description), 0, 0, text_align)
-            pdf.ln(5)
-            pdf.SetFontStyle("", 10)
-            pdf.multi_cell(0, 5, project.description, 0, text_align)
-            pdf.ln(2)
-          end
+        end
+
+        def render_pdf_project_description(pdf, project, text_align)
+          pdf.SetFontStyle("B", 10)
+          pdf.cell(0, 5, l(:field_description), 0, 0, text_align)
+          pdf.ln(5)
+          pdf.SetFontStyle("", 10)
+          pdf.multi_cell(0, 5, project.description, 0, text_align)
+          pdf.ln(2)
+        end
+
+        def render_pdf_created_on(pdf, text_align)
           pdf.SetFontStyle("B", 10)
           pdf.cell(0, 5, l(:field_created_on), 0, 0, text_align)
           pdf.ln(5)
           pdf.SetFontStyle("", 10)
           pdf.cell(0, 5, Time.current.strftime("%Y-%m-%d %H:%M:%S"), 0, 0, text_align)
           pdf.ln(5)
+        end
+
+        def render_pdf_section_separator(pdf, text_align)
           pdf.line(pdf.get_x, pdf.get_y, pdf.get_x + 180, pdf.get_y)
           pdf.ln(8)
           pdf.SetFontStyle("B", 12)

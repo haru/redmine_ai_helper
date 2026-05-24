@@ -279,73 +279,69 @@ module RedmineAiHelper
       # @return [String] The completion suggestion
       def generate_text_completion(text:, cursor_position: nil, context_type: "description", project: nil, issue: nil, context: nil)
         begin
-          # Build context if not provided (for backward compatibility)
-          if context.nil?
-            context = build_completion_context(text, context_type, project, issue)
-          end
-
-          # Use direct LLM call for simple text completion without tools
-          # This is faster and more suitable for inline completion
+          context ||= build_completion_context(text, context_type, project, issue)
 
           prefix_text = cursor_position ? text[0...cursor_position] : text
           suffix_text = (cursor_position && cursor_position < text.length) ? text[cursor_position..-1] : ""
 
-          # Determine which template to use based on context type
           actual_context_type = context[:context_type] || context_type || "description"
           template_name = actual_context_type == "note" ? "issue_agent/note_inline_completion" : "issue_agent/inline_completion"
 
-          # Load prompt template using PromptLoader
           prompt = load_prompt(template_name)
-
-          # Prepare template variables
-          template_vars = {
-            prefix_text: prefix_text,
-            suffix_text: suffix_text,
-            issue_title: context[:issue_title] || "New Issue",
-            project_name: context[:project_name] || "Unknown Project",
-            cursor_position: cursor_position.to_s,
-            max_sentences: "3",
-            format: Setting.text_formatting
-          }
-
-          # Add note-specific variables
-          if actual_context_type == "note"
-            template_vars.merge!({
-              issue_description: context[:issue_description] || "",
-              issue_status: context[:issue_status] || "",
-              issue_assigned_to: context[:issue_assigned_to] || "None",
-              current_user_name: context[:current_user_name] || "",
-              user_role: context.dig(:user_role_context, :suggested_role) || "participant"
-            })
-
-            # Add recent notes
-            if context[:recent_notes]&.any?
-              recent_notes_text = context[:recent_notes][0..4].map do |note|
-                "#{note[:user_name]} (#{note[:created_on]}): #{note[:notes]}"
-              end.join("\n")
-              template_vars[:recent_notes] = recent_notes_text
-            else
-              template_vars[:recent_notes] = "No recent notes available."
-            end
-          end
-
+          template_vars = build_completion_template_vars(context, actual_context_type, prefix_text, suffix_text, cursor_position)
           prompt_text = prompt.format(**template_vars)
 
-          message = { role: "user", content: prompt_text }
-          messages = [ message ]
-
-          # Use the base chat method without streaming for fast response
+          messages = [ { role: "user", content: prompt_text } ]
           completion = chat(messages, {})
 
           ai_helper_logger.debug "Generated text completion: #{completion.length} characters"
-
-          # Parse and clean the response
           parse_completion_response(completion)
         rescue => e
           ai_helper_logger.error "Text completion error in IssueAgent: #{e.message}"
           ai_helper_logger.error "Error backtrace: #{e.backtrace.join("\n")}"
           ""
         end
+      end
+
+      # Build the template variables hash used to render the inline completion prompt.
+      # @param context [Hash] Completion context (issue/project metadata, recent notes, etc.)
+      # @param actual_context_type [String] Resolved context type ("note" or "description")
+      # @param prefix_text [String] Text before the cursor
+      # @param suffix_text [String] Text after the cursor
+      # @param cursor_position [Integer, nil] Cursor offset within the original text
+      # @return [Hash] Template variables suitable for the inline completion prompt
+      def build_completion_template_vars(context, actual_context_type, prefix_text, suffix_text, cursor_position)
+        template_vars = {
+          prefix_text: prefix_text,
+          suffix_text: suffix_text,
+          issue_title: context[:issue_title] || "New Issue",
+          project_name: context[:project_name] || "Unknown Project",
+          cursor_position: cursor_position.to_s,
+          max_sentences: "3",
+          format: Setting.text_formatting
+        }
+
+        if actual_context_type == "note"
+          template_vars.merge!(
+            issue_description: context[:issue_description] || "",
+            issue_status: context[:issue_status] || "",
+            issue_assigned_to: context[:issue_assigned_to] || "None",
+            current_user_name: context[:current_user_name] || "",
+            user_role: context.dig(:user_role_context, :suggested_role) || "participant",
+            recent_notes: format_recent_notes(context[:recent_notes])
+          )
+        end
+
+        template_vars
+      end
+
+      # Format up to the five most recent notes as a newline-separated string for prompt embedding.
+      # @param notes [Array<Hash>, nil] Recent notes, each containing :user_name, :created_on, :notes
+      # @return [String] Formatted notes, or a placeholder when none are available
+      def format_recent_notes(notes)
+        return "No recent notes available." unless notes&.any?
+
+        notes[0..4].map { |note| "#{note[:user_name]} (#{note[:created_on]}): #{note[:notes]}" }.join("\n")
       end
 
       # Suggest stuff to do today with streaming support
