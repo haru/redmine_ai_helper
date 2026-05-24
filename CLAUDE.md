@@ -217,5 +217,5 @@ Use `/rubocop` skill for the full fix workflow including auto-correction and tes
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/018-qdrant-payload-index/plan.md`
+`specs/019-vector-scope-by-module/plan.md`
 <!-- SPECKIT END -->

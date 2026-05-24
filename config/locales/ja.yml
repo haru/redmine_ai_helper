@@ -170,6 +170,22 @@ ja:
         disabled: "MCPサーバーは無効です"
         unauthorized: "認証に失敗しました - APIキーが無効または未指定です"
         tool_permission_denied: "権限がありません: このツールへのアクセス権がありません"
+    vector_tasks:
+      embedding_model: "埋め込みモデル: %{model}"
+      registering: "Redmine AI Helperのベクトルデータを登録中..."
+      issues_count: "チケット: %{count} 件"
+      wiki_pages_count: "Wikiページ: %{count} 件"
+      removed_issue_vector_data: "削除されたチケットベクトルデータ: %{deleted} 件 (失敗: %{failed} 件)"
+      removed_wiki_vector_data: "削除されたWikiベクトルデータ: %{deleted} 件 (失敗: %{failed} 件)"
+      registration_completed: "ベクトルデータの登録が完了しました。"
+      registration_skipped: "ベクトル検索が有効ではありません。登録をスキップします。"
+      generating_index: "Redmine AI Helperのベクトルインデックスを生成中..."
+      generation_skipped: "ベクトル検索が有効ではありません。生成をスキップします。"
+      ensure_indexes_skipped: "ベクトル検索が有効ではありません。スキップします。"
+      ensure_indexes_completed: "ensure_indexesが完了しました。"
+      ensure_indexes_mismatch: "ensure_indexesが不一致で完了しました。手動での対応が必要です。"
+      destroying: "Redmine AI Helperのベクトルデータを削除中..."
+      destruction_skipped: "ベクトル検索が有効ではありません。削除をスキップします。"
     custom_commands:
       label:
         title: カスタムコマンド

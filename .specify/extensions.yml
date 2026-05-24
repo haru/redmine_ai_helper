@@ -1,4 +1,5 @@
-installed: []
+installed:
+- review
 settings:
   auto_execute_hooks: true
 hooks:
@@ -120,7 +121,8 @@ hooks:
     enabled: true
     optional: false
     prompt: Run regression check after implementation?
-    description: Execute .devcontainer/regression-check.sh (YARD, RuboCop, full test suite)
+    description: Execute .devcontainer/regression-check.sh (YARD, RuboCop, full test
+      suite)
     condition: null
   - extension: git
     command: speckit.git.commit
@@ -128,6 +130,13 @@ hooks:
     optional: true
     prompt: Commit implementation changes?
     description: Auto-commit after implementation
+    condition: null
+  - extension: review
+    command: speckit.review.run
+    enabled: true
+    optional: true
+    prompt: Run PR review on implemented changes?
+    description: Comprehensive review after implementation
     condition: null
   after_checklist:
   - extension: git
