@@ -149,7 +149,7 @@ module RedmineAiHelper
             client.remove_texts(ids: [ vector_data.uuid ])
             vector_data.destroy!
             deleted += 1
-          rescue => e
+          rescue Faraday::Error => e
             failed += 1
             ai_helper_logger.warn(
               "[#{index_name}] failed to remove vector_data id=#{vector_data.id} uuid=#{vector_data.uuid}: #{e.class}: #{e.message}"

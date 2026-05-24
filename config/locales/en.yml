@@ -170,6 +170,22 @@ en:
         disabled: "MCP server is disabled"
         unauthorized: "Unauthorized - invalid or missing API key"
         tool_permission_denied: "Permission denied: you do not have access to this tool"
+    vector_tasks:
+      embedding_model: "Embedding model: %{model}"
+      registering: "Registering vector data for Redmine AI Helper..."
+      issues_count: "Issues: %{count} items"
+      wiki_pages_count: "Wiki Pages: %{count} items"
+      removed_issue_vector_data: "Removed issue vector data: %{deleted} (failed: %{failed})"
+      removed_wiki_vector_data: "Removed wiki vector data: %{deleted} (failed: %{failed})"
+      registration_completed: "Vector data registration completed."
+      registration_skipped: "Vector search is not enabled. Skipping registration."
+      generating_index: "Generating vector index for Redmine AI Helper..."
+      generation_skipped: "Vector search is not enabled. Skipping generation."
+      ensure_indexes_skipped: "Vector search is not enabled. Skipping."
+      ensure_indexes_completed: "ensure_indexes completed."
+      ensure_indexes_mismatch: "ensure_indexes completed with mismatch. Manual action required."
+      destroying: "Destroying vector data for Redmine AI Helper..."
+      destruction_skipped: "Vector search is not enabled. Skipping destruction."
     custom_commands:
       label:
         title: Custom Commands

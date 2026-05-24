@@ -65,13 +65,13 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
           issues = Issue.all
           @issue_vector_db.add_datas(datas: issues)
 
-          assert issues.length, AiHelperVectorData.all.length
+          assert_equal issues.length, AiHelperVectorData.count
           issue.subject = "aaaa"
           issue.save!
           issues = Issue.all
           @issue_vector_db.add_datas(datas: issues)
 
-          assert issues.length, AiHelperVectorData.all.length
+          assert_equal issues.length, AiHelperVectorData.count
         end
 
         should "skip data that is already up-to-date" do
@@ -88,13 +88,14 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
           @issue_vector_db.add_datas(datas: [ issue ])
         end
 
-      should "not call clean_vector_data internally" do
-        issue = Issue.first
-        issue.description = "#{"a" * 2000}"
-        issue.save!
+        should "not call clean_vector_data internally" do
+          issue = Issue.first
+          issue.description = "#{"a" * 2000}"
+          issue.save!
 
-        @issue_vector_db.expects(:clean_vector_data).never
-        @issue_vector_db.add_datas(datas: [ issue ])
+          @issue_vector_db.expects(:clean_vector_data).never
+          @issue_vector_db.add_datas(datas: [ issue ])
+        end
       end
 
       context "clean_vector_data" do
@@ -136,7 +137,6 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
           assert_equal 0, result[:deleted]
         end
       end
-    end
 
     context "VectorDb uses vector model profile provider" do
       setup do
