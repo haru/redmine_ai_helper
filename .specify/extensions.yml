@@ -115,6 +115,13 @@ hooks:
     description: Auto-commit after task generation
     condition: null
   after_implement:
+  - extension: regression-check
+    command: regression-check.run
+    enabled: true
+    optional: false
+    prompt: Run regression check after implementation?
+    description: Execute .devcontainer/regression-check.sh (YARD, RuboCop, full test suite)
+    condition: null
   - extension: git
     command: speckit.git.commit
     enabled: true

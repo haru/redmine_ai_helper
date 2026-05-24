@@ -1,0 +1,21 @@
+schema_version: "1.0"
+
+extension:
+  id: regression-check
+  name: "Regression Check"
+  version: "1.0.0"
+  description: "Run regression checks (YARD, RuboCop, and full test suite) after implementation"
+  author: project-local
+  license: MIT
+
+requires:
+  speckit_version: ">=0.2.0"
+  tools:
+    - name: bash
+      required: true
+
+provides:
+  commands:
+    - name: regression-check.run
+      file: commands/regression-check.run.md
+      description: "Execute .devcontainer/regression-check.sh to verify code quality and tests"
