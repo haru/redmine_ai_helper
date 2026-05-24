@@ -69,7 +69,7 @@ Metrics/ParameterLists:
     - "lib/redmine_ai_helper/tools/**/*"
 
 Metrics/PerceivedComplexity:
-  Max: 40
+  Max: 22
   Exclude:
     - "test/**/*"
     - "lib/redmine_ai_helper/tools/**/*"
