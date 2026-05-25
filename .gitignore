@@ -87,3 +87,4 @@ Gemfile.local
 .serena/
 .qlty/
 .rubocop_todo.yml
+.opencode/package-lock.json
