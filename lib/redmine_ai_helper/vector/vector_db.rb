@@ -134,7 +134,12 @@ module RedmineAiHelper
               ai_helper_logger.error("[#{index_name}] add_data failed ##{data.id}: #{e.class}: #{e.message}")
             end
           end
+          unless Rails.env.test?
+            print "." # rubocop:disable Rails/Output
+            $stdout.flush
+          end
         end
+        puts "" unless Rails.env.test? # rubocop:disable Rails/Output
       end
 
       # Remove vector data whose source object is no longer in scope (deleted source
@@ -149,6 +154,10 @@ module RedmineAiHelper
             client.remove_texts(ids: [ vector_data.uuid ])
             vector_data.destroy!
             deleted += 1
+            unless Rails.env.test?
+              print "." # rubocop:disable Rails/Output
+              $stdout.flush
+            end
           rescue Faraday::Error => e
             failed += 1
             ai_helper_logger.warn(
@@ -156,6 +165,7 @@ module RedmineAiHelper
             )
           end
         end
+        puts "" unless Rails.env.test? || deleted.zero? # rubocop:disable Rails/Output
         { deleted: deleted, failed: failed }
       end
 
