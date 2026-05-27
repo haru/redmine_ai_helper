@@ -100,6 +100,8 @@ jobs:
       - uses: actions/checkout@v6
       - name: Install
         run: bash -x ./.github/build-scripts/install.sh
+      - name: Test Migration Rollback
+        run: bash -x ./.github/build-scripts/test-migration-rollback.sh
       - name: Build
         run: bash -x ./.github/build-scripts/build.sh
       - name: Enforce YARD Documentation Coverage
@@ -109,8 +111,6 @@ jobs:
             echo "YARD documentation coverage is below 100%. See report above." >&2
             exit 1
           fi
-      - name: Test Migration Rollback
-        run: bash -x ./.github/build-scripts/test-migration-rollback.sh
       - name: Clean
         run: bash -x ./.github/build-scripts/cleanup.sh
       - uses: codecov/codecov-action@v6
