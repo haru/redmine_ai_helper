@@ -375,45 +375,21 @@ class AiHelperController < ApplicationController
       render json: { error: "Invalid JSON" }, status: :bad_request and return
     end
 
-    text = data["text"]
-    cursor_position = data["cursor_position"]
+    error = validate_wiki_completion_input(data)
+    render json: { error: error }, status: :bad_request and return if error
 
-    if text.blank?
-      render json: { error: "Text is required" }, status: :bad_request and return
-    end
-
-    if text.length > 10000
-      render json: { error: "Text too long" }, status: :bad_request and return
-    end
-
-    if cursor_position && (cursor_position < 0 || cursor_position > text.length)
-      render json: { error: "Invalid cursor position" }, status: :bad_request and return
-    end
-
-    # Section edit detection (section number is not sent)
     is_section_edit = data["is_section_edit"] || false
-
-    # Debug log for tests
     ai_helper_logger.info "Wiki completion: is_section_edit from data: #{data["is_section_edit"].inspect}, final value: #{is_section_edit}"
 
-    wiki_page = nil
-
-    if params[:page_name].present? && @project
-      wiki_page = @project.wiki&.find_page(params[:page_name])
-    end
-
     begin
-      llm = RedmineAiHelper::Llm.new
-      suggestion = llm.generate_wiki_completion(
-        text: text,
-        cursor_position: cursor_position,
+      suggestion = RedmineAiHelper::Llm.new.generate_wiki_completion(
+        text: data["text"],
+        cursor_position: data["cursor_position"],
         project: @project,
-        wiki_page: wiki_page,
+        wiki_page: resolve_wiki_completion_page,
         is_section_edit: is_section_edit
       )
-
-      response_data = { suggestion: suggestion }
-      render json: response_data
+      render json: { suggestion: suggestion }
     rescue => e
       ai_helper_logger.error "Wiki auto-completion error: #{e.message}"
       ai_helper_logger.error e.backtrace.join("\n")
@@ -754,6 +730,22 @@ class AiHelperController < ApplicationController
     return [ nil, I18n.t("ai_helper.completion_errors.issue_required_for_note") ] if context_type == "note" && !issue
 
     [ issue, nil ]
+  end
+
+  def validate_wiki_completion_input(data)
+    text = data["text"]
+    cursor_position = data["cursor_position"]
+    return "Text is required" if text.blank?
+    return "Text too long" if text.length > 10000
+    return "Invalid cursor position" if cursor_position && (cursor_position < 0 || cursor_position > text.length)
+
+    nil
+  end
+
+  def resolve_wiki_completion_page
+    return nil unless params[:page_name].present? && @project
+
+    @project.wiki&.find_page(params[:page_name])
   end
 
   # Always enforce CSRF verification for this controller.

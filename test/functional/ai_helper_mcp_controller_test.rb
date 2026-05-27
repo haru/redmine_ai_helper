@@ -283,6 +283,48 @@ class AiHelperMcpControllerTest < ActionController::TestCase
     end
   end
 
+  # ─── Setting.login_required = true (Issue #304) ────────────────────────────
+
+  context "with Setting.login_required = true" do
+    setup do
+      @original_login_required = Setting.login_required
+      Setting.login_required = "1"
+    end
+
+    teardown do
+      Setting.login_required = @original_login_required
+    end
+
+    should "return 200 for valid X-Redmine-API-Key with initialize request" do
+      set_valid_auth_headers
+      post :handle_request, body: initialize_payload, as: :json
+
+      assert_response :success
+    end
+
+    should "return 401 when X-Redmine-API-Key header is missing" do
+      post :handle_request, body: initialize_payload, as: :json
+
+      assert_response :unauthorized
+    end
+
+    should "return 401 for invalid X-Redmine-API-Key (not 403)" do
+      @request.headers["X-Redmine-API-Key"] = "definitely_invalid_key_xyz"
+      @request.headers["Accept"] = "application/json, text/event-stream"
+      post :handle_request, body: initialize_payload, as: :json
+
+      assert_response :unauthorized
+    end
+
+    should "return 403 when MCP server is disabled even with valid key" do
+      @setting.update_column(:mcp_server_enabled, false)
+      set_valid_auth_headers
+      post :handle_request, body: initialize_payload, as: :json
+
+      assert_response :forbidden
+    end
+  end
+
   # ─── tools/call permission enforcement (T021) ──────────────────────────────
 
   context "tools/call permission enforcement" do

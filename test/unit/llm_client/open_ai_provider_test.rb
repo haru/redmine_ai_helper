@@ -64,6 +64,22 @@ class RedmineAiHelper::LlmClient::OpenAiProviderTest < ActiveSupport::TestCase
       profile.destroy
     end
 
+    should "configure_provider_config sets http_proxy when present" do
+      profile = AiHelperModelProfile.create!(
+        name: "OpenAI Proxy Profile",
+        llm_type: "OpenAI",
+        llm_model: "gpt-4o",
+        access_key: "test_key",
+        http_proxy: "http://localhost:3128"
+      )
+      provider = RedmineAiHelper::LlmClient::OpenAiProvider.new(model_profile: profile)
+      config = RubyLLM::Configuration.new
+      provider.send(:configure_provider_config, config)
+
+      assert_equal "http://localhost:3128", config.http_proxy
+      profile.destroy
+    end
+
     should "configure_provider_config does not set openai_organization_id when absent" do
       profile = AiHelperModelProfile.create!(
         name: "OpenAI No Org Profile",

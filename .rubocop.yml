@@ -24,7 +24,7 @@ Metrics:
   Enabled: true
 
 Metrics/AbcSize:
-  Max: 50
+  Max: 45
   Exclude:
     - "test/**/*"
     - "lib/redmine_ai_helper/tools/**/*"
@@ -46,7 +46,7 @@ Metrics/ClassLength:
     - "test/**/*"
 
 Metrics/CyclomaticComplexity:
-  Max: 30
+  Max: 20
   Exclude:
     - "test/**/*"
     - "lib/redmine_ai_helper/tools/**/*"
@@ -69,7 +69,7 @@ Metrics/ParameterLists:
     - "lib/redmine_ai_helper/tools/**/*"
 
 Metrics/PerceivedComplexity:
-  Max: 40
+  Max: 22
   Exclude:
     - "test/**/*"
     - "lib/redmine_ai_helper/tools/**/*"

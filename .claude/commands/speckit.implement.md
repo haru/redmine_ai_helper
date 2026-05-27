@@ -33,15 +33,16 @@ You **MUST** consider the user input before proceeding (if not empty).
     To execute: `/{command}`
     ```
   - **Mandatory hook** (`optional: false`):
-    ```
-    ## Extension Hooks
+    1. Output the following header:
+       ```
+       ## Extension Hooks
 
-    **Automatic Pre-Hook**: {extension}
-    Executing: `/{command}`
-    EXECUTE_COMMAND: {command}
-    
-    Wait for the result of the hook command before proceeding to the Outline.
-    ```
+       **Automatic Pre-Hook**: {extension}
+       Executing: `/{command}`
+       ```
+    2. Locate the command file: `.specify/extensions/{extension}/commands/{command}.md`
+    3. Read that file and execute its instructions immediately and completely.
+    4. Wait for the result before proceeding to the Outline.
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
 ## Outline
@@ -139,7 +140,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 6. Execute implementation following the task plan:
    - **Phase-by-phase execution**: Complete each phase before moving to the next
-   - **Respect dependencies**: Run sequential tasks in order, parallel tasks [P] can run together  
+   - **Respect dependencies**: Run sequential tasks in order, parallel tasks [P] can run together
    - **Follow TDD approach**: Execute test tasks before their corresponding implementation tasks
    - **File-based coordination**: Tasks affecting the same files must run sequentially
    - **Validation checkpoints**: Verify each phase completion before proceeding
@@ -188,11 +189,14 @@ Note: This command assumes a complete task breakdown exists in tasks.md. If task
         To execute: `/{command}`
         ```
       - **Mandatory hook** (`optional: false`):
-        ```
-        ## Extension Hooks
+        1. Output the following header:
+           ```
+           ## Extension Hooks
 
-        **Automatic Hook**: {extension}
-        Executing: `/{command}`
-        EXECUTE_COMMAND: {command}
-        ```
+           **Automatic Hook**: {extension}
+           Executing: `/{command}`
+           ```
+        2. Locate the command file: `.specify/extensions/{extension}/commands/{command}.md`
+        3. Read that file and execute its instructions immediately and completely before continuing.
+        4. Report the result (success or failure) before moving to the next hook.
     - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
