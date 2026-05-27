@@ -109,6 +109,8 @@ jobs:
             echo "YARD documentation coverage is below 100%. See report above." >&2
             exit 1
           fi
+      - name: Test Migration Rollback
+        run: bash -x ./.github/build-scripts/test-migration-rollback.sh
       - name: Clean
         run: bash -x ./.github/build-scripts/cleanup.sh
       - uses: codecov/codecov-action@v6
