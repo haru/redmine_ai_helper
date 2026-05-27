@@ -125,6 +125,41 @@ module RedmineAiHelper
       def destroy_default_schema
         client.collections.delete(collection_name: @index_name)
       end
+
+      # Create a payload index for a single field on the current collection.
+      # @param field_name [String] The payload field name to index.
+      # @param field_schema [String] The Qdrant payload schema type (e.g. "integer", "datetime").
+      # @return [Hash] The Qdrant API response body.
+      def create_payload_index(field_name:, field_schema:)
+        client.collections.create_index(
+          collection_name: @index_name,
+          field_name: field_name,
+          field_schema: field_schema
+        )
+      end
+
+      # Fetch the current payload schema map for the collection.
+      # @return [Hash<String, String>] field_name => data_type. Empty hash when none are indexed.
+      def fetch_payload_schema
+        response = client.collections.get(collection_name: @index_name)
+        payload_schema = response.is_a?(Hash) ? response.dig("result", "payload_schema") : nil
+        return {} unless payload_schema.is_a?(Hash)
+
+        payload_schema.each_with_object({}) do |(field_name, info), acc|
+          data_type = info.is_a?(Hash) ? info["data_type"] : nil
+          acc[field_name] = data_type if data_type
+        end
+      end
+
+      # Delete a payload index for a single field on the current collection.
+      # @param field_name [String] The payload field name whose index should be removed.
+      # @return [Hash] The Qdrant API response body.
+      def delete_payload_index(field_name:)
+        client.collections.delete_index(
+          collection_name: @index_name,
+          field_name: field_name
+        )
+      end
     end
   end
 end

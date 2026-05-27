@@ -12,16 +12,47 @@ module RedmineAiHelper
       include ROUTE_HELPERS
       include RedmineAiHelper::Logger
 
+      # @!visibility private
+      PAYLOAD_INDEX_DECLARATIONS = [
+        { field_name: "project_id",     field_schema: "integer" },
+        { field_name: "tracker_id",     field_schema: "integer" },
+        { field_name: "status_id",      field_schema: "integer" },
+        { field_name: "priority_id",    field_schema: "integer" },
+        { field_name: "author_id",      field_schema: "integer" },
+        { field_name: "assigned_to_id", field_schema: "integer" },
+        { field_name: "version_id",     field_schema: "integer" },
+        { field_name: "created_on",     field_schema: "datetime" },
+        { field_name: "updated_on",     field_schema: "datetime" },
+        { field_name: "due_date",       field_schema: "datetime" }
+      ].freeze
+
       # Return the name of the vector index used for this store.
       # @return [String] the canonical index identifier for the issue embedding index.
       def index_name
         "RedmineIssue"
       end
 
+      # Payload fields that require a Qdrant index so filtered searches work
+      # under strict-mode Qdrant Cloud (FR-001 / FR-003).
+      # @return [Array<Hash>] field_name / field_schema entries
+      def payload_index_declarations
+        PAYLOAD_INDEX_DECLARATIONS
+      end
+
       # Checks whether an Issue with the specified ID exists.
       # @param object_id [Integer] The ID of the issue to check.
+      # @return [Boolean] true if the issue exists in Redmine's database.
       def data_exists?(object_id)
         Issue.exists?(id: object_id)
+      end
+
+      # @param object_id [Integer] The ID of the issue to check.
+      # @return [Boolean] true if the issue exists and its project has ai_helper module enabled.
+      def data_in_scope?(object_id)
+        issue = Issue.find_by(id: object_id)
+        return false unless issue
+        return false unless issue.project
+        issue.project.module_enabled?(:ai_helper)
       end
 
       # A method to generate content and payload for registering an issue into the vector database
@@ -31,7 +62,7 @@ module RedmineAiHelper
       def data_to_json(issue)
         payload = {
           issue_id: issue.id,
-          project_id: issue.project.id,
+          project_id: issue.project&.id,
           project_name: issue.project.name,
           author_id: issue.author&.id,
           author_name: issue.author&.name,
@@ -61,16 +92,12 @@ module RedmineAiHelper
       private
 
       # Build hybrid content using LLM analysis for improved vector search.
-      # Falls back to raw content if analysis fails.
       # @param issue [Issue] The issue to build content for.
       # @return [String] The structured content for vector embedding.
       def build_hybrid_content(issue)
         analyzer = IssueContentAnalyzer.new(llm_provider: @llm_provider)
         analysis = analyzer.analyze(issue)
         build_structured_content(issue, analysis)
-      rescue => e
-        ai_helper_logger.warn("Failed to analyze issue content: #{e.message}")
-        build_raw_content(issue)
       end
 
       # Build structured content from issue and analysis results.
@@ -89,22 +116,12 @@ module RedmineAiHelper
         CONTENT
       end
 
-      # Build raw content using the original approach (fallback).
-      # @param issue [Issue] The issue to build content for.
-      # @return [String] The raw concatenated content.
-      def build_raw_content(issue)
-        content = "#{issue.subject} #{issue.description}"
-        content += " " + issue.journals.map { |j| j.notes.to_s }.join(" ")
-        content
-      end
-
       # Truncate text to a maximum length, adding ellipsis if truncated.
       # @param text [String, nil] The text to truncate.
       # @param max_length [Integer] The maximum length.
       # @return [String] The truncated text.
       def truncate_text(text, max_length)
-        return "" if text.nil?
-        text.length > max_length ? text[0...max_length] + "..." : text
+        text.to_s.truncate(max_length)
       end
     end
   end

@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-Core Rails plugin code lives under `app/`, following standard MVC groupings (`app/controllers`, `app/models`, `app/helpers`). Engine internals, agents, transports, and utilities are in `lib/redmine_ai_helper/`—key entry points include `BaseAgent`, `LeaderAgent`, and generated `SubMcpAgent` variants. Frontend assets reside in `assets/javascripts/` and `assets/stylesheets/`, while prompt templates are kept in `assets/prompt_templates/`. Tests follow Redmine's minitest layout: controller flows in `test/functional/`, business logic in `test/unit/`, and architectural plans in `specs/`.
+Core Rails plugin code lives under `app/`, following standard MVC groupings (`app/controllers`, `app/models`, `app/helpers`). Engine internals, agents, transports, and utilities are in `lib/redmine_ai_helper/`—key entry points include `BaseAgent`, `LeaderAgent`, and generated `SubMcpAgent` variants. Frontend assets reside in `assets/javascripts/` and `assets/stylesheets/`, while prompt templates are kept in `assets/prompt_templates/`. Tests follow Redmine's minitest layout: controller flows in `test/functional/`, business logic in `test/unit/`, and architectural plans live in `specs/` when present.
 
 ## Build, Test, and Development Commands
 - `bundle install` — install plugin gems. Run from the Redmine root.
@@ -11,6 +11,28 @@ Core Rails plugin code lives under `app/`, following standard MVC groupings (`ap
 - `bundle exec rake redmine:plugins:test NAME=redmine_ai_helper TESTOPTS="--name=/test_name_pattern/"` — run tests matching a pattern.
 - `yard stats --list-undoc` — check YARD documentation coverage.
 - Vector maintenance (production only): `bundle exec rake redmine:plugins:ai_helper:vector:generate`, `:regist`, `:destroy`.
+
+## Design Principles
+
+Follow **KISS** (Keep It Simple), **DRY** (Don't Repeat Yourself), and **YAGNI** (You Aren't Gonna Need It):
+- Write the simplest code that satisfies the requirement — no speculative abstractions
+- Extract shared logic only when duplication is proven (≥3 occurrences), not preemptively
+- Never add features, helpers, or error handling that aren't required by the current task
+
+## Documentation
+
+Technical documentation lives in `docs/`. Use file names to determine the topic before opening a file.
+- When adding a new doc, use a clear, descriptive English file name (e.g., `docs/vector_search_overview.md`)
+- **All docs/ content must be written in English**
+- MCP transport examples: [`docs/mcp_transport_configuration_examples.md`](docs/mcp_transport_configuration_examples.md)
+
+### Architecture Decision Records (ADR)
+
+ADRs live in `docs/adr/`. Write an ADR for every significant architectural decision.
+- **When to write**: new architectural pattern, key library choice, non-obvious trade-off, deliberate deviation from defaults
+- **When unsure**: ask the user before proceeding
+- **Format**: use the template in [`docs/adr/README.md`](docs/adr/README.md)
+- **Append-only**: never modify or delete past ADRs — add a new one to supersede
 
 ## Coding Style & Naming Conventions
 
@@ -68,7 +90,7 @@ Follow TDD: write tests BEFORE implementing features.
 - Tests: `test/unit/` and `test/functional/`
 
 ## Design Document Adherence
-**CRITICAL**: Design documents in `specs/` directory are AUTHORITATIVE and MANDATORY.
+**CRITICAL**: Design documents in `specs/` directory, when present, are AUTHORITATIVE and MANDATORY.
 - **NEVER deviate from design documents** without explicit user approval
 - Follow design documents exactly for architecture, file locations, method placement, APIs, and test locations
 - If you believe the design has issues, **ASK THE USER FIRST** before implementing differently
@@ -128,7 +150,6 @@ Follow TDD: write tests BEFORE implementing features.
 - Support English (en) and Japanese (ja) locales
 
 <!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
-at `specs/016-search-issue-schema-improvement/plan.md`
+No active Speckit plan is checked in for this branch. If a `specs/<feature>/plan.md`
+file is added later, read it before implementation and follow it exactly.
 <!-- SPECKIT END -->

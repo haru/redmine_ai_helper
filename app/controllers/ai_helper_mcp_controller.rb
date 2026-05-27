@@ -22,6 +22,12 @@ class AiHelperMcpController < ApplicationController
   # legitimate stateless API-key requests.
   skip_before_action :verify_authenticity_token
 
+  # Skip Redmine's global login_required filter because MCP uses its own
+  # stateless API-key authentication via authenticate_mcp_request below.
+  # Otherwise Setting.login_required = ON returns 403 before our filter runs
+  # and the X-Redmine-API-Key header is never evaluated (Issue #304).
+  skip_before_action :check_if_login_required, raise: false
+
   before_action :check_mcp_enabled
   before_action :authenticate_mcp_request
 

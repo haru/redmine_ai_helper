@@ -83,6 +83,19 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       assert_equal({ total_issues: 10, closed_issues: 5 }, report.metrics_hash)
     end
 
+    should "store metrics larger than mysql text limit" do
+      large_metrics = { "details" => "x" * 70_000 }.to_json
+
+      report = AiHelperHealthReport.create!(
+        project_id: @project.id,
+        user_id: @user.id,
+        health_report: "Test report",
+        metrics: large_metrics
+      )
+
+      assert_equal large_metrics, report.reload.metrics
+    end
+
     should "return empty hash when metrics is blank" do
       report = AiHelperHealthReport.create!(
         project_id: @project.id,

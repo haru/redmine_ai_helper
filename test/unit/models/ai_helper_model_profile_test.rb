@@ -47,6 +47,19 @@ class AiHelperModelProfileTest < ActiveSupport::TestCase
     assert_predicate profile.errors[:temperature], :present?
   end
 
+  def test_should_allow_valid_http_proxy
+    profile = AiHelperModelProfile.new(@valid_attributes.merge(http_proxy: "http://proxy.example.com:8080"))
+
+    assert profile.valid?, "Profile with valid http_proxy should be valid: #{profile.errors.full_messages}"
+  end
+
+  def test_should_reject_invalid_http_proxy
+    profile = AiHelperModelProfile.new(@valid_attributes.merge(http_proxy: "invalid-proxy"))
+
+    assert_not profile.valid?
+    assert_predicate profile.errors[:http_proxy], :present?
+  end
+
   # GPT-5 temperature handling tests
   def test_should_set_temperature_to_1_for_exact_gpt5_model
     profile = AiHelperModelProfile.new(@valid_attributes.merge(
