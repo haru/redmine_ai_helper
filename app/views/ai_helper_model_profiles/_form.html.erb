@@ -11,7 +11,7 @@
       access_key = ""
       access_key = AiHelperModelProfilesController::DUMMY_ACCESS_KEY unless @model_profile.new_record?
   %>
-  <p id="ai-helper-mode-access-key"><%= f.password_field :access_key, value: access_key, size: 60, required: true %></p>
+  <p id="ai-helper-mode-access-key"><%= f.password_field :access_key, value: access_key, size: 60, required: true, autocomplete: "new-password", readonly: true %></p>
   <p id="ai-helper-model-llm-model">
     <%= f.text_field :llm_model, size: 60, required: true %>
   </p>
@@ -86,16 +86,16 @@
       handleLlmTypeChange();
     }
 
-    // Prevent browser autofill from injecting profile data (e.g. user name) into Organization ID.
-    // The field is rendered readonly so the browser skips it; readonly is removed on user interaction.
-    const organizationIdInput = document.getElementById('ai_helper_model_profile_organization_id');
-    if (organizationIdInput) {
-      const clearReadonly = function() {
-        organizationIdInput.removeAttribute('readonly');
-      };
-      organizationIdInput.addEventListener('focus', clearReadonly);
-      organizationIdInput.addEventListener('mousedown', clearReadonly);
-    }
+    // Prevent browser autofill from injecting saved credentials into sensitive fields.
+    // Fields are rendered readonly so the browser skips them; readonly is removed on user interaction.
+    ['ai_helper_model_profile_organization_id', 'ai_helper_model_profile_access_key'].forEach(function(id) {
+      const input = document.getElementById(id);
+      if (input) {
+        const clearReadonly = function() { input.removeAttribute('readonly'); };
+        input.addEventListener('focus', clearReadonly);
+        input.addEventListener('mousedown', clearReadonly);
+      }
+    });
 
     // Connection test button
     const testConnectionBtn = document.getElementById('ai-helper-test-connection-btn');
