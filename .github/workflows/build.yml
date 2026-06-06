@@ -122,14 +122,13 @@ jobs:
   notify:
     name: Slack Notification on Failure
     needs: [lint, build]
-    if: failure()
+    if: always() && (needs.lint.result == 'failure' || needs.build.result == 'failure')
     runs-on: ubuntu-latest
     steps:
       - name: Slack Notification
         uses: rtCamp/action-slack-notify@v2
         if: env.SLACK_WEBHOOK != ''
         env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_CHANNEL: general
           SLACK_TITLE: Test Failure
           SLACK_COLOR: danger
