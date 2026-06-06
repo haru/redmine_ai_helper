@@ -150,6 +150,6 @@ Follow TDD: write tests BEFORE implementing features.
 - Support English (en) and Japanese (ja) locales
 
 <!-- SPECKIT START -->
-No active Speckit plan is checked in for this branch. If a `specs/<feature>/plan.md`
-file is added later, read it before implementation and follow it exactly.
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
 <!-- SPECKIT END -->
