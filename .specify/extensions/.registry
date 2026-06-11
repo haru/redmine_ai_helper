@@ -83,6 +83,35 @@
       },
       "registered_skills": [],
       "installed_at": "2026-06-06T06:27:54.323396+00:00"
+    },
+    "token-budget": {
+      "version": "1.0.1",
+      "source": "local",
+      "manifest_hash": "sha256:2ea8616666abe014ac37b299cbdeea97b9153856eecc0730faabc8c42a1f7111",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.token-budget.compact",
+          "speckit.token-budget.scope",
+          "speckit.token-budget.concise",
+          "speckit.token-budget.usage"
+        ],
+        "copilot": [
+          "speckit.token-budget.compact",
+          "speckit.token-budget.scope",
+          "speckit.token-budget.concise",
+          "speckit.token-budget.usage"
+        ],
+        "opencode": [
+          "speckit.token-budget.compact",
+          "speckit.token-budget.scope",
+          "speckit.token-budget.concise",
+          "speckit.token-budget.usage"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-06-11T13:17:01.316200+00:00"
     }
   }
 }

@@ -1,7 +1,7 @@
 {
   "integration": "copilot",
-  "version": "0.9.6.dev0",
-  "installed_at": "2026-06-06T06:27:54.186122+00:00",
+  "version": "0.10.2",
+  "installed_at": "2026-06-11T13:15:19.397022+00:00",
   "files": {
     ".github/agents/speckit.analyze.agent.md": "699032fdd49afe31d23c7191f3fe7bcb1d14b081fbc94c2287e6ba3a57574fda",
     ".github/agents/speckit.clarify.agent.md": "0acc9e8fa225d1519a1729ce9ee2a26ac5a426f527fe48e14bdea14170fd78a9",
@@ -9,7 +9,7 @@
     ".github/agents/speckit.implement.agent.md": "088b04952e9152ccc192bea842d92448b0aed26c748cb88d2dbd9dd96eb345e0",
     ".github/agents/speckit.plan.agent.md": "6589e0728fe541e0f169724775fc05e04a5a7b0e98646a147def688ee7b58155",
     ".github/agents/speckit.checklist.agent.md": "d258d63195c45d5c5900177194a1cecb865b7b81fc71cce096642c4b528bbf83",
-    ".github/agents/speckit.specify.agent.md": "9052f1f909d36119334182cfb35b4d3b9126d3313a4c20bc21b8c96862b8c909",
+    ".github/agents/speckit.specify.agent.md": "2d638f512263cc658e85bc05c78897d77f4f48e92c752b2465853da1fd5bfb8c",
     ".github/agents/speckit.tasks.agent.md": "6998de540ae9564c729062ca0a3d493c3902e4647514e4d1011e6680c4c9f0c9",
     ".github/agents/speckit.taskstoissues.agent.md": "6fb1d3f1b6668282d41f45127faa427a93d8fdd88215d1c2c5c8ee3185037e7e",
     ".github/prompts/speckit.analyze.prompt.md": "bb93dbbafa96d07b7cd07fc7061d8adb0c6b26cb772a52d0dce263b1ca2b9b77",

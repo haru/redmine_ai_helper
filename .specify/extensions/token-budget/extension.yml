@@ -1,0 +1,106 @@
+schema_version: "1.0"
+
+extension:
+  id: "token-budget"
+  name: "Token Budget"
+  version: "1.0.1"
+  description: >
+    Reduces LLM token consumption across the Spec Kit workflow by compacting
+    artifacts in place, scoping per-phase reading to a budget, suppressing
+    agent prose padding, and reporting usage. Preserves every requirement,
+    decision, and contract verbatim — strips only template scaffolding,
+    examples, redundant cross-references, and prose fluff.
+  author: "Tinesoft"
+  repository: "https://github.com/tinesoft/spec-kit-token-budget"
+  license: "MIT"
+
+requires:
+  speckit_version: ">=0.1.0"
+  # No external binaries required. tiktoken is used opportunistically for
+  # accurate token counts; falls back to a chars/4 heuristic if absent.
+
+provides:
+  commands:
+    - name: "speckit.token-budget.compact"
+      file: "commands/compact.md"
+      description: >
+        Compact an SDD artifact in place (spec, plan, research, data-model,
+        contracts, quickstart, tasks, constitution). Original is kept as
+        <artifact>.full.md. Subsequent /speckit.* commands prefer the
+        compacted version. Lossless on requirements, decisions, IDs, and
+        contracts; strips examples, template boilerplate, and prose padding.
+
+    - name: "speckit.token-budget.scope"
+      file: "commands/scope.md"
+      description: >
+        Pre-flight context budget. Given the next workflow step
+        (plan | tasks | implement | analyze | checklist), emits a focused
+        reading manifest: which files to load, which sections to skip,
+        token budget per file, and the running total.
+
+    - name: "speckit.token-budget.concise"
+      file: "commands/concise.md"
+      description: >
+        Toggle concise-output mode for the agent during SDD steps. When
+        enabled, injects a small directive into the project's agent memory
+        file (AGENTS.md, CLAUDE.md, GEMINI.md, .cursor/rules, etc.)
+        instructing the agent to suppress narration and produce only the
+        artifact diff. State is project-local and reversible.
+
+    - name: "speckit.token-budget.usage"
+      file: "commands/usage.md"
+      description: >
+        Show token usage for every SDD artifact in the active feature, the
+        projected context window for each upcoming phase, and the savings
+        already realized by token-budget (full backups vs current).
+
+  config:
+    - name: "token-budget-config.yml"
+      template: "token-budget-config.template.yml"
+      description: "Per-project settings for compaction and concise mode"
+      required: false
+
+hooks:
+  after_specify:
+    command: "speckit.token-budget.compact"
+    optional: true
+    prompt: "Compact spec.md to reduce tokens for /speckit.plan?"
+    description: "Compact spec after specification"
+
+  after_plan:
+    command: "speckit.token-budget.compact"
+    optional: true
+    prompt: "Compact plan and design docs to reduce tokens for /speckit.tasks?"
+    description: "Compact plan docs after planning"
+
+  after_tasks:
+    command: "speckit.token-budget.compact"
+    optional: true
+    prompt: "Compact tasks.md to reduce tokens for /speckit.implement?"
+    description: "Compact tasks after task generation"
+
+  before_plan:
+    command: "speckit.token-budget.scope"
+    optional: true
+    prompt: "Scope a focused reading manifest for /speckit.plan?"
+    description: "Scope reading manifest before planning"
+
+  before_tasks:
+    command: "speckit.token-budget.scope"
+    optional: true
+    prompt: "Scope a focused reading manifest for /speckit.tasks?"
+    description: "Scope reading manifest before task generation"
+
+  before_implement:
+    command: "speckit.token-budget.scope"
+    optional: true
+    prompt: "Scope a focused reading manifest for /speckit.implement?"
+    description: "Scope reading manifest before implementation"
+
+tags:
+  - tokens
+  - budget
+  - context
+  - efficiency
+  - cost-optimization
+  - workflow
