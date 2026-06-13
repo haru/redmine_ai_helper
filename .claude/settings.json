@@ -42,7 +42,8 @@
       "Bash(.specify/scripts/bash/detect-changed-files.sh --json)",
       "Bash(.specify/extensions/review/scripts/bash/detect-changed-files.sh --json)",
       "Bash(bash .specify/extensions/review/scripts/bash/detect-changed-files.sh --json)",
-      "Bash(rubocop app/controllers/ai_helper_mcp_controller.rb test/functional/ai_helper_mcp_controller_test.rb)"
+      "Bash(rubocop app/controllers/ai_helper_mcp_controller.rb test/functional/ai_helper_mcp_controller_test.rb)",
+      "Bash(git -C /usr/local/redmine/plugins/redmine_ai_helper branch --list)"
     ],
     "additionalDirectories": [
       "/usr/local/redmine/plugins/redmine_ai_helper/.claude/skills",
