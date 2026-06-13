@@ -54,6 +54,13 @@
         "Authorization": "Bearer ${GITHUB_PERSONAL_ACCESS_TOKEN}"
       }
     },
+    "langfuse": {
+      "type": "http",
+      "url": "${LANGFUSE_URL}/api/public/mcp",
+      "headers": {
+        "Authorization": "Basic ${LANGFUSE_API_KEY} "
+      }
+    },
     "redmine": {
       "type": "http",
       "url": "http://localhost:3000/ai_helper/mcp",
