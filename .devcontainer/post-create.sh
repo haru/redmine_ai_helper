@@ -29,6 +29,7 @@ bundle install
 bundle exec rake redmine:plugins:ai_helper:setup_scm
 
 initdb() {
+    rm -f db/schema.rb
     if [ $DB != "sqlite3" ]
     then
         bundle exec rake db:create
