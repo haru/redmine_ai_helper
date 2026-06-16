@@ -57,6 +57,7 @@ module RedmineAiHelper
         chat.with_instructions(instructions) if instructions
         chat.with_tools(*tools) unless tools.empty?
         chat.with_temperature(temperature) if temperature
+        apply_user_identifier(chat)
         chat
       end
 
@@ -74,6 +75,17 @@ module RedmineAiHelper
       end
 
       protected
+
+      # Applies the current user's Redmine ID to the chat request if the
+      # send_user_id_enabled setting is active.
+      # @param chat [RubyLLM::Chat] the chat instance to annotate
+      # @return [RubyLLM::Chat] the same chat instance
+      def apply_user_identifier(chat)
+        return chat unless AiHelperSetting.send_user_id_enabled?
+
+        chat.with_params(user: User.current.id.to_s)
+        chat
+      end
 
       # Ensures the configured model exists in the RubyLLM registry.
       # If the provider class is nil (Azure / Compatible), skips fetch.

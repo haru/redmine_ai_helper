@@ -18,7 +18,8 @@ class AiHelperSetting < ApplicationRecord
     "attachment_send_enabled", "attachment_max_size_mb",
     "use_think_model", "think_model_profile_id",
     "use_vector_model_profile", "vector_model_profile_id",
-    "mcp_server_enabled"
+    "mcp_server_enabled",
+    "send_user_id_enabled"
 
   validates :attachment_max_size_mb,
     numericality: { only_integer: true, greater_than_or_equal_to: 1 },
@@ -52,6 +53,12 @@ class AiHelperSetting < ApplicationRecord
     # @return [Boolean]
     def mcp_server_enabled?
       setting.mcp_server_enabled
+    end
+
+    # Returns whether sending the user ID to LLM providers is enabled.
+    # @return [Boolean]
+    def send_user_id_enabled?
+      setting.send_user_id_enabled
     end
   end
 

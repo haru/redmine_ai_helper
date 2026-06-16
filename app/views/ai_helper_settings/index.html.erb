@@ -1,184 +1,186 @@
 <h2><%= t(:label_ai_helper) %></h2>
-
 <%= labelled_form_for @setting, url: ai_helper_setting_update_url, method: :post do |f| %>
-<%= error_messages_for "setting" %>
-<div class="box tabular">
+  <%= error_messages_for "setting" %>
+  <div class="box tabular">
     <p>
-        <%
+      <%
             options = @model_profiles.map{|p| [p.display_name, p.id]}
         %>
-        <%= f.select :model_profile_id, options, include_blank: true, required: true %>
-        <%= link_to ai_helper_model_profiles_new_url do %>
-            <%= sprite_icon('add') %>
-            <%= t(:label_new) %>
-        <% end %>
+      <%= f.select :model_profile_id, options, include_blank: true, required: true %>
+      <%= link_to ai_helper_model_profiles_new_url do %>
+        <%= sprite_icon('add') %>
+        <%= t(:label_new) %>
+      <% end %>
     </p>
-        <div id="ai_helper_model_profile_description">
-        </div>
-
+    <div id="ai_helper_model_profile_description">
+    </div>
     <hr>
     <p>
-        <%= f.check_box :use_think_model %>
-        <span class="description"><%= t("activerecord.attributes.ai_helper_setting.think_model_description") %></span>
+      <%= f.check_box :use_think_model %>
+      <span class="description"><%= t("activerecord.attributes.ai_helper_setting.think_model_description") %></span>
     </p>
     <div id="ai-helper-think-model-settings">
-        <p>
-            <%= f.select :think_model_profile_id, options, include_blank: true %>
-        </p>
+      <p>
+        <%= f.select :think_model_profile_id, options, include_blank: true %>
+      </p>
     </div>
     <hr>
     <p>
-        <%= f.check_box :attachment_send_enabled %>
+      <%= f.check_box :attachment_send_enabled %>
     </p>
     <div id="ai-helper-attachment-settings">
-        <p>
-            <%= f.number_field :attachment_max_size_mb, min: 1, size: 10 %>
-        </p>
+      <p>
+        <%= f.number_field :attachment_max_size_mb, min: 1, size: 10 %>
+      </p>
     </div>
     <hr>
     <p>
-        <%= f.check_box :vector_search_enabled %>
+      <%= f.check_box :vector_search_enabled %>
     </p>
     <p>
-        <%= f.check_box :use_vector_model_profile %>
-        <span class="description"><%= t("activerecord.attributes.ai_helper_setting.vector_model_profile_description") %></span>
+      <%= f.check_box :use_vector_model_profile %>
+      <span class="description"><%= t("activerecord.attributes.ai_helper_setting.vector_model_profile_description") %></span>
     </p>
     <div id="ai-helper-vector-model-profile-settings">
-        <p>
-            <%= f.select :vector_model_profile_id, options, include_blank: true %>
-        </p>
+      <p>
+        <%= f.select :vector_model_profile_id, options, include_blank: true %>
+      </p>
     </div>
     <div id="ai-helper-vector-search">
-        <p>
-            <%= f.text_field :vector_search_uri, size: 60, required: true %>
-        </p>
-        <p>
-            <%= f.text_field :vector_search_api_key, size: 60 %>
-        </p>
-        <p>
-            <%= f.text_field :embedding_model, size: 60 %>
-        </p>
-        <p id="ai_helper_dimension" style="display: none;">
-            <%= f.text_field :dimension, size: 60 %>
-        </p>
-        <p id="ai_helper_embedding_url" style="display: none;">
-            <%= f.text_field :embedding_url, size: 90 %>
-        </p>
+      <p>
+        <%= f.text_field :vector_search_uri, size: 60, required: true %>
+      </p>
+      <p>
+        <%= f.text_field :vector_search_api_key, size: 60 %>
+      </p>
+      <p>
+        <%= f.text_field :embedding_model, size: 60 %>
+      </p>
+      <p id="ai_helper_dimension" style="display: none;">
+        <%= f.text_field :dimension, size: 60 %>
+      </p>
+      <p id="ai_helper_embedding_url" style="display: none;">
+        <%= f.text_field :embedding_url, size: 90 %>
+      </p>
     </div>
     <hr>
     <p>
-        <%= f.check_box :mcp_server_enabled %>
+      <%= f.check_box :mcp_server_enabled %>
+    </p>
+    <hr>
+    <p>
+      <%= f.check_box :send_user_id_enabled %>
+      <span class="description"><%= t("activerecord.attributes.ai_helper_setting.send_user_id_enabled_description") %></span>
     </p>
     <hr>
     <p><%= f.text_area :additional_instructions, rows: 12 %></p>
-</div>
-<%= f.submit t(:button_submit) %>
+  </div>
+  <%= f.submit t(:button_submit) %>
 <% end %>
-
 <script>
-    function loadModelProfile(id) {
-        $.ajax({
-            url: '<%= ai_helper_model_profiles_path%>/' + id,
-            type: 'GET',
-            success: function(data) {
-                $('#ai_helper_model_profile_description').html(data);
-                modelTypeChanged();
-            },
-            error: function() {
-                $('#ai_helper_model_profile_description').html('error');
-            }
-        });
-    }
+  function loadModelProfile(id) {
+      $.ajax({
+          url: '<%= ai_helper_model_profiles_path%>/' + id,
+          type: 'GET',
+          success: function(data) {
+              $('#ai_helper_model_profile_description').html(data);
+              modelTypeChanged();
+          },
+          error: function() {
+              $('#ai_helper_model_profile_description').html('error');
+          }
+      });
+  }
 
-    function setModelProfile() {
-        var selectedId = $('#ai_helper_setting_model_profile_id').val();
-        if (selectedId) {
-            loadModelProfile(selectedId);
+  function setModelProfile() {
+      var selectedId = $('#ai_helper_setting_model_profile_id').val();
+      if (selectedId) {
+          loadModelProfile(selectedId);
 
-        } else {
-            $('#ai_helper_model_profile_description').html('');
-        }
-    }
+      } else {
+          $('#ai_helper_model_profile_description').html('');
+      }
+  }
 
-    function setThinkModelVisible() {
-        const thinkEnabled = document.getElementById('ai_helper_setting_use_think_model').checked;
-        const settingsDiv = document.getElementById('ai-helper-think-model-settings');
-        settingsDiv.style.display = thinkEnabled ? '' : 'none';
-    }
+  function setThinkModelVisible() {
+      const thinkEnabled = document.getElementById('ai_helper_setting_use_think_model').checked;
+      const settingsDiv = document.getElementById('ai-helper-think-model-settings');
+      settingsDiv.style.display = thinkEnabled ? '' : 'none';
+  }
 
-    function setAttachmentSettingsVisible() {
-        const attachmentEnabled = document.getElementById('ai_helper_setting_attachment_send_enabled').checked;
-        const settingsDiv = document.getElementById('ai-helper-attachment-settings');
-        settingsDiv.style.display = attachmentEnabled ? '' : 'none';
-    }
+  function setAttachmentSettingsVisible() {
+      const attachmentEnabled = document.getElementById('ai_helper_setting_attachment_send_enabled').checked;
+      const settingsDiv = document.getElementById('ai-helper-attachment-settings');
+      settingsDiv.style.display = attachmentEnabled ? '' : 'none';
+  }
 
-    function setVectorSearchVisible() {
-        var vectorSearchEnabled = $('#ai_helper_setting_vector_search_enabled').is(':checked');
-        if (vectorSearchEnabled) {
-            $('#ai-helper-vector-search').show();
-        } else {
-            $('#ai-helper-vector-search').hide();
-        }
-        setVectorModelProfileToggleVisible();
-    }
+  function setVectorSearchVisible() {
+      var vectorSearchEnabled = $('#ai_helper_setting_vector_search_enabled').is(':checked');
+      if (vectorSearchEnabled) {
+          $('#ai-helper-vector-search').show();
+      } else {
+          $('#ai-helper-vector-search').hide();
+      }
+      setVectorModelProfileToggleVisible();
+  }
 
-    function setVectorModelProfileVisible() {
-        const enabled = document.getElementById('ai_helper_setting_use_vector_model_profile').checked;
-        const settingsDiv = document.getElementById('ai-helper-vector-model-profile-settings');
-        settingsDiv.style.display = enabled ? '' : 'none';
-    }
+  function setVectorModelProfileVisible() {
+      const enabled = document.getElementById('ai_helper_setting_use_vector_model_profile').checked;
+      const settingsDiv = document.getElementById('ai-helper-vector-model-profile-settings');
+      settingsDiv.style.display = enabled ? '' : 'none';
+  }
 
-    function setVectorModelProfileToggleVisible() {
-        const vectorSearchEnabled = document.getElementById('ai_helper_setting_vector_search_enabled').checked;
-        const toggleRow = document.getElementById('ai_helper_setting_use_vector_model_profile');
-        if (toggleRow) {
-            const parentP = toggleRow.closest('p');
-            if (parentP) {
-                parentP.style.display = vectorSearchEnabled ? '' : 'none';
-            }
-            if (!vectorSearchEnabled) {
-                const settingsDiv = document.getElementById('ai-helper-vector-model-profile-settings');
-                if (settingsDiv) settingsDiv.style.display = 'none';
-            } else {
-                setVectorModelProfileVisible();
-            }
-        }
-    }
+  function setVectorModelProfileToggleVisible() {
+      const vectorSearchEnabled = document.getElementById('ai_helper_setting_vector_search_enabled').checked;
+      const toggleRow = document.getElementById('ai_helper_setting_use_vector_model_profile');
+      if (toggleRow) {
+          const parentP = toggleRow.closest('p');
+          if (parentP) {
+              parentP.style.display = vectorSearchEnabled ? '' : 'none';
+          }
+          if (!vectorSearchEnabled) {
+              const settingsDiv = document.getElementById('ai-helper-vector-model-profile-settings');
+              if (settingsDiv) settingsDiv.style.display = 'none';
+          } else {
+              setVectorModelProfileVisible();
+          }
+      }
+  }
 
-    function modelTypeChanged() {
-        var modelType = $('#ai_helper_model_type').text();
-        if (modelType === '<%= RedmineAiHelper::LlmProvider::LLM_OPENAI_COMPATIBLE %>') {
-            $('#ai_helper_dimension').show();
-        } else {
-            $('#ai_helper_dimension').hide();
-        }
-        if (modelType === '<%= RedmineAiHelper::LlmProvider::LLM_AZURE_OPENAI %>') {
-            $('#ai_helper_embedding_url').show();
-        } else {
-            $('#ai_helper_embedding_url').hide();
-        }
-    }
+  function modelTypeChanged() {
+      var modelType = $('#ai_helper_model_type').text();
+      if (modelType === '<%= RedmineAiHelper::LlmProvider::LLM_OPENAI_COMPATIBLE %>') {
+          $('#ai_helper_dimension').show();
+      } else {
+          $('#ai_helper_dimension').hide();
+      }
+      if (modelType === '<%= RedmineAiHelper::LlmProvider::LLM_AZURE_OPENAI %>') {
+          $('#ai_helper_embedding_url').show();
+      } else {
+          $('#ai_helper_embedding_url').hide();
+      }
+  }
 
 
-    $(document).ready(function() {
-        $('#ai_helper_setting_model_profile_id').change(function() {
-            setModelProfile();
-        });
-        document.getElementById('ai_helper_setting_use_think_model').addEventListener('change', function() {
-            setThinkModelVisible();
-        });
-        document.getElementById('ai_helper_setting_attachment_send_enabled').addEventListener('change', function() {
-            setAttachmentSettingsVisible();
-        });
-        $('#ai_helper_setting_vector_search_enabled').change(function() {
-            setVectorSearchVisible();
-        });
-        document.getElementById('ai_helper_setting_use_vector_model_profile').addEventListener('change', function() {
-            setVectorModelProfileVisible();
-        });
-    });
-    setModelProfile();
-    setThinkModelVisible();
-    setAttachmentSettingsVisible();
-    setVectorSearchVisible();
+  $(document).ready(function() {
+      $('#ai_helper_setting_model_profile_id').change(function() {
+          setModelProfile();
+      });
+      document.getElementById('ai_helper_setting_use_think_model').addEventListener('change', function() {
+          setThinkModelVisible();
+      });
+      document.getElementById('ai_helper_setting_attachment_send_enabled').addEventListener('change', function() {
+          setAttachmentSettingsVisible();
+      });
+      $('#ai_helper_setting_vector_search_enabled').change(function() {
+          setVectorSearchVisible();
+      });
+      document.getElementById('ai_helper_setting_use_vector_model_profile').addEventListener('change', function() {
+          setVectorModelProfileVisible();
+      });
+  });
+  setModelProfile();
+  setThinkModelVisible();
+  setAttachmentSettingsVisible();
+  setVectorSearchVisible();
 </script>

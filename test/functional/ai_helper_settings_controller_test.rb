@@ -215,4 +215,32 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert_select "input[type=checkbox][name='ai_helper_setting[mcp_server_enabled]']"
     end
   end
+
+  context "send_user_id_enabled setting" do
+    should "save send_user_id_enabled true" do
+      post :update, params: { ai_helper_setting: { send_user_id_enabled: "1" } }
+
+      assert_redirected_to action: :index
+      @ai_helper_setting.reload
+
+      assert_equal true, @ai_helper_setting.send_user_id_enabled
+    end
+
+    should "save send_user_id_enabled false" do
+      @ai_helper_setting.update_column(:send_user_id_enabled, true)
+      post :update, params: { ai_helper_setting: { send_user_id_enabled: "0" } }
+
+      assert_redirected_to action: :index
+      @ai_helper_setting.reload
+
+      assert_equal false, @ai_helper_setting.send_user_id_enabled
+    end
+
+    should "render send_user_id_enabled checkbox on index" do
+      get :index
+
+      assert_response :success
+      assert_select "input[type=checkbox][name='ai_helper_setting[send_user_id_enabled]']"
+    end
+  end
 end

@@ -114,5 +114,56 @@ class RedmineAiHelper::LlmClient::OpenAiCompatibleProviderTest < ActiveSupport::
       assert_equal true, context.config.openai_use_system_role,
         "openai_use_system_role should be true for OpenAI-compatible providers to avoid sending 'developer' role"
     end
+
+    context "apply_user_identifier" do
+      setup do
+        @original_send_user_id = @setting.send_user_id_enabled
+      end
+
+      teardown do
+        @setting.send_user_id_enabled = @original_send_user_id
+        @setting.save!
+      end
+
+      should "inject user id via create_chat when send_user_id_enabled is true" do
+        @setting.send_user_id_enabled = true
+        @setting.save!
+
+        mock_context = mock("RubyLLM::Context")
+        mock_chat = mock("RubyLLM::Chat")
+        mock_chat.expects(:with_instructions).never
+        mock_chat.expects(:with_temperature).with(@compatible_profile.temperature)
+        mock_chat.expects(:with_params).with(user: User.current.id.to_s).once
+
+        mock_context.expects(:chat).with(
+          model: @compatible_profile.llm_model,
+          provider: :openai,
+          assume_model_exists: true
+        ).returns(mock_chat)
+        @provider.expects(:build_context).returns(mock_context)
+
+        @provider.create_chat
+      end
+
+      should "not inject user id when send_user_id_enabled is false" do
+        @setting.send_user_id_enabled = false
+        @setting.save!
+
+        mock_context = mock("RubyLLM::Context")
+        mock_chat = mock("RubyLLM::Chat")
+        mock_chat.expects(:with_instructions).never
+        mock_chat.expects(:with_temperature).with(@compatible_profile.temperature)
+        mock_chat.expects(:with_params).never
+
+        mock_context.expects(:chat).with(
+          model: @compatible_profile.llm_model,
+          provider: :openai,
+          assume_model_exists: true
+        ).returns(mock_chat)
+        @provider.expects(:build_context).returns(mock_context)
+
+        @provider.create_chat
+      end
+    end
   end
 end

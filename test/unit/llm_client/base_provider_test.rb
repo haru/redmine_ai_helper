@@ -147,6 +147,49 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         @provider.create_chat
         @provider.create_chat
       end
+
+      context "with apply_user_identifier" do
+        setup do
+          @original_send_user_id = @setting.send_user_id_enabled
+        end
+
+        teardown do
+          @setting.send_user_id_enabled = @original_send_user_id
+          @setting.save!
+        end
+
+        should "inject user id via create_chat when send_user_id_enabled is true" do
+          @setting.send_user_id_enabled = true
+          @setting.save!
+
+          mock_context = mock("RubyLLM::Context")
+          mock_chat = mock("RubyLLM::Chat")
+          mock_chat.expects(:with_instructions).never
+          mock_chat.expects(:with_temperature).with(@setting.model_profile.temperature)
+          mock_chat.expects(:with_params).with(user: User.current.id.to_s).once
+
+          mock_context.expects(:chat).with(model: @setting.model_profile.llm_model).returns(mock_chat)
+          @provider.expects(:build_context).returns(mock_context)
+
+          @provider.create_chat
+        end
+
+        should "not inject user id via create_chat when send_user_id_enabled is false" do
+          @setting.send_user_id_enabled = false
+          @setting.save!
+
+          mock_context = mock("RubyLLM::Context")
+          mock_chat = mock("RubyLLM::Chat")
+          mock_chat.expects(:with_instructions).never
+          mock_chat.expects(:with_temperature).with(@setting.model_profile.temperature)
+          mock_chat.expects(:with_params).never
+
+          mock_context.expects(:chat).with(model: @setting.model_profile.llm_model).returns(mock_chat)
+          @provider.expects(:build_context).returns(mock_context)
+
+          @provider.create_chat
+        end
+      end
     end
 
     context "embed" do
@@ -314,6 +357,73 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         assert_nothing_raised do
           @provider.send(:configure_provider_config, config)
         end
+      end
+    end
+
+    context "apply_user_identifier" do
+      setup do
+        @original_send_user_id = @setting.send_user_id_enabled
+        @original_current_user = User.current
+      end
+
+      teardown do
+        @setting.send_user_id_enabled = @original_send_user_id
+        @setting.save!
+        User.current = @original_current_user
+      end
+
+      should "call chat.with_params with the current user's id when send_user_id_enabled is true" do
+        @setting.send_user_id_enabled = true
+        @setting.save!
+
+        user = User.find(1)
+        User.current = user
+
+        mock_chat = mock("RubyLLM::Chat")
+        mock_chat.expects(:with_params).with(user: user.id.to_s).once
+
+        @provider.send(:apply_user_identifier, mock_chat)
+      end
+
+      should "not call chat.with_params when send_user_id_enabled is false" do
+        @setting.send_user_id_enabled = false
+        @setting.save!
+
+        mock_chat = mock("RubyLLM::Chat")
+        mock_chat.expects(:with_params).never
+
+        @provider.send(:apply_user_identifier, mock_chat)
+      end
+
+      should "pass anonymous user id without special branching when enabled" do
+        @setting.send_user_id_enabled = true
+        @setting.save!
+
+        User.current = User.anonymous
+
+        mock_chat = mock("RubyLLM::Chat")
+        mock_chat.expects(:with_params).with(user: User.anonymous.id.to_s).once
+
+        @provider.send(:apply_user_identifier, mock_chat)
+      end
+
+      should "send different ids for different users" do
+        @setting.send_user_id_enabled = true
+        @setting.save!
+
+        user_a = User.find(1)
+        User.current = user_a
+        mock_chat_a = mock("RubyLLM::Chat A")
+        mock_chat_a.expects(:with_params).with(user: user_a.id.to_s).once
+        @provider.send(:apply_user_identifier, mock_chat_a)
+
+        user_b = User.anonymous
+        User.current = user_b
+        mock_chat_b = mock("RubyLLM::Chat B")
+        mock_chat_b.expects(:with_params).with(user: user_b.id.to_s).once
+        @provider.send(:apply_user_identifier, mock_chat_b)
+
+        assert_not_equal user_a.id.to_s, user_b.id.to_s
       end
     end
 
