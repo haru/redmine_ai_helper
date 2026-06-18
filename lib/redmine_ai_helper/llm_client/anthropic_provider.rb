@@ -21,6 +21,11 @@ module RedmineAiHelper
         configure_http_proxy(config)
       end
 
+      # Anthropic's API rejects the `user` field as an unknown parameter.
+      def supports_user_identifier?
+        false
+      end
+
       # Build a RubyLLM::Context with Anthropic API key.
       # @return [RubyLLM::Context]
       def build_context

@@ -68,11 +68,13 @@
       <%= f.check_box :mcp_server_enabled %>
     </p>
     <hr>
-    <p>
-      <%= f.check_box :send_user_id_enabled %>
-      <span class="description"><%= t("activerecord.attributes.ai_helper_setting.send_user_id_enabled_description") %></span>
-    </p>
-    <hr>
+    <div id="ai-helper-send-user-id">
+      <p>
+        <%= f.check_box :send_user_id_enabled %>
+        <span class="description"><%= t("activerecord.attributes.ai_helper_setting.send_user_id_enabled_description") %></span>
+      </p>
+      <hr>
+    </div>
     <p><%= f.text_area :additional_instructions, rows: 12 %></p>
   </div>
   <%= f.submit t(:button_submit) %>
@@ -147,6 +149,18 @@
       }
   }
 
+  const USER_ID_SUPPORTED_TYPES = [
+      '<%= RedmineAiHelper::LlmProvider::LLM_OPENAI %>',
+      '<%= RedmineAiHelper::LlmProvider::LLM_OPENAI_COMPATIBLE %>',
+      '<%= RedmineAiHelper::LlmProvider::LLM_AZURE_OPENAI %>'
+  ];
+
+  function setSendUserIdVisible() {
+      const modelType = $('#ai_helper_model_type').text();
+      const supported = modelType !== '' && USER_ID_SUPPORTED_TYPES.includes(modelType);
+      $('#ai-helper-send-user-id').toggle(supported);
+  }
+
   function modelTypeChanged() {
       var modelType = $('#ai_helper_model_type').text();
       if (modelType === '<%= RedmineAiHelper::LlmProvider::LLM_OPENAI_COMPATIBLE %>') {
@@ -159,6 +173,7 @@
       } else {
           $('#ai_helper_embedding_url').hide();
       }
+      setSendUserIdVisible();
   }
 
 
@@ -183,4 +198,5 @@
   setThinkModelVisible();
   setAttachmentSettingsVisible();
   setVectorSearchVisible();
+  setSendUserIdVisible();
 </script>

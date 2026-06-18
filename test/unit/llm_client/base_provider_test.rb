@@ -360,6 +360,12 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
       end
     end
 
+    context "supports_user_identifier?" do
+      should "return true by default" do
+        assert_equal true, @provider.send(:supports_user_identifier?)
+      end
+    end
+
     context "apply_user_identifier" do
       setup do
         @original_send_user_id = @setting.send_user_id_enabled
@@ -370,6 +376,17 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         @setting.send_user_id_enabled = @original_send_user_id
         @setting.save!
         User.current = @original_current_user
+      end
+
+      should "not call with_params when supports_user_identifier? is false" do
+        @setting.send_user_id_enabled = true
+        @setting.save!
+        @provider.stubs(:supports_user_identifier?).returns(false)
+
+        mock_chat = mock("RubyLLM::Chat")
+        mock_chat.expects(:with_params).never
+
+        @provider.send(:apply_user_identifier, mock_chat)
       end
 
       should "call chat.with_params with the current user's id when send_user_id_enabled is true" do

@@ -77,14 +77,22 @@ module RedmineAiHelper
       protected
 
       # Applies the current user's Redmine ID to the chat request if the
-      # send_user_id_enabled setting is active.
+      # send_user_id_enabled setting is active and the provider supports the field.
       # @param chat [RubyLLM::Chat] the chat instance to annotate
       # @return [RubyLLM::Chat] the same chat instance
       def apply_user_identifier(chat)
         return chat unless AiHelperSetting.send_user_id_enabled?
+        return chat unless supports_user_identifier?
 
         chat.with_params(user: User.current.id.to_s)
         chat
+      end
+
+      # Returns whether this provider's API accepts the `user` request field.
+      # Override to return false for providers that reject unknown top-level fields.
+      # @return [Boolean]
+      def supports_user_identifier?
+        true
       end
 
       # Ensures the configured model exists in the RubyLLM registry.
