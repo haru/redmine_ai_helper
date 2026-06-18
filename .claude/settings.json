@@ -43,7 +43,13 @@
       "Bash(.specify/extensions/review/scripts/bash/detect-changed-files.sh --json)",
       "Bash(bash .specify/extensions/review/scripts/bash/detect-changed-files.sh --json)",
       "Bash(rubocop app/controllers/ai_helper_mcp_controller.rb test/functional/ai_helper_mcp_controller_test.rb)",
-      "Bash(git -C /usr/local/redmine/plugins/redmine_ai_helper branch --list)"
+      "Bash(git -C /usr/local/redmine/plugins/redmine_ai_helper branch --list)",
+      "Bash(bash /usr/local/redmine/plugins/redmine_ai_helper/.specify/scripts/bash/detect-changed-files.sh --json)",
+      "Bash(git --no-pager diff develop...HEAD -- app/models/ai_helper_setting.rb lib/redmine_ai_helper/llm_client/base_provider.rb lib/redmine_ai_helper/llm_client/open_ai_compatible_provider.rb app/views/ai_helper_settings/index.html.erb)",
+      "Bash(git --no-pager diff -- app/models/ai_helper_setting.rb lib/redmine_ai_helper/llm_client/base_provider.rb lib/redmine_ai_helper/llm_client/open_ai_compatible_provider.rb app/views/ai_helper_settings/index.html.erb)",
+      "Bash(git --no-pager diff -- lib/redmine_ai_helper/llm_client/base_provider.rb lib/redmine_ai_helper/llm_client/open_ai_compatible_provider.rb)",
+      "Bash(git --no-pager diff -- test/unit/llm_client/base_provider_test.rb test/unit/ai_helper_setting_test.rb)",
+      "Bash(rubocop lib/redmine_ai_helper/llm_client/azure_open_ai_provider.rb test/unit/llm_client/azure_open_ai_provider_test.rb test/unit/llm_client/base_provider_test.rb)"
     ],
     "additionalDirectories": [
       "/usr/local/redmine/plugins/redmine_ai_helper/.claude/skills",
