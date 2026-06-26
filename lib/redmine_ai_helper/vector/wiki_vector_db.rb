@@ -38,9 +38,12 @@ module RedmineAiHelper
       end
 
       # @param object_id [Integer] The ID of the wiki page to check.
-      # @return [Boolean] true if the wiki page exists and its project has ai_helper module enabled.
+      # @return [Boolean] true if the wiki page exists and its project is within the
+      #   vector registration scope (ai_helper module enabled and selected, FR-011).
       def data_in_scope?(object_id)
-        WikiPage.find_by(id: object_id)&.wiki&.project&.module_enabled?(:ai_helper) || false
+        project = WikiPage.find_by(id: object_id)&.wiki&.project
+        return false unless project
+        AiHelperSetting.setting.vector_target?(project)
       end
 
       # A method to generate content and payload for registering a wiki page into the vector database

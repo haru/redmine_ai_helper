@@ -48,5 +48,6 @@ class AiHelperSettingsController < ApplicationController
   def find_setting
     @setting = AiHelperSetting.find_or_create
     @model_profiles = AiHelperModelProfile.order(:name)
+    @ai_helper_projects = Project.joins(:enabled_modules).where(enabled_modules: { name: "ai_helper" }).order(:name)
   end
 end

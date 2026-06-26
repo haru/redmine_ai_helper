@@ -65,6 +65,16 @@
     </div>
     <hr>
     <p>
+      <%= f.check_box :vector_register_all_projects %>
+      <span class="description"><%= t("activerecord.attributes.ai_helper_setting.vector_register_all_projects_description") %></span>
+    </p>
+    <div id="ai-helper-vector-target-projects" style="<%= 'display: none;' if @setting.vector_register_all_projects %>">
+      <p>
+        <%= f.collection_check_boxes :vector_target_project_ids, @ai_helper_projects, :id, :name %>
+      </p>
+    </div>
+    <hr>
+    <p>
       <%= f.check_box :mcp_server_enabled %>
     </p>
     <hr>
@@ -124,6 +134,14 @@
           $('#ai-helper-vector-search').hide();
       }
       setVectorModelProfileToggleVisible();
+  }
+
+  function setVectorTargetProjectsVisible() {
+      const registerAll = document.getElementById('ai_helper_setting_vector_register_all_projects');
+      const container = document.getElementById('ai-helper-vector-target-projects');
+      if (!registerAll || !container) return;
+      // Hidden but not disabled: the selection is still submitted so it is preserved (FR-006).
+      container.style.display = registerAll.checked ? 'none' : '';
   }
 
   function setVectorModelProfileVisible() {
@@ -190,6 +208,9 @@
       $('#ai_helper_setting_vector_search_enabled').change(function() {
           setVectorSearchVisible();
       });
+      document.getElementById('ai_helper_setting_vector_register_all_projects').addEventListener('change', function() {
+          setVectorTargetProjectsVisible();
+      });
       document.getElementById('ai_helper_setting_use_vector_model_profile').addEventListener('change', function() {
           setVectorModelProfileVisible();
       });
@@ -198,5 +219,6 @@
   setThinkModelVisible();
   setAttachmentSettingsVisible();
   setVectorSearchVisible();
+  setVectorTargetProjectsVisible();
   setSendUserIdVisible();
 </script>

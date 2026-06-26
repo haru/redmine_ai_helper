@@ -14,7 +14,7 @@ module RedmineAiHelper
 
       # Backstory for the IssueAgent
       def backstory
-        if AiHelperSetting.vector_search_enabled?
+        if AiHelperSetting.vector_search_enabled_for?(@project)
           search_answer_instruction = I18n.t("ai_helper.prompts.issue_agent.search_answer_instruction_with_vector")
         else
           search_answer_instruction = I18n.t("ai_helper.prompts.issue_agent.search_answer_instruction")
@@ -27,7 +27,7 @@ module RedmineAiHelper
       # @return [Array<Class>] Array of RubyLLM::Tool subclasses
       def available_tool_providers
         providers = []
-        if AiHelperSetting.vector_search_enabled?
+        if AiHelperSetting.vector_search_enabled_for?(@project)
           providers << RedmineAiHelper::Tools::VectorTools
         end
         providers << RedmineAiHelper::Tools::IssueTools
@@ -178,7 +178,7 @@ module RedmineAiHelper
       # @return [Array<Hash>] Array of similar issues with formatted metadata
       def find_similar_issues(issue:, scope: "with_subprojects", project: nil)
         return [] unless issue.visible?
-        return [] unless AiHelperSetting.vector_search_enabled?
+        return [] unless AiHelperSetting.vector_search_enabled_for?(issue.project)
 
         begin
           vector_tools = RedmineAiHelper::Tools::VectorTools.new
@@ -204,7 +204,7 @@ module RedmineAiHelper
       # @param description [String] The description of the issue
       # @return [Array<Hash>] Array of similar issues with formatted metadata
       def find_similar_issues_by_content(subject:, description:)
-        unless AiHelperSetting.vector_search_enabled?
+        unless AiHelperSetting.vector_search_enabled_for?(@project)
           raise("Vector search is not enabled")
         end
 

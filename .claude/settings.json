@@ -49,7 +49,18 @@
       "Bash(git --no-pager diff -- app/models/ai_helper_setting.rb lib/redmine_ai_helper/llm_client/base_provider.rb lib/redmine_ai_helper/llm_client/open_ai_compatible_provider.rb app/views/ai_helper_settings/index.html.erb)",
       "Bash(git --no-pager diff -- lib/redmine_ai_helper/llm_client/base_provider.rb lib/redmine_ai_helper/llm_client/open_ai_compatible_provider.rb)",
       "Bash(git --no-pager diff -- test/unit/llm_client/base_provider_test.rb test/unit/ai_helper_setting_test.rb)",
-      "Bash(rubocop lib/redmine_ai_helper/llm_client/azure_open_ai_provider.rb test/unit/llm_client/azure_open_ai_provider_test.rb test/unit/llm_client/base_provider_test.rb)"
+      "Bash(rubocop lib/redmine_ai_helper/llm_client/azure_open_ai_provider.rb test/unit/llm_client/azure_open_ai_provider_test.rb test/unit/llm_client/base_provider_test.rb)",
+      "Bash(GIT_BRANCH_NAME=\"\" .specify/extensions/git/scripts/bash/create-new-feature.sh --json --short-name \"vector-project-selection\" \"Select projects to register in vector DB\")",
+      "Bash(xargs -n1 basename)",
+      "Bash(SPECIFY_FEATURE=022-vector-project-selection .specify/scripts/bash/setup-plan.sh --json)",
+      "Bash(sqlite3 db/redmine.sqlite3_test \"SELECT version FROM schema_migrations WHERE version LIKE '2026%' OR version LIKE '2025%' ORDER BY version;\")",
+      "Bash(ls test/unit/models/ai_helper_setting_test.rb)",
+      "Bash(head -40 test/model_factory.rb)",
+      "Bash(ls docs/adr/)",
+      "Bash(head -30 docs/adr/002*.md)",
+      "Bash(rubocop app/models/ai_helper_setting.rb app/models/ai_helper_vector_target_project.rb app/controllers/ai_helper_settings_controller.rb lib/redmine_ai_helper/agents/issue_agent.rb lib/redmine_ai_helper/agents/wiki_agent.rb lib/redmine_ai_helper/assignment_suggestion.rb lib/redmine_ai_helper/vector/issue_vector_db.rb lib/redmine_ai_helper/vector/wiki_vector_db.rb lib/tasks/vector.rake db/migrate/20260626000000_add_vector_register_all_projects_to_ai_helper_settings.rb db/migrate/20260626000001_create_ai_helper_vector_target_projects.rb)",
+      "Bash(rubocop app/models/ai_helper_setting.rb app/models/ai_helper_vector_target_project.rb db/migrate/20260626000001_create_ai_helper_vector_target_projects.rb)",
+      "Bash(timeout 590 ./.devcontainer/regression-check.sh)"
     ],
     "additionalDirectories": [
       "/usr/local/redmine/plugins/redmine_ai_helper/.claude/skills",

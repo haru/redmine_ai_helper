@@ -14,7 +14,7 @@ namespace :redmine do
             wiki_vector_db.generate_schema
             puts I18n.t("ai_helper.vector_tasks.registering")
 
-            ai_helper_projects = Project.joins(:enabled_modules).where(enabled_modules: { name: "ai_helper" })
+            ai_helper_projects = setting.vector_target_projects_relation
             issues = Issue.where(project_id: ai_helper_projects).order(:id).to_a
             puts I18n.t("ai_helper.vector_tasks.issues_count", count: issues.count)
             issue_vector_db.add_datas(datas: issues)

@@ -61,6 +61,24 @@ class RedmineAiHelper::Vector::WikiVectorDbTest < ActiveSupport::TestCase
         @page.wiki.destroy!
         assert_equal false, @vector_db.data_in_scope?(@page.id)
       end
+
+      should "return false when the project is not a vector_target (US3/FR-011)" do
+        @project.enabled_modules.create!(name: "ai_helper")
+        setting = AiHelperSetting.setting
+        setting.stubs(:vector_target?).with(@page.wiki.project).returns(false)
+        AiHelperSetting.stubs(:setting).returns(setting)
+
+        assert_equal false, @vector_db.data_in_scope?(@page.id)
+      end
+
+      should "return true when the project is a vector_target (US3/FR-011)" do
+        @project.enabled_modules.create!(name: "ai_helper")
+        setting = AiHelperSetting.setting
+        setting.stubs(:vector_target?).with(@page.wiki.project).returns(true)
+        AiHelperSetting.stubs(:setting).returns(setting)
+
+        assert_equal true, @vector_db.data_in_scope?(@page.id)
+      end
     end
 
     context "payload_index_declarations" do

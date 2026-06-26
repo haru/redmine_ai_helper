@@ -65,6 +65,26 @@ class WikiAgentTest < ActiveSupport::TestCase
       end
     end
 
+    should "exclude VectorTools when vector_search_enabled_for? is false for the project (US4)" do
+      AiHelperSetting.stubs(:vector_search_enabled_for?).with(@project).returns(false)
+      agent = RedmineAiHelper::Agents::WikiAgent.new(project: @project)
+      tool_classes = agent.available_tool_classes
+
+      RedmineAiHelper::Tools::VectorTools.tool_classes.each do |tc|
+        assert_not_includes tool_classes, tc
+      end
+    end
+
+    should "include VectorTools when vector_search_enabled_for? is true for the project (US4)" do
+      AiHelperSetting.stubs(:vector_search_enabled_for?).with(@project).returns(true)
+      agent = RedmineAiHelper::Agents::WikiAgent.new(project: @project)
+      tool_classes = agent.available_tool_classes
+
+      RedmineAiHelper::Tools::VectorTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
+      end
+    end
+
     context "#wiki_summary" do
       setup do
         # Mock the prompt loading and formatting
