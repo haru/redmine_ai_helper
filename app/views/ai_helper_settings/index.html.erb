@@ -67,11 +67,18 @@
         <span class="description"><%= t("activerecord.attributes.ai_helper_setting.vector_register_all_projects_description") %></span>
       </p>
       <div id="ai-helper-vector-target-projects" style="<%= 'display: none;' if @setting.vector_register_all_projects %>">
-        <p>
-          <%= f.collection_check_boxes :vector_target_project_ids, @ai_helper_projects, :id, :name do |b| %>
-            <label class="block"><%= b.check_box %> <%= b.text %></label>
-          <% end %>
-        </p>
+        <% if @ai_helper_projects.any? %>
+          <% selected_project_ids = @setting.vector_target_project_ids.to_a %>
+          <fieldset class="box" id="ai_helper_vector_target_project_ids">
+            <legend><%= toggle_checkboxes_link("#ai_helper_vector_target_project_ids input[type=checkbox]") %><%= t(:label_project_plural) %></legend>
+            <div class="objects-selection">
+              <%= render_project_nested_lists(@ai_helper_projects) do |p|
+                content_tag('label', check_box_tag('ai_helper_setting[vector_target_project_ids][]', p.id, selected_project_ids.include?(p.id), :id => nil) + ' ' + h(p), :class => 'block')
+              end %>
+            </div>
+            <%= hidden_field_tag('ai_helper_setting[vector_target_project_ids][]', '', :id => nil) %>
+          </fieldset>
+        <% end %>
       </div>
     </div>
     <hr>
