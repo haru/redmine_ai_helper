@@ -39,9 +39,9 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
       end
     end
 
-    should "raise NotImplementedError with data_in_scope?" do
+    should "raise NotImplementedError with in_scope_object_ids" do
       assert_raises NotImplementedError do
-        @vector_db.data_in_scope?(1)
+        @vector_db.in_scope_object_ids
       end
     end
 
@@ -130,7 +130,7 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
           logger = RedmineAiHelper::CustomLogger.instance
           logger.expects(:warn).at_least_once.with(regexp_matches(/failed to remove vector_data/))
 
-          @issue_vector_db.stubs(:data_in_scope?).returns(false)
+          @issue_vector_db.stubs(:in_scope_object_ids).returns(Set.new)
           result = @issue_vector_db.clean_vector_data
 
           assert_equal 1, result[:failed]

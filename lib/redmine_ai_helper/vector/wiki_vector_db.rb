@@ -37,13 +37,15 @@ module RedmineAiHelper
         WikiPage.exists?(id: object_id)
       end
 
-      # @param object_id [Integer] The ID of the wiki page to check.
-      # @return [Boolean] true if the wiki page exists and its project is within the
-      #   vector registration scope (ai_helper module enabled and selected, FR-011).
-      def data_in_scope?(object_id)
-        project = WikiPage.find_by(id: object_id)&.wiki&.project
-        return false unless project
-        AiHelperSetting.setting.vector_target?(project)
+      # IDs of wiki pages whose project is within the vector registration scope
+      # (ai_helper module enabled and selected, FR-011). Derived from the same
+      # AiHelperSetting#vector_target_projects_relation used by the registration
+      # rake task, so the write and cleanup paths cannot diverge. Deleted pages
+      # (or pages whose wiki/project was removed) are naturally absent.
+      # @return [Set<Integer>] in-scope wiki page IDs
+      def in_scope_object_ids
+        target_projects = AiHelperSetting.setting.vector_target_projects_relation
+        WikiPage.joins(wiki: :project).where(wikis: { project_id: target_projects }).pluck(:id).to_set
       end
 
       # A method to generate content and payload for registering a wiki page into the vector database

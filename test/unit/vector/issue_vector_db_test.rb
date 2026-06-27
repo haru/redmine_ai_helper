@@ -25,45 +25,41 @@ class RedmineAiHelper::Vector::IssueVectorDbTest < ActiveSupport::TestCase
       assert_equal @issue.project.name, payload[:project_name]
     end
 
-    context "data_in_scope?" do
+    context "in_scope_object_ids" do
       setup do
         @project = Project.find(1)
         @issue = Issue.find(1)
-      end
-
-      should "return true when project has ai_helper module enabled" do
-        @project.enabled_modules.create!(name: "ai_helper")
-        assert_equal true, @vector_db.data_in_scope?(@issue.id)
-      end
-
-      should "return false when project does not have ai_helper module enabled" do
         @project.enabled_modules.where(name: "ai_helper").destroy_all
-        assert_equal false, @vector_db.data_in_scope?(@issue.id)
       end
 
-      should "return false when issue has been deleted" do
+      should "include issues whose project has ai_helper module enabled" do
+        @project.enabled_modules.create!(name: "ai_helper")
+        assert_includes @vector_db.in_scope_object_ids, @issue.id
+      end
+
+      should "exclude issues whose project does not have ai_helper module enabled" do
+        assert_not_includes @vector_db.in_scope_object_ids, @issue.id
+      end
+
+      should "exclude issues that have been deleted" do
         @project.enabled_modules.create!(name: "ai_helper")
         issue_id = @issue.id
         @issue.destroy!
-        assert_equal false, @vector_db.data_in_scope?(issue_id)
+        assert_not_includes @vector_db.in_scope_object_ids, issue_id
       end
 
-      should "return false when the project is not a vector_target (US3/FR-011)" do
+      should "exclude issues whose project is not selected when register_all is OFF (US3/FR-011)" do
         @project.enabled_modules.create!(name: "ai_helper")
-        setting = AiHelperSetting.setting
-        setting.stubs(:vector_target?).with(@issue.project).returns(false)
-        AiHelperSetting.stubs(:setting).returns(setting)
+        AiHelperSetting.setting.update!(vector_register_all_projects: false, vector_target_project_ids: [])
 
-        assert_equal false, @vector_db.data_in_scope?(@issue.id)
+        assert_not_includes @vector_db.in_scope_object_ids, @issue.id
       end
 
-      should "return true when the project is a vector_target (US3/FR-011)" do
+      should "include issues whose project is selected when register_all is OFF (US3/FR-011)" do
         @project.enabled_modules.create!(name: "ai_helper")
-        setting = AiHelperSetting.setting
-        setting.stubs(:vector_target?).with(@issue.project).returns(true)
-        AiHelperSetting.stubs(:setting).returns(setting)
+        AiHelperSetting.setting.update!(vector_register_all_projects: false, vector_target_project_ids: [ @project.id ])
 
-        assert_equal true, @vector_db.data_in_scope?(@issue.id)
+        assert_includes @vector_db.in_scope_object_ids, @issue.id
       end
     end
 

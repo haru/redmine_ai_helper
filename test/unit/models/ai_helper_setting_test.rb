@@ -167,6 +167,12 @@ class AiHelperSettingTest < ActiveSupport::TestCase
         assert_equal true, AiHelperSetting.vector_search_enabled_for?(@project_a)
       end
 
+      should "return false for a module-disabled project even when register_all ON (matches registration scope)" do
+        @setting.update!(vector_search_enabled: true, vector_register_all_projects: true)
+        AiHelperSetting.stubs(:setting).returns(@setting)
+        assert_equal false, AiHelperSetting.vector_search_enabled_for?(@project_c)
+      end
+
       should "honor selection when enabled and register_all OFF" do
         @setting.update!(vector_search_enabled: true, vector_register_all_projects: false, vector_target_project_ids: [ @project_a.id ])
         AiHelperSetting.stubs(:setting).returns(@setting)

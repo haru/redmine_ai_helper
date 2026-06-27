@@ -67,13 +67,15 @@ class AiHelperSetting < ApplicationRecord
     # Returns whether vector search is effectively enabled for the given project.
     # Vector-dependent features (similar-issue search, wiki vector tools,
     # assignment suggestion) use this for per-project gating (FR-012).
+    # Delegates the scope decision to the same #vector_target? predicate that
+    # drives vector registration/cleanup, so feature gating and registration
+    # scope agree by construction for every project.
     # @param project [Project, nil] The project context
     # @return [Boolean] true only when vector search is enabled globally and the
     #   project is within the registration scope.
     def vector_search_enabled_for?(project)
       current = setting
       return false unless current.vector_search_enabled
-      return true if current.vector_register_all_projects?
       current.vector_target?(project)
     end
   end

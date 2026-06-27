@@ -21,6 +21,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
     end
 
     should "include vector tools when vector db is enabled" do
+      @project.enable_module!(:ai_helper)
       AiHelperSetting.any_instance.stubs(:vector_search_enabled).returns(true)
       tool_classes = @agent.available_tool_classes
 

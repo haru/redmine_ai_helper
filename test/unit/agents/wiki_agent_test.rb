@@ -46,6 +46,7 @@ class WikiAgentTest < ActiveSupport::TestCase
     end
 
     should "include VectorTools when vector search is enabled" do
+      @project.enable_module!(:ai_helper)
       AiHelperSetting.any_instance.stubs(:vector_search_enabled).returns(true)
       agent = RedmineAiHelper::Agents::WikiAgent.new(project: @project)
       tool_classes = agent.available_tool_classes

@@ -45,12 +45,16 @@ module RedmineAiHelper
         raise NotImplementedError, "data_exists? method must be implemented in subclass"
       end
 
-      # Whether the source object identified by object_id still belongs to a project
-      # whose ai_helper module is enabled. Subclasses MUST implement this.
-      # @param object_id [Integer] Issue.id or WikiPage.id
-      # @return [Boolean] true if the source exists AND its project has ai_helper module enabled
-      def data_in_scope?(object_id)
-        raise NotImplementedError, "data_in_scope? method must be implemented in subclass"
+      # The set of source object IDs (Issue.id or WikiPage.id) that still exist in
+      # Redmine AND whose project is within the vector registration scope.
+      # Computed in a single query so clean_vector_data can test membership in
+      # memory instead of querying once per stored vector. Subclasses MUST
+      # implement this and derive the scope from
+      # AiHelperSetting#vector_target_projects_relation so the cleanup path and the
+      # registration rake task cannot diverge.
+      # @return [Set<Integer>] in-scope source object IDs
+      def in_scope_object_ids
+        raise NotImplementedError, "in_scope_object_ids method must be implemented in subclass"
       end
 
       # Generates the schema for the vector database. Must be executed once before registering data.
@@ -148,8 +152,9 @@ module RedmineAiHelper
       def clean_vector_data
         deleted = 0
         failed = 0
+        in_scope_ids = in_scope_object_ids
         AiHelperVectorData.where(index: index_name).find_each do |vector_data|
-          next if data_in_scope?(vector_data.object_id)
+          next if in_scope_ids.include?(vector_data.object_id)
           begin
             client.remove_texts(ids: [ vector_data.uuid ])
             vector_data.destroy!

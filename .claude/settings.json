@@ -60,7 +60,12 @@
       "Bash(head -30 docs/adr/002*.md)",
       "Bash(rubocop app/models/ai_helper_setting.rb app/models/ai_helper_vector_target_project.rb app/controllers/ai_helper_settings_controller.rb lib/redmine_ai_helper/agents/issue_agent.rb lib/redmine_ai_helper/agents/wiki_agent.rb lib/redmine_ai_helper/assignment_suggestion.rb lib/redmine_ai_helper/vector/issue_vector_db.rb lib/redmine_ai_helper/vector/wiki_vector_db.rb lib/tasks/vector.rake db/migrate/20260626000000_add_vector_register_all_projects_to_ai_helper_settings.rb db/migrate/20260626000001_create_ai_helper_vector_target_projects.rb)",
       "Bash(rubocop app/models/ai_helper_setting.rb app/models/ai_helper_vector_target_project.rb db/migrate/20260626000001_create_ai_helper_vector_target_projects.rb)",
-      "Bash(timeout 590 ./.devcontainer/regression-check.sh)"
+      "Bash(timeout 590 ./.devcontainer/regression-check.sh)",
+      "Bash(bash .specify/scripts/bash/detect-changed-files.sh --json)",
+      "Bash(bash /usr/local/redmine/plugins/redmine_ai_helper/.specify/extensions/review/scripts/bash/detect-changed-files.sh --json)",
+      "Bash(rubocop app/models/ai_helper_setting.rb app/models/ai_helper_vector_target_project.rb app/controllers/ai_helper_settings_controller.rb lib/redmine_ai_helper/vector/issue_vector_db.rb lib/redmine_ai_helper/vector/wiki_vector_db.rb lib/redmine_ai_helper/agents/issue_agent.rb lib/redmine_ai_helper/agents/wiki_agent.rb lib/tasks/vector.rake db/migrate/20260626000000_add_vector_register_all_projects_to_ai_helper_settings.rb db/migrate/20260626000001_create_ai_helper_vector_target_projects.rb)",
+      "Bash(rubocop app/models/ai_helper_setting.rb lib/redmine_ai_helper/vector/vector_db.rb lib/redmine_ai_helper/vector/issue_vector_db.rb lib/redmine_ai_helper/vector/wiki_vector_db.rb)",
+      "Bash(rubocop test/unit/vector/vector_db_test.rb test/unit/vector/issue_vector_db_test.rb test/unit/vector/wiki_vector_db_test.rb test/unit/models/ai_helper_setting_test.rb test/unit/agents/issue_agent_test.rb test/unit/agents/wiki_agent_test.rb)"
     ],
     "additionalDirectories": [
       "/usr/local/redmine/plugins/redmine_ai_helper/.claude/skills",
