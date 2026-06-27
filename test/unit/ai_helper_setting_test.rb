@@ -234,4 +234,43 @@ class AiHelperSettingTest < ActiveSupport::TestCase
       assert_equal true, AiHelperSetting.mcp_server_enabled?
     end
   end
+
+  # ─── send_user_id_enabled ────────────────────────────────────────────
+
+  context "send_user_id_enabled" do
+    should "default to false" do
+      assert_equal false, @setting.send_user_id_enabled
+    end
+
+    should "be readable and writable" do
+      @setting.send_user_id_enabled = true
+      @setting.save!
+      @setting.reload
+
+      assert_equal true, @setting.send_user_id_enabled
+    end
+
+    should "be settable to false" do
+      @setting.update_column(:send_user_id_enabled, true)
+      @setting.send_user_id_enabled = false
+      @setting.save!
+      @setting.reload
+
+      assert_equal false, @setting.send_user_id_enabled
+    end
+  end
+
+  context "class method send_user_id_enabled?" do
+    should "return false when send_user_id_enabled is false" do
+      @setting.update!(send_user_id_enabled: false)
+
+      assert_equal false, AiHelperSetting.send_user_id_enabled?
+    end
+
+    should "return true when send_user_id_enabled is true" do
+      @setting.update!(send_user_id_enabled: true)
+
+      assert_equal true, AiHelperSetting.send_user_id_enabled?
+    end
+  end
 end

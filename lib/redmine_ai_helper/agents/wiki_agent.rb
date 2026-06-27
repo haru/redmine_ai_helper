@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative "../base_agent"
-require "redmine_ai_helper/tools/wiki_write_tools"
 
 module RedmineAiHelper
   module Agents
@@ -21,7 +20,7 @@ module RedmineAiHelper
       # @return [Array<Class>] Array of RubyLLM::Tool subclasses
       def available_tool_providers
         providers = []
-        if AiHelperSetting.vector_search_enabled?
+        if AiHelperSetting.vector_search_enabled_for?(@project)
           providers << RedmineAiHelper::Tools::VectorTools
         end
         providers << RedmineAiHelper::Tools::WikiTools

@@ -231,6 +231,8 @@ en:
         attachment_send_enabled: "Send attachments to LLM"
         attachment_max_size_mb: "Maximum attachment size (MB)"
         vector_search_enabled: "Enable vector search"
+        vector_register_all_projects: "Register all projects"
+        vector_register_all_projects_description: "When enabled, all projects with the AI Helper module enabled are registered in the vector database. Disable it to choose specific projects to register."
         vector_search_uri: "URI"
         vector_search_api_key: "API key"
         embedding_model: "Embedding model"
@@ -242,6 +244,8 @@ en:
         vector_model_profile_id: "Vector model profile"
         vector_model_profile_description: "Use a separate model profile for vector search operations (API credentials and content analysis). Note: the embedding model name is still controlled by the Embedding model setting above."
         mcp_server_enabled: "Enable MCP server"
+        send_user_id_enabled: "Send user ID to LLM"
+        send_user_id_enabled_description: "When enabled, the internal Redmine user ID is sent to the LLM provider. This allows per-user statistics tracking downstream (e.g. LiteLLM). Consider privacy implications before enabling."
       ai_helper_project_setting:
         issue_draft_instructions: "Instructions for issue comment generation"
         subtask_instructions: "Instructions for subtask generation"

@@ -1,0 +1,120 @@
+# Token Budget — project configuration
+#
+# Edit this file to tune compaction, scope budgets, and concise-mode behaviour.
+# Environment overrides: SPECKIT_TOKEN_BUDGET_<DOTTED_KEY>
+# Example: SPECKIT_TOKEN_BUDGET_COMPACT_LEVEL=aggressive
+
+compact:
+  # light | medium | aggressive
+  #   light      — strip template instructions and trailing examples only
+  #   medium     — also collapse multi-paragraph prose into bullets where lossless
+  #   aggressive — also drop "rationale", "alternatives considered", and verbose
+  #                cross-reference blocks (kept in <artifact>.full.md backup)
+  level: "medium"
+
+  # Sections that must always survive compaction, regardless of level.
+  # Match by heading text, case-insensitive, prefix match.
+  preserve_sections:
+    - "Functional Requirements"
+    - "Non-Functional Requirements"
+    - "User Stories"
+    - "Acceptance Criteria"
+    - "Success Criteria"
+    - "Constraints"
+    - "Constitution Check"
+    - "Data Model"
+    - "Contracts"
+    - "Tasks"
+
+  # Sections always eligible for removal at any level.
+  drop_sections:
+    - "How to use this template"
+    - "Template Notes"
+    - "Examples"
+    - "Examples (illustrative only)"
+
+  # Always preserve fenced code blocks (contracts, schemas, snippets).
+  preserve_code_blocks: true
+
+  # Always keep IDs that match these patterns, plus their containing line.
+  preserve_id_patterns:
+    - "FR-[0-9]+"
+    - "NFR-[0-9]+"
+    - "T[0-9]+"
+    - "US-[0-9]+"
+    - "AC-[0-9]+"
+
+  # Keep a backup as <artifact>.full.md the first time an artifact is compacted.
+  keep_full_backup: true
+
+scope:
+  # Soft cap for the total reading manifest, in tokens. Token Budget will
+  # mark artifacts beyond this budget as "skim" rather than "read".
+  max_total_tokens: 12000
+
+  # Heuristics for which artifacts each phase needs. Override per project.
+  phase_inputs:
+    plan:        ["constitution.md", "spec.md"]
+    tasks:       ["plan.md", "data-model.md", "contracts/", "research.md"]
+    implement:   ["tasks.md", "plan.md", "data-model.md", "contracts/"]
+    analyze:     ["spec.md", "plan.md", "tasks.md"]
+    checklist:   ["spec.md"]
+
+concise:
+  # Default state when the extension is first installed. The user can flip
+  # it any time with /speckit.token-budget.concise on|off.
+  enabled_by_default: false
+
+  # Where to write the concise-mode directive. The concise command walks
+  # this list in order and writes to the first file that exists. If none
+  # exist, it creates AGENTS.md (the open cross-agent standard, read by
+  # Claude Code, Cursor, Copilot, Gemini CLI, Windsurf, Aider, Zed, Warp,
+  # RooCode, and Codex) and writes there.
+  #
+  # Order is "open standard first, then agent-specific". This is intentional:
+  # writing to AGENTS.md gets picked up by every modern agent in one place,
+  # which is what most multi-agent teams want. If you prefer a specific
+  # agent file as the canonical surface, reorder this list.
+  memory_files:
+    # Open cross-agent standard (preferred when present)
+    - "AGENTS.md"
+    # Agent-specific files, alphabetical by agent
+    - "CLAUDE.md"                          # Claude Code
+    - ".clinerules"                        # Cline
+    - ".github/copilot-instructions.md"    # GitHub Copilot
+    - ".cursorrules"                       # Cursor (legacy single file)
+    - ".cursor/rules/token-budget.mdc"     # Cursor (rules directory, modern)
+    - "GEMINI.md"                          # Gemini CLI
+    - ".kilocode/rules.md"                 # Kilo Code
+    - ".pi/AGENTS.md"                      # Pi Coding Agent
+    - ".roo/rules/token-budget.md"         # Roo Code
+    - "CONVENTIONS.md"                     # Aider
+    - ".tabnine/AGENTS.md"                 # Tabnine
+    - ".windsurfrules"                     # Windsurf (legacy single file)
+    - ".windsurf/rules/token-budget.md"    # Windsurf (rules directory, modern)
+
+  # Optional: hint which agent is "primary" when multiple memory files exist.
+  # Used only as a tiebreaker — if both AGENTS.md and CLAUDE.md exist, the
+  # `concise` command writes the directive to AGENTS.md (open standard wins
+  # by default), unless prefer_agent matches the agent file instead.
+  # Leave empty to always prefer AGENTS.md when present.
+  prefer_agent: ""   # one of: claude, cursor, cline, copilot, gemini, kilocode,
+                     # pi, roo, aider, tabnine, windsurf, or "" for default
+
+  # Marker block — used to find and remove the directive when toggled off.
+  # Do not edit unless you know what you are doing.
+  marker_begin: "<!-- BEGIN token-budget concise-mode -->"
+  marker_end:   "<!-- END token-budget concise-mode -->"
+
+slim:
+  # Patterns the slim_output.sh wrapper will compress when it sees them in
+  # CLI output. Each pattern is a name → action mapping. Actions:
+  #   summarize  — replace block with a one-line summary
+  #   dedupe     — collapse repeated identical lines
+  #   keep_fail  — drop passing-test lines, keep failing ones
+  #   head_tail  — keep first N and last N lines, drop the middle
+  rules:
+    git_status:    { match: "^On branch ", action: summarize }
+    pytest_pass:   { match: "PASSED",      action: keep_fail }
+    npm_progress:  { match: "^npm warn ",  action: dedupe }
+    long_log:      { match: ".*",          action: head_tail, head: 30, tail: 30 }

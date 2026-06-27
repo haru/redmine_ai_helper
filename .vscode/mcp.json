@@ -9,21 +9,6 @@
 			],
 			"env": {}
 		},
-		"serena": {
-			"type": "stdio",
-			"command": "uvx",
-			"args": [
-				"--from",
-				"git+https://github.com/oraios/serena",
-				"serena",
-				"start-mcp-server",
-				"--context",
-				"ide-assistant",
-				"--project",
-				"/usr/local/redmine/plugins/redmine_ai_helper"
-			],
-			"env": {}
-		},
 		"playwright": {
 			"type": "stdio",
 			"command": "npx",

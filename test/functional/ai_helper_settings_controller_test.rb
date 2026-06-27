@@ -215,4 +215,89 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert_select "input[type=checkbox][name='ai_helper_setting[mcp_server_enabled]']"
     end
   end
+
+  context "vector registration target projects" do
+    setup do
+      @target_project = Project.create!(name: "Vector Target", identifier: "vector-target-proj")
+      @target_project.enable_module!(:ai_helper)
+      @other_project = Project.create!(name: "Vector Other", identifier: "vector-other-proj")
+      @other_project.enable_module!(:ai_helper)
+    end
+
+    teardown do
+      @target_project.destroy if @target_project&.persisted?
+      @other_project.destroy if @other_project&.persisted?
+    end
+
+    should "render register-all checkbox checked and project list hidden on initial render (FR-003)" do
+      get :index
+
+      assert_response :success
+      assert_select "input[type=checkbox][name='ai_helper_setting[vector_register_all_projects]'][checked=checked]"
+      assert_select "#ai-helper-vector-target-projects[style*=?]", "display: none"
+    end
+
+    should "list only ai_helper-module projects in the selection UI (FR-005)" do
+      get :index
+
+      assert_response :success
+      assert_not_nil assigns(:ai_helper_projects)
+      assert_includes assigns(:ai_helper_projects), @target_project
+    end
+
+    should "save register_all OFF with a selection and restore it (FR-007)" do
+      post :update, params: { ai_helper_setting: {
+        vector_register_all_projects: "0",
+        vector_target_project_ids: [ @target_project.id.to_s ]
+      } }
+
+      assert_redirected_to action: :index
+      @ai_helper_setting.reload
+      assert_equal false, @ai_helper_setting.vector_register_all_projects
+      assert_equal [ @target_project.id ], @ai_helper_setting.vector_target_project_ids
+
+      get :index
+      assert_select "input[type=checkbox][name='ai_helper_setting[vector_target_project_ids][]'][value=?][checked=checked]", @target_project.id.to_s
+    end
+
+    should "preserve previously selected projects when saved with register_all ON (FR-006)" do
+      post :update, params: { ai_helper_setting: {
+        vector_register_all_projects: "1",
+        vector_target_project_ids: [ @target_project.id.to_s ]
+      } }
+
+      assert_redirected_to action: :index
+      @ai_helper_setting.reload
+      assert_equal true, @ai_helper_setting.vector_register_all_projects
+      assert_equal [ @target_project.id ], @ai_helper_setting.vector_target_project_ids
+    end
+  end
+
+  context "send_user_id_enabled setting" do
+    should "save send_user_id_enabled true" do
+      post :update, params: { ai_helper_setting: { send_user_id_enabled: "1" } }
+
+      assert_redirected_to action: :index
+      @ai_helper_setting.reload
+
+      assert_equal true, @ai_helper_setting.send_user_id_enabled
+    end
+
+    should "save send_user_id_enabled false" do
+      @ai_helper_setting.update_column(:send_user_id_enabled, true)
+      post :update, params: { ai_helper_setting: { send_user_id_enabled: "0" } }
+
+      assert_redirected_to action: :index
+      @ai_helper_setting.reload
+
+      assert_equal false, @ai_helper_setting.send_user_id_enabled
+    end
+
+    should "render send_user_id_enabled checkbox on index" do
+      get :index
+
+      assert_response :success
+      assert_select "input[type=checkbox][name='ai_helper_setting[send_user_id_enabled]']"
+    end
+  end
 end

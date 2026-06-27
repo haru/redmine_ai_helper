@@ -21,21 +21,6 @@
       "type": "sse",
       "url": "https://mcp.deepwiki.com/sse"
     },
-    "serena": {
-      "type": "stdio",
-      "command": "uvx",
-      "args": [
-        "--from",
-        "git+https://github.com/oraios/serena",
-        "serena",
-        "start-mcp-server",
-        "--context",
-        "ide-assistant",
-        "--project",
-        "/usr/local/redmine/plugins/redmine_ai_helper"
-      ],
-      "env": {}
-    },
     "playwright": {
       "type": "stdio",
       "command": "npx",
@@ -52,6 +37,13 @@
       "url": "https://api.githubcopilot.com/mcp",
       "headers": {
         "Authorization": "Bearer ${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      }
+    },
+    "langfuse": {
+      "type": "http",
+      "url": "${LANGFUSE_URL}/api/public/mcp",
+      "headers": {
+        "Authorization": "Basic ${LANGFUSE_API_KEY} "
       }
     },
     "redmine": {

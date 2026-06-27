@@ -20,6 +20,7 @@ module RedmineAiHelper
         chat.with_instructions(instructions) if instructions
         chat.with_tools(*tools) unless tools.empty?
         chat.with_temperature(temperature) if temperature
+        apply_user_identifier(chat)
         chat
       end
 

@@ -43,7 +43,7 @@ jobs:
     container:
       image: ruby:3.4
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install RuboCop
         run: gem install rubocop rubocop-rails rubocop-performance rubocop-factory_bot
       - name: RuboCop
@@ -97,7 +97,7 @@ jobs:
         DB_HOST: ${{ matrix.db }}
         REDMINE_VER: ${{ matrix.redmine_version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install
         run: bash -x ./.github/build-scripts/install.sh
       - name: Test Migration Rollback
@@ -113,14 +113,21 @@ jobs:
           fi
       - name: Clean
         run: bash -x ./.github/build-scripts/cleanup.sh
-      - uses: codecov/codecov-action@v6
+      - uses: codecov/codecov-action@v7
         if: env.CODECOV_TOKEN != ''
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
-      - name: Slack Notification on Failure
+
+  notify:
+    name: Slack Notification on Failure
+    needs: [lint, build]
+    if: always() && (needs.lint.result == 'failure' || needs.build.result == 'failure')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Slack Notification
         uses: rtCamp/action-slack-notify@v2
-        if: failure() && env.SLACK_WEBHOOK != ''
+        if: env.SLACK_WEBHOOK != ''
         env:
           SLACK_CHANNEL: general
           SLACK_TITLE: Test Failure

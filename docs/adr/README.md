@@ -54,3 +54,5 @@ Briefly describe alternatives that were rejected and why.
 | ADR | Title | Status |
 |-----|-------|--------|
 | [001](./001-qdrant-payload-index-strategy.md) | Auto-create Qdrant payload indexes for filtered fields | Proposed |
+| [002](./002-vector-scope-by-ai-helper-module.md) | Scope vector data registration to projects with ai_helper module enabled | Proposed |
+| [003](./003-vector-target-project-selection.md) | Select which projects are registered in the vector database | Proposed |

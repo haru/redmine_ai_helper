@@ -1,5 +1,8 @@
 installed:
+- agent-context
+- branch-convention
 - review
+- token-budget
 settings:
   auto_execute_hooks: true
 hooks:
@@ -19,6 +22,15 @@ hooks:
     prompt: Execute speckit.git.feature?
     description: Create feature branch before specification
     condition: null
+  - extension: branch-convention
+    command: speckit.branch-convention.validate
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Validate branch naming convention before creating new feature?
+    description: Check naming convention compliance before /specify creates a new
+      branch
+    condition: null
   before_clarify:
   - extension: git
     command: speckit.git.commit
@@ -35,6 +47,14 @@ hooks:
     prompt: Commit outstanding changes before planning?
     description: Auto-commit before implementation planning
     condition: null
+  - extension: token-budget
+    command: speckit.token-budget.scope
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Scope a focused reading manifest for /speckit.plan?
+    description: Scope reading manifest before planning
+    condition: null
   before_tasks:
   - extension: git
     command: speckit.git.commit
@@ -43,6 +63,14 @@ hooks:
     prompt: Commit outstanding changes before task generation?
     description: Auto-commit before task generation
     condition: null
+  - extension: token-budget
+    command: speckit.token-budget.scope
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Scope a focused reading manifest for /speckit.tasks?
+    description: Scope reading manifest before task generation
+    condition: null
   before_implement:
   - extension: git
     command: speckit.git.commit
@@ -50,6 +78,14 @@ hooks:
     optional: true
     prompt: Commit outstanding changes before implementation?
     description: Auto-commit before implementation
+    condition: null
+  - extension: token-budget
+    command: speckit.token-budget.scope
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Scope a focused reading manifest for /speckit.implement?
+    description: Scope reading manifest before implementation
     condition: null
   before_checklist:
   - extension: git
@@ -91,6 +127,21 @@ hooks:
     prompt: Commit specification changes?
     description: Auto-commit after specification
     condition: null
+  - extension: agent-context
+    command: speckit.agent-context.update
+    enabled: true
+    optional: true
+    prompt: Execute speckit.agent-context.update?
+    description: Refresh agent context after specification
+    condition: null
+  - extension: token-budget
+    command: speckit.token-budget.compact
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Compact spec.md to reduce tokens for /speckit.plan?
+    description: Compact spec after specification
+    condition: null
   after_clarify:
   - extension: git
     command: speckit.git.commit
@@ -107,6 +158,21 @@ hooks:
     prompt: Commit plan changes?
     description: Auto-commit after implementation planning
     condition: null
+  - extension: agent-context
+    command: speckit.agent-context.update
+    enabled: true
+    optional: true
+    prompt: Execute speckit.agent-context.update?
+    description: Refresh agent context after planning
+    condition: null
+  - extension: token-budget
+    command: speckit.token-budget.compact
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Compact plan and design docs to reduce tokens for /speckit.tasks?
+    description: Compact plan docs after planning
+    condition: null
   after_tasks:
   - extension: git
     command: speckit.git.commit
@@ -114,6 +180,14 @@ hooks:
     optional: true
     prompt: Commit task changes?
     description: Auto-commit after task generation
+    condition: null
+  - extension: token-budget
+    command: speckit.token-budget.compact
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Compact tasks.md to reduce tokens for /speckit.implement?
+    description: Compact tasks after task generation
     condition: null
   after_implement:
   - extension: regression-check

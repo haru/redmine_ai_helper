@@ -71,5 +71,11 @@ class RedmineAiHelper::LlmClient::GeminiProviderTest < ActiveSupport::TestCase
 
       assert_equal mock_chat, chat
     end
+
+    context "supports_user_identifier?" do
+      should "return false" do
+        assert_equal false, @provider.send(:supports_user_identifier?)
+      end
+    end
   end
 end

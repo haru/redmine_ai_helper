@@ -63,6 +63,81 @@
       },
       "registered_skills": [],
       "installed_at": "2026-05-24T04:30:22.548432+00:00"
+    },
+    "agent-context": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:9a1dc02d2d0139bb03860392ecacef79183be2c442feda2f9ccaa4e5907b1e47",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.agent-context.update"
+        ],
+        "copilot": [
+          "speckit.agent-context.update"
+        ],
+        "opencode": [
+          "speckit.agent-context.update"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-06-06T06:27:54.323396+00:00"
+    },
+    "token-budget": {
+      "version": "1.0.1",
+      "source": "local",
+      "manifest_hash": "sha256:2ea8616666abe014ac37b299cbdeea97b9153856eecc0730faabc8c42a1f7111",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.token-budget.compact",
+          "speckit.token-budget.scope",
+          "speckit.token-budget.concise",
+          "speckit.token-budget.usage"
+        ],
+        "copilot": [
+          "speckit.token-budget.compact",
+          "speckit.token-budget.scope",
+          "speckit.token-budget.concise",
+          "speckit.token-budget.usage"
+        ],
+        "opencode": [
+          "speckit.token-budget.compact",
+          "speckit.token-budget.scope",
+          "speckit.token-budget.concise",
+          "speckit.token-budget.usage"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-06-11T13:17:01.316200+00:00"
+    },
+    "branch-convention": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:7efe1bfce264c25a4eddce6d65aa74ebc63a532b82e2d82264155e82c39d3859",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.branch-convention.configure",
+          "speckit.branch-convention.validate",
+          "speckit.branch-convention.rename"
+        ],
+        "copilot": [
+          "speckit.branch-convention.configure",
+          "speckit.branch-convention.validate",
+          "speckit.branch-convention.rename"
+        ],
+        "opencode": [
+          "speckit.branch-convention.configure",
+          "speckit.branch-convention.validate",
+          "speckit.branch-convention.rename"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-06-13T01:48:01.218718+00:00"
     }
   }
 }

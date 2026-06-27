@@ -44,7 +44,7 @@ module RedmineAiHelper
 
     # Suggest assignees based on similar issue history using vector search
     def suggest_from_history(subject:, description:, issue:)
-      unless AiHelperSetting.vector_search_enabled?
+      unless AiHelperSetting.vector_search_enabled_for?(@project)
         return { available: false, suggestions: [] }
       end
 
