@@ -6,9 +6,13 @@ class CreateAiHelperVectorTargetProjects < ActiveRecord::Migration[7.2]
   def change
     create_table :ai_helper_vector_target_projects do |t|
       t.references :ai_helper_setting, null: false, index: true
-      t.references :project, null: false, index: true
+      # projects.id is a signed int in Redmine core, so use :integer (not the
+      # bigint that t.references would create) to keep the foreign key valid on MySQL.
+      t.integer :project_id, null: false
       t.timestamps
     end
+
+    add_index :ai_helper_vector_target_projects, :project_id
 
     add_index :ai_helper_vector_target_projects,
               [ :ai_helper_setting_id, :project_id ],

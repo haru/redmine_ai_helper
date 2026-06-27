@@ -62,16 +62,17 @@
       <p id="ai_helper_embedding_url" style="display: none;">
         <%= f.text_field :embedding_url, size: 90 %>
       </p>
-    </div>
-    <hr>
-    <p>
-      <%= f.check_box :vector_register_all_projects %>
-      <span class="description"><%= t("activerecord.attributes.ai_helper_setting.vector_register_all_projects_description") %></span>
-    </p>
-    <div id="ai-helper-vector-target-projects" style="<%= 'display: none;' if @setting.vector_register_all_projects %>">
       <p>
-        <%= f.collection_check_boxes :vector_target_project_ids, @ai_helper_projects, :id, :name %>
+        <%= f.check_box :vector_register_all_projects %>
+        <span class="description"><%= t("activerecord.attributes.ai_helper_setting.vector_register_all_projects_description") %></span>
       </p>
+      <div id="ai-helper-vector-target-projects" style="<%= 'display: none;' if @setting.vector_register_all_projects %>">
+        <p>
+          <%= f.collection_check_boxes :vector_target_project_ids, @ai_helper_projects, :id, :name do |b| %>
+            <label class="block"><%= b.check_box %> <%= b.text %></label>
+          <% end %>
+        </p>
+      </div>
     </div>
     <hr>
     <p>
