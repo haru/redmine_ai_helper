@@ -30,6 +30,16 @@ class RedmineAiHelper::Vector::IssueVectorDbTest < ActiveSupport::TestCase
         @project = Project.find(1)
         @issue = Issue.find(1)
         @project.enabled_modules.where(name: "ai_helper").destroy_all
+        setting = AiHelperSetting.setting
+        @orig_register_all = setting.vector_register_all_projects
+        @orig_target_project_ids = setting.vector_target_project_ids
+      end
+
+      teardown do
+        AiHelperSetting.setting.update!(
+          vector_register_all_projects: @orig_register_all,
+          vector_target_project_ids: @orig_target_project_ids
+        )
       end
 
       should "include issues whose project has ai_helper module enabled" do

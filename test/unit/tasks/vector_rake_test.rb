@@ -233,6 +233,8 @@ class VectorRegistRakeTest < ActiveSupport::TestCase
     TOPLEVEL_BINDING.eval("@issue_vector_db = nil; @wiki_vector_db = nil; @llm_provider = nil")
 
     @setting = AiHelperSetting.find_or_create
+    @orig_register_all = @setting.vector_register_all_projects
+    @orig_target_project_ids = @setting.vector_target_project_ids
     @setting.vector_search_enabled = true
     @setting.vector_search_uri = "http://example.com"
     @setting.save!
@@ -253,6 +255,8 @@ class VectorRegistRakeTest < ActiveSupport::TestCase
 
   teardown do
     @setting.vector_search_enabled = false
+    @setting.vector_register_all_projects = @orig_register_all
+    @setting.vector_target_project_ids = @orig_target_project_ids
     @setting.save!
     Rake.application = @original_rake_application
   end
