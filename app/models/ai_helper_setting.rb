@@ -108,7 +108,7 @@ class AiHelperSetting < ApplicationRecord
   end
 
   # Base scope of projects eligible for vector registration: those with the
-  # ai_helper module enabled (see 019-vector-scope-by-module).
+  # ai_helper module enabled (see ADR-002).
   # @return [ActiveRecord::Relation] ai_helper-module-enabled projects
   def ai_helper_module_projects
     Project.joins(:enabled_modules).where(enabled_modules: { name: "ai_helper" })
