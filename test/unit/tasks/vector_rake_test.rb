@@ -233,6 +233,8 @@ class VectorRegistRakeTest < ActiveSupport::TestCase
     TOPLEVEL_BINDING.eval("@issue_vector_db = nil; @wiki_vector_db = nil; @llm_provider = nil")
 
     @setting = AiHelperSetting.find_or_create
+    @orig_register_all = @setting.vector_register_all_projects
+    @orig_target_project_ids = @setting.vector_target_project_ids
     @setting.vector_search_enabled = true
     @setting.vector_search_uri = "http://example.com"
     @setting.save!
@@ -253,6 +255,8 @@ class VectorRegistRakeTest < ActiveSupport::TestCase
 
   teardown do
     @setting.vector_search_enabled = false
+    @setting.vector_register_all_projects = @orig_register_all
+    @setting.vector_target_project_ids = @orig_target_project_ids
     @setting.save!
     Rake.application = @original_rake_application
   end
@@ -415,6 +419,67 @@ class VectorRegistRakeTest < ActiveSupport::TestCase
 
       output = capture_regist_output
       assert_match(/Vector search is not enabled\. Skipping registration\./, output[:stdout])
+    end
+  end
+
+  context "regist rake task - project selection (US1)" do
+    setup do
+      # Both projects have the ai_helper module enabled for these tests.
+      @project_without_module.enabled_modules.create!(name: "ai_helper")
+    end
+
+    should "register only the selected project's issues when register_all is OFF" do
+      @setting.update!(vector_register_all_projects: false, vector_target_project_ids: [ @project_with_module.id ])
+      selected_issues = @project_with_module.issues.order(:id).to_a
+
+      @issue_db.expects(:add_datas).with(datas: selected_issues).once
+      @wiki_db.stubs(:add_datas)
+      @issue_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+      @wiki_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+
+      output = capture_regist_output
+      assert_match(/Issues: #{selected_issues.count} items/, output[:stdout])
+    end
+
+    should "register only the selected project's wiki pages when register_all is OFF" do
+      @setting.update!(vector_register_all_projects: false, vector_target_project_ids: [ @project_with_module.id ])
+      selected_wikis = WikiPage.joins(wiki: :project).where(wikis: { project_id: @project_with_module.id }).order(:id).to_a
+
+      @issue_db.stubs(:add_datas)
+      @wiki_db.expects(:add_datas).with(datas: selected_wikis).once
+      @issue_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+      @wiki_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+
+      output = capture_regist_output
+      assert_match(/Wiki Pages: #{selected_wikis.count} items/, output[:stdout])
+    end
+
+    should "register all ai_helper-module projects when register_all is ON (SC-002)" do
+      @setting.update!(vector_register_all_projects: true)
+      enabled_project_ids = Project.joins(:enabled_modules).where(enabled_modules: { name: "ai_helper" }).pluck(:id)
+      expected_issue_count = Issue.where(project_id: enabled_project_ids).count
+
+      @issue_db.expects(:add_datas).once
+      @wiki_db.expects(:add_datas).once
+      @issue_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+      @wiki_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+
+      output = capture_regist_output
+      assert_match(/Issues: #{expected_issue_count} items/, output[:stdout])
+    end
+
+    should "register 0 items without error when register_all is OFF with empty selection (FR-014)" do
+      @setting.update!(vector_register_all_projects: false, vector_target_project_ids: [])
+
+      @issue_db.expects(:add_datas).with(datas: []).once
+      @wiki_db.expects(:add_datas).with(datas: []).once
+      @issue_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+      @wiki_db.stubs(:clean_vector_data).returns({ deleted: 0, failed: 0 })
+
+      output = capture_regist_output
+      assert_match(/Issues: 0 items/, output[:stdout])
+      assert_match(/Wiki Pages: 0 items/, output[:stdout])
+      assert_match(/Vector data registration completed\./, output[:stdout])
     end
   end
 

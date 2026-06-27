@@ -25,6 +25,7 @@ class IssuesBottomPartialTest < ActionView::TestCase
     @mock_setting.stubs(:model_profile).returns(mock("profile"))
     AiHelperSetting.stubs(:find_or_create).returns(@mock_setting)
     AiHelperSetting.stubs(:vector_search_enabled?).returns(true)
+    AiHelperSetting.stubs(:vector_search_enabled_for?).returns(true)
   end
 
   teardown do
@@ -69,6 +70,24 @@ class IssuesBottomPartialTest < ActionView::TestCase
         assert_includes html, l(:ai_helper_scope_current_project)
         assert_includes html, l(:ai_helper_scope_with_subprojects)
         assert_includes html, l(:ai_helper_scope_all_projects)
+      end
+    end
+
+    context "project gating" do
+      should "render similar issues section when project is a vector target" do
+        AiHelperSetting.stubs(:vector_search_enabled_for?).returns(true)
+
+        html = render(partial: "ai_helper/issues/bottom", locals: {})
+
+        assert_includes html, "ai-helper-similar-issues-button"
+      end
+
+      should "not render similar issues section when project is not a vector target" do
+        AiHelperSetting.stubs(:vector_search_enabled_for?).returns(false)
+
+        html = render(partial: "ai_helper/issues/bottom", locals: {})
+
+        assert_not_includes html, "ai-helper-similar-issues-button"
       end
     end
 

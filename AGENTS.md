@@ -179,5 +179,5 @@ replies outside SDD steps are not affected.
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-specs/023-fix-mcp-tool-duplication/plan.md
+specs/022-vector-project-selection/plan.md
 <!-- SPECKIT END -->

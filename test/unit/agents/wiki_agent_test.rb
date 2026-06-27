@@ -46,6 +46,7 @@ class WikiAgentTest < ActiveSupport::TestCase
     end
 
     should "include VectorTools when vector search is enabled" do
+      @project.enable_module!(:ai_helper)
       AiHelperSetting.any_instance.stubs(:vector_search_enabled).returns(true)
       agent = RedmineAiHelper::Agents::WikiAgent.new(project: @project)
       tool_classes = agent.available_tool_classes
@@ -62,6 +63,26 @@ class WikiAgentTest < ActiveSupport::TestCase
 
       RedmineAiHelper::Tools::VectorTools.tool_classes.each do |tc|
         assert_not_includes tool_classes, tc
+      end
+    end
+
+    should "exclude VectorTools when vector_search_enabled_for? is false for the project (US4)" do
+      AiHelperSetting.stubs(:vector_search_enabled_for?).with(@project).returns(false)
+      agent = RedmineAiHelper::Agents::WikiAgent.new(project: @project)
+      tool_classes = agent.available_tool_classes
+
+      RedmineAiHelper::Tools::VectorTools.tool_classes.each do |tc|
+        assert_not_includes tool_classes, tc
+      end
+    end
+
+    should "include VectorTools when vector_search_enabled_for? is true for the project (US4)" do
+      AiHelperSetting.stubs(:vector_search_enabled_for?).with(@project).returns(true)
+      agent = RedmineAiHelper::Agents::WikiAgent.new(project: @project)
+      tool_classes = agent.available_tool_classes
+
+      RedmineAiHelper::Tools::VectorTools.tool_classes.each do |tc|
+        assert_includes tool_classes, tc
       end
     end
 

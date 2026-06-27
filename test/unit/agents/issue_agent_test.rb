@@ -21,6 +21,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
     end
 
     should "include vector tools when vector db is enabled" do
+      @project.enable_module!(:ai_helper)
       AiHelperSetting.any_instance.stubs(:vector_search_enabled).returns(true)
       tool_classes = @agent.available_tool_classes
 
@@ -328,13 +329,48 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
       end
     end
 
+    context "US4 per-project vector gating" do
+      should "exclude vector tools when vector_search_enabled_for? is false for the project" do
+        AiHelperSetting.stubs(:vector_search_enabled_for?).with(@project).returns(false)
+        tool_classes = @agent.available_tool_classes
+
+        RedmineAiHelper::Tools::VectorTools.tool_classes.each do |tc|
+          assert_not_includes tool_classes, tc
+        end
+      end
+
+      should "include vector tools when vector_search_enabled_for? is true for the project" do
+        AiHelperSetting.stubs(:vector_search_enabled_for?).with(@project).returns(true)
+        tool_classes = @agent.available_tool_classes
+
+        RedmineAiHelper::Tools::VectorTools.tool_classes.each do |tc|
+          assert_includes tool_classes, tc
+        end
+      end
+
+      should "short-circuit find_similar_issues when vector_search_enabled_for? is false" do
+        @issue.stubs(:visible?).returns(true)
+        AiHelperSetting.stubs(:vector_search_enabled_for?).returns(false)
+
+        assert_equal [], @agent.find_similar_issues(issue: @issue)
+      end
+
+      should "short-circuit find_similar_issues_by_content when vector_search_enabled_for? is false" do
+        AiHelperSetting.stubs(:vector_search_enabled_for?).returns(false)
+
+        assert_raises(RuntimeError) do
+          @agent.find_similar_issues_by_content(subject: "Test", description: "Test")
+        end
+      end
+    end
+
     context "find_similar_issues" do
       setup do
         @mock_vector_tools = mock("VectorTools")
         RedmineAiHelper::Tools::VectorTools.stubs(:new).returns(@mock_vector_tools)
         @mock_setting = mock("AiHelperSetting")
         @mock_setting.stubs(:vector_search_enabled).returns(true)
-        AiHelperSetting.stubs(:vector_search_enabled?).returns(true)
+        AiHelperSetting.stubs(:vector_search_enabled_for?).returns(true)
       end
 
       should "return empty array if issue not visible" do
@@ -346,7 +382,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
       end
 
       should "return empty array if vector search not enabled" do
-        AiHelperSetting.stubs(:vector_search_enabled?).returns(false)
+        AiHelperSetting.stubs(:vector_search_enabled_for?).returns(false)
 
         result = @agent.find_similar_issues(issue: @issue)
 
@@ -429,7 +465,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
         RedmineAiHelper::Tools::VectorTools.stubs(:new).returns(@mock_vector_tools)
         @mock_setting = mock("AiHelperSetting")
         @mock_setting.stubs(:vector_search_enabled).returns(true)
-        AiHelperSetting.stubs(:vector_search_enabled?).returns(true)
+        AiHelperSetting.stubs(:vector_search_enabled_for?).returns(true)
       end
 
       should "return similar issues when vector search is enabled" do
@@ -454,7 +490,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
       end
 
       should "raise error if vector search not enabled" do
-        AiHelperSetting.stubs(:vector_search_enabled?).returns(false)
+        AiHelperSetting.stubs(:vector_search_enabled_for?).returns(false)
 
         assert_raises(RuntimeError, "Vector search is not enabled") do
           @agent.find_similar_issues_by_content(

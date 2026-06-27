@@ -33,33 +33,51 @@ class RedmineAiHelper::Vector::WikiVectorDbTest < ActiveSupport::TestCase
       assert_equal @page.project.name, payload[:project_name]
     end
 
-    context "data_in_scope?" do
+    context "in_scope_object_ids" do
       setup do
         @page = WikiPage.find(1)
         @project = @page.wiki.project
-      end
-
-      should "return true when project has ai_helper module enabled" do
-        @project.enabled_modules.create!(name: "ai_helper")
-        assert_equal true, @vector_db.data_in_scope?(@page.id)
-      end
-
-      should "return false when project does not have ai_helper module enabled" do
         @project.enabled_modules.where(name: "ai_helper").destroy_all
-        assert_equal false, @vector_db.data_in_scope?(@page.id)
+        setting = AiHelperSetting.setting
+        @orig_register_all = setting.vector_register_all_projects
+        @orig_target_project_ids = setting.vector_target_project_ids
       end
 
-      should "return false when wiki page has been deleted" do
+      teardown do
+        AiHelperSetting.setting.update!(
+          vector_register_all_projects: @orig_register_all,
+          vector_target_project_ids: @orig_target_project_ids
+        )
+      end
+
+      should "include wiki pages whose project has ai_helper module enabled" do
+        @project.enabled_modules.create!(name: "ai_helper")
+        assert_includes @vector_db.in_scope_object_ids, @page.id
+      end
+
+      should "exclude wiki pages whose project does not have ai_helper module enabled" do
+        assert_not_includes @vector_db.in_scope_object_ids, @page.id
+      end
+
+      should "exclude wiki pages that have been deleted" do
         @project.enabled_modules.create!(name: "ai_helper")
         page_id = @page.id
         @page.destroy!
-        assert_equal false, @vector_db.data_in_scope?(page_id)
+        assert_not_includes @vector_db.in_scope_object_ids, page_id
       end
 
-      should "return false when wiki is nil" do
-        @page.wiki.id
-        @page.wiki.destroy!
-        assert_equal false, @vector_db.data_in_scope?(@page.id)
+      should "exclude wiki pages whose project is not selected when register_all is OFF (US3/FR-011)" do
+        @project.enabled_modules.create!(name: "ai_helper")
+        AiHelperSetting.setting.update!(vector_register_all_projects: false, vector_target_project_ids: [])
+
+        assert_not_includes @vector_db.in_scope_object_ids, @page.id
+      end
+
+      should "include wiki pages whose project is selected when register_all is OFF (US3/FR-011)" do
+        @project.enabled_modules.create!(name: "ai_helper")
+        AiHelperSetting.setting.update!(vector_register_all_projects: false, vector_target_project_ids: [ @project.id ])
+
+        assert_includes @vector_db.in_scope_object_ids, @page.id
       end
     end
 

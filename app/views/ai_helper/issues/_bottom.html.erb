@@ -166,7 +166,7 @@
 
 <% end %>
 
-<% if RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: @project, permission: { controller: :ai_helper, action: :similar_issues }) and AiHelperSetting.find_or_create.model_profile and AiHelperSetting.vector_search_enabled? %>
+<% if RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: @project, permission: { controller: :ai_helper, action: :similar_issues }) and AiHelperSetting.find_or_create.model_profile and AiHelperSetting.vector_search_enabled_for?(@project) %>
 <div id="ai-helper-similar-issues-section" style="border-top: 1px solid #ccc; padding-top: 10px; margin-top: 10px;">
     <div class="contextual">
     </div>

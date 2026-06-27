@@ -21,7 +21,7 @@ class RedmineAiHelper::AssignmentSuggestionTest < ActiveSupport::TestCase
 
     context "#suggest" do
       should "return a hash with all three suggestion categories" do
-        AiHelperSetting.stubs(:vector_search_enabled?).returns(false)
+        AiHelperSetting.stubs(:vector_search_enabled_for?).returns(false)
         result = @suggestion.suggest(subject: "Test issue", description: "Some description")
 
         assert result.key?(:history_based)
@@ -33,7 +33,7 @@ class RedmineAiHelper::AssignmentSuggestionTest < ActiveSupport::TestCase
     context "#suggest_from_history" do
       context "when vector search is disabled" do
         setup do
-          AiHelperSetting.stubs(:vector_search_enabled?).returns(false)
+          AiHelperSetting.stubs(:vector_search_enabled_for?).returns(false)
         end
 
         should "return available: false" do
@@ -46,7 +46,7 @@ class RedmineAiHelper::AssignmentSuggestionTest < ActiveSupport::TestCase
 
       context "when vector search is enabled" do
         setup do
-          AiHelperSetting.stubs(:vector_search_enabled?).returns(true)
+          AiHelperSetting.stubs(:vector_search_enabled_for?).returns(true)
         end
 
         should "return suggestions from similar issues" do

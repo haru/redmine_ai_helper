@@ -20,7 +20,7 @@ module RedmineAiHelper
       # @return [Array<Class>] Array of RubyLLM::Tool subclasses
       def available_tool_providers
         providers = []
-        if AiHelperSetting.vector_search_enabled?
+        if AiHelperSetting.vector_search_enabled_for?(@project)
           providers << RedmineAiHelper::Tools::VectorTools
         end
         providers << RedmineAiHelper::Tools::WikiTools

@@ -62,6 +62,24 @@
       <p id="ai_helper_embedding_url" style="display: none;">
         <%= f.text_field :embedding_url, size: 90 %>
       </p>
+      <p>
+        <%= f.check_box :vector_register_all_projects %>
+        <span class="description"><%= t("activerecord.attributes.ai_helper_setting.vector_register_all_projects_description") %></span>
+      </p>
+      <div id="ai-helper-vector-target-projects" style="<%= 'display: none;' if @setting.vector_register_all_projects %>">
+        <% if @ai_helper_projects.any? %>
+          <% selected_project_ids = @setting.vector_target_project_ids.to_a %>
+          <fieldset class="box" id="ai_helper_vector_target_project_ids">
+            <legend><%= toggle_checkboxes_link("#ai_helper_vector_target_project_ids input[type=checkbox]") %><%= t(:label_project_plural) %></legend>
+            <div class="objects-selection">
+              <%= render_project_nested_lists(@ai_helper_projects) do |p|
+                content_tag('label', check_box_tag('ai_helper_setting[vector_target_project_ids][]', p.id, selected_project_ids.include?(p.id), :id => nil) + ' ' + h(p), :class => 'block')
+              end %>
+            </div>
+            <%= hidden_field_tag('ai_helper_setting[vector_target_project_ids][]', '', :id => nil) %>
+          </fieldset>
+        <% end %>
+      </div>
     </div>
     <hr>
     <p>
@@ -124,6 +142,14 @@
           $('#ai-helper-vector-search').hide();
       }
       setVectorModelProfileToggleVisible();
+  }
+
+  function setVectorTargetProjectsVisible() {
+      const registerAll = document.getElementById('ai_helper_setting_vector_register_all_projects');
+      const container = document.getElementById('ai-helper-vector-target-projects');
+      if (!registerAll || !container) return;
+      // Hidden but not disabled: the selection is still submitted so it is preserved (FR-006).
+      container.style.display = registerAll.checked ? 'none' : '';
   }
 
   function setVectorModelProfileVisible() {
@@ -190,6 +216,9 @@
       $('#ai_helper_setting_vector_search_enabled').change(function() {
           setVectorSearchVisible();
       });
+      document.getElementById('ai_helper_setting_vector_register_all_projects').addEventListener('change', function() {
+          setVectorTargetProjectsVisible();
+      });
       document.getElementById('ai_helper_setting_use_vector_model_profile').addEventListener('change', function() {
           setVectorModelProfileVisible();
       });
@@ -198,5 +227,6 @@
   setThinkModelVisible();
   setAttachmentSettingsVisible();
   setVectorSearchVisible();
+  setVectorTargetProjectsVisible();
   setSendUserIdVisible();
 </script>

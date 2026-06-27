@@ -46,13 +46,15 @@ module RedmineAiHelper
         Issue.exists?(id: object_id)
       end
 
-      # @param object_id [Integer] The ID of the issue to check.
-      # @return [Boolean] true if the issue exists and its project has ai_helper module enabled.
-      def data_in_scope?(object_id)
-        issue = Issue.find_by(id: object_id)
-        return false unless issue
-        return false unless issue.project
-        issue.project.module_enabled?(:ai_helper)
+      # IDs of issues whose project is within the vector registration scope
+      # (ai_helper module enabled and selected, FR-011). Derived from the same
+      # AiHelperSetting#vector_target_projects_relation used by the registration
+      # rake task, so the write and cleanup paths cannot diverge. Deleted issues
+      # are naturally absent because they no longer exist in the issues table.
+      # @return [Set<Integer>] in-scope issue IDs
+      def in_scope_object_ids
+        target_projects = AiHelperSetting.setting.vector_target_projects_relation
+        Issue.where(project_id: target_projects).pluck(:id).to_set
       end
 
       # A method to generate content and payload for registering an issue into the vector database

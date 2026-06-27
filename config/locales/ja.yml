@@ -231,6 +231,8 @@ ja:
         attachment_send_enabled: "添付ファイルをLLMに送信する"
         attachment_max_size_mb: "添付ファイルの最大サイズ(MB)"
         vector_search_enabled: "ベクトル検索を有効にする"
+        vector_register_all_projects: "すべてのプロジェクトを登録する"
+        vector_register_all_projects_description: "有効にすると、AI Helperモジュールが有効なすべてのプロジェクトがベクトルDBに登録されます。無効にすると、登録するプロジェクトを個別に選択できます。"
         vector_search_uri: "URI"
         vector_search_api_key: "APIキー"
         embedding_model: "埋め込みモデル"

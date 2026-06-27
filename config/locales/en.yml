@@ -231,6 +231,8 @@ en:
         attachment_send_enabled: "Send attachments to LLM"
         attachment_max_size_mb: "Maximum attachment size (MB)"
         vector_search_enabled: "Enable vector search"
+        vector_register_all_projects: "Register all projects"
+        vector_register_all_projects_description: "When enabled, all projects with the AI Helper module enabled are registered in the vector database. Disable it to choose specific projects to register."
         vector_search_uri: "URI"
         vector_search_api_key: "API key"
         embedding_model: "Embedding model"
