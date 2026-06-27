@@ -1,6 +1,6 @@
 source "https://rubygems.org"
 
-gem "mcp", "~> 0.21.0"
+gem "mcp", "~> 0.22.0"
 gem "ruby_llm", "~> 1.16.0"
 gem "ruby_llm-mcp", "~> 1.0.0"
 
