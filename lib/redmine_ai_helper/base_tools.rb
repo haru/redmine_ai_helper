@@ -77,7 +77,10 @@ module RedmineAiHelper
         tool_class.define_singleton_method(:name) { tool_class_name }
         tool_class.define_singleton_method(:to_s) { tool_class_name }
 
-        tool_classes << tool_class
+        # Register the tool class idempotently: if the same class body is evaluated
+        # more than once (e.g. a tool file is both manually required and autoloaded,
+        # see issue #323), a tool with the same unique name must not be added twice.
+        tool_classes << tool_class unless tool_classes.any? { |t| t.name == tool_class_name }
 
         # Store function metadata for backward compatibility (function_schemas)
         function_registry[func_name] = {

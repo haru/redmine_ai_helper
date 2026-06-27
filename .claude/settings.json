@@ -49,7 +49,14 @@
       "Bash(git --no-pager diff -- app/models/ai_helper_setting.rb lib/redmine_ai_helper/llm_client/base_provider.rb lib/redmine_ai_helper/llm_client/open_ai_compatible_provider.rb app/views/ai_helper_settings/index.html.erb)",
       "Bash(git --no-pager diff -- lib/redmine_ai_helper/llm_client/base_provider.rb lib/redmine_ai_helper/llm_client/open_ai_compatible_provider.rb)",
       "Bash(git --no-pager diff -- test/unit/llm_client/base_provider_test.rb test/unit/ai_helper_setting_test.rb)",
-      "Bash(rubocop lib/redmine_ai_helper/llm_client/azure_open_ai_provider.rb test/unit/llm_client/azure_open_ai_provider_test.rb test/unit/llm_client/base_provider_test.rb)"
+      "Bash(rubocop lib/redmine_ai_helper/llm_client/azure_open_ai_provider.rb test/unit/llm_client/azure_open_ai_provider_test.rb test/unit/llm_client/base_provider_test.rb)",
+      "Bash(bash .specify/extensions/git/scripts/bash/create-new-feature.sh --json --short-name \"fix-mcp-tool-duplication\" \"Fix MCP::ToolNotUnique error caused by duplicate tool registration from double-loading wiki_write_tools\")",
+      "Bash(cp .specify/templates/spec-template.md specs/023-fix-mcp-tool-duplication/spec.md)",
+      "Bash(printf '{\\\\n  \"feature_directory\": \"specs/023-fix-mcp-tool-duplication\"\\\\n}\\\\n')",
+      "Bash(bash .specify/scripts/bash/setup-plan.sh --json)",
+      "Bash(rubocop lib/redmine_ai_helper/agents/wiki_agent.rb)",
+      "Bash(rubocop lib/redmine_ai_helper/base_tools.rb test/unit/base_tools_test.rb)",
+      "Bash(./.devcontainer/regression-check.sh)"
     ],
     "additionalDirectories": [
       "/usr/local/redmine/plugins/redmine_ai_helper/.claude/skills",
