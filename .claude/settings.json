@@ -1,8 +1,6 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(DB=mysql2 DB_NAME=redmine DB_USERNAME=root DB_PASSWORD=root DB_HOST=mysql DB_PORT=3306 RAILS_ENV=test bundle exec rails runner ' *)"
-    ],
+    "allow": [],
     "additionalDirectories": []
   }
 }
