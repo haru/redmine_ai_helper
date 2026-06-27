@@ -100,6 +100,36 @@ class BaseToolsTest < ActiveSupport::TestCase
         assert_equal 2, multi_classes.size
         assert_empty simple_classes & multi_classes
       end
+
+      should "register tool classes idempotently when the same function is evaluated multiple times" do
+        # Simulate double (and triple) evaluation of the same class body, as happens
+        # when a tool file is both manually required and autoloaded (issue #323).
+        tool_class = Class.new(RedmineAiHelper::BaseTools) do
+          define_function :greet, description: "Say hello to someone" do
+            property :name, type: "string", description: "The name to greet", required: true
+          end
+
+          def greet(name:)
+            "Hello, #{name}!"
+          end
+        end
+
+        assert_equal 1, tool_class.tool_classes.size
+
+        # Re-evaluate the same define_function two more times on the same class.
+        2.times do
+          tool_class.class_eval do
+            define_function :greet, description: "Say hello to someone" do
+              property :name, type: "string", description: "The name to greet", required: true
+            end
+          end
+        end
+
+        # The tool with the same unique name must not be duplicated.
+        assert_equal 1, tool_class.tool_classes.size, "tool_classes must not grow on re-evaluation"
+        names = tool_class.tool_classes.map(&:name)
+        assert_equal names.size, names.uniq.size, "tool_classes must not contain duplicate names"
+      end
     end
 
     context "tool execution via RubyLLM::Tool subclass" do
