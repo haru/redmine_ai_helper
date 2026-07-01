@@ -58,7 +58,8 @@ jobs:
     # Supported Matrix:
     # Redmine 6.0-stable: Ruby 3.1, 3.2, 3.3
     # Redmine 6.1-stable: Ruby 3.2, 3.3, 3.4
-    # Redmine master: Ruby 3.2, 3.3, 3.4
+    # Redmine 7.0-stable: Ruby 3.2, 3.3, 3.4, 4.0
+    # Redmine master: Ruby 3.2, 3.3, 3.4, 4.0
     strategy:
       max-parallel: 10
       matrix:

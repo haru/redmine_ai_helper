@@ -2,7 +2,7 @@ require "langfuse"
 require "ruby_llm"
 $LOAD_PATH.unshift "#{File.dirname(__FILE__)}/lib"
 
-load File.expand_path("version.rb", __dir__)
+require File.expand_path("version", __dir__)
 require "redmine_ai_helper/logger"
 
 # Initialize RubyLLM with minimal configuration.
