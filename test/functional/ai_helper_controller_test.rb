@@ -563,6 +563,7 @@ class AiHelperControllerTest < ActionController::TestCase
           project: { name: "Test Project" },
           subject: "Similar issue",
           status: { name: "Open" },
+          spent_hours: 3.5,
           updated_on: Time.zone.now,
           assigned_to: { name: "Test User" },
           similarity_score: 85.0,
@@ -578,6 +579,7 @@ class AiHelperControllerTest < ActionController::TestCase
         # Check that the response contains the expected content (HTML partial)
         assert_match(/Similar issue/, @response.body)
         assert_match(/85\.0%/, @response.body)
+        assert_match(/3\.5 h/, @response.body)
         assert_match(/Updated/, @response.body)
       end
 

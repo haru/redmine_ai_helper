@@ -9,6 +9,7 @@ zh:
   ai_helper_similar_issues: "使用 AI 助手查找类似问题"
   ai_helper_find_similar_issues: "查找类似问题"
   ai_helper_similarity: "相似度"
+  ai_helper_spent_hours: "已用时间"
   ai_helper_no_similar_issues_found: "未找到类似问题"
   ai_helper_scope_current_project: "当前项目"
   ai_helper_scope_with_subprojects: "包含子项目"

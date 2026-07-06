@@ -9,6 +9,7 @@
         <th><%= l(:field_subject) %></th>
         <th><%= l(:field_project) %></th>
         <th><%= l(:field_status) %></th>
+        <th><%= l(:ai_helper_spent_hours) %></th>
         <th><%= l(:field_updated_on) %></th>
         <th><%= l(:field_assigned_to) %></th>
       </tr>
@@ -25,6 +26,7 @@
           </td>
           <td class="ai-helper-project"><%= similar_issue[:project][:name] %></td>
           <td class="ai-helper-status"><%= similar_issue[:status][:name] %></td>
+          <td class="ai-helper-spent-hours"><%= similar_issue.key?(:spent_hours) ? "#{similar_issue[:spent_hours]} h" : "" %></td>
           <td class="ai-helper-updated-on"><%= format_time(similar_issue[:updated_on]) %></td>
           <td class="ai-helper-assigned"><%= similar_issue[:assigned_to] ? similar_issue[:assigned_to][:name] : "" %></td>
         </tr>

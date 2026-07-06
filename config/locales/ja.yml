@@ -10,6 +10,7 @@ ja:
   ai_helper_similar_issues: "AIヘルパーで類似チケットを検索"
   ai_helper_find_similar_issues: "類似チケットを検索"
   ai_helper_similarity: "類似度"
+  ai_helper_spent_hours: "費やした時間"
   ai_helper_no_similar_issues_found: "類似するチケットが見つかりませんでした"
   ai_helper_scope_current_project: "このプロジェクト内"
   ai_helper_scope_with_subprojects: "サブプロジェクトを含める"

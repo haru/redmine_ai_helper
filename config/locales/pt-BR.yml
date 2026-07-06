@@ -9,6 +9,7 @@ pt-BR:
   ai_helper_similar_issues: Encontrar Tarefas Semelhantes com IA
   ai_helper_find_similar_issues: Encontrar Tarefas Semelhantes
   ai_helper_similarity: Similaridade
+  ai_helper_spent_hours: Horas gastas
   ai_helper_no_similar_issues_found: Nenhuma tarefa semelhante encontrada
   ai_helper_scope_current_project: Projeto atual
   ai_helper_scope_with_subprojects: Incluir subprojetos
