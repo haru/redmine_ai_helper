@@ -2,6 +2,28 @@ require File.expand_path("../../../test_helper", __FILE__)
 require "redmine_ai_helper/llm_client/base_provider"
 
 class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
+  # Test double with OpenAI provider metadata, used wherever a provider with a
+  # non-nil ruby_llm_provider_class is needed (unlike the Compatible provider).
+  class FakeOpenAiProvider < RedmineAiHelper::LlmClient::BaseProvider
+    protected
+
+    def ruby_llm_provider_class
+      RubyLLM::Providers::OpenAI
+    end
+
+    def ruby_llm_provider_slug
+      "openai"
+    end
+
+    def configure_provider_config(config)
+      config.openai_api_key = resolved_model_profile.access_key
+    end
+
+    def build_context
+      RubyLLM.context { |c| c.openai_api_key = "test_fetch_key" }
+    end
+  end
+
   context "BaseProvider" do
     setup do
       @provider = RedmineAiHelper::LlmClient::BaseProvider.new
@@ -202,13 +224,13 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         @setting.save!
       end
 
-      should "generate embedding using context with default model" do
+      should "generate embedding using context with default model, forcing assume_model_exists when ruby_llm_provider_class is nil" do
         mock_context = mock("RubyLLM::Context")
         mock_response = mock("EmbeddingResponse")
         mock_response.expects(:vectors).returns([ 0.1, 0.2, 0.3 ])
 
         @provider.expects(:build_context).returns(mock_context)
-        mock_context.expects(:embed).with("test text").returns(mock_response)
+        mock_context.expects(:embed).with("test text", provider: :openai, assume_model_exists: true).returns(mock_response)
 
         @setting.embedding_model = nil
         @setting.save!
@@ -218,13 +240,13 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         assert_equal [ 0.1, 0.2, 0.3 ], result
       end
 
-      should "use custom embedding model when configured" do
+      should "use custom embedding model when configured, forcing assume_model_exists when ruby_llm_provider_class is nil" do
         mock_context = mock("RubyLLM::Context")
         mock_response = mock("EmbeddingResponse")
         mock_response.expects(:vectors).returns([ 0.4, 0.5, 0.6 ])
 
         @provider.expects(:build_context).returns(mock_context)
-        mock_context.expects(:embed).with("test text", model: "text-embedding-ada-002").returns(mock_response)
+        mock_context.expects(:embed).with("test text", model: "text-embedding-ada-002", provider: :openai, assume_model_exists: true).returns(mock_response)
 
         @setting.embedding_model = "text-embedding-ada-002"
         @setting.save!
@@ -232,6 +254,45 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         result = @provider.embed("test text")
 
         assert_equal [ 0.4, 0.5, 0.6 ], result
+      end
+
+      should "use a non-registry embedding model (e.g. Ollama via OpenAI Compatible) without raising" do
+        mock_context = mock("RubyLLM::Context")
+        mock_response = mock("EmbeddingResponse")
+        mock_response.expects(:vectors).returns([ 0.7, 0.8, 0.9 ])
+
+        @provider.expects(:build_context).returns(mock_context)
+        mock_context.expects(:embed).with("test text", model: "nomic-embed-text:latest", provider: :openai, assume_model_exists: true).returns(mock_response)
+
+        @setting.embedding_model = "nomic-embed-text:latest"
+        @setting.save!
+
+        result = @provider.embed("test text")
+
+        assert_equal [ 0.7, 0.8, 0.9 ], result
+      end
+
+      context "with a provider that has ruby_llm_provider_class present (e.g. OpenAI)" do
+        setup do
+          @concrete_provider = FakeOpenAiProvider.new
+        end
+
+        should "not force assume_model_exists or provider when ruby_llm_provider_class is present" do
+          @concrete_provider.stubs(:ensure_model_registered!)
+          mock_context = mock("RubyLLM::Context")
+          mock_response = mock("EmbeddingResponse")
+          mock_response.expects(:vectors).returns([ 0.1, 0.2, 0.3 ])
+
+          @concrete_provider.expects(:build_context).returns(mock_context)
+          mock_context.expects(:embed).with("test text", model: "text-embedding-ada-002").returns(mock_response)
+
+          @setting.embedding_model = "text-embedding-ada-002"
+          @setting.save!
+
+          result = @concrete_provider.embed("test text")
+
+          assert_equal [ 0.1, 0.2, 0.3 ], result
+        end
       end
     end
 
@@ -244,27 +305,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
           llm_model: @test_model_id,
           access_key: "test_fetch_key"
         )
-        # Anonymous subclass with OpenAI provider metadata
-        @concrete_class = Class.new(RedmineAiHelper::LlmClient::BaseProvider) do
-          protected
-
-          def ruby_llm_provider_class
-            RubyLLM::Providers::OpenAI
-          end
-
-          def ruby_llm_provider_slug
-            "openai"
-          end
-
-          def configure_provider_config(config)
-            config.openai_api_key = resolved_model_profile.access_key
-          end
-
-          def build_context
-            RubyLLM.context { |c| c.openai_api_key = "test_fetch_key" }
-          end
-        end
-        @concrete_provider = @concrete_class.new(model_profile: @test_profile)
+        @concrete_provider = FakeOpenAiProvider.new(model_profile: @test_profile)
         # Ensure test model not in registry at start
         RubyLLM.models.instance_variable_get(:@models).reject! { |m| m.id == @test_model_id }
       end
