@@ -62,9 +62,9 @@ module RedmineAiHelper
       end
 
       # Generate an embedding vector for the given text via the memoized context.
-      # When ruby_llm_provider_class is nil (Compatible provider), the embedding
-      # model may not exist in RubyLLM's static registry (e.g. Ollama models such
-      # as "nomic-embed-text:latest"), so we explicitly bypass the registry check.
+      # When ruby_llm_provider_class is nil (OpenAI-compatible providers such as Azure/OpenAI Compatible), the embedding
+      # model may not exist in RubyLLM's static registry (e.g. Ollama models such as "nomic-embed-text:latest"),
+      # so we explicitly bypass the registry check.
       # @param text [String] text to embed
       # @return [Array<Float>] embedding vector
       def embed(text)
