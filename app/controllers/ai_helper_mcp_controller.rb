@@ -60,7 +60,14 @@ class AiHelperMcpController < ApplicationController
 
     rack_env = request.env.merge("rack.input" => StringIO.new(body_content))
     server = RedmineAiHelper::Mcp::Server.build
-    transport = MCP::Server::Transports::StreamableHTTPTransport.new(server, stateless: true, enable_json_response: true)
+    # DNS rebinding protection (added in mcp 0.23.0, on by default) validates the
+    # Host/Origin headers against a loopback allowlist. It is disabled here because
+    # this endpoint authenticates with a stateless X-Redmine-API-Key header rather
+    # than ambient browser credentials, so the DNS rebinding threat model does not
+    # apply, and the Host varies per Redmine deployment so no fixed allowlist fits.
+    transport = MCP::Server::Transports::StreamableHTTPTransport.new(
+      server, stateless: true, enable_json_response: true, dns_rebinding_protection: false
+    )
 
     rack_status, rack_headers, body_parts = transport.call(rack_env)
 
