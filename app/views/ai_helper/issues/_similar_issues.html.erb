@@ -1,6 +1,13 @@
 <% if similar_issues.empty? %>
   <p><%= l(:ai_helper_no_similar_issues_found) %></p>
 <% else %>
+  <% estimation = local_assigns.fetch(:estimation, { available: false }) %>
+  <% if estimation[:available] %>
+    <p class="ai-helper-suggested-hours">
+      <strong><%= l(:ai_helper_suggested_hours) %>:</strong> <%= estimation[:suggested_hours] %> h
+      <span class="ai-helper-suggested-hours-note">(<%= l(:ai_helper_suggested_hours_note, count: estimation[:based_on_count]) %>)</span>
+    </p>
+  <% end %>
   <table class="ai-helper-similar-issues-table">
     <thead>
       <tr>

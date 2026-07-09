@@ -583,6 +583,48 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_match(/Updated/, @response.body)
       end
 
+      should "display suggested hours when similar issues have spent_hours data" do
+        similar_issues = [ {
+          id: 2,
+          project: { name: "Test Project" },
+          subject: "Similar issue",
+          status: { name: "Open" },
+          spent_hours: 3.5,
+          updated_on: Time.zone.now,
+          assigned_to: { name: "Test User" },
+          similarity_score: 85.0,
+          issue_url: "/issues/2"
+        } ]
+
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
+
+        get :similar_issues, params: { id: @issue.id }
+
+        assert_response :success
+        assert_match(/Suggested hours/, @response.body)
+        assert_match(/3\.5 h/, @response.body)
+      end
+
+      should "not display suggested hours when no similar issue has spent_hours data" do
+        similar_issues = [ {
+          id: 2,
+          project: { name: "Test Project" },
+          subject: "Similar issue",
+          status: { name: "Open" },
+          updated_on: Time.zone.now,
+          assigned_to: { name: "Test User" },
+          similarity_score: 85.0,
+          issue_url: "/issues/2"
+        } ]
+
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
+
+        get :similar_issues, params: { id: @issue.id }
+
+        assert_response :success
+        assert_no_match(/Suggested hours/, @response.body)
+      end
+
       should "exclude current issue from results" do
         # Mock LLM find_similar_issues method (should already exclude current issue)
         similar_issues = [ {
