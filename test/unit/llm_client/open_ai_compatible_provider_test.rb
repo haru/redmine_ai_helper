@@ -108,6 +108,50 @@ class RedmineAiHelper::LlmClient::OpenAiCompatibleProviderTest < ActiveSupport::
       @provider.create_chat(tools: [ tool_class ])
     end
 
+    should "embed with provider and assume_model_exists options, using AiHelperSetting#embedding_model" do
+      original_embedding_model = @setting.embedding_model
+      @setting.embedding_model = "nomic-embed-text:latest"
+      @setting.save!
+
+      mock_context = mock("RubyLLM::Context")
+      mock_embedding = mock("RubyLLM::Embedding")
+      mock_embedding.expects(:vectors).returns([ 0.1, 0.2, 0.3 ])
+      mock_context.expects(:embed).with(
+        "hello world",
+        model: "nomic-embed-text:latest",
+        provider: :openai,
+        assume_model_exists: true
+      ).returns(mock_embedding)
+      @provider.expects(:build_context).returns(mock_context)
+
+      assert_equal [ 0.1, 0.2, 0.3 ], @provider.embed("hello world")
+    ensure
+      @setting.embedding_model = original_embedding_model
+      @setting.save!
+    end
+
+    should "embed falls back to the profile model when embedding_model is blank" do
+      original_embedding_model = @setting.embedding_model
+      @setting.embedding_model = nil
+      @setting.save!
+
+      mock_context = mock("RubyLLM::Context")
+      mock_embedding = mock("RubyLLM::Embedding")
+      mock_embedding.expects(:vectors).returns([ 1.0 ])
+      mock_context.expects(:embed).with(
+        "text",
+        model: @compatible_profile.llm_model,
+        provider: :openai,
+        assume_model_exists: true
+      ).returns(mock_embedding)
+      @provider.expects(:build_context).returns(mock_context)
+
+      assert_equal [ 1.0 ], @provider.embed("text")
+    ensure
+      @setting.embedding_model = original_embedding_model
+      @setting.save!
+    end
+
     should "set openai_use_system_role to true in context config" do
       context = @provider.context
 
