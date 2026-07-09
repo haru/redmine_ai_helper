@@ -83,6 +83,14 @@ it:
       instructions: "Inserisci le tue istruzioni."
       generate_draft: "Genera bozza"
 
+    completion_errors:
+      text_required: "Il testo è obbligatorio"
+      text_too_long: "Testo troppo lungo"
+      invalid_cursor_position: "Posizione del cursore non valida"
+      invalid_context_type: "context_type non valido. Deve essere 'description' o 'note'"
+      issue_not_in_project: "Il ticket non appartiene al progetto specificato"
+      issue_required_for_note: "Il ticket è obbligatorio per il completamento delle note"
+
     autocompletion:
       loading: "Generazione suggerimenti AI..."
       no_suggestions: "Nessun suggerimento disponibile"
@@ -144,6 +152,62 @@ it:
         required_fields_missing: "Campi obbligatori mancanti."
         access_key_required: "La chiave di accesso è obbligatoria per testare la connessione."
 
+    prompts:
+      current_page_info:
+        project_page: "Questa è la pagina informativa del progetto '%{project_name}'."
+        issue_detail_page: "Questa è la pagina di dettaglio del ticket #%{issue_id}.\nSe l'utente fa riferimento a 'ticket' senza specificare un ID o un nome, si riferisce a questo ticket."
+        issue_list_page: "Questa è la pagina dell'elenco dei ticket."
+        issue_with_action_page: "Questa è la pagina %{action_name} del ticket."
+        wiki_page: "Questa è la pagina Wiki intitolata '%{page_title}'.\nSe l'utente fa riferimento a 'pagina Wiki' o 'pagina' senza specificare un titolo, si riferisce a questa pagina Wiki."
+        repository_page: "Questa è la pagina informativa del repository '%{repo_name}'. L'ID del repository è %{repo_id}."
+        repository_file_page: "Questa è la pagina informativa del file del repository. Il percorso del file visualizzato è %{path}. La revisione è %{rev}. Il repository è '%{repo_name}'. L'ID del repository è %{repo_id}."
+        repository_diff:
+          page: "Questa è la pagina di confronto (diff) del repository '%{repo_name}'. L'ID del repository è %{repo_id}."
+          rev: "La revisione è %{rev}."
+          rev_to: "La revisione va da %{rev} a %{rev_to}."
+          path: "Il percorso del file è %{path}."
+        repository_revision_page: "Questa è la pagina informativa della revisione del repository '%{repo_name}'. La revisione è %{rev}. L'ID del repository è %{repo_id}."
+        repository_other_page: "Questa è la pagina informativa del repository."
+        boards:
+          show: "Questa è la pagina del forum '%{board_name}'. L'ID del forum è %{board_id}."
+          index: "Questa è la pagina dell'elenco dei forum."
+          other: "Questa è la pagina del forum."
+        messages:
+          show: "Questa è la pagina del messaggio '%{subject}'. L'ID del messaggio è %{message_id}."
+          other: "Questa è la pagina del messaggio."
+        versions:
+          show: "Questa è la pagina della versione '%{version_name}'. L'ID della versione è %{version_id}."
+          other: "Questa è la pagina della versione."
+        other_page: "Questa è la pagina %{action_name} per %{controller_name}."
+      issue_agent:
+        search_answer_instruction: "Per attività come la ricerca di più ticket che soddisfano determinate condizioni, ad esempio 'Trova i ticket che soddisfano queste condizioni' o 'Mostrami i ticket con questi criteri', utilizza lo strumento search_issues per recuperare e restituire un elenco di ticket."
+        search_answer_instruction_with_vector: "Quando cerchi ticket, utilizza lo strumento appropriato: per ricerche concettuali/semantiche (es. 'ticket relativi a eccezioni', 'problemi di performance', 'bug di login'), usa la ricerca vettoriale (ask_with_filter). Per condizioni di filtro esplicite (es. 'stato chiuso', 'assegnato a qualcuno', 'aggiornato questo mese'), usa search_issues."
+      leader_agent:
+        generate_final_response: "Tutti gli agenti hanno completato le loro attività. Crea la risposta finale per l'utente. Se la risposta include una domanda con scelte discrete, ricorda di aggiungere il blocco <!--AIHELPER_OPTIONS:{...}--> alla fine."
+
+    mcp:
+      errors:
+        disabled: "Il server MCP è disabilitato"
+        unauthorized: "Non autorizzato - chiave API mancante o non valida"
+        tool_permission_denied: "Permesso negato: non hai accesso a questo strumento"
+
+    vector_tasks:
+      embedding_model: "Modello di embedding: %{model}"
+      registering: "Registrazione dei dati vettoriali per Redmine AI Helper..."
+      issues_count: "Ticket: %{count} elementi"
+      wiki_pages_count: "Pagine Wiki: %{count} elementi"
+      removed_issue_vector_data: "Dati vettoriali dei ticket rimossi: %{deleted} (falliti: %{failed})"
+      removed_wiki_vector_data: "Dati vettoriali delle pagine Wiki rimossi: %{deleted} (falliti: %{failed})"
+      registration_completed: "Registrazione dei dati vettoriali completata."
+      registration_skipped: "La ricerca vettoriale non è abilitata. Registrazione saltata."
+      generating_index: "Generazione dell'indice vettoriale per Redmine AI Helper..."
+      generation_skipped: "La ricerca vettoriale non è abilitata. Generazione saltata."
+      ensure_indexes_skipped: "La ricerca vettoriale non è abilitata. Operazione saltata."
+      ensure_indexes_completed: "ensure_indexes completato."
+      ensure_indexes_mismatch: "ensure_indexes completato con discrepanze. È richiesto un intervento manuale."
+      destroying: "Eliminazione dei dati vettoriali per Redmine AI Helper..."
+      destruction_skipped: "La ricerca vettoriale non è abilitata. Eliminazione saltata."
+
     custom_commands:
       label:
         title: "Comandi personalizzati"
@@ -189,6 +253,7 @@ it:
         temperature: "Temperatura"
         organization_id: "ID organizzazione"
         base_uri: "URI base"
+        http_proxy: "Proxy HTTP"
         max_tokens: "Numero massimo di token"
 
       ai_helper_setting:
@@ -197,6 +262,8 @@ it:
         attachment_send_enabled: "Invia allegati al LLM"
         attachment_max_size_mb: "Dimensione massima allegato (MB)"
         vector_search_enabled: "Abilita ricerca vettoriale"
+        vector_register_all_projects: "Registra tutti i progetti"
+        vector_register_all_projects_description: "Se abilitato, tutti i progetti con il modulo AI Helper attivo vengono registrati nel database vettoriale. Disabilita per scegliere progetti specifici da registrare."
         vector_search_uri: "URI"
         vector_search_api_key: "Chiave API"
         embedding_model: "Modello di embedding"
@@ -208,6 +275,8 @@ it:
         vector_model_profile_id: "Profilo modello vettoriale"
         vector_model_profile_description: "Usa un profilo modello separato per le operazioni di ricerca vettoriale (credenziali API e analisi del contenuto). Nota: il nome del modello di embedding è comunque controllato dall'impostazione 'Modello di embedding'."
         mcp_server_enabled: "Abilita server MCP"
+        send_user_id_enabled: "Invia ID utente al LLM"
+        send_user_id_enabled_description: "Se abilitato, l'ID utente interno di Redmine viene inviato al provider LLM. Questo consente il tracciamento di statistiche per utente a valle (es. LiteLLM). Valuta le implicazioni sulla privacy prima di abilitare."
 
       ai_helper_project_setting:
         issue_draft_instructions: "Istruzioni per la generazione dei commenti ai ticket"
