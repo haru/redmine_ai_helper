@@ -24,6 +24,23 @@ module RedmineAiHelper
         chat
       end
 
+      # Generate embeddings via an OpenAI-compatible endpoint (e.g. Ollama).
+      # Overrides BaseProvider#embed to pass provider: :openai and
+      # assume_model_exists: true, so RubyLLM skips its built-in model-catalog
+      # lookup (which doesn't know local models like nomic-embed-text).
+      # @param text [String] text to embed
+      # @return [Array<Float>] embedding vector
+      def embed(text)
+        setting = AiHelperSetting.find_or_create
+        embedding_model = setting.embedding_model.presence || model_name
+        context.embed(
+          text,
+          model: embedding_model,
+          provider: :openai,
+          assume_model_exists: true
+        ).vectors
+      end
+
       protected
 
       # Build a RubyLLM::Context with custom API base URL and key.
