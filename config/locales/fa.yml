@@ -7,7 +7,6 @@ fa:
   ai_helper_summary: "خلاصه‌سازی با دستیار هوش مصنوعی"
   ai_helper_text_summary_generated_time: "تولید شده در %{time}"
   ai_helper_error_occurred: "خطایی رخ داده است"
-  ai_helper_spent_hours: "ساعات صرف شده"
   permission_view_ai_helper: "مشاهده دستیار هوش مصنوعی"
   ai_helper:
     notice_sub_issues_added: "زیر درخواست‌ها اضافه شدند"

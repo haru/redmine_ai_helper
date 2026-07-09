@@ -10,7 +10,6 @@ en:
   ai_helper_similar_issues: "Find Similar Issues with AI Helper"
   ai_helper_find_similar_issues: "Find Similar Issues"
   ai_helper_similarity: "Similarity"
-  ai_helper_spent_hours: "Spent hours"
   ai_helper_no_similar_issues_found: "No similar issues found"
   ai_helper_scope_current_project: "Current project"
   ai_helper_scope_with_subprojects: "Include subprojects"
