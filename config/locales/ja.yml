@@ -251,6 +251,7 @@ ja:
         subtask_instructions: "子チケットを生成する際の指示"
         health_report_instructions: "健全性レポートを生成する際の指示"
         assignment_suggestion_instructions: "担当者提案インストラクション"
+        issue_summary_instructions: "チケットの要約を生成する際の指示"
       ai_helper_custom_command:
         name: "コマンド名"
         command_type: "コマンドタイプ"

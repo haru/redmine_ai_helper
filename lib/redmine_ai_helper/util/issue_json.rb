@@ -15,7 +15,7 @@ module RedmineAiHelper
           children: issue.children.filter { |c| c.visible? }.map { |c| format_issue_child(c) },
           parent: format_issue_parent(issue),
           relations: issue.relations.filter { |r| r.visible? }.map { |r| format_issue_relation(issue, r) },
-          journals: issue.journals.filter { |j| j.visible? }.map { |j| format_issue_journal(j) },
+          journals: issue.journals.filter { |j| j.visible? }.map { |j| format_issue_journal(j, issue.project) },
           revisions: issue.changesets.map { |c| { repository_id: c.repository_id, revision: c.revision, committed_on: c.committed_on } }
         )
       end
@@ -30,8 +30,8 @@ module RedmineAiHelper
           tracker: format_named_record(issue.tracker),
           status: format_named_record(issue.status),
           priority: format_named_record(issue.priority),
-          author: format_named_record(issue.author),
-          assigned_to: format_named_record(issue.assigned_to),
+          author: format_user_with_roles(issue.author, issue.project),
+          assigned_to: format_user_with_roles(issue.assigned_to, issue.project),
           description: issue.description,
           start_date: issue.start_date,
           due_date: issue.due_date,
@@ -52,6 +52,12 @@ module RedmineAiHelper
         return nil unless obj
 
         { id: obj.id, name: obj.name }
+      end
+
+      def format_user_with_roles(user, project)
+        return nil unless user
+
+        { id: user.id, name: user.name, roles: user.roles_for_project(project).map(&:name) }
       end
 
       def format_issue_parent(issue)
@@ -94,10 +100,10 @@ module RedmineAiHelper
         }
       end
 
-      def format_issue_journal(journal)
+      def format_issue_journal(journal, project)
         {
           id: journal.id,
-          user: journal.user ? { id: journal.user.id, name: journal.user.name } : nil,
+          user: format_user_with_roles(journal.user, project),
           notes: journal.notes,
           created_on: journal.created_on,
           updated_on: journal.updated_on,

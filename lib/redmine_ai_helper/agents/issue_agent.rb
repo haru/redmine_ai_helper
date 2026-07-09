@@ -47,10 +47,11 @@ module RedmineAiHelper
         return "Permission denied" unless issue.visible?
 
         prompt = load_prompt("issue_agent/summary")
+        project_setting = AiHelperProjectSetting.settings(issue.project)
         issue_json = generate_issue_data(issue)
         # Convert issue data to JSON string for the prompt
         json_string = JSON.pretty_generate(issue_json)
-        prompt_text = prompt.format(issue: json_string)
+        prompt_text = prompt.format(issue: json_string, issue_summary_instructions: project_setting.issue_summary_instructions)
         message = { role: "user", content: prompt_text }
         messages = [ message ]
 

@@ -283,6 +283,7 @@ it:
         subtask_instructions: "Istruzioni per la generazione dei sotto-task"
         health_report_instructions: "Istruzioni per la generazione del report di salute"
         assignment_suggestion_instructions: "Istruzioni per il suggerimento dell'assegnatario"
+        issue_summary_instructions: "Istruzioni per la generazione del riepilogo ticket"
 
       ai_helper_custom_command:
         name: "Nome comando"

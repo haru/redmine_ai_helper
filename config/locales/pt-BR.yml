@@ -213,6 +213,7 @@ pt-BR:
         subtask_instructions: Instruções para geração de subtarefas
         health_report_instructions: Instruções para geração de relatório de saúde
         assignment_suggestion_instructions: Instruções para sugestão de responsável
+        issue_summary_instructions: Instruções para geração do resumo da tarefa
       ai_helper_custom_command:
         name: Nome do comando
         command_type: Tipo de comando

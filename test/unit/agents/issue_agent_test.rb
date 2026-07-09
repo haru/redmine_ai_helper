@@ -80,6 +80,25 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
       assert_equal "Permission denied", result
     end
 
+    should "format issue_summary_instructions correctly in the prompt" do
+      @issue.stubs(:visible?).returns(true)
+      setting = AiHelperProjectSetting.settings(@issue.project)
+      setting.issue_summary_instructions = "Summary instructions for the issue."
+      setting.save!
+      mock_prompt = mock("Prompt")
+      mock_prompt.expects(:format).with(
+        issue: instance_of(String),
+        issue_summary_instructions: "Summary instructions for the issue."
+      ).returns("Summarize this issue with instructions.")
+      @agent.stubs(:load_prompt).with("issue_agent/summary").returns(mock_prompt)
+
+      @agent.stubs(:chat).returns("This is a summary of the issue.")
+
+      result = @agent.issue_summary(issue: @issue)
+
+      assert_equal "This is a summary of the issue.", result
+    end
+
     should "pass file paths to chat with: parameter when files exist" do
       @issue.stubs(:visible?).returns(true)
 

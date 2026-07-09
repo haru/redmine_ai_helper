@@ -107,3 +107,4 @@ fr:
         issue_draft_instructions: "Instructions pour la génération de commentaires de demande"
         subtask_instructions: "Instructions pour la génération de sous-tâches"
         health_report_instructions: "Instructions pour la génération de rapports de santé"
+        issue_summary_instructions: "Instructions pour la génération du résumé de la demande"
