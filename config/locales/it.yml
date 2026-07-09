@@ -11,6 +11,10 @@ it:
   ai_helper_find_similar_issues: "Trova ticket simili"
   ai_helper_similarity: "Somiglianza"
   ai_helper_no_similar_issues_found: "Nessun ticket simile trovato"
+  ai_helper_suggested_hours: "Ore suggerite"
+  ai_helper_suggested_hours_note:
+    one: "basato su %{count} ticket simile"
+    other: "basato su %{count} ticket simili"
   ai_helper_scope_current_project: "Progetto corrente"
   ai_helper_scope_with_subprojects: "Includi sottoprogetti"
   ai_helper_scope_all_projects: "Tutti i progetti"
