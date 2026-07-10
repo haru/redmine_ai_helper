@@ -109,6 +109,56 @@
     return selected ? selected.value : "with_subprojects";
   }
 
+  // Recompute the suggested hours weighted average from the currently
+  // checked similar issues, mirroring RedmineAiHelper::EffortEstimation.suggest.
+  function recalculateSuggestedHours() {
+    const block = document.getElementById('ai-helper-suggested-hours-block');
+    if (!block) return;
+
+    const checkboxes = document.querySelectorAll('.ai-helper-effort-checkbox:checked');
+    let weightedSum = 0;
+    let totalWeight = 0;
+    checkboxes.forEach(function(checkbox) {
+      const spentHours = parseFloat(checkbox.dataset.spentHours);
+      const score = parseFloat(checkbox.dataset.similarityScore);
+      weightedSum += spentHours * score;
+      totalWeight += score;
+    });
+
+    if (checkboxes.length === 0 || totalWeight === 0) {
+      block.style.display = 'none';
+      return;
+    }
+
+    block.style.display = '';
+    const suggestedHours = Math.round((weightedSum / totalWeight) * 10) / 10;
+
+    const valueSpan = document.getElementById('ai-helper-suggested-hours-value');
+    if (valueSpan) {
+      valueSpan.textContent = suggestedHours;
+    }
+
+    const noteSpan = document.getElementById('ai-helper-suggested-hours-note');
+    if (noteSpan) {
+      const count = checkboxes.length;
+      const template = count === 1 ? block.dataset.noteOne : block.dataset.noteOther;
+      noteSpan.textContent = '(' + template.replace('%{count}', count) + ')';
+    }
+  }
+
+  // Write the currently suggested hours into the issue's Estimated hours field.
+  // That field lives inside the "#update" edit form, which Redmine keeps
+  // collapsed (display:none) until the user opens it, so reveal and scroll to
+  // it (via Redmine core's own showAndScrollTo helper) to make the change visible.
+  function applySuggestedHours() {
+    const valueSpan = document.getElementById('ai-helper-suggested-hours-value');
+    const estimatedHoursField = document.getElementById('issue_estimated_hours');
+    if (valueSpan && estimatedHoursField) {
+      estimatedHoursField.value = valueSpan.textContent;
+      showAndScrollTo('update', 'issue_estimated_hours');
+    }
+  }
+
   // Function to move similar issues section to after relations
   function moveSimilarIssuesToRelations() {
     const similarIssuesSection = document.getElementById('ai-helper-similar-issues-section');
@@ -133,6 +183,25 @@
 
     // Move similar issues to relations area
     moveSimilarIssuesToRelations();
+
+    // Handle effort checkbox toggling and the Apply button inside the
+    // dynamically-loaded similar issues area (event delegation, since its
+    // content is replaced via innerHTML after the initial page load).
+    const similarIssuesArea = document.getElementById('ai-helper-similar-issues-area');
+    if (similarIssuesArea) {
+      similarIssuesArea.addEventListener('change', function(e) {
+        if (e.target.classList.contains('ai-helper-effort-checkbox')) {
+          recalculateSuggestedHours();
+        }
+      });
+      similarIssuesArea.addEventListener('click', function(e) {
+        const applyButton = e.target.closest('#ai-helper-apply-suggested-hours');
+        if (applyButton) {
+          e.preventDefault();
+          applySuggestedHours();
+        }
+      });
+    }
   });
 
 <% end %>

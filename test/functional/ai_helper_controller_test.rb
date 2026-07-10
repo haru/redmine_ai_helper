@@ -605,7 +605,72 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_match(/3\.5 h/, @response.body)
       end
 
-      should "not display suggested hours when no similar issue has spent_hours data" do
+      should "render a selection checkbox with data attributes for similar issues with spent_hours data" do
+        similar_issues = [ {
+          id: 2,
+          project: { name: "Test Project" },
+          subject: "Similar issue",
+          status: { name: "Open" },
+          spent_hours: 3.5,
+          updated_on: Time.zone.now,
+          assigned_to: { name: "Test User" },
+          similarity_score: 85.0,
+          issue_url: "/issues/2"
+        } ]
+
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
+
+        get :similar_issues, params: { id: @issue.id }
+
+        assert_response :success
+        assert_match(/class="ai-helper-effort-checkbox"/, @response.body)
+        assert_match(/checked/, @response.body)
+        assert_match(/data-spent-hours="3\.5"/, @response.body)
+        assert_match(/data-similarity-score="85\.0"/, @response.body)
+      end
+
+      should "not render a selection checkbox for similar issues without spent_hours data" do
+        similar_issues = [ {
+          id: 2,
+          project: { name: "Test Project" },
+          subject: "Similar issue",
+          status: { name: "Open" },
+          updated_on: Time.zone.now,
+          assigned_to: { name: "Test User" },
+          similarity_score: 85.0,
+          issue_url: "/issues/2"
+        } ]
+
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
+
+        get :similar_issues, params: { id: @issue.id }
+
+        assert_response :success
+        assert_no_match(/class="ai-helper-effort-checkbox"/, @response.body)
+      end
+
+      should "render an apply button for the suggested hours" do
+        similar_issues = [ {
+          id: 2,
+          project: { name: "Test Project" },
+          subject: "Similar issue",
+          status: { name: "Open" },
+          spent_hours: 3.5,
+          updated_on: Time.zone.now,
+          assigned_to: { name: "Test User" },
+          similarity_score: 85.0,
+          issue_url: "/issues/2"
+        } ]
+
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
+
+        get :similar_issues, params: { id: @issue.id }
+
+        assert_response :success
+        assert_match(/id="ai-helper-apply-suggested-hours"/, @response.body)
+      end
+
+      should "not display suggested hours or selection controls when no similar issue has spent_hours data" do
         similar_issues = [ {
           id: 2,
           project: { name: "Test Project" },
@@ -623,6 +688,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         assert_no_match(/Suggested hours/, @response.body)
+        assert_no_match(/id="ai-helper-apply-suggested-hours"/, @response.body)
       end
 
       should "exclude current issue from results" do
