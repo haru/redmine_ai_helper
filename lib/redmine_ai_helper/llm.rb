@@ -66,6 +66,8 @@ module RedmineAiHelper
         agent = RedmineAiHelper::Agents::IssueAgent.new(project: issue.project, langfuse: langfuse)
         langfuse.create_span(name: "user_request", input: prompt)
         answer = agent.issue_summary(issue: issue, stream_proc: stream_proc)
+        raise "The AI model returned an empty summary. This can happen if the model runs out of tokens while reasoning; consider increasing max_tokens in the model profile." if answer.blank?
+
         langfuse.finish_current_span(output: answer)
         langfuse.flush(output: answer)
       rescue => e
