@@ -1,9 +1,24 @@
 <% if similar_issues.empty? %>
   <p><%= l(:ai_helper_no_similar_issues_found) %></p>
 <% else %>
+  <% estimation = local_assigns.fetch(:estimation, { available: false }) %>
+  <% if estimation[:available] %>
+    <% note_translations = I18n.t(:ai_helper_suggested_hours_note) %>
+    <p class="ai-helper-suggested-hours" id="ai-helper-suggested-hours-block"
+       data-note-one="<%= note_translations[:one] || note_translations[:other] %>"
+       data-note-other="<%= note_translations[:other] %>">
+      <strong><%= l(:ai_helper_suggested_hours) %>:</strong>
+      <span id="ai-helper-suggested-hours-value"><%= estimation[:suggested_hours] %></span> h
+      <span class="ai-helper-suggested-hours-note" id="ai-helper-suggested-hours-note">(<%= l(:ai_helper_suggested_hours_note, count: estimation[:based_on_count]) %>)</span>
+      <%= link_to l(:button_apply), "#", id: "ai-helper-apply-suggested-hours", class: "icon icon-checked" %>
+    </p>
+  <% end %>
   <table class="ai-helper-similar-issues-table">
     <thead>
       <tr>
+        <% if estimation[:available] %>
+          <th></th>
+        <% end %>
         <th><%= l(:ai_helper_similarity) %></th>
         <th>#</th>
         <th><%= l(:field_subject) %></th>
@@ -17,6 +32,16 @@
     <tbody>
       <% similar_issues.each do |similar_issue| %>
         <tr>
+          <% if estimation[:available] %>
+            <td class="ai-helper-effort-select">
+              <% if similar_issue[:spent_hours] %>
+                <%= check_box_tag "ai_helper_effort_#{similar_issue[:id]}", "1", true,
+                      class: "ai-helper-effort-checkbox",
+                      data: { "spent-hours": similar_issue[:spent_hours], "similarity-score": similar_issue[:similarity_score] },
+                      id: nil %>
+              <% end %>
+            </td>
+          <% end %>
           <td class="ai-helper-similarity-score"><%= similar_issue[:similarity_score] %>%</td>
           <td class="ai-helper-issue-id">
             <%= link_to similar_issue[:id], similar_issue[:issue_url] %>

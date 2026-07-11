@@ -277,8 +277,9 @@ class AiHelperController < ApplicationController
       scope = params[:scope]
       scope = SIMILAR_ISSUES_DEFAULT_SCOPE unless SIMILAR_ISSUES_VALID_SCOPES.include?(scope)
       similar_issues = llm.find_similar_issues(issue: @issue, scope: scope, project: @issue.project)
+      estimation = RedmineAiHelper::EffortEstimation.suggest(similar_issues)
 
-      render partial: "ai_helper/issues/similar_issues", locals: { similar_issues: similar_issues }
+      render partial: "ai_helper/issues/similar_issues", locals: { similar_issues: similar_issues, estimation: estimation }
     rescue => e
       ai_helper_logger.error "Similar issues search error: #{e.message}"
       ai_helper_logger.error e.backtrace.join("\n")
