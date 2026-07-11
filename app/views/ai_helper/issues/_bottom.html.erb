@@ -87,6 +87,8 @@
       if (xhr.status === 200) {
         if (similarIssuesArea) {
           similarIssuesArea.innerHTML = xhr.responseText;
+          recalculateSuggestedHours();
+          recalculateEffortSelectAllState();
         }
       } else {
         if (similarIssuesArea) {
@@ -135,7 +137,7 @@
 
     const valueSpan = document.getElementById('ai-helper-suggested-hours-value');
     if (valueSpan) {
-      valueSpan.textContent = suggestedHours;
+      valueSpan.textContent = suggestedHours.toFixed(1);
     }
 
     const noteSpan = document.getElementById('ai-helper-suggested-hours-note');
@@ -146,7 +148,39 @@
     }
   }
 
-  // Write the currently suggested hours into the issue's Estimated hours field.
+  // Set every row effort checkbox to match the header select-all checkbox,
+  // then recompute the suggestion.
+  function toggleAllEffortCheckboxes(checked) {
+    const checkboxes = document.querySelectorAll('.ai-helper-effort-checkbox');
+    checkboxes.forEach(function(checkbox) {
+      checkbox.checked = checked;
+    });
+    recalculateSuggestedHours();
+  }
+
+  // Recompute the header select-all checkbox's checked/indeterminate state
+  // from the current row checkboxes: all checked -> checked, none checked ->
+  // unchecked, a mix of both -> indeterminate.
+  function recalculateEffortSelectAllState() {
+    const selectAll = document.getElementById('ai-helper-effort-select-all');
+    if (!selectAll) return;
+
+    const checkboxes = document.querySelectorAll('.ai-helper-effort-checkbox');
+    const checkedCount = document.querySelectorAll('.ai-helper-effort-checkbox:checked').length;
+
+    if (checkboxes.length === 0 || checkedCount === 0) {
+      selectAll.checked = false;
+      selectAll.indeterminate = false;
+    } else if (checkedCount === checkboxes.length) {
+      selectAll.checked = true;
+      selectAll.indeterminate = false;
+    } else {
+      selectAll.checked = false;
+      selectAll.indeterminate = true;
+    }
+  }
+
+  // Write the currently suggested hours into the issue's Estimated time field.
   // That field lives inside the "#update" edit form, which Redmine keeps
   // collapsed (display:none) until the user opens it, so reveal and scroll to
   // it (via Redmine core's own showAndScrollTo helper) to make the change visible.
@@ -192,6 +226,10 @@
       similarIssuesArea.addEventListener('change', function(e) {
         if (e.target.classList.contains('ai-helper-effort-checkbox')) {
           recalculateSuggestedHours();
+          recalculateEffortSelectAllState();
+        } else if (e.target.id === 'ai-helper-effort-select-all') {
+          toggleAllEffortCheckboxes(e.target.checked);
+          recalculateEffortSelectAllState();
         }
       });
       similarIssuesArea.addEventListener('click', function(e) {
@@ -201,6 +239,8 @@
           applySuggestedHours();
         }
       });
+      recalculateSuggestedHours();
+      recalculateEffortSelectAllState();
     }
   });
 
