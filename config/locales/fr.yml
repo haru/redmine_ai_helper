@@ -18,6 +18,7 @@ fr:
   label_ai_helper_error: "Erreur"
   ai_helper:
     notice_sub_issues_added: "Les sous-tâches ont été ajoutées"
+    error_empty_issue_summary: "Le modèle d'IA a renvoyé un résumé vide. Cela peut se produire si le modèle manque de jetons pendant le raisonnement ; envisagez d'augmenter max_tokens dans le profil du modèle."
     project_health:
       title: "Rapport de santé du projet"
       pdf_title: "Rapport de santé du projet"

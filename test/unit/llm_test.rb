@@ -47,7 +47,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
         summary = @llm.issue_summary(issue: @issue, stream_proc: stream_proc)
 
-        assert_not summary.blank?
+        assert_equal I18n.t("ai_helper.error_empty_issue_summary"), summary
         assert_equal [ summary ], streamed
       end
     end

@@ -29,6 +29,7 @@ en:
   ai_helper:
     notice_sub_issues_added: "Sub-issues have been added"
     error_invalid_assignee: "Invalid assignee for '%{subject}' - user is not authorized for this tracker"
+    error_empty_issue_summary: "The AI model returned an empty summary. This can happen if the model runs out of tokens while reasoning; consider increasing max_tokens in the model profile."
     chat:
       planning: "Creating execution plan..."
       generating_final_response: "Generating final response..."

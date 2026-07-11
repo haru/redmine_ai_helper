@@ -29,6 +29,7 @@ ja:
   ai_helper:
     notice_sub_issues_added: "子チケットが追加されました"
     error_invalid_assignee: "'%{subject}' の担当者が無効です。このトラッカーに対する権限がありません"
+    error_empty_issue_summary: "AIモデルが空の要約を返しました。推論中にトークンを使い切った場合に発生することがあります。モデルプロファイルの max_tokens を増やすことを検討してください。"
     chat:
       planning: "実行計画を作成中..."
       generating_final_response: "最終回答を作成しています..."

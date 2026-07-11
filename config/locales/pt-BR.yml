@@ -119,6 +119,7 @@ pt-BR:
       leader_agent:
         generate_final_response: Todos os agentes concluíram suas tarefas. Por favor, crie a resposta final para o usuário. Se sua resposta incluir uma pergunta com escolhas discretas, lembre-se de adicionar o bloco <!--AIHELPER_OPTIONS:{...}--> ao final.
     error_invalid_assignee: Responsável inválido para '%{subject}' - o usuário não está autorizado para este rastreador
+    error_empty_issue_summary: O modelo de IA retornou um resumo vazio. Isso pode acontecer se o modelo ficar sem tokens durante o raciocínio; considere aumentar o max_tokens no perfil do modelo.
     health_report_comparison:
       compare_button: Comparar relatórios
       comparison_column: Comparação

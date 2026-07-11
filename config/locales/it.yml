@@ -30,6 +30,7 @@ it:
   ai_helper:
     notice_sub_issues_added: "I sotto-ticket sono stati aggiunti"
     error_invalid_assignee: "Assegnatario non valido per '%{subject}' - l'utente non è autorizzato per questo tracker"
+    error_empty_issue_summary: "Il modello AI ha restituito un riepilogo vuoto. Questo può accadere se il modello esaurisce i token durante il ragionamento; valuta di aumentare max_tokens nel profilo del modello."
 
     chat:
       planning: "Creazione del piano di esecuzione..."
