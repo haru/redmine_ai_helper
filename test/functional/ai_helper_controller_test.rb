@@ -665,6 +665,7 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_match(/checked="checked"/, checkbox_2)
         assert_match(/class="ai-helper-effort-checkbox"/, checkbox_3)
         assert_no_match(/checked="checked"/, checkbox_3)
+        assert_no_match(/data-spent-hours=/, checkbox_3)
       end
 
       should "render an unchecked checkbox for similar issues with zero spent_hours" do

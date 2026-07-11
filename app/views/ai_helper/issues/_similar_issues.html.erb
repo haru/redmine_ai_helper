@@ -37,6 +37,9 @@
           <td class="ai-helper-status"><%= similar_issue[:status][:name] %></td>
           <td class="ai-helper-spent-hours">
             <% if estimation[:available] %>
+              <%# Default-unchecked for missing or zero spent_hours: neither contributes usable
+                  data to the weighted average, so pre-selecting them would misrepresent what
+                  the suggested hours are actually based on. %>
               <%= check_box_tag "ai_helper_effort_#{similar_issue[:id]}", "1", similar_issue[:spent_hours].to_f > 0,
                     class: "ai-helper-effort-checkbox",
                     data: { "spent-hours": similar_issue[:spent_hours], "similarity-score": similar_issue[:similarity_score] },
