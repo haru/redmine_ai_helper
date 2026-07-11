@@ -87,6 +87,7 @@
       if (xhr.status === 200) {
         if (similarIssuesArea) {
           similarIssuesArea.innerHTML = xhr.responseText;
+          refreshEffortUI();
         }
       } else {
         if (similarIssuesArea) {
@@ -118,14 +119,20 @@
     const checkboxes = document.querySelectorAll('.ai-helper-effort-checkbox:checked');
     let weightedSum = 0;
     let totalWeight = 0;
+    let includedCount = 0;
     checkboxes.forEach(function(checkbox) {
       const spentHours = parseFloat(checkbox.dataset.spentHours);
       const score = parseFloat(checkbox.dataset.similarityScore);
+      // Checkboxes for similar issues without spent_hours data carry no
+      // data-spent-hours attribute (parseFloat(undefined) is NaN); skip them
+      // so they can't poison the weighted average with NaN.
+      if (!Number.isFinite(spentHours) || !Number.isFinite(score)) return;
       weightedSum += spentHours * score;
       totalWeight += score;
+      includedCount += 1;
     });
 
-    if (checkboxes.length === 0 || totalWeight === 0) {
+    if (totalWeight === 0) {
       block.style.display = 'none';
       return;
     }
@@ -135,18 +142,57 @@
 
     const valueSpan = document.getElementById('ai-helper-suggested-hours-value');
     if (valueSpan) {
-      valueSpan.textContent = suggestedHours;
+      valueSpan.textContent = suggestedHours.toFixed(1);
     }
 
     const noteSpan = document.getElementById('ai-helper-suggested-hours-note');
     if (noteSpan) {
-      const count = checkboxes.length;
-      const template = count === 1 ? block.dataset.noteOne : block.dataset.noteOther;
-      noteSpan.textContent = '(' + template.replace('%{count}', count) + ')';
+      const template = includedCount === 1 ? block.dataset.noteOne : block.dataset.noteOther;
+      noteSpan.textContent = '(' + template.replace('%{count}', includedCount) + ')';
     }
   }
 
-  // Write the currently suggested hours into the issue's Estimated hours field.
+  // Recompute both the suggested hours and the select-all checkbox state.
+  // These two are always refreshed together whenever the checked set of
+  // effort checkboxes may have changed.
+  function refreshEffortUI() {
+    recalculateSuggestedHours();
+    recalculateEffortSelectAllState();
+  }
+
+  // Set every row effort checkbox to match the header select-all checkbox,
+  // then recompute the suggestion.
+  function toggleAllEffortCheckboxes(checked) {
+    const checkboxes = document.querySelectorAll('.ai-helper-effort-checkbox');
+    checkboxes.forEach(function(checkbox) {
+      checkbox.checked = checked;
+    });
+    refreshEffortUI();
+  }
+
+  // Recompute the header select-all checkbox's checked/indeterminate state
+  // from the current row checkboxes: all checked -> checked, none checked ->
+  // unchecked, a mix of both -> indeterminate.
+  function recalculateEffortSelectAllState() {
+    const selectAll = document.getElementById('ai-helper-effort-select-all');
+    if (!selectAll) return;
+
+    const checkboxes = document.querySelectorAll('.ai-helper-effort-checkbox');
+    const checkedCount = Array.from(checkboxes).filter(function(checkbox) { return checkbox.checked; }).length;
+
+    if (checkboxes.length === 0 || checkedCount === 0) {
+      selectAll.checked = false;
+      selectAll.indeterminate = false;
+    } else if (checkedCount === checkboxes.length) {
+      selectAll.checked = true;
+      selectAll.indeterminate = false;
+    } else {
+      selectAll.checked = false;
+      selectAll.indeterminate = true;
+    }
+  }
+
+  // Write the currently suggested hours into the issue's Estimated time field.
   // That field lives inside the "#update" edit form, which Redmine keeps
   // collapsed (display:none) until the user opens it, so reveal and scroll to
   // it (via Redmine core's own showAndScrollTo helper) to make the change visible.
@@ -184,14 +230,17 @@
     // Move similar issues to relations area
     moveSimilarIssuesToRelations();
 
-    // Handle effort checkbox toggling and the Apply button inside the
-    // dynamically-loaded similar issues area (event delegation, since its
-    // content is replaced via innerHTML after the initial page load).
+    // Handle effort checkbox toggling, the select-all header checkbox, and
+    // the Apply button inside the dynamically-loaded similar issues area
+    // (event delegation, since its content is replaced via innerHTML after
+    // the initial page load).
     const similarIssuesArea = document.getElementById('ai-helper-similar-issues-area');
     if (similarIssuesArea) {
       similarIssuesArea.addEventListener('change', function(e) {
         if (e.target.classList.contains('ai-helper-effort-checkbox')) {
-          recalculateSuggestedHours();
+          refreshEffortUI();
+        } else if (e.target.id === 'ai-helper-effort-select-all') {
+          toggleAllEffortCheckboxes(e.target.checked);
         }
       });
       similarIssuesArea.addEventListener('click', function(e) {
@@ -201,6 +250,7 @@
           applySuggestedHours();
         }
       });
+      refreshEffortUI();
     }
   });
 

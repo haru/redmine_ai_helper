@@ -11,7 +11,9 @@ it:
   ai_helper_find_similar_issues: "Trova ticket simili"
   ai_helper_similarity: "Somiglianza"
   ai_helper_no_similar_issues_found: "Nessun ticket simile trovato"
-  ai_helper_suggested_hours: "Ore suggerite"
+  ai_helper_suggested_hours: "Suggerimento tempo stimato"
+  ai_helper_apply_suggested_hours: "Applica al tempo stimato di questo ticket"
+  ai_helper_effort_select_all: "Seleziona tutto il tempo impiegato"
   ai_helper_suggested_hours_note:
     one: "basato su %{count} ticket simile"
     other: "basato su %{count} ticket simili"
