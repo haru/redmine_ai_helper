@@ -583,6 +583,190 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_match(/Updated/, @response.body)
       end
 
+      should "display suggested hours when similar issues have spent_hours data" do
+        similar_issues = [ {
+          id: 2,
+          project: { name: "Test Project" },
+          subject: "Similar issue",
+          status: { name: "Open" },
+          spent_hours: 3.5,
+          updated_on: Time.zone.now,
+          assigned_to: { name: "Test User" },
+          similarity_score: 85.0,
+          issue_url: "/issues/2"
+        } ]
+
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
+
+        get :similar_issues, params: { id: @issue.id }
+
+        assert_response :success
+        assert_match(/Estimated time suggestion/, @response.body)
+        assert_match(/3\.5 h/, @response.body)
+      end
+
+      should "render a selection checkbox with data attributes for similar issues with spent_hours data" do
+        similar_issues = [ {
+          id: 2,
+          project: { name: "Test Project" },
+          subject: "Similar issue",
+          status: { name: "Open" },
+          spent_hours: 3.5,
+          updated_on: Time.zone.now,
+          assigned_to: { name: "Test User" },
+          similarity_score: 85.0,
+          issue_url: "/issues/2"
+        } ]
+
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
+
+        get :similar_issues, params: { id: @issue.id }
+
+        assert_response :success
+        assert_match(/class="ai-helper-effort-checkbox"/, @response.body)
+        assert_match(/checked/, @response.body)
+        assert_match(/data-spent-hours="3\.5"/, @response.body)
+        assert_match(/data-similarity-score="85\.0"/, @response.body)
+        assert_match(/<td class="ai-helper-spent-hours">\s*<input[^>]*class="ai-helper-effort-checkbox"/, @response.body)
+        assert_no_match(/<th><\/th>/, @response.body)
+        assert_no_match(/<td class="ai-helper-effort-select">/, @response.body)
+      end
+
+      should "render an unchecked checkbox for similar issues without spent_hours data" do
+        similar_issues = [ {
+          id: 2,
+          project: { name: "Test Project" },
+          subject: "Similar issue",
+          status: { name: "Open" },
+          spent_hours: 3.5,
+          updated_on: Time.zone.now,
+          assigned_to: { name: "Test User" },
+          similarity_score: 85.0,
+          issue_url: "/issues/2"
+        }, {
+          id: 3,
+          project: { name: "Test Project" },
+          subject: "Unrecorded similar issue",
+          status: { name: "Open" },
+          updated_on: Time.zone.now,
+          assigned_to: { name: "Test User" },
+          similarity_score: 70.0,
+          issue_url: "/issues/3"
+        } ]
+
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
+
+        get :similar_issues, params: { id: @issue.id }
+
+        assert_response :success
+        checkbox_2 = @response.body[/<input[^>]*name="ai_helper_effort_2"[^>]*>/]
+        checkbox_3 = @response.body[/<input[^>]*name="ai_helper_effort_3"[^>]*>/]
+        assert_match(/class="ai-helper-effort-checkbox"/, checkbox_2)
+        assert_match(/checked="checked"/, checkbox_2)
+        assert_match(/class="ai-helper-effort-checkbox"/, checkbox_3)
+        assert_no_match(/checked="checked"/, checkbox_3)
+        assert_no_match(/data-spent-hours=/, checkbox_3)
+      end
+
+      should "render an unchecked checkbox for similar issues with zero spent_hours" do
+        similar_issues = [ {
+          id: 2,
+          project: { name: "Test Project" },
+          subject: "Similar issue",
+          status: { name: "Open" },
+          spent_hours: 3.5,
+          updated_on: Time.zone.now,
+          assigned_to: { name: "Test User" },
+          similarity_score: 85.0,
+          issue_url: "/issues/2"
+        }, {
+          id: 3,
+          project: { name: "Test Project" },
+          subject: "Zero spent hours similar issue",
+          status: { name: "Open" },
+          spent_hours: 0,
+          updated_on: Time.zone.now,
+          assigned_to: { name: "Test User" },
+          similarity_score: 70.0,
+          issue_url: "/issues/3"
+        } ]
+
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
+
+        get :similar_issues, params: { id: @issue.id }
+
+        assert_response :success
+        checkbox_3 = @response.body[/<input[^>]*name="ai_helper_effort_3"[^>]*>/]
+        assert_match(/class="ai-helper-effort-checkbox"/, checkbox_3)
+        assert_no_match(/checked="checked"/, checkbox_3)
+      end
+
+      should "render a select-all checkbox in the spent-time column header when estimation is available" do
+        similar_issues = [ {
+          id: 2,
+          project: { name: "Test Project" },
+          subject: "Similar issue",
+          status: { name: "Open" },
+          spent_hours: 3.5,
+          updated_on: Time.zone.now,
+          assigned_to: { name: "Test User" },
+          similarity_score: 85.0,
+          issue_url: "/issues/2"
+        } ]
+
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
+
+        get :similar_issues, params: { id: @issue.id }
+
+        assert_response :success
+        assert_match(/id="ai-helper-effort-select-all"/, @response.body)
+      end
+
+      should "render an apply button for the suggested hours" do
+        similar_issues = [ {
+          id: 2,
+          project: { name: "Test Project" },
+          subject: "Similar issue",
+          status: { name: "Open" },
+          spent_hours: 3.5,
+          updated_on: Time.zone.now,
+          assigned_to: { name: "Test User" },
+          similarity_score: 85.0,
+          issue_url: "/issues/2"
+        } ]
+
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
+
+        get :similar_issues, params: { id: @issue.id }
+
+        assert_response :success
+        assert_match(/id="ai-helper-apply-suggested-hours"/, @response.body)
+        assert_match(/Apply to this issue&#39;s estimated time/, @response.body)
+        assert_operator @response.body.index("</table>"), :<, @response.body.index('id="ai-helper-suggested-hours-block"')
+      end
+
+      should "not display suggested hours or selection controls when no similar issue has spent_hours data" do
+        similar_issues = [ {
+          id: 2,
+          project: { name: "Test Project" },
+          subject: "Similar issue",
+          status: { name: "Open" },
+          updated_on: Time.zone.now,
+          assigned_to: { name: "Test User" },
+          similarity_score: 85.0,
+          issue_url: "/issues/2"
+        } ]
+
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
+
+        get :similar_issues, params: { id: @issue.id }
+
+        assert_response :success
+        assert_no_match(/Estimated time suggestion/, @response.body)
+        assert_no_match(/id="ai-helper-apply-suggested-hours"/, @response.body)
+        assert_no_match(/id="ai-helper-effort-select-all"/, @response.body)
+      end
+
       should "exclude current issue from results" do
         # Mock LLM find_similar_issues method (should already exclude current issue)
         similar_issues = [ {
