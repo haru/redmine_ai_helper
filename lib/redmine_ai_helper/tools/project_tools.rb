@@ -30,7 +30,7 @@ module RedmineAiHelper
         list
       end
 
-      define_function :read_project, description: "Read a project from the database and return it as a JSON object. It returns the project ID, name, identifier, description, homepage, status, is_public, inherit_members, created_on, updated_on, subprojects, and last_activity_date." do
+      define_function :read_project, description: "Read a project from the database and return it as a JSON object. It returns the project ID, name, identifier, description, homepage, status, is_public, inherit_members, created_on, updated_on, subprojects, custom_fields, and last_activity_date." do
         property :project_id, type: "integer", description: "The project ID of the project to return.", required: false
         property :project_name, type: "string", description: "The project name of the project to return.", required: false
         property :project_identifier, type: "string", description: "The project identifier of the project to return.", required: false
@@ -73,6 +73,7 @@ module RedmineAiHelper
               description: child.description
             }
           end,
+          custom_fields: format_project_custom_fields(project),
           last_activity_date: project.last_activity_date
         }
         project_json
@@ -345,6 +346,12 @@ module RedmineAiHelper
       end
 
       private
+
+      def format_project_custom_fields(project)
+        project.custom_field_values.map do |cfv|
+          { id: cfv.custom_field.id, name: cfv.custom_field.name, value: cfv.value }
+        end
+      end
 
       def extract_repository_info(repositories)
         repositories.map do |repo|
