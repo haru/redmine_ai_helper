@@ -9,7 +9,7 @@ module RedmineAiHelper
     # IssueTools is a specialized tool provider for handling Redmine issue-related queries.
     class IssueTools < RedmineAiHelper::BaseTools
       include RedmineAiHelper::Util::IssueJson
-      define_function :read_issues, description: "Read an issue from the database and return it as a JSON object. It returns the issue ID, subject, project, tracker, status, priority, author, assigned_to, description, start_date, due_date, done_ratio, is_private, estimated_hours, total_estimated_hours, spent_hours, total_spent_hours, created_on, updated_on, closed_on, issue_url, attachments, children, relations and custom_fields." do
+      define_function :read_issues, description: "Read issues from the database and return them as JSON objects. Each issue includes scalar fields (id, subject, project, tracker, status, priority, author, assigned_to, description, start_date, due_date, done_ratio, is_private, estimated_hours, total_estimated_hours, spent_hours, total_spent_hours, created_on, updated_on, closed_on, issue_url) plus attachments, children, parent, relations, journals, revisions, and custom_fields." do
         property :issue_ids, type: "array", description: "The issue ID array to read.", required: true do
           item type: "integer", description: "The issue ID to read."
         end
