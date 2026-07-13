@@ -11,6 +11,11 @@ ja:
   ai_helper_find_similar_issues: "類似チケットを検索"
   ai_helper_similarity: "類似度"
   ai_helper_no_similar_issues_found: "類似するチケットが見つかりませんでした"
+  ai_helper_suggested_hours: "予定工数の提案"
+  ai_helper_apply_suggested_hours: "このチケットの予定工数に反映"
+  ai_helper_effort_select_all: "すべての作業時間を選択"
+  ai_helper_suggested_hours_note:
+    other: "%{count}件の類似チケットに基づく"
   ai_helper_scope_current_project: "このプロジェクト内"
   ai_helper_scope_with_subprojects: "サブプロジェクトを含める"
   ai_helper_scope_all_projects: "全プロジェクト"
