@@ -16,7 +16,8 @@ module RedmineAiHelper
           parent: format_issue_parent(issue),
           relations: issue.relations.filter { |r| r.visible? }.map { |r| format_issue_relation(issue, r) },
           journals: issue.journals.filter { |j| j.visible? }.map { |j| format_issue_journal(j) },
-          revisions: issue.changesets.map { |c| { repository_id: c.repository_id, revision: c.revision, committed_on: c.committed_on } }
+          revisions: issue.changesets.map { |c| { repository_id: c.repository_id, revision: c.revision, committed_on: c.committed_on } },
+          custom_fields: format_issue_custom_fields(issue)
         )
       end
 
@@ -92,6 +93,12 @@ module RedmineAiHelper
           other_issue_id: other_issue_id,
           other_issue_subject: Issue.find_by(id: other_issue_id)&.subject
         }
+      end
+
+      def format_issue_custom_fields(issue)
+        issue.custom_field_values.map do |cfv|
+          { id: cfv.custom_field.id, name: cfv.custom_field.name, value: cfv.value }
+        end
       end
 
       def format_issue_journal(journal)
