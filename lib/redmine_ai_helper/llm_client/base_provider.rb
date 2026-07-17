@@ -6,6 +6,8 @@ module RedmineAiHelper
     # BaseProvider is an abstract class that defines the interface for LLM providers.
     # Each subclass configures RubyLLM with the appropriate API keys and settings.
     class BaseProvider
+      include RedmineAiHelper::Logger
+
       # Mutex used to prevent duplicate model fetches under concurrent requests.
       FETCH_MUTEX = Mutex.new
 
@@ -76,6 +78,9 @@ module RedmineAiHelper
         return false if ruby_llm_provider_slug.nil?
         model = RubyLLM.models.by_provider(ruby_llm_provider_slug).all.find { |m| m.id == model_name }
         model&.structured_output? ? true : false
+      rescue => e
+        ai_helper_logger.warn "supports_structured_output? judgment failed, falling back to false: #{e.message}"
+        false
       end
 
       # Generate an embedding vector for the given text via the memoized context.

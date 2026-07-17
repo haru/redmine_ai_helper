@@ -250,8 +250,9 @@ module RedmineAiHelper
     #   added as history; the last is sent via ask.
     # @param callback [Proc, nil] Optional streaming callback.
     # @param with [Array<String>, nil] Image file paths to attach to the request.
-    # @return [String] The assembled answer (or the raw response content when
-    #   not streaming).
+    # @return [String, Hash, Array] The assembled answer when streaming; the raw
+    #   response content when not streaming, which is a Hash/Array instead of a
+    #   String when native structured output (with_schema) is in effect.
     def ask_with_messages(chat_instance, messages, callback, with:)
       # Add message history (all except the last message)
       messages[0..-2].each do |msg|

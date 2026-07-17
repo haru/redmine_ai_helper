@@ -471,6 +471,12 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
 
           assert_equal false, @so_provider.supports_structured_output?
         end
+
+        should "return false when the registry lookup raises an error" do
+          RubyLLM.models.stubs(:by_provider).raises(StandardError.new("registry unavailable"))
+
+          assert_equal false, @so_provider.supports_structured_output?
+        end
       end
     end
 
