@@ -141,32 +141,7 @@ module RedmineAiHelper
     def chat(messages, _option = {}, callback = nil, with: nil)
       chat_instance = @llm_provider.create_chat(instructions: system_prompt)
       setup_langfuse_callbacks(chat_instance, provider: @llm_provider)
-
-      # Add message history (all except the last message)
-      messages[0..-2].each do |msg|
-        chat_instance.add_message(role: msg[:role].to_sym, content: msg[:content])
-      end
-
-      # Ask with the last message (with streaming support)
-      last_message = messages.last
-      ask_options = {}
-      ask_options[:with] = with if with.present?
-      answer = ""
-
-      if callback
-        chat_instance.ask(last_message[:content], **ask_options) do |chunk|
-          content = chunk.content rescue nil
-          if content
-            callback.call(content)
-            answer += content
-          end
-        end
-      else
-        response = chat_instance.ask(last_message[:content], **ask_options)
-        answer = response.content
-      end
-
-      answer
+      ask_with_messages(chat_instance, messages, callback, with: with)
     end
 
     # Chat with the Think model LLM if configured, otherwise delegates to chat().
@@ -182,30 +157,49 @@ module RedmineAiHelper
       provider = think_llm_provider || @llm_provider
       chat_instance = provider.create_chat(instructions: system_prompt)
       setup_langfuse_callbacks(chat_instance, provider: provider)
+      ask_with_messages(chat_instance, messages, callback, with: with)
+    end
 
-      messages[0..-2].each do |msg|
-        chat_instance.add_message(role: msg[:role].to_sym, content: msg[:content])
+    # Obtain a schema-conforming structured response for the given messages.
+    #
+    # Falls back to the prompt-instruction path: a regular {chat} call returns a
+    # text response that is then parsed and validated against the schema. On
+    # violations, a single regeneration is requested via the chat method.
+    # Native structured output (with_schema) is handled separately for capable
+    # providers (see User Story 2).
+    #
+    # @param messages [Array<Hash>] The messages to be sent.
+    # @param json_schema [Hash] The JSON schema the response must satisfy.
+    # @param with [Array<String>, nil] Image file paths to attach to the request.
+    # @return [Hash, Array] The schema-conforming parsed response.
+    # @raise [JSON::ParserError] If the response cannot be parsed.
+    # @raise [RedmineAiHelper::Util::StructuredOutputHelper::SchemaViolationError]
+    #   If the response cannot be conformed to the schema.
+    def structured_chat(messages, json_schema:, with: nil)
+      if @llm_provider.supports_structured_output?
+        return structured_chat_native(messages, json_schema: json_schema, with: with)
       end
 
-      last_message = messages.last
-      ask_options = {}
-      ask_options[:with] = with if with.present?
-      answer = ""
+      response = chat(messages, {}, nil, with: with)
+      RedmineAiHelper::Util::StructuredOutputHelper.parse(
+        response: response,
+        json_schema: json_schema,
+        chat_method: method(:chat),
+        messages: messages
+      )
+    end
 
-      if callback
-        chat_instance.ask(last_message[:content], **ask_options) do |chunk|
-          content = chunk.content rescue nil
-          if content
-            callback.call(content)
-            answer += content
-          end
-        end
-      else
-        response = chat_instance.ask(last_message[:content], **ask_options)
-        answer = response.content
-      end
-
-      answer
+    # Return the format-instruction text appropriate for the active provider.
+    #
+    # Native structured-output providers enforce the schema at the API level, so
+    # no format instructions are embedded in the prompt. Non-native providers
+    # use the prompt-instruction text generated from the schema.
+    # @param json_schema [Hash] The JSON schema.
+    # @return [String] Empty string for native providers; otherwise the
+    #   prompt-instruction text.
+    def format_instructions_for(json_schema)
+      return "" if @llm_provider.supports_structured_output?
+      RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(json_schema)
     end
 
     # Perform a task using the assistant.
@@ -248,7 +242,61 @@ module RedmineAiHelper
 
     private
 
-    # Build a fresh assistant using the think LLM provider (or fall back to the regular provider).
+    # Build message history and ask the last message on a chat instance.
+    # Shared by chat, think_chat and structured_chat.
+    # @param chat_instance [RubyLLM::Chat] The chat instance (already configured
+    #   with instructions, callbacks, schema, etc.).
+    # @param messages [Array<Hash>] The messages to send. All but the last are
+    #   added as history; the last is sent via ask.
+    # @param callback [Proc, nil] Optional streaming callback.
+    # @param with [Array<String>, nil] Image file paths to attach to the request.
+    # @return [String] The assembled answer (or the raw response content when
+    #   not streaming).
+    def ask_with_messages(chat_instance, messages, callback, with:)
+      # Add message history (all except the last message)
+      messages[0..-2].each do |msg|
+        chat_instance.add_message(role: msg[:role].to_sym, content: msg[:content])
+      end
+
+      # Ask with the last message (with streaming support)
+      last_message = messages.last
+      ask_options = {}
+      ask_options[:with] = with if with.present?
+      answer = ""
+
+      if callback
+        chat_instance.ask(last_message[:content], **ask_options) do |chunk|
+          content = chunk.content rescue nil
+          if content
+            callback.call(content)
+            answer += content
+          end
+        end
+      else
+        response = chat_instance.ask(last_message[:content], **ask_options)
+        answer = response.content
+      end
+
+      answer
+    end
+    # Native structured-output path: delegate schema enforcement to the provider
+    # via +with_schema+. The response content (Hash/Array or String) is fed into
+    # the shared conform→validate pipeline so that any residual deviation is still
+    # caught (research.md R4). Regeneration falls back to the prompt-instruction
+    # +chat+ method (no schema) to recover from provider-side misfires.
+    def structured_chat_native(messages, json_schema:, with: nil)
+      schema_payload = RedmineAiHelper::Util::StructuredOutputHelper.native_schema_payload(json_schema)
+      chat_instance = @llm_provider.create_chat(instructions: system_prompt, schema: schema_payload)
+      setup_langfuse_callbacks(chat_instance, provider: @llm_provider)
+      response_content = ask_with_messages(chat_instance, messages, nil, with: with)
+      RedmineAiHelper::Util::StructuredOutputHelper.parse(
+        response: response_content,
+        json_schema: json_schema,
+        chat_method: method(:chat),
+        messages: messages
+      )
+    end
+
     # Replays @shared_messages so the think model has full conversation context.
     # A fresh assistant is used rather than reusing @assistant to avoid stale provider-specific
     # tool-call state that cannot be safely copied across providers.

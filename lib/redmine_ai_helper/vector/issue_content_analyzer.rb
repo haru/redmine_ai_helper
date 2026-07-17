@@ -38,11 +38,13 @@ module RedmineAiHelper
       # @param issue [Issue] The issue to analyze.
       # @return [Hash] A hash containing :summary (String) and :keywords (Array<String>).
       def analyze(issue)
-        format_instructions = RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(JSON_SCHEMA)
+        native = @llm_provider.supports_structured_output?
+        format_instructions = native ? "" : RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(JSON_SCHEMA)
         prompt = build_prompt(issue, format_instructions)
         messages = [ { role: "user", content: prompt } ]
         file_paths = supported_attachment_paths(issue)
-        response = call_llm(messages, with: file_paths.presence)
+        schema_payload = native ? RedmineAiHelper::Util::StructuredOutputHelper.native_schema_payload(JSON_SCHEMA) : nil
+        response = call_llm(messages, with: file_paths.presence, schema: schema_payload)
         parse_response(response, messages)
       rescue StandardError => e
         ai_helper_logger.warn("Failed to analyze issue content: #{e.message}")
@@ -72,8 +74,12 @@ module RedmineAiHelper
       # Call the LLM with the given messages.
       # @param messages [Array<Hash>] The messages to send to the LLM.
       # @return [String] The text response from the LLM.
-      def call_llm(messages, with: nil)
-        chat_instance = @llm_provider.create_chat
+      def call_llm(messages, with: nil, schema: nil)
+        chat_instance = if schema
+          @llm_provider.create_chat(schema: schema)
+        else
+          @llm_provider.create_chat
+        end
 
         # Add message history (all except the last message)
         messages[0..-2].each do |msg|
@@ -89,11 +95,12 @@ module RedmineAiHelper
       end
 
       # Parse the LLM response using StructuredOutputHelper.
-      # @param response [String] The raw response text from the LLM.
+      # @param response [String, Hash, Array] The raw response text from the LLM,
+      #   or a pre-parsed Hash/Array when native structured output is used.
       # @param messages [Array<Hash>] The original messages for retry context.
       # @return [Hash] A hash containing :summary (String) and :keywords (Array<String>).
       def parse_response(response, messages)
-        return empty_result if response.nil? || response.strip.empty?
+        return empty_result if response.nil? || (response.is_a?(String) && response.strip.empty?)
 
         result = RedmineAiHelper::Util::StructuredOutputHelper.parse(
           response: response,

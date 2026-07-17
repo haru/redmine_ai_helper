@@ -56,6 +56,25 @@ class DocumentationAgentTest < ActiveSupport::TestCase
     assert_equal [], @agent.available_tools
   end
 
+  def test_check_typos_routes_through_structured_chat
+    mock_response = [
+      {
+        "original" => "teh",
+        "corrected" => "the",
+        "position" => 0,
+        "length" => 3,
+        "reason" => "Spelling mistake",
+        "confidence" => "high"
+      }
+    ]
+
+    @agent.expects(:structured_chat).with(anything, json_schema: anything).returns(mock_response)
+
+    result = @agent.check_typos(text: "teh quick brown fox", context_type: "test")
+
+    assert_equal mock_response, result
+  end
+
   def test_backstory_returns_prompt
     prompt_mock = mock("prompt")
     @agent.stubs(:load_prompt).with("documentation_agent/backstory").returns(prompt_mock)

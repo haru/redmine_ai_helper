@@ -84,6 +84,20 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         assert_equal 2, sub_issues.length
         assert_equal "Sub issue 1", sub_issues[0].subject
       end
+
+      should "propagate the original exception when sub issue generation fails" do
+        @issue.stubs(:visible?).returns(true)
+        failing_agent = DummyIssueAgent.new
+        failing_agent.stubs(:generate_sub_issues_draft).raises(RuntimeError.new("agent failure"))
+        RedmineAiHelper::Agents::IssueAgent.stubs(:new).returns(failing_agent)
+
+        error = assert_raises(RuntimeError) do
+          @llm.generate_sub_issues(issue: @issue, instructions: "test instructions")
+        end
+
+        assert_instance_of RuntimeError, error
+        assert_equal "agent failure", error.message
+      end
     end
 
     context "wiki_summary" do

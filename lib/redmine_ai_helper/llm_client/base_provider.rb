@@ -51,14 +51,31 @@ module RedmineAiHelper
       # Create a RubyLLM::Chat instance via the memoized context.
       # @param instructions [String, nil] system prompt
       # @param tools [Array<Class>] tool classes to attach
+      # @param schema [Hash, nil] native structured-output payload
+      #   (`{ name:, schema:, strict: }`). When provided, `chat.with_schema` is
+      #   applied to enforce the schema at the provider API level.
       # @return [RubyLLM::Chat]
-      def create_chat(instructions: nil, tools: [])
+      def create_chat(instructions: nil, tools: [], schema: nil)
         chat = context.chat(model: model_name)
         chat.with_instructions(instructions) if instructions
         chat.with_tools(*tools) unless tools.empty?
         chat.with_temperature(temperature) if temperature
+        chat.with_schema(schema) if schema
         apply_user_identifier(chat)
         chat
+      end
+
+      # Whether the configured model supports native structured output.
+      #
+      # Returns false when the provider slug is unknown (Azure OpenAI,
+      # OpenAI-compatible) or the model is not registered. Otherwise returns
+      # the model's `structured_output?` capability. Judgment failures fall to
+      # the safe (non-native) side.
+      # @return [Boolean]
+      def supports_structured_output?
+        return false if ruby_llm_provider_slug.nil?
+        model = RubyLLM.models.by_provider(ruby_llm_provider_slug).all.find { |m| m.id == model_name }
+        model&.structured_output? ? true : false
       end
 
       # Generate an embedding vector for the given text via the memoized context.

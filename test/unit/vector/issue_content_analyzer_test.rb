@@ -9,6 +9,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
       @mock_llm_provider = mock("llm_provider")
       @mock_llm_provider.stubs(:model_name).returns("gpt-4")
       @mock_llm_provider.stubs(:create_chat)
+      @mock_llm_provider.stubs(:supports_structured_output?).returns(false)
       @mock_logger = mock("logger")
       @mock_logger.stubs(:debug)
       @mock_logger.stubs(:info)
@@ -134,7 +135,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
         assert_equal [], result[:keywords]
       end
 
-      should "handle null summary in response" do
+      should "fall back to empty_result when summary is null (type violation)" do
         response_data = {
           "summary" => nil,
           "keywords" => [ "keyword1" ]
@@ -146,8 +147,28 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
 
         result = analyzer.analyze(@issue)
 
+        # null summary is a schema type violation; regeneration fails, so the
+        # existing StandardError rescue returns empty_result (research R7).
         assert_equal "", result[:summary]
-        assert_equal [ "keyword1" ], result[:keywords]
+        assert_equal [], result[:keywords]
+      end
+
+      should "conform a schema-deviant response (undeclared keys stripped)" do
+        # Response contains an undeclared key plus the required fields
+        deviant_response = {
+          "summary" => "Conformed summary.",
+          "keywords" => [ "kw1", "kw2" ],
+          "undeclared_extra" => "should be removed"
+        }.to_json
+
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
+        analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:call_llm).returns(deviant_response)
+
+        result = analyzer.analyze(@issue)
+
+        assert_equal "Conformed summary.", result[:summary]
+        assert_equal [ "kw1", "kw2" ], result[:keywords]
       end
     end
 
@@ -381,7 +402,8 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
         # Verify that call_llm is called with with: containing the attachment path
         analyzer.expects(:call_llm).with(
           anything,
-          with: [ "/path/to/document.pdf" ]
+          with: [ "/path/to/document.pdf" ],
+          schema: nil
         ).returns(valid_response)
 
         analyzer.analyze(@issue)
@@ -397,7 +419,8 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
         # Verify that call_llm is called with with: nil (presence of empty array is nil)
         analyzer.expects(:call_llm).with(
           anything,
-          with: nil
+          with: nil,
+          schema: nil
         ).returns(valid_response)
 
         analyzer.analyze(@issue)
@@ -413,10 +436,95 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
         # Verify that call_llm is called with with: nil when attachment_send is disabled
         analyzer.expects(:call_llm).with(
           anything,
-          with: nil
+          with: nil,
+          schema: nil
         ).returns(valid_response)
 
         analyzer.analyze(@issue)
+      end
+    end
+
+    context "native structured output (US2)" do
+      setup do
+        @mock_chat = mock("chat_instance")
+        @mock_chat.stubs(:add_message)
+        @mock_response = mock("response")
+        @mock_response.stubs(:content).returns({ "summary" => "Native summary.", "keywords" => [ "native" ] })
+        @mock_chat.stubs(:ask).returns(@mock_response)
+      end
+
+      should "pass schema to create_chat when supports_structured_output? is true" do
+        @mock_llm_provider.stubs(:supports_structured_output?).returns(true)
+        @mock_llm_provider.expects(:create_chat).with(schema: anything).returns(@mock_chat)
+
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
+        analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:supported_attachment_paths).returns([])
+
+        result = analyzer.analyze(@issue)
+
+        assert_equal "Native summary.", result[:summary]
+      end
+
+      should "not pass schema to create_chat when supports_structured_output? is false" do
+        @mock_llm_provider.stubs(:supports_structured_output?).returns(false)
+        @mock_llm_provider.expects(:create_chat).with { |opts = {}| !opts.key?(:schema) }.returns(@mock_chat)
+
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
+        analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:supported_attachment_paths).returns([])
+
+        result = analyzer.analyze(@issue)
+
+        assert_equal "Native summary.", result[:summary]
+      end
+
+      should "omit format instructions from the prompt in native mode" do
+        @mock_llm_provider.stubs(:supports_structured_output?).returns(true)
+        @mock_llm_provider.stubs(:create_chat).returns(@mock_chat)
+        RedmineAiHelper::Util::StructuredOutputHelper.expects(:get_format_instructions).never
+
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
+        analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:supported_attachment_paths).returns([])
+        analyzer.expects(:build_prompt).with(@issue, "").returns("prompt")
+
+        result = analyzer.analyze(@issue)
+
+        assert_equal "Native summary.", result[:summary]
+      end
+
+      should "include format instructions in the prompt in fallback mode" do
+        @mock_llm_provider.stubs(:supports_structured_output?).returns(false)
+        @mock_llm_provider.stubs(:create_chat).returns(@mock_chat)
+
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
+        analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:supported_attachment_paths).returns([])
+        instructions = RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(
+          RedmineAiHelper::Vector::IssueContentAnalyzer::JSON_SCHEMA
+        )
+        analyzer.expects(:build_prompt).with(@issue, instructions).returns("prompt")
+        @mock_response.stubs(:content).returns({ "summary" => "Fallback summary.", "keywords" => [ "fb" ] }.to_json)
+
+        result = analyzer.analyze(@issue)
+
+        assert_equal "Fallback summary.", result[:summary]
+      end
+
+      should "maintain with: parameter in native mode" do
+        @mock_llm_provider.stubs(:supports_structured_output?).returns(true)
+        @mock_llm_provider.stubs(:create_chat).returns(@mock_chat)
+        @mock_chat.unstub(:ask)
+        @mock_chat.expects(:ask).with(anything, with: [ "/path/to/img.png" ]).returns(@mock_response)
+
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
+        analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:supported_attachment_paths).returns([ "/path/to/img.png" ])
+
+        result = analyzer.analyze(@issue)
+
+        assert_equal "Native summary.", result[:summary]
       end
     end
 
