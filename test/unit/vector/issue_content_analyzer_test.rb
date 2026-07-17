@@ -409,6 +409,23 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
         analyzer.analyze(@issue)
       end
 
+      should "retain with: attachments when regenerating after a schema violation" do
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
+        analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:supported_attachment_paths).with(@issue).returns([ "/path/to/document.pdf" ])
+
+        # null summary is a schema type violation, triggering one regeneration
+        deviant_response = { "summary" => nil, "keywords" => [ "kw" ] }.to_json
+        fixed_response = { "summary" => "Fixed.", "keywords" => [ "kw" ] }.to_json
+        analyzer.expects(:call_llm).with(anything, with: [ "/path/to/document.pdf" ], schema: nil).returns(deviant_response)
+        analyzer.expects(:call_llm).with(anything, with: [ "/path/to/document.pdf" ]).returns(fixed_response)
+
+        result = analyzer.analyze(@issue)
+
+        assert_equal "Fixed.", result[:summary]
+        assert_equal [ "kw" ], result[:keywords]
+      end
+
       should "pass nil when no attachments exist" do
         analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)

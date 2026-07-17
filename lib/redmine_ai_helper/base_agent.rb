@@ -184,7 +184,7 @@ module RedmineAiHelper
       RedmineAiHelper::Util::StructuredOutputHelper.parse(
         response: response,
         json_schema: json_schema,
-        chat_method: method(:chat),
+        chat_method: ->(retry_messages) { chat(retry_messages, {}, nil, with: with) },
         messages: messages
       )
     end
@@ -266,7 +266,7 @@ module RedmineAiHelper
 
       if callback
         chat_instance.ask(last_message[:content], **ask_options) do |chunk|
-          content = chunk.content rescue nil
+          content = chunk.content
           if content
             callback.call(content)
             answer += content
@@ -284,7 +284,8 @@ module RedmineAiHelper
     # via +with_schema+. The response content (Hash/Array or String) is fed into
     # the shared conform→validate pipeline so that any residual deviation is still
     # caught (research.md R4). Regeneration falls back to the prompt-instruction
-    # +chat+ method (no schema) to recover from provider-side misfires.
+    # +chat+ method (no schema, original attachments preserved) to recover from
+    # provider-side misfires.
     #
     # Array-rooted schemas are wrapped into an object under a single property
     # before being sent as the native schema payload, and the response is
@@ -303,7 +304,7 @@ module RedmineAiHelper
       helper.parse(
         response: response_content,
         json_schema: json_schema,
-        chat_method: method(:chat),
+        chat_method: ->(retry_messages) { chat(retry_messages, {}, nil, with: with) },
         messages: messages
       )
     end

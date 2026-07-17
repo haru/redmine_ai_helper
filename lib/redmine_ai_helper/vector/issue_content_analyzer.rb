@@ -45,7 +45,7 @@ module RedmineAiHelper
         file_paths = supported_attachment_paths(issue)
         schema_payload = native ? RedmineAiHelper::Util::StructuredOutputHelper.native_schema_payload(JSON_SCHEMA) : nil
         response = call_llm(messages, with: file_paths.presence, schema: schema_payload)
-        parse_response(response, messages)
+        parse_response(response, messages, with: file_paths.presence)
       rescue StandardError => e
         ai_helper_logger.warn("Failed to analyze issue content: #{e.message}")
         empty_result
@@ -95,17 +95,20 @@ module RedmineAiHelper
       end
 
       # Parse the LLM response using StructuredOutputHelper.
+      # Retries keep the original file attachments but not the native schema:
+      # the retry prompt embeds the schema textually instead.
       # @param response [String, Hash, Array] The raw response text from the LLM,
       #   or a pre-parsed Hash/Array when native structured output is used.
       # @param messages [Array<Hash>] The original messages for retry context.
+      # @param with [Array<String>, nil] File paths attached to the original request.
       # @return [Hash] A hash containing :summary (String) and :keywords (Array<String>).
-      def parse_response(response, messages)
+      def parse_response(response, messages, with: nil)
         return empty_result if response.nil? || (response.is_a?(String) && response.strip.empty?)
 
         result = RedmineAiHelper::Util::StructuredOutputHelper.parse(
           response: response,
           json_schema: JSON_SCHEMA,
-          chat_method: method(:call_llm),
+          chat_method: ->(retry_messages) { call_llm(retry_messages, with: with) },
           messages: messages
         )
 

@@ -138,6 +138,22 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       assert_equal "chunk1chunk2", answer
     end
 
+    should "propagate errors raised while reading streamed chunks" do
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+      failing_chunk = mock("Chunk")
+      failing_chunk.stubs(:content).raises(RuntimeError.new("stream read failed"))
+      mock_chat_instance.expects(:ask).yields(failing_chunk)
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+
+      callback = ->(content) { }
+      error = assert_raises(RuntimeError) do
+        @agent.chat([ { role: "user", content: "Hello" } ], {}, callback)
+      end
+      assert_equal "stream read failed", error.message
+    end
+
     should "pass system_prompt as instructions to create_chat" do
       mock_chat_instance = mock("RubyLLM::Chat")
       mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
@@ -289,6 +305,23 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       assert_equal "img", result["goal"]
     end
 
+    should "retain the with: parameter when regenerating after a schema violation" do
+      image_paths = [ "/path/to/img.png" ]
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+      bad_response = mock("Response bad")
+      bad_response.stubs(:content).returns('{"other": "no goal"}')
+      good_response = mock("Response good")
+      good_response.stubs(:content).returns('{"goal": "regenerated"}')
+      mock_chat_instance.expects(:ask).with(anything, with: image_paths).twice.returns(bad_response, good_response)
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+
+      result = @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @json_schema, with: image_paths)
+
+      assert_equal "regenerated", result["goal"]
+    end
+
     should "not rescue JSON::ParserError" do
       mock_chat_instance = mock("RubyLLM::Chat")
       mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
@@ -382,6 +415,23 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       @agent.expects(:chat).with(anything, anything, anything, anything).returns('{"goal": "regenerated"}').at_least_once
 
       result = @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @json_schema)
+
+      assert_equal "regenerated", result["goal"]
+    end
+
+    should "retain the with: parameter when regenerating via the fallback chat (native)" do
+      image_paths = [ "/path/to/img.png" ]
+      @mock_llm_provider.stubs(:supports_structured_output?).returns(true)
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+      mock_response = mock("Response")
+      mock_response.stubs(:content).returns({ "other" => "no goal" })
+      mock_chat_instance.stubs(:ask).returns(mock_response)
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+      @agent.expects(:chat).with { |_msgs, _opt, _cb, **kw| kw[:with] == image_paths }.returns('{"goal": "regenerated"}')
+
+      result = @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @json_schema, with: image_paths)
 
       assert_equal "regenerated", result["goal"]
     end
