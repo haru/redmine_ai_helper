@@ -130,6 +130,53 @@ module RedmineAiHelper
           { name: name, schema: json_schema, strict: false }
         end
 
+        # Property name used by {wrap_array_root_schema}/{unwrap_array_root} to
+        # lift an array-rooted schema into an object for native structured
+        # output providers that require an object root (e.g. OpenAI).
+        ARRAY_ROOT_PROPERTY = "value"
+
+        # Whether the given JSON schema has an array root.
+        # @param json_schema [Hash] The JSON schema.
+        # @return [Boolean]
+        def array_root_schema?(json_schema)
+          stringify_keys(json_schema)["type"] == "array"
+        end
+
+        # Lift an array-rooted schema into an object schema with a single
+        # {ARRAY_ROOT_PROPERTY} property. Native structured output on
+        # providers such as OpenAI requires an object root, so array-rooted
+        # schemas (e.g. documentation_agent's typo-suggestion list) must be
+        # wrapped before being sent as the native schema payload.
+        # @param json_schema [Hash] An array-rooted schema.
+        # @return [Hash] An object schema wrapping the array under
+        #   ARRAY_ROOT_PROPERTY.
+        def wrap_array_root_schema(json_schema)
+          schema = stringify_keys(json_schema)
+          {
+            "type" => "object",
+            "properties" => { ARRAY_ROOT_PROPERTY => schema },
+            "required" => [ ARRAY_ROOT_PROPERTY ]
+          }
+        end
+
+        # Unwrap a native response produced against a
+        # {wrap_array_root_schema} payload back into a bare array.
+        #
+        # Returns the response unchanged (String, Hash, or Array) when it is
+        # not in the expected wrapped shape, so the normal parse pipeline can
+        # still handle it (e.g. surface a JSON::ParserError or schema
+        # violation instead of silently swallowing an unexpected shape).
+        # @param response [String, Hash, Array] The raw native response.
+        # @return [String, Hash, Array] The unwrapped array, or the response
+        #   unchanged.
+        def unwrap_array_root(response)
+          data = response.is_a?(String) ? parsed_json_or_nil(response) : response
+          return response unless data.is_a?(Hash)
+
+          wrapped = stringify_keys(data)
+          wrapped.key?(ARRAY_ROOT_PROPERTY) ? wrapped[ARRAY_ROOT_PROPERTY] : response
+        end
+
         private
 
         # Resolve the response into a Hash/Array, applying a single parse-fix
@@ -413,6 +460,17 @@ module RedmineAiHelper
 
           # Fall back to direct parse
           JSON.parse(response.strip)
+        end
+
+        # Best-effort JSON parse used by {unwrap_array_root}; returns nil
+        # instead of raising so a malformed native response is passed through
+        # unchanged to the normal parse pipeline.
+        # @param response [String]
+        # @return [Hash, Array, nil]
+        def parsed_json_or_nil(response)
+          parse_json_from_response(response)
+        rescue JSON::ParserError
+          nil
         end
       end
     end

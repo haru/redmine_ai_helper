@@ -279,17 +279,28 @@ module RedmineAiHelper
 
       answer
     end
+
     # Native structured-output path: delegate schema enforcement to the provider
     # via +with_schema+. The response content (Hash/Array or String) is fed into
     # the shared conform→validate pipeline so that any residual deviation is still
     # caught (research.md R4). Regeneration falls back to the prompt-instruction
     # +chat+ method (no schema) to recover from provider-side misfires.
+    #
+    # Array-rooted schemas are wrapped into an object under a single property
+    # before being sent as the native schema payload, and the response is
+    # unwrapped back into a bare array before entering the parse pipeline,
+    # because providers such as OpenAI require an object root for native
+    # structured output (see StructuredOutputHelper#wrap_array_root_schema).
     def structured_chat_native(messages, json_schema:, with: nil)
-      schema_payload = RedmineAiHelper::Util::StructuredOutputHelper.native_schema_payload(json_schema)
+      helper = RedmineAiHelper::Util::StructuredOutputHelper
+      array_root = helper.array_root_schema?(json_schema)
+      native_schema = array_root ? helper.wrap_array_root_schema(json_schema) : json_schema
+      schema_payload = helper.native_schema_payload(native_schema)
       chat_instance = @llm_provider.create_chat(instructions: system_prompt, schema: schema_payload)
       setup_langfuse_callbacks(chat_instance, provider: @llm_provider)
       response_content = ask_with_messages(chat_instance, messages, nil, with: with)
-      RedmineAiHelper::Util::StructuredOutputHelper.parse(
+      response_content = helper.unwrap_array_root(response_content) if array_root
+      helper.parse(
         response: response_content,
         json_schema: json_schema,
         chat_method: method(:chat),
@@ -297,6 +308,7 @@ module RedmineAiHelper
       )
     end
 
+    # Build a fresh assistant using the think LLM provider (or fall back to the regular provider).
     # Replays @shared_messages so the think model has full conversation context.
     # A fresh assistant is used rather than reusing @assistant to avoid stale provider-specific
     # tool-call state that cannot be safely copied across providers.

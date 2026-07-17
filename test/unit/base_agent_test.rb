@@ -387,6 +387,54 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
     end
   end
 
+  context "structured_chat native branch with an array-rooted schema" do
+    setup do
+      @array_schema = {
+        "type" => "array",
+        "items" => {
+          "type" => "object",
+          "properties" => { "corrected" => { "type" => "string" } },
+          "required" => [ "corrected" ]
+        }
+      }
+      @mock_llm_provider.stubs(:supports_structured_output?).returns(true)
+    end
+
+    should "wrap the array-rooted schema into an object payload for create_chat" do
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+      mock_response = mock("Response")
+      mock_response.stubs(:content).returns({ "value" => [ { "corrected" => "the" } ] })
+      mock_chat_instance.stubs(:ask).returns(mock_response)
+      @mock_llm_provider.expects(:create_chat).with do |opts|
+        opts[:schema][:schema]["type"] == "object" &&
+          opts[:schema][:schema]["properties"].key?("value") &&
+          opts[:schema][:schema]["properties"]["value"] == @array_schema
+      end.returns(mock_chat_instance)
+
+      result = @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @array_schema)
+
+      assert_kind_of Array, result
+      assert_equal "the", result.first["corrected"]
+    end
+
+    should "unwrap a String native response before validating against the array schema" do
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+      mock_response = mock("Response")
+      mock_response.stubs(:content).returns('{"value": [{"corrected": "the"}]}')
+      mock_chat_instance.stubs(:ask).returns(mock_response)
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+
+      result = @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @array_schema)
+
+      assert_kind_of Array, result
+      assert_equal "the", result.first["corrected"]
+    end
+  end
+
   context "format_instructions_for" do
     setup do
       @json_schema = { "type" => "object", "properties" => { "goal" => { "type" => "string" } } }

@@ -577,4 +577,89 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
       end
     end
   end
+
+  context "array-root schema wrapping (native structured output)" do
+    setup do
+      @array_schema = {
+        "type" => "array",
+        "items" => {
+          "type" => "object",
+          "properties" => { "corrected" => { "type" => "string" } },
+          "required" => [ "corrected" ]
+        }
+      }
+    end
+
+    context "array_root_schema?" do
+      should "return true for an array-rooted schema" do
+        assert Util::StructuredOutputHelper.array_root_schema?(@array_schema)
+      end
+
+      should "return false for an object-rooted schema" do
+        object_schema = { "type" => "object", "properties" => { "goal" => { "type" => "string" } } }
+        assert_not Util::StructuredOutputHelper.array_root_schema?(object_schema)
+      end
+
+      should "work with symbol-keyed schemas" do
+        assert Util::StructuredOutputHelper.array_root_schema?(type: "array", items: { type: "string" })
+      end
+    end
+
+    context "wrap_array_root_schema" do
+      should "wrap the array schema under the value property, required" do
+        wrapped = Util::StructuredOutputHelper.wrap_array_root_schema(@array_schema)
+
+        assert_equal "object", wrapped["type"]
+        assert_equal @array_schema, wrapped["properties"]["value"]
+        assert_equal [ "value" ], wrapped["required"]
+      end
+    end
+
+    context "unwrap_array_root" do
+      should "unwrap a Hash response with the value key" do
+        result = Util::StructuredOutputHelper.unwrap_array_root({ "value" => [ { "corrected" => "the" } ] })
+
+        assert_equal [ { "corrected" => "the" } ], result
+      end
+
+      should "unwrap a String JSON response with the value key" do
+        result = Util::StructuredOutputHelper.unwrap_array_root('{"value": [{"corrected": "the"}]}')
+
+        assert_equal [ { "corrected" => "the" } ], result
+      end
+
+      should "return the response unchanged when the value key is absent" do
+        response = { "other" => [ 1, 2 ] }
+
+        assert_equal response, Util::StructuredOutputHelper.unwrap_array_root(response)
+      end
+
+      should "return the response unchanged when it is already a bare Array" do
+        response = [ { "corrected" => "the" } ]
+
+        assert_equal response, Util::StructuredOutputHelper.unwrap_array_root(response)
+      end
+
+      should "return the response unchanged when the String is not parseable" do
+        response = "not parseable {{{"
+
+        assert_equal response, Util::StructuredOutputHelper.unwrap_array_root(response)
+      end
+    end
+
+    context "end-to-end wrap -> unwrap -> parse" do
+      should "produce a schema-conformant array from a wrapped native response" do
+        native_schema = Util::StructuredOutputHelper.wrap_array_root_schema(@array_schema)
+        payload = Util::StructuredOutputHelper.native_schema_payload(native_schema)
+        assert_equal "object", payload[:schema]["type"]
+
+        native_response = { "value" => [ { "corrected" => "the", "extra" => "strip me" } ] }
+        unwrapped = Util::StructuredOutputHelper.unwrap_array_root(native_response)
+
+        result = Util::StructuredOutputHelper.parse(response: unwrapped, json_schema: @array_schema)
+
+        assert_equal [ { "corrected" => "the" } ], result
+      end
+    end
+  end
 end
