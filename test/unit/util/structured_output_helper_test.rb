@@ -339,6 +339,31 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
       assert_match(/tracker_id: expected integer, got String/, violations.first)
     end
 
+    should "tolerate null for an optional property" do
+      schema = {
+        "type" => "object",
+        "properties" => { "subject" => { "type" => "string" }, "fixed_version_id" => { "type" => "integer" }, "due_date" => { "type" => "string" } },
+        "required" => [ "subject" ]
+      }
+      data = { "subject" => "x", "fixed_version_id" => nil, "due_date" => nil }
+
+      assert_equal [], Util::StructuredOutputHelper.validate(data, schema)
+    end
+
+    should "still detect type mismatch for null on a required property" do
+      schema = {
+        "type" => "object",
+        "properties" => { "tracker_id" => { "type" => "integer" } },
+        "required" => [ "tracker_id" ]
+      }
+      data = { "tracker_id" => nil }
+
+      violations = Util::StructuredOutputHelper.validate(data, schema)
+
+      assert_equal 1, violations.length
+      assert_match(/tracker_id: expected integer, got NilClass/, violations.first)
+    end
+
     should "map number to Numeric and accept floats" do
       schema = { "type" => "object", "properties" => { "n" => { "type" => "number" } }, "required" => [ "n" ] }
 

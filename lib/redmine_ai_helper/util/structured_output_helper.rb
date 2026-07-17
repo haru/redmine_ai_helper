@@ -373,7 +373,8 @@ module RedmineAiHelper
         # @param violations [Array<String>]
         # @return [void]
         def validate_object(data, schema, path, violations)
-          (schema["required"] || []).each do |key|
+          required_keys = schema["required"] || []
+          required_keys.each do |key|
             unless data.is_a?(Hash) && data.key?(key)
               violations << "#{join_path(path, key)}: required key missing"
             end
@@ -382,6 +383,9 @@ module RedmineAiHelper
           return unless data.is_a?(Hash)
           data.each do |key, value|
             next unless properties.key?(key)
+            # null is tolerated for optional properties (LLMs commonly emit
+            # null rather than omitting the key for "not applicable" values).
+            next if value.nil? && required_keys.exclude?(key)
             validate_value(value, properties[key], join_path(path, key), violations)
           end
         end
