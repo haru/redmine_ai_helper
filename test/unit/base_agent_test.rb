@@ -138,6 +138,22 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       assert_equal "chunk1chunk2", answer
     end
 
+    should "propagate errors raised while reading streamed chunks" do
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+      failing_chunk = mock("Chunk")
+      failing_chunk.stubs(:content).raises(RuntimeError.new("stream read failed"))
+      mock_chat_instance.expects(:ask).yields(failing_chunk)
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+
+      callback = ->(content) { }
+      error = assert_raises(RuntimeError) do
+        @agent.chat([ { role: "user", content: "Hello" } ], {}, callback)
+      end
+      assert_equal "stream read failed", error.message
+    end
+
     should "pass system_prompt as instructions to create_chat" do
       mock_chat_instance = mock("RubyLLM::Chat")
       mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
@@ -247,6 +263,245 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       agent = BaseAgentTestModele::TestAgent.new(@params)
 
       assert_nil agent.think_llm_provider
+    end
+  end
+
+  context "structured_chat" do
+    setup do
+      @json_schema = {
+        "type" => "object",
+        "properties" => { "goal" => { "type" => "string" } },
+        "required" => [ "goal" ]
+      }
+      @mock_llm_provider.stubs(:supports_structured_output?).returns(false)
+    end
+
+    should "obtain a string response via chat and parse it with the schema" do
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+      mock_response = mock("Response")
+      mock_response.stubs(:content).returns('{"goal": "structured"}')
+      mock_chat_instance.stubs(:ask).returns(mock_response)
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+
+      result = @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @json_schema)
+
+      assert_equal "structured", result["goal"]
+    end
+
+    should "propagate the with: parameter to chat" do
+      image_paths = [ "/path/to/img.png" ]
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+      mock_response = mock("Response")
+      mock_response.stubs(:content).returns('{"goal": "img"}')
+      mock_chat_instance.expects(:ask).with("hi", with: image_paths).returns(mock_response)
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+
+      result = @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @json_schema, with: image_paths)
+
+      assert_equal "img", result["goal"]
+    end
+
+    should "retain the with: parameter when regenerating after a schema violation" do
+      image_paths = [ "/path/to/img.png" ]
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+      bad_response = mock("Response bad")
+      bad_response.stubs(:content).returns('{"other": "no goal"}')
+      good_response = mock("Response good")
+      good_response.stubs(:content).returns('{"goal": "regenerated"}')
+      mock_chat_instance.expects(:ask).with(anything, with: image_paths).twice.returns(bad_response, good_response)
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+
+      result = @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @json_schema, with: image_paths)
+
+      assert_equal "regenerated", result["goal"]
+    end
+
+    should "not rescue JSON::ParserError" do
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+      mock_response = mock("Response")
+      mock_response.stubs(:content).returns("not parseable {{{")
+      mock_chat_instance.stubs(:ask).returns(mock_response)
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+
+      assert_raises(JSON::ParserError) do
+        @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @json_schema)
+      end
+    end
+
+    should "not rescue SchemaViolationError" do
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+      mock_response = mock("Response")
+      mock_response.stubs(:content).returns('{"other": "no goal"}')
+      mock_chat_instance.stubs(:ask).returns(mock_response)
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+
+      assert_raises(RedmineAiHelper::Util::StructuredOutputHelper::SchemaViolationError) do
+        @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @json_schema)
+      end
+    end
+  end
+
+  context "structured_chat native branch (US2)" do
+    setup do
+      @json_schema = { "type" => "object", "properties" => { "goal" => { "type" => "string" } }, "required" => [ "goal" ] }
+    end
+
+    should "call create_chat with a non-strict schema payload when supports_structured_output? is true" do
+      @mock_llm_provider.stubs(:supports_structured_output?).returns(true)
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+      mock_response = mock("Response")
+      mock_response.stubs(:content).returns({ "goal" => "native" })
+      mock_chat_instance.stubs(:ask).returns(mock_response)
+      @mock_llm_provider.expects(:create_chat).with { |opts| opts.key?(:schema) && opts[:schema][:strict] == false && opts[:schema][:schema] == @json_schema }.returns(mock_chat_instance)
+
+      result = @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @json_schema)
+
+      assert_equal "native", result["goal"]
+    end
+
+    should "skip JSON parsing when response.content is a Hash" do
+      @mock_llm_provider.stubs(:supports_structured_output?).returns(true)
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+      mock_response = mock("Response")
+      mock_response.stubs(:content).returns({ "goal" => "hash-content" })
+      mock_chat_instance.stubs(:ask).returns(mock_response)
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+
+      result = @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @json_schema)
+
+      assert_equal "hash-content", result["goal"]
+    end
+
+    should "join the normal parse path when response.content is a String" do
+      @mock_llm_provider.stubs(:supports_structured_output?).returns(true)
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+      mock_response = mock("Response")
+      mock_response.stubs(:content).returns('{"goal": "string-content"}')
+      mock_chat_instance.stubs(:ask).returns(mock_response)
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+
+      result = @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @json_schema)
+
+      assert_equal "string-content", result["goal"]
+    end
+
+    should "pass regeneration through the fallback chat method on schema violation (native)" do
+      @mock_llm_provider.stubs(:supports_structured_output?).returns(true)
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+      # Native returns a non-conforming Hash first
+      mock_response = mock("Response")
+      mock_response.stubs(:content).returns({ "other" => "no goal" })
+      mock_chat_instance.stubs(:ask).returns(mock_response)
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+      # Regeneration via fallback chat returns compliant JSON
+      @agent.expects(:chat).with(anything, anything, anything, anything).returns('{"goal": "regenerated"}').at_least_once
+
+      result = @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @json_schema)
+
+      assert_equal "regenerated", result["goal"]
+    end
+
+    should "retain the with: parameter when regenerating via the fallback chat (native)" do
+      image_paths = [ "/path/to/img.png" ]
+      @mock_llm_provider.stubs(:supports_structured_output?).returns(true)
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+      mock_response = mock("Response")
+      mock_response.stubs(:content).returns({ "other" => "no goal" })
+      mock_chat_instance.stubs(:ask).returns(mock_response)
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+      @agent.expects(:chat).with { |_msgs, _opt, _cb, **kw| kw[:with] == image_paths }.returns('{"goal": "regenerated"}')
+
+      result = @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @json_schema, with: image_paths)
+
+      assert_equal "regenerated", result["goal"]
+    end
+  end
+
+  context "structured_chat native branch with an array-rooted schema" do
+    setup do
+      @array_schema = {
+        "type" => "array",
+        "items" => {
+          "type" => "object",
+          "properties" => { "corrected" => { "type" => "string" } },
+          "required" => [ "corrected" ]
+        }
+      }
+      @mock_llm_provider.stubs(:supports_structured_output?).returns(true)
+    end
+
+    should "wrap the array-rooted schema into an object payload for create_chat" do
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+      mock_response = mock("Response")
+      mock_response.stubs(:content).returns({ "value" => [ { "corrected" => "the" } ] })
+      mock_chat_instance.stubs(:ask).returns(mock_response)
+      @mock_llm_provider.expects(:create_chat).with do |opts|
+        opts[:schema][:schema]["type"] == "object" &&
+          opts[:schema][:schema]["properties"].key?("value") &&
+          opts[:schema][:schema]["properties"]["value"] == @array_schema
+      end.returns(mock_chat_instance)
+
+      result = @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @array_schema)
+
+      assert_kind_of Array, result
+      assert_equal "the", result.first["corrected"]
+    end
+
+    should "unwrap a String native response before validating against the array schema" do
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+      mock_response = mock("Response")
+      mock_response.stubs(:content).returns('{"value": [{"corrected": "the"}]}')
+      mock_chat_instance.stubs(:ask).returns(mock_response)
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+
+      result = @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @array_schema)
+
+      assert_kind_of Array, result
+      assert_equal "the", result.first["corrected"]
+    end
+  end
+
+  context "format_instructions_for" do
+    setup do
+      @json_schema = { "type" => "object", "properties" => { "goal" => { "type" => "string" } } }
+    end
+
+    should "return an empty string when supports_structured_output? is true" do
+      @mock_llm_provider.stubs(:supports_structured_output?).returns(true)
+
+      assert_equal "", @agent.format_instructions_for(@json_schema)
+    end
+
+    should "return get_format_instructions result when supports_structured_output? is false" do
+      @mock_llm_provider.stubs(:supports_structured_output?).returns(false)
+
+      result = @agent.format_instructions_for(@json_schema)
+
+      assert_includes result, "JSON Schema"
     end
   end
 

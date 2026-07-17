@@ -56,6 +56,55 @@ class DocumentationAgentTest < ActiveSupport::TestCase
     assert_equal [], @agent.available_tools
   end
 
+  def test_check_typos_routes_through_structured_chat
+    mock_response = [
+      {
+        "original" => "teh",
+        "corrected" => "the",
+        "position" => 0,
+        "length" => 3,
+        "reason" => "Spelling mistake",
+        "confidence" => "high"
+      }
+    ]
+
+    @agent.expects(:structured_chat).with(anything, json_schema: anything).returns(mock_response)
+
+    result = @agent.check_typos(text: "teh quick brown fox", context_type: "test")
+
+    assert_equal mock_response, result
+  end
+
+  def test_check_typos_native_structured_output_with_array_rooted_schema
+    @agent.llm_provider = mock("llm_provider")
+    @agent.llm_provider.stubs(:supports_structured_output?).returns(true)
+    mock_chat_instance = mock("RubyLLM::Chat")
+    mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+    mock_chat_instance.stubs(:add_message)
+    mock_response = mock("Response")
+    mock_response.stubs(:content).returns(
+      "value" => [
+        {
+          "original" => "teh",
+          "corrected" => "the",
+          "position" => 0,
+          "length" => 3,
+          "reason" => "Spelling mistake",
+          "confidence" => "high"
+        }
+      ]
+    )
+    mock_chat_instance.stubs(:ask).returns(mock_response)
+    @agent.llm_provider.expects(:create_chat).with do |opts|
+      opts[:schema][:schema]["type"] == "object" && opts[:schema][:schema]["properties"].key?("value")
+    end.returns(mock_chat_instance)
+
+    result = @agent.check_typos(text: "teh quick brown fox", context_type: "test")
+
+    assert_equal 1, result.length
+    assert_equal "the", result.first["corrected"]
+  end
+
   def test_backstory_returns_prompt
     prompt_mock = mock("prompt")
     @agent.stubs(:load_prompt).with("documentation_agent/backstory").returns(prompt_mock)
