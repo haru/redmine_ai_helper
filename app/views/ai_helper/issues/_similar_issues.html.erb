@@ -55,7 +55,8 @@
     </tbody>
   </table>
   <% if estimation[:available] %>
-    <% note_translations = I18n.t(:ai_helper_suggested_hours_note) %>
+    <%# Called without count: to fetch the whole pluralization hash ({one:, other:}) for the JS data attributes below %>
+    <% note_translations = l(:ai_helper_suggested_hours_note) %>
     <p class="ai-helper-suggested-hours" id="ai-helper-suggested-hours-block"
        data-note-one="<%= note_translations[:one] || note_translations[:other] %>"
        data-note-other="<%= note_translations[:other] %>">
