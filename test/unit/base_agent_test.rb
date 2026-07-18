@@ -96,7 +96,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       assert_includes prompt, RedmineAiHelper::Util::PromptLoader.load_template("base_agent/read_only_notice").format
     end
 
-    should "be identical to the default prompt when read_only_mode is false" do
+    should "not include the read-only notice when read_only_mode is false" do
       AiHelperSetting.stubs(:read_only_mode?).returns(false)
 
       prompt = @agent.system_prompt
@@ -749,6 +749,13 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       assert_includes agent_names, "test_agent"
       assert_includes agent_names, "test_agent2"
       assert_not_includes agent_names, "disabled_agent"
+    end
+
+    should "raise an error when get_agent_instance is called with a disabled agent name" do
+      error = assert_raises(RuntimeError) do
+        @agent_list.get_agent_instance("disabled_agent")
+      end
+      assert_equal "Agent is disabled: disabled_agent", error.message
     end
   end
 

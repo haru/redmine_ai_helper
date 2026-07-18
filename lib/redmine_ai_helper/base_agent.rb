@@ -77,7 +77,8 @@ module RedmineAiHelper
     end
 
     # Returns the array of RubyLLM::Tool subclasses available to this agent.
-    # Subclasses should override this method.
+    # Subclasses should override `available_tool_providers` instead; overriding this
+    # method directly bypasses the read-only filter.
     # When read-only mode is enabled, write tools (write_tool? == true) are excluded
     # so the LLM is never given the means to modify data.
     # @return [Array<Class>] Array of RubyLLM::Tool subclasses.
@@ -441,7 +442,9 @@ module RedmineAiHelper
       agent = find_agent(agent_name)
       raise "Agent not found: #{agent_name}" unless agent
       agent_class = Object.const_get(agent[:class])
-      agent_class.new(option)
+      instance = agent_class.new(option)
+      raise "Agent is disabled: #{agent_name}" unless instance.enabled?
+      instance
     end
 
     # List all enabled agents

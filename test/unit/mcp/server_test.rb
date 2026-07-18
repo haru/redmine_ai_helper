@@ -110,6 +110,7 @@ class McpServerBuilderTest < ActiveSupport::TestCase
       write_tool_names.each do |tool_name|
         assert_not server.tools.key?(tool_name), "expected #{tool_name} to be excluded when read_only_mode is enabled"
       end
+      assert server.tools.key?("search_issues"), "expected read tools to remain when read_only_mode is enabled"
     end
 
     should "include write tools in the built server when read_only_mode is disabled" do

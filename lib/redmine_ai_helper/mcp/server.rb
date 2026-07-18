@@ -44,7 +44,10 @@ module RedmineAiHelper
             base_tools_class.tool_classes.each do |ruby_tool_class|
               mcp_name = ToolAdapter.send(:extract_tool_name, ruby_tool_class.new)
               next unless mcp_name == tool_name
-              return false if AiHelperSetting.read_only_mode? && ruby_tool_class.write_tool?
+              if AiHelperSetting.read_only_mode? && ruby_tool_class.write_tool?
+                ai_helper_logger.debug("MCP tools/call #{tool_name} denied: read-only mode is enabled")
+                return false
+              end
               return mcp_tool_allowed?(base_tools_class, user: user)
             end
           end
