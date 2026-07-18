@@ -1544,3 +1544,10 @@ table.list.ai-helper-report-list td.radio .radio-placeholder {
   outline: 2px solid currentColor;
   outline-offset: 2px;
 }
+
+/* Vector search settings: shrink the project selection box to its content
+   instead of Redmine's fixed 300px height */
+#ai_helper_vector_target_project_ids .objects-selection {
+  block-size: auto;
+  max-block-size: 300px;
+}
