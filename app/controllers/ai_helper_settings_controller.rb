@@ -13,7 +13,7 @@ class AiHelperSettingsController < ApplicationController
 
   # Display the settings page
   def index
-    @selected_tab = determine_selected_tab
+    @selected_tab = params[:tab]
   end
 
   # Update the settings
@@ -56,10 +56,5 @@ class AiHelperSettingsController < ApplicationController
     @setting = AiHelperSetting.find_or_create
     @model_profiles = AiHelperModelProfile.order(:name)
     @ai_helper_projects = Project.joins(:enabled_modules).where(enabled_modules: { name: "ai_helper" }).order(:name)
-  end
-
-  # @return [String, nil] the selected tab name for render_tabs
-  def determine_selected_tab
-    params[:tab]
   end
 end

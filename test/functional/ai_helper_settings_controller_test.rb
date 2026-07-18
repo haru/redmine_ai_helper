@@ -342,6 +342,13 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert_select "div#tab-content-vector[style*='display:none']"
     end
 
+    should "fallback to general tab when unknown tab name is passed" do
+      get :index, params: { tab: "bogus" }
+
+      assert_response :success
+      assert_select "a#tab-general.selected"
+    end
+
     should "render general tab fields in general tab content" do
       get :index
 
@@ -416,6 +423,32 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
       assert_response :success
       assert_select "a#tab-general.selected"
+    end
+
+    should "show model tab when error attribute maps to model tab despite submitting from general tab" do
+      post :update, params: {
+        tab: "general",
+        ai_helper_setting: {
+          use_think_model: "1",
+          think_model_profile_id: ""
+        }
+      }
+
+      assert_response :success
+      assert_select "a#tab-model.selected"
+    end
+
+    should "show vector tab when error attribute maps to vector tab despite submitting from general tab" do
+      post :update, params: {
+        tab: "general",
+        ai_helper_setting: {
+          vector_search_enabled: "1",
+          vector_search_uri: ""
+        }
+      }
+
+      assert_response :success
+      assert_select "a#tab-vector.selected"
     end
 
     should "render model tab fields in model tab content only" do

@@ -1,10 +1,7 @@
 <% f = tab[:f] %>
 <div class="box tabular">
   <p>
-    <%
-      options = @model_profiles.map{|p| [p.display_name, p.id]}
-    %>
-    <%= f.select :model_profile_id, options, include_blank: true, required: true %>
+    <%= f.select :model_profile_id, ai_helper_model_profile_options(@model_profiles), include_blank: true, required: true %>
     <%= link_to ai_helper_model_profiles_new_url do %>
       <%= sprite_icon('add') %>
       <%= t(:label_new) %>
@@ -19,7 +16,7 @@
   </p>
   <div id="ai-helper-think-model-settings">
     <p>
-      <%= f.select :think_model_profile_id, options, include_blank: true %>
+      <%= f.select :think_model_profile_id, ai_helper_model_profile_options(@model_profiles), include_blank: true %>
     </p>
   </div>
 </div>

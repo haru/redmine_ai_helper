@@ -9,10 +9,7 @@
   </p>
   <div id="ai-helper-vector-model-profile-settings">
     <p>
-      <%
-        options = @model_profiles.map{|p| [p.display_name, p.id]}
-      %>
-      <%= f.select :vector_model_profile_id, options, include_blank: true %>
+      <%= f.select :vector_model_profile_id, ai_helper_model_profile_options(@model_profiles), include_blank: true %>
     </p>
   </div>
   <div id="ai-helper-vector-search">
