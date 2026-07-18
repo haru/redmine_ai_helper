@@ -9,8 +9,11 @@ class AiHelperSettingsController < ApplicationController
   before_action :require_admin, :find_setting
   self.main_menu = false
 
+  include AiHelperSettingsHelper
+
   # Display the settings page
   def index
+    @selected_tab = params[:tab].presence
   end
 
   # Update the settings
@@ -18,8 +21,12 @@ class AiHelperSettingsController < ApplicationController
     @setting.safe_attributes = params[:ai_helper_setting]
     if @setting.save
       flash[:notice] = l(:notice_successful_update)
-      redirect_to action: :index
+      redirect_to action: :index, tab: params[:tab].presence
     else
+      @selected_tab = ai_helper_settings_selected_tab(
+        @setting.errors.attribute_names,
+        params[:tab].presence
+      )
       render action: :index
     end
   end

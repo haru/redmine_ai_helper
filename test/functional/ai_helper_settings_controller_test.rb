@@ -328,4 +328,261 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert_select "input[type=checkbox][name='ai_helper_setting[read_only_mode]']"
     end
   end
+
+  context "tabbed settings layout" do
+    should "render 3 tab links with general selected by default" do
+      get :index
+
+      assert_response :success
+      assert_select "a#tab-general.selected"
+      assert_select "a#tab-model"
+      assert_select "a#tab-vector"
+      assert_select "div#tab-content-general"
+      assert_select "div#tab-content-model[style*='display:none']"
+      assert_select "div#tab-content-vector[style*='display:none']"
+    end
+
+    should "fallback to general tab when unknown tab name is passed" do
+      get :index, params: { tab: "bogus" }
+
+      assert_response :success
+      assert_select "a#tab-general.selected"
+    end
+
+    should "render general tab fields in general tab content" do
+      get :index
+
+      assert_response :success
+      assert_select "div#tab-content-general" do
+        assert_select "input[type=checkbox][name='ai_helper_setting[attachment_send_enabled]']"
+        assert_select "input[type=number][name='ai_helper_setting[attachment_max_size_mb]']"
+        assert_select "input[type=checkbox][name='ai_helper_setting[mcp_server_enabled]']"
+        assert_select "input[type=checkbox][name='ai_helper_setting[read_only_mode]']"
+        assert_select "input[type=checkbox][name='ai_helper_setting[send_user_id_enabled]']"
+        assert_select "textarea[name='ai_helper_setting[additional_instructions]']"
+      end
+    end
+
+    should "save all tab attributes and redirect with tab param" do
+      vector_profile = AiHelperModelProfile.create!(
+        name: "Vector Save Profile",
+        access_key: "vec_key",
+        llm_type: "OpenAI",
+        llm_model: "text-embedding-3-large"
+      )
+
+      post :update, params: {
+        tab: "general",
+        ai_helper_setting: {
+          attachment_send_enabled: "1",
+          attachment_max_size_mb: "10",
+          mcp_server_enabled: "1",
+          read_only_mode: "0",
+          send_user_id_enabled: "0",
+          additional_instructions: "test instructions",
+          model_profile_id: @model_profile.id.to_s,
+          use_think_model: "0",
+          think_model_profile_id: "",
+          vector_search_enabled: "1",
+          vector_search_uri: "http://localhost:6333",
+          vector_search_api_key: "test-api-key",
+          embedding_model: "text-embedding-3-large",
+          dimension: "1536",
+          embedding_url: "",
+          use_vector_model_profile: "1",
+          vector_model_profile_id: vector_profile.id.to_s,
+          vector_register_all_projects: "1",
+          vector_target_project_ids: []
+        }
+      }
+
+      assert_redirected_to controller: "ai_helper_settings", action: :index, tab: "general"
+      @ai_helper_setting.reload
+
+      assert_equal 10, @ai_helper_setting.attachment_max_size_mb
+      assert_equal true, @ai_helper_setting.attachment_send_enabled
+      assert_equal true, @ai_helper_setting.mcp_server_enabled
+      assert_equal "test instructions", @ai_helper_setting.additional_instructions
+      assert_equal @model_profile.id, @ai_helper_setting.model_profile_id
+      assert_equal true, @ai_helper_setting.vector_search_enabled
+      assert_equal "http://localhost:6333", @ai_helper_setting.vector_search_uri
+      assert_equal true, @ai_helper_setting.use_vector_model_profile
+      assert_equal vector_profile.id, @ai_helper_setting.vector_model_profile_id
+
+      vector_profile.destroy if vector_profile.persisted?
+    end
+
+    should "show general tab on validation error for attachment_max_size_mb" do
+      post :update, params: {
+        tab: "general",
+        ai_helper_setting: {
+          attachment_send_enabled: "1",
+          attachment_max_size_mb: "0"
+        }
+      }
+
+      assert_response :success
+      assert_select "a#tab-general.selected"
+    end
+
+    should "show model tab when error attribute maps to model tab despite submitting from general tab" do
+      post :update, params: {
+        tab: "general",
+        ai_helper_setting: {
+          use_think_model: "1",
+          think_model_profile_id: ""
+        }
+      }
+
+      assert_response :success
+      assert_select "a#tab-model.selected"
+    end
+
+    should "show vector tab when error attribute maps to vector tab despite submitting from general tab" do
+      post :update, params: {
+        tab: "general",
+        ai_helper_setting: {
+          vector_search_enabled: "1",
+          vector_search_uri: ""
+        }
+      }
+
+      assert_response :success
+      assert_select "a#tab-vector.selected"
+    end
+
+    should "render model tab fields in model tab content only" do
+      get :index, params: { tab: "model" }
+
+      assert_response :success
+      assert_select "a#tab-model.selected"
+      assert_select "div#tab-content-model" do
+        assert_select "select[name='ai_helper_setting[model_profile_id]']"
+        assert_select "input[type=checkbox][name='ai_helper_setting[use_think_model]']"
+        assert_select "select[name='ai_helper_setting[think_model_profile_id]']"
+        assert_select "input[type=checkbox][name='ai_helper_setting[mcp_server_enabled]']", { count: 0 }
+        assert_select "input[type=checkbox][name='ai_helper_setting[vector_search_enabled]']", { count: 0 }
+      end
+    end
+
+    should "save from model tab and redirect with tab model" do
+      post :update, params: {
+        tab: "model",
+        ai_helper_setting: {
+          model_profile_id: @model_profile.id.to_s,
+          use_think_model: "0",
+          think_model_profile_id: ""
+        }
+      }
+
+      assert_redirected_to controller: "ai_helper_settings", action: :index, tab: "model"
+      @ai_helper_setting.reload
+      assert_equal @model_profile.id, @ai_helper_setting.model_profile_id
+    end
+
+    should "show model tab on validation error for think_model_profile_id" do
+      post :update, params: {
+        tab: "model",
+        ai_helper_setting: {
+          use_think_model: "1",
+          think_model_profile_id: ""
+        }
+      }
+
+      assert_response :success
+      assert_select "a#tab-model.selected"
+    end
+  end
+
+  context "vector tab layout" do
+    should "render vector tab fields in vector tab content only" do
+      get :index, params: { tab: "vector" }
+
+      assert_response :success
+      assert_select "a#tab-vector.selected"
+      assert_select "div#tab-content-vector" do
+        assert_select "input[type=checkbox][name='ai_helper_setting[vector_search_enabled]']"
+        assert_select "input[type=text][name='ai_helper_setting[vector_search_uri]']"
+        assert_select "input[type=text][name='ai_helper_setting[vector_search_api_key]']"
+        assert_select "input[type=text][name='ai_helper_setting[embedding_model]']"
+        assert_select "input[type=text][name='ai_helper_setting[dimension]']"
+        assert_select "input[type=text][name='ai_helper_setting[embedding_url]']"
+        assert_select "input[type=checkbox][name='ai_helper_setting[use_vector_model_profile]']"
+        assert_select "select[name='ai_helper_setting[vector_model_profile_id]']"
+        assert_select "input[type=checkbox][name='ai_helper_setting[vector_register_all_projects]']"
+        assert_select "input[type=checkbox][name='ai_helper_setting[attachment_send_enabled]']", { count: 0 }
+        assert_select "input[type=checkbox][name='ai_helper_setting[mcp_server_enabled]']", { count: 0 }
+        assert_select "select[name='ai_helper_setting[model_profile_id]']", { count: 0 }
+      end
+    end
+
+    should "save from vector tab and redirect with tab vector" do
+      post :update, params: {
+        tab: "vector",
+        ai_helper_setting: {
+          vector_search_enabled: "1",
+          vector_search_uri: "http://localhost:6333",
+          vector_search_api_key: "test-key",
+          embedding_model: "text-embedding-3-large",
+          dimension: "1536",
+          use_vector_model_profile: "0",
+          vector_model_profile_id: "",
+          vector_register_all_projects: "1",
+          vector_target_project_ids: []
+        }
+      }
+
+      assert_redirected_to controller: "ai_helper_settings", action: :index, tab: "vector"
+      @ai_helper_setting.reload
+      assert_equal "http://localhost:6333", @ai_helper_setting.vector_search_uri
+    end
+
+    should "show vector tab on validation error for vector_search_uri" do
+      post :update, params: {
+        tab: "vector",
+        ai_helper_setting: {
+          vector_search_enabled: "1",
+          vector_search_uri: ""
+        }
+      }
+
+      assert_response :success
+      assert_select "a#tab-vector.selected"
+    end
+  end
+
+  context "tab param handling" do
+    should "omit tab param on redirect when tab is blank" do
+      post :update, params: { tab: "", ai_helper_setting: { model_profile_id: @model_profile.id } }
+
+      assert_response :redirect
+      assert_no_match(/[?&]tab=/, @response.redirect_url)
+    end
+
+    should "keep tab param on redirect when tab is present" do
+      post :update, params: { tab: "model", ai_helper_setting: { model_profile_id: @model_profile.id } }
+
+      assert_redirected_to controller: "ai_helper_settings", action: :index, tab: "model"
+    end
+
+    should "treat blank tab param as nil on index" do
+      get :index, params: { tab: "" }
+
+      assert_response :success
+      assert_nil assigns(:selected_tab)
+    end
+
+    should "bind hidden tab field to selected tab on validation error" do
+      post :update, params: {
+        tab: "general",
+        ai_helper_setting: {
+          vector_search_enabled: "1",
+          vector_search_uri: ""
+        }
+      }
+
+      assert_response :success
+      assert_select "input[type=hidden][name=tab][value=vector]"
+    end
+  end
 end

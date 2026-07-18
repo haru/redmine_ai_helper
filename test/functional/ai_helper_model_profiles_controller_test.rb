@@ -27,7 +27,7 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
     assert_difference("AiHelperModelProfile.count", 1) do
       post :create, params: { ai_helper_model_profile: { name: "New Profile", access_key: "new_key", llm_type: "OpenAI", llm_model: "model" } }
     end
-    assert_redirected_to ai_helper_setting_path
+    assert_redirected_to ai_helper_setting_path(tab: "model")
   end
 
   should "not create model profile with invalid attributes" do
@@ -49,7 +49,7 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
   should "update model profile with valid attributes" do
     patch :update, params: { id: @model_profile.id, ai_helper_model_profile: { name: "Updated Profile" } }
 
-    assert_redirected_to ai_helper_setting_path
+    assert_redirected_to ai_helper_setting_path(tab: "model")
     @model_profile.reload
 
     assert_equal "Updated Profile", @model_profile.name
@@ -69,7 +69,7 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
     assert_difference("AiHelperModelProfile.count", -1) do
       delete :destroy, params: { id: @model_profile.id }
     end
-    assert_redirected_to ai_helper_setting_path
+    assert_redirected_to ai_helper_setting_path(tab: "model")
   end
 
   should "handle destroy for non-existent model profile" do

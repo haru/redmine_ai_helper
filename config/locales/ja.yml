@@ -32,6 +32,10 @@ ja:
   label_ai_helper_report_detail_mobile: "レポート詳細"
   label_ai_helper_close_detail: "詳細を閉じる"
   ai_helper:
+    settings:
+      tab_general: "全般"
+      tab_model: "モデル"
+      tab_vector: "ベクトル検索"
     notice_sub_issues_added: "子チケットが追加されました"
     error_invalid_assignee: "'%{subject}' の担当者が無効です。このトラッカーに対する権限がありません"
     chat:

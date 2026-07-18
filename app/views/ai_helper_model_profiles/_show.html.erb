@@ -74,7 +74,7 @@
     const cancelBtn = document.getElementById('copy-profile-cancel');
     const errorEl = document.getElementById('copy-profile-error');
     const copyUrl = '<%= ai_helper_model_profiles_copy_path(id: @model_profile) %>';
-    const redirectUrl = '<%= ai_helper_setting_path %>';
+    const redirectUrl = '<%= ai_helper_setting_path(tab: "model") %>';
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
     copyBtn.addEventListener('click', function(e) {

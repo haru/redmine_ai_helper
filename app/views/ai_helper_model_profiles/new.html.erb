@@ -3,5 +3,5 @@
 <%= labelled_form_for @model_profile, html: {autocomplete: "off"} do |f| %>
   <%= render partial: "form", locals: {f: f} %>
   <%= f.submit t(:button_submit) %>
-  <%= link_to l(:button_cancel), ai_helper_setting_path %>
+  <%= link_to l(:button_cancel), ai_helper_setting_path(tab: "model") %>
 <% end %>
