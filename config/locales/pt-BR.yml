@@ -5,7 +5,6 @@ pt-BR:
   label_chat_placeholder: Digite sua mensagem aqui...
   label_ai_helper_input_newline: Pressione Shift + Enter para uma nova linha.
   label_ai_helper_start_new_chat: Iniciar uma nova conversa
-  label_ai_helper_read_only_mode: "Read-only mode is enabled. Data changes are not possible."
   ai_helper_summary: Resumir com IA
   ai_helper_similar_issues: Encontrar Tarefas Semelhantes com IA
   ai_helper_find_similar_issues: Encontrar Tarefas Semelhantes

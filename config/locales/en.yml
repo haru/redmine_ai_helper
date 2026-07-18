@@ -6,7 +6,7 @@ en:
   label_ai_helper_custom_command_hint: "Type '/' to use custom commands."
   label_ai_helper_start_new_chat: "Start a new chat"
   label_ai_helper_free_input_option: "Other (type yourself)"
-  label_ai_helper_read_only_mode: "Read-only mode is enabled. Data changes are not possible."
+  label_ai_helper_read_only_suffix: " (Read-only)"
   ai_helper_summary: "Summarize with AI Helper"
   ai_helper_similar_issues: "Find Similar Issues with AI Helper"
   ai_helper_find_similar_issues: "Find Similar Issues"

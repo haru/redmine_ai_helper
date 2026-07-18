@@ -6,7 +6,6 @@ it:
   label_ai_helper_custom_command_hint: "Digita '/' per usare i comandi personalizzati."
   label_ai_helper_start_new_chat: "Avvia una nuova chat"
   label_ai_helper_free_input_option: "Altro (inserisci manualmente)"
-  label_ai_helper_read_only_mode: "Read-only mode is enabled. Data changes are not possible."
   ai_helper_summary: "Riepiloga con AI Helper"
   ai_helper_similar_issues: "Trova ticket simili con AI Helper"
   ai_helper_find_similar_issues: "Trova ticket simili"

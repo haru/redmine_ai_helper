@@ -6,7 +6,7 @@ ja:
   label_ai_helper_custom_command_hint: "'/'でカスタムコマンドを入力できます。"
   label_ai_helper_start_new_chat: "新しいチャットを開始"
   label_ai_helper_free_input_option: "その他（自分で入力）"
-  label_ai_helper_read_only_mode: "読み取り専用モードが有効です。データの変更はできません。"
+  label_ai_helper_read_only_suffix: "（読み取り専用）"
   ai_helper_summary: "AIヘルパーで要約"
   ai_helper_similar_issues: "AIヘルパーで類似チケットを検索"
   ai_helper_find_similar_issues: "類似チケットを検索"

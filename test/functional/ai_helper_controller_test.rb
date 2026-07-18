@@ -32,20 +32,8 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_template partial: "ai_helper/chat/_chat_form"
       end
 
-      should "render the read-only mode notice when read_only_mode is enabled" do
+      should "not render a read-only mode notice in the chat form when read_only_mode is enabled" do
         AiHelperSetting.stubs(:read_only_mode?).returns(true)
-
-        get :chat_form, params: { id: @project.id }
-
-        assert_response :success
-        assert_select "#ai_helper_chat_form" do
-          assert_select ".icon-lock"
-        end
-        assert_match I18n.t(:label_ai_helper_read_only_mode), @response.body
-      end
-
-      should "not render the read-only mode notice when read_only_mode is disabled" do
-        AiHelperSetting.stubs(:read_only_mode?).returns(false)
 
         get :chat_form, params: { id: @project.id }
 
@@ -2128,7 +2116,7 @@ class AiHelperControllerTest < ActionController::TestCase
       setup do
         get :reload, params: { id: @project.id }
         RedmineAiHelper::Util::PermissionChecker.stubs(:module_enabled?).returns(true)
-        setting_mock = stub("AiHelperSetting", model_profile: stub("AiHelperModelProfile"))
+        setting_mock = stub("AiHelperSetting", model_profile: stub("AiHelperModelProfile"), read_only_mode: false)
         AiHelperSetting.stubs(:find_or_create).returns(setting_mock)
         @view = @controller.view_context
         @view.render(partial: "ai_helper/chat/sidebar")

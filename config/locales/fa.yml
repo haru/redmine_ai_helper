@@ -4,7 +4,6 @@ fa:
   label_chat_placeholder: "پیام خود را اینجا بنویسید..."
   label_ai_helper_input_newline: "برای خط جدید Shift + Enter را فشار دهید."
   label_ai_helper_start_new_chat: "شروع گفت‌وگوی جدید"
-  label_ai_helper_read_only_mode: "Read-only mode is enabled. Data changes are not possible."
   ai_helper_summary: "خلاصه‌سازی با دستیار هوش مصنوعی"
   ai_helper_text_summary_generated_time: "تولید شده در %{time}"
   ai_helper_error_occurred: "خطایی رخ داده است"
