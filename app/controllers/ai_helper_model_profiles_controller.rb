@@ -37,7 +37,7 @@ class AiHelperModelProfilesController < ApplicationController
     @model_profile.safe_attributes = params[:ai_helper_model_profile]
     if @model_profile.save
       flash[:notice] = l(:notice_successful_create)
-      redirect_to ai_helper_setting_path
+      redirect_to ai_helper_setting_path(tab: "model")
     else
       render action: :new
     end
@@ -51,7 +51,7 @@ class AiHelperModelProfilesController < ApplicationController
     @model_profile.access_key = original_access_key if @model_profile.access_key == DUMMY_ACCESS_KEY
     if @model_profile.save
       flash[:notice] = l(:notice_successful_update)
-      redirect_to ai_helper_setting_path
+      redirect_to ai_helper_setting_path(tab: "model")
     else
       render action: :edit
     end
@@ -113,10 +113,10 @@ class AiHelperModelProfilesController < ApplicationController
   def destroy
     if @model_profile.destroy
       flash[:notice] = l(:notice_successful_delete)
-      redirect_to ai_helper_setting_path
+      redirect_to ai_helper_setting_path(tab: "model")
     else
       flash[:error] = l(:error_failed_delete)
-      redirect_to ai_helper_setting_path
+      redirect_to ai_helper_setting_path(tab: "model")
     end
   rescue ActiveRecord::RecordNotFound
     render_404
