@@ -11,7 +11,7 @@ module RedmineAiHelper
     class WikiWriteTools < RedmineAiHelper::BaseTools
       include RedmineAiHelper::Util::WikiJson
 
-      define_function :wiki_add_page, description: "Create a new wiki page in a project." do
+      define_function :wiki_add_page, description: "Create a new wiki page in a project.", write: true do
         property :project_id, type: "integer", description: "The project ID of the wiki.", required: true
         property :title, type: "string", description: "Title of the new wiki page (must be unique within the wiki).", required: true
         property :content, type: "string", description: "Body text of the wiki page.", required: true
@@ -64,7 +64,7 @@ module RedmineAiHelper
         generate_wiki_data(page)
       end
 
-      define_function :wiki_update_page, description: "Update an existing wiki page's content and/or title." do
+      define_function :wiki_update_page, description: "Update an existing wiki page's content and/or title.", write: true do
         property :project_id, type: "integer", description: "The project ID of the wiki.", required: true
         property :title, type: "string", description: "Current title of the page to update.", required: true
         property :content, type: "string", description: "New body text. Omit to leave content unchanged.", required: false
@@ -118,7 +118,7 @@ module RedmineAiHelper
         generate_wiki_data(page)
       end
 
-      define_function :wiki_delete_page, description: "Delete a wiki page and its associated content." do
+      define_function :wiki_delete_page, description: "Delete a wiki page and its associated content.", write: true do
         property :project_id, type: "integer", description: "The project ID of the wiki.", required: true
         property :title, type: "string", description: "Title of the page to delete.", required: true
       end

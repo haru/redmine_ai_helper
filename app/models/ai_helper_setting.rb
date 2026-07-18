@@ -22,6 +22,7 @@ class AiHelperSetting < ApplicationRecord
     "use_vector_model_profile", "vector_model_profile_id",
     "mcp_server_enabled",
     "send_user_id_enabled",
+    "read_only_mode",
     "vector_register_all_projects", "vector_target_project_ids"
 
   validates :attachment_max_size_mb,
@@ -62,6 +63,12 @@ class AiHelperSetting < ApplicationRecord
     # @return [Boolean]
     def send_user_id_enabled?
       setting.send_user_id_enabled
+    end
+
+    # Returns whether read-only mode is enabled.
+    # @return [Boolean]
+    def read_only_mode?
+      setting.read_only_mode
     end
 
     # Returns whether vector search is effectively enabled for the given project.

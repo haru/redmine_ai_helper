@@ -292,6 +292,12 @@ table.ai-helper-sub-issues-table td {
 
 .ai-helper-status {}
 
+.ai-helper-spent-hours .ai-helper-effort-checkbox,
+#ai-helper-effort-select-all {
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
 .ai-helper-priority {}
 
 .ai-helper-assigned {

@@ -144,20 +144,14 @@ module RedmineAiHelper
           parent_issue: JSON.pretty_generate(issue_json),
           instructions: instructions,
           subtask_instructions: project_setting.subtask_instructions,
-          format_instructions: RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(json_schema)
+          format_instructions: format_instructions_for(json_schema)
         )
         ai_helper_logger.debug "prompt_text: #{prompt_text}"
 
         message = { role: "user", content: prompt_text }
         messages = [ message ]
         file_paths = supported_attachment_paths(issue)
-        answer = chat(messages, {}, nil, with: file_paths.presence)
-        fixed_json = RedmineAiHelper::Util::StructuredOutputHelper.parse(
-          response: answer,
-          json_schema: json_schema,
-          chat_method: method(:chat),
-          messages: messages
-        )
+        fixed_json = structured_chat(messages, json_schema: json_schema, with: file_paths.presence)
 
         # Convert the answer to an array of Issue objects
         sub_issues = []
@@ -257,19 +251,12 @@ module RedmineAiHelper
           description: description || "",
           tracker: tracker_name || "",
           category: category_name || "",
-          format_instructions: RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(json_schema)
+          format_instructions: format_instructions_for(json_schema)
         )
 
         message = { role: "user", content: prompt_text }
         messages = [ message ]
-        answer = chat(messages)
-
-        RedmineAiHelper::Util::StructuredOutputHelper.parse(
-          response: answer,
-          json_schema: json_schema,
-          chat_method: method(:chat),
-          messages: messages
-        )
+        structured_chat(messages, json_schema: json_schema)
       end
 
       # Generate text completion for inline auto-completion

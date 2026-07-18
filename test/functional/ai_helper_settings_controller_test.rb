@@ -300,4 +300,32 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert_select "input[type=checkbox][name='ai_helper_setting[send_user_id_enabled]']"
     end
   end
+
+  context "read_only_mode setting" do
+    should "save read_only_mode true" do
+      post :update, params: { ai_helper_setting: { read_only_mode: "1" } }
+
+      assert_redirected_to action: :index
+      @ai_helper_setting.reload
+
+      assert_equal true, @ai_helper_setting.read_only_mode
+    end
+
+    should "save read_only_mode false" do
+      @ai_helper_setting.update_column(:read_only_mode, true)
+      post :update, params: { ai_helper_setting: { read_only_mode: "0" } }
+
+      assert_redirected_to action: :index
+      @ai_helper_setting.reload
+
+      assert_equal false, @ai_helper_setting.read_only_mode
+    end
+
+    should "render read_only_mode checkbox on index" do
+      get :index
+
+      assert_response :success
+      assert_select "input[type=checkbox][name='ai_helper_setting[read_only_mode]']"
+    end
+  end
 end

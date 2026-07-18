@@ -190,7 +190,9 @@ module RedmineAiHelper
           define_method(:role) { self.class.name.split("::").last.underscore }
           define_method(:name) { class_name }
           define_method(:to_s) { class_name }
-          define_method(:enabled?) { true }
+          # External MCP tools have no write/read classification, so we disable
+          # the entire agent rather than filtering individual tools (see ADR-005).
+          define_method(:enabled?) { !AiHelperSetting.read_only_mode? }
 
           define_method :available_tool_classes do
             return @cached_tool_classes if @cached_tool_classes

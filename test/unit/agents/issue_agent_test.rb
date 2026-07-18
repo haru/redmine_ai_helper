@@ -329,6 +329,83 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
       end
     end
 
+    context "generate_sub_issues_draft Issue #345 reproduction (structured_chat routing)" do
+      setup do
+        User.current = User.find(1)
+        @issue = Issue.find(1)
+      end
+
+      should "US1-1: route through structured_chat and build sub-issues from a wrapped bare-array response" do
+        @agent.expects(:structured_chat).with(anything, json_schema: anything, with: anything).returns(
+          { "sub_issues" => [ { "subject" => "Sub A", "description" => "desc", "project_id" => @issue.project_id, "tracker_id" => @issue.tracker_id } ] }
+        )
+
+        result = @agent.generate_sub_issues_draft(issue: @issue, instructions: "Create sub issues.")
+
+        assert_kind_of Array, result
+        assert_equal "Sub A", result.first.subject
+      end
+
+      should "US1-2: not raise when the conformed response originally had undeclared keys" do
+        @agent.expects(:structured_chat).returns(
+          { "sub_issues" => [ { "subject" => "Sub B", "description" => "desc", "project_id" => @issue.project_id, "tracker_id" => @issue.tracker_id } ] }
+        )
+
+        result = @agent.generate_sub_issues_draft(issue: @issue, instructions: "Create sub issues.")
+
+        assert_kind_of Array, result
+        assert_equal "Sub B", result.first.subject
+      end
+
+      should "propagate attachment file paths to structured_chat via with:" do
+        file_paths = [ "/path/to/file.png" ]
+        @agent.stubs(:supported_attachment_paths).with(@issue).returns(file_paths)
+        @agent.expects(:structured_chat).with(anything, json_schema: anything, with: file_paths).returns(
+          { "sub_issues" => [ { "subject" => "Sub", "description" => "d", "project_id" => @issue.project_id, "tracker_id" => @issue.tracker_id } ] }
+        )
+
+        @agent.generate_sub_issues_draft(issue: @issue, instructions: "Create sub issues considering attachments.")
+      end
+    end
+
+    context "suggest_assignees_by_instructions (structured_chat routing)" do
+      setup do
+        User.current = User.find(1)
+        @assignable_users = [ User.find(1) ]
+      end
+
+      should "route through structured_chat and return the parsed suggestions" do
+        @agent.expects(:structured_chat).with(anything, json_schema: anything).returns(
+          { "suggestions" => [ { "user_id" => 1, "reason" => "expert" } ] }
+        )
+
+        result = @agent.suggest_assignees_by_instructions(
+          assignable_users: @assignable_users,
+          instructions: "assign to the expert",
+          subject: "title",
+          description: "desc"
+        )
+
+        assert_equal 1, result["suggestions"].length
+        assert_equal 1, result["suggestions"][0]["user_id"]
+      end
+    end
+
+    context "native structured output format_instructions (US2)" do
+      setup do
+        User.current = User.find(1)
+        @issue = Issue.find(1)
+        @agent.llm_provider.stubs(:supports_structured_output?).returns(true)
+      end
+
+      should "use format_instructions_for to omit prompt instructions when native" do
+        @agent.expects(:format_instructions_for).at_least_once
+        @agent.stubs(:structured_chat).returns({ "sub_issues" => [] })
+
+        @agent.generate_sub_issues_draft(issue: @issue, instructions: "Create sub issues.")
+      end
+    end
+
     context "US4 per-project vector gating" do
       should "exclude vector tools when vector_search_enabled_for? is false for the project" do
         AiHelperSetting.stubs(:vector_search_enabled_for?).with(@project).returns(false)

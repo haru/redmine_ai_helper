@@ -67,7 +67,7 @@ class AiHelperModelProfilesController < ApplicationController
         original = AiHelperModelProfile.find(params[:id])
         temp_profile.access_key = original.access_key
       else
-        render json: { success: false, error: l("ai_helper.model_profiles.messages.access_key_required") }, status: :unprocessable_entity
+        render json: { success: false, error: l("ai_helper.model_profiles.messages.access_key_required") }, status: :unprocessable_content
         return
       end
     end
@@ -77,7 +77,7 @@ class AiHelperModelProfilesController < ApplicationController
     unless temp_profile.llm_type.present? && temp_profile.llm_model.present? &&
            (temp_profile.access_key.present? || !temp_profile.access_key_required?) &&
            (temp_profile.base_uri.present? || !temp_profile.base_uri_required?)
-      render json: { success: false, error: l("ai_helper.model_profiles.messages.required_fields_missing") }, status: :unprocessable_entity
+      render json: { success: false, error: l("ai_helper.model_profiles.messages.required_fields_missing") }, status: :unprocessable_content
       return
     end
 
@@ -105,7 +105,7 @@ class AiHelperModelProfilesController < ApplicationController
       render json: { success: true }
     else
       render json: { success: false, errors: new_profile.errors.full_messages },
-             status: :unprocessable_entity
+             status: :unprocessable_content
     end
   end
 

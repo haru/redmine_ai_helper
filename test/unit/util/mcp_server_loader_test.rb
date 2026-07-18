@@ -180,6 +180,42 @@ class McpServerLoaderTest < ActiveSupport::TestCase
       assert_same backstory, agent.backstory
     end
 
+    context "enabled? with read_only_mode" do
+      setup do
+        config = {
+          "mcpServers" => {
+            "filesystem" => {
+              "command" => "node",
+              "args" => [ "server.js" ]
+            }
+          }
+        }
+        server_config = config["mcpServers"]["filesystem"]
+        fake_client = mock("mcp_client")
+        mock_logger = create_mock_logger
+
+        @loader.stubs(:load_config).returns(config)
+        @loader.expects(:create_mcp_client).with("filesystem", server_config).returns(fake_client)
+        RedmineAiHelper::CustomLogger.stubs(:instance).returns(mock_logger)
+        stub_llm_provider
+
+        @loader.send(:generate_mcp_agent_classes)
+        @agent = Object.const_get("AiHelperMcpFilesystem").new
+      end
+
+      should "return false when read_only_mode is enabled" do
+        AiHelperSetting.stubs(:read_only_mode?).returns(true)
+
+        assert_equal false, @agent.enabled?
+      end
+
+      should "return true when read_only_mode is disabled" do
+        AiHelperSetting.stubs(:read_only_mode?).returns(false)
+
+        assert_equal true, @agent.enabled?
+      end
+    end
+
     should "return empty tool providers and log error when tool generation fails" do
       config = {
         "mcpServers" => {

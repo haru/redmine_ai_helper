@@ -37,11 +37,11 @@ initdb() {
     bundle exec rake db:migrate
     bundle exec rake redmine:plugins:migrate
 
-    if [ $DB != "sqlite3" ]
-    then
-        bundle exec rake db:drop RAILS_ENV=test
-        bundle exec rake db:create RAILS_ENV=test
-    fi
+    rm -f db/schema.rb
+
+    bundle exec rake db:drop RAILS_ENV=test
+    bundle exec rake db:create RAILS_ENV=test
+
 
     bundle exec rake db:migrate RAILS_ENV=test
     bundle exec rake redmine:plugins:migrate RAILS_ENV=test
