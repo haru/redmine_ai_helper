@@ -6,6 +6,7 @@ en:
   label_ai_helper_custom_command_hint: "Type '/' to use custom commands."
   label_ai_helper_start_new_chat: "Start a new chat"
   label_ai_helper_free_input_option: "Other (type yourself)"
+  label_ai_helper_read_only_suffix: " (Read-only)"
   ai_helper_summary: "Summarize with AI Helper"
   ai_helper_similar_issues: "Find Similar Issues with AI Helper"
   ai_helper_find_similar_issues: "Find Similar Issues"
@@ -252,6 +253,8 @@ en:
         mcp_server_enabled: "Enable MCP server"
         send_user_id_enabled: "Send user ID to LLM"
         send_user_id_enabled_description: "When enabled, the internal Redmine user ID is sent to the LLM provider. This allows per-user statistics tracking downstream (e.g. LiteLLM). Consider privacy implications before enabling."
+        read_only_mode: "Read-only mode"
+        read_only_mode_description: "When enabled, the AI Helper chat cannot create, update, or delete any data (issues, wiki pages, comments, etc.). External MCP server integration is also disabled."
       ai_helper_project_setting:
         issue_draft_instructions: "Instructions for issue comment generation"
         subtask_instructions: "Instructions for subtask generation"

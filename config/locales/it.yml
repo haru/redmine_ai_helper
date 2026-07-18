@@ -283,6 +283,8 @@ it:
         mcp_server_enabled: "Abilita server MCP"
         send_user_id_enabled: "Invia ID utente al LLM"
         send_user_id_enabled_description: "Se abilitato, l'ID utente interno di Redmine viene inviato al provider LLM. Questo consente il tracciamento di statistiche per utente a valle (es. LiteLLM). Valuta le implicazioni sulla privacy prima di abilitare."
+        read_only_mode: "Read-only mode"
+        read_only_mode_description: "When enabled, the AI Helper chat cannot create, update, or delete any data (issues, wiki pages, comments, etc.). External MCP server integration is also disabled."
 
       ai_helper_project_setting:
         issue_draft_instructions: "Istruzioni per la generazione dei commenti ai ticket"

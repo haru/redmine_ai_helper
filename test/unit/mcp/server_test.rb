@@ -100,4 +100,53 @@ class McpServerBuilderTest < ActiveSupport::TestCase
       assert_not result, "expected false when vector_db_enabled not met"
     end
   end
+
+  context "read_only_mode" do
+    should "exclude write tools from the built server when read_only_mode is enabled" do
+      @setting.update_column(:read_only_mode, true)
+
+      server = RedmineAiHelper::Mcp::Server.build
+
+      write_tool_names.each do |tool_name|
+        assert_not server.tools.key?(tool_name), "expected #{tool_name} to be excluded when read_only_mode is enabled"
+      end
+      assert server.tools.key?("search_issues"), "expected read tools to remain when read_only_mode is enabled"
+    end
+
+    should "include write tools in the built server when read_only_mode is disabled" do
+      @setting.update_column(:read_only_mode, false)
+
+      server = RedmineAiHelper::Mcp::Server.build
+
+      write_tool_names.each do |tool_name|
+        assert server.tools.key?(tool_name), "expected #{tool_name} to be included when read_only_mode is disabled"
+      end
+    end
+
+    should "deny tool_call_permitted? for write tools when read_only_mode is enabled" do
+      @setting.update_column(:read_only_mode, true)
+
+      write_tool_names.each do |tool_name|
+        result = RedmineAiHelper::Mcp::Server.tool_call_permitted?(tool_name, user: @admin_user)
+
+        assert_not result, "expected #{tool_name} to be denied when read_only_mode is enabled"
+      end
+    end
+
+    should "allow tool_call_permitted? for write tools when read_only_mode is disabled" do
+      @setting.update_column(:read_only_mode, false)
+
+      write_tool_names.each do |tool_name|
+        result = RedmineAiHelper::Mcp::Server.tool_call_permitted?(tool_name, user: @admin_user)
+
+        assert result, "expected #{tool_name} to be allowed when read_only_mode is disabled"
+      end
+    end
+  end
+
+  private
+
+  def write_tool_names
+    %w[create_new_issue update_issue wiki_add_page wiki_update_page wiki_delete_page]
+  end
 end

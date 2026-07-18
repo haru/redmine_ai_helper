@@ -358,5 +358,19 @@ class IssueUpdateToolsTest < ActiveSupport::TestCase
         end
       end
     end
+
+    context "write_tool?" do
+      should "mark create_new_issue as a write tool" do
+        tool_class = RedmineAiHelper::Tools::IssueUpdateTools.tool_classes.find { |tc| tc.name.end_with?("::CreateNewIssue") }
+
+        assert_equal true, tool_class.write_tool?
+      end
+
+      should "mark update_issue as a write tool" do
+        tool_class = RedmineAiHelper::Tools::IssueUpdateTools.tool_classes.find { |tc| tc.name.end_with?("::UpdateIssue") }
+
+        assert_equal true, tool_class.write_tool?
+      end
+    end
   end
 end

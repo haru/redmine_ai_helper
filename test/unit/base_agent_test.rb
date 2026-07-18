@@ -63,6 +63,48 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
     end
   end
 
+  context "available_tool_classes with read_only_mode" do
+    setup do
+      @mixed_agent = BaseAgentTestModele::MixedToolsAgent.new(@params)
+    end
+
+    should "exclude write tool classes when read_only_mode is true" do
+      AiHelperSetting.stubs(:read_only_mode?).returns(true)
+
+      tool_classes = @mixed_agent.available_tool_classes
+
+      assert tool_classes.none? { |klass| klass.write_tool? }, "write tools must be excluded"
+      assert tool_classes.any? { |klass| !klass.write_tool? }, "read-only tools must remain"
+    end
+
+    should "include all tool classes when read_only_mode is false" do
+      AiHelperSetting.stubs(:read_only_mode?).returns(false)
+
+      tool_classes = @mixed_agent.available_tool_classes
+
+      assert tool_classes.any? { |klass| klass.write_tool? }, "write tools must be included"
+      assert tool_classes.any? { |klass| !klass.write_tool? }, "read-only tools must be included"
+    end
+  end
+
+  context "system_prompt with read_only_mode" do
+    should "include the read-only notice when read_only_mode is true" do
+      AiHelperSetting.stubs(:read_only_mode?).returns(true)
+
+      prompt = @agent.system_prompt
+
+      assert_includes prompt, RedmineAiHelper::Util::PromptLoader.load_template("base_agent/read_only_notice").format
+    end
+
+    should "not include the read-only notice when read_only_mode is false" do
+      AiHelperSetting.stubs(:read_only_mode?).returns(false)
+
+      prompt = @agent.system_prompt
+
+      assert_not_includes prompt, RedmineAiHelper::Util::PromptLoader.load_template("base_agent/read_only_notice").format
+    end
+  end
+
   context "backstory" do
     should "return the backstory of the agent" do
       assert_equal "テストエージェントのバックストーリー", @agent.backstory
@@ -708,6 +750,13 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       assert_includes agent_names, "test_agent2"
       assert_not_includes agent_names, "disabled_agent"
     end
+
+    should "raise an error when get_agent_instance is called with a disabled agent name" do
+      error = assert_raises(RuntimeError) do
+        @agent_list.get_agent_instance("disabled_agent")
+      end
+      assert_equal "Agent is disabled: disabled_agent", error.message
+    end
   end
 
   class DummyLangfuse
@@ -790,6 +839,38 @@ module BaseAgentTestModele
 
     def generate_response(_prompt:, **_options)
       "無効化されたエージェントの応答"
+    end
+  end
+
+  class MixedTools < RedmineAiHelper::BaseTools
+    define_function :read_something, description: "Reads something" do
+      property :id, type: "integer", description: "The ID", required: true
+    end
+
+    define_function :write_something, description: "Writes something", write: true do
+      property :id, type: "integer", description: "The ID", required: true
+    end
+
+    def read_something(id:)
+      id
+    end
+
+    def write_something(id:)
+      id
+    end
+  end
+
+  class MixedToolsAgent < RedmineAiHelper::BaseAgent
+    def available_tool_providers
+      [ BaseAgentTestModele::MixedTools ]
+    end
+
+    def backstory
+      "書き込みツールテスト用エージェントのバックストーリー"
+    end
+
+    def generate_response(_prompt:, **_options)
+      "書き込みツールテスト用エージェントの応答"
     end
   end
 end

@@ -57,3 +57,4 @@ Briefly describe alternatives that were rejected and why.
 | [002](./002-vector-scope-by-ai-helper-module.md) | Scope vector data registration to projects with ai_helper module enabled | Proposed |
 | [003](./003-vector-target-project-selection.md) | Select which projects are registered in the vector database | Proposed |
 | [004](./004-structured-output-native-and-fallback.md) | Two-tier structured output — native API schema enforcement with a prompt-based fallback pipeline | Proposed |
+| [005](./005-write-tool-classification-for-read-only-mode.md) | Write-tool classification via a `define_function` DSL attribute for read-only mode | Proposed |

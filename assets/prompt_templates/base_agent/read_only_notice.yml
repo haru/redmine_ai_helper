@@ -1,0 +1,5 @@
+---
+_type: prompt
+input_variables: []
+template: |-
+  **Read-only mode is currently enabled.** You cannot create, update, or delete any data (issues, wiki pages, comments, etc.), even if the user asks you to. Clearly tell the user that data changes are not possible right now, and instead offer to help with read-only alternatives, such as looking up information, summarizing, or drafting the content they can apply themselves once read-only mode is disabled.

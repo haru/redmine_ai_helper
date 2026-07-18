@@ -77,10 +77,15 @@ module RedmineAiHelper
     end
 
     # Returns the array of RubyLLM::Tool subclasses available to this agent.
-    # Subclasses should override this method.
+    # Subclasses should override `available_tool_providers` instead; overriding this
+    # method directly bypasses the read-only filter.
+    # When read-only mode is enabled, write tools (write_tool? == true) are excluded
+    # so the LLM is never given the means to modify data.
     # @return [Array<Class>] Array of RubyLLM::Tool subclasses.
     def available_tool_classes
-      available_tool_providers.flat_map(&:tool_classes)
+      tool_classes = available_tool_providers.flat_map(&:tool_classes)
+      return tool_classes unless AiHelperSetting.read_only_mode?
+      tool_classes.reject(&:write_tool?)
     end
 
     # Backward compatibility: delegates to available_tool_classes.
@@ -113,7 +118,8 @@ module RedmineAiHelper
         role: role,
         backstory: backstory,
         time: time,
-        lang: I18n.t(:general_lang_name)
+        lang: I18n.t(:general_lang_name),
+        read_only_notice: read_only_notice
       )
 
       prompt_text
@@ -381,6 +387,13 @@ module RedmineAiHelper
       RedmineAiHelper::Util::PromptLoader.load_template(name)
     end
 
+    # The read-only mode notice injected into the system prompt.
+    # @return [String] The notice text when read-only mode is enabled; an empty string otherwise.
+    def read_only_notice
+      return "" unless AiHelperSetting.read_only_mode?
+      load_prompt("base_agent/read_only_notice").format
+    end
+
     # Extracts text content from a message content value.
     # When content is a RubyLLM::Content object (e.g., containing image attachments),
     # returns only the text portion to avoid binary data in JSON serialization.
@@ -429,7 +442,9 @@ module RedmineAiHelper
       agent = find_agent(agent_name)
       raise "Agent not found: #{agent_name}" unless agent
       agent_class = Object.const_get(agent[:class])
-      agent_class.new(option)
+      instance = agent_class.new(option)
+      raise "Agent is disabled: #{agent_name}" unless instance.enabled?
+      instance
     end
 
     # List all enabled agents
