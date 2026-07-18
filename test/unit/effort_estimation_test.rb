@@ -71,17 +71,28 @@ class RedmineAiHelper::EffortEstimationTest < ActiveSupport::TestCase
         assert_equal 1, result[:based_on_count]
       end
 
-      should "include issues with zero spent_hours in the average and based_on_count" do
+      should "exclude issues with zero spent_hours from both the average and based_on_count" do
         similar_issues = [
           { id: 1, similarity_score: 90.0, spent_hours: 4.0 },
           { id: 2, similarity_score: 60.0, spent_hours: 0 }
         ]
-        # (4.0 * 90.0 + 0 * 60.0) / (90.0 + 60.0) = 360.0 / 150.0 = 2.4
+
         result = RedmineAiHelper::EffortEstimation.suggest(similar_issues)
 
         assert_equal true, result[:available]
-        assert_equal 2.4, result[:suggested_hours]
-        assert_equal 2, result[:based_on_count]
+        assert_equal 4.0, result[:suggested_hours]
+        assert_equal 1, result[:based_on_count]
+      end
+
+      should "return available: false when all issues have zero spent_hours" do
+        similar_issues = [
+          { id: 1, similarity_score: 90.0, spent_hours: 0 },
+          { id: 2, similarity_score: 60.0, spent_hours: 0.0 }
+        ]
+
+        result = RedmineAiHelper::EffortEstimation.suggest(similar_issues)
+
+        assert_equal false, result[:available]
       end
     end
   end

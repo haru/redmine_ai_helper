@@ -614,6 +614,50 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_match(/3\.5 h/, @response.body)
       end
 
+      should "display suggested hours based on a single issue in Japanese locale" do
+        @user.update_column(:language, "ja")
+        similar_issues = [ {
+          id: 2,
+          project: { name: "Test Project" },
+          subject: "Similar issue",
+          status: { name: "Open" },
+          spent_hours: 3.5,
+          updated_on: Time.zone.now,
+          assigned_to: { name: "Test User" },
+          similarity_score: 85.0,
+          issue_url: "/issues/2"
+        } ]
+
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
+
+        get :similar_issues, params: { id: @issue.id }
+
+        assert_response :success
+        assert_match(/1件の類似チケットに基づく/, @response.body)
+      end
+
+      should "fall back to the English note in a locale that does not define the key" do
+        @user.update_column(:language, "fr")
+        similar_issues = [ {
+          id: 2,
+          project: { name: "Test Project" },
+          subject: "Similar issue",
+          status: { name: "Open" },
+          spent_hours: 3.5,
+          updated_on: Time.zone.now,
+          assigned_to: { name: "Test User" },
+          similarity_score: 85.0,
+          issue_url: "/issues/2"
+        } ]
+
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
+
+        get :similar_issues, params: { id: @issue.id }
+
+        assert_response :success
+        assert_match(/based on 1 similar issue\(s\)/, @response.body)
+      end
+
       should "render a selection checkbox with data attributes for similar issues with spent_hours data" do
         similar_issues = [ {
           id: 2,

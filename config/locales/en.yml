@@ -15,9 +15,7 @@ en:
   ai_helper_suggested_hours: "Estimated time suggestion"
   ai_helper_apply_suggested_hours: "Apply to this issue's estimated time"
   ai_helper_effort_select_all: "Select all effort hours"
-  ai_helper_suggested_hours_note:
-    one: "based on %{count} similar issue"
-    other: "based on %{count} similar issues"
+  ai_helper_suggested_hours_note: "based on %{count} similar issue(s)"
   ai_helper_scope_current_project: "Current project"
   ai_helper_scope_with_subprojects: "Include subprojects"
   ai_helper_scope_all_projects: "All projects"

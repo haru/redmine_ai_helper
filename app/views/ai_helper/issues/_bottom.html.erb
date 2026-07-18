@@ -147,8 +147,7 @@
 
     const noteSpan = document.getElementById('ai-helper-suggested-hours-note');
     if (noteSpan) {
-      const template = includedCount === 1 ? block.dataset.noteOne : block.dataset.noteOther;
-      noteSpan.textContent = '(' + template.replace('%{count}', includedCount) + ')';
+      noteSpan.textContent = '(' + block.dataset.noteTemplate.replace('%{count}', includedCount) + ')';
     }
   }
 

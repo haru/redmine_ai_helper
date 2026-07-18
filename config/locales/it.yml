@@ -14,9 +14,7 @@ it:
   ai_helper_suggested_hours: "Suggerimento tempo stimato"
   ai_helper_apply_suggested_hours: "Applica al tempo stimato di questo ticket"
   ai_helper_effort_select_all: "Seleziona tutto il tempo impiegato"
-  ai_helper_suggested_hours_note:
-    one: "basato su %{count} ticket simile"
-    other: "basato su %{count} ticket simili"
+  ai_helper_suggested_hours_note: "basato su %{count} ticket simili"
   ai_helper_scope_current_project: "Progetto corrente"
   ai_helper_scope_with_subprojects: "Includi sottoprogetti"
   ai_helper_scope_all_projects: "Tutti i progetti"
