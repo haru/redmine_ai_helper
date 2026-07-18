@@ -9,8 +9,11 @@ class AiHelperSettingsController < ApplicationController
   before_action :require_admin, :find_setting
   self.main_menu = false
 
+  include AiHelperSettingsHelper
+
   # Display the settings page
   def index
+    @selected_tab = determine_selected_tab
   end
 
   # Update the settings
@@ -18,8 +21,12 @@ class AiHelperSettingsController < ApplicationController
     @setting.safe_attributes = params[:ai_helper_setting]
     if @setting.save
       flash[:notice] = l(:notice_successful_update)
-      redirect_to action: :index
+      redirect_to action: :index, tab: params[:tab]
     else
+      @selected_tab = ai_helper_settings_selected_tab(
+        @setting.errors.attribute_names,
+        params[:tab]
+      )
       render action: :index
     end
   end
@@ -49,5 +56,10 @@ class AiHelperSettingsController < ApplicationController
     @setting = AiHelperSetting.find_or_create
     @model_profiles = AiHelperModelProfile.order(:name)
     @ai_helper_projects = Project.joins(:enabled_modules).where(enabled_modules: { name: "ai_helper" }).order(:name)
+  end
+
+  # @return [String, nil] the selected tab name for render_tabs
+  def determine_selected_tab
+    params[:tab]
   end
 end

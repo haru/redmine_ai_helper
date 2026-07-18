@@ -32,6 +32,10 @@ en:
   label_ai_helper_report_detail_mobile: "Report Detail"
   label_ai_helper_close_detail: "Close Detail"
   ai_helper:
+    settings:
+      tab_general: "General"
+      tab_model: "Model"
+      tab_vector: "Vector search"
     notice_sub_issues_added: "Sub-issues have been added"
     error_invalid_assignee: "Invalid assignee for '%{subject}' - user is not authorized for this tracker"
     chat:

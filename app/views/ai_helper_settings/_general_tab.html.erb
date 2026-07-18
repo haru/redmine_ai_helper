@@ -1,0 +1,29 @@
+<% f = tab[:f] %>
+<div class="box tabular">
+  <p>
+    <%= f.check_box :attachment_send_enabled %>
+  </p>
+  <div id="ai-helper-attachment-settings">
+    <p>
+      <%= f.number_field :attachment_max_size_mb, min: 1, size: 10 %>
+    </p>
+  </div>
+  <hr>
+  <p>
+    <%= f.check_box :mcp_server_enabled %>
+  </p>
+  <hr>
+  <p>
+    <%= f.check_box :read_only_mode %>
+    <span class="description"><%= t("activerecord.attributes.ai_helper_setting.read_only_mode_description") %></span>
+  </p>
+  <hr>
+  <div id="ai-helper-send-user-id">
+    <p>
+      <%= f.check_box :send_user_id_enabled %>
+      <span class="description"><%= t("activerecord.attributes.ai_helper_setting.send_user_id_enabled_description") %></span>
+    </p>
+    <hr>
+  </div>
+  <p><%= f.text_area :additional_instructions, rows: 12 %></p>
+</div>
