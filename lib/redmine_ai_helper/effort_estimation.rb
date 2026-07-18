@@ -9,7 +9,10 @@ module RedmineAiHelper
   class EffortEstimation
     # Computes a suggested number of hours as the weighted average of the
     # spent_hours of the given similar issues, weighted by their
-    # similarity_score. Issues without a spent_hours value are ignored.
+    # similarity_score. Issues without a positive spent_hours value are
+    # ignored, matching the default-checked set of the effort checkboxes in
+    # the similar issues view so the server-rendered suggestion agrees with
+    # the client-side recalculation.
     #
     # @param similar_issues [Array<Hash>] Similar issues data, as returned by
     #   RedmineAiHelper::Llm#find_similar_issues. Each entry is expected to
@@ -17,7 +20,7 @@ module RedmineAiHelper
     # @return [Hash] { available: false } when there is not enough data,
     #   otherwise { available: true, suggested_hours: Float, based_on_count: Integer }
     def self.suggest(similar_issues)
-      with_spent_hours = similar_issues.select { |issue| issue[:spent_hours] }
+      with_spent_hours = similar_issues.select { |issue| issue[:spent_hours].to_f > 0 }
       return { available: false } if with_spent_hours.empty?
 
       total_weight = with_spent_hours.sum { |issue| issue[:similarity_score].to_f }

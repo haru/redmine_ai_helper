@@ -37,10 +37,10 @@
           <td class="ai-helper-status"><%= similar_issue[:status][:name] %></td>
           <td class="ai-helper-spent-hours">
             <% if estimation[:available] %>
-              <%# Default-unchecked when spent_hours is missing or zero. Note that a zero
-                  value still contributes to the weighted average (0 is truthy in Ruby),
-                  but leaving it unchecked keeps the default selection focused on issues
-                  with recorded effort. %>
+              <%# Default-unchecked when spent_hours is missing or zero, matching
+                  EffortEstimation.suggest which only counts issues with positive
+                  spent_hours, so the server-rendered suggestion agrees with the
+                  client-side recalculation over the checked rows. %>
               <%= check_box_tag "ai_helper_effort_#{similar_issue[:id]}", "1", similar_issue[:spent_hours].to_f > 0,
                     class: "ai-helper-effort-checkbox",
                     data: { "spent-hours": similar_issue[:spent_hours], "similarity-score": similar_issue[:similarity_score] },
@@ -55,11 +55,9 @@
     </tbody>
   </table>
   <% if estimation[:available] %>
-    <%# Called without count: to fetch the whole pluralization hash ({one:, other:}) for the JS data attributes below %>
-    <% note_translations = l(:ai_helper_suggested_hours_note) %>
+    <%# Called without count: to fetch the raw template ("%{count} ...") for the JS data attribute below %>
     <p class="ai-helper-suggested-hours" id="ai-helper-suggested-hours-block"
-       data-note-one="<%= note_translations[:one] || note_translations[:other] %>"
-       data-note-other="<%= note_translations[:other] %>">
+       data-note-template="<%= l(:ai_helper_suggested_hours_note) %>">
       <strong><%= l(:ai_helper_suggested_hours) %>:</strong>
       <span id="ai-helper-suggested-hours-value"><%= estimation[:suggested_hours] %></span> h
       <span class="ai-helper-suggested-hours-note" id="ai-helper-suggested-hours-note">(<%= l(:ai_helper_suggested_hours_note, count: estimation[:based_on_count]) %>)</span>
