@@ -2,6 +2,8 @@
 
 # Helper methods for AI Helper global settings views
 module AiHelperSettingsHelper
+  # Maps a setting attribute name to the tab that should be selected when the
+  # attribute has a validation error, so the user is shown the failing field.
   ERROR_ATTRIBUTE_TO_TAB = {
     attachment_max_size_mb: "general",
     think_model_profile_id: "model",
