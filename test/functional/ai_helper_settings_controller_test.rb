@@ -550,4 +550,39 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert_select "a#tab-vector.selected"
     end
   end
+
+  context "tab param handling" do
+    should "omit tab param on redirect when tab is blank" do
+      post :update, params: { tab: "", ai_helper_setting: { model_profile_id: @model_profile.id } }
+
+      assert_response :redirect
+      assert_no_match(/[?&]tab=/, @response.redirect_url)
+    end
+
+    should "keep tab param on redirect when tab is present" do
+      post :update, params: { tab: "model", ai_helper_setting: { model_profile_id: @model_profile.id } }
+
+      assert_redirected_to controller: "ai_helper_settings", action: :index, tab: "model"
+    end
+
+    should "treat blank tab param as nil on index" do
+      get :index, params: { tab: "" }
+
+      assert_response :success
+      assert_nil assigns(:selected_tab)
+    end
+
+    should "bind hidden tab field to selected tab on validation error" do
+      post :update, params: {
+        tab: "general",
+        ai_helper_setting: {
+          vector_search_enabled: "1",
+          vector_search_uri: ""
+        }
+      }
+
+      assert_response :success
+      assert_select "input[type=hidden][name=tab][value=vector]"
+    end
+  end
 end

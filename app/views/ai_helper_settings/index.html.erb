@@ -4,7 +4,7 @@
 <h2><%= t(:label_ai_helper) %></h2>
 <%= labelled_form_for @setting, url: ai_helper_setting_update_url, method: :post do |f| %>
   <%= error_messages_for "setting" %>
-  <%= hidden_field_tag :tab, params[:tab] %>
+  <%= hidden_field_tag :tab, @selected_tab %>
   <%= render_tabs ai_helper_settings_tabs(f), @selected_tab %>
   <%= f.submit t(:button_submit) %>
 <% end %>
