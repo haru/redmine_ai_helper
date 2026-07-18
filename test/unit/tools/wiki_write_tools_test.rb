@@ -238,4 +238,24 @@ class WikiWriteToolsTest < ActiveSupport::TestCase
       end
     end
   end
+
+  context "write_tool?" do
+    should "mark wiki_add_page as a write tool" do
+      tool_class = RedmineAiHelper::Tools::WikiWriteTools.tool_classes.find { |tc| tc.name.end_with?("::WikiAddPage") }
+
+      assert_equal true, tool_class.write_tool?
+    end
+
+    should "mark wiki_update_page as a write tool" do
+      tool_class = RedmineAiHelper::Tools::WikiWriteTools.tool_classes.find { |tc| tc.name.end_with?("::WikiUpdatePage") }
+
+      assert_equal true, tool_class.write_tool?
+    end
+
+    should "mark wiki_delete_page as a write tool" do
+      tool_class = RedmineAiHelper::Tools::WikiWriteTools.tool_classes.find { |tc| tc.name.end_with?("::WikiDeletePage") }
+
+      assert_equal true, tool_class.write_tool?
+    end
+  end
 end

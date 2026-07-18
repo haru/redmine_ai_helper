@@ -5,6 +5,7 @@ zh:
   label_ai_helper_input_newline: "按 Shift + Enter 换行。"
   label_ai_helper_custom_command_hint: "输入 '/' 使用自定义命令。"
   label_ai_helper_start_new_chat: "开始新的对话"
+  label_ai_helper_read_only_mode: "Read-only mode is enabled. Data changes are not possible."
   ai_helper_summary: "使用 AI 助手进行摘要"
   ai_helper_similar_issues: "使用 AI 助手查找类似问题"
   ai_helper_find_similar_issues: "查找类似问题"
@@ -206,6 +207,8 @@ zh:
         use_vector_model_profile: "使用向量模型配置"
         vector_model_profile_id: "向量模型配置"
         vector_model_profile_description: "对向量搜索操作使用单独的模型配置（API 凭据和内容分析）。注意：嵌入模型名称仍由上面的嵌入模型设置控制。"
+        read_only_mode: "Read-only mode"
+        read_only_mode_description: "When enabled, the AI Helper chat cannot create, update, or delete any data (issues, wiki pages, comments, etc.). External MCP server integration is also disabled."
       ai_helper_project_setting:
         issue_draft_instructions: "问题评论生成说明"
         subtask_instructions: "子任务生成说明"

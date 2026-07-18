@@ -4,6 +4,7 @@ fr:
   label_chat_placeholder: "Saisissez votre message ici..."
   label_ai_helper_input_newline: "Appuyez sur Maj + Entrée pour une nouvelle ligne."
   label_ai_helper_start_new_chat: "Démarrer une nouvelle discussion"
+  label_ai_helper_read_only_mode: "Read-only mode is enabled. Data changes are not possible."
   ai_helper_summary: "Résumer avec l'Assistant IA"
   ai_helper_similar_issues: "Trouver des demandes similaires avec l'Assistant IA"
   ai_helper_find_similar_issues: "Trouver des demandes similaires"
@@ -103,6 +104,8 @@ fr:
         vector_search_api_key: "Clé API"
         embedding_model: "Modèle d'intégration"
         dimension: "Dimension"
+        read_only_mode: "Read-only mode"
+        read_only_mode_description: "When enabled, the AI Helper chat cannot create, update, or delete any data (issues, wiki pages, comments, etc.). External MCP server integration is also disabled."
       ai_helper_project_setting:
         issue_draft_instructions: "Instructions pour la génération de commentaires de demande"
         subtask_instructions: "Instructions pour la génération de sous-tâches"

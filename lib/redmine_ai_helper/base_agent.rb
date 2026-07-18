@@ -78,9 +78,13 @@ module RedmineAiHelper
 
     # Returns the array of RubyLLM::Tool subclasses available to this agent.
     # Subclasses should override this method.
+    # When read-only mode is enabled, write tools (write_tool? == true) are excluded
+    # so the LLM is never given the means to modify data.
     # @return [Array<Class>] Array of RubyLLM::Tool subclasses.
     def available_tool_classes
-      available_tool_providers.flat_map(&:tool_classes)
+      tool_classes = available_tool_providers.flat_map(&:tool_classes)
+      return tool_classes unless AiHelperSetting.read_only_mode?
+      tool_classes.reject(&:write_tool?)
     end
 
     # Backward compatibility: delegates to available_tool_classes.
@@ -113,7 +117,8 @@ module RedmineAiHelper
         role: role,
         backstory: backstory,
         time: time,
-        lang: I18n.t(:general_lang_name)
+        lang: I18n.t(:general_lang_name),
+        read_only_notice: read_only_notice
       )
 
       prompt_text
@@ -379,6 +384,13 @@ module RedmineAiHelper
     # @return [String] The loaded prompt template.
     def load_prompt(name)
       RedmineAiHelper::Util::PromptLoader.load_template(name)
+    end
+
+    # The read-only mode notice injected into the system prompt.
+    # @return [String] The notice text when read-only mode is enabled; an empty string otherwise.
+    def read_only_notice
+      return "" unless AiHelperSetting.read_only_mode?
+      load_prompt("base_agent/read_only_notice").format
     end
 
     # Extracts text content from a message content value.

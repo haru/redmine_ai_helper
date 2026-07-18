@@ -44,6 +44,7 @@ module RedmineAiHelper
             base_tools_class.tool_classes.each do |ruby_tool_class|
               mcp_name = ToolAdapter.send(:extract_tool_name, ruby_tool_class.new)
               next unless mcp_name == tool_name
+              return false if AiHelperSetting.read_only_mode? && ruby_tool_class.write_tool?
               return mcp_tool_allowed?(base_tools_class, user: user)
             end
           end
@@ -67,12 +68,17 @@ module RedmineAiHelper
         # @return [Array<Class>] array of MCP::Tool subclasses
         def collect_tools(user:)
           load_all_tool_files
+          read_only = AiHelperSetting.read_only_mode?
           tools = []
           RedmineAiHelper::BaseTools.subclasses.each do |base_tools_class|
             next if base_tools_class.name.nil?
             next unless mcp_tool_allowed?(base_tools_class, user: user)
 
             base_tools_class.tool_classes.each do |ruby_tool_class|
+              if read_only && ruby_tool_class.write_tool?
+                ai_helper_logger.debug("MCP tool #{ruby_tool_class.name} excluded: read-only mode is enabled")
+                next
+              end
               tools << ToolAdapter.adapt(ruby_tool_class, source_tools_class: base_tools_class)
             end
           end

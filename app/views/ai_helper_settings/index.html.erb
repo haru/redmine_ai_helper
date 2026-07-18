@@ -86,6 +86,11 @@
       <%= f.check_box :mcp_server_enabled %>
     </p>
     <hr>
+    <p>
+      <%= f.check_box :read_only_mode %>
+      <span class="description"><%= t("activerecord.attributes.ai_helper_setting.read_only_mode_description") %></span>
+    </p>
+    <hr>
     <div id="ai-helper-send-user-id">
       <p>
         <%= f.check_box :send_user_id_enabled %>

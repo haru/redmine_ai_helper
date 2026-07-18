@@ -9,7 +9,7 @@ module RedmineAiHelper
     # IssueUpdateTools is a specialized tool for handling Redmine issue updates.
     class IssueUpdateTools < RedmineAiHelper::BaseTools
       include RedmineAiHelper::Util::IssueJson
-      define_function :create_new_issue, description: "Create a new issue in the database." do
+      define_function :create_new_issue, description: "Create a new issue in the database.", write: true do
         property :project_id, type: "integer", description: "The project ID of the issue to create.", required: true
         property :tracker_id, type: "integer", description: "The tracker ID of the issue to create.", required: true
         property :subject, type: "string", description: "The subject of the issue to create.", required: true
@@ -103,7 +103,7 @@ module RedmineAiHelper
         generate_issue_data(issue)
       end
 
-      define_function :update_issue, description: "Update an issue in the database." do
+      define_function :update_issue, description: "Update an issue in the database.", write: true do
         property :issue_id, type: "integer", description: "The issue ID of the issue to update.", required: true
         property :subject, type: "string", description: "The subject of the issue to update.", required: false
         property :tracker_id, type: "integer", description: "The tracker ID of the issue to update.", required: false

@@ -6,6 +6,7 @@ ja:
   label_ai_helper_custom_command_hint: "'/'でカスタムコマンドを入力できます。"
   label_ai_helper_start_new_chat: "新しいチャットを開始"
   label_ai_helper_free_input_option: "その他（自分で入力）"
+  label_ai_helper_read_only_mode: "読み取り専用モードが有効です。データの変更はできません。"
   ai_helper_summary: "AIヘルパーで要約"
   ai_helper_similar_issues: "AIヘルパーで類似チケットを検索"
   ai_helper_find_similar_issues: "類似チケットを検索"
@@ -251,6 +252,8 @@ ja:
         mcp_server_enabled: "MCPサーバーを有効にする"
         send_user_id_enabled: "ユーザーIDをLLMに送信する"
         send_user_id_enabled_description: "有効にすると、Redmineの内部ユーザーIDがLLMプロバイダに送信されます。これにより、下流（LiteLLM等）でユーザー別の統計情報を追跡できます。有効化前にプライバシーへの影響をご考慮ください。"
+        read_only_mode: "読み取り専用モード"
+        read_only_mode_description: "有効にすると、AI Helper のチャットからはチケット・Wiki ページ・コメントなどのデータを作成・更新・削除できなくなります。外部 MCP サーバー連携も無効化されます。"
       ai_helper_project_setting:
         issue_draft_instructions: "チケットのコメントを生成する際の指示"
         subtask_instructions: "子チケットを生成する際の指示"

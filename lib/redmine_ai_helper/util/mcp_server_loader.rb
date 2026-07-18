@@ -190,7 +190,7 @@ module RedmineAiHelper
           define_method(:role) { self.class.name.split("::").last.underscore }
           define_method(:name) { class_name }
           define_method(:to_s) { class_name }
-          define_method(:enabled?) { true }
+          define_method(:enabled?) { !AiHelperSetting.read_only_mode? }
 
           define_method :available_tool_classes do
             return @cached_tool_classes if @cached_tool_classes

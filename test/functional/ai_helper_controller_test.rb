@@ -31,6 +31,27 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_response :success
         assert_template partial: "ai_helper/chat/_chat_form"
       end
+
+      should "render the read-only mode notice when read_only_mode is enabled" do
+        AiHelperSetting.stubs(:read_only_mode?).returns(true)
+
+        get :chat_form, params: { id: @project.id }
+
+        assert_response :success
+        assert_select "#ai_helper_chat_form" do
+          assert_select ".icon-lock"
+        end
+        assert_match I18n.t(:label_ai_helper_read_only_mode), @response.body
+      end
+
+      should "not render the read-only mode notice when read_only_mode is disabled" do
+        AiHelperSetting.stubs(:read_only_mode?).returns(false)
+
+        get :chat_form, params: { id: @project.id }
+
+        assert_response :success
+        assert_select "#ai_helper_chat_form .icon-lock", count: 0
+      end
     end
 
     context "_interactive_options partial" do
