@@ -280,7 +280,7 @@ class ChatChannelGatewayTest < ActiveSupport::TestCase
     end
 
     def wait_until_started(timeout)
-      @started.pop(timeout: timeout)
+      self.class.timed_queue_pop(@started, timeout)
     end
 
     def stop
@@ -313,7 +313,7 @@ class ChatChannelGatewayTest < ActiveSupport::TestCase
 
       gateway_thread = Thread.new { @gateway.run }
       begin
-        assert handled.pop(timeout: 5), "the live adapter must keep processing after the other adapter dies"
+        assert RedmineAiHelper::ChatChannel::BaseAdapter.timed_queue_pop(handled, 5), "the live adapter must keep processing after the other adapter dies"
         @gateway.shutdown
         assert_nothing_raised { gateway_thread.value }
       ensure

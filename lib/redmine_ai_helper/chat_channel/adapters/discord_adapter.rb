@@ -309,7 +309,7 @@ module RedmineAiHelper
         def heartbeat_loop
           until stopped? || @reconnect_requested
             wait = @heartbeat_interval || HELLO_WAIT_SECONDS
-            break if @connection_ended.pop(timeout: wait)
+            break if self.class.timed_queue_pop(@connection_ended, wait)
             next if @heartbeat_interval.nil?
 
             unless @heartbeat_acked

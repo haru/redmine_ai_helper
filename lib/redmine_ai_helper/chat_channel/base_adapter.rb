@@ -48,6 +48,25 @@ module RedmineAiHelper
         def required_setting_fields
           []
         end
+
+        # Pops from queue, waiting up to timeout seconds for a value.
+        # Queue#pop's timeout: keyword was added in Ruby 3.2, but this plugin
+        # still supports Ruby 3.1, so waiting is implemented by polling a
+        # non-blocking pop instead.
+        # @param queue [Queue] the queue to pop from
+        # @param timeout [Numeric] seconds to wait before giving up
+        # @return [Object, nil] the popped value, or nil if the timeout elapsed
+        def timed_queue_pop(queue, timeout)
+          deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+          loop do
+            return queue.pop(true)
+          rescue ThreadError
+            remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+            return nil if remaining <= 0
+
+            sleep [ remaining, 0.05 ].min
+          end
+        end
       end
 
       # The gateway this adapter dispatches messages through. Set by the
