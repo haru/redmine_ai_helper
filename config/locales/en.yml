@@ -36,6 +36,28 @@ en:
       tab_general: "General"
       tab_model: "Model"
       tab_vector: "Vector search"
+      tab_channels: "Chat integrations"
+    chat_channel:
+      adapters:
+        slack: "Slack"
+      settings:
+        enabled: "Enable"
+        app_token: "App Token"
+        bot_token: "Bot Token"
+        redmine_user: "Execution account"
+        redmine_user_info: "All questions from the chat tool are processed with this Redmine user's permissions. Restrict this account's roles to limit what the gateway can do."
+        dm_default_project: "Default project for direct messages"
+        bindings: "Channel bindings"
+        adapter: "Chat tool"
+        channel_id: "Channel ID"
+        channel_name: "Channel name"
+        add_binding: "Add binding"
+      errors:
+        service_account_not_configured: "No active execution account is configured for this chat integration, so the request could not be processed. Please ask your administrator to configure the execution account."
+        channel_not_bound: "This channel is not associated with any Redmine project. Please ask your administrator to configure the channel mapping."
+        dm_not_configured: "No default project is configured for direct messages. Please ask your administrator to configure it."
+        module_disabled: "The AI helper module is disabled for the associated project."
+        processing_failed: "An error occurred while generating the answer. Please check the AI helper log for details."
     notice_sub_issues_added: "Sub-issues have been added"
     error_invalid_assignee: "Invalid assignee for '%{subject}' - user is not authorized for this tracker"
     chat:
