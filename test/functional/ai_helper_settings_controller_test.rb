@@ -757,6 +757,15 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
         assert_select "#adapter-settings-ui_chat"
       end
 
+      should "render adapter-bindings fieldset with an id so JS can toggle it alongside adapter-settings" do
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test")
+
+        get :index, params: { tab: "channels" }
+
+        assert_response :success
+        assert_select "#adapter-bindings-ui_chat"
+      end
+
       should "save adapter settings correctly when adapter is disabled" do
         AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: false, bot_token: "xoxb-keep")
 

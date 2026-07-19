@@ -60,7 +60,7 @@
                        include_blank: true, id: nil %>
       </p>
     </div>
-    <fieldset class="box">
+    <fieldset class="box" id="adapter-bindings-<%= channel_type %>">
       <legend><%= t("ai_helper.chat_channel.settings.bindings") %></legend>
       <% adapter_bindings = @channel_bindings_by_type[channel_type] || [] %>
       <% if adapter_bindings.any? %>
