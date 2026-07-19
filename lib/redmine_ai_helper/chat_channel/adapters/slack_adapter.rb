@@ -145,7 +145,7 @@ module RedmineAiHelper
         # @param message [IncomingMessage] the message being processed
         # @return [void]
         def notify_processing(message:)
-          timestamp = message.thread_key.split(":", 2).last
+          timestamp = message.message_ts || message.thread_key.split(":", 2).last
           api_call("reactions.add", token: settings.bot_token,
                    params: { channel: message.channel_id, timestamp: timestamp, name: "hourglass_flowing_sand" })
         end
@@ -294,6 +294,7 @@ module RedmineAiHelper
             channel_type: channel_type,
             channel_id: event["channel"],
             thread_key: "#{event["channel"]}:#{thread_ts}",
+            message_ts: event["ts"],
             text: strip_mention(event["text"].to_s),
             dm: dm
           ))

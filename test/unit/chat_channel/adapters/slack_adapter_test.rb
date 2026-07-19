@@ -229,11 +229,12 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
       assert_equal "slack", message.channel_type
       assert_equal "C123", message.channel_id
       assert_equal "C123:111.222", message.thread_key
+      assert_equal "111.222", message.message_ts
       assert_equal "open issues?", message.text
       assert_not message.dm?
     end
 
-    should "use thread_ts for the thread_key when present" do
+    should "use thread_ts for the thread_key but keep the individual message_ts" do
       @ws.stubs(:send)
 
       @adapter.handle_envelope(events_envelope(
@@ -241,7 +242,9 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
           "ts" => "333.444", "thread_ts" => "111.222", "text" => "<@B001> more" }
       ))
 
-      assert_equal "C123:111.222", @dispatcher.messages.first.thread_key
+      message = @dispatcher.messages.first
+      assert_equal "C123:111.222", message.thread_key
+      assert_equal "333.444", message.message_ts
     end
 
     should "convert an im message into a dm IncomingMessage" do
@@ -328,7 +331,21 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
       assert_equal text, chunks.join
     end
 
-    should "add an hourglass reaction as the processing notice" do
+    should "add an hourglass reaction to the individual message, not the thread root" do
+      @adapter.expects(:api_call).with(
+        "reactions.add",
+        token: "xoxb-secret",
+        params: { channel: "C123", timestamp: "333.444", name: "hourglass_flowing_sand" }
+      ).returns({ "ok" => true })
+
+      message = RedmineAiHelper::ChatChannel::IncomingMessage.new(
+        channel_type: "slack", channel_id: "C123", thread_key: "C123:111.222",
+        message_ts: "333.444", text: "q", dm: false
+      )
+      @adapter.notify_processing(message: message)
+    end
+
+    should "fall back to the thread_key timestamp when message_ts is absent" do
       @adapter.expects(:api_call).with(
         "reactions.add",
         token: "xoxb-secret",

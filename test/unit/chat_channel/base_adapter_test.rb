@@ -121,6 +121,7 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
         channel_type: "fake_chat",
         channel_id: "C123",
         thread_key: "C123:1700000000.000100",
+        message_ts: "1700000000.000200",
         text: "hello",
         dm: true
       )
@@ -128,6 +129,7 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
       assert_equal "fake_chat", message.channel_type
       assert_equal "C123", message.channel_id
       assert_equal "C123:1700000000.000100", message.thread_key
+      assert_equal "1700000000.000200", message.message_ts
       assert_equal "hello", message.text
       assert message.dm?
     end
