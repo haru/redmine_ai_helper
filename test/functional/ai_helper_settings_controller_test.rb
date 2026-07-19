@@ -801,6 +801,16 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
         assert_select "#tab-content-channels datalist#ai-helper-users-datalist-ui_chat option", { minimum: 1 }
       end
 
+      should "render datalist option value as the user name with the user id in a data attribute" do
+        user = User.active.sorted.first
+
+        get :index, params: { tab: "channels" }
+
+        assert_response :success
+        assert_select "#tab-content-channels datalist#ai-helper-users-datalist-ui_chat option[value=?][data-user-id=?]",
+                      user.name, user.id.to_s
+      end
+
       should "display selected user name in text input on page reload when redmine_user_id is set" do
         user = User.active.sorted.first
         AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test", redmine_user_id: user.id)

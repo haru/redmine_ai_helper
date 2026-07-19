@@ -45,13 +45,46 @@ function setupDatalistHandlers() {
       if (!datalist) return;
 
       const matched = Array.from(datalist.querySelectorAll("option")).find(
-        function (option) { return option.textContent === enteredText; }
+        function (option) { return option.getAttribute("value") === enteredText; }
       );
-      hiddenInput.value = matched ? matched.getAttribute("value") : "";
+      hiddenInput.value = matched ? matched.getAttribute("data-user-id") : "";
     }
 
     textInput.addEventListener("input", syncHiddenInput);
     textInput.addEventListener("blur", syncHiddenInput);
+  });
+}
+
+// Each adapter's "add binding" fields share the same `name` attributes
+// (they all live inside the single settings <form>), so submitting one
+// adapter's fields would otherwise carry along every other adapter's
+// same-named fields. Disable every other adapter's fields right before
+// submission so only the clicked adapter's binding is submitted.
+function setupBindingFormIsolation() {
+  const bindingFieldsets = document.querySelectorAll(
+    'fieldset[id^="adapter-bindings-"]'
+  );
+
+  function bindingFields(fieldset) {
+    return fieldset.querySelectorAll(
+      'input[name^="ai_helper_channel_binding"], select[name^="ai_helper_channel_binding"]'
+    );
+  }
+
+  bindingFieldsets.forEach(function (fieldset) {
+    const submitButtons = fieldset.querySelectorAll(
+      "input[type=submit][formaction], button[type=submit][formaction]"
+    );
+    submitButtons.forEach(function (button) {
+      button.addEventListener("click", function () {
+        bindingFieldsets.forEach(function (otherFieldset) {
+          const disable = otherFieldset !== fieldset;
+          bindingFields(otherFieldset).forEach(function (field) {
+            field.disabled = disable;
+          });
+        });
+      });
+    });
   });
 }
 
@@ -61,4 +94,5 @@ document.addEventListener("DOMContentLoaded", function () {
     setAdapterSettingsVisible(channelType);
   });
   setupDatalistHandlers();
+  setupBindingFormIsolation();
 });

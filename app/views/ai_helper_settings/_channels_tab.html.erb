@@ -48,7 +48,7 @@
                              adapter_setting.redmine_user_id.to_s, id: nil %>
         <datalist id="ai-helper-users-datalist-<%= channel_type %>">
           <% @ai_helper_users.each do |user| %>
-            <option value="<%= user.id %>"><%= user.name %></option>
+            <option value="<%= user.name %>" data-user-id="<%= user.id %>"></option>
           <% end %>
         </datalist>
         <em class="info"><%= t("ai_helper.chat_channel.settings.redmine_user_info") %></em>
