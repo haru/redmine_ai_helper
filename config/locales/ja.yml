@@ -44,6 +44,8 @@ ja:
         enabled: "有効にする"
         app_token: "App Token"
         bot_token: "Bot Token"
+        redmine_user: "実行アカウント"
+        redmine_user_info: "チャットツールからのすべての質問はこのRedmineユーザーの権限で処理されます。このアカウントのロールを絞ることで、ゲートウェイ経由で可能な操作を制限できます。"
         dm_default_project: "ダイレクトメッセージ用の既定プロジェクト"
         bindings: "チャンネル対応付け"
         adapter: "チャットツール"
@@ -51,7 +53,7 @@ ja:
         channel_name: "チャンネル名"
         add_binding: "対応付けを追加"
       errors:
-        user_not_mapped: "チャットアカウントのメールアドレスに一致する有効なRedmineユーザーが見つからないため、処理できませんでした。管理者にRedmineアカウントの確認を依頼してください。"
+        service_account_not_configured: "このチャット連携に有効な実行アカウントが設定されていないため、処理できませんでした。管理者に実行アカウントの設定を依頼してください。"
         channel_not_bound: "このチャンネルはRedmineプロジェクトに対応付けられていません。管理者にチャンネル対応付けの設定を依頼してください。"
         dm_not_configured: "ダイレクトメッセージ用の既定プロジェクトが設定されていません。管理者に設定を依頼してください。"
         module_disabled: "対応付けられたプロジェクトでAIヘルパーモジュールが無効になっています。"

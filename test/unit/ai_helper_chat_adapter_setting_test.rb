@@ -5,7 +5,7 @@ require File.expand_path("../../test_helper", __FILE__)
 class AiHelperChatAdapterSettingTest < ActiveSupport::TestCase
   include FactoryBot::Syntax::Methods
 
-  fixtures :projects
+  fixtures :projects, :users
 
   # Test-only adapter declaring required setting fields, used to verify the
   # enable-time validation contract without depending on the Slack adapter.
@@ -62,19 +62,21 @@ class AiHelperChatAdapterSettingTest < ActiveSupport::TestCase
   end
 
   context "safe_attributes" do
-    should "accept enabled, tokens and dm_default_project_id" do
+    should "accept enabled, tokens, dm_default_project_id and redmine_user_id" do
       setting = create(:ai_helper_chat_adapter_setting)
       setting.safe_attributes = {
         "enabled" => "1",
         "app_token" => "xapp-abc",
         "bot_token" => "xoxb-abc",
-        "dm_default_project_id" => "1"
+        "dm_default_project_id" => "1",
+        "redmine_user_id" => "2"
       }
 
       assert setting.enabled
       assert_equal "xapp-abc", setting.app_token
       assert_equal "xoxb-abc", setting.bot_token
       assert_equal 1, setting.dm_default_project_id
+      assert_equal 2, setting.redmine_user_id
     end
 
     should "not allow changing channel_type" do
@@ -117,6 +119,28 @@ class AiHelperChatAdapterSettingTest < ActiveSupport::TestCase
       setting = create(:ai_helper_chat_adapter_setting, dm_default_project_id: 1)
 
       assert_equal Project.find(1), setting.dm_default_project
+    end
+  end
+
+  context "service_account" do
+    should "return the configured active user" do
+      setting = create(:ai_helper_chat_adapter_setting, redmine_user_id: 2)
+
+      assert_equal User.find(2), setting.service_account
+    end
+
+    should "return nil when no user is configured" do
+      setting = create(:ai_helper_chat_adapter_setting)
+
+      assert_nil setting.service_account
+    end
+
+    should "return nil when the configured user is locked" do
+      user = User.find(2)
+      user.lock!
+      setting = create(:ai_helper_chat_adapter_setting, redmine_user_id: user.id)
+
+      assert_nil setting.service_account
     end
   end
 

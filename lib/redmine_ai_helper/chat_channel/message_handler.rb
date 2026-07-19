@@ -5,8 +5,8 @@ require "redmine_ai_helper/logger"
 module RedmineAiHelper
   module ChatChannel
     # Tool-independent core processing for messages received from chat tool
-    # adapters: resolves the Redmine user and project, binds the thread to a
-    # conversation and runs the LLM under the speaker's own permissions.
+    # adapters: resolves the service account and project, binds the thread to
+    # a conversation and runs the LLM under the service account's permissions.
     # #handle is only ever called from the gateway's single worker thread, so
     # User.current is safe to set and restore within one call.
     class MessageHandler
@@ -18,14 +18,9 @@ module RedmineAiHelper
       # Maximum length of a conversation title taken from the first question.
       TITLE_MAX_LENGTH = 50
 
-      # How long a resolved external user (or the "no match" result) stays
-      # cached in memory (research.md R-005).
-      USER_CACHE_TTL = 10.minutes
-
       # @param adapter [BaseAdapter] The adapter this handler replies through
       def initialize(adapter)
         @adapter = adapter
-        @user_cache = {}
       end
 
       # Processes one normalized incoming message end to end. Errors are
@@ -41,8 +36,8 @@ module RedmineAiHelper
           ai_helper_logger.warn "chat channel: failed to notify processing: #{e.full_message}"
         end
 
-        user = resolve_user(message)
-        return reply(message, guidance(:user_not_mapped, nil)) unless user
+        user = adapter_settings(message).service_account
+        return reply(message, guidance(:service_account_not_configured, nil)) unless user
 
         project = resolve_project(message)
         unless project
@@ -64,22 +59,10 @@ module RedmineAiHelper
 
       private
 
-      # Resolves the Redmine user for the message speaker by email address.
-      # Results (including "no match") are cached in memory with a TTL so
-      # repeated questions do not hit the external user API every time.
-      # Expired entries are swept on write so the cache cannot grow without
-      # bound for the lifetime of the resident gateway process.
-      # @return [User, nil]
-      def resolve_user(message)
-        cached = @user_cache[message.external_user_id]
-        return cached[:user] if cached && cached[:expires_at] > Time.zone.now
-
-        email = @adapter.resolve_user_email(external_user_id: message.external_user_id)
-        user = email.blank? ? nil : User.active.having_mail(email).first
-        now = Time.zone.now
-        @user_cache.delete_if { |_id, entry| entry[:expires_at] <= now }
-        @user_cache[message.external_user_id] = { user: user, expires_at: now + USER_CACHE_TTL }
-        user
+      # The adapter settings row for the message's channel type.
+      # @return [AiHelperChatAdapterSetting]
+      def adapter_settings(message)
+        AiHelperChatAdapterSetting.for_channel(message.channel_type)
       end
 
       # Resolves the target project from the channel binding, or from the
@@ -87,14 +70,14 @@ module RedmineAiHelper
       # @return [Project, nil]
       def resolve_project(message)
         if message.dm?
-          AiHelperChatAdapterSetting.for_channel(message.channel_type).dm_default_project
+          adapter_settings(message).dm_default_project
         else
           AiHelperChannelBinding.for_channel(message.channel_type, message.channel_id).first&.project
         end
       end
 
       # Appends the question to the thread's conversation and runs the LLM
-      # under the speaker's own permissions.
+      # under the service account's permissions.
       # @return [AiHelperMessage] The assistant's answer
       def process_question(message, user, project)
         conversation = AiHelperChannelConversation.find_or_create_conversation(
@@ -123,7 +106,7 @@ module RedmineAiHelper
         @adapter.send_message(channel_id: message.channel_id, thread_key: message.thread_key, text: text)
       end
 
-      # Localized guidance text, preferring the resolved user's language.
+      # Localized guidance text, preferring the service account's language.
       def guidance(key, user)
         locale = user&.language.presence || Setting.default_language
         I18n.t("ai_helper.chat_channel.errors.#{key}", locale: locale)

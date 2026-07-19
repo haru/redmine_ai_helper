@@ -203,16 +203,16 @@ To generate health reports automatically every Monday at 9:00 AM, add the follow
 
 ## Chat Channel Gateway
 
-The Chat Channel Gateway allows users to interact with the AI Helper from external chat tools such as Slack. Each question is processed under the speaker's own Redmine permissions, and the AI responds as if the user were asking from the web UI. All existing behavior — custom commands, agent orchestration, Langfuse tracing — works identically to the web chat.
+The Chat Channel Gateway allows users to interact with the AI Helper from external chat tools such as Slack. All questions are processed under a dedicated Redmine service account (the **execution account**) selected by the administrator — restricting that account's roles restricts what the gateway can read and do. All existing behavior — custom commands, agent orchestration, Langfuse tracing — works identically to the web chat.
 
 The gateway runs as a separate background process that connects outward to chat services, so **no public URL is required** for your Redmine server.
 
 ### Slack Integration
 
 1. Create a Slack App with **Socket Mode** enabled. Generate an App-Level Token (`xapp-`) and note the Bot User OAuth Token (`xoxb-`).
-2. Configure the following Bot Token Scopes: `app_mentions:read`, `im:history`, `chat:write`, `users:read`, `users:read.email`, `reactions:write`.
+2. Configure the following Bot Token Scopes: `app_mentions:read`, `im:history`, `chat:write`, `reactions:write`.
 3. Subscribe to bot events: `app_mention`, `message.im`.
-4. In **Administration → AI Helper → Chat integrations** tab, enable Slack, paste the tokens, and save.
+4. In **Administration → AI Helper → Chat integrations** tab, enable Slack, paste the tokens, select the **Execution account** (a Redmine service account, e.g. `ai_helper`, added to the target projects with an appropriate role), and save.
 5. Optionally set a **Default project for direct messages**.
 6. Under **Channel bindings**, map Slack channels to Redmine projects (each channel maps to one project with the AI Helper module enabled).
 

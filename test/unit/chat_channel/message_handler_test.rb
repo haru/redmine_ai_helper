@@ -9,8 +9,7 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
 
   # In-memory adapter driving the handler without any external service.
   class RecordingAdapter < RedmineAiHelper::ChatChannel::BaseAdapter
-    attr_reader :sent_messages, :processing_notified, :resolve_calls
-    attr_accessor :email_by_user_id
+    attr_reader :sent_messages, :processing_notified
 
     class << self
       def channel_type
@@ -22,8 +21,6 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       super
       @sent_messages = []
       @processing_notified = []
-      @email_by_user_id = {}
-      @resolve_calls = 0
     end
 
     def start; end
@@ -32,11 +29,6 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
 
     def send_message(channel_id:, thread_key:, text:)
       @sent_messages << { channel_id: channel_id, thread_key: thread_key, text: text }
-    end
-
-    def resolve_user_email(external_user_id:)
-      @resolve_calls += 1
-      @email_by_user_id[external_user_id]
     end
 
     def notify_processing(message:)
@@ -49,20 +41,22 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
     @handler = @adapter.handler
     @project = Project.find(1)
     @project.enable_module!("ai_helper")
-    @user = User.find(2)
-    @adapter.email_by_user_id["EXT_JSMITH"] = @user.mail
+    @service_account = User.find(2)
+    @setting = create(:ai_helper_chat_adapter_setting,
+                      channel_type: "handler_chat", redmine_user_id: @service_account.id)
     create(:ai_helper_channel_binding, channel_type: "handler_chat", channel_id: "CH1", project: @project)
   end
 
-  def incoming(text: "What are the open issues?", channel_id: "CH1", thread_key: "CH1:1.000001", external_user_id: "EXT_JSMITH", dm: false)
+  def incoming(text: "What are the open issues?", channel_id: "CH1", thread_key: "CH1:1.000001", dm: false)
     RedmineAiHelper::ChatChannel::IncomingMessage.new(
       channel_type: "handler_chat", channel_id: channel_id, thread_key: thread_key,
-      text: text, external_user_id: external_user_id, dm: dm
+      text: text, dm: dm
     )
   end
 
-  def error_text(key)
-    I18n.t("ai_helper.chat_channel.errors.#{key}", locale: @user.language.presence || Setting.default_language)
+  def error_text(key, user: @service_account)
+    I18n.t("ai_helper.chat_channel.errors.#{key}",
+           locale: user&.language.presence || Setting.default_language)
   end
 
   context "handle" do
@@ -75,12 +69,24 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       assert_equal [ message ], @adapter.processing_notified
     end
 
-    should "reply with guidance when the user cannot be mapped" do
-      message = incoming(external_user_id: "EXT_UNKNOWN")
-      @handler.handle(message)
+    should "reply with guidance when no service account is configured" do
+      @setting.update_column(:redmine_user_id, nil)
+
+      @handler.handle(incoming)
 
       assert_equal 1, @adapter.sent_messages.size
-      assert_equal error_text(:user_not_mapped), @adapter.sent_messages.first[:text]
+      assert_equal error_text(:service_account_not_configured, user: nil),
+                   @adapter.sent_messages.first[:text]
+      assert_equal 0, AiHelperConversation.count
+    end
+
+    should "reply with guidance when the service account is locked" do
+      @service_account.lock!
+
+      @handler.handle(incoming)
+
+      assert_equal error_text(:service_account_not_configured, user: nil),
+                   @adapter.sent_messages.first[:text]
       assert_equal 0, AiHelperConversation.count
     end
 
@@ -99,7 +105,7 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
     end
 
     should "use the DM default project for direct messages" do
-      create(:ai_helper_chat_adapter_setting, channel_type: "handler_chat", dm_default_project_id: @project.id)
+      @setting.update!(dm_default_project_id: @project.id)
       RedmineAiHelper::Llm.any_instance.expects(:chat).with do |_conversation, _proc, option|
         option[:project] == @project
       end.returns(assistant_message("dm answer"))
@@ -117,7 +123,7 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       assert_equal error_text(:module_disabled), @adapter.sent_messages.first[:text]
     end
 
-    should "run the LLM as the resolved user and post the answer to the thread" do
+    should "run the LLM as the service account and post the answer to the thread" do
       observed_user = nil
       RedmineAiHelper::Llm.any_instance.stubs(:chat).with do |conversation, proc, option|
         observed_user = User.current
@@ -128,7 +134,7 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       message = incoming
       @handler.handle(message)
 
-      assert_equal @user, observed_user
+      assert_equal @service_account, observed_user
       assert_equal 1, @adapter.sent_messages.size
       sent = @adapter.sent_messages.first
       assert_equal "CH1", sent[:channel_id]
@@ -136,7 +142,7 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       assert_equal "Here are the issues", sent[:text]
 
       conversation = AiHelperConversation.first
-      assert_equal @user, conversation.user
+      assert_equal @service_account, conversation.user
       assert_equal %w[user assistant], conversation.messages.order(:id).pluck(:role)
     end
 
@@ -176,11 +182,6 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
   end
 
   context "thread continuation" do
-    setup do
-      @other_user = User.find(3)
-      @adapter.email_by_user_id["EXT_DLOPPER"] = @other_user.mail
-    end
-
     should "append follow-up questions to the existing conversation with full history" do
       RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(
         assistant_message("first answer"), assistant_message("second answer")
@@ -202,7 +203,7 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       ], observed_history
     end
 
-    should "process another user's follow-up under that user without changing the owner" do
+    should "process every question as the service account" do
       RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("answer"))
       @handler.handle(incoming(text: "starter question", thread_key: "CH1:9.000002"))
 
@@ -211,10 +212,10 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
         observed_user = User.current
         true
       end.returns(assistant_message("follow-up answer"))
-      @handler.handle(incoming(text: "follow-up", thread_key: "CH1:9.000002", external_user_id: "EXT_DLOPPER"))
+      @handler.handle(incoming(text: "follow-up", thread_key: "CH1:9.000002"))
 
-      assert_equal @other_user, observed_user
-      assert_equal @user, AiHelperConversation.first.user
+      assert_equal @service_account, observed_user
+      assert_equal @service_account, AiHelperConversation.first.user
     end
 
     should "start a new conversation for a different thread" do
@@ -235,39 +236,6 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       title = AiHelperConversation.first.title
       assert_equal long_question.truncate(50), title
       assert_operator title.length, :<=, 50
-    end
-  end
-
-  context "user resolution cache" do
-    include ActiveSupport::Testing::TimeHelpers
-
-    setup do
-      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("ok"))
-    end
-
-    should "resolve each external user only once within the TTL" do
-      @handler.handle(incoming(thread_key: "CH1:1.000001"))
-      @handler.handle(incoming(thread_key: "CH1:1.000002"))
-
-      assert_equal 1, @adapter.resolve_calls
-    end
-
-    should "cache the unmapped result as well" do
-      @handler.handle(incoming(external_user_id: "EXT_UNKNOWN", thread_key: "CH1:1.000001"))
-      @handler.handle(incoming(external_user_id: "EXT_UNKNOWN", thread_key: "CH1:1.000002"))
-
-      assert_equal 1, @adapter.resolve_calls
-      assert_equal 2, @adapter.sent_messages.size
-      assert(@adapter.sent_messages.all? { |sent| sent[:text] == error_text(:user_not_mapped) })
-    end
-
-    should "resolve again after the TTL has expired" do
-      @handler.handle(incoming(thread_key: "CH1:1.000001"))
-      travel 11.minutes do
-        @handler.handle(incoming(thread_key: "CH1:1.000002"))
-      end
-
-      assert_equal 2, @adapter.resolve_calls
     end
   end
 

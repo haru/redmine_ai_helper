@@ -9,7 +9,6 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
   # enough to plug a new chat tool into the abstraction layer (SC-006).
   class FakeAdapter < RedmineAiHelper::ChatChannel::BaseAdapter
     attr_reader :sent_messages, :processing_notified
-    attr_accessor :user_email
 
     class << self
       def channel_type
@@ -37,10 +36,6 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
 
     def send_message(channel_id:, thread_key:, text:)
       @sent_messages << { channel_id: channel_id, thread_key: thread_key, text: text }
-    end
-
-    def resolve_user_email(external_user_id:)
-      @user_email || "fake-#{external_user_id}@example.com"
     end
 
     def notify_processing(message:)
@@ -100,7 +95,7 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
       project.enable_module!("ai_helper")
       user = User.find(2)
       adapter = FakeAdapter.new
-      adapter.user_email = user.mail
+      create(:ai_helper_chat_adapter_setting, channel_type: "fake_chat", redmine_user_id: user.id)
       create(:ai_helper_channel_binding, channel_type: "fake_chat", channel_id: "FC1", project: project)
       RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(
         AiHelperMessage.new(role: "assistant", content: "fictional answer")
@@ -108,7 +103,7 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
 
       adapter.dispatch(RedmineAiHelper::ChatChannel::IncomingMessage.new(
         channel_type: "fake_chat", channel_id: "FC1", thread_key: "FC1:1.000001",
-        text: "hello from a fictional tool", external_user_id: "U1", dm: false
+        text: "hello from a fictional tool", dm: false
       ))
 
       assert_equal 1, adapter.processing_notified.size
@@ -127,7 +122,6 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
         channel_id: "C123",
         thread_key: "C123:1700000000.000100",
         text: "hello",
-        external_user_id: "U123",
         dm: true
       )
 
@@ -135,7 +129,6 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
       assert_equal "C123", message.channel_id
       assert_equal "C123:1700000000.000100", message.thread_key
       assert_equal "hello", message.text
-      assert_equal "U123", message.external_user_id
       assert message.dm?
     end
   end

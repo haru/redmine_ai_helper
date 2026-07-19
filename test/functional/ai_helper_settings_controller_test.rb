@@ -620,6 +620,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert_select "#tab-content-channels input[name='chat_adapter_settings[ui_chat][enabled]']"
       assert_select "#tab-content-channels input[name='chat_adapter_settings[ui_chat][bot_token]'][type=password]"
       assert_select "#tab-content-channels select[name='chat_adapter_settings[ui_chat][dm_default_project_id]']"
+      assert_select "#tab-content-channels select[name='chat_adapter_settings[ui_chat][redmine_user_id]']"
     end
 
     should "save adapter settings from the channels tab" do
@@ -627,7 +628,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
         tab: "channels",
         ai_helper_setting: { additional_instructions: "keep" },
         chat_adapter_settings: {
-          "ui_chat" => { "enabled" => "1", "bot_token" => "xoxb-ui", "dm_default_project_id" => "1" }
+          "ui_chat" => { "enabled" => "1", "bot_token" => "xoxb-ui", "dm_default_project_id" => "1", "redmine_user_id" => "2" }
         }
       }
 
@@ -636,6 +637,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert setting.enabled
       assert_equal "xoxb-ui", setting.bot_token
       assert_equal 1, setting.dm_default_project_id
+      assert_equal 2, setting.redmine_user_id
     end
 
     should "re-render the channels tab when adapter settings are invalid" do

@@ -8,7 +8,7 @@ The integration uses Slack **Socket Mode**: the gateway process opens an outgoin
 
 - Redmine 6.x with the `redmine_ai_helper` plugin installed, migrated, and a working model profile (the web chat must already work).
 - Permission to create apps in your Slack workspace.
-- Slack users who should use the integration must have the **same email address** on their Slack profile and their active Redmine account.
+- A dedicated Redmine **service account** (e.g. a user named `ai_helper`) that the gateway runs as. Add it to the relevant projects with an appropriate role — every question from Slack is answered with **this account's permissions**, regardless of who asks. Restricting the account's roles is how you limit what the gateway can read and do (e.g. read-only, or no issue deletion).
 
 ## 1. Create the Slack app
 
@@ -18,7 +18,6 @@ The integration uses Slack **Socket Mode**: the gateway process opens an outgoin
    - `app_mentions:read` — receive mentions in channels
    - `im:history` — receive direct messages
    - `chat:write` — post replies
-   - `users:read` and `users:read.email` — resolve the speaker's email address
    - `reactions:write` — show the "processing" reaction
 4. Under **Event Subscriptions → Subscribe to bot events**, add:
    - `app_mention`
@@ -28,9 +27,10 @@ The integration uses Slack **Socket Mode**: the gateway process opens an outgoin
 ## 2. Configure Redmine
 
 1. Go to **Administration → AI Helper → Chat integrations** tab.
-2. In the **Slack** section, check **Enable**, paste the App Token (`xapp-`) and Bot Token (`xoxb-`), and save.
-3. Optionally select a **Default project for direct messages**. DMs to the bot are answered in this project's context; without it, DMs receive a guidance message.
-4. Under **Channel bindings**, map each Slack channel to a Redmine project:
+2. In the **Slack** section, check **Enable**, paste the App Token (`xapp-`) and Bot Token (`xoxb-`).
+3. Select the **Execution account** — the Redmine service account all Slack questions run as. Without an active execution account, the bot answers every question with a guidance message. Speakers are **not** mapped to individual Redmine users; anyone who can post in a bound channel (or DM the bot) uses this account's permissions, so keep its roles as narrow as the use case allows.
+4. Optionally select a **Default project for direct messages**. DMs to the bot are answered in this project's context; without it, DMs receive a guidance message. Save.
+5. Under **Channel bindings**, map each Slack channel to a Redmine project:
    - Channel ID: open the channel in Slack, copy the ID from the URL or channel details (starts with `C`).
    - Channel name is optional display text for this screen.
    - One channel maps to exactly one project. The project must have the **AI Helper** module enabled.
@@ -77,7 +77,7 @@ WantedBy=multi-user.target
 
 - In a bound channel, invite the bot (`/invite @your-bot`) and mention it: `@your-bot what are the open issues?`
 - The bot reacts with ⏳ while processing and posts the answer as a thread reply.
-- Follow-up questions in the same thread keep the conversation context. Anyone can continue the thread; each question runs under the **speaker's own** Redmine permissions.
+- Follow-up questions in the same thread keep the conversation context. Anyone can continue the thread; every question runs under the **execution account's** Redmine permissions.
 - DMs to the bot are answered in the configured default project.
 
 ## Troubleshooting
@@ -86,7 +86,7 @@ WantedBy=multi-user.target
 |---|---|
 | Gateway exits immediately with an authentication error | Wrong `xapp-`/`xoxb-` token, or Socket Mode not enabled on the app. The gateway exits with status 0 so it will not be restarted automatically; update the tokens and start it again. |
 | "No chat channel adapter is enabled" on startup | The Slack section is not enabled or a required token is missing in the settings. |
-| Bot replies "no active Redmine user matches..." | The Slack user's profile email does not match any active Redmine user. |
+| Bot replies "no active execution account..." | No execution account is selected in the settings, or the selected user is locked. |
 | Bot replies "this channel is not associated..." | Add a channel binding for that channel ID. |
 | Bot replies that the AI helper module is disabled | Enable the AI Helper module in the bound project's settings. |
 | No reaction / no reply at all | Check that the gateway process is running and see `log/ai_helper.log`. Verify the event subscriptions (`app_mention`, `message.im`). |

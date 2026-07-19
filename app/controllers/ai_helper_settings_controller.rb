@@ -79,6 +79,7 @@ class AiHelperSettingsController < ApplicationController
     @model_profiles = AiHelperModelProfile.order(:name)
     @ai_helper_projects = Project.joins(:enabled_modules).where(enabled_modules: { name: "ai_helper" }).order(:name)
     @channel_bindings = AiHelperChannelBinding.includes(:project).order(:channel_type, :channel_id)
+    @ai_helper_users = User.active.sorted
   end
 
   # Builds adapter setting records from the channels tab params, keyed by

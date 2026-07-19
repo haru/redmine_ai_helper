@@ -48,15 +48,13 @@ class ChatChannelGatewayTest < ActiveSupport::TestCase
 
     def send_message(channel_id:, thread_key:, text:); end
 
-    def resolve_user_email(external_user_id:); end
-
     def notify_processing(message:); end
   end
 
   def incoming(text)
     RedmineAiHelper::ChatChannel::IncomingMessage.new(
       channel_type: "gateway_chat", channel_id: "C1", thread_key: "C1:1.000001",
-      text: text, external_user_id: "U1", dm: false
+      text: text, dm: false
     )
   end
 

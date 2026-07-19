@@ -230,7 +230,6 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
       assert_equal "C123", message.channel_id
       assert_equal "C123:111.222", message.thread_key
       assert_equal "open issues?", message.text
-      assert_equal "U123", message.external_user_id
       assert_not message.dm?
     end
 
@@ -283,20 +282,6 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
   end
 
   context "web api operations" do
-    should "resolve the user email via users.info" do
-      @adapter.expects(:api_call).with("users.info", token: "xoxb-secret", params: { user: "U123" })
-              .returns({ "ok" => true, "user" => { "profile" => { "email" => "jsmith@somenet.foo" } } })
-
-      assert_equal "jsmith@somenet.foo", @adapter.resolve_user_email(external_user_id: "U123")
-    end
-
-    should "return nil when the profile has no email" do
-      @adapter.expects(:api_call).with("users.info", token: "xoxb-secret", params: { user: "U123" })
-              .returns({ "ok" => true, "user" => { "profile" => {} } })
-
-      assert_nil @adapter.resolve_user_email(external_user_id: "U123")
-    end
-
     should "post the reply into the thread" do
       @adapter.expects(:api_call).with(
         "chat.postMessage",
@@ -352,7 +337,7 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
 
       message = RedmineAiHelper::ChatChannel::IncomingMessage.new(
         channel_type: "slack", channel_id: "C123", thread_key: "C123:111.222",
-        text: "q", external_user_id: "U123", dm: false
+        text: "q", dm: false
       )
       @adapter.notify_processing(message: message)
     end

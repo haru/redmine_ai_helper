@@ -8,11 +8,12 @@ class AiHelperChatAdapterSetting < ApplicationRecord
   include Redmine::SafeAttributes
 
   belongs_to :dm_default_project, class_name: "Project", optional: true
+  belongs_to :redmine_user, class_name: "User", optional: true
 
   validates :channel_type, presence: true, uniqueness: true
   validate :required_fields_present_when_enabled
 
-  safe_attributes "enabled", "app_token", "bot_token", "dm_default_project_id"
+  safe_attributes "enabled", "app_token", "bot_token", "dm_default_project_id", "redmine_user_id"
 
   class << self
     # Returns the setting row for the given adapter, or a new unsaved record
@@ -29,6 +30,15 @@ class AiHelperChatAdapterSetting < ApplicationRecord
     def enabled?(channel_type)
       for_channel(channel_type).enabled
     end
+  end
+
+  # The Redmine user all chat tool questions are executed as. Only an active
+  # user qualifies: a locked or missing account disables the gateway rather
+  # than silently running with stale permissions.
+  # @return [User, nil]
+  def service_account
+    user = redmine_user
+    user&.active? ? user : nil
   end
 
   # Masked app token for display (all but the first four characters hidden).

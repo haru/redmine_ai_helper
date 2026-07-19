@@ -11,7 +11,7 @@ module RedmineAiHelper
     module Adapters
       # Slack adapter using Socket Mode: an outgoing WebSocket connection
       # obtained via apps.connections.open, so no public URL is required.
-      # Web API calls (auth.test, users.info, chat.postMessage, reactions.add)
+      # Web API calls (auth.test, chat.postMessage, reactions.add)
       # go through Net::HTTP directly. Tokens are never written to the log.
       class SlackAdapter < BaseAdapter
         # Raised when a Slack Web API call returns ok:false. Authentication
@@ -124,14 +124,6 @@ module RedmineAiHelper
           end
         rescue JSON::ParserError => e
           ai_helper_logger.error "slack: failed to parse envelope: #{e.message}"
-        end
-
-        # Resolves the email address of a Slack user via users.info.
-        # @param external_user_id [String] the Slack user id (U...)
-        # @return [String, nil] the profile email, or nil when absent
-        def resolve_user_email(external_user_id:)
-          body = api_call("users.info", token: settings.bot_token, params: { user: external_user_id })
-          body.dig("user", "profile", "email")
         end
 
         # Posts a reply into the given thread, splitting texts longer than
@@ -303,7 +295,6 @@ module RedmineAiHelper
             channel_id: event["channel"],
             thread_key: "#{event["channel"]}:#{thread_ts}",
             text: strip_mention(event["text"].to_s),
-            external_user_id: event["user"],
             dm: dm
           ))
         end

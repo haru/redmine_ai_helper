@@ -9,7 +9,7 @@ module RedmineAiHelper
     # Abstract base class for chat tool adapters. Subclasses are registered
     # automatically on inheritance (same pattern as BaseAgent) and only need
     # to implement the tool-specific interface: channel_type, start, stop,
-    # send_message, resolve_user_email and notify_processing.
+    # send_message and notify_processing.
     class BaseAdapter
       include RedmineAiHelper::Logger
 
@@ -118,13 +118,6 @@ module RedmineAiHelper
       # @return [void]
       def send_message(channel_id:, thread_key:, text:)
         raise NotImplementedError, "#{self.class.name} must implement #send_message"
-      end
-
-      # Resolves the email address of an external user.
-      # @param external_user_id [String] Tool-specific user identifier
-      # @return [String, nil] The email address, or nil when unavailable
-      def resolve_user_email(external_user_id:)
-        raise NotImplementedError, "#{self.class.name} must implement #resolve_user_email"
       end
 
       # Shows a processing indicator for the given message.
