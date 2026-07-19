@@ -9,8 +9,9 @@ module RedmineAiHelper
   module ChatChannel
     # Resident gateway process: starts every enabled adapter in its own
     # receive thread and serializes all message processing through a single
-    # worker thread, so each question runs under its speaker's User.current
-    # without any concurrent permission context (research.md R-003).
+    # worker thread, so each question runs under the configured execution
+    # account (service account) without any concurrent permission context
+    # (research.md R-003).
     class Gateway
       include RedmineAiHelper::Logger
 
@@ -33,10 +34,13 @@ module RedmineAiHelper
       end
 
       # Queues a message received by an adapter thread for the worker.
+      # Silently drops messages after shutdown is requested to prevent
+      # orphaned items that would never be processed.
       # @param adapter [BaseAdapter] the adapter the message arrived on
       # @param message [IncomingMessage] the normalized message
       # @return [void]
       def enqueue(adapter, message)
+        return if @shutdown_requested
         @queue << [ adapter, message ]
       end
 

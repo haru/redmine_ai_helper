@@ -4,7 +4,7 @@
   <fieldset class="box tabular">
     <legend><%= ai_helper_chat_adapter_label(channel_type) %></legend>
     <% if adapter_setting.errors.any? %>
-      <div id="errorExplanation">
+      <div class="errorExplanation">
         <ul>
           <% adapter_setting.errors.full_messages.each do |message| %>
             <li><%= message %></li>

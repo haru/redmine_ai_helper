@@ -7,8 +7,8 @@ module RedmineAiHelper
     # Tool-independent core processing for messages received from chat tool
     # adapters: resolves the service account and project, binds the thread to
     # a conversation and runs the LLM under the service account's permissions.
-    # #handle is only ever called from the gateway's single worker thread, so
-    # User.current is safe to set and restore within one call.
+    # #handle may be called from the gateway's single worker thread or
+    # directly via BaseAdapter#dispatch when no gateway is configured.
     class MessageHandler
       include RedmineAiHelper::Logger
 

@@ -6,6 +6,7 @@ class AiHelperChannelBindingsController < ApplicationController
   layout "admin"
 
   before_action :require_admin
+  protect_from_forgery with: :exception
   self.main_menu = false
 
   # Create a binding and return to the channels tab

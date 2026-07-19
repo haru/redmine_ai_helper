@@ -110,6 +110,22 @@ class ChatChannelGatewayTest < ActiveSupport::TestCase
       assert_equal 2, handler.handled.size, "queued messages must be drained before exiting"
     end
 
+    should "silently drop messages enqueued after shutdown" do
+      adapter = FakeGatewayAdapter.new
+      handler = RecordingHandler.new
+      adapter.instance_variable_set(:@handler, handler)
+      adapter.messages_to_dispatch = [ incoming("one") ]
+      adapter.after_dispatch = -> do
+        @gateway.shutdown
+        @gateway.enqueue(adapter, incoming("late"))
+      end
+      @gateway.stubs(:build_enabled_adapters).returns([ adapter ])
+
+      @gateway.run
+
+      assert_equal 1, handler.handled.size, "late message must be dropped after shutdown"
+    end
+
     should "re-raise a non-config adapter crash after shutdown" do
       adapter = FakeGatewayAdapter.new
       adapter.after_dispatch = -> { raise RuntimeError, "adapter blew up" }
