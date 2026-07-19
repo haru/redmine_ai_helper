@@ -661,5 +661,65 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert_select "#tab-content-channels", text: /C111/
       assert_select "#tab-content-channels", text: /#dev/
     end
+
+    should "not render the raw app or bot token value in the HTML source" do
+      AiHelperChatAdapterSetting.create!(
+        channel_type: "ui_chat", enabled: true, bot_token: "xoxb-supersecret-value"
+      )
+
+      get :index, params: { tab: "channels" }
+
+      assert_response :success
+      assert_no_match(/xoxb-supersecret-value/, @response.body)
+      assert_select "#tab-content-channels input[name='chat_adapter_settings[ui_chat][bot_token]'][value=?]",
+                    AiHelperSettingsController::DUMMY_TOKEN
+    end
+
+    should "render the masked token next to the field when a token is stored" do
+      AiHelperChatAdapterSetting.create!(
+        channel_type: "ui_chat", enabled: true, bot_token: "xoxb-supersecret-value"
+      )
+
+      get :index, params: { tab: "channels" }
+
+      assert_response :success
+      assert_select "#tab-content-channels em.info", text: /xoxb\*+/
+    end
+
+    should "preserve the stored token when the dummy value is submitted unchanged" do
+      AiHelperChatAdapterSetting.create!(
+        channel_type: "ui_chat", enabled: true, bot_token: "xoxb-original"
+      )
+
+      post :update, params: {
+        tab: "channels",
+        ai_helper_setting: {},
+        chat_adapter_settings: {
+          "ui_chat" => { "enabled" => "1", "bot_token" => AiHelperSettingsController::DUMMY_TOKEN }
+        }
+      }
+
+      assert_redirected_to controller: "ai_helper_settings", action: :index, tab: "channels"
+      assert_equal "xoxb-original", AiHelperChatAdapterSetting.for_channel("ui_chat").bot_token
+    end
+
+    should "roll back adapter settings when the global setting is invalid" do
+      existing = AiHelperChatAdapterSetting.create!(
+        channel_type: "ui_chat", enabled: false, bot_token: "xoxb-old"
+      )
+
+      post :update, params: {
+        tab: "general",
+        ai_helper_setting: { attachment_send_enabled: "1", attachment_max_size_mb: "0" },
+        chat_adapter_settings: {
+          "ui_chat" => { "enabled" => "1", "bot_token" => "xoxb-new" }
+        }
+      }
+
+      assert_response :success
+      existing.reload
+      assert_not existing.enabled, "adapter must not be partially persisted when the global setting is invalid"
+      assert_equal "xoxb-old", existing.bot_token
+    end
   end
 end

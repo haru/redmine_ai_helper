@@ -156,6 +156,23 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       assert_equal error_text(:processing_failed), @adapter.sent_messages.first[:text]
       assert_equal User.anonymous, User.current
     end
+
+    should "continue processing when notify_processing fails" do
+      @adapter.expects(:notify_processing).raises(RuntimeError, "reaction blocked")
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("answer"))
+
+      @handler.handle(incoming)
+
+      assert_equal "answer", @adapter.sent_messages.first[:text]
+    end
+
+    should "not raise when posting the error notice itself fails" do
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).raises(RuntimeError, "boom")
+      @adapter.expects(:send_message).raises(RuntimeError, "slack is down")
+
+      assert_nothing_raised { @handler.handle(incoming) }
+      assert_equal User.anonymous, User.current
+    end
   end
 
   context "thread continuation" do

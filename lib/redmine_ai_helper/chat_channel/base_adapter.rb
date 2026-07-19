@@ -133,6 +133,16 @@ module RedmineAiHelper
       def notify_processing(message:)
         raise NotImplementedError, "#{self.class.name} must implement #notify_processing"
       end
+
+      # Whether the given error is a fatal configuration/credential error
+      # that the supervisor (systemd) must not retry. Defaults to false;
+      # adapters override to classify their own credential errors so ADR-006
+      # ("credential problems are never retried") holds at the process level.
+      # @param _error [Exception] the error raised by the adapter
+      # @return [Boolean]
+      def fatal_config_error?(_error)
+        false
+      end
     end
   end
 end

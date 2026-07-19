@@ -34,7 +34,12 @@ module RedmineAiHelper
       # @param message [IncomingMessage] The message to process
       # @return [void]
       def handle(message)
-        @adapter.notify_processing(message: message)
+        user = nil
+        begin
+          @adapter.notify_processing(message: message)
+        rescue => e
+          ai_helper_logger.warn "chat channel: failed to notify processing: #{e.full_message}"
+        end
 
         user = resolve_user(message)
         return reply(message, guidance(:user_not_mapped, nil)) unless user
@@ -50,7 +55,11 @@ module RedmineAiHelper
         reply(message, answer.content)
       rescue => e
         ai_helper_logger.error "chat channel processing failed: #{e.full_message}"
-        reply(message, guidance(:processing_failed, user))
+        begin
+          reply(message, guidance(:processing_failed, user))
+        rescue => reply_error
+          ai_helper_logger.error "chat channel: failed to post error notice: #{reply_error.full_message}"
+        end
       end
 
       private
@@ -58,6 +67,8 @@ module RedmineAiHelper
       # Resolves the Redmine user for the message speaker by email address.
       # Results (including "no match") are cached in memory with a TTL so
       # repeated questions do not hit the external user API every time.
+      # Expired entries are swept on write so the cache cannot grow without
+      # bound for the lifetime of the resident gateway process.
       # @return [User, nil]
       def resolve_user(message)
         cached = @user_cache[message.external_user_id]
@@ -65,7 +76,9 @@ module RedmineAiHelper
 
         email = @adapter.resolve_user_email(external_user_id: message.external_user_id)
         user = email.blank? ? nil : User.active.having_mail(email).first
-        @user_cache[message.external_user_id] = { user: user, expires_at: Time.zone.now + USER_CACHE_TTL }
+        now = Time.zone.now
+        @user_cache.delete_if { |_id, entry| entry[:expires_at] <= now }
+        @user_cache[message.external_user_id] = { user: user, expires_at: now + USER_CACHE_TTL }
         user
       end
 

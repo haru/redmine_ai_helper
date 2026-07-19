@@ -134,7 +134,7 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
 
     should "reset missed pongs when a pong arrives" do
       @adapter.send(:ping_tick)
-      @adapter.handle_envelope({ "type" => "pong" }.to_json)
+      @adapter.send(:handle_pong)
       assert_not @adapter.send(:ping_tick)
       assert_not @adapter.send(:ping_tick)
     end
@@ -143,6 +143,35 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
       @adapter.handle_envelope({ "type" => "hello" }.to_json)
 
       assert_predicate @adapter, :connected?
+    end
+
+    should "back off before reconnecting when the connection ends without hello" do
+      @adapter.stubs(:fetch_bot_user_id).returns("B001")
+      @adapter.stubs(:open_connection_url).returns("wss://example")
+      slept = []
+      @adapter.stubs(:sleep) { |seconds| slept << seconds }
+      call_count = 0
+      @adapter.stubs(:listen) do
+        call_count += 1
+        @adapter.stop if call_count == 2
+      end
+
+      @adapter.start
+
+      assert_equal 2, call_count, "adapter must retry after a hello-less clean close"
+      assert_equal [ 1 ], slept, "a backoff sleep must happen before the retry"
+    end
+  end
+
+  context "error classification" do
+    should "classify SlackApiError as a fatal config error" do
+      error = RedmineAiHelper::ChatChannel::Adapters::SlackAdapter::SlackApiError.new("invalid_auth")
+
+      assert @adapter.fatal_config_error?(error)
+    end
+
+    should "not classify generic errors as a fatal config error" do
+      assert_not @adapter.fatal_config_error?(RuntimeError.new("boom"))
     end
   end
 

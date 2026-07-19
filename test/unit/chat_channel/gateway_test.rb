@@ -65,10 +65,10 @@ class ChatChannelGatewayTest < ActiveSupport::TestCase
   end
 
   context "run" do
-    should "raise when no adapter is enabled" do
+    should "raise ConfigurationError when no adapter is enabled" do
       @gateway.stubs(:build_enabled_adapters).returns([])
 
-      assert_raises(RuntimeError) { @gateway.run }
+      assert_raises(RedmineAiHelper::ChatChannel::Gateway::ConfigurationError) { @gateway.run }
     end
 
     should "start enabled adapters and process dispatched messages serially" do
@@ -110,6 +110,50 @@ class ChatChannelGatewayTest < ActiveSupport::TestCase
 
       assert adapter.stopped, "shutdown must call stop on every adapter"
       assert_equal 2, handler.handled.size, "queued messages must be drained before exiting"
+    end
+
+    should "re-raise a non-config adapter crash after shutdown" do
+      adapter = FakeGatewayAdapter.new
+      adapter.after_dispatch = -> { raise RuntimeError, "adapter blew up" }
+      @gateway.stubs(:build_enabled_adapters).returns([ adapter ])
+
+      error = assert_raises(RuntimeError) { @gateway.run }
+      assert_match(/adapter blew up/, error.message)
+      assert adapter.stopped, "shutdown must still be called on the crashed adapter"
+    end
+
+    should "raise ConfigurationError when the adapter reports a config error" do
+      adapter = FakeGatewayAdapter.new
+      adapter.define_singleton_method(:fatal_config_error?) { |_e| true }
+      adapter.after_dispatch = -> { raise RuntimeError, "invalid_auth" }
+      @gateway.stubs(:build_enabled_adapters).returns([ adapter ])
+
+      error = assert_raises(RedmineAiHelper::ChatChannel::Gateway::ConfigurationError) { @gateway.run }
+      assert_match(/invalid_auth/, error.message)
+    end
+
+    should "keep the worker loop alive when a single message raises" do
+      adapter = FakeGatewayAdapter.new
+      failing_handler = Class.new do
+        def initialize
+          @calls = 0
+        end
+
+        attr_reader :calls
+
+        def handle(_message)
+          @calls += 1
+          raise "bad message" if @calls == 1
+        end
+      end.new
+      adapter.instance_variable_set(:@handler, failing_handler)
+      adapter.messages_to_dispatch = [ incoming("boom"), incoming("ok") ]
+      adapter.after_dispatch = -> { @gateway.shutdown }
+      @gateway.stubs(:build_enabled_adapters).returns([ adapter ])
+
+      assert_nothing_raised { @gateway.run }
+
+      assert_equal 2, failing_handler.calls, "worker must continue after a failed message"
     end
   end
 

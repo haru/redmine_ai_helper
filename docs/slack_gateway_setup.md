@@ -44,9 +44,9 @@ cd /path/to/redmine
 bundle exec rake redmine:plugins:ai_helper:chat_channel:gateway RAILS_ENV=production
 ```
 
-On success, `log/ai_helper.log` records the connection establishment (`hello` received). With invalid tokens the process logs the authentication error and exits without retrying — fix the tokens and start it again.
+On success, `log/ai_helper.log` records the connection establishment (`hello` received). With invalid tokens the gateway logs the authentication error and exits with status **0** so the supervisor does not keep retrying — fix the tokens and start it again.
 
-The gateway reconnects automatically on Slack-initiated refreshes, network errors (exponential backoff up to 60 s), and missed ping responses. Stop it with `SIGTERM` or `Ctrl+C`; queued messages are drained before exit.
+The gateway reconnects automatically on Slack-initiated refreshes, network errors (exponential backoff up to 60 s), missed ping responses, and clean closes that never received `hello` (suspected handshake rejection). Stop it with `SIGTERM` or `Ctrl+C`; queued messages are drained before exit.
 
 ### Running under systemd (example)
 
@@ -62,12 +62,16 @@ WorkingDirectory=/path/to/redmine
 Environment=RAILS_ENV=production
 ExecStart=/usr/bin/bundle exec rake redmine:plugins:ai_helper:chat_channel:gateway
 Restart=on-failure
+# Bound restart frequency for genuine crashes (e.g. unhandled runtime errors).
+# Configuration/credential failures exit 0 and are NOT restarted.
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-`Restart=on-failure` restarts the gateway on crashes but not on clean exits caused by configuration errors (such as invalid tokens), which would otherwise loop.
+`Restart=on-failure` restarts the gateway on crashes (non-zero exit). Configuration and credential errors — invalid tokens, or no adapter enabled — are reported in `log/ai_helper.log` and cause the process to exit with status **0**, so systemd does **not** restart them automatically. Fix the configuration and start the gateway again. Genuine crashes (unhandled exceptions) exit non-zero and are restarted, bounded by `StartLimitIntervalSec` / `StartLimitBurst` to avoid a tight restart loop.
 
 ## 4. Use it
 
@@ -80,7 +84,7 @@ WantedBy=multi-user.target
 
 | Symptom | Cause / fix |
 |---|---|
-| Gateway exits immediately with an authentication error | Wrong `xapp-`/`xoxb-` token, or Socket Mode not enabled on the app. |
+| Gateway exits immediately with an authentication error | Wrong `xapp-`/`xoxb-` token, or Socket Mode not enabled on the app. The gateway exits with status 0 so it will not be restarted automatically; update the tokens and start it again. |
 | "No chat channel adapter is enabled" on startup | The Slack section is not enabled or a required token is missing in the settings. |
 | Bot replies "no active Redmine user matches..." | The Slack user's profile email does not match any active Redmine user. |
 | Bot replies "this channel is not associated..." | Add a channel binding for that channel ID. |

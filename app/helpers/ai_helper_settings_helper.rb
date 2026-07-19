@@ -65,6 +65,16 @@ module AiHelperSettingsHelper
     t("ai_helper.chat_channel.adapters.#{channel_type}", default: channel_type.humanize)
   end
 
+  # Value rendered in a chat-adapter token password field. Stored tokens are
+  # replaced by DUMMY_TOKEN so the raw secret is never written to the HTML
+  # source; an empty value stays empty so a new token can be entered.
+  #
+  # @param token [String, nil] the stored token value
+  # @return [String] the value for the password field
+  def token_field_value(token)
+    token.blank? ? "" : AiHelperSettingsController::DUMMY_TOKEN
+  end
+
   # Maps an error attribute name to its owning tab name.
   #
   # @param attribute [Symbol] the attribute name with validation error

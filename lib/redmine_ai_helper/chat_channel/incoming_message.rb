@@ -28,8 +28,6 @@ module RedmineAiHelper
       def dm?
         @dm
       end
-
-      alias dm dm?
     end
   end
 end

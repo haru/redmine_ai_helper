@@ -19,11 +19,21 @@
     </p>
     <p>
       <label><%= t("ai_helper.chat_channel.settings.app_token") %></label>
-      <%= password_field_tag "chat_adapter_settings[#{channel_type}][app_token]", adapter_setting.app_token, size: 60, id: nil %>
+      <%= password_field_tag "chat_adapter_settings[#{channel_type}][app_token]",
+                             token_field_value(adapter_setting.app_token),
+                             size: 60, id: nil, autocomplete: "new-password" %>
+      <% if adapter_setting.app_token.present? %>
+        <em class="info"><%= adapter_setting.masked_app_token %></em>
+      <% end %>
     </p>
     <p>
       <label><%= t("ai_helper.chat_channel.settings.bot_token") %></label>
-      <%= password_field_tag "chat_adapter_settings[#{channel_type}][bot_token]", adapter_setting.bot_token, size: 60, id: nil %>
+      <%= password_field_tag "chat_adapter_settings[#{channel_type}][bot_token]",
+                             token_field_value(adapter_setting.bot_token),
+                             size: 60, id: nil, autocomplete: "new-password" %>
+      <% if adapter_setting.bot_token.present? %>
+        <em class="info"><%= adapter_setting.masked_bot_token %></em>
+      <% end %>
     </p>
     <p>
       <label><%= t("ai_helper.chat_channel.settings.dm_default_project") %></label>

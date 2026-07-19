@@ -136,7 +136,7 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
       assert_equal "C123:1700000000.000100", message.thread_key
       assert_equal "hello", message.text
       assert_equal "U123", message.external_user_id
-      assert message.dm
+      assert message.dm?
     end
   end
 end

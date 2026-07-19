@@ -59,8 +59,11 @@ module RedmineAiHelper
 
         # Connects to Slack and blocks while receiving events. Reconnects on
         # disconnect envelopes (immediately, with a fresh URL), on socket
-        # errors (with exponential backoff) and on missed pongs. Auth errors
-        # (ok:false from the Web API) terminate without retry.
+        # errors (with exponential backoff), on missed pongs and on clean
+        # closes that never received hello (suspected handshake rejection,
+        # also backed off so a remote-side tight close loop cannot hammer
+        # apps.connections.open). Auth errors (ok:false from the Web API)
+        # terminate without retry.
         # @return [void]
         def start
           @stopped = false
@@ -70,7 +73,12 @@ module RedmineAiHelper
             url = open_connection_url
             begin
               listen(url)
-              reset_backoff if @reconnect_requested
+              if @reconnect_requested
+                reset_backoff
+              elsif !@connected
+                ai_helper_logger.warn "slack: connection ended without hello; backing off before reconnect"
+                sleep(next_backoff) unless stopped?
+              end
             rescue SlackApiError
               raise
             rescue => e
@@ -108,8 +116,6 @@ module RedmineAiHelper
           when "disconnect"
             ai_helper_logger.info "slack: disconnect requested by Slack (reason: #{data["reason"]})"
             request_reconnect
-          when "pong"
-            handle_pong
           when "events_api"
             acknowledge(data["envelope_id"])
             process_event(data.dig("payload", "event") || {})
@@ -150,6 +156,15 @@ module RedmineAiHelper
           timestamp = message.thread_key.split(":", 2).last
           api_call("reactions.add", token: settings.bot_token,
                    params: { channel: message.channel_id, timestamp: timestamp, name: "hourglass_flowing_sand" })
+        end
+
+        # Marks a SlackApiError as a fatal configuration/credential error so
+        # the gateway exits cleanly (exit 0) and is not restarted by the
+        # supervisor into the same broken configuration (ADR-006).
+        # @param error [Exception] the error raised by the adapter
+        # @return [Boolean]
+        def fatal_config_error?(error)
+          error.is_a?(SlackApiError)
         end
 
         private

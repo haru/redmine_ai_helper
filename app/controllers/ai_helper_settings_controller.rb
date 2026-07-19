@@ -11,17 +11,32 @@ class AiHelperSettingsController < ApplicationController
 
   include AiHelperSettingsHelper
 
+  # Placeholder value rendered in token fields when a token is already
+  # stored, so the raw value never reaches the HTML source (same approach
+  # as AiHelperModelProfilesController::DUMMY_ACCESS_KEY). When this value
+  # is submitted, the controller keeps the existing token unchanged.
+  DUMMY_TOKEN = "___DUMMY_TOKEN___"
+
   # Display the settings page
   def index
     @selected_tab = params[:tab].presence
   end
 
-  # Update the settings
+  # Update the settings. The global setting and every adapter setting are
+  # persisted atomically: if any of them is invalid, none is kept, so the
+  # page never re-renders with only half of the changes committed.
   def update
     @setting.safe_attributes = params[:ai_helper_setting]
     @chat_adapter_settings = chat_adapter_settings_from_params
-    setting_saved = @setting.save
-    adapters_saved = @chat_adapter_settings.values.map(&:save).all?
+
+    setting_saved = nil
+    adapters_saved = nil
+    AiHelperSetting.transaction do
+      setting_saved = @setting.save
+      adapters_saved = @chat_adapter_settings.values.map(&:save).all?
+      raise ActiveRecord::Rollback unless setting_saved && adapters_saved
+    end
+
     if setting_saved && adapters_saved
       flash[:notice] = l(:notice_successful_update)
       redirect_to action: :index, tab: params[:tab].presence
@@ -67,7 +82,9 @@ class AiHelperSettingsController < ApplicationController
   end
 
   # Builds adapter setting records from the channels tab params, keyed by
-  # channel_type. Only registered adapters are accepted.
+  # channel_type. Only registered adapters are accepted. Token fields that
+  # come back unchanged from the form (DUMMY_TOKEN) are preserved as-is so
+  # the stored secret is never round-tripped through the browser.
   # @return [Hash{String => AiHelperChatAdapterSetting}]
   def chat_adapter_settings_from_params
     submitted = params[:chat_adapter_settings] || {}
@@ -76,8 +93,19 @@ class AiHelperSettingsController < ApplicationController
       next unless attrs
 
       setting = AiHelperChatAdapterSetting.for_channel(channel_type)
+      preserve_unchanged_tokens!(setting, attrs)
       setting.safe_attributes = attrs
       hash[channel_type] = setting
+    end
+  end
+
+  # Replaces DUMMY_TOKEN submissions with the value currently stored so the
+  # operator does not have to re-enter a secret to keep it.
+  def preserve_unchanged_tokens!(setting, attrs)
+    %w[app_token bot_token].each do |field|
+      next unless attrs[field] == DUMMY_TOKEN
+
+      attrs[field] = setting.send(field)
     end
   end
 end
