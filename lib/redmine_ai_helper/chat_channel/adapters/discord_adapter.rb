@@ -413,7 +413,8 @@ module RedmineAiHelper
           channel_id = data["channel_id"]
           message_id = data["id"]
           text = strip_mention(content)
-          channel = fetch_channel(channel_id)
+          channel = safe_fetch_channel(channel_id)
+          return unless channel
 
           if THREAD_CHANNEL_TYPES.include?(channel["type"])
             parent_id = channel["parent_id"]
@@ -488,6 +489,24 @@ module RedmineAiHelper
             current = parent
             hops += 1
           end
+        end
+
+        # Fetches a channel, logging and swallowing non-fatal failures (a
+        # permission problem or transient network error while resolving a
+        # channel's type must drop only this message, not tear down the
+        # gateway connection: raising here would escape into the WebSocket
+        # gem's per-message rescue and force an immediate, unthrottled
+        # reconnect). Fatal auth errors still propagate so #start can
+        # terminate without retry.
+        # @param channel_id [String] the channel id
+        # @return [Hash, nil] the channel, or nil when it cannot be fetched
+        def safe_fetch_channel(channel_id)
+          fetch_channel(channel_id)
+        rescue DiscordApiError
+          raise
+        rescue => e
+          ai_helper_logger.warn "discord: failed to fetch channel #{channel_id}: #{e.message}"
+          nil
         end
 
         # Whether the message was authored by the bot itself.
@@ -635,10 +654,15 @@ module RedmineAiHelper
           request(:post, "/channels/#{channel_id}/messages/#{message_id}/threads",
                   body: { name: thread_name(text) })
           message_id
+        rescue DiscordApiError
+          raise
         rescue DiscordRequestError => e
           return message_id if e.code == THREAD_ALREADY_EXISTS_CODE
 
           ai_helper_logger.warn "discord: could not create thread (HTTP #{e.status}); falling back to reply mode"
+          nil
+        rescue => e
+          ai_helper_logger.warn "discord: could not create thread (#{e.message}); falling back to reply mode"
           nil
         end
 

@@ -381,6 +381,18 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
       assert_nil @adapter.send(:create_thread, "C1", "M1", "q")
     end
 
+    should "fall back to nil when thread creation fails with a non-Discord error (e.g. a timeout)" do
+      @adapter.stubs(:request).raises(Net::OpenTimeout, "execution expired")
+
+      assert_nil @adapter.send(:create_thread, "C1", "M1", "q")
+    end
+
+    should "propagate a fatal DiscordApiError from thread creation instead of falling back" do
+      @adapter.stubs(:request).raises(DiscordApiError, "unauthorized")
+
+      assert_raises(DiscordApiError) { @adapter.send(:create_thread, "C1", "M1", "q") }
+    end
+
     should "dispatch in reply mode when the thread cannot be created" do
       @adapter.stubs(:fetch_channel).returns({ "type" => 0 })
       @adapter.stubs(:create_thread).returns(nil)
@@ -390,6 +402,30 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
       message = @dispatcher.messages.first
       assert_equal "C1:msg:M1", message.thread_key
       assert_equal "C1", message.channel_id
+    end
+  end
+
+  context "channel lookup failures" do
+    setup do
+      @dispatcher = RecordingDispatcher.new
+      @adapter.dispatcher = @dispatcher
+    end
+
+    should "log a warning and drop the message when the channel lookup fails" do
+      @adapter.stubs(:fetch_channel).raises(DiscordRequestError.new("boom", status: 500))
+      logger = mock("logger")
+      logger.expects(:warn).with(regexp_matches(/failed to fetch channel/))
+      @adapter.stubs(:ai_helper_logger).returns(logger)
+
+      @adapter.send(:process_message, guild_message(content: "<@BOT> hi"))
+
+      assert_empty @dispatcher.messages
+    end
+
+    should "propagate a fatal DiscordApiError from the channel lookup instead of dropping the message" do
+      @adapter.stubs(:fetch_channel).raises(DiscordApiError, "unauthorized")
+
+      assert_raises(DiscordApiError) { @adapter.send(:process_message, guild_message(content: "<@BOT> hi")) }
     end
   end
 
