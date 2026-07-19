@@ -19,24 +19,18 @@
                         data: { adapter_type: channel_type }, class: "adapter-enabled-checkbox" %>
     </p>
     <div id="adapter-settings-<%= channel_type %>">
-      <p>
-        <label><%= t("ai_helper.chat_channel.settings.app_token") %></label>
-        <%= password_field_tag "chat_adapter_settings[#{channel_type}][app_token]",
-                               token_field_value(adapter_setting.app_token),
-                               size: 60, id: nil, autocomplete: "new-password" %>
-        <% if adapter_setting.app_token.present? %>
-          <em class="info"><%= adapter_setting.masked_app_token %></em>
-        <% end %>
-      </p>
-      <p>
-        <label><%= t("ai_helper.chat_channel.settings.bot_token") %></label>
-        <%= password_field_tag "chat_adapter_settings[#{channel_type}][bot_token]",
-                               token_field_value(adapter_setting.bot_token),
-                               size: 60, id: nil, autocomplete: "new-password" %>
-        <% if adapter_setting.bot_token.present? %>
-          <em class="info"><%= adapter_setting.masked_bot_token %></em>
-        <% end %>
-      </p>
+      <% token_fields = RedmineAiHelper::ChatChannel::BaseAdapter.adapters[channel_type].required_setting_fields & [:app_token, :bot_token] %>
+      <% token_fields.each do |token_field| %>
+        <p>
+          <label><%= t("ai_helper.chat_channel.settings.#{token_field}") %></label>
+          <%= password_field_tag "chat_adapter_settings[#{channel_type}][#{token_field}]",
+                                 token_field_value(adapter_setting.send(token_field)),
+                                 size: 60, id: nil, autocomplete: "new-password" %>
+          <% if adapter_setting.send(token_field).present? %>
+            <em class="info"><%= adapter_setting.send("masked_#{token_field}") %></em>
+          <% end %>
+        </p>
+      <% end %>
       <p>
         <label><%= t("ai_helper.chat_channel.settings.redmine_user") %></label>
         <% selected_user = @ai_helper_users.find { |u| u.id == adapter_setting.redmine_user_id } %>

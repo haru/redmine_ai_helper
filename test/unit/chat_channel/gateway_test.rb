@@ -209,4 +209,144 @@ class ChatChannelGatewayTest < ActiveSupport::TestCase
       assert_equal [ message ], handler.handled.map(&:first)
     end
   end
+
+  # In-memory adapter that raises a configuration error the moment it starts.
+  class ConfigErrorAdapter < RedmineAiHelper::ChatChannel::BaseAdapter
+    class << self
+      def channel_type
+        "us4_config_error"
+      end
+    end
+
+    def enabled?
+      true
+    end
+
+    def fatal_config_error?(_error)
+      true
+    end
+
+    def start
+      raise "invalid_auth"
+    end
+
+    def stop; end
+    def send_message(channel_id:, thread_key:, text:); end
+    def notify_processing(message:); end
+  end
+
+  # In-memory adapter that raises a non-configuration error when it starts.
+  class RuntimeErrorAdapter < ConfigErrorAdapter
+    class << self
+      def channel_type
+        "us4_runtime_error"
+      end
+    end
+
+    def fatal_config_error?(_error)
+      false
+    end
+
+    def start
+      raise "boom"
+    end
+  end
+
+  # In-memory adapter that blocks until stopped, optionally running a callback
+  # (e.g. dispatching a message) when it starts.
+  class BlockingAdapter < RedmineAiHelper::ChatChannel::BaseAdapter
+    attr_accessor :on_start
+
+    class << self
+      def channel_type
+        "us4_blocking"
+      end
+    end
+
+    def initialize
+      super
+      @latch = Queue.new
+      @started = Queue.new
+    end
+
+    def enabled?
+      true
+    end
+
+    def start
+      @on_start&.call(self)
+      @started.push(true)
+      @latch.pop
+    end
+
+    def wait_until_started(timeout)
+      @started.pop(timeout: timeout)
+    end
+
+    def stop
+      @latch.push(true)
+    end
+
+    def send_message(channel_id:, thread_key:, text:); end
+    def notify_processing(message:); end
+  end
+
+  # Handler that signals a queue after handling a message.
+  class SignalingHandler
+    def initialize(signal_queue)
+      @signal_queue = signal_queue
+    end
+
+    def handle(_message)
+      @signal_queue.push(true)
+    end
+  end
+
+  context "multi-adapter fault isolation (US4)" do
+    should "keep processing on a live adapter after another dies with a config error" do
+      handled = Queue.new
+      dead = ConfigErrorAdapter.new
+      live = BlockingAdapter.new
+      live.instance_variable_set(:@handler, SignalingHandler.new(handled))
+      live.on_start = ->(adapter) { adapter.dispatch(incoming("hi")) }
+      @gateway.stubs(:build_enabled_adapters).returns([ dead, live ])
+
+      gateway_thread = Thread.new { @gateway.run }
+      begin
+        assert handled.pop(timeout: 5), "the live adapter must keep processing after the other adapter dies"
+        @gateway.shutdown
+        assert_nothing_raised { gateway_thread.value }
+      ensure
+        gateway_thread.join(5)
+      end
+    end
+
+    should "raise ConfigurationError when all adapters die with config errors" do
+      @gateway.stubs(:build_enabled_adapters).returns([ ConfigErrorAdapter.new, ConfigErrorAdapter.new ])
+
+      assert_raises(RedmineAiHelper::ChatChannel::Gateway::ConfigurationError) { @gateway.run }
+    end
+
+    should "raise the original error when all adapters die with runtime errors" do
+      @gateway.stubs(:build_enabled_adapters).returns([ RuntimeErrorAdapter.new, RuntimeErrorAdapter.new ])
+
+      error = assert_raises(RuntimeError) { @gateway.run }
+      assert_match(/boom/, error.message)
+    end
+
+    should "not raise after a graceful shutdown even if an adapter died earlier" do
+      dead = ConfigErrorAdapter.new
+      live = BlockingAdapter.new
+      @gateway.stubs(:build_enabled_adapters).returns([ dead, live ])
+
+      gateway_thread = Thread.new { @gateway.run }
+      begin
+        assert live.wait_until_started(5), "the live adapter must start"
+        @gateway.shutdown
+        assert_nothing_raised { gateway_thread.value }
+      ensure
+        gateway_thread.join(5)
+      end
+    end
+  end
 end

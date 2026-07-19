@@ -920,4 +920,63 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       end
     end
   end
+
+  # Discord adapter is auto-registered via the init.rb glob, so the existing
+  # settings controller handles its row with no controller changes (US1).
+  context "discord adapter channel settings" do
+    setup do
+      AiHelperChatAdapterSetting.delete_all
+      AiHelperChannelBinding.delete_all
+      @user = User.active.sorted.first
+    end
+
+    should "render only the bot token field for discord (required_setting_fields driven)" do
+      get :index, params: { tab: "channels" }
+
+      assert_response :success
+      assert_select "#tab-content-channels input[name='chat_adapter_settings[discord][bot_token]'][type=password]"
+      assert_select "#tab-content-channels input[name='chat_adapter_settings[discord][app_token]']", { count: 0 }
+    end
+
+    should "render both token fields for slack (app_token and bot_token)" do
+      get :index, params: { tab: "channels" }
+
+      assert_response :success
+      assert_select "#tab-content-channels input[name='chat_adapter_settings[slack][app_token]'][type=password]"
+      assert_select "#tab-content-channels input[name='chat_adapter_settings[slack][bot_token]'][type=password]"
+    end
+
+    should "save a discord settings row without an app token" do
+      post :update, params: {
+        tab: "channels",
+        ai_helper_setting: {},
+        chat_adapter_settings: {
+          "discord" => { "enabled" => "1", "bot_token" => "discord-bot-xyz",
+                         "redmine_user_id" => @user.id.to_s, "redmine_user_name" => @user.name,
+                         "dm_default_project_id" => "1" }
+        }
+      }
+
+      assert_redirected_to controller: "ai_helper_settings", action: :index, tab: "channels"
+      setting = AiHelperChatAdapterSetting.for_channel("discord")
+      assert setting.enabled
+      assert_equal "discord-bot-xyz", setting.bot_token
+      assert_equal @user.id, setting.redmine_user_id
+      assert_equal 1, setting.dm_default_project_id
+    end
+
+    should "reject enabling discord without a bot token" do
+      post :update, params: {
+        tab: "channels",
+        ai_helper_setting: {},
+        chat_adapter_settings: {
+          "discord" => { "enabled" => "1", "bot_token" => "" }
+        }
+      }
+
+      assert_response :success
+      assert_equal "channels", assigns(:selected_tab)
+      assert_not AiHelperChatAdapterSetting.enabled?("discord")
+    end
+  end
 end
