@@ -8,7 +8,7 @@ class CreateAiHelperChannelConversations < ActiveRecord::Migration[7.2]
     create_table :ai_helper_channel_conversations do |t|
       t.string :channel_type, null: false
       t.string :thread_key, null: false
-      t.integer :conversation_id, null: false
+      t.bigint :conversation_id, null: false
       t.timestamps
     end
 
