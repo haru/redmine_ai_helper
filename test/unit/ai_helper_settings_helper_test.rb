@@ -6,11 +6,11 @@ class AiHelperSettingsHelperTest < ActionView::TestCase
   include AiHelperSettingsHelper
 
   context "ai_helper_settings_tabs" do
-    should "return 3 tab definitions in order: general, model, vector" do
+    should "return 4 tab definitions in order: general, model, vector, channels" do
       f = build_form_builder
       tabs = ai_helper_settings_tabs(f)
 
-      assert_equal 3, tabs.length
+      assert_equal 4, tabs.length
 
       assert_equal "general", tabs[0][:name]
       assert_equal "ai_helper_settings/general_tab", tabs[0][:partial]
@@ -26,6 +26,11 @@ class AiHelperSettingsHelperTest < ActionView::TestCase
       assert_equal "ai_helper_settings/vector_tab", tabs[2][:partial]
       assert_equal :"ai_helper.settings.tab_vector", tabs[2][:label]
       assert_equal f, tabs[2][:f]
+
+      assert_equal "channels", tabs[3][:name]
+      assert_equal "ai_helper_settings/channels_tab", tabs[3][:partial]
+      assert_equal :"ai_helper.settings.tab_channels", tabs[3][:label]
+      assert_equal f, tabs[3][:f]
     end
   end
 

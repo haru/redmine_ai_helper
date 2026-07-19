@@ -54,6 +54,9 @@ RedmineApp::Application.routes.draw do
   get "ai_helper_settings/index", to: "ai_helper_settings#index", as: "ai_helper_setting"
   post "ai_helper_settings/index", to: "ai_helper_settings#update", as: "ai_helper_setting_update"
 
+  post "ai_helper_channel_bindings", to: "ai_helper_channel_bindings#create", as: "ai_helper_channel_bindings"
+  delete "ai_helper_channel_bindings/:id", to: "ai_helper_channel_bindings#destroy", as: "ai_helper_channel_binding"
+
   post "ai_helper_model_profiles/test_connection",
        to: "ai_helper_model_profiles#test_connection",
        as: "ai_helper_model_profiles_test_connection"

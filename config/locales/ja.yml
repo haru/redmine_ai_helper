@@ -36,6 +36,26 @@ ja:
       tab_general: "全般"
       tab_model: "モデル"
       tab_vector: "ベクトル検索"
+      tab_channels: "チャット連携"
+    chat_channel:
+      adapters:
+        slack: "Slack"
+      settings:
+        enabled: "有効にする"
+        app_token: "App Token"
+        bot_token: "Bot Token"
+        dm_default_project: "ダイレクトメッセージ用の既定プロジェクト"
+        bindings: "チャンネル対応付け"
+        adapter: "チャットツール"
+        channel_id: "チャンネルID"
+        channel_name: "チャンネル名"
+        add_binding: "対応付けを追加"
+      errors:
+        user_not_mapped: "チャットアカウントのメールアドレスに一致する有効なRedmineユーザーが見つからないため、処理できませんでした。管理者にRedmineアカウントの確認を依頼してください。"
+        channel_not_bound: "このチャンネルはRedmineプロジェクトに対応付けられていません。管理者にチャンネル対応付けの設定を依頼してください。"
+        dm_not_configured: "ダイレクトメッセージ用の既定プロジェクトが設定されていません。管理者に設定を依頼してください。"
+        module_disabled: "対応付けられたプロジェクトでAIヘルパーモジュールが無効になっています。"
+        processing_failed: "回答の生成中にエラーが発生しました。詳細はAIヘルパーのログを確認してください。"
     notice_sub_issues_added: "子チケットが追加されました"
     error_invalid_assignee: "'%{subject}' の担当者が無効です。このトラッカーに対する権限がありません"
     chat:

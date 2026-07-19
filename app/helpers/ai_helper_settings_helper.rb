@@ -35,8 +35,34 @@ module AiHelperSettingsHelper
         partial: "ai_helper_settings/vector_tab",
         label: :"ai_helper.settings.tab_vector",
         f: f
+      },
+      {
+        name: "channels",
+        partial: "ai_helper_settings/channels_tab",
+        label: :"ai_helper.settings.tab_channels",
+        f: f
       }
     ]
+  end
+
+  # Returns the adapter setting record to render for the given channel_type,
+  # preferring the (possibly invalid) record built from submitted params so
+  # validation errors and entered values survive a re-render.
+  #
+  # @param channel_type [String] adapter identifier (e.g. "slack")
+  # @param submitted [Hash{String => AiHelperChatAdapterSetting}, nil] records built from params
+  # @return [AiHelperChatAdapterSetting]
+  def ai_helper_chat_adapter_setting(channel_type, submitted)
+    (submitted || {})[channel_type] || AiHelperChatAdapterSetting.for_channel(channel_type)
+  end
+
+  # Display label for a chat adapter, resolved from the locale file with the
+  # humanized channel_type as fallback.
+  #
+  # @param channel_type [String] adapter identifier (e.g. "slack")
+  # @return [String]
+  def ai_helper_chat_adapter_label(channel_type)
+    t("ai_helper.chat_channel.adapters.#{channel_type}", default: channel_type.humanize)
   end
 
   # Maps an error attribute name to its owning tab name.

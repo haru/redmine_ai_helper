@@ -19,14 +19,21 @@ class AiHelperSettingsController < ApplicationController
   # Update the settings
   def update
     @setting.safe_attributes = params[:ai_helper_setting]
-    if @setting.save
+    @chat_adapter_settings = chat_adapter_settings_from_params
+    setting_saved = @setting.save
+    adapters_saved = @chat_adapter_settings.values.map(&:save).all?
+    if setting_saved && adapters_saved
       flash[:notice] = l(:notice_successful_update)
       redirect_to action: :index, tab: params[:tab].presence
     else
-      @selected_tab = ai_helper_settings_selected_tab(
-        @setting.errors.attribute_names,
-        params[:tab].presence
-      )
+      @selected_tab = if adapters_saved
+          ai_helper_settings_selected_tab(
+            @setting.errors.attribute_names,
+            params[:tab].presence
+          )
+      else
+          "channels"
+      end
       render action: :index
     end
   end
@@ -56,5 +63,21 @@ class AiHelperSettingsController < ApplicationController
     @setting = AiHelperSetting.find_or_create
     @model_profiles = AiHelperModelProfile.order(:name)
     @ai_helper_projects = Project.joins(:enabled_modules).where(enabled_modules: { name: "ai_helper" }).order(:name)
+    @channel_bindings = AiHelperChannelBinding.includes(:project).order(:channel_type, :channel_id)
+  end
+
+  # Builds adapter setting records from the channels tab params, keyed by
+  # channel_type. Only registered adapters are accepted.
+  # @return [Hash{String => AiHelperChatAdapterSetting}]
+  def chat_adapter_settings_from_params
+    submitted = params[:chat_adapter_settings] || {}
+    RedmineAiHelper::ChatChannel::BaseAdapter.adapters.keys.each_with_object({}) do |channel_type, hash|
+      attrs = submitted[channel_type]
+      next unless attrs
+
+      setting = AiHelperChatAdapterSetting.for_channel(channel_type)
+      setting.safe_attributes = attrs
+      hash[channel_type] = setting
+    end
   end
 end

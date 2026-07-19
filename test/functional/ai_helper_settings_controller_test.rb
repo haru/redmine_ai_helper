@@ -585,4 +585,81 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert_select "input[type=hidden][name=tab][value=vector]"
     end
   end
+
+  # Test-only chat adapter registered for the channels tab tests, so the tab
+  # UI can be verified without depending on any concrete adapter.
+  class FakeUiAdapter < RedmineAiHelper::ChatChannel::BaseAdapter
+    class << self
+      def channel_type
+        "ui_chat"
+      end
+
+      def required_setting_fields
+        [ :bot_token ]
+      end
+    end
+  end
+
+  context "channels tab" do
+    setup do
+      AiHelperChatAdapterSetting.delete_all
+      AiHelperChannelBinding.delete_all
+    end
+
+    should "render the channels tab link" do
+      get :index
+
+      assert_response :success
+      assert_select ".tabs a#tab-channels"
+    end
+
+    should "render a settings section for each registered adapter" do
+      get :index, params: { tab: "channels" }
+
+      assert_response :success
+      assert_select "#tab-content-channels input[name='chat_adapter_settings[ui_chat][enabled]']"
+      assert_select "#tab-content-channels input[name='chat_adapter_settings[ui_chat][bot_token]'][type=password]"
+      assert_select "#tab-content-channels select[name='chat_adapter_settings[ui_chat][dm_default_project_id]']"
+    end
+
+    should "save adapter settings from the channels tab" do
+      post :update, params: {
+        tab: "channels",
+        ai_helper_setting: { additional_instructions: "keep" },
+        chat_adapter_settings: {
+          "ui_chat" => { "enabled" => "1", "bot_token" => "xoxb-ui", "dm_default_project_id" => "1" }
+        }
+      }
+
+      assert_redirected_to controller: "ai_helper_settings", action: :index, tab: "channels"
+      setting = AiHelperChatAdapterSetting.for_channel("ui_chat")
+      assert setting.enabled
+      assert_equal "xoxb-ui", setting.bot_token
+      assert_equal 1, setting.dm_default_project_id
+    end
+
+    should "re-render the channels tab when adapter settings are invalid" do
+      post :update, params: {
+        tab: "general",
+        ai_helper_setting: {},
+        chat_adapter_settings: {
+          "ui_chat" => { "enabled" => "1", "bot_token" => "" }
+        }
+      }
+
+      assert_response :success
+      assert_equal "channels", assigns(:selected_tab)
+      assert_not AiHelperChatAdapterSetting.enabled?("ui_chat")
+    end
+
+    should "list existing channel bindings in the channels tab" do
+      AiHelperChannelBinding.create!(channel_type: "ui_chat", channel_id: "C111", channel_name: "#dev", project: Project.find(1))
+
+      get :index, params: { tab: "channels" }
+
+      assert_response :success
+      assert_select "#tab-content-channels", text: /C111/
+      assert_select "#tab-content-channels", text: /#dev/
+    end
+  end
 end

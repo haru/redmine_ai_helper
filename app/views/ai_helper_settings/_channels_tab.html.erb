@@ -1,0 +1,95 @@
+<% adapters = RedmineAiHelper::ChatChannel::BaseAdapter.adapters.keys.sort %>
+<% adapters.each do |channel_type| %>
+  <% adapter_setting = ai_helper_chat_adapter_setting(channel_type, @chat_adapter_settings) %>
+  <fieldset class="box tabular">
+    <legend><%= ai_helper_chat_adapter_label(channel_type) %></legend>
+    <% if adapter_setting.errors.any? %>
+      <div id="errorExplanation">
+        <ul>
+          <% adapter_setting.errors.full_messages.each do |message| %>
+            <li><%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+    <p>
+      <label><%= t("ai_helper.chat_channel.settings.enabled") %></label>
+      <%= hidden_field_tag "chat_adapter_settings[#{channel_type}][enabled]", "0", id: nil %>
+      <%= check_box_tag "chat_adapter_settings[#{channel_type}][enabled]", "1", adapter_setting.enabled, id: nil %>
+    </p>
+    <p>
+      <label><%= t("ai_helper.chat_channel.settings.app_token") %></label>
+      <%= password_field_tag "chat_adapter_settings[#{channel_type}][app_token]", adapter_setting.app_token, size: 60, id: nil %>
+    </p>
+    <p>
+      <label><%= t("ai_helper.chat_channel.settings.bot_token") %></label>
+      <%= password_field_tag "chat_adapter_settings[#{channel_type}][bot_token]", adapter_setting.bot_token, size: 60, id: nil %>
+    </p>
+    <p>
+      <label><%= t("ai_helper.chat_channel.settings.dm_default_project") %></label>
+      <%= select_tag "chat_adapter_settings[#{channel_type}][dm_default_project_id]",
+                     options_from_collection_for_select(@ai_helper_projects, :id, :name, adapter_setting.dm_default_project_id),
+                     include_blank: true, id: nil %>
+    </p>
+  </fieldset>
+<% end %>
+
+<fieldset class="box">
+  <legend><%= t("ai_helper.chat_channel.settings.bindings") %></legend>
+  <% if @channel_bindings.any? %>
+    <table class="list">
+      <thead>
+        <tr>
+          <th><%= t("ai_helper.chat_channel.settings.adapter") %></th>
+          <th><%= t("ai_helper.chat_channel.settings.channel_id") %></th>
+          <th><%= t("ai_helper.chat_channel.settings.channel_name") %></th>
+          <th><%= t(:label_project) %></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @channel_bindings.each do |channel_binding| %>
+          <tr>
+            <td><%= ai_helper_chat_adapter_label(channel_binding.channel_type) %></td>
+            <td><%= channel_binding.channel_id %></td>
+            <td><%= channel_binding.channel_name %></td>
+            <td><%= channel_binding.project.name %></td>
+            <td class="buttons">
+              <%= link_to(sprite_icon('del', l(:button_delete)),
+                          ai_helper_channel_binding_path(channel_binding),
+                          method: :delete,
+                          data: { confirm: l(:text_are_you_sure) },
+                          class: 'icon icon-del') %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+  <div class="tabular">
+    <p>
+      <label><%= t("ai_helper.chat_channel.settings.adapter") %></label>
+      <%= select_tag "ai_helper_channel_binding[channel_type]",
+                     options_for_select(adapters.map { |type| [ ai_helper_chat_adapter_label(type), type ] }),
+                     id: nil %>
+    </p>
+    <p>
+      <label><%= t("ai_helper.chat_channel.settings.channel_id") %></label>
+      <%= text_field_tag "ai_helper_channel_binding[channel_id]", "", size: 30, id: nil %>
+    </p>
+    <p>
+      <label><%= t("ai_helper.chat_channel.settings.channel_name") %></label>
+      <%= text_field_tag "ai_helper_channel_binding[channel_name]", "", size: 30, id: nil %>
+    </p>
+    <p>
+      <label><%= t(:label_project) %></label>
+      <%= select_tag "ai_helper_channel_binding[project_id]",
+                     options_from_collection_for_select(@ai_helper_projects, :id, :name),
+                     include_blank: true, id: nil %>
+    </p>
+    <p>
+      <%= submit_tag t("ai_helper.chat_channel.settings.add_binding"),
+                     formaction: ai_helper_channel_bindings_path, name: nil %>
+    </p>
+  </div>
+</fieldset>
