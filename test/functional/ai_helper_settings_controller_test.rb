@@ -600,6 +600,18 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
     end
   end
 
+  class FakeOtherAdapter < RedmineAiHelper::ChatChannel::BaseAdapter
+    class << self
+      def channel_type
+        "fake_other"
+      end
+
+      def required_setting_fields
+        [ :bot_token ]
+      end
+    end
+  end
+
   context "channels tab" do
     setup do
       AiHelperChatAdapterSetting.delete_all
@@ -733,6 +745,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
         assert_response :success
         assert_select "#adapter-settings-ui_chat"
+        assert_select ".adapter-enabled-checkbox[data-adapter-type=ui_chat]"
       end
 
       should "render adapter-settings div even when adapter is disabled" do
@@ -843,15 +856,48 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       end
 
       should "filter bindings by channel_type" do
-        other_project = Project.create!(name: "Other Proj", identifier: "other-proj")
-        other_project.enable_module!(:ai_helper)
+        slack_project = Project.create!(name: "Slack Proj", identifier: "slack-proj")
+        slack_project.enable_module!(:ai_helper)
         AiHelperChannelBinding.create!(channel_type: "ui_chat", channel_id: "C111", channel_name: "#dev", project: Project.find(1))
+        AiHelperChannelBinding.create!(channel_type: "fake_other", channel_id: "S222", channel_name: "#general", project: slack_project)
 
         get :index, params: { tab: "channels" }
 
         assert_response :success
         assert_select "#tab-content-channels", text: /C111/
-        other_project.destroy if other_project.persisted?
+        assert_select "#tab-content-channels", text: /S222/
+        slack_project.destroy
+      end
+
+      should "clear redmine_user_id when both name and id are blank" do
+        user = User.active.sorted.first
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test", redmine_user_id: user.id)
+
+        post :update, params: {
+          tab: "channels",
+          ai_helper_setting: {},
+          chat_adapter_settings: {
+            "ui_chat" => { "enabled" => "1", "bot_token" => "xoxb-test", "redmine_user_id" => "", "redmine_user_name" => "" }
+          }
+        }
+
+        assert_redirected_to controller: "ai_helper_settings", action: :index, tab: "channels"
+        setting = AiHelperChatAdapterSetting.for_channel("ui_chat")
+        assert_nil setting.redmine_user_id
+      end
+
+      should "reject non-matching redmine_user_name with validation error" do
+        post :update, params: {
+          tab: "channels",
+          ai_helper_setting: {},
+          chat_adapter_settings: {
+            "ui_chat" => { "enabled" => "1", "bot_token" => "xoxb-test", "redmine_user_id" => "", "redmine_user_name" => "nonexistent user" }
+          }
+        }
+
+        assert_response :success
+        assert_equal "channels", assigns(:selected_tab)
+        assert_select ".errorExplanation", text: /does not match any user/
       end
     end
   end

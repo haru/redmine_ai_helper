@@ -73,14 +73,16 @@ class AiHelperSettingsController < ApplicationController
     render_error status: 422, message: l(:error_invalid_authenticity_token)
   end
 
-  # Find or create the AI Helper setting and load model profiles
+  # Find or create the AI Helper setting and load all settings data
+  # (model profiles, projects, channel bindings, and active users).
   def find_setting
     @setting = AiHelperSetting.find_or_create
     @model_profiles = AiHelperModelProfile.order(:name)
     @ai_helper_projects = Project.joins(:enabled_modules).where(enabled_modules: { name: "ai_helper" }).order(:name)
-    @channel_bindings = AiHelperChannelBinding.includes(:project).order(:channel_type, :channel_id)
+    @channel_bindings_by_type = AiHelperChannelBinding.includes(:project)
+                                                      .order(:channel_type, :channel_id)
+                                                      .group_by(&:channel_type)
     @ai_helper_users = User.active.sorted
-    @channel_bindings_by_type = @channel_bindings.group_by(&:channel_type)
   end
 
   # Builds adapter setting records from the channels tab params, keyed by

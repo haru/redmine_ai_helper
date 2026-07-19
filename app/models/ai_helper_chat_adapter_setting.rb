@@ -10,10 +10,13 @@ class AiHelperChatAdapterSetting < ApplicationRecord
   belongs_to :dm_default_project, class_name: "Project", optional: true
   belongs_to :redmine_user, class_name: "User", optional: true
 
+  attr_accessor :redmine_user_name
+
   validates :channel_type, presence: true, uniqueness: true
   validate :required_fields_present_when_enabled
+  validate :redmine_user_name_matches_existing_user
 
-  safe_attributes "enabled", "app_token", "bot_token", "dm_default_project_id", "redmine_user_id"
+  safe_attributes "enabled", "app_token", "bot_token", "dm_default_project_id", "redmine_user_id", "redmine_user_name"
 
   class << self
     # Returns the setting row for the given adapter, or a new unsaved record
@@ -60,6 +63,16 @@ class AiHelperChatAdapterSetting < ApplicationRecord
   def required_setting_fields
     adapter = RedmineAiHelper::ChatChannel::BaseAdapter.adapters[channel_type]
     adapter ? adapter.required_setting_fields : []
+  end
+
+  # Validates that the submitted redmine_user_name corresponds to an actual
+  # user record. When the form sends a non-matching name, the hidden
+  # redmine_user_id will be blank — this catches the mismatch server-side.
+  def redmine_user_name_matches_existing_user
+    return if redmine_user_name.blank?
+    return if redmine_user_id.present?
+
+    errors.add(:redmine_user_name, :invalid)
   end
 
   # Validates that the adapter's required fields are present when the

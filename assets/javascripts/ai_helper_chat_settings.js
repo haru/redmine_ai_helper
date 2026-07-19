@@ -2,9 +2,9 @@
 
 function setAdapterSettingsVisible(channelType) {
   const checkbox = document.querySelector(
-    'input[type=checkbox][data-adapter-type="' + channelType + '"]'
+    `input[type=checkbox][data-adapter-type="${channelType}"]`
   );
-  const settingsDiv = document.getElementById("adapter-settings-" + channelType);
+  const settingsDiv = document.getElementById(`adapter-settings-${channelType}`);
   if (!checkbox || !settingsDiv) return;
   settingsDiv.style.display = checkbox.checked ? "" : "none";
 }
@@ -25,41 +25,30 @@ function setupAdapterCheckboxListeners() {
 }
 
 function setupDatalistHandlers() {
-  const hiddenInputs = document.querySelectorAll(
-    'input[type=hidden][name*="[redmine_user_id]"]'
+  const textInputs = document.querySelectorAll(
+    'input[list^="ai-helper-users-datalist-"]'
   );
-  hiddenInputs.forEach(function (hiddenInput) {
-    const name = hiddenInput.getAttribute("name");
-    const match = name.match(
-      /^chat_adapter_settings\[([^\]]+)\]\[redmine_user_id\]$/
+  textInputs.forEach(function (textInput) {
+    const listAttr = textInput.getAttribute("list");
+    const channelType = listAttr.replace("ai-helper-users-datalist-", "");
+    const hiddenInput = document.querySelector(
+      `input[type=hidden][name="chat_adapter_settings\\[${channelType}\\]\\[redmine_user_id\\]"]`
     );
-    if (!match) return;
+    if (!hiddenInput) return;
 
-    const channelType = match[1];
-    const textInput = document.querySelector(
-      'input[list="ai-helper-users-datalist-' + channelType + '"]'
-    );
-    if (!textInput) return;
-
-    textInput.addEventListener("input", function () {
+    function syncHiddenInput() {
       const enteredText = textInput.value.trim();
-      const datalistId = textInput.getAttribute("list");
-      const datalist = document.getElementById(datalistId);
+      const datalist = document.getElementById(listAttr);
       if (!datalist) return;
 
-      let matched = false;
-      const options = datalist.querySelectorAll("option");
-      for (let i = 0; i < options.length; i++) {
-        if (options[i].textContent === enteredText) {
-          hiddenInput.value = options[i].getAttribute("value");
-          matched = true;
-          break;
-        }
-      }
-      if (!matched) {
-        hiddenInput.value = "";
-      }
-    });
+      const matched = Array.from(datalist.querySelectorAll("option")).find(
+        function (option) { return option.textContent === enteredText; }
+      );
+      hiddenInput.value = matched ? matched.getAttribute("value") : "";
+    }
+
+    textInput.addEventListener("input", syncHiddenInput);
+    textInput.addEventListener("blur", syncHiddenInput);
   });
 }
 
