@@ -7,6 +7,7 @@ class AiHelperChannelConversation < ApplicationRecord
 
   validates :channel_type, presence: true
   validates :thread_key, presence: true, uniqueness: { scope: :channel_type }
+  validates :conversation, presence: true
 
   # Returns the conversation bound to the given thread, creating both the
   # conversation and the binding when the thread is seen for the first time.

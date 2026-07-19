@@ -7,6 +7,7 @@ class AiHelperChannelBinding < ApplicationRecord
 
   validates :channel_type, presence: true
   validates :channel_id, presence: true, uniqueness: { scope: :channel_type }
+  validates :project, presence: true
 
   scope :for_channel, ->(channel_type, channel_id) {
           where(channel_type: channel_type, channel_id: channel_id)

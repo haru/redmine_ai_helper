@@ -149,11 +149,12 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
       @adapter.stubs(:fetch_bot_user_id).returns("B001")
       @adapter.stubs(:open_connection_url).returns("wss://example")
       slept = []
-      @adapter.stubs(:sleep) { |seconds| slept << seconds }
+      @adapter.stubs(:sleep).with { |seconds| slept << seconds; true }
       call_count = 0
-      @adapter.stubs(:listen) do
+      @adapter.stubs(:listen).with do |_url|
         call_count += 1
         @adapter.stop if call_count == 2
+        true
       end
 
       @adapter.start
