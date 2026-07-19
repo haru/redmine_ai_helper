@@ -59,6 +59,37 @@ class AiHelperChatAdapterSettingTest < ActiveSupport::TestCase
 
       assert_predicate setting, :valid?
     end
+
+    should "be valid when redmine_user_name is blank and redmine_user_id is blank" do
+      setting = AiHelperChatAdapterSetting.new(
+        channel_type: "fake_setting_chat", enabled: true,
+        app_token: "xapp-test", bot_token: "xoxb-test",
+        redmine_user_name: "", redmine_user_id: nil
+      )
+
+      assert_predicate setting, :valid?
+    end
+
+    should "be valid when both redmine_user_name and redmine_user_id are present" do
+      setting = AiHelperChatAdapterSetting.new(
+        channel_type: "fake_setting_chat", enabled: true,
+        app_token: "xapp-test", bot_token: "xoxb-test",
+        redmine_user_name: "User 2", redmine_user_id: 2
+      )
+
+      assert_predicate setting, :valid?
+    end
+
+    should "reject redmine_user_name when redmine_user_id is blank" do
+      setting = AiHelperChatAdapterSetting.new(
+        channel_type: "fake_setting_chat", enabled: true,
+        app_token: "xapp-test", bot_token: "xoxb-test",
+        redmine_user_name: "Nonexistent User", redmine_user_id: ""
+      )
+
+      assert_not setting.valid?
+      assert_predicate setting.errors[:redmine_user_name], :present?
+    end
   end
 
   context "safe_attributes" do

@@ -242,6 +242,12 @@ en:
         name_duplicate: "Command name is already in use"
         project_required: "Project commands require a project"
   activerecord:
+    errors:
+      models:
+        ai_helper_chat_adapter_setting:
+          attributes:
+            redmine_user_name:
+              invalid: "does not match any user"
     models:
       ai_helper_model_profile: "Model Profile"
       ai_helper_setting: "AI Helper Setting"

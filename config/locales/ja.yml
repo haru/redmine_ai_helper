@@ -242,6 +242,12 @@ ja:
         name_duplicate: "コマンド名が既に使用されています"
         project_required: "プロジェクトコマンドにはプロジェクトが必要です"
   activerecord:
+    errors:
+      models:
+        ai_helper_chat_adapter_setting:
+          attributes:
+            redmine_user_name:
+              invalid: "一致するユーザーが見つかりません"
     models:
       ai_helper_model_profile: "モデルプロファイル"
       ai_helper_setting: "AIヘルパー設定"
