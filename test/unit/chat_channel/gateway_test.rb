@@ -334,6 +334,13 @@ class ChatChannelGatewayTest < ActiveSupport::TestCase
       assert_match(/boom/, error.message)
     end
 
+    should "prefer the runtime error over a configuration error when all adapters die with a mix of both" do
+      @gateway.stubs(:build_enabled_adapters).returns([ ConfigErrorAdapter.new, RuntimeErrorAdapter.new ])
+
+      error = assert_raises(RuntimeError) { @gateway.run }
+      assert_match(/boom/, error.message)
+    end
+
     should "not raise after a graceful shutdown even if an adapter died earlier" do
       dead = ConfigErrorAdapter.new
       live = BlockingAdapter.new

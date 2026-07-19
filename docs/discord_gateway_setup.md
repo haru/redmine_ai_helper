@@ -31,7 +31,7 @@ which uses two tokens), and it does **not** require any privileged intents.
 3. Under **Privileged Gateway Intents**, leave **Message Content Intent**
    **OFF**. This integration only reacts to messages that mention the bot and
    to direct messages, both of which Discord delivers in full without the
-   privileged intent. Leaving it off keeps the bot at least privilege and needs
+   privileged intent. Leaving it off keeps the bot least-privileged and needs
    no Discord review.
 
 ## 2. Invite the bot to your server

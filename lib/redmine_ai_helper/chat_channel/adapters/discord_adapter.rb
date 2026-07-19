@@ -46,6 +46,10 @@ module RedmineAiHelper
 
         # Base URL of the Discord REST API (v10).
         DISCORD_API_BASE = "https://discord.com/api/v10"
+        # Gateway API version and payload encoding. Both are required query
+        # params on the gateway WebSocket URL; omitting them connects to
+        # Discord's current default version, which can change unannounced.
+        GATEWAY_QUERY_STRING = "v=10&encoding=json"
         # Open/read timeout for every REST call (contract: 10 seconds).
         HTTP_TIMEOUT_SECONDS = 10
         # Upper bound of the exponential reconnect backoff.
@@ -60,7 +64,7 @@ module RedmineAiHelper
         # Poll interval while waiting for the Hello opcode that carries the
         # real heartbeat interval.
         HELLO_WAIT_SECONDS = 1
-        # Channel types that are threads (public, private, announcement).
+        # Channel types that are threads (announcement, public, private).
         THREAD_CHANNEL_TYPES = [ 10, 11, 12 ].freeze
         # Message types this integration reacts to: DEFAULT and REPLY.
         REPLYABLE_MESSAGE_TYPES = [ 0, 19 ].freeze
@@ -72,6 +76,18 @@ module RedmineAiHelper
         THREAD_NAME_MAX_LENGTH = 100
         # Reaction shown while a question is being processed (FR-009).
         PROCESSING_EMOJI = "\u{23F3}" # ⏳
+        # Upper bound on @reply_targets: the gateway is a resident process, and
+        # reply-mode entries have no other eviction path, so the map is capped
+        # and the oldest entry is dropped once it is exceeded (FIFO). Losing an
+        # old entry only widens the message #send_message references (the root
+        # id fallback still resolves the right conversation).
+        MAX_REPLY_TARGETS = 500
+        # Upper bound on reply-chain hops walked by #walk_to_root. Each hop is
+        # a blocking REST call on the WebSocket receive thread, so an
+        # unbounded chain would stall heartbeat processing long enough to be
+        # mistaken for a zombie connection. Beyond the limit, the
+        # farthest-resolved message is treated as the root.
+        MAX_REPLY_CHAIN_HOPS = 20
 
         # Gateway opcode 0: a dispatch event (READY, MESSAGE_CREATE, ...).
         OP_DISPATCH = 0
@@ -270,7 +286,7 @@ module RedmineAiHelper
           @last_sequence = nil
           @fatal_close = nil
           adapter = self
-          @ws = WebSocket::Client::Simple.connect(url) do |ws|
+          @ws = WebSocket::Client::Simple.connect("#{url}?#{GATEWAY_QUERY_STRING}") do |ws|
             ws.on(:message) do |msg|
               case msg.type
               when :text  then adapter.send(:handle_gateway_message, msg.data)
@@ -460,14 +476,17 @@ module RedmineAiHelper
         # @return [String] the origin message id
         def walk_to_root(channel_id, message)
           current = message
+          hops = 0
           loop do
             referenced_id = current.dig("message_reference", "message_id")
             return current["id"] if referenced_id.blank?
+            return current["id"] if hops >= MAX_REPLY_CHAIN_HOPS
 
             parent = safe_fetch_message(channel_id, referenced_id)
             return current["id"] if parent.nil?
 
             current = parent
+            hops += 1
           end
         end
 
@@ -513,7 +532,9 @@ module RedmineAiHelper
         # @param message_id [String] the question message id
         # @return [void]
         def record_reply_target(thread_key, message_id)
+          @reply_targets.delete(thread_key)
           @reply_targets[thread_key] = message_id
+          @reply_targets.delete(@reply_targets.each_key.first) while @reply_targets.size > MAX_REPLY_TARGETS
         end
 
         # Records the channel a received message actually arrived in, so the
@@ -749,7 +770,8 @@ module RedmineAiHelper
         def retry_after_seconds(response)
           body = JSON.parse(response.body.to_s)
           body["retry_after"].to_f
-        rescue JSON::ParserError
+        rescue JSON::ParserError => e
+          ai_helper_logger.debug "discord: could not parse retry_after from 429 body (#{e.message}); falling back to 1s"
           1.0
         end
 

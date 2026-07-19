@@ -129,6 +129,16 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
       assert_raises(DiscordRequestError) { @adapter.send(:request, :get, "/users/@me") }
     end
 
+    should "log a debug message and fall back to 1 second when the 429 body cannot be parsed" do
+      response = http_response(429, {})
+      response.stubs(:body).returns("not json")
+      logger = mock("logger")
+      logger.expects(:debug).with(regexp_matches(/retry_after/))
+      @adapter.stubs(:ai_helper_logger).returns(logger)
+
+      assert_equal 1.0, @adapter.send(:retry_after_seconds, response)
+    end
+
     should "raise DiscordRequestError with the status and code on other 4xx" do
       Net::HTTP.any_instance.stubs(:request).returns(http_response(400, { "code" => 50035, "message" => "Invalid" }))
 
@@ -151,6 +161,16 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
       assert_equal "wss://gw", @adapter.send(:gateway_url)
     end
 
+    should "connect the websocket with the required v and encoding query params" do
+      @adapter.stubs(:heartbeat_loop)
+      ws = mock("ws")
+      ws.stubs(:on)
+      ws.stubs(:close)
+      WebSocket::Client::Simple.expects(:connect).with("wss://gw?v=10&encoding=json").returns(ws)
+
+      @adapter.send(:listen, "wss://gw")
+    end
+
     should "terminate without retry when /users/@me returns 401" do
       @adapter.expects(:fetch_bot_user_id).raises(DiscordApiError, "unauthorized")
       @adapter.expects(:gateway_url).never
@@ -166,6 +186,18 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
       @adapter.start
 
       assert_equal "B1", @adapter.bot_user_id
+    end
+
+    should "terminate #start without retry when the gateway closes with a fatal code" do
+      @adapter.stubs(:fetch_bot_user_id).returns("B1")
+      @adapter.expects(:gateway_url).once.returns("wss://gw")
+      @adapter.stubs(:heartbeat_loop).with { @adapter.send(:handle_close_frame, 4004); true }
+      ws = mock("ws")
+      ws.stubs(:on)
+      ws.stubs(:close)
+      WebSocket::Client::Simple.stubs(:connect).returns(ws)
+
+      assert_raises(DiscordApiError) { @adapter.start }
     end
 
     should "store the heartbeat interval and send Identify on Hello" do
@@ -234,12 +266,33 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
       assert_kind_of DiscordApiError, @adapter.instance_variable_get(:@fatal_close)
     end
 
+    should "request a reconnect when a heartbeat ack is missing at the next send time (zombie connection)" do
+      @adapter.instance_variable_set(:@connection_ended, Queue.new)
+      @adapter.instance_variable_set(:@heartbeat_interval, 0.01)
+      @adapter.instance_variable_set(:@heartbeat_acked, false)
+      @adapter.stubs(:send_heartbeat)
+
+      @adapter.send(:heartbeat_loop)
+
+      assert @adapter.instance_variable_get(:@reconnect_requested)
+    end
+
     should "not capture a fatal error on a transient close code" do
       @adapter.instance_variable_set(:@connection_ended, Queue.new)
 
       @adapter.handle_close_frame(1006)
 
       assert_nil @adapter.instance_variable_get(:@fatal_close)
+    end
+
+    should "evict the oldest reply target once the cap is exceeded, keeping recent ones" do
+      cap = DiscordAdapter::MAX_REPLY_TARGETS
+      (cap + 1).times { |i| @adapter.send(:record_reply_target, "key#{i}", "msg#{i}") }
+
+      reply_targets = @adapter.instance_variable_get(:@reply_targets)
+      assert_equal cap, reply_targets.size
+      assert_not reply_targets.key?("key0"), "the oldest entry must be evicted"
+      assert reply_targets.key?("key#{cap}"), "the newest entry must be kept"
     end
   end
 
@@ -381,6 +434,22 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
       @adapter.send(:process_message, dm_message(id: "C", content: "more", ref: "Z"))
 
       assert_equal "D1:msg:C", @dispatcher.messages.first.thread_key
+    end
+
+    should "stop walking the reply chain at the hop limit instead of recursing forever" do
+      limit = DiscordAdapter::MAX_REPLY_CHAIN_HOPS
+      # message "0" has no reference (the true root); "1".."limit+1" each
+      # reference the previous one, so the chain is longer than the limit.
+      @adapter.stubs(:fetch_message).with("D1", "0").returns({ "id" => "0", "author" => { "id" => "BOT" } })
+      (1..(limit + 1)).each do |i|
+        @adapter.stubs(:fetch_message).with("D1", i.to_s).returns(
+          { "id" => i.to_s, "author" => { "id" => "BOT" }, "message_reference" => { "message_id" => (i - 1).to_s } }
+        )
+      end
+
+      @adapter.send(:process_message, dm_message(id: "C", content: "more", ref: (limit + 1).to_s))
+
+      assert_equal "D1:msg:1", @dispatcher.messages.first.thread_key
     end
   end
 

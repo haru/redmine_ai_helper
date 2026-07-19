@@ -59,12 +59,17 @@ conversation-level decisions:
      `GET /channels/{id}` resolves the thread's `parent_id`, so bindings match
      on the parent channel and `thread_key = "{parent_id}:{thread_id}"`.
    - **Reply mode** (DMs, and channels where a thread cannot be created):
-     replies are posted as Discord replies (`message_reference`) and the
-     conversation continues when a user replies to one of the bot's answers.
-     `thread_key = "{channel_id}:msg:{root_message_id}"`, where the root is
-     found by walking the reply chain back to its origin with
-     `GET /channels/{id}/messages/{id}`. A reply to a non-bot message, or a
-     referenced message that cannot be fetched, starts a new conversation.
+     replies are posted as Discord replies (`message_reference`).
+     `thread_key = "{channel_id}:msg:{root_message_id}"`. In DMs the
+     conversation continues when a user replies to one of the bot's answers,
+     the root found by walking the reply chain back to its origin with
+     `GET /channels/{id}/messages/{id}`; a reply to a non-bot message, or a
+     referenced message that cannot be fetched, starts a new conversation. In
+     guild reply mode, replying with `message_reference` is only the answer's
+     posting format (per FR-013/FR-007, spec.md:254-255) — it is not a
+     continuation mechanism, since `process_guild_message` does not inspect
+     `message_reference`; every mention in these channels starts a new
+     conversation.
 
 4. **Gateway fault isolation instead of single-adapter-crash-stops-all.** The
    gateway now keeps running while any adapter thread is alive: a crashed
