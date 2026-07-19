@@ -620,7 +620,8 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert_select "#tab-content-channels input[name='chat_adapter_settings[ui_chat][enabled]']"
       assert_select "#tab-content-channels input[name='chat_adapter_settings[ui_chat][bot_token]'][type=password]"
       assert_select "#tab-content-channels select[name='chat_adapter_settings[ui_chat][dm_default_project_id]']"
-      assert_select "#tab-content-channels select[name='chat_adapter_settings[ui_chat][redmine_user_id]']"
+      assert_select "#tab-content-channels input[name='chat_adapter_settings[ui_chat][redmine_user_id]'][type=hidden]"
+      assert_select "#tab-content-channels input[name='chat_adapter_settings[ui_chat][redmine_user_name]'][type=text]"
     end
 
     should "save adapter settings from the channels tab" do
@@ -722,6 +723,136 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       existing.reload
       assert_not existing.enabled, "adapter must not be partially persisted when the global setting is invalid"
       assert_equal "xoxb-old", existing.bot_token
+    end
+
+    context "US1: adapter enabled checkbox toggle visibility" do
+      should "render adapter-settings div wrapping settings fields when enabled" do
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test")
+
+        get :index, params: { tab: "channels" }
+
+        assert_response :success
+        assert_select "#adapter-settings-ui_chat"
+      end
+
+      should "render adapter-settings div even when adapter is disabled" do
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: false)
+
+        get :index, params: { tab: "channels" }
+
+        assert_response :success
+        assert_select "#adapter-settings-ui_chat"
+      end
+
+      should "save adapter settings correctly when adapter is disabled" do
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: false, bot_token: "xoxb-keep")
+
+        post :update, params: {
+          tab: "channels",
+          ai_helper_setting: {},
+          chat_adapter_settings: {
+            "ui_chat" => { "enabled" => "0", "bot_token" => AiHelperSettingsController::DUMMY_TOKEN }
+          }
+        }
+
+        assert_redirected_to controller: "ai_helper_settings", action: :index, tab: "channels"
+        setting = AiHelperChatAdapterSetting.for_channel("ui_chat")
+        assert_not setting.enabled
+        assert_equal "xoxb-keep", setting.bot_token
+      end
+    end
+
+    context "US2: incremental search account selection" do
+      should "render text input with datalist for redmine_user instead of select" do
+        get :index, params: { tab: "channels" }
+
+        assert_response :success
+        assert_select "#tab-content-channels input[type=text][name='chat_adapter_settings[ui_chat][redmine_user_name]']"
+        assert_select "#tab-content-channels select[name='chat_adapter_settings[ui_chat][redmine_user_id]']", { count: 0 }
+      end
+
+      should "render hidden input for redmine_user_id and datalist with options" do
+        get :index, params: { tab: "channels" }
+
+        assert_response :success
+        assert_select "#tab-content-channels input[type=hidden][name='chat_adapter_settings[ui_chat][redmine_user_id]']"
+        assert_select "#tab-content-channels datalist#ai-helper-users-datalist-ui_chat option", { minimum: 1 }
+      end
+
+      should "display selected user name in text input on page reload when redmine_user_id is set" do
+        user = User.active.sorted.first
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test", redmine_user_id: user.id)
+
+        get :index, params: { tab: "channels" }
+
+        assert_response :success
+        assert_select "input[type=text][name='chat_adapter_settings[ui_chat][redmine_user_name]'][value=?]", user.name
+        assert_select "input[type=hidden][name='chat_adapter_settings[ui_chat][redmine_user_id]'][value=?]", user.id.to_s
+      end
+
+      should "save datalist-selected user_id correctly" do
+        user = User.active.sorted.first
+
+        post :update, params: {
+          tab: "channels",
+          ai_helper_setting: {},
+          chat_adapter_settings: {
+            "ui_chat" => { "enabled" => "1", "bot_token" => "xoxb-new", "redmine_user_id" => user.id.to_s, "redmine_user_name" => user.name }
+          }
+        }
+
+        assert_redirected_to controller: "ai_helper_settings", action: :index, tab: "channels"
+        setting = AiHelperChatAdapterSetting.for_channel("ui_chat")
+        assert_equal user.id, setting.redmine_user_id
+      end
+    end
+
+    context "US3: channel bindings inside adapter" do
+      should "render channel bindings table inside each adapter fieldset" do
+        AiHelperChannelBinding.create!(channel_type: "ui_chat", channel_id: "C111", channel_name: "#dev", project: Project.find(1))
+
+        get :index, params: { tab: "channels" }
+
+        assert_response :success
+        assert_select "#tab-content-channels fieldset.box.tabular" do
+          assert_select "fieldset.box table.list td", text: "C111"
+        end
+      end
+
+      should "not render chat tool selector dropdown in channels tab" do
+        get :index, params: { tab: "channels" }
+
+        assert_response :success
+        assert_select "select[name='ai_helper_channel_binding[channel_type]']", { count: 0 }
+      end
+
+      should "not render channel type column in bindings table" do
+        AiHelperChannelBinding.create!(channel_type: "ui_chat", channel_id: "C111", channel_name: "#dev", project: Project.find(1))
+
+        get :index, params: { tab: "channels" }
+
+        assert_response :success
+        assert_select "#tab-content-channels fieldset.box.tabular table.list thead th", { count: 4 }
+      end
+
+      should "render hidden field with channel_type in the add binding form" do
+        get :index, params: { tab: "channels" }
+
+        assert_response :success
+        assert_select "input[type=hidden][name='ai_helper_channel_binding[channel_type]'][value='ui_chat']"
+      end
+
+      should "filter bindings by channel_type" do
+        other_project = Project.create!(name: "Other Proj", identifier: "other-proj")
+        other_project.enable_module!(:ai_helper)
+        AiHelperChannelBinding.create!(channel_type: "ui_chat", channel_id: "C111", channel_name: "#dev", project: Project.find(1))
+
+        get :index, params: { tab: "channels" }
+
+        assert_response :success
+        assert_select "#tab-content-channels", text: /C111/
+        other_project.destroy if other_project.persisted?
+      end
     end
   end
 end

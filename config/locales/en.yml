@@ -52,6 +52,7 @@ en:
         channel_id: "Channel ID"
         channel_name: "Channel name"
         add_binding: "Add binding"
+        no_match_message: "No matching users found"
       errors:
         service_account_not_configured: "No active execution account is configured for this chat integration, so the request could not be processed. Please ask your administrator to configure the execution account."
         channel_not_bound: "This channel is not associated with any Redmine project. Please ask your administrator to configure the channel mapping."
