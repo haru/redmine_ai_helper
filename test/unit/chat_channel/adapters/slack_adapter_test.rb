@@ -330,33 +330,5 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
       assert_equal [ 3900, 3900, 200 ], chunks.map(&:length)
       assert_equal text, chunks.join
     end
-
-    should "add an hourglass reaction to the individual message, not the thread root" do
-      @adapter.expects(:api_call).with(
-        "reactions.add",
-        token: "xoxb-secret",
-        params: { channel: "C123", timestamp: "333.444", name: "hourglass_flowing_sand" }
-      ).returns({ "ok" => true })
-
-      message = RedmineAiHelper::ChatChannel::IncomingMessage.new(
-        channel_type: "slack", channel_id: "C123", thread_key: "C123:111.222",
-        message_ts: "333.444", text: "q", dm: false
-      )
-      @adapter.notify_processing(message: message)
-    end
-
-    should "fall back to the thread_key timestamp when message_ts is absent" do
-      @adapter.expects(:api_call).with(
-        "reactions.add",
-        token: "xoxb-secret",
-        params: { channel: "C123", timestamp: "111.222", name: "hourglass_flowing_sand" }
-      ).returns({ "ok" => true })
-
-      message = RedmineAiHelper::ChatChannel::IncomingMessage.new(
-        channel_type: "slack", channel_id: "C123", thread_key: "C123:111.222",
-        text: "q", dm: false
-      )
-      @adapter.notify_processing(message: message)
-    end
   end
 end

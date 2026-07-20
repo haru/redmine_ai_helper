@@ -529,37 +529,4 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
       assert_equal text, chunks.join
     end
   end
-
-  context "notify_processing" do
-    should "add the hourglass reaction in the recorded actual channel" do
-      @adapter.send(:record_actual_channel, "M1", "T9")
-      @adapter.expects(:add_reaction).with("T9", "M1")
-
-      @adapter.notify_processing(message: IncomingMessage.new(
-        channel_type: "discord", channel_id: "P1", thread_key: "P1:T9", message_ts: "M1", text: "q"
-      ))
-    end
-
-    should "fall back to the thread id in thread mode" do
-      @adapter.expects(:add_reaction).with("T9", "M1")
-
-      @adapter.notify_processing(message: IncomingMessage.new(
-        channel_type: "discord", channel_id: "P1", thread_key: "P1:T9", message_ts: "M1", text: "q"
-      ))
-    end
-
-    should "fall back to the channel id in reply mode" do
-      @adapter.expects(:add_reaction).with("D1", "M1")
-
-      @adapter.notify_processing(message: IncomingMessage.new(
-        channel_type: "discord", channel_id: "D1", thread_key: "D1:msg:A", message_ts: "M1", text: "q"
-      ))
-    end
-
-    should "url-encode the hourglass emoji in the reaction path" do
-      @adapter.expects(:request).with(:put, regexp_matches(%r{/reactions/%E2%8F%B3/@me\z}))
-
-      @adapter.send(:add_reaction, "C1", "M1")
-    end
-  end
 end

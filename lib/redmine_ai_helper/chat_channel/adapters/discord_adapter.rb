@@ -74,8 +74,6 @@ module RedmineAiHelper
         THREAD_ALREADY_EXISTS_CODE = 160004
         # Maximum length of an auto-generated thread name (Discord limit: 100).
         THREAD_NAME_MAX_LENGTH = 100
-        # Reaction shown while a question is being processed (FR-009).
-        PROCESSING_EMOJI = "\u{23F3}" # ⏳
         # Upper bound on @reply_targets: the gateway is a resident process, and
         # reply-mode entries have no other eviction path, so the map is capped
         # and the oldest entry is dropped once it is exceeded (FIFO). Losing an
@@ -130,7 +128,6 @@ module RedmineAiHelper
           @backoff = 1
           @heartbeat_acked = true
           @reply_targets = {}
-          @actual_channels = {}
         end
 
         # Connects to the Discord gateway and blocks while receiving events.
@@ -232,15 +229,6 @@ module RedmineAiHelper
             body[:message_reference] = { message_id: reply_to } if reply_to && index.zero?
             post_message(target, body)
           end
-        end
-
-        # Adds the processing reaction (⏳) to the received message in the
-        # channel it actually arrived in (FR-009).
-        # @param message [IncomingMessage] the message being processed
-        # @return [void]
-        def notify_processing(message:)
-          channel = actual_channel_for(message)
-          add_reaction(channel, message.message_ts)
         end
 
         # Classifies DiscordApiError as a fatal configuration/credential error
@@ -393,7 +381,6 @@ module RedmineAiHelper
           message_id = data["id"]
           thread_key = resolve_dm_thread_key(data, channel_id, message_id)
           record_reply_target(thread_key, message_id)
-          record_actual_channel(message_id, channel_id)
           dispatch(IncomingMessage.new(
             channel_type: channel_type, channel_id: channel_id, thread_key: thread_key,
             message_ts: message_id, text: data["content"].to_s.strip, dm: true
@@ -418,7 +405,6 @@ module RedmineAiHelper
 
           if THREAD_CHANNEL_TYPES.include?(channel["type"])
             parent_id = channel["parent_id"]
-            record_actual_channel(message_id, channel_id)
             dispatch(IncomingMessage.new(
               channel_type: channel_type, channel_id: parent_id,
               thread_key: "#{parent_id}:#{channel_id}", message_ts: message_id, text: text, dm: false
@@ -436,7 +422,6 @@ module RedmineAiHelper
         # @return [void]
         def dispatch_with_thread(channel_id, message_id, text)
           thread_id = create_thread(channel_id, message_id, text)
-          record_actual_channel(message_id, channel_id)
           if thread_id
             dispatch(IncomingMessage.new(
               channel_type: channel_type, channel_id: channel_id,
@@ -556,31 +541,6 @@ module RedmineAiHelper
           @reply_targets.delete(@reply_targets.each_key.first) while @reply_targets.size > MAX_REPLY_TARGETS
         end
 
-        # Records the channel a received message actually arrived in, so the
-        # processing reaction lands on the right message.
-        # @param message_id [String] the message id
-        # @param channel_id [String] the real channel the message is in
-        # @return [void]
-        def record_actual_channel(message_id, channel_id)
-          @actual_channels[message_id] = channel_id
-        end
-
-        # The channel to react in for a message: the recorded real channel,
-        # falling back to the thread_key (thread id in thread mode, channel id
-        # in reply mode). Consumes the recorded entry.
-        # @param message [IncomingMessage] the message being processed
-        # @return [String] the channel id to react in
-        def actual_channel_for(message)
-          recorded = @actual_channels.delete(message.message_ts)
-          return recorded if recorded
-
-          if message.thread_key.include?(":msg:")
-            message.thread_key.split(":msg:", 2).first
-          else
-            message.thread_key.split(":", 2).last
-          end
-        end
-
         # Parses a thread_key into the REST destination and the message to
         # reply to. Thread mode posts into the thread with no reference; reply
         # mode posts into the bound channel referencing the latest question.
@@ -695,15 +655,6 @@ module RedmineAiHelper
         # @return [Hash] the created message object
         def post_message(channel_id, body)
           request(:post, "/channels/#{channel_id}/messages", body: body)
-        end
-
-        # Adds the processing reaction to a message.
-        # @param channel_id [String] the channel the message is in
-        # @param message_id [String] the message id
-        # @return [void]
-        def add_reaction(channel_id, message_id)
-          emoji = URI.encode_www_form_component(PROCESSING_EMOJI)
-          request(:put, "/channels/#{channel_id}/messages/#{message_id}/reactions/#{emoji}/@me")
         end
 
         # Splits a reply into chunks within the Discord message limit,

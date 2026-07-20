@@ -47,8 +47,6 @@ class ChatChannelGatewayTest < ActiveSupport::TestCase
     end
 
     def send_message(channel_id:, thread_key:, text:); end
-
-    def notify_processing(message:); end
   end
 
   def incoming(text)
@@ -232,7 +230,6 @@ class ChatChannelGatewayTest < ActiveSupport::TestCase
 
     def stop; end
     def send_message(channel_id:, thread_key:, text:); end
-    def notify_processing(message:); end
   end
 
   # In-memory adapter that raises a non-configuration error when it starts.
@@ -288,7 +285,6 @@ class ChatChannelGatewayTest < ActiveSupport::TestCase
     end
 
     def send_message(channel_id:, thread_key:, text:); end
-    def notify_processing(message:); end
   end
 
   # Handler that signals a queue after handling a message.

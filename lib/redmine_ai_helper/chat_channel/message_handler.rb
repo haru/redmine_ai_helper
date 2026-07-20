@@ -30,12 +30,6 @@ module RedmineAiHelper
       # @return [void]
       def handle(message)
         user = nil
-        begin
-          @adapter.notify_processing(message: message)
-        rescue => e
-          ai_helper_logger.warn "chat channel: failed to notify processing: #{e.full_message}"
-        end
-
         user = adapter_settings(message).service_account
         return reply(message, guidance(:service_account_not_configured, nil)) unless user
 
