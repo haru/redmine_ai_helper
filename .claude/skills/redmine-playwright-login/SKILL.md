@@ -59,6 +59,7 @@ If the user (or `$ARGUMENTS`) specified a page to open next, navigate there now 
 - This is a local/test Redmine instance for development — credentials come from env vars set up for this purpose, not real user secrets.
 - Do not print the password anywhere except as needed to pass it into the Playwright fill call.
 - Reuse the already-open browser session for subsequent actions in the same conversation — no need to re-login unless the session was closed or logged out.
+- Never save screenshots (`mcp__playwright__browser_take_screenshot`) or snapshot files into the plugin's working directory — it's a git repo, and stray files there risk being committed. Always write them under the session scratchpad directory (or another path under `/tmp`) instead.
 
 ## Error Handling
 
