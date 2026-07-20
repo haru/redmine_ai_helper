@@ -1,8 +1,14 @@
 <% adapters = RedmineAiHelper::ChatChannel::BaseAdapter.adapters.keys.sort %>
 <% adapters.each do |channel_type| %>
   <% adapter_setting = ai_helper_chat_adapter_setting(channel_type, @chat_adapter_settings) %>
-  <fieldset class="box tabular">
+  <fieldset class="box tabular chat-adapter-fieldset">
     <legend><%= ai_helper_chat_adapter_label(channel_type) %></legend>
+    <span class="adapter-help-link">
+      <%= link_to sprite_icon("help", l(:label_help)),
+                  ai_helper_settings_help_path(channel_type),
+                  class: "adapter-help-trigger",
+                  data: { channel_type: channel_type } %>
+    </span>
     <% if adapter_setting.errors.any? %>
       <div class="errorExplanation">
         <ul>
@@ -107,5 +113,6 @@
         </p>
       </div>
     </fieldset>
+    <%= render partial: "ai_helper_settings/adapter_help_dialog", locals: { channel_type: channel_type } %>
   </fieldset>
 <% end %>

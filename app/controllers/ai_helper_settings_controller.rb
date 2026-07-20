@@ -22,6 +22,27 @@ class AiHelperSettingsController < ApplicationController
     @selected_tab = params[:tab].presence
   end
 
+  # Returns the HTML-rendered setup guide for a chat adapter.
+  # Used by the help popup dialog in the channels settings tab.
+  def help
+    channel_type = params[:channel_type]
+    valid_types = RedmineAiHelper::ChatChannel::BaseAdapter.adapters.keys
+    unless valid_types.include?(channel_type)
+      render_404
+      return
+    end
+
+    doc_path = Rails.root.join("plugins/redmine_ai_helper/docs/#{channel_type}_gateway_setup.md")
+    unless File.exist?(doc_path)
+      render_404
+      return
+    end
+
+    markdown = File.read(doc_path, encoding: Encoding::UTF_8)
+    html = Redmine::WikiFormatting::CommonMark::Formatter.new(markdown).to_html
+    render plain: html, content_type: "text/html"
+  end
+
   # Update the settings. The global setting and every adapter setting are
   # persisted atomically: if any of them is invalid, none is kept, so the
   # page never re-renders with only half of the changes committed.

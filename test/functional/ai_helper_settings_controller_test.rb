@@ -979,4 +979,27 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert_not AiHelperChatAdapterSetting.enabled?("discord")
     end
   end
+
+  context "help action" do
+    should "return HTML for a valid channel type" do
+      get :help, params: { channel_type: "discord" }
+
+      assert_response :success
+      assert_equal "text/html", @response.media_type
+      assert @response.body.include?("Discord Gateway Setup Guide")
+    end
+
+    should "return HTML for slack" do
+      get :help, params: { channel_type: "slack" }
+
+      assert_response :success
+      assert @response.body.include?("Slack Gateway Setup Guide")
+    end
+
+    should "return 404 for an invalid channel type" do
+      get :help, params: { channel_type: "unknown" }
+
+      assert_response :not_found
+    end
+  end
 end
