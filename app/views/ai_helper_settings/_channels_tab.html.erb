@@ -113,6 +113,8 @@
         </p>
       </div>
     </fieldset>
-    <%= render partial: "ai_helper_settings/adapter_help_dialog", locals: { channel_type: channel_type } %>
   </fieldset>
+<% end %>
+<% adapters.each do |channel_type| %>
+  <%= render partial: "ai_helper_settings/adapter_help_dialog", locals: { channel_type: channel_type } %>
 <% end %>

@@ -6,7 +6,6 @@ The integration uses Slack **Socket Mode**: the gateway process opens an outgoin
 
 ## Requirements
 
-- Redmine 6.x with the `redmine_ai_helper` plugin installed, migrated, and a working model profile (the web chat must already work).
 - Permission to create apps in your Slack workspace.
 - A dedicated Redmine **service account** (e.g. a user named `ai_helper`) that the gateway runs as. Add it to the relevant projects with an appropriate role — every question from Slack is answered with **this account's permissions**, regardless of who asks. Restricting the account's roles is how you limit what the gateway can read and do (e.g. read-only, or no issue deletion).
 
