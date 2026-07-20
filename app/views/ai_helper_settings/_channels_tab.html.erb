@@ -1,3 +1,4 @@
+<p class="ai-helper-notice"><%= t("ai_helper.chat_channel.settings.restart_notice") %></p>
 <% adapters = RedmineAiHelper::ChatChannel::BaseAdapter.adapters.keys.sort %>
 <% adapters.each do |channel_type| %>
   <% adapter_setting = ai_helper_chat_adapter_setting(channel_type, @chat_adapter_settings) %>

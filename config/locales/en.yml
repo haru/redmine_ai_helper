@@ -53,6 +53,7 @@ en:
         channel_id: "Channel ID"
         channel_name: "Channel name"
         add_binding: "Add binding"
+        restart_notice: "You need to restart the chat gateway for setting changes to take effect"
       errors:
         service_account_not_configured: "No active execution account is configured for this chat integration, so the request could not be processed. Please ask your administrator to configure the execution account."
         channel_not_bound: "This channel is not associated with any Redmine project. Please ask your administrator to configure the channel mapping."
