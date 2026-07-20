@@ -31,6 +31,9 @@ module RedmineAiHelper
       def initialize
         @queue = SizedQueue.new(QUEUE_SIZE)
         @shutdown_requested = false
+        @graceful = false
+        @adapter_errors = []
+        @adapter_mutex = Mutex.new
       end
 
       # Queues a message received by an adapter thread for the worker.
@@ -57,19 +60,26 @@ module RedmineAiHelper
         end
 
         install_signal_handlers
+        @alive = @adapters.size
         ai_helper_logger.info "gateway: starting adapters: #{@adapters.map(&:channel_type).join(", ")}"
         threads = @adapters.map { |adapter| start_adapter_thread(adapter) }
         worker_loop
         threads.each { |thread| thread.join(5) }
         ai_helper_logger.info "gateway: stopped"
-        raise @adapter_error if @adapter_error
+        raise aggregated_adapter_error if @adapter_errors.any? && !@graceful
       end
 
-      # Stops all adapters and lets the worker drain the queue and exit.
+      # Stops all adapters and lets the worker drain the queue and exit. A
+      # graceful shutdown (SIGTERM/SIGINT, or an operator stop) does not report
+      # past adapter failures as an error; a shutdown triggered because the
+      # last running adapter died (+from_failure+) does.
+      # @param from_failure [Boolean] whether the last adapter died, forcing
+      #   the shutdown, rather than an external stop request
       # @return [void]
-      def shutdown
+      def shutdown(from_failure: false)
         return if @shutdown_requested
         @shutdown_requested = true
+        @graceful = !from_failure
         ai_helper_logger.info "gateway: shutdown requested"
         (@adapters || []).each do |adapter|
           adapter.stop
@@ -88,18 +98,55 @@ module RedmineAiHelper
       end
 
       # Runs one adapter's blocking receive loop in its own thread. A crashed
-      # adapter takes the gateway down: errors must surface, not idle.
-      # Configuration/credential errors are wrapped in ConfigurationError so
-      # the supervisor can tell them apart from genuine crashes.
+      # adapter no longer takes the whole gateway down while other adapters are
+      # still running (FR-014); the gateway only shuts down once no adapter
+      # remains. The dead adapter is not restarted — the operator fixes the
+      # configuration and restarts the gateway.
       def start_adapter_thread(adapter)
         adapter.dispatcher = self
         Thread.new do
           adapter.start
+          handle_adapter_exit(adapter, nil)
         rescue => e
-          ai_helper_logger.error "gateway: adapter #{adapter.channel_type} terminated: #{e.full_message}"
-          @adapter_error = adapter.fatal_config_error?(e) ? ConfigurationError.new(e.message) : e
-          shutdown
+          handle_adapter_exit(adapter, e)
         end
+      end
+
+      # Records an adapter thread's exit. When it crashed, the error is logged
+      # (distinguishing configuration/credential errors) and collected. The
+      # gateway keeps running while any adapter remains; when the last adapter
+      # exits it shuts itself down, so the run never idles without a live
+      # integration.
+      # @param adapter [BaseAdapter] the adapter whose thread ended
+      # @param error [Exception, nil] the error it crashed with, or nil
+      # @return [void]
+      def handle_adapter_exit(adapter, error)
+        remaining = @adapter_mutex.synchronize do
+          if error
+            fatal = adapter.fatal_config_error?(error)
+            @adapter_errors << { error: error, fatal: fatal }
+            kind = fatal ? "configuration/credential error" : "runtime error"
+            ai_helper_logger.error "gateway: adapter #{adapter.channel_type} terminated (#{kind}): #{error.full_message}"
+          end
+          @alive -= 1
+        end
+
+        if remaining.positive?
+          ai_helper_logger.info "gateway: #{remaining} adapter(s) still running after #{adapter.channel_type} exited; continuing" if error
+        elsif !@shutdown_requested
+          shutdown(from_failure: true)
+        end
+      end
+
+      # The error to raise when every adapter has died: ConfigurationError when
+      # all deaths were configuration/credential errors (exit 0, no supervisor
+      # retry), otherwise the first genuine runtime error (supervisor retries).
+      # @return [Exception]
+      def aggregated_adapter_error
+        runtime_error = @adapter_errors.find { |entry| !entry[:fatal] }
+        return runtime_error[:error] if runtime_error
+
+        ConfigurationError.new(@adapter_errors.first[:error].message)
       end
 
       # Processes queued messages one at a time until shutdown, draining

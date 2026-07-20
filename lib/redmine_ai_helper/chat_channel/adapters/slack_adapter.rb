@@ -209,7 +209,7 @@ module RedmineAiHelper
         # pongs beyond the threshold force a reconnect.
         def ping_loop
           until stopped? || @reconnect_requested
-            break if @connection_ended.pop(PING_INTERVAL_SECONDS)
+            break if self.class.timed_queue_pop(@connection_ended, PING_INTERVAL_SECONDS)
             if ping_tick
               ai_helper_logger.warn "slack: #{MAX_MISSED_PONGS} pongs missed, reconnecting"
               request_reconnect
