@@ -85,9 +85,11 @@ module RedmineAiHelper
 
         begin
           User.current = user
+          I18n.locale = user.language.presence || Setting.default_language
           answer = RedmineAiHelper::Llm.new.chat(conversation, NOOP_PROC, { project: project })
         ensure
           User.current = User.anonymous
+          I18n.locale = I18n.default_locale
         end
 
         conversation.messages << answer
