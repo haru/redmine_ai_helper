@@ -30,14 +30,17 @@ module RedmineAiHelper
       # @return [void]
       def handle(message)
         user = nil
-        begin
-          @adapter.notify_processing(message: message)
-        rescue => e
-          ai_helper_logger.warn "chat channel: failed to notify processing: #{e.full_message}"
+        setting = adapter_settings(message)
+        user = setting.service_account
+        unless user
+          # FR-1 forbids saving an enabled adapter without an execution
+          # account, so an enabled adapter that resolves no active account can
+          # only mean the previously configured account was deleted (the FK
+          # nullifies redmine_user_id) or locked. Distinguish that runtime
+          # loss from an adapter that was simply never configured.
+          key = setting.enabled ? :service_account_unavailable : :service_account_not_configured
+          return reply(message, guidance(key, nil))
         end
-
-        user = adapter_settings(message).service_account
-        return reply(message, guidance(:service_account_not_configured, nil)) unless user
 
         project = resolve_project(message)
         unless project
@@ -89,11 +92,14 @@ module RedmineAiHelper
         conversation.messages << AiHelperMessage.new(role: "user", content: message.text)
         conversation.save!
 
+        original_locale = I18n.locale
         begin
           User.current = user
+          I18n.locale = user.language.presence || Setting.default_language
           answer = RedmineAiHelper::Llm.new.chat(conversation, NOOP_PROC, { project: project })
         ensure
           User.current = User.anonymous
+          I18n.locale = original_locale
         end
 
         conversation.messages << answer

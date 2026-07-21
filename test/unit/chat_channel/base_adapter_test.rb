@@ -8,7 +8,7 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
   # In-memory adapter used to verify that subclassing BaseAdapter alone is
   # enough to plug a new chat tool into the abstraction layer (SC-006).
   class FakeAdapter < RedmineAiHelper::ChatChannel::BaseAdapter
-    attr_reader :sent_messages, :processing_notified
+    attr_reader :sent_messages
 
     class << self
       def channel_type
@@ -23,7 +23,6 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
     def initialize
       super
       @sent_messages = []
-      @processing_notified = []
     end
 
     def start
@@ -36,10 +35,6 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
 
     def send_message(channel_id:, thread_key:, text:)
       @sent_messages << { channel_id: channel_id, thread_key: thread_key, text: text }
-    end
-
-    def notify_processing(message:)
-      @processing_notified << message
     end
   end
 
@@ -72,7 +67,7 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
     end
 
     should "be true when enabled and all required fields are present" do
-      create(:ai_helper_chat_adapter_setting, channel_type: "fake_chat", enabled: true, bot_token: "xoxb-token")
+      create(:ai_helper_chat_adapter_setting, channel_type: "fake_chat", enabled: true, bot_token: "xoxb-token", redmine_user_id: 2)
 
       assert_predicate FakeAdapter.new, :enabled?
     end
@@ -106,7 +101,6 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
         text: "hello from a fictional tool", dm: false
       ))
 
-      assert_equal 1, adapter.processing_notified.size
       assert_equal [ { channel_id: "FC1", thread_key: "FC1:1.000001", text: "fictional answer" } ],
                    adapter.sent_messages
       conversation = AiHelperConversation.first

@@ -1,17 +1,15 @@
+<p class="ai-helper-notice"><%= t("ai_helper.chat_channel.settings.restart_notice") %></p>
 <% adapters = RedmineAiHelper::ChatChannel::BaseAdapter.adapters.keys.sort %>
 <% adapters.each do |channel_type| %>
   <% adapter_setting = ai_helper_chat_adapter_setting(channel_type, @chat_adapter_settings) %>
-  <fieldset class="box tabular">
+  <fieldset class="box tabular chat-adapter-fieldset">
     <legend><%= ai_helper_chat_adapter_label(channel_type) %></legend>
-    <% if adapter_setting.errors.any? %>
-      <div class="errorExplanation">
-        <ul>
-          <% adapter_setting.errors.full_messages.each do |message| %>
-            <li><%= message %></li>
-          <% end %>
-        </ul>
-      </div>
-    <% end %>
+    <span class="adapter-help-link">
+      <%= link_to sprite_icon("help", l(:label_help)),
+                  ai_helper_settings_help_path(channel_type),
+                  class: "adapter-help-trigger",
+                  data: { channel_type: channel_type } %>
+    </span>
     <p>
       <label><%= t("ai_helper.chat_channel.settings.enabled") %></label>
       <%= hidden_field_tag "chat_adapter_settings[#{channel_type}][enabled]", "0", id: nil %>
@@ -22,7 +20,7 @@
       <% token_fields = RedmineAiHelper::ChatChannel::BaseAdapter.adapters[channel_type].required_setting_fields & [:app_token, :bot_token] %>
       <% token_fields.each do |token_field| %>
         <p>
-          <label><%= t("ai_helper.chat_channel.settings.#{token_field}") %></label>
+          <label><%= t("ai_helper.chat_channel.settings.#{token_field}") %> <span class="required">*</span></label>
           <%= password_field_tag "chat_adapter_settings[#{channel_type}][#{token_field}]",
                                  token_field_value(adapter_setting.send(token_field)),
                                  size: 60, id: nil, autocomplete: "new-password" %>
@@ -32,7 +30,7 @@
         </p>
       <% end %>
       <p>
-        <label><%= t("ai_helper.chat_channel.settings.redmine_user") %></label>
+        <label><%= t("ai_helper.chat_channel.settings.redmine_user") %> <span class="required">*</span></label>
         <% selected_user = @ai_helper_users.find { |u| u.id == adapter_setting.redmine_user_id } %>
         <%= text_field_tag "chat_adapter_settings[#{channel_type}][redmine_user_name]",
                            selected_user&.name.to_s,
@@ -54,58 +52,63 @@
                        include_blank: true, id: nil %>
       </p>
     </div>
-    <fieldset class="box" id="adapter-bindings-<%= channel_type %>">
-      <legend><%= t("ai_helper.chat_channel.settings.bindings") %></legend>
-      <% adapter_bindings = @channel_bindings_by_type[channel_type] || [] %>
-      <% if adapter_bindings.any? %>
-        <table class="list">
-          <thead>
-            <tr>
-              <th><%= t("ai_helper.chat_channel.settings.channel_id") %></th>
-              <th><%= t("ai_helper.chat_channel.settings.channel_name") %></th>
-              <th><%= t(:label_project) %></th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <% adapter_bindings.each do |channel_binding| %>
+    <% if adapter_setting.persisted? %>
+      <fieldset class="box" id="adapter-bindings-<%= channel_type %>">
+        <legend><%= t("ai_helper.chat_channel.settings.bindings") %></legend>
+        <% adapter_bindings = @channel_bindings_by_type[channel_type] || [] %>
+        <% if adapter_bindings.any? %>
+          <table class="list">
+            <thead>
               <tr>
-                <td><%= channel_binding.channel_id %></td>
-                <td><%= channel_binding.channel_name %></td>
-                <td><%= channel_binding.project.name %></td>
-                <td class="buttons">
-                  <%= link_to(sprite_icon('del', l(:button_delete)),
-                              ai_helper_channel_binding_path(channel_binding),
-                              method: :delete,
-                              data: { confirm: l(:text_are_you_sure) },
-                              class: 'icon icon-del') %>
-                </td>
+                <th><%= t("ai_helper.chat_channel.settings.channel_id") %></th>
+                <th><%= t("ai_helper.chat_channel.settings.channel_name") %></th>
+                <th><%= t(:label_project) %></th>
+                <th></th>
               </tr>
-            <% end %>
-          </tbody>
-        </table>
-      <% end %>
-      <div class="tabular">
-        <%= hidden_field_tag "ai_helper_channel_binding[channel_type]", channel_type, id: nil %>
-        <p>
-          <label><%= t("ai_helper.chat_channel.settings.channel_id") %></label>
-          <%= text_field_tag "ai_helper_channel_binding[channel_id]", "", size: 30, id: nil %>
-        </p>
-        <p>
-          <label><%= t("ai_helper.chat_channel.settings.channel_name") %></label>
-          <%= text_field_tag "ai_helper_channel_binding[channel_name]", "", size: 30, id: nil %>
-        </p>
-        <p>
-          <label><%= t(:label_project) %></label>
-          <%= select_tag "ai_helper_channel_binding[project_id]",
-                         options_from_collection_for_select(@ai_helper_projects, :id, :name),
-                         include_blank: true, id: nil %>
-        </p>
-        <p>
-          <%= submit_tag t("ai_helper.chat_channel.settings.add_binding"),
-                         formaction: ai_helper_channel_bindings_path, name: nil %>
-        </p>
-      </div>
-    </fieldset>
+            </thead>
+            <tbody>
+              <% adapter_bindings.each do |channel_binding| %>
+                <tr>
+                  <td><%= channel_binding.channel_id %></td>
+                  <td><%= channel_binding.channel_name %></td>
+                  <td><%= channel_binding.project.name %></td>
+                  <td class="buttons">
+                    <%= link_to(sprite_icon('del', l(:button_delete)),
+                                ai_helper_channel_binding_path(channel_binding),
+                                method: :delete,
+                                data: { confirm: l(:text_are_you_sure) },
+                                class: 'icon icon-del') %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        <% end %>
+        <div class="tabular">
+          <%= hidden_field_tag "ai_helper_channel_binding[channel_type]", channel_type, id: nil %>
+          <p>
+            <label><%= t("ai_helper.chat_channel.settings.channel_id") %> <span class="required">*</span></label>
+            <%= text_field_tag "ai_helper_channel_binding[channel_id]", "", size: 30, id: nil %>
+          </p>
+          <p>
+            <label><%= t("ai_helper.chat_channel.settings.channel_name") %></label>
+            <%= text_field_tag "ai_helper_channel_binding[channel_name]", "", size: 30, id: nil %>
+          </p>
+          <p>
+            <label><%= t(:label_project) %> <span class="required">*</span></label>
+            <%= select_tag "ai_helper_channel_binding[project_id]",
+                           options_from_collection_for_select(@ai_helper_projects, :id, :name),
+                           include_blank: true, id: nil %>
+          </p>
+          <p>
+            <%= submit_tag t("ai_helper.chat_channel.settings.add_binding"),
+                           formaction: ai_helper_channel_bindings_path, name: nil %>
+          </p>
+        </div>
+      </fieldset>
+    <% end %>
   </fieldset>
+<% end %>
+<% adapters.each do |channel_type| %>
+  <%= render partial: "ai_helper_settings/adapter_help_dialog", locals: { channel_type: channel_type } %>
 <% end %>

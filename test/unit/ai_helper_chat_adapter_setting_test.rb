@@ -48,7 +48,7 @@ class AiHelperChatAdapterSettingTest < ActiveSupport::TestCase
     should "be valid when enabled with all required fields present" do
       setting = AiHelperChatAdapterSetting.new(
         channel_type: "fake_setting_chat", enabled: true,
-        app_token: "xapp-test", bot_token: "xoxb-test"
+        app_token: "xapp-test", bot_token: "xoxb-test", redmine_user_id: 2
       )
 
       assert_predicate setting, :valid?
@@ -60,9 +60,25 @@ class AiHelperChatAdapterSettingTest < ActiveSupport::TestCase
       assert_predicate setting, :valid?
     end
 
-    should "be valid when redmine_user_name is blank and redmine_user_id is blank" do
+    should "require an execution account when enabled" do
       setting = AiHelperChatAdapterSetting.new(
         channel_type: "fake_setting_chat", enabled: true,
+        app_token: "xapp-test", bot_token: "xoxb-test"
+      )
+
+      assert_not setting.valid?
+      assert_predicate setting.errors[:redmine_user_id], :present?
+    end
+
+    should "not require an execution account when disabled" do
+      setting = AiHelperChatAdapterSetting.new(channel_type: "fake_setting_chat", enabled: false, redmine_user_id: nil)
+
+      assert_predicate setting, :valid?
+    end
+
+    should "be valid when redmine_user_name is blank and redmine_user_id is blank" do
+      setting = AiHelperChatAdapterSetting.new(
+        channel_type: "fake_setting_chat", enabled: false,
         app_token: "xapp-test", bot_token: "xoxb-test",
         redmine_user_name: "", redmine_user_id: nil
       )
@@ -135,7 +151,7 @@ class AiHelperChatAdapterSettingTest < ActiveSupport::TestCase
 
   context "class method enabled?" do
     should "return true when the setting row is enabled" do
-      create(:ai_helper_chat_adapter_setting, channel_type: "fake_setting_chat", enabled: true, app_token: "xapp-a", bot_token: "xoxb-b")
+      create(:ai_helper_chat_adapter_setting, channel_type: "fake_setting_chat", enabled: true, app_token: "xapp-a", bot_token: "xoxb-b", redmine_user_id: 2)
 
       assert AiHelperChatAdapterSetting.enabled?("fake_setting_chat")
     end

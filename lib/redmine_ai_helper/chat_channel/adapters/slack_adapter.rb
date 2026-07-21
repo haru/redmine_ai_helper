@@ -11,8 +11,8 @@ module RedmineAiHelper
     module Adapters
       # Slack adapter using Socket Mode: an outgoing WebSocket connection
       # obtained via apps.connections.open, so no public URL is required.
-      # Web API calls (auth.test, chat.postMessage, reactions.add)
-      # go through Net::HTTP directly. Tokens are never written to the log.
+      # Web API calls (auth.test, chat.postMessage) go through Net::HTTP
+      # directly. Tokens are never written to the log.
       class SlackAdapter < BaseAdapter
         # Raised when a Slack Web API call returns ok:false. Authentication
         # errors are not retried: the gateway terminates with this error.
@@ -138,16 +138,6 @@ module RedmineAiHelper
             api_call("chat.postMessage", token: settings.bot_token,
                      params: { channel: channel_id, thread_ts: thread_ts, text: chunk })
           end
-        end
-
-        # Marks the message as being processed with an hourglass reaction
-        # (FR-010).
-        # @param message [IncomingMessage] the message being processed
-        # @return [void]
-        def notify_processing(message:)
-          timestamp = message.message_ts || message.thread_key.split(":", 2).last
-          api_call("reactions.add", token: settings.bot_token,
-                   params: { channel: message.channel_id, timestamp: timestamp, name: "hourglass_flowing_sand" })
         end
 
         # Marks a SlackApiError as a fatal configuration/credential error so

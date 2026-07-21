@@ -668,6 +668,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
     end
 
     should "list existing channel bindings in the channels tab" do
+      AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: false, bot_token: "xoxb-ui")
       AiHelperChannelBinding.create!(channel_type: "ui_chat", channel_id: "C111", channel_name: "#dev", project: Project.find(1))
 
       get :index, params: { tab: "channels" }
@@ -677,9 +678,26 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert_select "#tab-content-channels", text: /#dev/
     end
 
+    should "not render the channel bindings form when the adapter setting is not persisted" do
+      get :index, params: { tab: "channels" }
+
+      assert_response :success
+      assert_select "#adapter-bindings-ui_chat", count: 0
+    end
+
+    should "render the channel bindings form when the adapter setting is persisted" do
+      AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: false, bot_token: "xoxb-ui")
+
+      get :index, params: { tab: "channels" }
+
+      assert_response :success
+      assert_select "#adapter-bindings-ui_chat"
+      assert_select "#tab-content-channels input[name='ai_helper_channel_binding[channel_id]']"
+    end
+
     should "not render the raw app or bot token value in the HTML source" do
       AiHelperChatAdapterSetting.create!(
-        channel_type: "ui_chat", enabled: true, bot_token: "xoxb-supersecret-value"
+        channel_type: "ui_chat", enabled: true, bot_token: "xoxb-supersecret-value", redmine_user_id: 2
       )
 
       get :index, params: { tab: "channels" }
@@ -692,7 +710,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
     should "render the masked token next to the field when a token is stored" do
       AiHelperChatAdapterSetting.create!(
-        channel_type: "ui_chat", enabled: true, bot_token: "xoxb-supersecret-value"
+        channel_type: "ui_chat", enabled: true, bot_token: "xoxb-supersecret-value", redmine_user_id: 2
       )
 
       get :index, params: { tab: "channels" }
@@ -703,7 +721,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
     should "preserve the stored token when the dummy value is submitted unchanged" do
       AiHelperChatAdapterSetting.create!(
-        channel_type: "ui_chat", enabled: true, bot_token: "xoxb-original"
+        channel_type: "ui_chat", enabled: true, bot_token: "xoxb-original", redmine_user_id: 2
       )
 
       post :update, params: {
@@ -739,7 +757,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
     context "US1: adapter enabled checkbox toggle visibility" do
       should "render adapter-settings div wrapping settings fields when enabled" do
-        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test")
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test", redmine_user_id: 2)
 
         get :index, params: { tab: "channels" }
 
@@ -758,7 +776,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       end
 
       should "render adapter-bindings fieldset with an id so JS can toggle it alongside adapter-settings" do
-        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test")
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test", redmine_user_id: 2)
 
         get :index, params: { tab: "channels" }
 
@@ -841,6 +859,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
     context "US3: channel bindings inside adapter" do
       should "render channel bindings table inside each adapter fieldset" do
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: false, bot_token: "xoxb-ui")
         AiHelperChannelBinding.create!(channel_type: "ui_chat", channel_id: "C111", channel_name: "#dev", project: Project.find(1))
 
         get :index, params: { tab: "channels" }
@@ -859,6 +878,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       end
 
       should "not render channel type column in bindings table" do
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: false, bot_token: "xoxb-ui")
         AiHelperChannelBinding.create!(channel_type: "ui_chat", channel_id: "C111", channel_name: "#dev", project: Project.find(1))
 
         get :index, params: { tab: "channels" }
@@ -868,6 +888,8 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       end
 
       should "render hidden field with channel_type in the add binding form" do
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: false, bot_token: "xoxb-ui")
+
         get :index, params: { tab: "channels" }
 
         assert_response :success
@@ -877,6 +899,8 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       should "filter bindings by channel_type" do
         slack_project = Project.create!(name: "Slack Proj", identifier: "slack-proj")
         slack_project.enable_module!(:ai_helper)
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: false, bot_token: "xoxb-ui")
+        AiHelperChatAdapterSetting.create!(channel_type: "fake_other", enabled: false, bot_token: "xoxb-other")
         AiHelperChannelBinding.create!(channel_type: "ui_chat", channel_id: "C111", channel_name: "#dev", project: Project.find(1))
         AiHelperChannelBinding.create!(channel_type: "fake_other", channel_id: "S222", channel_name: "#general", project: slack_project)
 
@@ -888,7 +912,24 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
         slack_project.destroy
       end
 
-      should "clear redmine_user_id when both name and id are blank" do
+      should "clear redmine_user_id when both name and id are blank and the adapter is disabled" do
+        user = User.active.sorted.first
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test", redmine_user_id: user.id)
+
+        post :update, params: {
+          tab: "channels",
+          ai_helper_setting: {},
+          chat_adapter_settings: {
+            "ui_chat" => { "enabled" => "0", "bot_token" => "xoxb-test", "redmine_user_id" => "", "redmine_user_name" => "" }
+          }
+        }
+
+        assert_redirected_to controller: "ai_helper_settings", action: :index, tab: "channels"
+        setting = AiHelperChatAdapterSetting.for_channel("ui_chat")
+        assert_nil setting.redmine_user_id
+      end
+
+      should "reject clearing redmine_user_id while the adapter stays enabled" do
         user = User.active.sorted.first
         AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test", redmine_user_id: user.id)
 
@@ -900,9 +941,10 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
           }
         }
 
-        assert_redirected_to controller: "ai_helper_settings", action: :index, tab: "channels"
+        assert_response :success
+        assert_equal "channels", assigns(:selected_tab)
         setting = AiHelperChatAdapterSetting.for_channel("ui_chat")
-        assert_nil setting.redmine_user_id
+        assert_equal user.id, setting.redmine_user_id
       end
 
       should "reject non-matching redmine_user_name with validation error" do
@@ -916,7 +958,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
         assert_response :success
         assert_equal "channels", assigns(:selected_tab)
-        assert_select ".errorExplanation", text: /does not match any user/
+        assert_select "#errorExplanation", text: /does not match any user/
       end
     end
   end
@@ -977,6 +1019,29 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert_response :success
       assert_equal "channels", assigns(:selected_tab)
       assert_not AiHelperChatAdapterSetting.enabled?("discord")
+    end
+  end
+
+  context "help action" do
+    should "return HTML for a valid channel type" do
+      get :help, params: { channel_type: "discord" }
+
+      assert_response :success
+      assert_equal "text/html", @response.media_type
+      assert @response.body.include?("Discord Gateway Setup Guide")
+    end
+
+    should "return HTML for slack" do
+      get :help, params: { channel_type: "slack" }
+
+      assert_response :success
+      assert @response.body.include?("Slack Gateway Setup Guide")
+    end
+
+    should "return 404 for an invalid channel type" do
+      get :help, params: { channel_type: "unknown" }
+
+      assert_response :not_found
     end
   end
 end

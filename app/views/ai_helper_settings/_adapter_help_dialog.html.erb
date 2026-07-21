@@ -1,0 +1,11 @@
+<dialog id="adapter-help-dialog-<%= channel_type %>" class="adapter-help-dialog">
+  <div class="adapter-help-dialog-content">
+    <div class="adapter-help-dialog-header">
+      <span><%= ai_helper_chat_adapter_label(channel_type) %> <%= l(:label_help) %></span>
+      <button type="button" class="adapter-help-dialog-close"
+              aria-label="<%= t('ai_helper.chat_channel.settings.close_help') %>"
+              title="<%= t('ai_helper.chat_channel.settings.close_help') %>">&times;</button>
+    </div>
+    <div class="adapter-help-dialog-body wiki"></div>
+  </div>
+</dialog>

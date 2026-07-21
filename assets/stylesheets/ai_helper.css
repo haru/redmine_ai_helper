@@ -1551,3 +1551,59 @@ table.list.ai-helper-report-list td.radio .radio-placeholder {
   block-size: auto;
   max-block-size: 300px;
 }
+
+/* Adapter help popup dialog */
+.chat-adapter-fieldset {
+  position: relative;
+}
+
+.adapter-help-link {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 0.8em;
+}
+
+.adapter-help-dialog {
+  position: fixed;
+  z-index: 9999;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 0;
+  max-width: 700px;
+  width: 90vw;
+  max-height: 80vh;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.adapter-help-dialog-content {
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
+}
+
+.adapter-help-dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #ddd;
+  font-weight: bold;
+  cursor: move;
+  user-select: none;
+}
+
+.adapter-help-dialog-close {
+  background: none;
+  border: none;
+  font-size: 1.4em;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.adapter-help-dialog-body {
+  padding: 12px 16px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}

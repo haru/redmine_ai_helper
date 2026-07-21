@@ -9,7 +9,7 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
 
   # In-memory adapter driving the handler without any external service.
   class RecordingAdapter < RedmineAiHelper::ChatChannel::BaseAdapter
-    attr_reader :sent_messages, :processing_notified
+    attr_reader :sent_messages
 
     class << self
       def channel_type
@@ -20,7 +20,6 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
     def initialize
       super
       @sent_messages = []
-      @processing_notified = []
     end
 
     def start; end
@@ -29,10 +28,6 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
 
     def send_message(channel_id:, thread_key:, text:)
       @sent_messages << { channel_id: channel_id, thread_key: thread_key, text: text }
-    end
-
-    def notify_processing(message:)
-      @processing_notified << message
     end
   end
 
@@ -60,15 +55,6 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
   end
 
   context "handle" do
-    should "notify processing before anything else" do
-      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("ok"))
-
-      message = incoming
-      @handler.handle(message)
-
-      assert_equal [ message ], @adapter.processing_notified
-    end
-
     should "reply with guidance when no service account is configured" do
       @setting.update_column(:redmine_user_id, nil)
 
@@ -80,12 +66,28 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       assert_equal 0, AiHelperConversation.count
     end
 
-    should "reply with guidance when the service account is locked" do
+    should "reply that the execution account is unavailable when it is locked" do
+      @setting.update!(enabled: true)
       @service_account.lock!
 
       @handler.handle(incoming)
 
-      assert_equal error_text(:service_account_not_configured, user: nil),
+      assert_equal error_text(:service_account_unavailable, user: nil),
+                   @adapter.sent_messages.first[:text]
+      assert_equal 0, AiHelperConversation.count
+    end
+
+    should "reply that the execution account is unavailable when it was deleted" do
+      # Deleting a Redmine user nullifies redmine_user_id via the FK's
+      # on_delete: :nullify. Because FR-1 forbids saving an enabled adapter
+      # without an account, an enabled row with a blank account can only mean
+      # the previously configured account was removed.
+      @setting.update!(enabled: true)
+      @setting.update_column(:redmine_user_id, nil)
+
+      @handler.handle(incoming)
+
+      assert_equal error_text(:service_account_unavailable, user: nil),
                    @adapter.sent_messages.first[:text]
       assert_equal 0, AiHelperConversation.count
     end
@@ -154,6 +156,55 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       assert_equal User.anonymous, User.current
     end
 
+    should "set I18n.locale to the service account's language during processing" do
+      @service_account.update!(language: "ja")
+
+      observed_locale = nil
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).with do |_conversation, _proc, _option|
+        observed_locale = I18n.locale
+        true
+      end.returns(assistant_message("ok"))
+
+      @handler.handle(incoming)
+
+      assert_equal :ja, observed_locale
+    end
+
+    should "restore the caller's I18n.locale after handling" do
+      @service_account.update!(language: "ja")
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("ok"))
+
+      I18n.with_locale(:fr) do
+        @handler.handle(incoming)
+
+        assert_equal :fr, I18n.locale
+      end
+    end
+
+    should "use Setting.default_language when service account language is blank" do
+      @service_account.update!(language: "")
+      observed_locale = nil
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).with do |_conversation, _proc, _option|
+        observed_locale = I18n.locale
+        true
+      end.returns(assistant_message("ok"))
+
+      @handler.handle(incoming)
+
+      assert_equal Setting.default_language.to_sym, observed_locale
+    end
+
+    should "restore the caller's I18n.locale even when processing raises" do
+      @service_account.update!(language: "ja")
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).raises(RuntimeError, "boom")
+
+      I18n.with_locale(:fr) do
+        @handler.handle(incoming)
+
+        assert_equal :fr, I18n.locale
+      end
+    end
+
     should "reply with an error notice and log when processing raises" do
       RedmineAiHelper::Llm.any_instance.stubs(:chat).raises(RuntimeError, "boom")
 
@@ -161,15 +212,6 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
 
       assert_equal error_text(:processing_failed), @adapter.sent_messages.first[:text]
       assert_equal User.anonymous, User.current
-    end
-
-    should "continue processing when notify_processing fails" do
-      @adapter.expects(:notify_processing).raises(RuntimeError, "reaction blocked")
-      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("answer"))
-
-      @handler.handle(incoming)
-
-      assert_equal "answer", @adapter.sent_messages.first[:text]
     end
 
     should "not raise when posting the error notice itself fails" do

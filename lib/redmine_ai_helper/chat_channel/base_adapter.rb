@@ -8,8 +8,8 @@ module RedmineAiHelper
   module ChatChannel
     # Abstract base class for chat tool adapters. Subclasses are registered
     # automatically on inheritance (same pattern as BaseAgent) and only need
-    # to implement the tool-specific interface: channel_type, start, stop,
-    # send_message and notify_processing.
+    # to implement the tool-specific interface: channel_type, start, stop
+    # and send_message.
     class BaseAdapter
       include RedmineAiHelper::Logger
 
@@ -137,13 +137,6 @@ module RedmineAiHelper
       # @return [void]
       def send_message(channel_id:, thread_key:, text:)
         raise NotImplementedError, "#{self.class.name} must implement #send_message"
-      end
-
-      # Shows a processing indicator for the given message.
-      # @param message [IncomingMessage] The message being processed
-      # @return [void]
-      def notify_processing(message:)
-        raise NotImplementedError, "#{self.class.name} must implement #notify_processing"
       end
 
       # Whether the given error is a fatal configuration/credential error

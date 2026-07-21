@@ -11,8 +11,6 @@ which uses two tokens), and it does **not** require any privileged intents.
 
 ## Requirements
 
-- Redmine 6.x with the `redmine_ai_helper` plugin installed, migrated, and a
-  working model profile (the web chat must already work).
 - Permission to create an application in the Discord Developer Portal and to
   invite a bot to the target Discord server.
 - A dedicated Redmine **service account** (e.g. a user named `ai_helper`) that
