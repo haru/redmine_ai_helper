@@ -668,6 +668,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
     end
 
     should "list existing channel bindings in the channels tab" do
+      AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: false, bot_token: "xoxb-ui")
       AiHelperChannelBinding.create!(channel_type: "ui_chat", channel_id: "C111", channel_name: "#dev", project: Project.find(1))
 
       get :index, params: { tab: "channels" }
@@ -675,6 +676,23 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert_response :success
       assert_select "#tab-content-channels", text: /C111/
       assert_select "#tab-content-channels", text: /#dev/
+    end
+
+    should "not render the channel bindings form when the adapter setting is not persisted" do
+      get :index, params: { tab: "channels" }
+
+      assert_response :success
+      assert_select "#adapter-bindings-ui_chat", count: 0
+    end
+
+    should "render the channel bindings form when the adapter setting is persisted" do
+      AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: false, bot_token: "xoxb-ui")
+
+      get :index, params: { tab: "channels" }
+
+      assert_response :success
+      assert_select "#adapter-bindings-ui_chat"
+      assert_select "#tab-content-channels input[name='ai_helper_channel_binding[channel_id]']"
     end
 
     should "not render the raw app or bot token value in the HTML source" do
@@ -841,6 +859,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
     context "US3: channel bindings inside adapter" do
       should "render channel bindings table inside each adapter fieldset" do
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: false, bot_token: "xoxb-ui")
         AiHelperChannelBinding.create!(channel_type: "ui_chat", channel_id: "C111", channel_name: "#dev", project: Project.find(1))
 
         get :index, params: { tab: "channels" }
@@ -859,6 +878,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       end
 
       should "not render channel type column in bindings table" do
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: false, bot_token: "xoxb-ui")
         AiHelperChannelBinding.create!(channel_type: "ui_chat", channel_id: "C111", channel_name: "#dev", project: Project.find(1))
 
         get :index, params: { tab: "channels" }
@@ -868,6 +888,8 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       end
 
       should "render hidden field with channel_type in the add binding form" do
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: false, bot_token: "xoxb-ui")
+
         get :index, params: { tab: "channels" }
 
         assert_response :success
@@ -877,6 +899,8 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       should "filter bindings by channel_type" do
         slack_project = Project.create!(name: "Slack Proj", identifier: "slack-proj")
         slack_project.enable_module!(:ai_helper)
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: false, bot_token: "xoxb-ui")
+        AiHelperChatAdapterSetting.create!(channel_type: "fake_other", enabled: false, bot_token: "xoxb-other")
         AiHelperChannelBinding.create!(channel_type: "ui_chat", channel_id: "C111", channel_name: "#dev", project: Project.find(1))
         AiHelperChannelBinding.create!(channel_type: "fake_other", channel_id: "S222", channel_name: "#general", project: slack_project)
 
