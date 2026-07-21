@@ -122,14 +122,14 @@ function setupHelpDialogListeners() {
           });
       }
 
-      dialog.show();
+      if (!dialog.open) dialog.show();
       positionHelpDialog(dialog, this);
     });
   });
 
   document.querySelectorAll(".adapter-help-dialog-close").forEach(function (btn) {
     btn.addEventListener("click", function () {
-      var dialog = this.closest("dialog");
+      const dialog = this.closest("dialog");
       if (dialog) dialog.close();
     });
   });

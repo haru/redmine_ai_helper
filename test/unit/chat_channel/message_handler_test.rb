@@ -170,14 +170,15 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       assert_equal :ja, observed_locale
     end
 
-    should "restore I18n.locale after handling" do
-      original_locale = I18n.default_locale
+    should "restore the caller's I18n.locale after handling" do
       @service_account.update!(language: "ja")
       RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("ok"))
 
-      @handler.handle(incoming)
+      I18n.with_locale(:fr) do
+        @handler.handle(incoming)
 
-      assert_equal original_locale, I18n.locale
+        assert_equal :fr, I18n.locale
+      end
     end
 
     should "use Setting.default_language when service account language is blank" do
@@ -193,14 +194,15 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       assert_equal Setting.default_language.to_sym, observed_locale
     end
 
-    should "restore I18n.locale even when processing raises" do
-      original_locale = I18n.default_locale
+    should "restore the caller's I18n.locale even when processing raises" do
       @service_account.update!(language: "ja")
       RedmineAiHelper::Llm.any_instance.stubs(:chat).raises(RuntimeError, "boom")
 
-      @handler.handle(incoming)
+      I18n.with_locale(:fr) do
+        @handler.handle(incoming)
 
-      assert_equal original_locale, I18n.locale
+        assert_equal :fr, I18n.locale
+      end
     end
 
     should "reply with an error notice and log when processing raises" do

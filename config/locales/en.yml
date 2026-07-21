@@ -54,6 +54,7 @@ en:
         channel_name: "Channel name"
         add_binding: "Add binding"
         restart_notice: "You need to restart the chat gateway for setting changes to take effect"
+        close_help: "Close help"
       errors:
         service_account_not_configured: "No active execution account is configured for this chat integration, so the request could not be processed. Please ask your administrator to configure the execution account."
         service_account_unavailable: "The configured execution account has been deleted or deactivated, so the request could not be processed. Please ask your administrator to reconfigure the execution account."

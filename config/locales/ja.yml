@@ -54,6 +54,7 @@ ja:
         channel_name: "チャンネル名"
         add_binding: "対応付けを追加"
         restart_notice: "設定の変更を反映するためにはチャットゲートウェイの再起動が必要です"
+        close_help: "ヘルプを閉じる"
       errors:
         service_account_not_configured: "このチャット連携に有効な実行アカウントが設定されていないため、処理できませんでした。管理者に実行アカウントの設定を依頼してください。"
         service_account_unavailable: "設定されていた実行アカウントが削除または無効化されているため、処理できませんでした。管理者に実行アカウントの再設定を依頼してください。"
