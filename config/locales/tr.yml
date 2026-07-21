@@ -1,0 +1,302 @@
+tr:
+  project_module_ai_helper: "AI Asistan"
+  label_ai_helper: "AI Asistan"
+  label_chat_placeholder: "Mesajınızı buraya yazın..."
+  label_ai_helper_input_newline: "Yeni satır için Shift + Enter tuşlarına basın."
+  label_ai_helper_custom_command_hint: "Özel komutları kullanmak için '/' yazın."
+  label_ai_helper_start_new_chat: "Yeni sohbet başlat"
+  label_ai_helper_free_input_option: "Diğer (kendiniz yazın)"
+  label_ai_helper_read_only_suffix: " (Salt okunur)"
+  ai_helper_summary: "AI Asistan ile Özetle"
+  ai_helper_similar_issues: "AI Asistan ile Benzer İşleri Bul"
+  ai_helper_find_similar_issues: "Benzer İşleri Bul"
+  ai_helper_similarity: "Benzerlik"
+  ai_helper_no_similar_issues_found: "Benzer iş bulunamadı"
+  ai_helper_suggested_hours: "Tahmini süre önerisi"
+  ai_helper_apply_suggested_hours: "Bu işin tahmini süresine uygula"
+  ai_helper_effort_select_all: "Tüm efor sürelerini seç"
+  ai_helper_suggested_hours_note: "%{count} benzer işe dayanarak"
+  ai_helper_scope_current_project: "Mevcut proje"
+  ai_helper_scope_with_subprojects: "Alt projeleri dahil et"
+  ai_helper_scope_all_projects: "Tüm projeler"
+  ai_helper_text_summary_generated_time: "%{time} tarihinde oluşturuldu"
+  ai_helper_error_occurred: "Bir hata oluştu"
+  permission_view_ai_helper: "AI Asistan'ı Görüntüle"
+  permission_settings_ai_helper: "Proje Ayarları"
+  permission_delete_ai_helper_health_reports: "Sağlık Raporlarını Sil"
+  label_ai_helper_error: "Hata"
+  label_ai_helper_health_report_history: "Rapor Geçmişi"
+  label_ai_helper_health_report_detail: "Rapor Detayı"
+  label_ai_helper_report_period: "Dönem"
+  label_ai_helper_select_report_to_view: "Bir rapor oluşturun veya soldaki geçmişten birini seçin"
+  label_ai_helper_report_detail_mobile: "Rapor Detayı"
+  label_ai_helper_close_detail: "Detayı Kapat"
+  ai_helper:
+    settings:
+      tab_general: "Genel"
+      tab_model: "Model"
+      tab_vector: "Vektör arama"
+      tab_channels: "Sohbet entegrasyonları"
+    chat_channel:
+      adapters:
+        slack: "Slack"
+        discord: "Discord"
+      settings:
+        enabled: "Etkinleştir"
+        app_token: "Uygulama Token'ı"
+        bot_token: "Bot Token'ı"
+        redmine_user: "Çalıştırma hesabı"
+        redmine_user_info: "Sohbet aracından gelen tüm sorular bu Redmine kullanıcısının izinleriyle işlenir. Ağ geçidinin yapabileceklerini sınırlamak için bu hesabın rollerini kısıtlayın."
+        dm_default_project: "Doğrudan mesajlar için varsayılan proje"
+        bindings: "Kanal bağlamaları"
+        adapter: "Sohbet aracı"
+        channel_id: "Kanal ID'si"
+        channel_name: "Kanal adı"
+        add_binding: "Bağlama ekle"
+      errors:
+        service_account_not_configured: "Bu sohbet entegrasyonu için etkin bir çalıştırma hesabı yapılandırılmadığı için istek işlenemedi. Lütfen yöneticinizden çalıştırma hesabını yapılandırmasını isteyin."
+        channel_not_bound: "Bu kanal herhangi bir Redmine projesiyle ilişkilendirilmemiş. Lütfen yöneticinizden kanal eşlemesini yapılandırmasını isteyin."
+        dm_not_configured: "Doğrudan mesajlar için varsayılan bir proje yapılandırılmamış. Lütfen yöneticinizden bunu yapılandırmasını isteyin."
+        module_disabled: "İlişkili proje için AI Asistan modülü devre dışı bırakılmış."
+        processing_failed: "Yanıt oluşturulurken bir hata oluştu. Ayrıntılar için AI Asistan günlüğünü kontrol edin."
+    notice_sub_issues_added: "Alt işler eklendi"
+    error_invalid_assignee: "'%{subject}' için geçersiz atanan kişi - kullanıcının bu takip türü için yetkisi yok"
+    chat:
+      planning: "Yürütme planı oluşturuluyor..."
+      generating_final_response: "Son yanıt oluşturuluyor..."
+    project_health:
+      title: "Proje Sağlık Raporu"
+      pdf_title: "Proje Sağlık Raporu"
+      generate_report: "Rapor Oluştur"
+      generating: "Oluşturuluyor"
+      placeholder: "Proje metriklerini analiz etmek ve içgörü elde etmek için 'Rapor Oluştur'a tıklayın."
+      note: "Rapor; iş istatistiklerini, zamanlama metriklerini, iş yükü dağılımını analiz eder ve uygulanabilir öneriler sunar."
+      no_report_available: "PDF olarak dışa aktarılacak sağlık raporu yok"
+      report_content: "Sağlık Raporu İçeriği"
+    health_report_comparison:
+      compare_button: "Raporları Karşılaştır"
+      comparison_column: "Karşılaştırma"
+      page_title: "Sağlık Raporu Karşılaştırması"
+      old_report: "Eski Rapor"
+      new_report: "Yeni Rapor"
+      analyze_button: "Değişiklikleri Analiz Et"
+      placeholder: "Karşılaştırma analizi otomatik olarak başlar"
+      analysis_title: "Karşılaştırma Analizi"
+      error_select_two_reports: "Lütfen karşılaştırmak için iki farklı rapor seçin"
+    generate_issue_reply:
+      title: "AI Asistan ile Yorum Taslağı Oluştur"
+      instructions: "Lütfen yanıt için ana noktaları veya talimatları girin."
+      generated_reply: "Oluşturulan notlar"
+      apply: "Uygula"
+    typo_check:
+      toggle_label: "AI Yazım Denetimi"
+      check_button: "AI Asistan Yazım Denetimi"
+      suggestions_title: "Düzeltme Önerileri"
+      no_suggestions: "Yazım hatası veya hata bulunamadı"
+      accept_suggestion: "Kabul Et"
+      dismiss_suggestion: "Yoksay"
+      accept_all: "Tümünü Kabul Et"
+      dismiss_all: "Tümünü Yoksay"
+      close: "Kapat"
+      checking: "Denetleniyor..."
+      error_occurred: "Bir hata oluştu"
+      copy_to_clipboard: "Panoya kopyala"
+      correction_tooltip: "Düzeltme Önerisi"
+      apply_failed: "Düzeltme uygulanamadı. Metin konumu bulunamadı"
+    generate_sub_issues:
+      title: "AI Asistan ile Alt Görev Oluştur"
+      instructions: "Lütfen talimatlarınızı girin."
+      generate_draft: "Taslak oluştur"
+    completion_errors:
+      text_required: "Metin gerekli"
+      text_too_long: "Metin çok uzun"
+      invalid_cursor_position: "Geçersiz imleç konumu"
+      invalid_context_type: "Geçersiz context_type. 'description' veya 'note' olmalıdır"
+      issue_not_in_project: "İş, belirtilen projeye ait değil"
+      issue_required_for_note: "Not tamamlama için iş gerekli"
+    autocompletion:
+      loading: "AI önerileri oluşturuluyor..."
+      no_suggestions: "Kullanılabilir öneri yok"
+      accept_suggestion: "Öneriyi kabul et"
+      dismiss: "Yoksay"
+      enabled_tooltip: "AI otomatik tamamlama etkin. Önerileri kabul etmek için Tab, yoksaymak için Esc tuşuna basın."
+      disabled_tooltip: "AI otomatik tamamlama devre dışı. Etkinleştirmek için kutuyu işaretleyin."
+      note_enabled_tooltip: "AI not otomatik tamamlama etkin. Önerileri kabul etmek için Tab, yoksaymak için Esc tuşuna basın."
+      note_disabled_tooltip: "AI not otomatik tamamlama devre dışı. Etkinleştirmek için kutuyu işaretleyin."
+      common_toggle_label: "AI Asistan Tamamlama"
+    assignment_suggestion:
+      link_label: "AI Asistan ile Atanan Kişi Öner"
+      loading: "Atanacak kişiler analiz ediliyor..."
+      close: "Kapat"
+      no_suggestions: "Öneri yok"
+      history_based:
+        title: "Benzer iş geçmişine dayalı öneriler"
+        score: "Benzerlik"
+        similar_count: "Benzer işler"
+        similar_issues: "Öneri için kullanılan benzer işler"
+        more_issues: "%{count} tane daha"
+      workload_based:
+        title: "Mevcut iş yüküne dayalı öneriler"
+        open_issues: "Açık işler"
+        issues_unit: ""
+      instruction_based:
+        title: "Kullanıcı talimatlarına dayalı öneriler"
+        reason: "Gerekçe"
+      error: "Atanan kişi önerileri alınırken bir hata oluştu"
+      empty_content: "Lütfen bir konu veya açıklama girin"
+    stuff_todo:
+      menu_label: "Yapılacaklar"
+      modal_title: "Yapılacaklar Önerileri"
+      loading: "Yükleniyor..."
+      error: "Bir hata oluştu"
+    duplicate_check:
+      title: "AI Asistan ile Yinelenenleri Denetle"
+      button: "AI Asistan ile Yinelenenleri Denetle"
+      loading: "Benzer işler aranıyor..."
+      empty_content: "Yinelenenleri denetlemeden önce lütfen konu veya açıklama girin"
+    model_profiles:
+      create_profile_title: "Yeni model profili"
+      edit_profile_title: "Model profilini düzenle"
+      test_connection: "Bağlantıyı Test Et"
+      test_connection_success: "Bağlantı başarılı"
+      test_connection_failed: "Bağlantı başarısız"
+      messages:
+        confirm_delete: "Bu model profilini silmek istediğinizden emin misiniz?"
+        must_be_valid_url: "geçerli bir URL olmalı"
+        required_fields_missing: "Gerekli alanlar eksik."
+        access_key_required: "Bağlantıyı test etmek için erişim anahtarı gerekli."
+    prompts:
+      current_page_info:
+        project_page: "Bu, '%{project_name}' projesinin bilgi sayfasıdır."
+        issue_detail_page: "Bu, #%{issue_id} numaralı işin detay sayfasıdır.\nKullanıcı bir ID veya ad belirtmeden 'iş' derse, bu işi kastediyordur."
+        issue_list_page: "Bu, iş listesi sayfasıdır."
+        issue_with_action_page: "Bu, işin %{action_name} sayfasıdır."
+        wiki_page: "Bu, '%{page_title}' başlıklı Wiki sayfasıdır.\nKullanıcı bir başlık belirtmeden 'Wiki sayfası' veya 'sayfa' derse, bu Wiki sayfasını kastediyordur."
+        repository_page: "Bu, '%{repo_name}' deposunun bilgi sayfasıdır. Depo ID'si %{repo_id}."
+        repository_file_page: "Bu, deponun dosya bilgi sayfasıdır. Görüntülenen dosya yolu %{path}. Revizyon %{rev}. Depo '%{repo_name}'. Depo ID'si %{repo_id}."
+        repository_diff:
+          page: "Bu, '%{repo_name}' deposunun diff (fark) sayfasıdır. Depo ID'si %{repo_id}."
+          rev: "Revizyon %{rev}."
+          rev_to: "Revizyon %{rev} ile %{rev_to} arasındadır."
+          path: "Dosya yolu %{path}."
+        repository_revision_page: "Bu, '%{repo_name}' deposunun revizyon bilgi sayfasıdır. Revizyon %{rev}. Depo ID'si %{repo_id}."
+        repository_other_page: "Bu, deponun bilgi sayfasıdır."
+        boards:
+          show: "Bu, '%{board_name}' forumunun sayfasıdır. Forum ID'si %{board_id}."
+          index: "Bu, forum listesi sayfasıdır."
+          other: "Bu, forumun sayfasıdır."
+        messages:
+          show: "Bu, '%{subject}' mesajının sayfasıdır. Mesaj ID'si %{message_id}."
+          other: "Bu, mesajın sayfasıdır."
+        versions:
+          show: "Bu, '%{version_name}' sürümünün sayfasıdır. Sürüm ID'si %{version_id}."
+          other: "Bu, sürümün sayfasıdır."
+        other_page: "Bu, %{controller_name} için %{action_name} sayfasıdır."
+      issue_agent:
+        search_answer_instruction: "'Şu koşullara uyan işleri bul' veya 'Bu kriterlere sahip işleri göster' gibi, belirli koşullara uyan birden fazla işi bulma görevlerinde, lütfen işlerin bir listesini almak ve döndürmek için search_issues aracını kullanın."
+        search_answer_instruction_with_vector: "İşleri ararken uygun aracı kullanın: Kavramsal/anlamsal aramalar için (ör. 'istisnalarla ilgili işler', 'performans sorunları', 'giriş hataları'), vektör aramayı (ask_with_filter) kullanın. Açık filtre koşulları için (ör. 'durumu kapalı', 'birine atanmış', 'bu ay güncellenmiş'), search_issues kullanın."
+      leader_agent:
+        generate_final_response: "Tüm ajanlar görevlerini tamamladı. Lütfen kullanıcı için nihai yanıtı oluşturun. Yanıtınız ayrık seçenekler içeren bir soru barındırıyorsa, en sonuna <!--AIHELPER_OPTIONS:{...}--> bloğunu eklemeyi unutmayın."
+    mcp:
+      errors:
+        disabled: "MCP sunucusu devre dışı"
+        unauthorized: "Yetkisiz - geçersiz veya eksik API anahtarı"
+        tool_permission_denied: "İzin reddedildi: bu araca erişiminiz yok"
+    vector_tasks:
+      embedding_model: "Embedding modeli: %{model}"
+      registering: "Redmine AI Asistan için vektör verisi kaydediliyor..."
+      issues_count: "İşler: %{count} öğe"
+      wiki_pages_count: "Wiki Sayfaları: %{count} öğe"
+      removed_issue_vector_data: "Kaldırılan iş vektör verisi: %{deleted} (başarısız: %{failed})"
+      removed_wiki_vector_data: "Kaldırılan wiki vektör verisi: %{deleted} (başarısız: %{failed})"
+      registration_completed: "Vektör verisi kaydı tamamlandı."
+      registration_skipped: "Vektör arama etkin değil. Kayıt atlanıyor."
+      generating_index: "Redmine AI Asistan için vektör dizini oluşturuluyor..."
+      generation_skipped: "Vektör arama etkin değil. Oluşturma atlanıyor."
+      ensure_indexes_skipped: "Vektör arama etkin değil. Atlanıyor."
+      ensure_indexes_completed: "ensure_indexes tamamlandı."
+      ensure_indexes_mismatch: "ensure_indexes uyumsuzlukla tamamlandı. Manuel işlem gerekli."
+      destroying: "Redmine AI Asistan için vektör verisi siliniyor..."
+      destruction_skipped: "Vektör arama etkin değil. Silme atlanıyor."
+    custom_commands:
+      label:
+        title: Özel Komutlar
+        new: Yeni Özel Komut
+        no_data: Kayıtlı özel komut yok
+      command_type:
+        global: Genel Komutlar
+        project: Proje Komutları
+        user: Kullanıcı Komutları
+      command_type_description:
+        global: AI Asistan'ın etkin olduğu tüm projelerde paylaşılan komutlar.
+        project: Yalnızca bu proje içinde paylaşılan komutlar.
+        user: Yalnızca sizin kullanabileceğiniz komutlar.
+      user_scope:
+        common: Ortak
+        project_limited: Projeyle Sınırlı
+      field:
+        scope: Kapsam
+      text:
+        name_format: "Yalnızca harf, rakam, alt çizgi ve tire kullanılabilir"
+        variables_help: "Kullanılabilir değişkenler: {input}, {project_name}, {user_name}, {datetime}"
+      error:
+        name_duplicate: "Komut adı zaten kullanımda"
+        project_required: "Proje komutları için bir proje gereklidir"
+  activerecord:
+    errors:
+      models:
+        ai_helper_chat_adapter_setting:
+          attributes:
+            redmine_user_name:
+              invalid: "hiçbir kullanıcıyla eşleşmiyor"
+    models:
+      ai_helper_model_profile: "Model Profili"
+      ai_helper_setting: "AI Asistan Ayarı"
+      ai_helper_custom_command: "Özel Komut"
+    attributes:
+      ai_helper_model_profile:
+        llm_type: "Tür"
+        llm_model: "Model adı"
+        access_key: "Erişim anahtarı"
+        temperature: "Temperature"
+        organization_id: "Organizasyon ID'si"
+        base_uri: "Temel URI"
+        http_proxy: "HTTP Proxy"
+        max_tokens: "Maksimum token"
+      ai_helper_setting:
+        model_profile_id: "Model profili"
+        additional_instructions: "Ek talimatlar"
+        attachment_send_enabled: "Ekleri LLM'e gönder"
+        attachment_max_size_mb: "Maksimum ek boyutu (MB)"
+        vector_search_enabled: "Vektör aramayı etkinleştir"
+        vector_register_all_projects: "Tüm projeleri kaydet"
+        vector_register_all_projects_description: "Etkinleştirildiğinde, AI Asistan modülünün etkin olduğu tüm projeler vektör veritabanına kaydedilir. Belirli projeleri seçerek kaydetmek için bunu devre dışı bırakın."
+        vector_search_uri: "URI"
+        vector_search_api_key: "API anahtarı"
+        embedding_model: "Embedding modeli"
+        dimension: "Boyut"
+        use_think_model: "Düşünme modelini kullan"
+        think_model_profile_id: "Düşünme modeli profili"
+        think_model_description: "Sağlık raporu oluşturma ve iş yanıtı taslağı hazırlama gibi daha derin akıl yürütme gerektiren görevler için ayrı bir model kullanın."
+        use_vector_model_profile: "Vektör model profilini kullan"
+        vector_model_profile_id: "Vektör model profili"
+        vector_model_profile_description: "Vektör arama işlemleri (API kimlik bilgileri ve içerik analizi) için ayrı bir model profili kullanın. Not: embedding model adı yine de yukarıdaki Embedding modeli ayarı tarafından kontrol edilir."
+        mcp_server_enabled: "MCP sunucusunu etkinleştir"
+        send_user_id_enabled: "Kullanıcı ID'sini LLM'e gönder"
+        send_user_id_enabled_description: "Etkinleştirildiğinde, dahili Redmine kullanıcı ID'si LLM sağlayıcısına gönderilir. Bu, alt sistemlerde (ör. LiteLLM) kullanıcı bazlı istatistik takibine olanak tanır. Etkinleştirmeden önce gizlilik etkilerini göz önünde bulundurun."
+        read_only_mode: "Salt okunur mod"
+        read_only_mode_description: "Etkinleştirildiğinde, AI Asistan sohbeti herhangi bir veri (işler, wiki sayfaları, yorumlar vb.) oluşturamaz, güncelleyemez veya silemez. Harici MCP sunucusu entegrasyonu da devre dışı bırakılır."
+      ai_helper_project_setting:
+        issue_draft_instructions: "İş yorumu oluşturma talimatları"
+        subtask_instructions: "Alt görev oluşturma talimatları"
+        health_report_instructions: "Sağlık raporu oluşturma talimatları"
+        assignment_suggestion_instructions: "Atama Önerisi Talimatları"
+      ai_helper_custom_command:
+        name: "Komut Adı"
+        command_type: "Komut Türü"
+        project_id: "Proje"
+        prompt: "Prompt"
+        description: "Açıklama"
+        user_scope: "Kapsam"
+
+  field_id: "ID"
