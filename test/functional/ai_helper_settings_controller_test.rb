@@ -697,7 +697,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
     should "not render the raw app or bot token value in the HTML source" do
       AiHelperChatAdapterSetting.create!(
-        channel_type: "ui_chat", enabled: true, bot_token: "xoxb-supersecret-value"
+        channel_type: "ui_chat", enabled: true, bot_token: "xoxb-supersecret-value", redmine_user_id: 2
       )
 
       get :index, params: { tab: "channels" }
@@ -710,7 +710,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
     should "render the masked token next to the field when a token is stored" do
       AiHelperChatAdapterSetting.create!(
-        channel_type: "ui_chat", enabled: true, bot_token: "xoxb-supersecret-value"
+        channel_type: "ui_chat", enabled: true, bot_token: "xoxb-supersecret-value", redmine_user_id: 2
       )
 
       get :index, params: { tab: "channels" }
@@ -721,7 +721,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
     should "preserve the stored token when the dummy value is submitted unchanged" do
       AiHelperChatAdapterSetting.create!(
-        channel_type: "ui_chat", enabled: true, bot_token: "xoxb-original"
+        channel_type: "ui_chat", enabled: true, bot_token: "xoxb-original", redmine_user_id: 2
       )
 
       post :update, params: {
@@ -757,7 +757,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
     context "US1: adapter enabled checkbox toggle visibility" do
       should "render adapter-settings div wrapping settings fields when enabled" do
-        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test")
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test", redmine_user_id: 2)
 
         get :index, params: { tab: "channels" }
 
@@ -776,7 +776,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       end
 
       should "render adapter-bindings fieldset with an id so JS can toggle it alongside adapter-settings" do
-        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test")
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test", redmine_user_id: 2)
 
         get :index, params: { tab: "channels" }
 
@@ -912,7 +912,24 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
         slack_project.destroy
       end
 
-      should "clear redmine_user_id when both name and id are blank" do
+      should "clear redmine_user_id when both name and id are blank and the adapter is disabled" do
+        user = User.active.sorted.first
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test", redmine_user_id: user.id)
+
+        post :update, params: {
+          tab: "channels",
+          ai_helper_setting: {},
+          chat_adapter_settings: {
+            "ui_chat" => { "enabled" => "0", "bot_token" => "xoxb-test", "redmine_user_id" => "", "redmine_user_name" => "" }
+          }
+        }
+
+        assert_redirected_to controller: "ai_helper_settings", action: :index, tab: "channels"
+        setting = AiHelperChatAdapterSetting.for_channel("ui_chat")
+        assert_nil setting.redmine_user_id
+      end
+
+      should "reject clearing redmine_user_id while the adapter stays enabled" do
         user = User.active.sorted.first
         AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test", redmine_user_id: user.id)
 
@@ -924,9 +941,10 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
           }
         }
 
-        assert_redirected_to controller: "ai_helper_settings", action: :index, tab: "channels"
+        assert_response :success
+        assert_equal "channels", assigns(:selected_tab)
         setting = AiHelperChatAdapterSetting.for_channel("ui_chat")
-        assert_nil setting.redmine_user_id
+        assert_equal user.id, setting.redmine_user_id
       end
 
       should "reject non-matching redmine_user_name with validation error" do
@@ -940,7 +958,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
         assert_response :success
         assert_equal "channels", assigns(:selected_tab)
-        assert_select ".errorExplanation", text: /does not match any user/
+        assert_select "#errorExplanation", text: /does not match any user/
       end
     end
   end

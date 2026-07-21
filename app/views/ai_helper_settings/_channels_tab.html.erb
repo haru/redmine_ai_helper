@@ -30,7 +30,7 @@
         </p>
       <% end %>
       <p>
-        <label><%= t("ai_helper.chat_channel.settings.redmine_user") %></label>
+        <label><%= t("ai_helper.chat_channel.settings.redmine_user") %> <span class="required">*</span></label>
         <% selected_user = @ai_helper_users.find { |u| u.id == adapter_setting.redmine_user_id } %>
         <%= text_field_tag "chat_adapter_settings[#{channel_type}][redmine_user_name]",
                            selected_user&.name.to_s,

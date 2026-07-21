@@ -9,7 +9,7 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
     AiHelperChatAdapterSetting.delete_all
     create(:ai_helper_chat_adapter_setting,
            channel_type: "slack", enabled: true,
-           app_token: "xapp-secret", bot_token: "xoxb-secret")
+           app_token: "xapp-secret", bot_token: "xoxb-secret", redmine_user_id: 2)
     @adapter = RedmineAiHelper::ChatChannel::Adapters::SlackAdapter.new
   end
 

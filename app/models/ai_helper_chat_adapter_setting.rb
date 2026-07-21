@@ -14,6 +14,7 @@ class AiHelperChatAdapterSetting < ApplicationRecord
 
   validates :channel_type, presence: true, uniqueness: true
   validate :required_fields_present_when_enabled
+  validate :service_account_present_when_enabled
   validate :redmine_user_name_matches_existing_user
 
   safe_attributes "enabled", "app_token", "bot_token", "dm_default_project_id", "redmine_user_id", "redmine_user_name"
@@ -63,6 +64,15 @@ class AiHelperChatAdapterSetting < ApplicationRecord
   def required_setting_fields
     adapter = RedmineAiHelper::ChatChannel::BaseAdapter.adapters[channel_type]
     adapter ? adapter.required_setting_fields : []
+  end
+
+  # Validates that the execution account is set when the integration is
+  # enabled. The execution account is the permission boundary for everything
+  # the gateway can do, so an enabled adapter must never run without one.
+  def service_account_present_when_enabled
+    return unless enabled?
+
+    errors.add(:redmine_user_id, :blank) if redmine_user_id.blank?
   end
 
   # Validates that the submitted redmine_user_name corresponds to an actual

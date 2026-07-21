@@ -67,7 +67,7 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
     end
 
     should "be true when enabled and all required fields are present" do
-      create(:ai_helper_chat_adapter_setting, channel_type: "fake_chat", enabled: true, bot_token: "xoxb-token")
+      create(:ai_helper_chat_adapter_setting, channel_type: "fake_chat", enabled: true, bot_token: "xoxb-token", redmine_user_id: 2)
 
       assert_predicate FakeAdapter.new, :enabled?
     end

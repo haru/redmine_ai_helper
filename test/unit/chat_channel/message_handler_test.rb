@@ -66,12 +66,28 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       assert_equal 0, AiHelperConversation.count
     end
 
-    should "reply with guidance when the service account is locked" do
+    should "reply that the execution account is unavailable when it is locked" do
+      @setting.update!(enabled: true)
       @service_account.lock!
 
       @handler.handle(incoming)
 
-      assert_equal error_text(:service_account_not_configured, user: nil),
+      assert_equal error_text(:service_account_unavailable, user: nil),
+                   @adapter.sent_messages.first[:text]
+      assert_equal 0, AiHelperConversation.count
+    end
+
+    should "reply that the execution account is unavailable when it was deleted" do
+      # Deleting a Redmine user nullifies redmine_user_id via the FK's
+      # on_delete: :nullify. Because FR-1 forbids saving an enabled adapter
+      # without an account, an enabled row with a blank account can only mean
+      # the previously configured account was removed.
+      @setting.update!(enabled: true)
+      @setting.update_column(:redmine_user_id, nil)
+
+      @handler.handle(incoming)
+
+      assert_equal error_text(:service_account_unavailable, user: nil),
                    @adapter.sent_messages.first[:text]
       assert_equal 0, AiHelperConversation.count
     end

@@ -30,8 +30,17 @@ module RedmineAiHelper
       # @return [void]
       def handle(message)
         user = nil
-        user = adapter_settings(message).service_account
-        return reply(message, guidance(:service_account_not_configured, nil)) unless user
+        setting = adapter_settings(message)
+        user = setting.service_account
+        unless user
+          # FR-1 forbids saving an enabled adapter without an execution
+          # account, so an enabled adapter that resolves no active account can
+          # only mean the previously configured account was deleted (the FK
+          # nullifies redmine_user_id) or locked. Distinguish that runtime
+          # loss from an adapter that was simply never configured.
+          key = setting.enabled ? :service_account_unavailable : :service_account_not_configured
+          return reply(message, guidance(key, nil))
+        end
 
         project = resolve_project(message)
         unless project

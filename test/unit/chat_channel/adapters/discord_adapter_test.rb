@@ -15,7 +15,7 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
   setup do
     AiHelperChatAdapterSetting.delete_all
     create(:ai_helper_chat_adapter_setting,
-           channel_type: "discord", enabled: true, bot_token: BOT_TOKEN)
+           channel_type: "discord", enabled: true, bot_token: BOT_TOKEN, redmine_user_id: 2)
     @adapter = DiscordAdapter.new
     @adapter.instance_variable_set(:@bot_user_id, "BOT")
   end

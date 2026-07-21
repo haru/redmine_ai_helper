@@ -56,6 +56,7 @@ en:
         restart_notice: "You need to restart the chat gateway for setting changes to take effect"
       errors:
         service_account_not_configured: "No active execution account is configured for this chat integration, so the request could not be processed. Please ask your administrator to configure the execution account."
+        service_account_unavailable: "The configured execution account has been deleted or deactivated, so the request could not be processed. Please ask your administrator to reconfigure the execution account."
         channel_not_bound: "This channel is not associated with any Redmine project. Please ask your administrator to configure the channel mapping."
         dm_not_configured: "No default project is configured for direct messages. Please ask your administrator to configure it."
         module_disabled: "The AI helper module is disabled for the associated project."
