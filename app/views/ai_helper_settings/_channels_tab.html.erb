@@ -10,15 +10,6 @@
                   class: "adapter-help-trigger",
                   data: { channel_type: channel_type } %>
     </span>
-    <% if adapter_setting.errors.any? %>
-      <div class="errorExplanation">
-        <ul>
-          <% adapter_setting.errors.full_messages.each do |message| %>
-            <li><%= message %></li>
-          <% end %>
-        </ul>
-      </div>
-    <% end %>
     <p>
       <label><%= t("ai_helper.chat_channel.settings.enabled") %></label>
       <%= hidden_field_tag "chat_adapter_settings[#{channel_type}][enabled]", "0", id: nil %>
@@ -29,7 +20,7 @@
       <% token_fields = RedmineAiHelper::ChatChannel::BaseAdapter.adapters[channel_type].required_setting_fields & [:app_token, :bot_token] %>
       <% token_fields.each do |token_field| %>
         <p>
-          <label><%= t("ai_helper.chat_channel.settings.#{token_field}") %></label>
+          <label><%= t("ai_helper.chat_channel.settings.#{token_field}") %> <span class="required">*</span></label>
           <%= password_field_tag "chat_adapter_settings[#{channel_type}][#{token_field}]",
                                  token_field_value(adapter_setting.send(token_field)),
                                  size: 60, id: nil, autocomplete: "new-password" %>
@@ -96,7 +87,7 @@
         <div class="tabular">
           <%= hidden_field_tag "ai_helper_channel_binding[channel_type]", channel_type, id: nil %>
           <p>
-            <label><%= t("ai_helper.chat_channel.settings.channel_id") %></label>
+            <label><%= t("ai_helper.chat_channel.settings.channel_id") %> <span class="required">*</span></label>
             <%= text_field_tag "ai_helper_channel_binding[channel_id]", "", size: 30, id: nil %>
           </p>
           <p>
@@ -104,7 +95,7 @@
             <%= text_field_tag "ai_helper_channel_binding[channel_name]", "", size: 30, id: nil %>
           </p>
           <p>
-            <label><%= t(:label_project) %></label>
+            <label><%= t(:label_project) %> <span class="required">*</span></label>
             <%= select_tag "ai_helper_channel_binding[project_id]",
                            options_from_collection_for_select(@ai_helper_projects, :id, :name),
                            include_blank: true, id: nil %>
