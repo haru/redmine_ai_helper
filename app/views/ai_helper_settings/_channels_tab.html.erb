@@ -52,7 +52,7 @@
                        include_blank: true, id: nil %>
       </p>
     </div>
-    <% if adapter_setting.persisted? %>
+    <% if adapter_setting.configured? %>
       <fieldset class="box" id="adapter-bindings-<%= channel_type %>">
         <legend><%= t("ai_helper.chat_channel.settings.bindings") %></legend>
         <% adapter_bindings = @channel_bindings_by_type[channel_type] || [] %>
