@@ -45,6 +45,18 @@ class AiHelperChatAdapterSetting < ApplicationRecord
     user&.active? ? user : nil
   end
 
+  # Whether this adapter's settings are substantively filled in: the record is
+  # saved and all fields required to operate the integration (adapter tokens and
+  # the execution account) are present. Used to decide whether the channel
+  # bindings form should be shown — a bare, empty settings row is not enough.
+  # @return [Boolean]
+  def configured?
+    return false unless persisted?
+    return false if redmine_user_id.blank?
+
+    required_setting_fields.all? { |field| send(field).present? }
+  end
+
   # Masked app token for display (all but the first four characters hidden).
   # @return [String, nil]
   def masked_app_token

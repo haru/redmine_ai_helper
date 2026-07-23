@@ -191,6 +191,58 @@ class AiHelperChatAdapterSettingTest < ActiveSupport::TestCase
     end
   end
 
+  context "#configured?" do
+    should "return false for an unsaved record" do
+      setting = AiHelperChatAdapterSetting.new(
+        channel_type: "fake_setting_chat",
+        app_token: "xapp-test", bot_token: "xoxb-test", redmine_user_id: 2
+      )
+
+      assert_not setting.configured?
+    end
+
+    should "return true when saved with all required tokens and an execution account" do
+      setting = create(
+        :ai_helper_chat_adapter_setting,
+        channel_type: "fake_setting_chat", enabled: true,
+        app_token: "xapp-test", bot_token: "xoxb-test", redmine_user_id: 2
+      )
+
+      assert setting.configured?
+    end
+
+    should "return false when a required token is blank" do
+      setting = create(
+        :ai_helper_chat_adapter_setting,
+        channel_type: "fake_setting_chat", enabled: false,
+        app_token: "xapp-test", bot_token: "", redmine_user_id: 2
+      )
+
+      assert_not setting.configured?
+    end
+
+    should "return false when the execution account is blank" do
+      setting = create(
+        :ai_helper_chat_adapter_setting,
+        channel_type: "fake_setting_chat", enabled: false,
+        app_token: "xapp-test", bot_token: "xoxb-test", redmine_user_id: nil
+      )
+
+      assert_not setting.configured?
+    end
+
+    should "return true for an adapter without required tokens once an execution account is set" do
+      # "tokenless_chat" has no registered adapter, so required_setting_fields
+      # is empty and only the execution account gates configured?.
+      setting = create(
+        :ai_helper_chat_adapter_setting,
+        channel_type: "tokenless_chat", redmine_user_id: 2
+      )
+
+      assert setting.configured?
+    end
+  end
+
   context "masked tokens" do
     should "mask all but the first four characters" do
       setting = AiHelperChatAdapterSetting.new(app_token: "xapp-123456", bot_token: "xoxb-abcdef")
