@@ -5,11 +5,13 @@ function setAdapterSettingsVisible(channelType) {
     `input[type=checkbox][data-adapter-type="${channelType}"]`
   );
   const settingsDiv = document.getElementById(`adapter-settings-${channelType}`);
+  // The bindings fieldset is only rendered once the adapter is configured,
+  // so it may be absent — the settings div must still toggle without it.
   const bindingsFieldset = document.getElementById(`adapter-bindings-${channelType}`);
-  if (!checkbox || !settingsDiv || !bindingsFieldset) return;
+  if (!checkbox || !settingsDiv) return;
   const display = checkbox.checked ? "" : "none";
   settingsDiv.style.display = display;
-  bindingsFieldset.style.display = display;
+  if (bindingsFieldset) bindingsFieldset.style.display = display;
 }
 
 function setupAdapterCheckboxListeners() {
