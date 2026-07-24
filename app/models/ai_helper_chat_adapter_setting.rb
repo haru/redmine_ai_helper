@@ -112,7 +112,7 @@ class AiHelperChatAdapterSetting < ApplicationRecord
   def default_project_present_when_enabled
     return unless enabled?
 
-    errors.add(:default_project_id, :blank) if dm_default_project_id.blank?
+    errors.add(:default_project_id, :blank) if default_project_id.blank?
   end
 
   # Validates that the submitted redmine_user_name corresponds to an actual
