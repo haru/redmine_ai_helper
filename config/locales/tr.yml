@@ -248,6 +248,8 @@ tr:
           attributes:
             redmine_user_name:
               invalid: "hiçbir kullanıcıyla eşleşmiyor"
+            default_project_id:
+              blank: "boş olamaz"
     models:
       ai_helper_model_profile: "Model Profili"
       ai_helper_setting: "AI Asistan Ayarı"
@@ -297,5 +299,7 @@ tr:
         prompt: "Prompt"
         description: "Açıklama"
         user_scope: "Kapsam"
+      ai_helper_chat_adapter_setting:
+        default_project_id: "Varsayılan proje"
 
   field_id: "ID"
