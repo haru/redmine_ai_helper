@@ -47,7 +47,7 @@ tr:
         bot_token: "Bot Token'ı"
         redmine_user: "Çalıştırma hesabı"
         redmine_user_info: "Sohbet aracından gelen tüm sorular bu Redmine kullanıcısının izinleriyle işlenir. Ağ geçidinin yapabileceklerini sınırlamak için bu hesabın rollerini kısıtlayın."
-        dm_default_project: "Doğrudan mesajlar için varsayılan proje"
+        default_project: "Varsayılan proje"
         bindings: "Kanal bağlamaları"
         adapter: "Sohbet aracı"
         channel_id: "Kanal ID'si"
@@ -55,8 +55,7 @@ tr:
         add_binding: "Bağlama ekle"
       errors:
         service_account_not_configured: "Bu sohbet entegrasyonu için etkin bir çalıştırma hesabı yapılandırılmadığı için istek işlenemedi. Lütfen yöneticinizden çalıştırma hesabını yapılandırmasını isteyin."
-        channel_not_bound: "Bu kanal herhangi bir Redmine projesiyle ilişkilendirilmemiş. Lütfen yöneticinizden kanal eşlemesini yapılandırmasını isteyin."
-        dm_not_configured: "Doğrudan mesajlar için varsayılan bir proje yapılandırılmamış. Lütfen yöneticinizden bunu yapılandırmasını isteyin."
+        default_project_not_configured: "Bu sohbet entegrasyonu için varsayılan bir proje yapılandırılmamış. Lütfen yöneticinizden bunu yapılandırmasını isteyin."
         module_disabled: "İlişkili proje için AI Asistan modülü devre dışı bırakılmış."
         processing_failed: "Yanıt oluşturulurken bir hata oluştu. Ayrıntılar için AI Asistan günlüğünü kontrol edin."
     notice_sub_issues_added: "Alt işler eklendi"

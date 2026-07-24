@@ -48,7 +48,8 @@ class AiHelperChatAdapterSettingTest < ActiveSupport::TestCase
     should "be valid when enabled with all required fields present" do
       setting = AiHelperChatAdapterSetting.new(
         channel_type: "fake_setting_chat", enabled: true,
-        app_token: "xapp-test", bot_token: "xoxb-test", redmine_user_id: 2
+        app_token: "xapp-test", bot_token: "xoxb-test", redmine_user_id: 2,
+        default_project_id: 1
       )
 
       assert_predicate setting, :valid?
@@ -90,7 +91,26 @@ class AiHelperChatAdapterSettingTest < ActiveSupport::TestCase
       setting = AiHelperChatAdapterSetting.new(
         channel_type: "fake_setting_chat", enabled: true,
         app_token: "xapp-test", bot_token: "xoxb-test",
-        redmine_user_name: "User 2", redmine_user_id: 2
+        redmine_user_name: "User 2", redmine_user_id: 2, default_project_id: 1
+      )
+
+      assert_predicate setting, :valid?
+    end
+
+    should "require a default project when enabled" do
+      setting = AiHelperChatAdapterSetting.new(
+        channel_type: "fake_setting_chat", enabled: true,
+        app_token: "xapp-test", bot_token: "xoxb-test", redmine_user_id: 2,
+        default_project_id: nil
+      )
+
+      assert_not setting.valid?
+      assert_predicate setting.errors[:default_project_id], :present?
+    end
+
+    should "not require a default project when disabled" do
+      setting = AiHelperChatAdapterSetting.new(
+        channel_type: "fake_setting_chat", enabled: false, default_project_id: nil
       )
 
       assert_predicate setting, :valid?
@@ -109,19 +129,20 @@ class AiHelperChatAdapterSettingTest < ActiveSupport::TestCase
   end
 
   context "safe_attributes" do
-    should "accept enabled, tokens, dm_default_project_id and redmine_user_id" do
+    should "accept enabled, tokens, default_project_id and redmine_user_id" do
       setting = create(:ai_helper_chat_adapter_setting)
       setting.safe_attributes = {
         "enabled" => "1",
         "app_token" => "xapp-abc",
         "bot_token" => "xoxb-abc",
-        "dm_default_project_id" => "1",
+        "default_project_id" => "1",
         "redmine_user_id" => "2"
       }
 
       assert setting.enabled
       assert_equal "xapp-abc", setting.app_token
       assert_equal "xoxb-abc", setting.bot_token
+      assert_equal 1, setting.default_project_id
       assert_equal 1, setting.dm_default_project_id
       assert_equal 2, setting.redmine_user_id
     end
@@ -151,7 +172,7 @@ class AiHelperChatAdapterSettingTest < ActiveSupport::TestCase
 
   context "class method enabled?" do
     should "return true when the setting row is enabled" do
-      create(:ai_helper_chat_adapter_setting, channel_type: "fake_setting_chat", enabled: true, app_token: "xapp-a", bot_token: "xoxb-b", redmine_user_id: 2)
+      create(:ai_helper_chat_adapter_setting, channel_type: "fake_setting_chat", enabled: true, app_token: "xapp-a", bot_token: "xoxb-b", redmine_user_id: 2, default_project_id: 1)
 
       assert AiHelperChatAdapterSetting.enabled?("fake_setting_chat")
     end
@@ -161,11 +182,20 @@ class AiHelperChatAdapterSettingTest < ActiveSupport::TestCase
     end
   end
 
-  context "dm_default_project" do
+  context "default_project" do
     should "return the associated project" do
+      setting = create(:ai_helper_chat_adapter_setting, default_project_id: 1)
+
+      assert_equal Project.find(1), setting.default_project
+    end
+
+    should "carry over an existing saved default project (backward compatibility)" do
+      # Simulates a record saved before the rename: the physical column
+      # dm_default_project_id still holds the value and default_project reads it.
       setting = create(:ai_helper_chat_adapter_setting, dm_default_project_id: 1)
 
-      assert_equal Project.find(1), setting.dm_default_project
+      assert_equal 1, setting.default_project_id
+      assert_equal Project.find(1), setting.default_project
     end
   end
 
@@ -205,7 +235,8 @@ class AiHelperChatAdapterSettingTest < ActiveSupport::TestCase
       setting = create(
         :ai_helper_chat_adapter_setting,
         channel_type: "fake_setting_chat", enabled: true,
-        app_token: "xapp-test", bot_token: "xoxb-test", redmine_user_id: 2
+        app_token: "xapp-test", bot_token: "xoxb-test", redmine_user_id: 2,
+        default_project_id: 1
       )
 
       assert setting.configured?

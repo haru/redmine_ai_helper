@@ -67,7 +67,7 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
     end
 
     should "reply that the execution account is unavailable when it is locked" do
-      @setting.update!(enabled: true)
+      @setting.update!(enabled: true, default_project_id: @project.id)
       @service_account.lock!
 
       @handler.handle(incoming)
@@ -82,7 +82,7 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       # on_delete: :nullify. Because FR-1 forbids saving an enabled adapter
       # without an account, an enabled row with a blank account can only mean
       # the previously configured account was removed.
-      @setting.update!(enabled: true)
+      @setting.update!(enabled: true, default_project_id: @project.id)
       @setting.update_column(:redmine_user_id, nil)
 
       @handler.handle(incoming)
@@ -92,22 +92,32 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       assert_equal 0, AiHelperConversation.count
     end
 
-    should "reply with guidance when the channel is not bound" do
-      message = incoming(channel_id: "UNBOUND")
-      @handler.handle(message)
+    should "fall back to the default project for an unbound channel (B1)" do
+      @setting.update!(default_project_id: @project.id)
+      RedmineAiHelper::Llm.any_instance.expects(:chat).with do |_conversation, _proc, option|
+        option[:project] == @project
+      end.returns(assistant_message("default answer"))
 
-      assert_equal error_text(:channel_not_bound), @adapter.sent_messages.first[:text]
+      @handler.handle(incoming(channel_id: "UNBOUND", thread_key: "UNBOUND:1.000001"))
+
+      assert_equal "default answer", @adapter.sent_messages.first[:text]
     end
 
-    should "reply with guidance for a DM without a default project" do
-      message = incoming(dm: true, channel_id: "D123", thread_key: "D123:1.000001")
-      @handler.handle(message)
+    should "prefer the channel binding over the default project for a bound channel (B2)" do
+      other_project = Project.find(2)
+      other_project.enable_module!("ai_helper")
+      @setting.update!(default_project_id: other_project.id)
+      RedmineAiHelper::Llm.any_instance.expects(:chat).with do |_conversation, _proc, option|
+        option[:project] == @project
+      end.returns(assistant_message("bound answer"))
 
-      assert_equal error_text(:dm_not_configured), @adapter.sent_messages.first[:text]
+      @handler.handle(incoming(channel_id: "CH1", thread_key: "CH1:2.000001"))
+
+      assert_equal "bound answer", @adapter.sent_messages.first[:text]
     end
 
-    should "use the DM default project for direct messages" do
-      @setting.update!(dm_default_project_id: @project.id)
+    should "use the default project for direct messages (B3)" do
+      @setting.update!(default_project_id: @project.id)
       RedmineAiHelper::Llm.any_instance.expects(:chat).with do |_conversation, _proc, option|
         option[:project] == @project
       end.returns(assistant_message("dm answer"))
@@ -115,6 +125,20 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       @handler.handle(incoming(dm: true, channel_id: "D123", thread_key: "D123:1.000001"))
 
       assert_equal "dm answer", @adapter.sent_messages.first[:text]
+    end
+
+    should "reply with guidance for an unbound channel when no default project exists (B5)" do
+      message = incoming(channel_id: "UNBOUND", thread_key: "UNBOUND:1.000001")
+      @handler.handle(message)
+
+      assert_equal error_text(:default_project_not_configured), @adapter.sent_messages.first[:text]
+    end
+
+    should "reply with guidance for a DM when no default project exists (B5)" do
+      message = incoming(dm: true, channel_id: "D123", thread_key: "D123:1.000001")
+      @handler.handle(message)
+
+      assert_equal error_text(:default_project_not_configured), @adapter.sent_messages.first[:text]
     end
 
     should "reply with guidance when the ai_helper module is disabled" do

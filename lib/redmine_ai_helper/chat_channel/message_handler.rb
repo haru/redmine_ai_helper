@@ -44,8 +44,7 @@ module RedmineAiHelper
 
         project = resolve_project(message)
         unless project
-          key = message.dm? ? :dm_not_configured : :channel_not_bound
-          return reply(message, guidance(key, user))
+          return reply(message, guidance(:default_project_not_configured, user))
         end
         return reply(message, guidance(:module_disabled, user)) unless project.module_enabled?(:ai_helper)
 
@@ -68,15 +67,16 @@ module RedmineAiHelper
         AiHelperChatAdapterSetting.for_channel(message.channel_type)
       end
 
-      # Resolves the target project from the channel binding, or from the
-      # adapter's DM default project for direct messages.
+      # Resolves the target project for the message. Direct messages use the
+      # adapter's default project. Regular channels prefer their channel
+      # binding and fall back to the default project when no binding exists.
       # @return [Project, nil]
       def resolve_project(message)
-        if message.dm?
-          adapter_settings(message).dm_default_project
-        else
-          AiHelperChannelBinding.for_channel(message.channel_type, message.channel_id).first&.project
-        end
+        settings = adapter_settings(message)
+        return settings.default_project if message.dm?
+
+        binding = AiHelperChannelBinding.for_channel(message.channel_type, message.channel_id).first
+        binding&.project || settings.default_project
       end
 
       # Appends the question to the thread's conversation and runs the LLM

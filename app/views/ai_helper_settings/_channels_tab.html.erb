@@ -46,9 +46,9 @@
         <em class="info"><%= t("ai_helper.chat_channel.settings.redmine_user_info") %></em>
       </p>
       <p>
-        <label><%= t("ai_helper.chat_channel.settings.dm_default_project") %></label>
-        <%= select_tag "chat_adapter_settings[#{channel_type}][dm_default_project_id]",
-                       options_from_collection_for_select(@ai_helper_projects, :id, :name, adapter_setting.dm_default_project_id),
+        <label><%= t("ai_helper.chat_channel.settings.default_project") %> <span class="required">*</span></label>
+        <%= select_tag "chat_adapter_settings[#{channel_type}][default_project_id]",
+                       options_from_collection_for_select(@ai_helper_projects, :id, :name, adapter_setting.default_project_id),
                        include_blank: true, id: nil %>
       </p>
     </div>
