@@ -631,17 +631,17 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert_response :success
       assert_select "#tab-content-channels input[name='chat_adapter_settings[ui_chat][enabled]']"
       assert_select "#tab-content-channels input[name='chat_adapter_settings[ui_chat][bot_token]'][type=password]"
-      assert_select "#tab-content-channels select[name='chat_adapter_settings[ui_chat][dm_default_project_id]']"
+      assert_select "#tab-content-channels select[name='chat_adapter_settings[ui_chat][default_project_id]']"
       assert_select "#tab-content-channels input[name='chat_adapter_settings[ui_chat][redmine_user_id]'][type=hidden]"
       assert_select "#tab-content-channels input[name='chat_adapter_settings[ui_chat][redmine_user_name]'][type=text]"
     end
 
-    should "save adapter settings from the channels tab" do
+    should "save adapter settings from the channels tab (C2)" do
       post :update, params: {
         tab: "channels",
         ai_helper_setting: { additional_instructions: "keep" },
         chat_adapter_settings: {
-          "ui_chat" => { "enabled" => "1", "bot_token" => "xoxb-ui", "dm_default_project_id" => "1", "redmine_user_id" => "2" }
+          "ui_chat" => { "enabled" => "1", "bot_token" => "xoxb-ui", "default_project_id" => "1", "redmine_user_id" => "2" }
         }
       }
 
@@ -649,8 +649,38 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       setting = AiHelperChatAdapterSetting.for_channel("ui_chat")
       assert setting.enabled
       assert_equal "xoxb-ui", setting.bot_token
-      assert_equal 1, setting.dm_default_project_id
+      assert_equal 1, setting.default_project_id
       assert_equal 2, setting.redmine_user_id
+    end
+
+    should "reject enabling an adapter without a default project (C1)" do
+      post :update, params: {
+        tab: "general",
+        ai_helper_setting: {},
+        chat_adapter_settings: {
+          "ui_chat" => { "enabled" => "1", "bot_token" => "xoxb-ui", "redmine_user_id" => "2", "default_project_id" => "" }
+        }
+      }
+
+      assert_response :success
+      assert_equal "channels", assigns(:selected_tab)
+      assert_not AiHelperChatAdapterSetting.enabled?("ui_chat")
+      assert_select "#errorExplanation"
+    end
+
+    should "save a disabled adapter without a default project (C3)" do
+      post :update, params: {
+        tab: "channels",
+        ai_helper_setting: {},
+        chat_adapter_settings: {
+          "ui_chat" => { "enabled" => "0", "bot_token" => "xoxb-ui", "default_project_id" => "" }
+        }
+      }
+
+      assert_redirected_to controller: "ai_helper_settings", action: :index, tab: "channels"
+      setting = AiHelperChatAdapterSetting.for_channel("ui_chat")
+      assert_not setting.enabled
+      assert_nil setting.default_project_id
     end
 
     should "re-render the channels tab when adapter settings are invalid" do
@@ -665,6 +695,16 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert_response :success
       assert_equal "channels", assigns(:selected_tab)
       assert_not AiHelperChatAdapterSetting.enabled?("ui_chat")
+    end
+
+    should "label the default project field without a direct-message-only qualifier (C4)" do
+      get :index, params: { tab: "channels" }
+
+      assert_response :success
+      label = I18n.t("ai_helper.chat_channel.settings.default_project")
+      assert_select "#tab-content-channels label", text: /#{Regexp.escape(label)}/
+      assert_no_match(/for direct messages/i, @response.body)
+      assert_no_match(/ダイレクトメッセージ用/, @response.body)
     end
 
     should "list existing channel bindings in the channels tab" do
@@ -715,7 +755,8 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
     should "not render the raw app or bot token value in the HTML source" do
       AiHelperChatAdapterSetting.create!(
-        channel_type: "ui_chat", enabled: true, bot_token: "xoxb-supersecret-value", redmine_user_id: 2
+        channel_type: "ui_chat", enabled: true, bot_token: "xoxb-supersecret-value", redmine_user_id: 2,
+        default_project_id: 1
       )
 
       get :index, params: { tab: "channels" }
@@ -728,7 +769,8 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
     should "render the masked token next to the field when a token is stored" do
       AiHelperChatAdapterSetting.create!(
-        channel_type: "ui_chat", enabled: true, bot_token: "xoxb-supersecret-value", redmine_user_id: 2
+        channel_type: "ui_chat", enabled: true, bot_token: "xoxb-supersecret-value", redmine_user_id: 2,
+        default_project_id: 1
       )
 
       get :index, params: { tab: "channels" }
@@ -739,7 +781,8 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
     should "preserve the stored token when the dummy value is submitted unchanged" do
       AiHelperChatAdapterSetting.create!(
-        channel_type: "ui_chat", enabled: true, bot_token: "xoxb-original", redmine_user_id: 2
+        channel_type: "ui_chat", enabled: true, bot_token: "xoxb-original", redmine_user_id: 2,
+        default_project_id: 1
       )
 
       post :update, params: {
@@ -775,7 +818,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
     context "US1: adapter enabled checkbox toggle visibility" do
       should "render adapter-settings div wrapping settings fields when enabled" do
-        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test", redmine_user_id: 2)
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test", redmine_user_id: 2, default_project_id: 1)
 
         get :index, params: { tab: "channels" }
 
@@ -794,7 +837,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       end
 
       should "render adapter-bindings fieldset with an id so JS can toggle it alongside adapter-settings" do
-        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test", redmine_user_id: 2)
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test", redmine_user_id: 2, default_project_id: 1)
 
         get :index, params: { tab: "channels" }
 
@@ -849,7 +892,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
       should "display selected user name in text input on page reload when redmine_user_id is set" do
         user = User.active.sorted.first
-        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test", redmine_user_id: user.id)
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test", redmine_user_id: user.id, default_project_id: 1)
 
         get :index, params: { tab: "channels" }
 
@@ -865,7 +908,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
           tab: "channels",
           ai_helper_setting: {},
           chat_adapter_settings: {
-            "ui_chat" => { "enabled" => "1", "bot_token" => "xoxb-new", "redmine_user_id" => user.id.to_s, "redmine_user_name" => user.name }
+            "ui_chat" => { "enabled" => "1", "bot_token" => "xoxb-new", "redmine_user_id" => user.id.to_s, "redmine_user_name" => user.name, "default_project_id" => "1" }
           }
         }
 
@@ -932,7 +975,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
       should "clear redmine_user_id when both name and id are blank and the adapter is disabled" do
         user = User.active.sorted.first
-        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test", redmine_user_id: user.id)
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test", redmine_user_id: user.id, default_project_id: 1)
 
         post :update, params: {
           tab: "channels",
@@ -949,7 +992,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
       should "reject clearing redmine_user_id while the adapter stays enabled" do
         user = User.active.sorted.first
-        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test", redmine_user_id: user.id)
+        AiHelperChatAdapterSetting.create!(channel_type: "ui_chat", enabled: true, bot_token: "xoxb-test", redmine_user_id: user.id, default_project_id: 1)
 
         post :update, params: {
           tab: "channels",
@@ -1013,7 +1056,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
         chat_adapter_settings: {
           "discord" => { "enabled" => "1", "bot_token" => "discord-bot-xyz",
                          "redmine_user_id" => @user.id.to_s, "redmine_user_name" => @user.name,
-                         "dm_default_project_id" => "1" }
+                         "default_project_id" => "1" }
         }
       }
 
@@ -1022,7 +1065,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert setting.enabled
       assert_equal "discord-bot-xyz", setting.bot_token
       assert_equal @user.id, setting.redmine_user_id
-      assert_equal 1, setting.dm_default_project_id
+      assert_equal 1, setting.default_project_id
     end
 
     should "reject enabling discord without a bot token" do

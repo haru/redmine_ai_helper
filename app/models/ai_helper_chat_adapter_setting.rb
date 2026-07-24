@@ -7,7 +7,12 @@
 class AiHelperChatAdapterSetting < ApplicationRecord
   include Redmine::SafeAttributes
 
-  belongs_to :dm_default_project, class_name: "Project", optional: true
+  # The default project is the fallback context for direct messages and for
+  # regular channels that have no channel binding. Stored in the existing
+  # physical column dm_default_project_id (kept for backward compatibility);
+  # the Ruby-layer name drops the "dm_" prefix because the meaning is no
+  # longer limited to direct messages.
+  belongs_to :default_project, class_name: "Project", foreign_key: "dm_default_project_id", inverse_of: false, optional: true
   belongs_to :redmine_user, class_name: "User", optional: true
 
   attr_accessor :redmine_user_name
@@ -15,9 +20,22 @@ class AiHelperChatAdapterSetting < ApplicationRecord
   validates :channel_type, presence: true, uniqueness: true
   validate :required_fields_present_when_enabled
   validate :service_account_present_when_enabled
+  validate :default_project_present_when_enabled
   validate :redmine_user_name_matches_existing_user
 
-  safe_attributes "enabled", "app_token", "bot_token", "dm_default_project_id", "redmine_user_id", "redmine_user_name"
+  safe_attributes "enabled", "app_token", "bot_token", "default_project_id", "redmine_user_id", "redmine_user_name"
+
+  # Reads the default project id from the physical dm_default_project_id column.
+  # @return [Integer, nil]
+  def default_project_id
+    dm_default_project_id
+  end
+
+  # Writes the default project id to the physical dm_default_project_id column.
+  # @param value [Integer, String, nil]
+  def default_project_id=(value)
+    self.dm_default_project_id = value
+  end
 
   class << self
     # Returns the setting row for the given adapter, or a new unsaved record
@@ -85,6 +103,16 @@ class AiHelperChatAdapterSetting < ApplicationRecord
     return unless enabled?
 
     errors.add(:redmine_user_id, :blank) if redmine_user_id.blank?
+  end
+
+  # Validates that a default project is set when the integration is enabled.
+  # An enabled adapter must resolve every message to a project (direct messages
+  # and unbound channels fall back to the default project), so enabling without
+  # one is rejected. A disabled adapter may be saved as a draft without it.
+  def default_project_present_when_enabled
+    return unless enabled?
+
+    errors.add(:default_project_id, :blank) if default_project_id.blank?
   end
 
   # Validates that the submitted redmine_user_name corresponds to an actual
