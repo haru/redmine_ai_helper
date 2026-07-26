@@ -310,6 +310,14 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
 
     # C4
     should "apply sort to filtered results without breaking limit or visibility" do
+      # Make updated_on intentionally *not* correlate with id: the older issue (A) gets the
+      # newer updated_on. This way a "updated_on desc" result of [A, B] can only happen if the
+      # sort is actually applied in the filtered/query-builder path; if sort were ignored it would
+      # fall back to id desc and yield [B, A], failing the assertion below.
+      now = Time.current
+      @issue_a.update_column(:updated_on, now)
+      @issue_b.update_column(:updated_on, now - 1.hour)
+
       result = @provider.search_issues(
         project_id: @project.id,
         fields: [ { field_name: "tracker_id", operator: "=", values: [ @tracker.id.to_s ] } ],
@@ -322,7 +330,7 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       assert_not_includes returned_ids, @issue_c.id, "issue with a different tracker must not be included"
 
       our_ids = returned_ids.select { |id| [ @issue_a.id, @issue_b.id ].include?(id) }
-      assert_equal [ @issue_b.id, @issue_a.id ], our_ids
+      assert_equal [ @issue_a.id, @issue_b.id ], our_ids
     end
 
     # C8

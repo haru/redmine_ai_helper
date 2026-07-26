@@ -368,7 +368,7 @@ module RedmineAiHelper
           setup_query(project, user)
           scope = @query.base_scope
           scope.includes(:status, :priority, :tracker, :assigned_to, :author, :custom_values)
-               .order(@sort[:field] => @sort[:direction]).limit(limit).to_a
+               .reorder(@sort[:field] => @sort[:direction]).limit(limit).to_a
         end
 
         # Returns the total count of matching issues
