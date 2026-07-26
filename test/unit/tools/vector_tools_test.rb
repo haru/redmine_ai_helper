@@ -155,6 +155,84 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
 
         assert_equal [ { key: "priority_id", rante: { "lt" => 5 } } ], result
       end
+
+      should "convert all valid items including match and range conditions without change (FR-007)" do
+        @mock_logger.stubs(:warn)
+        filter = [
+          { key: "project_id", condition: "match", value: "123" },
+          { key: "priority_id", condition: "lt", value: "5" },
+          { key: "created_on", condition: "gte", value: "2024-01-01" }
+        ]
+        result = @vector_tools.send(:create_filter, filter)
+
+        assert_equal 3, result.length
+        assert_equal({ key: "project_id", match: { value: 123 } }, result[0])
+        assert_equal({ key: "priority_id", rante: { "lt" => 5 } }, result[1])
+        assert_equal({ key: "created_on", rante: { "gte" => "2024-01-01" } }, result[2])
+      end
+
+      should "skip item with nil key without raising and keep valid items (FR-001, FR-003)" do
+        @mock_logger.stubs(:warn)
+        filter = [
+          { key: nil, condition: "match", value: "1" },
+          { key: "project_id", condition: "match", value: "2" }
+        ]
+        result = @vector_tools.send(:create_filter, filter)
+
+        assert_equal [ { key: "project_id", match: { value: 2 } } ], result
+      end
+
+      should "skip item with nil condition without raising (FR-002, FR-003)" do
+        @mock_logger.stubs(:warn)
+        filter = [
+          { key: "status_id", condition: nil, value: "1" },
+          { key: "project_id", condition: "match", value: "5" }
+        ]
+        result = @vector_tools.send(:create_filter, filter)
+
+        assert_equal [ { key: "project_id", match: { value: 5 } } ], result
+      end
+
+      should "skip item with nil value and avoid unintended 0 match for _id keys (FR-008)" do
+        @mock_logger.stubs(:warn)
+        filter = [
+          { key: "project_id", condition: "match", value: nil },
+          { key: "tracker_id", condition: "match", value: "3" }
+        ]
+        result = @vector_tools.send(:create_filter, filter)
+
+        assert_equal [ { key: "tracker_id", match: { value: 3 } } ], result
+        assert(result.none? { |item| item[:key] == "project_id" && item[:match] && item[:match][:value] == 0 })
+      end
+
+      should "return empty array when all items are invalid without raising (FR-006)" do
+        @mock_logger.stubs(:warn)
+        filter = [
+          { key: nil, condition: "match", value: "1" },
+          { key: "project_id", condition: nil, value: "2" },
+          { key: "tracker_id", condition: "match", value: nil }
+        ]
+        result = @vector_tools.send(:create_filter, filter)
+
+        assert_equal [], result
+      end
+
+      context "skip logging (FR-004)" do
+        should "warn with reason when key is nil (US2 AC1)" do
+          @mock_logger.expects(:warn).with { |msg| msg.include?("key") }
+          @vector_tools.send(:create_filter, [ { key: nil, condition: "match", value: "1" } ])
+        end
+
+        should "warn with reason when condition is nil (US2 AC2)" do
+          @mock_logger.expects(:warn).with { |msg| msg.include?("condition") }
+          @vector_tools.send(:create_filter, [ { key: "project_id", condition: nil, value: "1" } ])
+        end
+
+        should "warn with reason when value is nil (US2 AC3)" do
+          @mock_logger.expects(:warn).with { |msg| msg.include?("value") }
+          @vector_tools.send(:create_filter, [ { key: "project_id", condition: "match", value: nil } ])
+        end
+      end
     end
 
     context "#vector_db" do
