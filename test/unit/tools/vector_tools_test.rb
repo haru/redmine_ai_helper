@@ -153,7 +153,7 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         ]
         result = @vector_tools.send(:create_filter, filter)
 
-        assert_equal [ { key: "priority_id", rante: { "lt" => 5 } } ], result
+        assert_equal [ { key: "priority_id", range: { "lt" => 5 } } ], result
       end
 
       should "convert all valid items including match and range conditions without change (FR-007)" do
@@ -167,8 +167,8 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
 
         assert_equal 3, result.length
         assert_equal({ key: "project_id", match: { value: 123 } }, result[0])
-        assert_equal({ key: "priority_id", rante: { "lt" => 5 } }, result[1])
-        assert_equal({ key: "created_on", rante: { "gte" => "2024-01-01" } }, result[2])
+        assert_equal({ key: "priority_id", range: { "lt" => 5 } }, result[1])
+        assert_equal({ key: "created_on", range: { "gte" => "2024-01-01" } }, result[2])
       end
 
       should "skip item with nil key without raising and keep valid items (FR-001, FR-003)" do

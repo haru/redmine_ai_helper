@@ -295,7 +295,7 @@ module RedmineAiHelper
           when "match"
             item[:match] = { value: value }
           when "lt", "lte", "gt", "gte"
-            item[:rante] = {
+            item[:range] = {
               f[:condition] => value
             }
           end
