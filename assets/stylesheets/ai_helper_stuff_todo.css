@@ -1,6 +1,6 @@
 /* Stuff Todo Modal Styles */
 
-/* Menu link in top menu - use Redmine's standard link styles.
+/* Menu link in account menu - use Redmine's standard link styles.
    Follow the menu text color so the icon stays visible on both the
    dark header (Redmine 6.x) and the light account dropdown (Redmine 7.0). */
 #ai-helper-stuff-todo-link svg.s18.icon-svg {
