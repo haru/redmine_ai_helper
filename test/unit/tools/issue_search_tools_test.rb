@@ -263,6 +263,11 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
         start_date: Date.current - 1, due_date: Date.current + 3, done_ratio: 80
       )
 
+      # Issue#create! bumps lock_version via an internal callback save without syncing the
+      # in-memory attribute, so update_column's optimistic-locking WHERE clause matches 0 rows
+      # and silently no-ops (mysql2/postgresql) unless we reload to pick up the real lock_version.
+      [ @issue_a, @issue_b, @issue_c ].each(&:reload)
+
       # Force a deterministic A < B < C ordering for created_on/updated_on too.
       # id already ascends A < B < C by creation order.
       base_time = Time.current
