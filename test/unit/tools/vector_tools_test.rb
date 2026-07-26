@@ -217,6 +217,38 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         assert_equal [], result
       end
 
+      should "skip nil filter item without raising and keep valid items" do
+        @mock_logger.stubs(:warn)
+        filter = [
+          nil,
+          { key: "project_id", condition: "match", value: "2" }
+        ]
+        result = @vector_tools.send(:create_filter, filter)
+
+        assert_equal [ { key: "project_id", match: { value: 2 } } ], result
+      end
+
+      should "warn with reason when filter item is nil" do
+        @mock_logger.expects(:warn).with { |msg| msg.include?("nil") }
+        @vector_tools.send(:create_filter, [ nil ])
+      end
+
+      should "skip item with unrecognized condition without raising" do
+        @mock_logger.stubs(:warn)
+        filter = [
+          { key: "project_id", condition: "unknown", value: "1" },
+          { key: "tracker_id", condition: "match", value: "3" }
+        ]
+        result = @vector_tools.send(:create_filter, filter)
+
+        assert_equal [ { key: "tracker_id", match: { value: 3 } } ], result
+      end
+
+      should "warn with reason when condition is unrecognized" do
+        @mock_logger.expects(:warn).with { |msg| msg.include?("condition") }
+        @vector_tools.send(:create_filter, [ { key: "project_id", condition: "unknown", value: "1" } ])
+      end
+
       context "skip logging (FR-004)" do
         should "warn with reason when key is nil (US2 AC1)" do
           @mock_logger.expects(:warn).with { |msg| msg.include?("key") }
