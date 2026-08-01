@@ -1,0 +1,21 @@
+# Source Registry
+
+Append-only IDs (S001, S002…). Dedup key: normalized path or URL.
+Sources are immutable inputs — the wiki never edits them.
+
+| ID | Source | Type | First ingested | Last ingested | Pages touched |
+|----|--------|------|----------------|---------------|---------------|
+| S001 | specs/034-chat-history-context (research.md + plan.md) | feature-artifact | 2026-08-01 | 2026-08-01 | chat-channel-gateway-architecture.md, chat-context-import.md, discord-message-content-intent.md, chat-history-apis.md |
+| S002 | README.md | file | 2026-08-01 | 2026-08-01 | plugin-overview.md, chat-channel-gateway-architecture.md, mcp-integration.md, vector-search.md, nginx-sse-proxy.md, multi-modal-file-support.md, custom-commands.md, health-report.md |
+| S003 | specs/006-think-model/spec.md | feature-artifact | 2026-08-01 | 2026-08-01 | think-model.md, base-agent-llm-calls.md, plugin-overview.md, health-report.md |
+| S004 | specs/007-vector-model-profile/spec.md | feature-artifact | 2026-08-01 | 2026-08-01 | vector-search.md |
+| S005 | https://deepwiki.com/haru/redmine_ai_helper/2-core-architecture | url | 2026-08-01 | 2026-08-01 | multi-agent-architecture.md, base-agent-llm-calls.md, plugin-overview.md |
+| S006 | https://deepwiki.com/haru/redmine_ai_helper/6-mcp-(model-context-protocol)-integration | url | 2026-08-01 | 2026-08-01 | mcp-integration.md |
+| S007 | specs/012-mcp-server-endpoint/spec.md | feature-artifact | 2026-08-01 | 2026-08-01 | mcp-integration.md |
+| S008 | https://deepwiki.com/haru/redmine_ai_helper/2.2-tool-system-and-tool-providers | url | 2026-08-01 | 2026-08-01 | tool-system.md, multi-agent-architecture.md, vector-search.md |
+| S009 | https://deepwiki.com/haru/redmine_ai_helper/2.3-llm-provider-layer | url | 2026-08-01 | 2026-08-01 | llm-provider-layer.md, base-agent-llm-calls.md, multi-agent-architecture.md |
+| S010 | https://deepwiki.com/haru/redmine_ai_helper/5-vector-search-subsystem | url | 2026-08-01 | 2026-08-01 | vector-search-internals.md, vector-search.md |
+| S011 | https://deepwiki.com/haru/redmine_ai_helper/3.3-project-health-reports | url | 2026-08-01 | 2026-08-01 | health-report.md |
+| S012 | specs/022-vector-project-selection/spec.md | feature-artifact | 2026-08-01 | 2026-08-01 | vector-search-internals.md, vector-search.md |
+| S013 | https://deepwiki.com/haru/redmine_ai_helper/3.1-ai-chat-sidebar | url | 2026-08-01 | 2026-08-01 | chat-sidebar.md, plugin-overview.md |
+| S014 | https://deepwiki.com/haru/redmine_ai_helper/3.2-issue-ai-features | url | 2026-08-01 | 2026-08-01 | issue-ai-features.md, plugin-overview.md |
