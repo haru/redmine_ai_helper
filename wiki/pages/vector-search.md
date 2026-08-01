@@ -63,9 +63,9 @@ UI rules (S004):
   not retained).
 
 **Fallback behavior (contrast with the think model)**: when no vector profile is
-set — checkbox off, *or* the referenced profile was later deleted leaving a
-dangling reference — vector processing **silently falls back** to the normal LLM
-profile and continues without error (S004). This is the opposite of the
+set — checkbox off, *or* `use_vector_model_profile` is on but `vector_model_profile_id` is blank — vector processing **silently falls back** to the normal LLM
+profile and continues without error (S004). If the referenced profile is missing,
+it is surfaced similarly to the
 [Think Model](./think-model.md), where a missing/invalid profile is surfaced as
 an error rather than falling back.
 
