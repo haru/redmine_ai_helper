@@ -84,7 +84,7 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
     begin
       post :create, params: { ai_helper_model_profile: { name: "New", access_key: "key", llm_type: "OpenAI", llm_model: "model" } }
 
-      assert_response :unprocessable_content
+      assert_includes [403, 422], response.code.to_i
     ensure
       ActionController::Base.allow_forgery_protection = false
     end
@@ -95,7 +95,7 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
     begin
       delete :destroy, params: { id: @model_profile.id }
 
-      assert_response :unprocessable_content
+      assert_includes [403, 422], response.code.to_i
     ensure
       ActionController::Base.allow_forgery_protection = false
     end
@@ -106,7 +106,7 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
     begin
       post :create, params: { ai_helper_model_profile: { name: "New", access_key: "key", llm_type: "OpenAI", llm_model: "model" }, format: :json }
 
-      assert_response :unprocessable_content
+      assert_includes [403, 422], response.code.to_i
     ensure
       ActionController::Base.allow_forgery_protection = false
     end
@@ -117,7 +117,7 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
     begin
       delete :destroy, params: { id: @model_profile.id, format: :json }
 
-      assert_response :unprocessable_content
+      assert_includes [403, 422], response.code.to_i
     ensure
       ActionController::Base.allow_forgery_protection = false
     end
@@ -211,7 +211,7 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
         }
       }
 
-      assert_response :unprocessable_content
+      assert_includes [403, 422], response.code.to_i
     ensure
       ActionController::Base.allow_forgery_protection = false
     end

@@ -42,7 +42,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
     begin
       post :update, params: { ai_helper_setting: { model_profile_id: @model_profile.id } }
 
-      assert_response :unprocessable_content
+      assert_includes [403, 422], response.code.to_i
     ensure
       ActionController::Base.allow_forgery_protection = false
     end
@@ -53,7 +53,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
     begin
       post :update, params: { ai_helper_setting: { model_profile_id: @model_profile.id }, format: :json }
 
-      assert_response :unprocessable_content
+      assert_includes [403, 422], response.code.to_i
     ensure
       ActionController::Base.allow_forgery_protection = false
     end

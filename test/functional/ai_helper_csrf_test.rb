@@ -37,7 +37,7 @@ class AiHelperCsrfTest < ActionController::TestCase
          params: { id: @project.id, issue_id: 1 },
          body: { text: "test text", cursor_position: 4 }.to_json
 
-    assert_response :unprocessable_content
+    assert_includes [403, 422], response.code.to_i
   end
 
   def test_suggest_wiki_completion_rejects_post_without_csrf_token
@@ -46,14 +46,14 @@ class AiHelperCsrfTest < ActionController::TestCase
          params: { id: @project.id },
          body: { text: "test text", cursor_position: 4 }.to_json
 
-    assert_response :unprocessable_content
+    assert_includes [403, 422], response.code.to_i
   end
 
   def test_check_typos_rejects_post_without_csrf_token
     post :check_typos,
          params: { id: @project.id, text: "test text", context_type: "issue" }
 
-    assert_response :unprocessable_content
+    assert_includes [403, 422], response.code.to_i
   end
 
   def test_check_duplicates_rejects_post_without_csrf_token
@@ -62,7 +62,7 @@ class AiHelperCsrfTest < ActionController::TestCase
          params: { id: @project.id },
          body: { subject: "Test subject", description: "Test description" }.to_json
 
-    assert_response :unprocessable_content
+    assert_includes [403, 422], response.code.to_i
   end
 
   # --- Actions that SHOULD be exempt from CSRF protection ---
@@ -75,7 +75,7 @@ class AiHelperCsrfTest < ActionController::TestCase
 
     get :generate_project_health, params: { id: @project.id }
 
-    # Should not be 422 (CSRF rejection)
+    # Should not be a CSRF rejection (422 on Rails 7.x)
     assert_not_equal 422, @response.status
   end
 
@@ -86,7 +86,7 @@ class AiHelperCsrfTest < ActionController::TestCase
     post :api_create_health_report,
          params: { id: @project.id, format: :json, key: @user.api_key }
 
-    # Should not be 422 (CSRF rejection)
+    # Should not be a CSRF rejection (422 on Rails 7.x)
     assert_not_equal 422, @response.status
   end
 end
