@@ -2,6 +2,7 @@
 
 require "redmine_ai_helper/logger"
 require "redmine_ai_helper/chat_channel/context_importer"
+require "redmine_ai_helper/util/interactive_options_parser"
 
 module RedmineAiHelper
   module ChatChannel
@@ -40,21 +41,21 @@ module RedmineAiHelper
           # nullifies redmine_user_id) or locked. Distinguish that runtime
           # loss from an adapter that was simply never configured.
           key = setting.enabled ? :service_account_unavailable : :service_account_not_configured
-          return reply(message, guidance(key, nil))
+          return reply(message, guidance(key, nil), nil)
         end
 
         project = resolve_project(message)
         unless project
-          return reply(message, guidance(:default_project_not_configured, user))
+          return reply(message, guidance(:default_project_not_configured, user), user)
         end
-        return reply(message, guidance(:module_disabled, user)) unless project.module_enabled?(:ai_helper)
+        return reply(message, guidance(:module_disabled, user), user) unless project.module_enabled?(:ai_helper)
 
         answer = process_question(message, user, project)
-        reply(message, answer.content)
+        reply(message, answer.content, user)
       rescue => e
         ai_helper_logger.error "chat channel processing failed: #{e.full_message}"
         begin
-          reply(message, guidance(:processing_failed, user))
+          reply(message, guidance(:processing_failed, user), user)
         rescue => reply_error
           ai_helper_logger.error "chat channel: failed to post error notice: #{reply_error.full_message}"
         end
@@ -107,6 +108,11 @@ module RedmineAiHelper
           I18n.locale = original_locale
         end
 
+        # Strip UI control markup before persisting the assistant message so it
+        # won't be replayed to the LLM as thread context later (FR-007).
+        # Outbound replies are stripped again in #reply to guarantee every
+        # adapter post is clean, including early guidance replies.
+        answer.content = strip_ui_options(answer.content, user)
         answer.content = "#{guidance(:history_unavailable, user)}\n\n#{answer.content}" if history_unavailable
         conversation.messages << answer
         conversation.save!
@@ -128,9 +134,24 @@ module RedmineAiHelper
         true
       end
 
-      # Posts a reply into the thread the message came from.
-      def reply(message, text)
-        @adapter.send_message(channel_id: message.channel_id, thread_key: message.thread_key, text: text)
+      # Posts a reply into the thread the message came from. The reply text
+      # is the sole gateway to every chat tool adapter (FR-002), so stripping
+      # the UI control markup here guarantees no adapter needs its own
+      # removal logic (FR-003).
+      # @param user [User, nil] the service account, for guidance localization;
+      #   nil when called before the account is resolved (#handle's early guidance replies)
+      def reply(message, text, user = nil)
+        @adapter.send_message(channel_id: message.channel_id, thread_key: message.thread_key,
+                               text: strip_ui_options(text, user))
+      end
+
+      # Removes the UI control markup from text bound for a chat tool adapter
+      # or the conversation history, falling back to the empty_answer guidance
+      # when nothing but markup remains (FR-008).
+      # @return [String]
+      def strip_ui_options(text, user)
+        stripped = RedmineAiHelper::Util::InteractiveOptionsParser.strip(text)
+        stripped.presence || guidance(:empty_answer, user)
       end
 
       # Localized guidance text, preferring the service account's language.

@@ -83,6 +83,27 @@ check_feature_branch() {
 
 get_feature_dir() { echo "$1/specs/$2"; }
 
+# Check whether .specify/feature.json pins the same feature directory as the
+# one resolved from the current branch. When it does, branch-name validation
+# can be skipped (the pinned feature directory is authoritative).
+feature_json_matches_feature_dir() {
+    local repo_root="$1"
+    local feature_dir="$2"
+    local feature_json="$repo_root/.specify/feature.json"
+
+    [[ -f "$feature_json" ]] || return 1
+
+    local pinned=""
+    if has_jq; then
+        pinned=$(jq -r '.feature_directory // empty' "$feature_json" 2>/dev/null)
+    else
+        pinned=$(grep -o '"feature_directory"[[:space:]]*:[[:space:]]*"[^"]*"' "$feature_json" | sed -E 's/.*:[[:space:]]*"([^"]*)"/\1/')
+    fi
+
+    [[ -n "$pinned" ]] || return 1
+    [[ "$repo_root/$pinned" == "$feature_dir" ]]
+}
+
 # Find feature directory by numeric prefix instead of exact branch match
 # This allows multiple branches to work on the same spec (e.g., 004-fix-bug, 004-add-feature)
 find_feature_dir_by_prefix() {

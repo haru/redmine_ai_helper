@@ -62,6 +62,7 @@ en:
         module_disabled: "The AI helper module is disabled for the associated project."
         processing_failed: "An error occurred while generating the answer. Please check the AI helper log for details."
         history_unavailable: "The recent messages of this conversation could not be retrieved, so the answer below does not take them into account."
+        empty_answer: "No answer could be provided."
       context:
         label: "Imported from the chat channel"
     notice_sub_issues_added: "Sub-issues have been added"
