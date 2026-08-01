@@ -37,7 +37,7 @@ class AiHelperCsrfTest < ActionController::TestCase
          params: { id: @project.id, issue_id: 1 },
          body: { text: "test text", cursor_position: 4 }.to_json
 
-    assert_includes [403, 422], response.code.to_i
+    assert_includes [ 403, 422 ], response.code.to_i
   end
 
   def test_suggest_wiki_completion_rejects_post_without_csrf_token
@@ -46,14 +46,14 @@ class AiHelperCsrfTest < ActionController::TestCase
          params: { id: @project.id },
          body: { text: "test text", cursor_position: 4 }.to_json
 
-    assert_includes [403, 422], response.code.to_i
+    assert_includes [ 403, 422 ], response.code.to_i
   end
 
   def test_check_typos_rejects_post_without_csrf_token
     post :check_typos,
          params: { id: @project.id, text: "test text", context_type: "issue" }
 
-    assert_includes [403, 422], response.code.to_i
+    assert_includes [ 403, 422 ], response.code.to_i
   end
 
   def test_check_duplicates_rejects_post_without_csrf_token
@@ -62,7 +62,7 @@ class AiHelperCsrfTest < ActionController::TestCase
          params: { id: @project.id },
          body: { subject: "Test subject", description: "Test description" }.to_json
 
-    assert_includes [403, 422], response.code.to_i
+    assert_includes [ 403, 422 ], response.code.to_i
   end
 
   # --- Actions that SHOULD be exempt from CSRF protection ---

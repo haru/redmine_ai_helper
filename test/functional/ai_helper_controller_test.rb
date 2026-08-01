@@ -1903,7 +1903,7 @@ class AiHelperControllerTest < ActionController::TestCase
         begin
           post :project_health_pdf, params: { id: @project.id, health_report_content: "test", format: :json }
 
-          assert_includes [403, 422], response.code.to_i
+          assert_includes [ 403, 422 ], response.code.to_i
         ensure
           ActionController::Base.allow_forgery_protection = false
         end
@@ -1914,7 +1914,7 @@ class AiHelperControllerTest < ActionController::TestCase
         begin
           post :chat, params: { id: @project.id, ai_helper_message: { content: "Hello" }, format: :json }
 
-          assert_includes [403, 422], response.code.to_i
+          assert_includes [ 403, 422 ], response.code.to_i
         ensure
           ActionController::Base.allow_forgery_protection = false
         end
