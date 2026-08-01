@@ -34,7 +34,7 @@ The integration uses Slack **Socket Mode**: the gateway process opens an outgoin
 
 > A bot token carries the scopes that were granted when the app was installed.
 > If you add a scope after installing, open **OAuth & Permissions** and choose
-> **Reinstall to Workspace**, otherwise the calls needing it fail with
+> **Reinstall to Workspace**, otherwise the calls that need it fail with
 > `missing_scope`. The bot token stays valid, so the Redmine settings need no
 > change.
 
