@@ -62,6 +62,7 @@ ja:
         module_disabled: "対応付けられたプロジェクトでAIヘルパーモジュールが無効になっています。"
         processing_failed: "回答の生成中にエラーが発生しました。詳細はAIヘルパーのログを確認してください。"
         history_unavailable: "直近の会話内容を取得できなかったため、それを踏まえずに回答します。"
+        empty_answer: "回答を提示できませんでした。"
       context:
         label: "チャットチャンネルから取り込んだ発言"
     notice_sub_issues_added: "子チケットが追加されました"

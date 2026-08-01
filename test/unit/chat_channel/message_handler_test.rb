@@ -292,6 +292,106 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
     end
   end
 
+  context "reply markup removal" do
+    should "strip the AIHELPER_OPTIONS markup from the posted answer (T-1)" do
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(
+        assistant_message(%(Here are the issues.\n<!--AIHELPER_OPTIONS:{"choices":[{"label":"a","value":"a"}]}-->))
+      )
+
+      @handler.handle(incoming)
+
+      assert_equal "Here are the issues.", @adapter.sent_messages.first[:text]
+    end
+
+    should "leave the posted answer unchanged when it has no markup (T-2)" do
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("Here are the issues."))
+
+      @handler.handle(incoming)
+
+      assert_equal "Here are the issues.", @adapter.sent_messages.first[:text]
+    end
+
+    should "not leave a trailing blank line after stripping the markup (T-3)" do
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(
+        assistant_message(%(Here are the issues.\n\n<!--AIHELPER_OPTIONS:{"choices":[{"label":"a","value":"a"}]}-->))
+      )
+
+      @handler.handle(incoming)
+
+      assert_equal "Here are the issues.", @adapter.sent_messages.first[:text]
+    end
+
+    should "post the empty_answer guidance when the answer is only markup (T-4)" do
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(
+        assistant_message(%(<!--AIHELPER_OPTIONS:{"choices":[{"label":"a","value":"a"}]}-->))
+      )
+
+      @handler.handle(incoming)
+
+      assert_equal error_text(:empty_answer), @adapter.sent_messages.first[:text]
+    end
+
+    should "strip the markup and post the body without raising when the embedded JSON is malformed (T-5)" do
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(
+        assistant_message(%(Here are the issues.\n<!--AIHELPER_OPTIONS:{"choices":[{"label":"a"-->))
+      )
+
+      assert_nothing_raised { @handler.handle(incoming) }
+
+      assert_equal "Here are the issues.", @adapter.sent_messages.first[:text]
+    end
+
+    should "strip every markup block when the answer contains more than one (T-6)" do
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(
+        assistant_message(%(Part one.<!--AIHELPER_OPTIONS:{"choices":[{"label":"a","value":"a"}]}-->Part two.<!--AIHELPER_OPTIONS:{"choices":[{"label":"b","value":"b"}]}-->))
+      )
+
+      @handler.handle(incoming)
+
+      text = @adapter.sent_messages.first[:text]
+      assert_no_match(/AIHELPER_OPTIONS/, text)
+      assert_match(/Part one\./, text)
+      assert_match(/Part two\./, text)
+    end
+
+    should "strip a markup block in the middle of the answer and keep the surrounding text (T-7)" do
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(
+        assistant_message(%(Before.<!--AIHELPER_OPTIONS:{"choices":[{"label":"a","value":"a"}]}-->After.))
+      )
+
+      @handler.handle(incoming)
+
+      text = @adapter.sent_messages.first[:text]
+      assert_no_match(/AIHELPER_OPTIONS/, text)
+      assert_match(/Before\./, text)
+      assert_match(/After\./, text)
+    end
+
+    should "strip the markup even though the adapter implements no removal logic of its own (T-12)" do
+      # RecordingAdapter#send_message (above) stores whatever text it is given
+      # verbatim, so a clean result here proves the guarantee is structural to
+      # MessageHandler and not something each adapter must implement (FR-003).
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(
+        assistant_message(%(Here are the issues.\n<!--AIHELPER_OPTIONS:{"choices":[{"label":"a","value":"a"}]}-->))
+      )
+
+      @handler.handle(incoming)
+
+      assert_equal "Here are the issues.", @adapter.sent_messages.first[:text]
+    end
+
+    should "not save the markup in the conversation history (T-8)" do
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(
+        assistant_message(%(Here are the issues.\n<!--AIHELPER_OPTIONS:{"choices":[{"label":"a","value":"a"}]}-->))
+      )
+
+      @handler.handle(incoming)
+
+      answer = AiHelperConversation.first.messages.order(:id).last
+      assert_equal "Here are the issues.", answer.content
+    end
+  end
+
   context "thread continuation" do
     should "append follow-up questions to the existing conversation with full history" do
       RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(
@@ -307,6 +407,26 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       @handler.handle(incoming(text: "second question", thread_key: "CH1:9.000001"))
 
       assert_equal 1, AiHelperConversation.count
+      assert_equal [
+        [ "user", "first question" ],
+        [ "assistant", "first answer" ],
+        [ "user", "second question" ]
+      ], observed_history
+    end
+
+    should "not hand the markup from a previous answer back to the LLM (T-9)" do
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(
+        assistant_message(%(first answer\n<!--AIHELPER_OPTIONS:{"choices":[{"label":"a","value":"a"}]}-->))
+      )
+      @handler.handle(incoming(text: "first question", thread_key: "CH1:9.000010"))
+
+      observed_history = nil
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).with do |conversation, _proc, _option|
+        observed_history = conversation.messages.order(:id).pluck(:role, :content)
+        true
+      end.returns(assistant_message("second answer"))
+      @handler.handle(incoming(text: "second question", thread_key: "CH1:9.000010"))
+
       assert_equal [
         [ "user", "first question" ],
         [ "assistant", "first answer" ],
@@ -401,6 +521,41 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       answer = AiHelperConversation.first.messages.order(:id).last
       assert answer.content.start_with?(notice), "the stored answer must contain the notice as well"
       assert_match(/the answer/, answer.content)
+    end
+
+    should "keep the history_unavailable notice while stripping trailing markup (T-11)" do
+      @history_adapter.stubs(:fetch_thread_history).raises(RuntimeError, "history scope missing")
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(
+        assistant_message(%(the answer\n<!--AIHELPER_OPTIONS:{"choices":[{"label":"a","value":"a"}]}-->))
+      )
+
+      @history_handler.handle(history_incoming)
+
+      notice = error_text(:history_unavailable)
+      posted = @history_adapter.sent_messages.first[:text]
+      assert posted.start_with?(notice), "the posted answer must start with the notice"
+      assert_no_match(/AIHELPER_OPTIONS/, posted)
+
+      answer = AiHelperConversation.first.messages.order(:id).last
+      assert answer.content.start_with?(notice), "the stored answer must contain the notice as well"
+      assert_no_match(/AIHELPER_OPTIONS/, answer.content)
+    end
+
+    should "use the empty_answer guidance, not overridden by the history notice, when the body is markup-only and the import fails (T-13)" do
+      @history_adapter.stubs(:fetch_thread_history).raises(RuntimeError, "history scope missing")
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(
+        assistant_message(%(<!--AIHELPER_OPTIONS:{"choices":[{"label":"a","value":"a"}]}-->))
+      )
+
+      @history_handler.handle(history_incoming)
+
+      history_notice = error_text(:history_unavailable)
+      empty_notice = error_text(:empty_answer)
+      posted = @history_adapter.sent_messages.first[:text]
+      assert_equal "#{history_notice}\n\n#{empty_notice}", posted
+
+      answer = AiHelperConversation.first.messages.order(:id).last
+      assert_equal "#{history_notice}\n\n#{empty_notice}", answer.content
     end
 
     should "still answer when the import fails" do
