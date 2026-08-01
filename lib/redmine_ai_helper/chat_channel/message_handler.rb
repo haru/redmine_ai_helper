@@ -108,10 +108,10 @@ module RedmineAiHelper
           I18n.locale = original_locale
         end
 
-        # Stripped here as well as in #reply, not redundantly: the conversation
-        # is saved on a separate path from the posted reply, and the stored
-        # answer is replayed to the LLM as context for later questions in the
-        # same thread (FR-007).
+        # Strip UI control markup before persisting the assistant message so it
+        # won't be replayed to the LLM as thread context later (FR-007).
+        # Outbound replies are stripped again in #reply to guarantee every
+        # adapter post is clean, including early guidance replies.
         answer.content = strip_ui_options(answer.content, user)
         answer.content = "#{guidance(:history_unavailable, user)}\n\n#{answer.content}" if history_unavailable
         conversation.messages << answer
