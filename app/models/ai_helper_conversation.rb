@@ -2,7 +2,10 @@
 
 # AiHelperConversation model for managing AI Helper conversations
 class AiHelperConversation < ApplicationRecord
-  has_many :messages, class_name: "AiHelperMessage", foreign_key: "conversation_id", inverse_of: :conversation, dependent: :destroy
+  # Ordered explicitly: messages_for_openai merges runs of consecutive context
+  # messages, so it needs the conversation order guaranteed rather than
+  # relying on the order the rows happen to come back in.
+  has_many :messages, -> { order(:id) }, class_name: "AiHelperMessage", foreign_key: "conversation_id", inverse_of: :conversation, dependent: :destroy
   has_one :channel_conversation, class_name: "AiHelperChannelConversation", foreign_key: "conversation_id", inverse_of: :conversation, dependent: :destroy
   belongs_to :user
   validates :title, presence: true

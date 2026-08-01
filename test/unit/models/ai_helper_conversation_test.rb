@@ -15,6 +15,11 @@ class AiHelperConversationTest < ActiveSupport::TestCase
       @conversation = AiHelperConversation.create!(title: "context conversation", user: User.find(1))
     end
 
+    should "order the messages explicitly so the handover never depends on the DB row order" do
+      assert_match(/ORDER BY/i, @conversation.messages.to_sql,
+                   "merging runs of context messages requires a guaranteed conversation order")
+    end
+
     should "return the plain messages unchanged when the conversation has no context" do
       add_message("user", "question")
       add_message("assistant", "answer")

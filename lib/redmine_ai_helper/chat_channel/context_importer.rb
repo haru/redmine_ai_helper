@@ -93,6 +93,14 @@ module RedmineAiHelper
           conversation.save!
           conversation.channel_conversation.update!(last_imported_message_key: message.message_ts)
         end
+      rescue
+        # The rollback removes the rows but leaves the appended records in the
+        # loaded association, from where the caller's next save would insert
+        # them again - behind the question and without the cursor being
+        # advanced. Dropping them restores the stored state before the error
+        # reaches the caller.
+        conversation.messages.reset
+        raise
       end
     end
   end

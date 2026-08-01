@@ -432,6 +432,32 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       assert_equal %w[user assistant], roles, "no orphaned context messages must remain"
     end
 
+    should "not store the rolled back context messages when the import transaction fails" do
+      @history_adapter.thread_history = [ history_message("Yamada", "it crashes on save") ]
+      AiHelperChannelConversation.any_instance.stubs(:update!).raises(RuntimeError, "cursor update failed")
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("the answer"))
+
+      @history_handler.handle(history_incoming(text: "why does it crash?"))
+
+      roles = AiHelperConversation.first.messages.order(:id).pluck(:role)
+      assert_equal %w[user assistant], roles, "the rolled back context messages must not be saved again"
+    end
+
+    should "not hand the rolled back context messages to the LLM when the import transaction fails" do
+      @history_adapter.thread_history = [ history_message("Yamada", "it crashes on save") ]
+      AiHelperChannelConversation.any_instance.stubs(:update!).raises(RuntimeError, "cursor update failed")
+      handover = nil
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).with do |conversation, _proc, _option|
+        handover = conversation.messages_for_openai
+        true
+      end.returns(assistant_message("the answer"))
+
+      @history_handler.handle(history_incoming(text: "why does it crash?"))
+
+      assert_equal [ { role: "user", content: "why does it crash?" } ], handover,
+                   "the notice says the history is unavailable, so no context may reach the LLM"
+    end
+
     should "not fetch any history when no execution account is configured (FR-013)" do
       @history_setting.update_column(:redmine_user_id, nil)
       @history_adapter.expects(:fetch_thread_history).never
