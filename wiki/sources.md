@@ -19,3 +19,4 @@ Sources are immutable inputs — the wiki never edits them.
 | S012 | specs/022-vector-project-selection/spec.md | feature-artifact | 2026-08-01 | 2026-08-01 | vector-search-internals.md, vector-search.md |
 | S013 | https://deepwiki.com/haru/redmine_ai_helper/3.1-ai-chat-sidebar | url | 2026-08-01 | 2026-08-01 | chat-sidebar.md, plugin-overview.md |
 | S014 | https://deepwiki.com/haru/redmine_ai_helper/3.2-issue-ai-features | url | 2026-08-01 | 2026-08-01 | issue-ai-features.md, plugin-overview.md |
+| S015 | docs/adr/009-discord-message-content-intent-required.md | file | 2026-08-01 | 2026-08-01 | discord-message-content-intent.md |

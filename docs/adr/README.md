@@ -59,5 +59,6 @@ Briefly describe alternatives that were rejected and why.
 | [004](./004-structured-output-native-and-fallback.md) | Two-tier structured output — native API schema enforcement with a prompt-based fallback pipeline | Proposed |
 | [005](./005-write-tool-classification-for-read-only-mode.md) | Write-tool classification via a `define_function` DSL attribute for read-only mode | Proposed |
 | [006](./006-chat-channel-gateway-architecture.md) | External chat tool gateway with Socket Mode and a serialized worker | Accepted |
-| [007](./007-discord-adapter-connection-design.md) | Discord adapter connection design | Accepted |
-| [008](./008-chat-channel-context-import.md) | Chat channel conversation context import | Accepted |
+| [007](./007-discord-adapter-connection-design.md) | Discord adapter connection design | Accepted (intent choice in decision 1 superseded by ADR-009) |
+| [008](./008-chat-channel-context-import.md) | Chat channel conversation context import | Accepted (decision 7 superseded by ADR-009) |
+| [009](./009-discord-message-content-intent-required.md) | Require the Discord MESSAGE_CONTENT intent in Identify | Accepted |

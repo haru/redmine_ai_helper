@@ -24,7 +24,7 @@ page files, not here.
 
 ## reference
 - [Chat History APIs](./pages/chat-history-apis.md) — Slack/Discord message-retrieval APIs, scopes, display-name resolution, exclusion rules.
-- [Discord Message Content Intent](./pages/discord-message-content-intent.md) — why Identify intents stay at 4608 and the close-code-4014 gotcha.
+- [Discord Message Content Intent](./pages/discord-message-content-intent.md) — why Identify requests the privileged intent (37376) and fails fast on close code 4014.
 - [Vector Search](./pages/vector-search.md) — Qdrant setup, index rake tasks, the embedding-provider constraint, and the optional vector model profile.
 - [Multi-modal File Support](./pages/multi-modal-file-support.md) — supported file types, attachment-to-LLM setting, and vector-index integration.
 

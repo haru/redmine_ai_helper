@@ -14,10 +14,10 @@ module RedmineAiHelper
       # Discord adapter using the Gateway API (v10): an outgoing WebSocket
       # connection to Discord, so no public URL is required. REST calls
       # (/users/@me, /gateway/bot, /channels/...) go through Net::HTTP with the
-      # bot token. Only the GUILD_MESSAGES and DIRECT_MESSAGES intents are used;
-      # the privileged MESSAGE_CONTENT intent is not required because Discord
-      # still delivers the full content of messages that mention the bot and of
-      # direct messages, which is exactly what this integration reacts to. The
+      # bot token. Besides GUILD_MESSAGES and DIRECT_MESSAGES it uses the
+      # privileged MESSAGE_CONTENT intent, which the context import depends on:
+      # Discord delivers the full content of mentions and direct messages
+      # without it, but blanks the body of every surrounding message. The
       # bot token is never written to the log or to any exception message.
       class DiscordAdapter < BaseAdapter
         # Raised on authentication/configuration failures (REST 401, gateway
@@ -59,8 +59,14 @@ module RedmineAiHelper
         # Replies longer than this are split before posting (Discord's hard
         # limit is 2,000; 1,900 leaves headroom).
         MAX_MESSAGE_LENGTH = 1900
-        # GUILD_MESSAGES (1<<9) + DIRECT_MESSAGES (1<<12). No privileged intent.
-        GATEWAY_INTENTS = 4608
+        # GUILD_MESSAGES (1<<9) + DIRECT_MESSAGES (1<<12) + MESSAGE_CONTENT
+        # (1<<15). MESSAGE_CONTENT is privileged and must be enabled in the
+        # Developer Portal: without it Discord blanks the body of every message
+        # that does not mention the bot, which is exactly the history the
+        # context import reads. Identifying with it makes a disabled toggle
+        # fail at connect time (close code 4014, a fatal config error) instead
+        # of silently importing nothing.
+        GATEWAY_INTENTS = 37376
         # Maximum number of times a 429 response is retried before giving up.
         MAX_RATE_LIMIT_RETRIES = 3
         # Poll interval while waiting for the Hello opcode that carries the
@@ -236,10 +242,10 @@ module RedmineAiHelper
         end
 
         # Discord serves both thread and channel messages through the same
-        # REST endpoint. Whether the bodies actually arrive depends on the
-        # Message Content Intent being enabled in the Developer Portal; when it
-        # is not, the bodies are empty and every message is skipped as empty,
-        # so the gateway answers without context instead of failing.
+        # REST endpoint. The bodies arrive populated because the Message
+        # Content Intent is enabled: the adapter identifies with it
+        # (GATEWAY_INTENTS), so a portal toggle that is off fails the
+        # connection outright rather than reaching this method (ADR-009).
         # @return [Boolean]
         def supports_history?
           true
@@ -362,8 +368,8 @@ module RedmineAiHelper
           end
         end
 
-        # Sends the Identify payload with the minimal intents (no privileged
-        # MESSAGE_CONTENT).
+        # Sends the Identify payload. Discord closes the connection with 4014
+        # when MESSAGE_CONTENT is requested but not enabled for the app.
         # @return [void]
         def send_identify
           send_json(

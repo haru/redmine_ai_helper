@@ -591,8 +591,12 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
       assert_predicate @adapter, :supports_history?
     end
 
-    should "keep the gateway intents unchanged so existing installations still connect" do
-      assert_equal 4608, DiscordAdapter::GATEWAY_INTENTS
+    should "identify with the privileged MESSAGE_CONTENT intent the import depends on" do
+      assert_equal 4608 | (1 << 15), DiscordAdapter::GATEWAY_INTENTS
+    end
+
+    should "treat a disallowed intent as a fatal configuration error" do
+      assert_includes DiscordAdapter::FATAL_CLOSE_CODES, 4014
     end
 
     should "read the thread messages with the page limit" do
