@@ -34,7 +34,7 @@ module RedmineAiHelper
         setting = adapter_settings(message)
         user = setting.service_account
         unless user
-          # FR-1 forbids saving an enabled adapter without an execution
+          # FR-001 forbids saving an enabled adapter without an execution
           # account, so an enabled adapter that resolves no active account can
           # only mean the previously configured account was deleted (the FK
           # nullifies redmine_user_id) or locked. Distinguish that runtime
@@ -115,7 +115,10 @@ module RedmineAiHelper
 
       # Imports the messages surrounding the mention. A retrieval failure is
       # logged and reported to the user (FR-008) instead of aborting the
-      # answer; the notice is added to the answer by the caller.
+      # answer; the notice is added to the answer by the caller. This is a
+      # deliberate deviation from the general "never swallow errors" guideline:
+      # the error is fully logged with backtrace and explicitly surfaced to
+      # the user, so the fallback is not silent.
       # @return [Boolean] whether the import failed
       def import_context(conversation, message)
         ContextImporter.new(@adapter).import(conversation: conversation, message: message)

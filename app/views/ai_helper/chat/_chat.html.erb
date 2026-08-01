@@ -1,19 +1,19 @@
 <% @conversation.messages.each do |message| %>
   <div class="aihelper-message">
-    <%if message.role == 'user' %>
+    <% case message.role %>
+    <% when 'user' %>
       <div class="aihelper-message-user">
         <%= avatar(@user) %>
         <strong><%= link_to_user(@user) %></strong>
       </div>
-    <% end %>
-    <% if message.role == 'context' %>
+      <pre><%= message.content %></pre>
+    <% when 'context' %>
       <div class="aihelper-message-user">
         <strong><%= l("ai_helper.chat_channel.context.label") %></strong>
       </div>
-    <% end %>
-    <% if message.role == 'user' || message.role == 'context' %>
-      <%# Imported chat channel messages are untrusted external input, so they
-          are rendered as escaped plain text and never through md_to_html. %>
+      <%# User questions and imported chat channel messages are both rendered
+          as escaped plain text in a <pre> tag. Context messages are untrusted
+          external input, so they must never go through md_to_html. %>
       <pre><%= message.content %></pre>
     <% else %>
       <div>

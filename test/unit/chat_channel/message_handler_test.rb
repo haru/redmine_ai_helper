@@ -422,6 +422,16 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       assert_nil AiHelperConversation.first.channel_conversation.last_imported_message_key
     end
 
+    should "leave only user and assistant messages in the conversation when the import fails" do
+      @history_adapter.stubs(:fetch_thread_history).raises(RuntimeError, "history scope missing")
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("the answer"))
+
+      @history_handler.handle(history_incoming)
+
+      roles = AiHelperConversation.first.messages.order(:id).pluck(:role)
+      assert_equal %w[user assistant], roles, "no orphaned context messages must remain"
+    end
+
     should "not fetch any history when no execution account is configured (FR-013)" do
       @history_setting.update_column(:redmine_user_id, nil)
       @history_adapter.expects(:fetch_thread_history).never

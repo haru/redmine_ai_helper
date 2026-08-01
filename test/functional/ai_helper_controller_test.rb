@@ -139,6 +139,22 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_no_match(/<script>alert\(1\)<\/script>/, @response.body)
         assert_match(/&lt;script&gt;/, @response.body)
       end
+
+      should "render context messages without an avatar while user messages have one" do
+        @conversation.messages << AiHelperMessage.new(role: "context", content: "Yamada: imported")
+        @conversation.save!
+
+        get :conversation, params: { id: @project.id, conversation_id: @conversation.id }
+
+        assert_response :success
+        assert_select ".aihelper-message-user strong",
+                      text: I18n.t("ai_helper.chat_channel.context.label")
+        assert_select ".aihelper-message-user strong",
+                      text: @user.name
+        context_html = @response.body.match(/aihelper-chat_channel.context.label.*?<\/strong>.*?<\/pre>/m)
+        assert_no_match(/<img/, context_html.to_s,
+                        "context messages must not render an avatar image")
+      end
     end
 
     context "#history" do

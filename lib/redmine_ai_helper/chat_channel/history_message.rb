@@ -22,6 +22,7 @@ module RedmineAiHelper
       def initialize(speaker:, text:)
         @speaker = speaker
         @text = text
+        freeze
       end
     end
   end

@@ -413,6 +413,21 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
       end
       assert_match(/missing_scope/, error.message)
     end
+
+    should "send oldest alongside cursor on paginated calls after the first import" do
+      stub_slack_calls(
+        replies_body([ slack_message(text: "newest", ts: "3", user: nil, bot_id: "OTHER", username: "CI") ],
+                     next_cursor: "page2"),
+        replies_body([ slack_message(text: "older", ts: "2", user: nil, bot_id: "OTHER", username: "CI") ])
+      )
+
+      @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:100.000001", after: "1")
+
+      assert_equal 2, slack_paths.size
+      assert_equal "1", slack_form(0)["oldest"], "oldest must be sent on every page"
+      assert_equal "1", slack_form(1)["oldest"], "oldest must be preserved on the paginated call"
+      assert_equal "page2", slack_form(1)["cursor"]
+    end
   end
 
   context "channel history retrieval" do
@@ -469,6 +484,18 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
       assert_raises(RedmineAiHelper::ChatChannel::Adapters::SlackAdapter::SlackApiError) do
         @adapter.fetch_channel_history(channel_id: "C1", before: "100.000900", since: @since, limit: 20)
       end
+    end
+
+    should "resolve real user display names via users.info" do
+      stub_slack_calls(
+        { "ok" => true, "messages" => [ slack_message(text: "hello", user: "U1", ts: "1") ] },
+        user_info(display_name: "yamachan")
+      )
+
+      history = @adapter.fetch_channel_history(channel_id: "C1", before: "100.000900", since: @since, limit: 20)
+
+      assert_equal [ "yamachan" ], history.map(&:speaker)
+      assert_equal [ "/api/conversations.history", "/api/users.info" ], slack_paths
     end
   end
 

@@ -161,8 +161,8 @@ module RedmineAiHelper
 
       # Top-level messages of a channel (or DM), in ascending order.
       # @param channel_id [String] Channel identifier (DM channel id for DMs)
-      # @param before [String] Only messages before this external message id
-      #   are returned, which excludes the mention itself
+      # @param before [String, nil] Only messages before this external message
+      #   id are returned, which excludes the mention itself
       # @param since [Time] Only messages posted at or after this time
       # @param limit [Integer] Maximum number of messages, counted from the
       #   most recent one

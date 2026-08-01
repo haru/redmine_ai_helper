@@ -137,7 +137,7 @@ module RedmineAiHelper
             ai_helper_logger.debug "slack: ignoring envelope type #{data["type"].inspect}"
           end
         rescue JSON::ParserError => e
-          ai_helper_logger.error "slack: failed to parse envelope: #{e.message}"
+          ai_helper_logger.error "slack: failed to parse envelope: #{e.full_message}"
         end
 
         # Posts a reply into the given thread, splitting texts longer than
@@ -298,7 +298,7 @@ module RedmineAiHelper
 
         # A socket error occurred; end the connection so #start can retry.
         def socket_errored(error)
-          ai_helper_logger.error "slack: websocket error: #{error.message}"
+          ai_helper_logger.error "slack: websocket error: #{error.full_message}"
           @connection_ended&.push(true)
         end
 

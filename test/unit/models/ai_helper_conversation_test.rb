@@ -87,6 +87,33 @@ class AiHelperConversationTest < ActiveSupport::TestCase
       assert_match(/A: short/, result.first[:content])
       assert_match(/B: also short/, result.first[:content])
     end
+
+    should "produce an empty handover when every context message exceeds the limit" do
+      add_message("context", "A: #{"a" * (AiHelperConversation::CONTEXT_CHAR_LIMIT + 100)}")
+
+      result = @conversation.messages_for_openai
+
+      assert_empty result
+    end
+
+    should "merge three or more interleaved context runs in a multi-turn conversation" do
+      add_message("context", "Yamada: first context")
+      add_message("user", "first question")
+      add_message("assistant", "first answer")
+      add_message("context", "Suzuki: second context")
+      add_message("user", "second question")
+      add_message("assistant", "second answer")
+      add_message("context", "Yamada: third context")
+
+      result = @conversation.messages_for_openai
+
+      assert_equal 7, result.size
+      assert_equal([ "user", "user", "assistant", "user", "user", "assistant", "user" ],
+                   result.map { |m| m[:role] })
+      assert_match(/Yamada: first context/, result[0][:content])
+      assert_match(/Suzuki: second context/, result[3][:content])
+      assert_match(/Yamada: third context/, result[6][:content])
+    end
   end
 
   def test_cleanup_old_conversations

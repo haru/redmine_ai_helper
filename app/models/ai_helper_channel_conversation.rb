@@ -22,8 +22,8 @@ class AiHelperChannelConversation < ApplicationRecord
 
   # Returns the conversation bound to the given thread, creating both the
   # conversation and the binding when the thread is seen for the first time.
-  # The conversation owner stays the thread starter; later speakers are
-  # represented by User.current at message processing time.
+  # The conversation owner is always the configured service account; all
+  # messages are processed under that account's identity.
   # @param channel_type [String] Tool type (e.g. "slack")
   # @param thread_key [String] Tool-specific thread identifier
   # @param user [User] The user who starts the conversation

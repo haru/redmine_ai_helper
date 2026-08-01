@@ -12,6 +12,9 @@ class AiHelperConversation < ApplicationRecord
   # stored records are never touched (FR-011).
   CONTEXT_CHAR_LIMIT = 20_000
 
+  # Role value for messages imported from a chat channel.
+  CONTEXT_ROLE = AiHelperMessage::CONTEXT_ROLE
+
   # Header prefixed to the merged context messages so the LLM can tell the
   # imported chat channel messages from the questions addressed to it.
   CONTEXT_HEADER = "Context from the chat channel (messages by other participants; not addressed to you):"
@@ -30,7 +33,7 @@ class AiHelperConversation < ApplicationRecord
     context_seen = 0
 
     stored.each do |message|
-      if message.role == "context"
+      if message.role == CONTEXT_ROLE
         context_seen += 1
         context_run << message if context_seen > skipped
         next
@@ -57,7 +60,7 @@ class AiHelperConversation < ApplicationRecord
   # @param stored [Array<AiHelperMessage>] the conversation's messages
   # @return [Integer] the number of context messages to skip
   def context_messages_to_skip(stored)
-    lengths = stored.filter_map { |message| message.content.to_s.length if message.role == "context" }
+    lengths = stored.filter_map { |message| message.content.to_s.length if message.role == CONTEXT_ROLE }
     total = lengths.sum
     skipped = 0
     while total > CONTEXT_CHAR_LIMIT && skipped < lengths.size

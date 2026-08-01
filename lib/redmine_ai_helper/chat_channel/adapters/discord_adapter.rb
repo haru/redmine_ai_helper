@@ -2,6 +2,7 @@
 
 require "json"
 require "net/http"
+require "time"
 require "uri"
 require "websocket-client-simple"
 require "redmine_ai_helper/chat_channel/base_adapter"
@@ -200,7 +201,7 @@ module RedmineAiHelper
             ai_helper_logger.debug "discord: ignoring opcode #{payload["op"].inspect}"
           end
         rescue JSON::ParserError => e
-          ai_helper_logger.error "discord: failed to parse gateway payload: #{e.message}"
+          ai_helper_logger.error "discord: failed to parse gateway payload: #{e.full_message}"
         end
 
         # Reacts to a gateway close frame, capturing fatal authentication
@@ -270,8 +271,8 @@ module RedmineAiHelper
           history_messages(collected)
         end
 
-        # Reads the most recent messages of a channel (or DM) that are younger
-        # than +since+.
+        # Reads the most recent messages of a channel (or DM) that are at or
+        # after +since+.
         # @param channel_id [String] the channel id (DM channel for DMs)
         # @param before [String] only messages before this message id
         # @param since [Time] only messages posted at or after this time
@@ -626,7 +627,7 @@ module RedmineAiHelper
         # @param error [Exception] the socket error
         # @return [void]
         def socket_errored(error)
-          ai_helper_logger.error "discord: websocket error: #{error.message}"
+          ai_helper_logger.error "discord: websocket error: #{error.full_message}"
           @connection_ended&.push(true)
         end
 
@@ -844,7 +845,7 @@ module RedmineAiHelper
           body = JSON.parse(response.body.to_s)
           body["retry_after"].to_f
         rescue JSON::ParserError => e
-          ai_helper_logger.debug "discord: could not parse retry_after from 429 body (#{e.message}); falling back to 1s"
+          ai_helper_logger.warn "discord: could not parse retry_after from 429 body (#{e.message}); falling back to 1s"
           1.0
         end
 
@@ -853,7 +854,8 @@ module RedmineAiHelper
         # @return [Integer, nil]
         def error_code(response)
           JSON.parse(response.body.to_s)["code"]
-        rescue JSON::ParserError, TypeError
+        rescue JSON::ParserError, TypeError => e
+          ai_helper_logger.debug "discord: could not parse error code from response body (#{e.message})"
           nil
         end
       end

@@ -158,11 +158,11 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
       assert_raises(DiscordRequestError) { @adapter.send(:request, :get, "/users/@me") }
     end
 
-    should "log a debug message and fall back to 1 second when the 429 body cannot be parsed" do
+    should "log a warning and fall back to 1 second when the 429 body cannot be parsed" do
       response = http_response(429, {})
       response.stubs(:body).returns("not json")
       logger = mock("logger")
-      logger.expects(:debug).with(regexp_matches(/retry_after/))
+      logger.expects(:warn).with(regexp_matches(/retry_after/))
       @adapter.stubs(:ai_helper_logger).returns(logger)
 
       assert_equal 1.0, @adapter.send(:retry_after_seconds, response)
@@ -684,6 +684,15 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
       history = @adapter.fetch_channel_history(channel_id: "C1", before: "900", since: @since, limit: 20)
 
       assert_equal [ "recent" ], history.map(&:text)
+    end
+
+    should "include a message whose timestamp is exactly at the since boundary" do
+      boundary_ts = "2026-08-01T00:00:00.000000+00:00"
+      stub_discord_calls([ history_raw(content: "at boundary", id: "10", timestamp: boundary_ts) ])
+
+      history = @adapter.fetch_channel_history(channel_id: "C1", before: "900", since: @since, limit: 20)
+
+      assert_equal [ "at boundary" ], history.map(&:text)
     end
 
     should "apply the same exclusions as the thread history" do

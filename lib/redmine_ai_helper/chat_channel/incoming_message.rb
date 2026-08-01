@@ -8,17 +8,30 @@ module RedmineAiHelper
     # The speaker's identity is deliberately not carried: all questions are
     # processed as the configured service account (FR-004).
     class IncomingMessage
-      attr_reader :channel_type, :channel_id, :thread_key, :message_ts, :text
+      # @return [String] Adapter identifier (e.g. "slack")
+      attr_reader :channel_type
+      # @return [String] Channel identifier (DM channel id for DMs)
+      attr_reader :channel_id
+      # @return [String] Tool-specific thread identifier
+      attr_reader :thread_key
+      # @return [String, nil] Identifier of this individual message (Slack
+      #   +ts+, Discord snowflake). Used as the import cursor
+      #   (ContextImporter#store), the channel-history boundary
+      #   (ContextImporter#fetch_history), and to attach processing notices
+      #   to the message that was actually sent.
+      attr_reader :message_ts
+      # @return [String] Question body with mention markup removed
+      attr_reader :text
 
       # @param channel_type [String] Adapter identifier (e.g. "slack")
       # @param channel_id [String] Channel identifier (DM channel id for DMs)
       # @param thread_key [String] Tool-specific thread identifier
       # @param text [String] Question body with mention markup removed
       # @param message_ts [String, nil] Identifier of this individual message
-      #   (Slack +ts+), distinct from the thread key. Used to attach the
-      #   processing notice to the message that was actually sent, so replies
-      #   within a thread each get their own notice instead of colliding on
-      #   the thread's root message.
+      #   (Slack +ts+, Discord snowflake), distinct from the thread key. Used
+      #   as the differential-import cursor, the channel-history +before+
+      #   boundary, and to attach processing notices to the correct message so
+      #   replies within a thread each get their own notice.
       # @param dm [Boolean] Whether the message is a direct message
       # @param in_thread [Boolean] Whether the message was posted inside an
       #   existing thread. Adapters that cannot tell (or that do not retrieve
@@ -32,6 +45,7 @@ module RedmineAiHelper
         @text = text
         @dm = dm
         @in_thread = in_thread
+        freeze
       end
 
       # Whether the message is a direct message.

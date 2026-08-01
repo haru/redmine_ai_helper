@@ -27,8 +27,10 @@ module RedmineAiHelper
       # before the question itself is appended to the conversation, because the
       # conversation being empty is what distinguishes a new conversation
       # started outside a thread from a continuing one.
-      # @param conversation [AiHelperConversation] the thread's conversation
-      # @param message [IncomingMessage] the mention being processed
+      # @param conversation [AiHelperConversation] the thread's conversation;
+      #   must have an associated channel_conversation
+      # @param message [IncomingMessage] the mention being processed; +message_ts+
+      #   must not be nil (it becomes the import cursor)
       # @return [Integer] the number of imported messages
       # @raise [StandardError] when the adapter fails to retrieve the history
       def import(conversation:, message:)
@@ -76,15 +78,16 @@ module RedmineAiHelper
 
       # Appends the retrieved messages to the conversation and advances the
       # import cursor. Both happen in one transaction so a failure can never
-      # leave the cursor ahead of what was actually stored. The cursor is
-      # advanced even when nothing was retrieved, so the same range is not
-      # scanned again.
+      # leave the cursor ahead of what was actually stored. In thread mode the
+      # cursor prevents the same range from being scanned again; in channel
+      # mode it is advanced for consistency but channel mode only fires once
+      # (when the conversation is empty).
       # @return [void]
       def store(conversation:, message:, history:)
         AiHelperConversation.transaction do
           history.each do |imported|
             conversation.messages << AiHelperMessage.new(
-              role: "context", content: "#{imported.speaker}: #{imported.text}"
+              role: AiHelperMessage::CONTEXT_ROLE, content: "#{imported.speaker}: #{imported.text}"
             )
           end
           conversation.save!
