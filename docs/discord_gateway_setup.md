@@ -7,9 +7,7 @@ and receive answers in the same thread.
 The integration uses the Discord **Gateway API**: the gateway process opens an
 outgoing WebSocket connection to Discord, so **no public URL is required** for
 your Redmine server. The bot needs only a single **bot token** (unlike Slack,
-which uses two tokens). It runs without any privileged intent; enabling the
-**Message Content Intent** is optional and only adds the ability to answer with
-the surrounding discussion in mind (see step 3).
+which uses two tokens).
 
 ## Requirements
 
@@ -28,24 +26,11 @@ the surrounding discussion in mind (see step 3).
    Application**. Give it a name (this becomes the bot's name).
 2. In the **Bot** section, click **Reset Token** (or **Add Bot**) and copy the
    **bot token**. Store it securely — Discord shows it only once.
-3. Under **Privileged Gateway Intents**, turn **Message Content Intent** **ON**
-   if you want the bot to answer with the surrounding discussion in mind.
-   Discord only reveals the body of messages that do not mention the bot when
-   this toggle is enabled, and the toggle governs both the Gateway and the REST
-   API the bot reads the history with.
-   - **Left OFF**: the bot works exactly as before. It still receives mentions
-     and direct messages in full, but the messages around them arrive with an
-     empty body, are skipped, and answers are produced without that context.
-     No notice is shown, because nothing failed.
-   - **Turned ON**: the bot imports the messages posted around a mention (the
-     whole thread, or the last 48 hours / 20 messages of a channel or DM) and
-     answers with them in mind.
-   - If your application is **verified**, enabling the intent requires approval
-     from Discord; request it through the Developer Portal.
-
-   The gateway always identifies with the same intent set (`4608`) whether or
-   not the toggle is on, so enabling it never breaks an existing installation —
-   restart the gateway after flipping it.
+3. Under **Privileged Gateway Intents**, turn **Message Content Intent**
+   **ON**. This is required — Discord refuses the connection without it, and
+   the bot never comes online. If your application is **verified**, enabling it
+   requires approval from Discord; request it through the Developer Portal.
+   Restart the gateway after changing the toggle.
 
 ## 2. Invite the bot to your server
 
@@ -56,7 +41,8 @@ the surrounding discussion in mind (see step 3).
    - **Send Messages in Threads** — answer inside threads
    - **Create Public Threads** — start a thread from a question
    - **Add Reactions** — show the "processing" reaction (⏳)
-   - **Read Message History** — follow reply chains for continued conversations
+   - **Read Message History** — follow reply chains for continued
+     conversations, and read the messages around a mention
 3. Open the generated URL, choose the target server, and authorize. You need
    **Manage Server** permission on that server to complete the invite.
 
@@ -116,3 +102,63 @@ heartbeat acknowledgements (zombie-connection detection). Stop it with
   answer. A new, non-reply message starts a fresh conversation.
 - Answers longer than Discord's 2,000-character limit are split across several
   messages with no content lost.
+
+## Troubleshooting
+
+### The bot never comes online, and the log shows close code 4014
+
+```
+discord: gateway closed with fatal code 4014
+gateway: adapter discord terminated (configuration/credential error): ...
+```
+
+The **Message Content Intent** is OFF. Turn it on (step 1.3) and start the
+gateway again.
+
+If Discord is the only enabled integration, the gateway process exits. If Slack
+is enabled too, **the process keeps running for Slack** and only Discord stops —
+Slack questions are still answered, so watch for the log lines above rather than
+for the process going away.
+
+### The bot answers without taking the discussion into account
+
+If the bot is connected and answering but ignores what was said around the
+mention, check what the import actually collected:
+
+```bash
+grep "imported .* context messages" log/ai_helper.log
+```
+
+`imported 0 context messages` is normal when there was genuinely nothing to
+import — the first mention in a quiet channel, or a follow-up mention with no
+other messages in between. The gateway's own answers and the mentions addressed
+to it are never re-imported, because they are already stored as the
+conversation's questions and answers.
+
+If messages clearly were posted in between, check that the bot can actually see
+them: it only reads channels it has **View Channels** and **Read Message
+History** on, and in channel (non-thread) mode it looks no further back than 48
+hours / 20 messages.
+
+### The answer is prefixed with "The recent messages … could not be retrieved"
+
+The history request failed outright. The reason is logged with a backtrace:
+
+```bash
+grep "could not import the conversation context" log/ai_helper.log
+```
+
+Common causes:
+
+- **Missing "Read Message History" permission** — the REST call is rejected.
+  Re-invite the bot with the permission set from step 2, or add the permission
+  to its role in the server settings.
+- **Plugin migrations not applied** — an error mentioning
+  `last_imported_message_key` means the database is missing the column that
+  tracks how far the import got. Run
+  `bundle exec rake redmine:plugins:migrate RAILS_ENV=production` and restart
+  the gateway. Make sure the migration runs against the same database the
+  gateway uses; a running gateway caches the table layout, so it needs a
+  restart after the migration even if it was already restarted before it.
+
+The bot still answers in both cases — only the surrounding context is missing.
