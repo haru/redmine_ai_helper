@@ -25,7 +25,7 @@ None. `INDEX.md` and all link targets were already consistent — nothing mechan
 
 ## Note on source mix
 
-10 of 14 sources are DeepWiki (AI-generated); the rest are 5 specs + the README.
+8 of 14 sources are DeepWiki (AI-generated); the rest are 5 specs + the README.
 Several DeepWiki-only claims have since gained spec/README corroboration
 (MCP, provider layer, vector rake tasks, health report, chat sidebar names). No
 action required — tracked here as a confidence signal, not a defect.
