@@ -109,6 +109,59 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
     end
   end
 
+  context "history support" do
+    should "not support history by default" do
+      assert_not_predicate FakeAdapter.new, :supports_history?
+    end
+
+    should "raise NotImplementedError from fetch_thread_history" do
+      error = assert_raises(NotImplementedError) do
+        FakeAdapter.new.fetch_thread_history(channel_id: "FC1", thread_key: "FC1:1.000001")
+      end
+
+      assert_match(/fetch_thread_history/, error.message)
+    end
+
+    should "raise NotImplementedError from fetch_channel_history" do
+      error = assert_raises(NotImplementedError) do
+        FakeAdapter.new.fetch_channel_history(
+          channel_id: "FC1", before: "1.000002", since: 48.hours.ago, limit: 20
+        )
+      end
+
+      assert_match(/fetch_channel_history/, error.message)
+    end
+  end
+
+  # SC-006: an adapter that does not implement history retrieval keeps working
+  # through the unchanged core; the only difference is that no prior context is
+  # available to the answer.
+  context "end-to-end with an adapter that does not support history" do
+    should "answer without fetching or storing any context" do
+      project = Project.find(1)
+      project.enable_module!("ai_helper")
+      user = User.find(2)
+      adapter = FakeAdapter.new
+      create(:ai_helper_chat_adapter_setting, channel_type: "fake_chat", redmine_user_id: user.id)
+      create(:ai_helper_channel_binding, channel_type: "fake_chat", channel_id: "FC2", project: project)
+      adapter.expects(:fetch_thread_history).never
+      adapter.expects(:fetch_channel_history).never
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(
+        AiHelperMessage.new(role: "assistant", content: "answer without context")
+      )
+
+      adapter.dispatch(RedmineAiHelper::ChatChannel::IncomingMessage.new(
+        channel_type: "fake_chat", channel_id: "FC2", thread_key: "FC2:1.000001",
+        message_ts: "1.000001", text: "hello", dm: false
+      ))
+
+      assert_equal "answer without context", adapter.sent_messages.first[:text]
+      conversation = AiHelperConversation.first
+      assert_equal %w[user assistant], conversation.messages.order(:id).pluck(:role)
+      assert_nil conversation.channel_conversation.last_imported_message_key
+    end
+  end
+
   context "IncomingMessage" do
     should "hold the normalized fields" do
       message = RedmineAiHelper::ChatChannel::IncomingMessage.new(
@@ -126,6 +179,23 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
       assert_equal "1700000000.000200", message.message_ts
       assert_equal "hello", message.text
       assert message.dm?
+    end
+
+    should "not be in a thread unless the adapter says so" do
+      message = RedmineAiHelper::ChatChannel::IncomingMessage.new(
+        channel_type: "fake_chat", channel_id: "C123", thread_key: "C123:1.000100", text: "hello"
+      )
+
+      assert_not_predicate message, :in_thread?
+    end
+
+    should "carry the in_thread flag set by the adapter" do
+      message = RedmineAiHelper::ChatChannel::IncomingMessage.new(
+        channel_type: "fake_chat", channel_id: "C123", thread_key: "C123:1.000100",
+        text: "hello", in_thread: true
+      )
+
+      assert_predicate message, :in_thread?
     end
   end
 end

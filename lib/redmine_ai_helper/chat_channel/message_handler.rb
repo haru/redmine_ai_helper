@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "redmine_ai_helper/logger"
+require "redmine_ai_helper/chat_channel/context_importer"
 
 module RedmineAiHelper
   module ChatChannel
@@ -79,16 +80,20 @@ module RedmineAiHelper
         binding&.project || settings.default_project
       end
 
-      # Appends the question to the thread's conversation and runs the LLM
-      # under the service account's permissions.
+      # Imports the surrounding chat messages, appends the question to the
+      # thread's conversation and runs the LLM under the service account's
+      # permissions. The import runs before the question is appended, and
+      # after the checks in #handle, so a question that is refused never
+      # reaches the chat tool's history API (FR-013).
       # @return [AiHelperMessage] The assistant's answer
       def process_question(message, user, project)
         conversation = AiHelperChannelConversation.find_or_create_conversation(
           channel_type: message.channel_type, thread_key: message.thread_key, user: user
         )
-        if conversation.messages.empty?
-          conversation.title = message.text.truncate(TITLE_MAX_LENGTH)
-        end
+        new_conversation = conversation.messages.empty?
+        history_unavailable = import_context(conversation, message)
+
+        conversation.title = message.text.truncate(TITLE_MAX_LENGTH) if new_conversation
         conversation.messages << AiHelperMessage.new(role: "user", content: message.text)
         conversation.save!
 
@@ -102,9 +107,22 @@ module RedmineAiHelper
           I18n.locale = original_locale
         end
 
+        answer.content = "#{guidance(:history_unavailable, user)}\n\n#{answer.content}" if history_unavailable
         conversation.messages << answer
         conversation.save!
         answer
+      end
+
+      # Imports the messages surrounding the mention. A retrieval failure is
+      # logged and reported to the user (FR-008) instead of aborting the
+      # answer; the notice is added to the answer by the caller.
+      # @return [Boolean] whether the import failed
+      def import_context(conversation, message)
+        ContextImporter.new(@adapter).import(conversation: conversation, message: message)
+        false
+      rescue => e
+        ai_helper_logger.error "chat channel: could not import the conversation context: #{e.full_message}"
+        true
       end
 
       # Posts a reply into the thread the message came from.

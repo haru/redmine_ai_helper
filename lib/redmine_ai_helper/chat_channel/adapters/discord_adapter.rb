@@ -5,6 +5,7 @@ require "net/http"
 require "uri"
 require "websocket-client-simple"
 require "redmine_ai_helper/chat_channel/base_adapter"
+require "redmine_ai_helper/chat_channel/history_message"
 
 module RedmineAiHelper
   module ChatChannel
@@ -74,6 +75,8 @@ module RedmineAiHelper
         THREAD_ALREADY_EXISTS_CODE = 160004
         # Maximum length of an auto-generated thread name (Discord limit: 100).
         THREAD_NAME_MAX_LENGTH = 100
+        # Messages requested per history page (Discord's maximum).
+        HISTORY_PAGE_LIMIT = 100
         # Upper bound on @reply_targets: the gateway is a resident process, and
         # reply-mode entries have no other eviction path, so the map is capped
         # and the oldest entry is dropped once it is exceeded (FIFO). Losing an
@@ -229,6 +232,54 @@ module RedmineAiHelper
             body[:message_reference] = { message_id: reply_to } if reply_to && index.zero?
             post_message(target, body)
           end
+        end
+
+        # Discord serves both thread and channel messages through the same
+        # REST endpoint. Whether the bodies actually arrive depends on the
+        # Message Content Intent being enabled in the Developer Portal; when it
+        # is not, the bodies are empty and every message is skipped as empty,
+        # so the gateway answers without context instead of failing.
+        # @return [Boolean]
+        def supports_history?
+          true
+        end
+
+        # Reads the messages of a thread, paging backwards until the import
+        # cursor is reached or the thread is exhausted. Only the backward
+        # direction is used: on an incremental import the first page already
+        # crosses the cursor.
+        # @param channel_id [String] the parent channel id (unused: the thread
+        #   itself is the REST resource)
+        # @param thread_key [String] "{parent_id}:{thread_id}"
+        # @param after [String, nil] only messages after this message id
+        # @return [Array<HistoryMessage>] ascending (oldest first)
+        def fetch_thread_history(channel_id:, thread_key:, after: nil) # rubocop:disable Lint/UnusedMethodArgument
+          thread_id = thread_key.split(":", 2).last
+          collected = []
+          before = nil
+          loop do
+            page = fetch_messages(thread_id, limit: HISTORY_PAGE_LIMIT, before: before)
+            break if page.empty?
+
+            newer_than_cursor = page.take_while { |raw| after.blank? || raw["id"].to_i > after.to_i }
+            collected.concat(newer_than_cursor)
+            break if newer_than_cursor.size < page.size || page.size < HISTORY_PAGE_LIMIT
+
+            before = page.last["id"]
+          end
+          history_messages(collected)
+        end
+
+        # Reads the most recent messages of a channel (or DM) that are younger
+        # than +since+.
+        # @param channel_id [String] the channel id (DM channel for DMs)
+        # @param before [String] only messages before this message id
+        # @param since [Time] only messages posted at or after this time
+        # @param limit [Integer] maximum number of messages
+        # @return [Array<HistoryMessage>] ascending (oldest first)
+        def fetch_channel_history(channel_id:, before:, since:, limit:)
+          page = fetch_messages(channel_id, limit: limit, before: before)
+          history_messages(page.select { |raw| Time.iso8601(raw["timestamp"].to_s) >= since })
         end
 
         # Classifies DiscordApiError as a fatal configuration/credential error
@@ -407,7 +458,8 @@ module RedmineAiHelper
             parent_id = channel["parent_id"]
             dispatch(IncomingMessage.new(
               channel_type: channel_type, channel_id: parent_id,
-              thread_key: "#{parent_id}:#{channel_id}", message_ts: message_id, text: text, dm: false
+              thread_key: "#{parent_id}:#{channel_id}", message_ts: message_id, text: text,
+              dm: false, in_thread: true
             ))
           else
             dispatch_with_thread(channel_id, message_id, text)
@@ -655,6 +707,52 @@ module RedmineAiHelper
         # @return [Hash] the created message object
         def post_message(channel_id, body)
           request(:post, "/channels/#{channel_id}/messages", body: body)
+        end
+
+        # Reads one page of messages, newest first.
+        # @param channel_id [String] the channel or thread id
+        # @param limit [Integer] the page size
+        # @param before [String, nil] only messages before this message id
+        # @return [Array<Hash>] the raw message objects, newest first
+        def fetch_messages(channel_id, limit:, before: nil)
+          params = { limit: limit }
+          params[:before] = before if before.present?
+          request(:get, "/channels/#{channel_id}/messages?#{URI.encode_www_form(params)}")
+        end
+
+        # Converts raw Discord messages into history messages, dropping the
+        # ones that must not be imported (FR-009) and restoring ascending
+        # order: Discord answers newest first.
+        # @param raw_messages [Array<Hash>] the raw message objects
+        # @return [Array<HistoryMessage>] ascending (oldest first)
+        def history_messages(raw_messages)
+          raw_messages.reverse.filter_map { |raw| history_message(raw) }
+        end
+
+        # Converts one raw message, or nil when it must not be imported.
+        # @param raw [Hash] the raw message object
+        # @return [HistoryMessage, nil]
+        def history_message(raw)
+          return nil unless REPLYABLE_MESSAGE_TYPES.include?(raw["type"])
+          return nil if bot_authored?(raw)
+
+          content = raw["content"].to_s
+          return nil if mentions_bot?(content)
+
+          text = content.strip
+          return nil if text.empty?
+
+          HistoryMessage.new(speaker: speaker_name(raw), text: text)
+        end
+
+        # The speaker's display name, taken from the payload: Discord needs no
+        # extra call to resolve it.
+        # @param raw [Hash] the raw message object
+        # @return [String]
+        def speaker_name(raw)
+          raw.dig("member", "nick").presence ||
+            raw.dig("author", "global_name").presence ||
+            raw.dig("author", "username").to_s
         end
 
         # Splits a reply into chunks within the Discord message limit,

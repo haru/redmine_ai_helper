@@ -6,7 +6,14 @@
         <strong><%= link_to_user(@user) %></strong>
       </div>
     <% end %>
-    <% if message.role == 'user' %>
+    <% if message.role == 'context' %>
+      <div class="aihelper-message-user">
+        <strong><%= l("ai_helper.chat_channel.context.label") %></strong>
+      </div>
+    <% end %>
+    <% if message.role == 'user' || message.role == 'context' %>
+      <%# Imported chat channel messages are untrusted external input, so they
+          are rendered as escaped plain text and never through md_to_html. %>
       <pre><%= message.content %></pre>
     <% else %>
       <div>

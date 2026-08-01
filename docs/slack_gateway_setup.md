@@ -15,13 +15,27 @@ The integration uses Slack **Socket Mode**: the gateway process opens an outgoin
 2. Under **Socket Mode**, enable Socket Mode and generate an **App-Level Token** with the `connections:write` scope. Note the token (starts with `xapp-`).
 3. Under **OAuth & Permissions → Bot Token Scopes**, add:
    - `app_mentions:read` — receive mentions in channels
-   - `im:history` — receive direct messages
+   - `im:history` — receive direct messages, and read the recent messages of a DM
    - `chat:write` — post replies
    - `reactions:write` — show the "processing" reaction
+   - `channels:history` — read the surrounding messages of public channels and their threads
+   - `groups:history` — the same for private channels
+   - `mpim:history` — the same for group direct messages
+   - `users:read` — resolve the display names of the speakers in those messages
+
+   The four history-related scopes let the bot read the messages posted around a
+   mention so it can answer with the discussion in mind. Without them the bot
+   still answers, but every answer starts with a notice that the recent
+   messages could not be retrieved.
 4. Under **Event Subscriptions → Subscribe to bot events**, add:
    - `app_mention`
    - `message.im`
 5. Install the app into the workspace and note the **Bot User OAuth Token** (starts with `xoxb-`).
+
+> **Upgrading an app installed before this feature existed**: adding scopes does
+> not change an existing installation. Open **OAuth & Permissions**, add the four
+> scopes above and choose **Reinstall to Workspace**, then restart the gateway.
+> The bot token stays valid, so the Redmine settings need no change.
 
 ## 2. Configure Redmine
 

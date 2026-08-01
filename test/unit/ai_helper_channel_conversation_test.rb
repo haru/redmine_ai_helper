@@ -72,6 +72,22 @@ class AiHelperChannelConversationTest < ActiveSupport::TestCase
     end
   end
 
+  context "last_imported_message_key" do
+    should "default to nil for a newly created channel conversation" do
+      channel_conversation = create(:ai_helper_channel_conversation)
+
+      assert_nil channel_conversation.last_imported_message_key
+    end
+
+    should "persist the import cursor" do
+      channel_conversation = create(:ai_helper_channel_conversation)
+
+      channel_conversation.update!(last_imported_message_key: "1700000000.000500")
+
+      assert_equal "1700000000.000500", channel_conversation.reload.last_imported_message_key
+    end
+  end
+
   context "conversation deletion" do
     should "delete the channel conversation when the conversation is destroyed" do
       channel_conversation = create(:ai_helper_channel_conversation)

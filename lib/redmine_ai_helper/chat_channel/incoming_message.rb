@@ -20,19 +20,30 @@ module RedmineAiHelper
       #   within a thread each get their own notice instead of colliding on
       #   the thread's root message.
       # @param dm [Boolean] Whether the message is a direct message
-      def initialize(channel_type:, channel_id:, thread_key:, text:, message_ts: nil, dm: false)
+      # @param in_thread [Boolean] Whether the message was posted inside an
+      #   existing thread. Adapters that cannot tell (or that do not retrieve
+      #   history at all) leave this at false, which keeps the import in
+      #   channel mode or skips it entirely.
+      def initialize(channel_type:, channel_id:, thread_key:, text:, message_ts: nil, dm: false, in_thread: false)
         @channel_type = channel_type
         @channel_id = channel_id
         @thread_key = thread_key
         @message_ts = message_ts
         @text = text
         @dm = dm
+        @in_thread = in_thread
       end
 
       # Whether the message is a direct message.
       # @return [Boolean]
       def dm?
         @dm
+      end
+
+      # Whether the message was posted inside an existing thread.
+      # @return [Boolean]
+      def in_thread?
+        @in_thread
       end
     end
   end
