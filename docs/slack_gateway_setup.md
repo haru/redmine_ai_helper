@@ -32,10 +32,11 @@ The integration uses Slack **Socket Mode**: the gateway process opens an outgoin
    - `message.im`
 5. Install the app into the workspace and note the **Bot User OAuth Token** (starts with `xoxb-`).
 
-> **Upgrading an app installed before this feature existed**: adding scopes does
-> not change an existing installation. Open **OAuth & Permissions**, add the four
-> scopes above and choose **Reinstall to Workspace**, then restart the gateway.
-> The bot token stays valid, so the Redmine settings need no change.
+> A bot token carries the scopes that were granted when the app was installed.
+> If you add a scope after installing, open **OAuth & Permissions** and choose
+> **Reinstall to Workspace**, otherwise the calls needing it fail with
+> `missing_scope`. The bot token stays valid, so the Redmine settings need no
+> change.
 
 ## 2. Configure Redmine
 

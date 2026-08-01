@@ -14,9 +14,11 @@ ADR-008 kept the Identify intents at `GUILD_MESSAGES + DIRECT_MESSAGES = 4608`
 when the context import was added, so that installations which had not enabled
 the Message Content Intent in the Developer Portal would keep working: the
 gateway would still connect, and only the imported context would be missing.
-Turning the toggle on was documented as optional.
+Turning the toggle on was documented as optional. That rationale rested on
+protecting installations that do not exist — the chat channel gateway (028) and
+this feature (034) are both unreleased, present only on `develop`.
 
-Operating the feature showed that this degraded mode is not worth having:
+Exercising the feature showed that the degraded mode is not worth having:
 
 - With the toggle off, Discord returns the surrounding messages with an empty
   body. They are all skipped, the import reports `imported 0 context messages`,
@@ -51,12 +53,10 @@ also enabled the process keeps serving Slack and only Discord goes down.
   failure, instead of silently removing context from every later answer. This
   follows the project guideline that errors must surface immediately rather
   than be absorbed by a fallback.
-- **Breaking for existing installations that never enabled the toggle**: their
-  Discord bot stops answering until an administrator enables it. This is
-  deliberate — those installations were already not getting the context import,
-  and the alternative is leaving them silently degraded. The setup guide
-  documents the toggle as required and the troubleshooting section names close
-  code 4014.
+- Discord answering stops entirely when the toggle is off, rather than
+  degrading. Nothing is broken for users in the field, because the gateway has
+  never been released; the setup guide states the toggle as a required step of
+  the initial setup and the troubleshooting section names close code 4014.
 - The failure is loud in the log but not always in process state: a
   Slack + Discord install keeps running with Slack alone, so operators who
   watch only for a dead process will miss it. The setup guide calls this out.

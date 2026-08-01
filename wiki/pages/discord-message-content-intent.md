@@ -34,7 +34,9 @@ The gateway's Identify uses
   then it returns empty bodies and the misconfiguration is invisible.
 
 This reverses the earlier design (ADR-008 decision 7), which kept the intents
-at `4608` so unconfigured installs would keep running without context (S015).
+at `4608` so unconfigured installs would keep running without context — a
+rationale that protected installations that do not exist, since the gateway is
+unreleased and lives only on `develop` (S015).
 
 ## Why the degraded mode was removed
 
@@ -47,11 +49,10 @@ import" — while delivering none of the feature's value (S015).
 
 ## Operational consequence
 
-Admins must enable Message Content Intent in the Developer Portal before
-starting the gateway (verified apps need separate Discord approval). An install
-that never enabled it loses Discord answering entirely until they do — a
-deliberate, documented break, since such an install was never getting the
-context import anyway (S015).
+Enabling Message Content Intent in the Developer Portal is a required step of
+the initial setup, done before the gateway is first started (verified apps need
+separate Discord approval). Skip it and Discord answering does not work at all,
+rather than working without context (S015).
 
 Rejected alternatives (S015):
 
