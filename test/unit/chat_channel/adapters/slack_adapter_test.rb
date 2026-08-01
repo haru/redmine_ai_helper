@@ -18,6 +18,46 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
     stub(body: body.to_json)
   end
 
+  # Answers the Web API calls with the given bodies in call order and records
+  # the requests so their form parameters can be asserted.
+  def stub_slack_calls(*bodies)
+    @slack_requests = []
+    responses = bodies.map { |body| stub_api_response(body) }
+    Net::HTTP.any_instance.stubs(:request).with { |request| @slack_requests << request; true }
+             .returns(*responses)
+  end
+
+  def slack_form(index)
+    URI.decode_www_form(@slack_requests[index].body.to_s).to_h
+  end
+
+  def slack_paths
+    @slack_requests.map(&:path)
+  end
+
+  def slack_message(text:, user: "U1", ts: "1.000001", subtype: nil, bot_id: nil,
+                    username: nil, bot_profile: nil)
+    message = { "type" => "message", "ts" => ts, "text" => text }
+    message["user"] = user if user
+    message["subtype"] = subtype if subtype
+    message["bot_id"] = bot_id if bot_id
+    message["username"] = username if username
+    message["bot_profile"] = bot_profile if bot_profile
+    message
+  end
+
+  def user_info(display_name: nil, real_name: nil, name: nil)
+    { "ok" => true,
+      "user" => { "profile" => { "display_name" => display_name.to_s },
+                  "real_name" => real_name.to_s, "name" => name.to_s } }
+  end
+
+  def replies_body(messages, next_cursor: nil)
+    body = { "ok" => true, "messages" => messages }
+    body["response_metadata"] = { "next_cursor" => next_cursor.to_s }
+    body
+  end
+
   context "registration and settings" do
     should "declare channel_type slack" do
       assert_equal "slack", RedmineAiHelper::ChatChannel::Adapters::SlackAdapter.channel_type
@@ -248,6 +288,28 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
       assert_equal "333.444", message.message_ts
     end
 
+    should "mark a mention inside an existing thread as in_thread" do
+      @ws.stubs(:send)
+
+      @adapter.handle_envelope(events_envelope(
+        { "type" => "app_mention", "user" => "U123", "channel" => "C123",
+          "ts" => "333.444", "thread_ts" => "111.222", "text" => "<@B001> more" }
+      ))
+
+      assert_predicate @dispatcher.messages.first, :in_thread?
+    end
+
+    should "not mark a mention outside a thread as in_thread" do
+      @ws.stubs(:send)
+
+      @adapter.handle_envelope(events_envelope(
+        { "type" => "app_mention", "user" => "U123", "channel" => "C123",
+          "ts" => "111.222", "text" => "<@B001> open issues?" }
+      ))
+
+      assert_not_predicate @dispatcher.messages.first, :in_thread?
+    end
+
     should "convert an im message into a dm IncomingMessage" do
       @ws.stubs(:send)
 
@@ -282,6 +344,292 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
       ))
 
       assert_empty @dispatcher.messages
+    end
+  end
+
+  context "history retrieval" do
+    setup do
+      @adapter.instance_variable_set(:@bot_user_id, "B001")
+      @adapter.instance_variable_set(:@bot_id, "BOT_ID")
+    end
+
+    should "declare history support" do
+      assert_predicate @adapter, :supports_history?
+    end
+
+    should "ask conversations.replies for the messages after the cursor" do
+      stub_slack_calls(replies_body([]))
+
+      @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:100.000001", after: "100.000500")
+
+      assert_equal [ "/api/conversations.replies" ], slack_paths
+      form = slack_form(0)
+      assert_equal "C1", form["channel"]
+      assert_equal "100.000001", form["ts"]
+      assert_equal "100.000500", form["oldest"]
+      assert_equal "false", form["inclusive"]
+      assert_equal "200", form["limit"]
+    end
+
+    should "omit oldest on the first import of a thread" do
+      stub_slack_calls(replies_body([]))
+
+      @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:100.000001")
+
+      assert_not slack_form(0).key?("oldest")
+    end
+
+    should "return the messages in ascending order" do
+      stub_slack_calls(
+        replies_body([ slack_message(text: "second", ts: "2"), slack_message(text: "first", ts: "1") ]),
+        user_info(display_name: "yamachan")
+      )
+
+      history = @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:100.000001")
+
+      assert_equal [ "first", "second" ], history.map(&:text)
+    end
+
+    should "follow the next_cursor pagination until it is empty" do
+      stub_slack_calls(
+        replies_body([ slack_message(text: "newest", ts: "3", user: nil, bot_id: "OTHER", username: "CI") ],
+                     next_cursor: "page2"),
+        replies_body([ slack_message(text: "older", ts: "1", user: nil, bot_id: "OTHER", username: "CI") ])
+      )
+
+      history = @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:100.000001")
+
+      assert_equal 2, slack_paths.size
+      assert_not slack_form(0).key?("cursor")
+      assert_equal "page2", slack_form(1)["cursor"]
+      assert_equal [ "older", "newest" ], history.map(&:text)
+    end
+
+    should "raise when the history call fails" do
+      stub_slack_calls({ "ok" => false, "error" => "missing_scope" })
+
+      error = assert_raises(RedmineAiHelper::ChatChannel::Adapters::SlackAdapter::SlackApiError) do
+        @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:100.000001")
+      end
+      assert_match(/missing_scope/, error.message)
+    end
+
+    should "send oldest alongside cursor on paginated calls after the first import" do
+      stub_slack_calls(
+        replies_body([ slack_message(text: "newest", ts: "3", user: nil, bot_id: "OTHER", username: "CI") ],
+                     next_cursor: "page2"),
+        replies_body([ slack_message(text: "older", ts: "2", user: nil, bot_id: "OTHER", username: "CI") ])
+      )
+
+      @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:100.000001", after: "1")
+
+      assert_equal 2, slack_paths.size
+      assert_equal "1", slack_form(0)["oldest"], "oldest must be sent on every page"
+      assert_equal "1", slack_form(1)["oldest"], "oldest must be preserved on the paginated call"
+      assert_equal "page2", slack_form(1)["cursor"]
+    end
+  end
+
+  context "channel history retrieval" do
+    setup do
+      @adapter.instance_variable_set(:@bot_user_id, "B001")
+      @adapter.instance_variable_set(:@bot_id, "BOT_ID")
+      @since = Time.zone.parse("2026-08-01 00:00:00")
+    end
+
+    should "ask conversations.history for the recent top-level messages" do
+      stub_slack_calls({ "ok" => true, "messages" => [] })
+
+      @adapter.fetch_channel_history(channel_id: "C1", before: "100.000900", since: @since, limit: 20)
+
+      assert_equal [ "/api/conversations.history" ], slack_paths
+      form = slack_form(0)
+      assert_equal "C1", form["channel"]
+      assert_equal "100.000900", form["latest"]
+      assert_equal @since.to_f.to_s, form["oldest"]
+      assert_equal "false", form["inclusive"]
+      assert_equal "20", form["limit"]
+    end
+
+    should "return the messages in ascending order" do
+      stub_slack_calls(
+        { "ok" => true, "messages" => [ slack_message(text: "second", ts: "2", user: nil, bot_id: "CI", username: "CI"),
+                                        slack_message(text: "first", ts: "1", user: nil, bot_id: "CI", username: "CI") ] }
+      )
+
+      history = @adapter.fetch_channel_history(channel_id: "C1", before: "100.000900", since: @since, limit: 20)
+
+      assert_equal [ "first", "second" ], history.map(&:text)
+    end
+
+    should "apply the same exclusions as the thread history" do
+      stub_slack_calls(
+        { "ok" => true, "messages" => [ slack_message(text: "joined", subtype: "channel_join"),
+                                        slack_message(text: "<@B001> question", ts: "2"),
+                                        slack_message(text: "my answer", user: "B001", ts: "3") ] }
+      )
+
+      assert_empty @adapter.fetch_channel_history(channel_id: "C1", before: "100.000900", since: @since, limit: 20)
+    end
+
+    should "return an empty array when the channel has no recent messages" do
+      stub_slack_calls({ "ok" => true, "messages" => [] })
+
+      assert_empty @adapter.fetch_channel_history(channel_id: "C1", before: "100.000900", since: @since, limit: 20)
+    end
+
+    should "raise when the channel history call fails" do
+      stub_slack_calls({ "ok" => false, "error" => "missing_scope" })
+
+      assert_raises(RedmineAiHelper::ChatChannel::Adapters::SlackAdapter::SlackApiError) do
+        @adapter.fetch_channel_history(channel_id: "C1", before: "100.000900", since: @since, limit: 20)
+      end
+    end
+
+    should "resolve real user display names via users.info" do
+      stub_slack_calls(
+        { "ok" => true, "messages" => [ slack_message(text: "hello", user: "U1", ts: "1") ] },
+        user_info(display_name: "yamachan")
+      )
+
+      history = @adapter.fetch_channel_history(channel_id: "C1", before: "100.000900", since: @since, limit: 20)
+
+      assert_equal [ "yamachan" ], history.map(&:speaker)
+      assert_equal [ "/api/conversations.history", "/api/users.info" ], slack_paths
+    end
+  end
+
+  context "history filtering" do
+    setup do
+      @adapter.instance_variable_set(:@bot_user_id, "B001")
+      @adapter.instance_variable_set(:@bot_id, "BOT_ID")
+    end
+
+    should "skip messages whose subtype is not on the allow list" do
+      stub_slack_calls(
+        replies_body([ slack_message(text: "joined the channel", subtype: "channel_join") ])
+      )
+
+      assert_empty @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:100.000001")
+    end
+
+    should "keep the allowed subtypes" do
+      stub_slack_calls(
+        replies_body([ slack_message(text: "shared a file", subtype: "file_share", user: nil,
+                                     bot_id: "OTHER", username: "CI") ])
+      )
+
+      history = @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:100.000001")
+
+      assert_equal [ "shared a file" ], history.map(&:text)
+    end
+
+    should "skip the gateway's own messages" do
+      stub_slack_calls(
+        replies_body([ slack_message(text: "my own answer", user: "B001"),
+                       slack_message(text: "posted as the app", user: nil, bot_id: "BOT_ID",
+                                     subtype: "bot_message", username: "AI Helper") ])
+      )
+
+      assert_empty @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:100.000001")
+    end
+
+    should "skip questions addressed to the bot" do
+      stub_slack_calls(
+        replies_body([ slack_message(text: "<@B001> what about this?") ])
+      )
+
+      assert_empty @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:100.000001")
+    end
+
+    should "skip messages whose body is empty" do
+      stub_slack_calls(
+        replies_body([ slack_message(text: "   ") ])
+      )
+
+      assert_empty @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:100.000001")
+    end
+
+    should "import other bots with their display name" do
+      stub_slack_calls(
+        replies_body([ slack_message(text: "build failed", user: nil, bot_id: "CI_BOT",
+                                     subtype: "bot_message", username: "CI notifier") ])
+      )
+
+      history = @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:100.000001")
+
+      assert_equal [ "CI notifier" ], history.map(&:speaker)
+      assert_equal [ "/api/conversations.replies" ], slack_paths, "bot messages must not trigger users.info"
+    end
+
+    should "fall back to the bot profile name when a bot message has no username" do
+      stub_slack_calls(
+        replies_body([ slack_message(text: "build failed", user: nil, bot_id: "CI_BOT",
+                                     subtype: "bot_message", bot_profile: { "name" => "CI profile" }) ])
+      )
+
+      history = @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:100.000001")
+
+      assert_equal [ "CI profile" ], history.map(&:speaker)
+    end
+  end
+
+  context "speaker display names" do
+    setup do
+      @adapter.instance_variable_set(:@bot_user_id, "B001")
+      @adapter.instance_variable_set(:@bot_id, "BOT_ID")
+    end
+
+    should "prefer the profile display name" do
+      stub_slack_calls(
+        replies_body([ slack_message(text: "hello") ]),
+        user_info(display_name: "yamachan", real_name: "Yamada Taro", name: "yamada")
+      )
+
+      assert_equal [ "yamachan" ],
+                   @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:100.000001").map(&:speaker)
+    end
+
+    should "fall back to the real name when the display name is empty" do
+      stub_slack_calls(
+        replies_body([ slack_message(text: "hello") ]),
+        user_info(display_name: "", real_name: "Yamada Taro", name: "yamada")
+      )
+
+      assert_equal [ "Yamada Taro" ],
+                   @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:100.000001").map(&:speaker)
+    end
+
+    should "fall back to the account name when display and real name are empty" do
+      stub_slack_calls(
+        replies_body([ slack_message(text: "hello") ]),
+        user_info(display_name: "", real_name: "", name: "yamada")
+      )
+
+      assert_equal [ "yamada" ],
+                   @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:100.000001").map(&:speaker)
+    end
+
+    should "resolve each user only once" do
+      stub_slack_calls(
+        replies_body([ slack_message(text: "second", ts: "2"), slack_message(text: "first", ts: "1") ]),
+        user_info(display_name: "yamachan")
+      )
+
+      history = @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:100.000001")
+
+      assert_equal [ "yamachan", "yamachan" ], history.map(&:speaker)
+      assert_equal [ "/api/conversations.replies", "/api/users.info" ], slack_paths
+    end
+
+    should "evict the oldest cached display name once the cap is exceeded" do
+      cap = RedmineAiHelper::ChatChannel::Adapters::SlackAdapter::MAX_DISPLAY_NAMES
+      (cap + 1).times { |i| @adapter.send(:cache_display_name, "U#{i}", "name#{i}") }
+
+      cache = @adapter.instance_variable_get(:@display_names)
+      assert_equal cap, cache.size
+      assert_not cache.key?("U0"), "the oldest entry must be evicted"
+      assert cache.key?("U#{cap}"), "the newest entry must be kept"
     end
   end
 

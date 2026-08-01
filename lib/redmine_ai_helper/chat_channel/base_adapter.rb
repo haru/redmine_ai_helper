@@ -139,6 +139,38 @@ module RedmineAiHelper
         raise NotImplementedError, "#{self.class.name} must implement #send_message"
       end
 
+      # Whether the adapter can retrieve past messages from the chat tool.
+      # History retrieval is optional: adapters that leave this at false keep
+      # working through the unchanged core, the only difference being that
+      # answers are generated without surrounding context (FR-010).
+      # @return [Boolean]
+      def supports_history?
+        false
+      end
+
+      # Messages posted in a thread, in ascending (oldest first) order. No
+      # count or age limit is applied.
+      # @param channel_id [String] Parent channel identifier
+      # @param thread_key [String] Thread identifier (same format as elsewhere)
+      # @param after [String, nil] Import cursor; only messages after this
+      #   external message id are returned. nil returns the whole thread.
+      # @return [Array<HistoryMessage>]
+      def fetch_thread_history(channel_id:, thread_key:, after: nil)
+        raise NotImplementedError, "#{self.class.name} must implement #fetch_thread_history"
+      end
+
+      # Top-level messages of a channel (or DM), in ascending order.
+      # @param channel_id [String] Channel identifier (DM channel id for DMs)
+      # @param before [String, nil] Only messages before this external message
+      #   id are returned, which excludes the mention itself
+      # @param since [Time] Only messages posted at or after this time
+      # @param limit [Integer] Maximum number of messages, counted from the
+      #   most recent one
+      # @return [Array<HistoryMessage>]
+      def fetch_channel_history(channel_id:, before:, since:, limit:)
+        raise NotImplementedError, "#{self.class.name} must implement #fetch_channel_history"
+      end
+
       # Whether the given error is a fatal configuration/credential error
       # that the supervisor (systemd) must not retry. Defaults to false;
       # adapters override to classify their own credential errors so ADR-006

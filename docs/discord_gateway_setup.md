@@ -7,7 +7,9 @@ and receive answers in the same thread.
 The integration uses the Discord **Gateway API**: the gateway process opens an
 outgoing WebSocket connection to Discord, so **no public URL is required** for
 your Redmine server. The bot needs only a single **bot token** (unlike Slack,
-which uses two tokens), and it does **not** require any privileged intents.
+which uses two tokens). It runs without any privileged intent; enabling the
+**Message Content Intent** is optional and only adds the ability to answer with
+the surrounding discussion in mind (see step 3).
 
 ## Requirements
 
@@ -26,11 +28,24 @@ which uses two tokens), and it does **not** require any privileged intents.
    Application**. Give it a name (this becomes the bot's name).
 2. In the **Bot** section, click **Reset Token** (or **Add Bot**) and copy the
    **bot token**. Store it securely — Discord shows it only once.
-3. Under **Privileged Gateway Intents**, leave **Message Content Intent**
-   **OFF**. This integration only reacts to messages that mention the bot and
-   to direct messages, both of which Discord delivers in full without the
-   privileged intent. Leaving it off keeps the bot least-privileged and needs
-   no Discord review.
+3. Under **Privileged Gateway Intents**, turn **Message Content Intent** **ON**
+   if you want the bot to answer with the surrounding discussion in mind.
+   Discord only reveals the body of messages that do not mention the bot when
+   this toggle is enabled, and the toggle governs both the Gateway and the REST
+   API the bot reads the history with.
+   - **Left OFF**: the bot works exactly as before. It still receives mentions
+     and direct messages in full, but the messages around them arrive with an
+     empty body, are skipped, and answers are produced without that context.
+     No notice is shown, because nothing failed.
+   - **Turned ON**: the bot imports the messages posted around a mention (the
+     whole thread, or the last 48 hours / 20 messages of a channel or DM) and
+     answers with them in mind.
+   - If your application is **verified**, enabling the intent requires approval
+     from Discord; request it through the Developer Portal.
+
+   The gateway always identifies with the same intent set (`4608`) whether or
+   not the toggle is on, so enabling it never breaks an existing installation —
+   restart the gateway after flipping it.
 
 ## 2. Invite the bot to your server
 

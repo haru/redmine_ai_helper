@@ -4,6 +4,7 @@ require "json"
 require "net/http"
 require "websocket-client-simple"
 require "redmine_ai_helper/chat_channel/base_adapter"
+require "redmine_ai_helper/chat_channel/history_message"
 
 module RedmineAiHelper
   module ChatChannel
@@ -30,6 +31,18 @@ module RedmineAiHelper
         MAX_MISSED_PONGS = 2
         # Replies longer than this are split before posting (research.md R-008).
         MAX_MESSAGE_LENGTH = 3900
+        # Messages requested per history page (Slack's maximum for a full page).
+        HISTORY_PAGE_LIMIT = 200
+        # Subtypes that carry an ordinary contribution to the discussion.
+        # Everything else (joins, leaves, edits, pins, ...) is a system message
+        # and is not imported. bot_message stays on the list because other
+        # bots' messages are part of the discussion (FR-009).
+        HISTORY_SUBTYPES = [ nil, "bot_message", "thread_broadcast", "file_share" ].freeze
+        # Upper bound on the user id to display name cache. The gateway is a
+        # resident process, so the map is capped and the oldest entry is
+        # dropped once it is exceeded (FIFO), same as @reply_targets in the
+        # Discord adapter. Losing an entry only costs one extra users.info call.
+        MAX_DISPLAY_NAMES = 500
 
         class << self
           # @return [String] the adapter identifier
@@ -55,6 +68,7 @@ module RedmineAiHelper
           @connected = false
           @backoff = 1
           @missed_pongs = 0
+          @display_names = {}
         end
 
         # Connects to Slack and blocks while receiving events. Reconnects on
@@ -123,7 +137,7 @@ module RedmineAiHelper
             ai_helper_logger.debug "slack: ignoring envelope type #{data["type"].inspect}"
           end
         rescue JSON::ParserError => e
-          ai_helper_logger.error "slack: failed to parse envelope: #{e.message}"
+          ai_helper_logger.error "slack: failed to parse envelope: #{e.full_message}"
         end
 
         # Posts a reply into the given thread, splitting texts longer than
@@ -138,6 +152,49 @@ module RedmineAiHelper
             api_call("chat.postMessage", token: settings.bot_token,
                      params: { channel: channel_id, thread_ts: thread_ts, text: chunk })
           end
+        end
+
+        # Slack exposes both the thread replies and the channel history.
+        # @return [Boolean]
+        def supports_history?
+          true
+        end
+
+        # Reads the replies of a thread through conversations.replies, paging
+        # until Slack stops handing out a cursor.
+        # @param channel_id [String] the Slack channel id
+        # @param thread_key [String] "{channel_id}:{thread_ts}"
+        # @param after [String, nil] only messages after this ts are returned
+        # @return [Array<HistoryMessage>] ascending (oldest first)
+        def fetch_thread_history(channel_id:, thread_key:, after: nil)
+          params = { channel: channel_id, ts: thread_key.split(":", 2).last,
+                     inclusive: false, limit: HISTORY_PAGE_LIMIT }
+          params[:oldest] = after if after.present?
+          raw_messages = []
+          cursor = nil
+          loop do
+            page_params = cursor ? params.merge(cursor: cursor) : params
+            body = api_call("conversations.replies", token: settings.bot_token, params: page_params)
+            raw_messages.concat(body["messages"] || [])
+            cursor = body.dig("response_metadata", "next_cursor").presence
+            break unless cursor
+          end
+          history_messages(raw_messages)
+        end
+
+        # Reads the top-level messages of a channel (or DM) through
+        # conversations.history. Thread replies are not part of the result,
+        # which is exactly the "top-level messages" the import asks for.
+        # @param channel_id [String] the Slack channel id (DM channel for DMs)
+        # @param before [String] only messages before this ts are returned
+        # @param since [Time] only messages posted after this time
+        # @param limit [Integer] maximum number of messages
+        # @return [Array<HistoryMessage>] ascending (oldest first)
+        def fetch_channel_history(channel_id:, before:, since:, limit:)
+          params = { channel: channel_id, oldest: since.to_f, inclusive: false, limit: limit }
+          params[:latest] = before if before.present?
+          body = api_call("conversations.history", token: settings.bot_token, params: params)
+          history_messages(body["messages"] || [])
         end
 
         # Marks a SlackApiError as a fatal configuration/credential error so
@@ -156,10 +213,14 @@ module RedmineAiHelper
           @stopped
         end
 
-        # Fetches the bot's own user id and validates the bot token.
+        # Fetches the bot's own user id and validates the bot token. The bot id
+        # is kept as well: the gateway's own posts appear in the history with a
+        # bot_id rather than a user id.
         # @return [String]
         def fetch_bot_user_id
-          api_call("auth.test", token: settings.bot_token)["user_id"]
+          body = api_call("auth.test", token: settings.bot_token)
+          @bot_id = body["bot_id"]
+          body["user_id"]
         end
 
         # Opens a Socket Mode connection URL with the app-level token.
@@ -237,7 +298,7 @@ module RedmineAiHelper
 
         # A socket error occurred; end the connection so #start can retry.
         def socket_errored(error)
-          ai_helper_logger.error "slack: websocket error: #{error.message}"
+          ai_helper_logger.error "slack: websocket error: #{error.full_message}"
           @connection_ended&.push(true)
         end
 
@@ -286,13 +347,98 @@ module RedmineAiHelper
             thread_key: "#{event["channel"]}:#{thread_ts}",
             message_ts: event["ts"],
             text: strip_mention(event["text"].to_s),
-            dm: dm
+            dm: dm,
+            in_thread: event["thread_ts"].present?
           ))
         end
 
         # Removes the bot mention markup from the question text.
         def strip_mention(text)
           text.gsub(/<@#{Regexp.escape(@bot_user_id.to_s)}>/, "").strip
+        end
+
+        # Converts raw Slack messages into history messages, dropping the ones
+        # that must not be imported (FR-009) and restoring ascending order:
+        # Slack answers newest first.
+        # @param raw_messages [Array<Hash>] the raw message objects
+        # @return [Array<HistoryMessage>] ascending (oldest first)
+        def history_messages(raw_messages)
+          raw_messages.reverse.filter_map { |raw| history_message(raw) }
+        end
+
+        # Converts one raw message, or nil when it must not be imported.
+        # @param raw [Hash] the raw message object
+        # @return [HistoryMessage, nil]
+        def history_message(raw)
+          return nil unless HISTORY_SUBTYPES.include?(raw["subtype"])
+          return nil if own_message?(raw)
+
+          text = raw["text"].to_s
+          return nil if mentions_bot?(text)
+
+          text = text.strip
+          return nil if text.empty?
+
+          HistoryMessage.new(speaker: speaker_name(raw), text: text)
+        end
+
+        # Whether the message was posted by the gateway itself, either as the
+        # bot user or through the app's bot identity.
+        # @param raw [Hash] the raw message object
+        # @return [Boolean]
+        def own_message?(raw)
+          return true if @bot_user_id.present? && raw["user"] == @bot_user_id
+
+          @bot_id.present? && raw["bot_id"] == @bot_id
+        end
+
+        # Whether the text addresses the bot, which means it is already stored
+        # as the question of this or another conversation.
+        # @param text [String] the message body
+        # @return [Boolean]
+        def mentions_bot?(text)
+          text.include?("<@#{@bot_user_id}>")
+        end
+
+        # The speaker's display name. Messages of other bots carry their name
+        # in the payload, so they need no users.info lookup.
+        # @param raw [Hash] the raw message object
+        # @return [String]
+        def speaker_name(raw)
+          if raw["bot_id"].present?
+            raw["username"].presence || raw.dig("bot_profile", "name").presence || raw["bot_id"]
+          else
+            user_display_name(raw["user"])
+          end
+        end
+
+        # Resolves a user id to a display name, caching the result for the
+        # lifetime of the adapter so repeated mentions in the same thread do
+        # not call users.info again.
+        # @param user_id [String, nil] the Slack user id
+        # @return [String]
+        def user_display_name(user_id)
+          return user_id.to_s if user_id.blank?
+
+          cached = @display_names[user_id]
+          return cached if cached
+
+          profile = api_call("users.info", token: settings.bot_token, params: { user: user_id })["user"] || {}
+          name = profile.dig("profile", "display_name").presence ||
+                 profile["real_name"].presence || profile["name"].presence || user_id
+          cache_display_name(user_id, name)
+          name
+        end
+
+        # Stores a display name, evicting the oldest entry once the cap is
+        # exceeded (FIFO).
+        # @param user_id [String] the Slack user id
+        # @param name [String] the resolved display name
+        # @return [void]
+        def cache_display_name(user_id, name)
+          @display_names.delete(user_id)
+          @display_names[user_id] = name
+          @display_names.delete(@display_names.each_key.first) while @display_names.size > MAX_DISPLAY_NAMES
         end
 
         # Splits a reply into chunks within the Slack message limit,

@@ -61,6 +61,9 @@ en:
         default_project_not_configured: "No default project is configured for this chat integration. Please ask your administrator to configure it."
         module_disabled: "The AI helper module is disabled for the associated project."
         processing_failed: "An error occurred while generating the answer. Please check the AI helper log for details."
+        history_unavailable: "The recent messages of this conversation could not be retrieved, so the answer below does not take them into account."
+      context:
+        label: "Imported from the chat channel"
     notice_sub_issues_added: "Sub-issues have been added"
     error_invalid_assignee: "Invalid assignee for '%{subject}' - user is not authorized for this tracker"
     chat:

@@ -38,6 +38,34 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
     stub(code: code.to_s, body: body.to_json)
   end
 
+  # Answers the REST calls with the given bodies in call order and records the
+  # requests so their paths and query strings can be asserted.
+  def stub_discord_calls(*bodies)
+    @discord_requests = []
+    responses = bodies.map { |body| http_response(200, body) }
+    Net::HTTP.any_instance.stubs(:request).with { |request| @discord_requests << request; true }
+             .returns(*responses)
+  end
+
+  def discord_paths
+    @discord_requests.map(&:path)
+  end
+
+  def discord_query(index)
+    URI.decode_www_form(URI(@discord_requests[index].path).query.to_s).to_h
+  end
+
+  def history_raw(content:, id: "100", type: 0, author_id: "U1", username: "yamada",
+                  global_name: nil, nick: nil, timestamp: "2026-08-01T00:00:00.000000+00:00")
+    message = {
+      "id" => id, "type" => type, "content" => content, "timestamp" => timestamp,
+      "author" => { "id" => author_id, "username" => username }
+    }
+    message["author"]["global_name"] = global_name if global_name
+    message["member"] = { "nick" => nick } if nick
+    message
+  end
+
   def guild_message(content:, id: "M1", channel_id: "C1", type: 0, author_id: "U1",
                     bot: false, guild_id: "G1", ref: nil, mentions: nil)
     message = {
@@ -130,11 +158,11 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
       assert_raises(DiscordRequestError) { @adapter.send(:request, :get, "/users/@me") }
     end
 
-    should "log a debug message and fall back to 1 second when the 429 body cannot be parsed" do
+    should "log a warning and fall back to 1 second when the 429 body cannot be parsed" do
       response = http_response(429, {})
       response.stubs(:body).returns("not json")
       logger = mock("logger")
-      logger.expects(:debug).with(regexp_matches(/retry_after/))
+      logger.expects(:warn).with(regexp_matches(/retry_after/))
       @adapter.stubs(:ai_helper_logger).returns(logger)
 
       assert_equal 1.0, @adapter.send(:retry_after_seconds, response)
@@ -446,6 +474,33 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
       assert_equal "P1:T1", message.thread_key
     end
 
+    should "mark a mention inside a thread channel as in_thread" do
+      DiscordAdapter::THREAD_CHANNEL_TYPES.each do |channel_type|
+        dispatcher = RecordingDispatcher.new
+        @adapter.dispatcher = dispatcher
+        @adapter.stubs(:fetch_channel).returns({ "type" => channel_type, "parent_id" => "P1" })
+
+        @adapter.send(:process_message, guild_message(content: "<@BOT> more", channel_id: "T1"))
+
+        assert_predicate dispatcher.messages.first, :in_thread?
+      end
+    end
+
+    should "not mark a mention in a normal channel as in_thread" do
+      @adapter.stubs(:fetch_channel).returns({ "type" => 0 })
+      @adapter.stubs(:create_thread).returns("M1")
+
+      @adapter.send(:process_message, guild_message(content: "<@BOT> hi"))
+
+      assert_not_predicate @dispatcher.messages.first, :in_thread?
+    end
+
+    should "not mark a direct message as in_thread" do
+      @adapter.send(:process_message, dm_message(id: "C", content: "hi"))
+
+      assert_not_predicate @dispatcher.messages.first, :in_thread?
+    end
+
     should "resolve a DM reply to a bot answer to the conversation root" do
       @adapter.stubs(:fetch_message).with("D1", "B").returns(
         { "id" => "B", "author" => { "id" => "BOT" }, "message_reference" => { "message_id" => "A" } }
@@ -528,6 +583,199 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
 
       assert_equal [ 1900, 1900, 200 ], chunks.map(&:length)
       assert_equal text, chunks.join
+    end
+  end
+
+  context "history retrieval" do
+    should "declare history support" do
+      assert_predicate @adapter, :supports_history?
+    end
+
+    should "keep the gateway intents unchanged so existing installations still connect" do
+      assert_equal 4608, DiscordAdapter::GATEWAY_INTENTS
+    end
+
+    should "read the thread messages with the page limit" do
+      stub_discord_calls([])
+
+      @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:T1")
+
+      assert_equal [ "/api/v10/channels/T1/messages?limit=100" ], discord_paths
+    end
+
+    should "return the messages in ascending order" do
+      stub_discord_calls([ history_raw(content: "second", id: "20"), history_raw(content: "first", id: "10") ])
+
+      history = @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:T1")
+
+      assert_equal [ "first", "second" ], history.map(&:text)
+    end
+
+    should "page backwards with before until a short page is returned" do
+      stub_discord_calls(
+        Array.new(100) { |i| history_raw(content: "message #{200 - i}", id: (200 - i).to_s) },
+        [ history_raw(content: "message 1", id: "1") ]
+      )
+
+      history = @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:T1")
+
+      assert_equal 2, discord_paths.size
+      assert_equal "101", discord_query(1)["before"]
+      assert_equal 101, history.size
+      assert_equal "message 1", history.first.text
+    end
+
+    should "stop paging as soon as the cursor is reached" do
+      stub_discord_calls(
+        Array.new(100) { |i| history_raw(content: "message #{200 - i}", id: (200 - i).to_s) },
+        [ history_raw(content: "message 1", id: "1") ]
+      )
+
+      history = @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:T1", after: "150")
+
+      assert_equal 1, discord_paths.size, "the cursor must end the pagination"
+      assert_equal 50, history.size
+      assert_equal "message 151", history.first.text
+    end
+
+    should "exclude the cursor message itself" do
+      stub_discord_calls([ history_raw(content: "newer", id: "20"), history_raw(content: "cursor", id: "10") ])
+
+      history = @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:T1", after: "10")
+
+      assert_equal [ "newer" ], history.map(&:text)
+    end
+
+    should "raise when the history call fails" do
+      Net::HTTP.any_instance.stubs(:request).returns(http_response(403, { "message" => "Missing Access" }))
+
+      assert_raises(DiscordRequestError) do
+        @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:T1")
+      end
+    end
+  end
+
+  context "channel history retrieval" do
+    setup do
+      @since = Time.zone.parse("2026-08-01 00:00:00")
+    end
+
+    should "read the channel messages with the requested limit and before cursor" do
+      stub_discord_calls([])
+
+      @adapter.fetch_channel_history(channel_id: "C1", before: "900", since: @since, limit: 20)
+
+      assert_equal [ "/api/v10/channels/C1/messages?limit=20&before=900" ], discord_paths
+    end
+
+    should "return the messages in ascending order" do
+      stub_discord_calls([ history_raw(content: "second", id: "20", timestamp: "2026-08-01T10:00:00+00:00"),
+                           history_raw(content: "first", id: "10", timestamp: "2026-08-01T09:00:00+00:00") ])
+
+      history = @adapter.fetch_channel_history(channel_id: "C1", before: "900", since: @since, limit: 20)
+
+      assert_equal [ "first", "second" ], history.map(&:text)
+    end
+
+    should "drop messages older than the retrieval window" do
+      stub_discord_calls([ history_raw(content: "recent", id: "20", timestamp: "2026-08-01T10:00:00+00:00"),
+                           history_raw(content: "too old", id: "10", timestamp: "2026-07-29T10:00:00+00:00") ])
+
+      history = @adapter.fetch_channel_history(channel_id: "C1", before: "900", since: @since, limit: 20)
+
+      assert_equal [ "recent" ], history.map(&:text)
+    end
+
+    should "include a message whose timestamp is exactly at the since boundary" do
+      boundary_ts = "2026-08-01T00:00:00.000000+00:00"
+      stub_discord_calls([ history_raw(content: "at boundary", id: "10", timestamp: boundary_ts) ])
+
+      history = @adapter.fetch_channel_history(channel_id: "C1", before: "900", since: @since, limit: 20)
+
+      assert_equal [ "at boundary" ], history.map(&:text)
+    end
+
+    should "apply the same exclusions as the thread history" do
+      stub_discord_calls([ history_raw(content: "joined", id: "30", type: 7),
+                           history_raw(content: "<@BOT> question", id: "20"),
+                           history_raw(content: "my answer", id: "10", author_id: "BOT") ])
+
+      assert_empty @adapter.fetch_channel_history(channel_id: "C1", before: "900", since: @since, limit: 20)
+    end
+
+    should "return an empty array when the channel has no recent messages" do
+      stub_discord_calls([])
+
+      assert_empty @adapter.fetch_channel_history(channel_id: "C1", before: "900", since: @since, limit: 20)
+    end
+
+    should "raise when the channel history call fails" do
+      Net::HTTP.any_instance.stubs(:request).returns(http_response(403, { "message" => "Missing Access" }))
+
+      assert_raises(DiscordRequestError) do
+        @adapter.fetch_channel_history(channel_id: "C1", before: "900", since: @since, limit: 20)
+      end
+    end
+  end
+
+  context "history filtering" do
+    should "skip system messages" do
+      stub_discord_calls([ history_raw(content: "joined the thread", type: 7) ])
+
+      assert_empty @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:T1")
+    end
+
+    should "skip the gateway's own messages" do
+      stub_discord_calls([ history_raw(content: "my own answer", author_id: "BOT") ])
+
+      assert_empty @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:T1")
+    end
+
+    should "skip questions addressed to the bot in both mention notations" do
+      stub_discord_calls([ history_raw(content: "<@BOT> question", id: "20"),
+                           history_raw(content: "<@!BOT> another question", id: "10") ])
+
+      assert_empty @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:T1")
+    end
+
+    should "skip messages whose content is empty" do
+      stub_discord_calls([ history_raw(content: "   ") ])
+
+      assert_empty @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:T1")
+    end
+
+    should "import other bots as ordinary participants" do
+      raw = history_raw(content: "build failed", username: "CI notifier")
+      raw["author"]["bot"] = true
+      stub_discord_calls([ raw ])
+
+      history = @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:T1")
+
+      assert_equal [ "CI notifier" ], history.map(&:speaker)
+    end
+  end
+
+  context "history speaker names" do
+    should "prefer the guild nickname" do
+      stub_discord_calls([ history_raw(content: "hello", nick: "yamachan",
+                                       global_name: "Yamada Taro", username: "yamada") ])
+
+      assert_equal [ "yamachan" ],
+                   @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:T1").map(&:speaker)
+    end
+
+    should "fall back to the global name without a nickname" do
+      stub_discord_calls([ history_raw(content: "hello", global_name: "Yamada Taro", username: "yamada") ])
+
+      assert_equal [ "Yamada Taro" ],
+                   @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:T1").map(&:speaker)
+    end
+
+    should "fall back to the account name" do
+      stub_discord_calls([ history_raw(content: "hello", username: "yamada") ])
+
+      assert_equal [ "yamada" ],
+                   @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:T1").map(&:speaker)
     end
   end
 end

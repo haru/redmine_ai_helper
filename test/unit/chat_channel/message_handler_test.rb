@@ -31,6 +31,39 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
     end
   end
 
+  # Adapter that supports history retrieval, used for the context import tests.
+  class HistoryRecordingAdapter < RecordingAdapter
+    attr_reader :calls
+    attr_accessor :thread_history, :channel_history
+
+    class << self
+      def channel_type
+        "handler_history_chat"
+      end
+    end
+
+    def initialize
+      super
+      @calls = []
+      @thread_history = []
+      @channel_history = []
+    end
+
+    def supports_history?
+      true
+    end
+
+    def fetch_thread_history(channel_id:, thread_key:, after: nil)
+      @calls << { source: :thread, channel_id: channel_id, thread_key: thread_key, after: after }
+      @thread_history
+    end
+
+    def fetch_channel_history(channel_id:, before:, since:, limit:)
+      @calls << { source: :channel, channel_id: channel_id, before: before, since: since, limit: limit }
+      @channel_history
+    end
+  end
+
   setup do
     @adapter = RecordingAdapter.new
     @handler = @adapter.handler
@@ -47,6 +80,18 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       channel_type: "handler_chat", channel_id: channel_id, thread_key: thread_key,
       text: text, dm: dm
     )
+  end
+
+  def history_incoming(text: "what about this?", channel_id: "CH2", thread_key: "CH2:1.000001",
+                       message_ts: "1.000900", in_thread: true, dm: false)
+    RedmineAiHelper::ChatChannel::IncomingMessage.new(
+      channel_type: "handler_history_chat", channel_id: channel_id, thread_key: thread_key,
+      message_ts: message_ts, text: text, dm: dm, in_thread: in_thread
+    )
+  end
+
+  def history_message(speaker, text)
+    RedmineAiHelper::ChatChannel::HistoryMessage.new(speaker: speaker, text: text)
   end
 
   def error_text(key, user: @service_account)
@@ -302,6 +347,144 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       title = AiHelperConversation.first.title
       assert_equal long_question.truncate(50), title
       assert_operator title.length, :<=, 50
+    end
+  end
+
+  context "context import" do
+    setup do
+      @history_adapter = HistoryRecordingAdapter.new
+      @history_handler = @history_adapter.handler
+      @history_setting = create(:ai_helper_chat_adapter_setting,
+                                channel_type: "handler_history_chat", redmine_user_id: @service_account.id)
+      create(:ai_helper_channel_binding,
+             channel_type: "handler_history_chat", channel_id: "CH2", project: @project)
+    end
+
+    should "import the context before the question is appended to the conversation" do
+      @history_adapter.thread_history = [ history_message("Yamada", "it crashes on save") ]
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("the answer"))
+
+      @history_handler.handle(history_incoming(text: "why does it crash?"))
+
+      conversation = AiHelperConversation.first
+      assert_equal [
+        [ "context", "Yamada: it crashes on save" ],
+        [ "user", "why does it crash?" ],
+        [ "assistant", "the answer" ]
+      ], conversation.messages.order(:id).pluck(:role, :content)
+    end
+
+    should "decide the conversation title before the context is imported" do
+      @history_adapter.thread_history = [ history_message("Yamada", "it crashes on save") ]
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("the answer"))
+
+      @history_handler.handle(history_incoming(text: "why does it crash?"))
+
+      assert_equal "why does it crash?", AiHelperConversation.first.title
+    end
+
+    should "log the failure and prepend the notice to the answer when the import fails" do
+      @history_adapter.stubs(:fetch_thread_history).raises(RuntimeError, "history scope missing")
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("the answer"))
+      logger = mock("logger")
+      logger.stubs(:info)
+      logger.stubs(:warn)
+      logger.stubs(:debug)
+      logger.expects(:error).with(regexp_matches(/history scope missing/))
+      @history_handler.stubs(:ai_helper_logger).returns(logger)
+
+      @history_handler.handle(history_incoming)
+
+      notice = error_text(:history_unavailable)
+      assert @history_adapter.sent_messages.first[:text].start_with?(notice),
+             "the posted answer must start with the notice"
+      answer = AiHelperConversation.first.messages.order(:id).last
+      assert answer.content.start_with?(notice), "the stored answer must contain the notice as well"
+      assert_match(/the answer/, answer.content)
+    end
+
+    should "still answer when the import fails" do
+      @history_adapter.stubs(:fetch_thread_history).raises(RuntimeError, "history scope missing")
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("the answer"))
+
+      @history_handler.handle(history_incoming)
+
+      assert_equal 1, @history_adapter.sent_messages.size
+      assert_match(/the answer/, @history_adapter.sent_messages.first[:text])
+    end
+
+    should "not keep the import cursor when the import failed" do
+      @history_adapter.stubs(:fetch_thread_history).raises(RuntimeError, "history scope missing")
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("the answer"))
+
+      @history_handler.handle(history_incoming)
+
+      assert_nil AiHelperConversation.first.channel_conversation.last_imported_message_key
+    end
+
+    should "leave only user and assistant messages in the conversation when the import fails" do
+      @history_adapter.stubs(:fetch_thread_history).raises(RuntimeError, "history scope missing")
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("the answer"))
+
+      @history_handler.handle(history_incoming)
+
+      roles = AiHelperConversation.first.messages.order(:id).pluck(:role)
+      assert_equal %w[user assistant], roles, "no orphaned context messages must remain"
+    end
+
+    should "not store the rolled back context messages when the import transaction fails" do
+      @history_adapter.thread_history = [ history_message("Yamada", "it crashes on save") ]
+      AiHelperChannelConversation.any_instance.stubs(:update!).raises(RuntimeError, "cursor update failed")
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("the answer"))
+
+      @history_handler.handle(history_incoming(text: "why does it crash?"))
+
+      roles = AiHelperConversation.first.messages.order(:id).pluck(:role)
+      assert_equal %w[user assistant], roles, "the rolled back context messages must not be saved again"
+    end
+
+    should "not hand the rolled back context messages to the LLM when the import transaction fails" do
+      @history_adapter.thread_history = [ history_message("Yamada", "it crashes on save") ]
+      AiHelperChannelConversation.any_instance.stubs(:update!).raises(RuntimeError, "cursor update failed")
+      handover = nil
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).with do |conversation, _proc, _option|
+        handover = conversation.messages_for_openai
+        true
+      end.returns(assistant_message("the answer"))
+
+      @history_handler.handle(history_incoming(text: "why does it crash?"))
+
+      assert_equal [ { role: "user", content: "why does it crash?" } ], handover,
+                   "the notice says the history is unavailable, so no context may reach the LLM"
+    end
+
+    should "not fetch any history when no execution account is configured (FR-013)" do
+      @history_setting.update_column(:redmine_user_id, nil)
+      @history_adapter.expects(:fetch_thread_history).never
+      @history_adapter.expects(:fetch_channel_history).never
+
+      @history_handler.handle(history_incoming)
+
+      assert_equal 0, AiHelperConversation.count
+    end
+
+    should "not fetch any history when the project cannot be resolved (FR-013)" do
+      @history_adapter.expects(:fetch_thread_history).never
+      @history_adapter.expects(:fetch_channel_history).never
+
+      @history_handler.handle(history_incoming(channel_id: "UNBOUND", thread_key: "UNBOUND:1.000001"))
+
+      assert_equal error_text(:default_project_not_configured), @history_adapter.sent_messages.first[:text]
+    end
+
+    should "not fetch any history when the ai_helper module is disabled (FR-013)" do
+      @project.disable_module!("ai_helper")
+      @history_adapter.expects(:fetch_thread_history).never
+      @history_adapter.expects(:fetch_channel_history).never
+
+      @history_handler.handle(history_incoming)
+
+      assert_equal error_text(:module_disabled), @history_adapter.sent_messages.first[:text]
     end
   end
 

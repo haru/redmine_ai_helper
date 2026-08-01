@@ -61,6 +61,9 @@ ja:
         default_project_not_configured: "このチャット連携に既定プロジェクトが設定されていません。管理者に設定を依頼してください。"
         module_disabled: "対応付けられたプロジェクトでAIヘルパーモジュールが無効になっています。"
         processing_failed: "回答の生成中にエラーが発生しました。詳細はAIヘルパーのログを確認してください。"
+        history_unavailable: "直近の会話内容を取得できなかったため、それを踏まえずに回答します。"
+      context:
+        label: "チャットチャンネルから取り込んだ発言"
     notice_sub_issues_added: "子チケットが追加されました"
     error_invalid_assignee: "'%{subject}' の担当者が無効です。このトラッカーに対する権限がありません"
     chat:
