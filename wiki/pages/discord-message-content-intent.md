@@ -51,8 +51,8 @@ import" — while delivering none of the feature's value (S015).
 
 Enabling Message Content Intent in the Developer Portal is a required step of
 the initial setup, done before the gateway is first started (verified apps need
-separate Discord approval). Skip it and Discord answering does not work at all,
-rather than working without context (S015).
+separate Discord approval). If you skip it, Discord answering does not work at
+all, rather than working without context (S015).
 
 Rejected alternatives (S015):
 
