@@ -1,0 +1,10 @@
+# .specify/extension-catalogs.yml
+catalogs:
+  - name: default
+    url: https://raw.githubusercontent.com/github/spec-kit/main/extensions/catalog.json
+    priority: 1
+    install_allowed: true
+  - name: community
+    url: https://raw.githubusercontent.com/github/spec-kit/main/extensions/catalog.community.json
+    priority: 2
+    install_allowed: true

@@ -3,6 +3,7 @@ installed:
 - branch-convention
 - review
 - token-budget
+- wiki
 settings:
   auto_execute_hooks: true
 hooks:
@@ -173,6 +174,14 @@ hooks:
     prompt: Compact plan and design docs to reduce tokens for /speckit.tasks?
     description: Compact plan docs after planning
     condition: null
+  - extension: wiki
+    command: speckit.wiki.ingest
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Ingest this feature's research and plan decisions into the project wiki?
+    description: Compound the feature's verified research into the wiki after planning
+    condition: null
   after_tasks:
   - extension: git
     command: speckit.git.commit
@@ -211,6 +220,14 @@ hooks:
     optional: true
     prompt: Run PR review on implemented changes?
     description: Comprehensive review after implementation
+    condition: null
+  - extension: wiki
+    command: speckit.wiki.ingest
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Record what this implementation taught into the project wiki?
+    description: Capture implementation learnings into the wiki after implementation
     condition: null
   after_checklist:
   - extension: git
