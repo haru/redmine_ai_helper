@@ -168,4 +168,24 @@ class SystemPromptTest < ActiveSupport::TestCase
 
     assert_match(/This is the page for the version./, prompt)
   end
+
+  context "issue reference format instructions" do
+    should "always include the #NNNN issue reference instruction, regardless of channel" do
+      options = { controller_name: "issues", action_name: "show", content_id: @issue.id, project: @project }
+      system_prompt = RedmineAiHelper::Util::SystemPrompt.new(options)
+      prompt = system_prompt.prompt
+
+      assert_match(/#1549/, prompt, "instructions about #NNNN format should always be present")
+    end
+
+    should "include the instruction in both ja and en locales" do
+      options = { controller_name: "issues", action_name: "show", content_id: @issue.id, project: @project }
+
+      ja_prompt = I18n.with_locale(:ja) { RedmineAiHelper::Util::SystemPrompt.new(options).prompt }
+      en_prompt = I18n.with_locale(:en) { RedmineAiHelper::Util::SystemPrompt.new(options).prompt }
+
+      assert_match(/#1549/, ja_prompt)
+      assert_match(/#1549/, en_prompt)
+    end
+  end
 end

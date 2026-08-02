@@ -290,6 +290,24 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       assert_nothing_raised { @handler.handle(incoming) }
       assert_equal User.anonymous, User.current
     end
+
+    should "post the error notice without going through IssueLinkFormatter (S3)" do
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).raises(RuntimeError, "boom")
+      RedmineAiHelper::ChatChannel::IssueLinkFormatter.any_instance.expects(:format).never
+
+      @handler.handle(incoming)
+
+      assert_equal error_text(:processing_failed), @adapter.sent_messages.first[:text]
+    end
+
+    should "still deliver the error notice when the answer's own link formatting failed" do
+      Setting.stubs(:host_name).returns("")
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("see #1549"))
+
+      @handler.handle(incoming)
+
+      assert_equal error_text(:processing_failed), @adapter.sent_messages.first[:text]
+    end
   end
 
   context "reply markup removal" do
@@ -467,6 +485,86 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       title = AiHelperConversation.first.title
       assert_equal long_question.truncate(50), title
       assert_operator title.length, :<=, 50
+    end
+  end
+
+  context "issue link rendering" do
+    setup do
+      Setting.stubs(:protocol).returns("https")
+      Setting.stubs(:host_name).returns("r.example.com")
+    end
+
+    should "V-12: post text with PLAIN link format for an adapter that does not declare one" do
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("See #1549 for details."))
+
+      @handler.handle(incoming)
+
+      assert_match(/#1549 \(https:\/\/r\.example\.com\/issues\/1549\)/, @adapter.sent_messages.first[:text])
+    end
+
+    should "V-13: strip UI control markup before converting issue links" do
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(
+        assistant_message(%(See #1549.\n<!--AIHELPER_OPTIONS:{"choices":[{"label":"a","value":"a"}]}-->))
+      )
+
+      @handler.handle(incoming)
+
+      text = @adapter.sent_messages.first[:text]
+      assert_no_match(/AIHELPER_OPTIONS/, text, "markup must be stripped first")
+      assert_match(/#1549 \(https:\/\/r\.example\.com\/issues\/1549\)/, text, "links rendered after stripping")
+    end
+
+    should "V-16: not change guidance text that has no issue references" do
+      @setting.update_column(:redmine_user_id, nil)
+
+      @handler.handle(incoming)
+
+      text = @adapter.sent_messages.first[:text]
+      assert_equal error_text(:service_account_not_configured, user: nil), text
+    end
+
+    should "V-17: render links for DM, channel and thread routes" do
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("See #1549."))
+      @setting.update!(default_project_id: @project.id)
+
+      @handler.handle(incoming(dm: true, channel_id: "D1", thread_key: "D1:1.000001"))
+      dm_text = @adapter.sent_messages.first[:text]
+      assert_match(/#1549 \(https:\/\/r\.example\.com\/issues\/1549\)/, dm_text)
+
+      @handler.handle(incoming(channel_id: "CH1", thread_key: "CH1:2.000001"))
+      channel_text = @adapter.sent_messages.last[:text]
+      assert_match(/#1549 \(https:\/\/r\.example\.com\/issues\/1549\)/, channel_text)
+
+      @handler.handle(incoming(text: "another question", thread_key: "CH1:9.000001"))
+      thread_text = @adapter.sent_messages.last[:text]
+      assert_match(/#1549 \(https:\/\/r\.example\.com\/issues\/1549\)/, thread_text)
+    end
+
+    should "V-14: save the original #1549 without link syntax in conversation history" do
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("See #1549."))
+
+      @handler.handle(incoming)
+
+      answer = AiHelperConversation.first.messages.order(:id).last
+      assert_equal "See #1549.", answer.content
+      assert_no_match(/r\.example\.com/, answer.content, "link syntax must not leak into saved content")
+    end
+
+    should "V-15: not include link syntax in the context handed to the LLM on a follow-up" do
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("See #1549."))
+
+      @handler.handle(incoming(text: "first question", thread_key: "CH1:9.000010"))
+
+      observed_history = nil
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).with do |conversation, _proc, _option|
+        observed_history = conversation.messages.order(:id).pluck(:role, :content)
+        true
+      end.returns(assistant_message("second answer"))
+      @handler.handle(incoming(text: "follow-up", thread_key: "CH1:9.000010"))
+
+      observed_history.each do |_role, content|
+        assert_no_match(/r\.example\.com/, content, "link syntax must not reach the LLM as context")
+      end
     end
   end
 

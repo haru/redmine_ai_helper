@@ -586,6 +586,48 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
     end
   end
 
+  context "issue link format" do
+    should "V-19: return DISCORD format" do
+      assert_equal RedmineAiHelper::ChatChannel::IssueLinkFormatter::DISCORD,
+                   @adapter.issue_link_format
+    end
+
+    should "V-21: not cut a link syntax when the forced cut falls inside it" do
+      link = "[#1549](https://r.example.com/issues/1549)"
+      pad_before = "x" * (RedmineAiHelper::ChatChannel::Adapters::DiscordAdapter::MAX_MESSAGE_LENGTH - 10)
+      text = "#{pad_before}#{link}"
+
+      chunks = @adapter.send(:split_text, text)
+
+      assert chunks.length >= 2, "text must exceed MAX_MESSAGE_LENGTH"
+      assert chunks.any? { |c| c.include?(link) },
+             "the link must survive intact in a single chunk"
+      assert_equal pad_before, chunks.first
+      assert chunks.last.start_with?(link)
+    end
+
+    should "V-22: split at newline boundaries as before" do
+      first = "a" * 1000
+      second = "b" * 1500
+      text = "#{first}\n\n#{second}"
+
+      chunks = @adapter.send(:split_text, text)
+
+      assert_equal [ first, second ], chunks
+    end
+
+    should "V-23: produce a finite number of chunks for a single link exceeding MAX_MESSAGE_LENGTH at offset 0" do
+      long_url = "https://r.example.com/issues/#{'1' * (RedmineAiHelper::ChatChannel::Adapters::DiscordAdapter::MAX_MESSAGE_LENGTH)}"
+      link = "[#1](#{long_url})"
+      text = link
+
+      chunks = @adapter.send(:split_text, text)
+
+      assert chunks.length < 50, "must terminate without infinite loop"
+      assert_equal text, chunks.join
+    end
+  end
+
   context "history retrieval" do
     should "declare history support" do
       assert_predicate @adapter, :supports_history?

@@ -62,3 +62,4 @@ Briefly describe alternatives that were rejected and why.
 | [007](./007-discord-adapter-connection-design.md) | Discord adapter connection design | Accepted (intent choice in decision 1 superseded by ADR-009) |
 | [008](./008-chat-channel-context-import.md) | Chat channel conversation context import | Accepted (decision 7 superseded by ADR-009) |
 | [009](./009-discord-message-content-intent-required.md) | Require the Discord MESSAGE_CONTENT intent in Identify | Accepted |
+| [010](./010-chat-channel-issue-link-rendering.md) | Render issue references as links on the shared gateway send path | Accepted |
