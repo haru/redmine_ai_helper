@@ -63,3 +63,4 @@ Briefly describe alternatives that were rejected and why.
 | [008](./008-chat-channel-context-import.md) | Chat channel conversation context import | Accepted (decision 7 superseded by ADR-009) |
 | [009](./009-discord-message-content-intent-required.md) | Require the Discord MESSAGE_CONTENT intent in Identify | Accepted |
 | [010](./010-chat-channel-issue-link-rendering.md) | Render issue references as links on the shared gateway send path | Accepted |
+| [011](./011-reset-i18n-locale-between-tests.md) | Reset `I18n.locale` before every test | Accepted |
