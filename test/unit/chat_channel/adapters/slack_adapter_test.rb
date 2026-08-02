@@ -680,4 +680,46 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
       assert_equal text, chunks.join
     end
   end
+
+  context "issue link format" do
+    should "V-19: return SLACK format" do
+      assert_equal RedmineAiHelper::ChatChannel::IssueLinkFormatter::SLACK,
+                   @adapter.issue_link_format
+    end
+
+    should "V-21: not cut a link syntax when the forced cut falls inside it" do
+      link = "<https://r.example.com/issues/1549|#1549>"
+      pad_before = "x" * (RedmineAiHelper::ChatChannel::Adapters::SlackAdapter::MAX_MESSAGE_LENGTH - 10)
+      text = "#{pad_before}#{link}"
+
+      chunks = @adapter.send(:split_text, text)
+
+      assert chunks.length >= 2, "text must exceed MAX_MESSAGE_LENGTH"
+      assert chunks.any? { |c| c.include?(link) },
+             "the link must survive intact in a single chunk"
+      assert_equal pad_before, chunks.first
+      assert chunks.last.start_with?(link)
+    end
+
+    should "V-22: split at newline boundaries as before" do
+      first = "a" * 3000
+      second = "b" * 2000
+      text = "#{first}\n\n#{second}"
+
+      chunks = @adapter.send(:split_text, text)
+
+      assert_equal [ first, second ], chunks
+    end
+
+    should "V-23: produce a finite number of chunks for a single link exceeding MAX_MESSAGE_LENGTH at offset 0" do
+      long_url = "https://r.example.com/issues/#{'1' * (RedmineAiHelper::ChatChannel::Adapters::SlackAdapter::MAX_MESSAGE_LENGTH)}"
+      link = "<#{long_url}|#1>"
+      text = link
+
+      chunks = @adapter.send(:split_text, text)
+
+      assert chunks.length < 50, "must terminate without infinite loop"
+      assert_equal text, chunks.join
+    end
+  end
 end

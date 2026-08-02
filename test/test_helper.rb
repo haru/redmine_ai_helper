@@ -25,6 +25,14 @@ require File.expand_path(File.dirname(__FILE__) + "/../../../test/test_helper")
 
 ActiveSupport::TestCase.parallelize(workers: 1)
 
+# Redmine 6.1-stable and older lack the locale-leak fix from redmine#44116, so
+# a test that changes I18n.locale (e.g. a controller test exercising a
+# Japanese-language user) can bleed into later tests run by the same worker.
+# Reset it here so plugin test order stays independent of core's fix.
+ActiveSupport::TestCase.setup do
+  ::I18n.locale = ::I18n.default_locale # rubocop:disable Rails/I18nLocaleAssignment
+end
+
 if defined?(Rails::TestUnitReporter) && Rails::TestUnitReporter.respond_to?(:executable) && !Rails::TestUnitReporter.method_defined?(:executable)
   Rails::TestUnitReporter.class_eval do
     def format_rerun_snippet(result)

@@ -2,6 +2,7 @@
 
 require "redmine_ai_helper/logger"
 require "redmine_ai_helper/chat_channel/context_importer"
+require "redmine_ai_helper/chat_channel/issue_link_formatter"
 require "redmine_ai_helper/util/interactive_options_parser"
 
 module RedmineAiHelper
@@ -55,7 +56,7 @@ module RedmineAiHelper
       rescue => e
         ai_helper_logger.error "chat channel processing failed: #{e.full_message}"
         begin
-          reply(message, guidance(:processing_failed, user), user)
+          send_plain_reply(message, guidance(:processing_failed, user), user)
         rescue => reply_error
           ai_helper_logger.error "chat channel: failed to post error notice: #{reply_error.full_message}"
         end
@@ -141,6 +142,20 @@ module RedmineAiHelper
       # @param user [User, nil] the service account, for guidance localization;
       #   nil when called before the account is resolved (#handle's early guidance replies)
       def reply(message, text, user = nil)
+        body = RedmineAiHelper::ChatChannel::IssueLinkFormatter
+                .new(@adapter.issue_link_format)
+                .format(strip_ui_options(text, user))
+        @adapter.send_message(channel_id: message.channel_id, thread_key: message.thread_key,
+                               text: body)
+      end
+
+      # Posts a failure notice directly through the adapter, skipping
+      # IssueLinkFormatter. #handle's rescue clause uses this instead of
+      # #reply so that a failure inside link formatting or route generation
+      # cannot repeat itself on the retry and leave the user with no notice
+      # at all.
+      # @return [void]
+      def send_plain_reply(message, text, user)
         @adapter.send_message(channel_id: message.channel_id, thread_key: message.thread_key,
                                text: strip_ui_options(text, user))
       end

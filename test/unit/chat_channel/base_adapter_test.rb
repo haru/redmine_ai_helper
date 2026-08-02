@@ -198,4 +198,34 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
       assert_predicate message, :in_thread?
     end
   end
+
+  context "issue link format" do
+    should "V-18: return PLAIN format when the adapter does not declare one" do
+      adapter = FakeAdapter.new
+
+      assert_equal RedmineAiHelper::ChatChannel::IssueLinkFormatter::PLAIN,
+                   adapter.issue_link_format
+    end
+
+    should "V-20: have render results that match the format's pattern for PLAIN" do
+      format = RedmineAiHelper::ChatChannel::IssueLinkFormatter::PLAIN
+      rendered = format.render("#1549", "https://r.example.com/issues/1549")
+
+      assert format.pattern.match?(rendered)
+    end
+
+    should "V-20: have render results that match the format's pattern for SLACK" do
+      format = RedmineAiHelper::ChatChannel::IssueLinkFormatter::SLACK
+      rendered = format.render("#1549", "https://r.example.com/issues/1549")
+
+      assert format.pattern.match?(rendered)
+    end
+
+    should "V-20: have render results that match the format's pattern for DISCORD" do
+      format = RedmineAiHelper::ChatChannel::IssueLinkFormatter::DISCORD
+      rendered = format.render("#1549", "https://r.example.com/issues/1549")
+
+      assert format.pattern.match?(rendered)
+    end
+  end
 end

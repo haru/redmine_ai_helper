@@ -2,6 +2,7 @@
 
 require "redmine_ai_helper/logger"
 require "redmine_ai_helper/chat_channel/incoming_message"
+require "redmine_ai_helper/chat_channel/issue_link_formatter"
 require "redmine_ai_helper/chat_channel/message_handler"
 
 module RedmineAiHelper
@@ -137,6 +138,32 @@ module RedmineAiHelper
       # @return [void]
       def send_message(channel_id:, thread_key:, text:)
         raise NotImplementedError, "#{self.class.name} must implement #send_message"
+      end
+
+      # The link format for this adapter. Returns PLAIN by default so that
+      # adapters that do not declare a format still produce link-safe output.
+      # @return [IssueLinkFormatter::Format]
+      def issue_link_format
+        IssueLinkFormatter::PLAIN
+      end
+
+      # Adjusts a cut position so that it does not fall inside a link syntax
+      # produced by the adapter's format. Returns the adjusted cut or the
+      # original cut when no link spans the boundary. Returns the original
+      # cut when the adjusted position would be 0 (safety valve against
+      # infinite loops in pathological cases).
+      # @param text [String] The full text being split (not the slice)
+      # @param cut [Integer] The proposed cut position
+      # @return [Integer] The adjusted cut position
+      def link_safe_cut(text, cut)
+        text.scan(issue_link_format.pattern) do
+          match_start = Regexp.last_match.begin(0)
+          match_end = Regexp.last_match.end(0)
+          break if match_start >= cut
+
+          return match_start if match_start.positive? && match_end > cut
+        end
+        cut
       end
 
       # Whether the adapter can retrieve past messages from the chat tool.

@@ -154,6 +154,11 @@ module RedmineAiHelper
           end
         end
 
+        # @return [IssueLinkFormatter::Format]
+        def issue_link_format
+          IssueLinkFormatter::SLACK
+        end
+
         # Slack exposes both the thread replies and the channel history.
         # @return [Boolean]
         def supports_history?
@@ -455,6 +460,7 @@ module RedmineAiHelper
             slice = remaining[0, MAX_MESSAGE_LENGTH]
             cut = slice.rindex("\n\n") || slice.rindex("\n") || MAX_MESSAGE_LENGTH
             cut = MAX_MESSAGE_LENGTH if cut.zero?
+            cut = link_safe_cut(remaining, cut)
             chunks << remaining[0, cut]
             remaining = remaining[cut..].to_s.sub(/\A\n+/, "")
           end
