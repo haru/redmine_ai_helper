@@ -64,3 +64,5 @@ Briefly describe alternatives that were rejected and why.
 | [009](./009-discord-message-content-intent-required.md) | Require the Discord MESSAGE_CONTENT intent in Identify | Accepted |
 | [010](./010-chat-channel-issue-link-rendering.md) | Render issue references as links on the shared gateway send path | Accepted |
 | [011](./011-reset-i18n-locale-between-tests.md) | Reset `I18n.locale` before every test | Accepted |
+| [012](./012-slack-only-scope-for-websocket-transport-fixes.md) | Scope the WebSocket transport fixes to the Slack adapter, leaving the same latent defects in Discord | Accepted |
+| [013](./013-slack-receive-inactivity-liveness-detection.md) | Replace Slack's self-initiated ping/pong-count liveness check with receive-inactivity monitoring | Accepted |

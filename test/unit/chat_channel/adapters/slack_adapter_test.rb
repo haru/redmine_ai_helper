@@ -167,19 +167,6 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
       assert_equal 1, @adapter.send(:next_backoff)
     end
 
-    should "request a reconnect after two missed pongs" do
-      assert_not @adapter.send(:ping_tick)
-      assert_not @adapter.send(:ping_tick)
-      assert @adapter.send(:ping_tick)
-    end
-
-    should "reset missed pongs when a pong arrives" do
-      @adapter.send(:ping_tick)
-      @adapter.send(:handle_pong)
-      assert_not @adapter.send(:ping_tick)
-      assert_not @adapter.send(:ping_tick)
-    end
-
     should "log the connection establishment on hello" do
       @adapter.handle_envelope({ "type" => "hello" }.to_json)
 
@@ -202,6 +189,251 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
 
       assert_equal 2, call_count, "adapter must retry after a hello-less clean close"
       assert_equal [ 1 ], slept, "a backoff sleep must happen before the retry"
+    end
+  end
+
+  context "frame handling" do
+    should "update last_received_at to the current monotonic time before dispatching by type" do
+      Process.stubs(:clock_gettime).with(Process::CLOCK_MONOTONIC).returns(12345.0)
+      client = FakeClient.new
+
+      @adapter.send(:handle_frame, client, FrameStruct.new(:unknown, nil, nil))
+
+      assert_equal 12345.0, @adapter.instance_variable_get(:@last_received_at)
+      assert_empty client.sent
+    end
+
+    should "still pass text frames to handle_envelope as before" do
+      @adapter.expects(:handle_envelope).with("payload")
+
+      @adapter.send(:handle_frame, FakeClient.new, FrameStruct.new(:text, "payload", nil))
+    end
+
+    should "echo a ping's payload back as a pong to the frame's own client" do
+      client = FakeClient.new
+
+      @adapter.send(:handle_frame, client, FrameStruct.new(:ping, "Ping from applink-2", nil))
+
+      assert_equal [ FakeClient::Sent.new("Ping from applink-2", :pong) ], client.sent
+    end
+
+    should "answer a ping even while @ws is still nil (pre-handshake window)" do
+      assert_nil @adapter.instance_variable_get(:@ws)
+      client = FakeClient.new
+
+      @adapter.send(:handle_frame, client, FrameStruct.new(:ping, "Ping from applink-2", nil))
+
+      assert_nil @adapter.instance_variable_get(:@ws)
+      assert_equal [ FakeClient::Sent.new("Ping from applink-2", :pong) ], client.sent
+    end
+
+    should "treat an incoming pong frame as a no-op besides updating last_received_at" do
+      Process.stubs(:clock_gettime).with(Process::CLOCK_MONOTONIC).returns(12345.0)
+      client = FakeClient.new
+
+      @adapter.send(:handle_frame, client, FrameStruct.new(:pong, nil, nil))
+
+      assert_equal 12345.0, @adapter.instance_variable_get(:@last_received_at)
+      assert_empty client.sent
+    end
+
+    should "notify connection_ended and log the close code for a close frame" do
+      @adapter.instance_variable_set(:@connection_ended, Queue.new)
+      logger = mock("logger")
+      logger.expects(:info).with(regexp_matches(/1000/))
+      @adapter.stubs(:ai_helper_logger).returns(logger)
+
+      @adapter.send(:handle_frame, FakeClient.new, FrameStruct.new(:close, nil, 1000))
+
+      assert @adapter.instance_variable_get(:@connection_ended).pop(true)
+    end
+
+    should "log 'none' instead of a blank code for a close frame without a status code" do
+      @adapter.instance_variable_set(:@connection_ended, Queue.new)
+      logger = mock("logger")
+      logger.expects(:info).with(regexp_matches(/code none/))
+      @adapter.stubs(:ai_helper_logger).returns(logger)
+
+      @adapter.send(:handle_frame, FakeClient.new, FrameStruct.new(:close, nil, nil))
+    end
+
+    should "log and notify connection_ended instead of letting an exception escape to the gem" do
+      @adapter.instance_variable_set(:@connection_ended, Queue.new)
+      client = FakeClient.new
+      client.stubs(:send).raises(IOError, "not opened for writing")
+      logger = mock("logger")
+      logger.expects(:error).with(regexp_matches(/not opened for writing/))
+      @adapter.stubs(:ai_helper_logger).returns(logger)
+
+      assert_nothing_raised do
+        @adapter.send(:handle_frame, client, FrameStruct.new(:ping, "payload", nil))
+      end
+      assert @adapter.instance_variable_get(:@connection_ended).pop(true)
+    end
+  end
+
+  context "watchdog_loop" do
+    should "request a reconnect once the receive timeout has elapsed" do
+      @adapter.instance_variable_set(:@last_received_at, 100.0)
+      @adapter.instance_variable_set(:@connection_ended, Queue.new)
+      Process.stubs(:clock_gettime).with(Process::CLOCK_MONOTONIC).returns(131.0)
+
+      @adapter.send(:watchdog_loop)
+
+      assert @adapter.instance_variable_get(:@reconnect_requested)
+    end
+
+    should "log a warning naming the actual elapsed seconds when reconnecting for inactivity" do
+      @adapter.instance_variable_set(:@last_received_at, 100.0)
+      @adapter.instance_variable_set(:@connection_ended, Queue.new)
+      Process.stubs(:clock_gettime).with(Process::CLOCK_MONOTONIC).returns(131.0)
+      logger = mock("logger")
+      logger.expects(:warn).with(regexp_matches(/no frame received for 31\.0s/))
+      @adapter.stubs(:ai_helper_logger).returns(logger)
+
+      @adapter.send(:watchdog_loop)
+    end
+
+    should "exit immediately when the connection has already ended, without waiting for the timeout" do
+      @adapter.instance_variable_set(:@last_received_at, Process.clock_gettime(Process::CLOCK_MONOTONIC))
+      queue = Queue.new
+      queue.push(true)
+      @adapter.instance_variable_set(:@connection_ended, queue)
+
+      @adapter.send(:watchdog_loop)
+
+      assert_not @adapter.instance_variable_get(:@reconnect_requested)
+    end
+
+    should "exit immediately without polling the queue when already stopped" do
+      @adapter.instance_variable_set(:@stopped, true)
+      RedmineAiHelper::ChatChannel::Adapters::SlackAdapter.expects(:timed_queue_pop).never
+
+      @adapter.send(:watchdog_loop)
+    end
+
+    should "exit immediately without polling the queue when a reconnect was already requested" do
+      @adapter.instance_variable_set(:@reconnect_requested, true)
+      RedmineAiHelper::ChatChannel::Adapters::SlackAdapter.expects(:timed_queue_pop).never
+
+      @adapter.send(:watchdog_loop)
+    end
+
+    should "recompute the remaining wait when a frame arrives right at the deadline" do
+      Process.stubs(:clock_gettime).with(Process::CLOCK_MONOTONIC).returns(100.0, 120.0)
+      @adapter.instance_variable_set(:@last_received_at, 90.0)
+      @adapter.instance_variable_set(:@connection_ended, Queue.new)
+      remainings = []
+      RedmineAiHelper::ChatChannel::Adapters::SlackAdapter.stubs(:timed_queue_pop).with do |_queue, remaining|
+        remainings << remaining
+        @adapter.instance_variable_set(:@last_received_at, 115.0) if remainings.size == 1
+        true
+      end.returns(nil, true)
+
+      @adapter.send(:watchdog_loop)
+
+      assert_equal [ 20.0, 25.0 ], remainings
+    end
+  end
+
+  context "send_frame" do
+    should "hold send_mutex while sending through the client" do
+      client = FakeClient.new
+      mutex = @adapter.instance_variable_get(:@send_mutex)
+      mutex.expects(:synchronize).yields
+
+      @adapter.send(:send_frame, client, "hello", type: :pong)
+
+      assert_equal [ FakeClient::Sent.new("hello", :pong) ], client.sent
+    end
+
+    should "do nothing and raise no exception when the client is nil" do
+      assert_nothing_raised do
+        @adapter.send(:send_frame, nil, "hello")
+      end
+    end
+
+    should "never let two threads send through the client at the same time" do
+      client = ConcurrencyDetectingClient.new
+
+      threads = 5.times.map { |i| Thread.new { @adapter.send(:send_frame, client, "msg#{i}") } }
+      threads.each(&:join)
+
+      assert_not client.overlap_detected
+      assert_equal 5, client.calls.size
+    end
+  end
+
+  context "close_socket" do
+    should "close the socket while holding send_mutex" do
+      ws = mock("ws")
+      ws.expects(:close)
+      @adapter.instance_variable_set(:@ws, ws)
+      mutex = @adapter.instance_variable_get(:@send_mutex)
+      mutex.expects(:synchronize).yields
+
+      @adapter.send(:close_socket)
+
+      assert_nil @adapter.instance_variable_get(:@ws)
+    end
+
+    should "swallow IOError raised while closing" do
+      ws = mock("ws")
+      ws.expects(:close).raises(IOError, "closed stream")
+      @adapter.instance_variable_set(:@ws, ws)
+
+      assert_nothing_raised { @adapter.send(:close_socket) }
+    end
+
+    should "swallow SystemCallError raised while closing" do
+      ws = mock("ws")
+      ws.expects(:close).raises(Errno::ECONNRESET)
+      @adapter.instance_variable_set(:@ws, ws)
+
+      assert_nothing_raised { @adapter.send(:close_socket) }
+    end
+
+    should "do nothing when there is no socket to close" do
+      assert_nil @adapter.instance_variable_get(:@ws)
+
+      assert_nothing_raised { @adapter.send(:close_socket) }
+    end
+  end
+
+  context "send_mutex reuse across reconnects (INV-4)" do
+    should "keep the same send_mutex instance across two listen cycles" do
+      ws = mock("ws")
+      ws.stubs(:close)
+      WebSocket::Client::Simple.stubs(:connect).returns(ws)
+      @adapter.stubs(:watchdog_loop)
+      original_mutex = @adapter.instance_variable_get(:@send_mutex)
+
+      @adapter.send(:listen, "wss://one")
+      assert_same original_mutex, @adapter.instance_variable_get(:@send_mutex)
+
+      @adapter.send(:listen, "wss://two")
+      assert_same original_mutex, @adapter.instance_variable_get(:@send_mutex)
+    end
+  end
+
+  context "socket callbacks" do
+    should "log the error and notify connection_ended on socket_errored" do
+      @adapter.instance_variable_set(:@connection_ended, Queue.new)
+      logger = mock("logger")
+      logger.expects(:error).with(regexp_matches(/websocket error/))
+      @adapter.stubs(:ai_helper_logger).returns(logger)
+
+      @adapter.send(:socket_errored, StandardError.new("boom"))
+
+      assert @adapter.instance_variable_get(:@connection_ended).pop(true)
+    end
+
+    should "notify connection_ended on connection_ended!" do
+      @adapter.instance_variable_set(:@connection_ended, Queue.new)
+
+      @adapter.send(:connection_ended!)
+
+      assert @adapter.instance_variable_get(:@connection_ended).pop(true)
     end
   end
 
@@ -230,6 +462,48 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
     end
   end
 
+  # A stand-in for the WebSocket::Client::Simple::Client the handler block
+  # receives, so tests never need a real socket. Records every frame sent
+  # through it.
+  class FakeClient
+    Sent = Struct.new(:data, :type)
+
+    attr_reader :sent
+
+    def initialize
+      @sent = []
+    end
+
+    def send(data, type: :text)
+      @sent << Sent.new(data, type)
+    end
+  end
+
+  # Doubles for the frames handle_frame receives (#type / #data / #code).
+  FrameStruct = Struct.new(:type, :data, :code)
+
+  # Detects whether two threads ever ran #send concurrently. Only safe as a
+  # plain (unlocked) instance variable *because* that is exactly the property
+  # under test: if send_frame's own @send_mutex serializes calls correctly,
+  # this method's body never actually runs on two threads at once.
+  class ConcurrencyDetectingClient
+    attr_reader :overlap_detected, :calls
+
+    def initialize
+      @busy = false
+      @overlap_detected = false
+      @calls = []
+    end
+
+    def send(data, type: :text) # rubocop:disable Lint/UnusedMethodArgument
+      @overlap_detected ||= @busy
+      @busy = true
+      sleep 0.01
+      @calls << data
+      @busy = false
+    end
+  end
+
   def events_envelope(event, envelope_id: "env-1")
     {
       "type" => "events_api",
@@ -248,7 +522,7 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
     end
 
     should "ack immediately with the envelope_id" do
-      @ws.expects(:send).with({ envelope_id: "env-42" }.to_json)
+      @ws.expects(:send).with({ envelope_id: "env-42" }.to_json, type: :text)
 
       @adapter.handle_envelope(events_envelope(
         { "type" => "app_mention", "user" => "U123", "channel" => "C123",
