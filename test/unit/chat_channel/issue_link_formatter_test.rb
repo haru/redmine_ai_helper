@@ -72,7 +72,8 @@ class ChatChannelIssueLinkFormatterTest < ActiveSupport::TestCase
 
       assert_match(/<https:\/\/r\.example\.com\/issues\/1549\|#1549>/, result)
       assert_match(/<https:\/\/r\.example\.com\/issues\/1540\|#1540>/, result)
-      assert_no_match(/#1549[^>]/, result.gsub(/<[^>]*>#1549>/, ""))
+      assert_no_match(/(?<!<https:\/\/r\.example\.com\/issues\/1549\|)#1549/, result)
+      assert_no_match(/(?<!<https:\/\/r\.example\.com\/issues\/1540\|)#1540/, result)
     end
 
     should "V-02: replace duplicate references to the same number" do
