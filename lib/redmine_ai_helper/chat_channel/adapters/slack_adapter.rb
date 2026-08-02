@@ -23,12 +23,11 @@ module RedmineAiHelper
         SLACK_API_BASE = "https://slack.com/api"
         # Open/read timeout for every Web API call (contract: 10 seconds).
         HTTP_TIMEOUT_SECONDS = 10
-        # Interval between health-check pings on the WebSocket.
-        PING_INTERVAL_SECONDS = 30
         # Upper bound of the exponential reconnect backoff.
         MAX_BACKOFF_SECONDS = 60
-        # Reconnect when this many consecutive pings got no pong.
-        MAX_MISSED_PONGS = 2
+        # Reconnect when no frame of any type has been received for this long
+        # (research.md R-002: receive-inactivity replaces the client-ping count).
+        RECEIVE_TIMEOUT_SECONDS = 30
         # Replies longer than this are split before posting (research.md R-008).
         MAX_MESSAGE_LENGTH = 3900
         # Messages requested per history page (Slack's maximum for a full page).
@@ -67,17 +66,18 @@ module RedmineAiHelper
           @reconnect_requested = false
           @connected = false
           @backoff = 1
-          @missed_pongs = 0
           @display_names = {}
+          @send_mutex = Mutex.new
+          @last_received_at = 0.0
         end
 
         # Connects to Slack and blocks while receiving events. Reconnects on
         # disconnect envelopes (immediately, with a fresh URL), on socket
-        # errors (with exponential backoff), on missed pongs and on clean
-        # closes that never received hello (suspected handshake rejection,
-        # also backed off so a remote-side tight close loop cannot hammer
-        # apps.connections.open). Auth errors (ok:false from the Web API)
-        # terminate without retry.
+        # errors (with exponential backoff), on receive inactivity and on
+        # clean closes that never received hello (suspected handshake
+        # rejection, also backed off so a remote-side tight close loop cannot
+        # hammer apps.connections.open). Auth errors (ok:false from the Web
+        # API) terminate without retry.
         # @return [void]
         def start
           @stopped = false
@@ -242,52 +242,75 @@ module RedmineAiHelper
           @connection_ended = Queue.new
           @reconnect_requested = false
           @connected = false
-          @missed_pongs = 0
+          touch_received
           adapter = self
           @ws = WebSocket::Client::Simple.connect(url) do |ws|
-            ws.on(:message) do |msg|
-              case msg.type
-              when :text
-                adapter.handle_envelope(msg.data)
-              when :pong
-                adapter.send(:handle_pong)
-              end
-            end
+            ws.on(:message) { |msg| adapter.send(:handle_frame, ws, msg) }
             ws.on(:close) { |_event| adapter.send(:connection_ended!) }
             ws.on(:error) { |error| adapter.send(:socket_errored, error) }
           end
-          ping_loop
+          watchdog_loop
         ensure
           close_socket
         end
 
-        # Sends pings on a fixed interval until the connection ends. Missed
-        # pongs beyond the threshold force a reconnect.
-        def ping_loop
+        # Dispatches one received WebSocket frame by type. Runs on the
+        # connection's receive thread. +client+ comes from the block
+        # WebSocket::Client::Simple yields, not @ws: assigning @ws happens only
+        # after #connect returns, so a frame arriving in that short window
+        # would otherwise be unanswerable (research.md R-001).
+        # @param client [WebSocket::Client::Simple::Client] the connection the frame arrived on
+        # @param msg [#type, #data, #code] the received frame
+        # @return [void]
+        def handle_frame(client, msg)
+          touch_received
+          case msg.type
+          when :ping
+            # RFC 6455: a pong must carry the ping's application data verbatim.
+            # No validation, transformation or discarding of the payload.
+            send_frame(client, msg.data, type: :pong)
+          when :text
+            handle_envelope(msg.data)
+          when :close
+            ai_helper_logger.info "slack: close frame received (code #{msg.code || "none"})"
+            connection_ended!
+          end
+        rescue => e
+          # Runs on websocket-client-simple's receive thread: without this
+          # rescue an exception (e.g. a write failure while sending the pong)
+          # would escape into the gem's own handler and never reach
+          # ai_helper_logger, making the failure invisible.
+          ai_helper_logger.error "slack: error while handling frame: #{e.full_message}"
+          connection_ended!
+        end
+
+        # Records the current time as the last time any frame was received,
+        # regardless of type. Used by #watchdog_loop to detect a silently
+        # dead connection (data-model.md, INV-2).
+        # @return [void]
+        def touch_received
+          @last_received_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        end
+
+        # Waits for the connection to end: either Slack signals it (a close
+        # frame, a socket error) or no frame of any type has been received for
+        # RECEIVE_TIMEOUT_SECONDS. Waits only until the timeout deadline
+        # computed from @last_received_at rather than on a fixed interval, and
+        # recomputes the remaining time whenever it wakes up without an end
+        # notification, since a frame may have arrived while it was waiting
+        # (research.md R-003). Never writes to the connection (R-002).
+        # @return [void]
+        def watchdog_loop
           until stopped? || @reconnect_requested
-            break if self.class.timed_queue_pop(@connection_ended, PING_INTERVAL_SECONDS)
-            if ping_tick
-              ai_helper_logger.warn "slack: #{MAX_MISSED_PONGS} pongs missed, reconnecting"
+            remaining = RECEIVE_TIMEOUT_SECONDS - (Process.clock_gettime(Process::CLOCK_MONOTONIC) - @last_received_at)
+            if remaining <= 0
+              elapsed = RECEIVE_TIMEOUT_SECONDS - remaining
+              ai_helper_logger.warn "slack: no frame received for #{elapsed.round(1)}s, reconnecting"
               request_reconnect
               break
             end
-            @ws&.send("ping", type: :ping)
+            break if self.class.timed_queue_pop(@connection_ended, remaining)
           end
-        end
-
-        # Counts a sent ping without a pong reply yet. Returns true when the
-        # missed-pong threshold is exceeded and the connection should be
-        # dropped.
-        # @return [Boolean]
-        def ping_tick
-          @missed_pongs += 1
-          @missed_pongs > MAX_MISSED_PONGS
-        end
-
-        # A pong arrived: the connection is healthy.
-        def handle_pong
-          @missed_pongs = 0
-          ai_helper_logger.debug "slack: pong received"
         end
 
         # Asks the listen loop to end so #start reconnects with a fresh URL.
@@ -307,12 +330,28 @@ module RedmineAiHelper
           @connection_ended&.push(true)
         end
 
+        # Closes the current socket, if any, under @send_mutex so the close
+        # frame is serialized against every other send on the connection
+        # (data-model.md C-3.4).
+        # @return [void]
         def close_socket
           socket = @ws
           @ws = nil
-          socket&.close
+          @send_mutex.synchronize { socket&.close }
         rescue IOError, SystemCallError => e
           ai_helper_logger.debug "slack: error while closing socket: #{e.message}"
+        end
+
+        # Sends one frame through +client+, serialized against every other
+        # send on this connection (ack, pong, close) via @send_mutex. The
+        # mutex belongs to the adapter, not the connection, and is reused
+        # across reconnects (data-model.md INV-4).
+        # @param client [WebSocket::Client::Simple::Client, nil] the connection to send on
+        # @param data [String] the frame payload
+        # @param type [Symbol] the frame type
+        # @return [void]
+        def send_frame(client, data, type: :text)
+          @send_mutex.synchronize { client&.send(data, type: type) }
         end
 
         # Returns the current backoff delay and doubles it (capped).
@@ -331,7 +370,7 @@ module RedmineAiHelper
         # Sends the events_api ack immediately so Slack does not resend the
         # event.
         def acknowledge(envelope_id)
-          @ws&.send({ envelope_id: envelope_id }.to_json)
+          send_frame(@ws, { envelope_id: envelope_id }.to_json)
         end
 
         # Converts a Slack event into an IncomingMessage and dispatches it.
