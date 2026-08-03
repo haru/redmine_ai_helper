@@ -1,10 +1,16 @@
 require File.expand_path("../../../test_helper", __FILE__)
 
 class IssueSearchToolsTest < ActiveSupport::TestCase
-  fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields
+  fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields,
+           :enabled_modules, :roles, :members, :member_roles
 
   def setup
     @provider = RedmineAiHelper::Tools::IssueSearchTools.new
+    # search_issues requires the ai_helper module and the view_ai_helper permission
+    # on the searched project. Project 1 with role 1 (jsmith's role) is the baseline
+    # used by every search test below.
+    EnabledModule.create!(project_id: 1, name: "ai_helper")
+    Role.find(1).add_permission!(:view_ai_helper)
   end
 
   context "search_issues" do
@@ -58,7 +64,7 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       assert_operator result[:total_count], :>=, 55
     end
 
-    should "only return issues visible to current user" do
+    should "refuse to search a project that is not visible to the current user" do
       # Create a private project with a new tracker
       private_tracker = Tracker.create!(name: "PrivateTracker#{Time.now.to_i}#{rand(10000)}", default_status: IssueStatus.first)
       private_project = Project.create!(
@@ -70,6 +76,8 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       unless private_project.trackers.include?(private_tracker)
         private_project.trackers << private_tracker
       end
+      # Enable the module so that a disabled module cannot be the reason for the failure
+      EnabledModule.create!(project_id: private_project.id, name: "ai_helper")
 
       Issue.create!(
         project: private_project,
@@ -82,13 +90,36 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
 
       # Switch to anonymous user
       User.current = User.anonymous
-      result = @provider.search_issues(project_id: private_project.id)
 
-      assert_equal 0, result[:issues].length
-      assert_equal 0, result[:total_count]
+      assert_raises(RuntimeError) do
+        @provider.search_issues(project_id: private_project.id)
+      end
     ensure
       private_project&.destroy
       private_tracker&.destroy
+    end
+
+    should "exclude issues the current user cannot see inside an accessible project" do
+      # "default" visibility hides private issues from anyone but their author and assignee
+      Role.find(1).update!(issues_visibility: "default")
+      private_issue = Issue.create!(
+        project: @project, tracker: @tracker, subject: "Private Issue In Accessible Project",
+        author: User.find(3), status: IssueStatus.first, priority: IssuePriority.first,
+        is_private: true
+      )
+      visible_issue = Issue.create!(
+        project: @project, tracker: @tracker, subject: "Visible Issue In Accessible Project",
+        author: User.find(3), status: IssueStatus.first, priority: IssuePriority.first
+      )
+
+      result = @provider.search_issues(project_id: @project.id)
+      ids = result[:issues].map { |i| i[:id] }
+
+      assert_includes ids, visible_issue.id
+      assert_not_includes ids, private_issue.id
+    ensure
+      private_issue&.destroy
+      visible_issue&.destroy
     end
 
     should "return formatted issue data with id and name" do
@@ -232,6 +263,77 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       assert_kind_of Array, issue_data[:custom_fields]
     ensure
       issue&.destroy
+    end
+  end
+
+  context "search_issues access control" do
+    setup do
+      @project = Project.find(1)
+      @tracker = Tracker.find(1)
+      @user = User.find(2)
+      @previous_user = User.current
+      User.current = @user
+    end
+
+    teardown do
+      User.current = @previous_user
+    end
+
+    context "when the ai_helper module is disabled" do
+      setup do
+        EnabledModule.where(project_id: @project.id, name: "ai_helper").destroy_all
+      end
+
+      should "raise an error without search conditions" do
+        assert_raises(RuntimeError) do
+          @provider.search_issues(project_id: @project.id)
+        end
+      end
+
+      should "raise an error with filter conditions as well" do
+        assert_raises(RuntimeError) do
+          @provider.search_issues(project_id: @project.id, fields: [
+            { field_name: "tracker_id", operator: "=", values: [ @tracker.id.to_s ] }
+          ])
+        end
+      end
+
+      should "report the same error message as the other tools" do
+        error = assert_raises(RuntimeError) do
+          @provider.search_issues(project_id: @project.id)
+        end
+
+        assert_equal "ai_helper is not enabled for project: id = #{@project.id}", error.message
+      end
+    end
+
+    should "raise an error when the user lacks the view_ai_helper permission" do
+      Role.find(1).remove_permission!(:view_ai_helper)
+
+      assert_raises(RuntimeError) do
+        @provider.search_issues(project_id: @project.id)
+      end
+    end
+
+    should "raise an error when project_id is not given" do
+      assert_raises(RuntimeError) do
+        @provider.search_issues(project_id: nil)
+      end
+    end
+
+    should "raise a record not found error for a project that does not exist" do
+      assert_raises(ActiveRecord::RecordNotFound) do
+        @provider.search_issues(project_id: 0)
+      end
+    end
+
+    should "state in the tool description that only ai_helper enabled projects are searchable" do
+      schema = RedmineAiHelper::Tools::IssueSearchTools.function_schemas.to_openai_format.find do |f|
+        f[:function][:name].end_with?("__search_issues")
+      end
+
+      assert_match(/AI Helper module enabled/, schema[:function][:description])
+      assert_match(/AI Helper module enabled/, schema[:function][:parameters][:properties][:project_id][:description])
     end
   end
 
