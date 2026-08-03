@@ -23,11 +23,6 @@ module RedmineAiHelper
         SLACK_API_BASE = "https://slack.com/api"
         # Open/read timeout for every Web API call (contract: 10 seconds).
         HTTP_TIMEOUT_SECONDS = 10
-        # Upper bound of the exponential reconnect backoff.
-        MAX_BACKOFF_SECONDS = 60
-        # Reconnect when no frame of any type has been received for this long
-        # (research.md R-002: receive-inactivity replaces the client-ping count).
-        RECEIVE_TIMEOUT_SECONDS = 30
         # Replies longer than this are split before posting (research.md R-008).
         MAX_MESSAGE_LENGTH = 3900
         # Messages requested per history page (Slack's maximum for a full page).
@@ -62,13 +57,9 @@ module RedmineAiHelper
 
         def initialize
           super
-          @stopped = false
           @reconnect_requested = false
           @connected = false
-          @backoff = 1
           @display_names = {}
-          @send_mutex = Mutex.new
-          @last_received_at = 0.0
         end
 
         # Connects to Slack and blocks while receiving events. Reconnects on
@@ -80,7 +71,7 @@ module RedmineAiHelper
         # API) terminate without retry.
         # @return [void]
         def start
-          @stopped = false
+          clear_stop_flag
           @bot_user_id = fetch_bot_user_id
           ai_helper_logger.info "slack: starting Socket Mode connection (bot user #{@bot_user_id})"
           until stopped?
@@ -101,14 +92,6 @@ module RedmineAiHelper
             end
           end
           ai_helper_logger.info "slack: adapter stopped"
-        end
-
-        # Closes the connection and lets #start return.
-        # @return [void]
-        def stop
-          @stopped = true
-          @connection_ended&.push(true)
-          close_socket
         end
 
         # Whether the hello envelope has been received on the current socket.
@@ -213,11 +196,6 @@ module RedmineAiHelper
 
         private
 
-        # Whether #stop has been called.
-        def stopped?
-          @stopped
-        end
-
         # Fetches the bot's own user id and validates the bot token. The bot id
         # is kept as well: the gateway's own posts appear in the history with a
         # bot_id rather than a user id.
@@ -237,11 +215,13 @@ module RedmineAiHelper
         end
 
         # Connects the WebSocket and blocks until the connection ends, a
-        # reconnect is requested, or the adapter is stopped.
+        # reconnect is requested, or the adapter is stopped. Re-raises a fatal
+        # credential error captured on the receive thread.
         def listen(url)
           @connection_ended = Queue.new
           @reconnect_requested = false
           @connected = false
+          @fatal_close = nil
           touch_received
           adapter = self
           @ws = WebSocket::Client::Simple.connect(url) do |ws|
@@ -250,126 +230,30 @@ module RedmineAiHelper
             ws.on(:error) { |error| adapter.send(:socket_errored, error) }
           end
           watchdog_loop
+          raise_fatal_error!
         ensure
           close_socket
         end
 
-        # Dispatches one received WebSocket frame by type. Runs on the
-        # connection's receive thread. +client+ comes from the block
-        # WebSocket::Client::Simple yields, not @ws: assigning @ws happens only
-        # after #connect returns, so a frame arriving in that short window
-        # would otherwise be unanswerable (research.md R-001).
-        # @param client [WebSocket::Client::Simple::Client] the connection the frame arrived on
-        # @param msg [#type, #data, #code] the received frame
+        # Hands one Socket Mode text frame to the envelope dispatcher. Slack
+        # answers only events_api envelopes, and those arrive long after the
+        # handshake, so this adapter never has to answer inside the window in
+        # which @ws is still nil (C-1.7): its ack goes through @ws as before
+        # (C-7.5), and the frame's own client is not needed here.
+        # @param _client [WebSocket::Client::Simple::Client] the connection the frame arrived on
+        # @param raw [String] the raw JSON payload
         # @return [void]
-        def handle_frame(client, msg)
-          touch_received
-          case msg.type
-          when :ping
-            # RFC 6455: a pong must carry the ping's application data verbatim.
-            # No validation, transformation or discarding of the payload.
-            send_frame(client, msg.data, type: :pong)
-          when :text
-            handle_envelope(msg.data)
-          when :close
-            ai_helper_logger.info "slack: close frame received (code #{msg.code || "none"})"
-            connection_ended!
-          end
-        rescue => e
-          # Runs on websocket-client-simple's receive thread: without this
-          # rescue an exception (e.g. a write failure while sending the pong)
-          # would escape into the gem's own handler and never reach
-          # ai_helper_logger, making the failure invisible.
-          ai_helper_logger.error "slack: error while handling frame: #{e.full_message}"
-          connection_ended!
-        end
-
-        # Records the current time as the last time any frame was received,
-        # regardless of type. Used by #watchdog_loop to detect a silently
-        # dead connection (data-model.md, INV-2).
-        # @return [void]
-        def touch_received
-          @last_received_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        end
-
-        # Waits for the connection to end: either Slack signals it (a close
-        # frame, a socket error) or no frame of any type has been received for
-        # RECEIVE_TIMEOUT_SECONDS. Waits only until the timeout deadline
-        # computed from @last_received_at rather than on a fixed interval, and
-        # recomputes the remaining time whenever it wakes up without an end
-        # notification, since a frame may have arrived while it was waiting
-        # (research.md R-003). Never writes to the connection (R-002).
-        # @return [void]
-        def watchdog_loop
-          until stopped? || @reconnect_requested
-            remaining = RECEIVE_TIMEOUT_SECONDS - (Process.clock_gettime(Process::CLOCK_MONOTONIC) - @last_received_at)
-            if remaining <= 0
-              elapsed = RECEIVE_TIMEOUT_SECONDS - remaining
-              ai_helper_logger.warn "slack: no frame received for #{elapsed.round(1)}s, reconnecting"
-              request_reconnect
-              break
-            end
-            break if self.class.timed_queue_pop(@connection_ended, remaining)
-          end
-        end
-
-        # Asks the listen loop to end so #start reconnects with a fresh URL.
-        def request_reconnect
-          @reconnect_requested = true
-          @connection_ended&.push(true)
-        end
-
-        # The socket was closed by the remote side.
-        def connection_ended!
-          @connection_ended&.push(true)
-        end
-
-        # A socket error occurred; end the connection so #start can retry.
-        def socket_errored(error)
-          ai_helper_logger.error "slack: websocket error: #{error.full_message}"
-          @connection_ended&.push(true)
-        end
-
-        # Closes the current socket, if any, under @send_mutex so the close
-        # frame is serialized against every other send on the connection
-        # (data-model.md C-3.4).
-        # @return [void]
-        def close_socket
-          socket = @ws
-          @ws = nil
-          @send_mutex.synchronize { socket&.close }
-        rescue IOError, SystemCallError => e
-          ai_helper_logger.debug "slack: error while closing socket: #{e.message}"
-        end
-
-        # Sends one frame through +client+, serialized against every other
-        # send on this connection (ack, pong, close) via @send_mutex. The
-        # mutex belongs to the adapter, not the connection, and is reused
-        # across reconnects (data-model.md INV-4).
-        # @param client [WebSocket::Client::Simple::Client, nil] the connection to send on
-        # @param data [String] the frame payload
-        # @param type [Symbol] the frame type
-        # @return [void]
-        def send_frame(client, data, type: :text)
-          @send_mutex.synchronize { client&.send(data, type: type) }
-        end
-
-        # Returns the current backoff delay and doubles it (capped).
-        # @return [Integer] seconds to wait
-        def next_backoff
-          current = @backoff
-          @backoff = [ @backoff * 2, MAX_BACKOFF_SECONDS ].min
-          current
-        end
-
-        # Resets the backoff after a successful connection.
-        def reset_backoff
-          @backoff = 1
+        def handle_text_frame(_client, raw)
+          handle_envelope(raw)
         end
 
         # Sends the events_api ack immediately so Slack does not resend the
-        # event.
+        # event. Nothing is sent once #stop has run: @ws is read outside the
+        # send mutex, so writing during a shutdown would only produce an
+        # IOError on the socket #stop has just closed.
         def acknowledge(envelope_id)
+          return if stopped?
+
           send_frame(@ws, { envelope_id: envelope_id }.to_json)
         end
 
