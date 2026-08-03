@@ -21,6 +21,62 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
     @adapter.instance_variable_set(:@bot_user_id, "BOT")
   end
 
+  # A stand-in for the WebSocket::Client::Simple::Client the handler block
+  # receives, so tests never need a real socket. Records every frame sent
+  # through it.
+  class FakeClient
+    Sent = Struct.new(:data, :type)
+
+    attr_reader :sent
+
+    def initialize
+      @sent = []
+    end
+
+    def send(data, type: :text)
+      @sent << Sent.new(data, type)
+    end
+  end
+
+  # Detects whether two threads ever ran #send concurrently. Only safe as a
+  # plain (unlocked) instance variable *because* that is exactly the property
+  # under test: if the shared send mutex serializes calls correctly, this
+  # method's body never actually runs on two threads at once.
+  #
+  # Detection is best effort: it can only observe an overlap the scheduler
+  # actually produces. The window is widened deliberately (repeated Thread.pass
+  # plus a sleep, both of which release the GVL) so an unserialized caller has
+  # many chances to enter. The structural guarantee is asserted separately by
+  # the test that expects @send_mutex#synchronize to be held.
+  class ConcurrencyDetectingClient
+    # How long #send stays inside its critical section. Long enough that a
+    # thread waiting on the GVL is scheduled into it if nothing excludes it.
+    BUSY_SECONDS = 0.005
+
+    attr_reader :overlap_detected, :calls
+
+    def initialize
+      @busy = false
+      @overlap_detected = false
+      @calls = []
+    end
+
+    def send(data, type: :text) # rubocop:disable Lint/UnusedMethodArgument
+      @overlap_detected ||= @busy
+      @busy = true
+      @calls << data
+      5.times { Thread.pass }
+      sleep BUSY_SECONDS
+      # A cleared flag means another call ran to completion inside this one,
+      # which catches an overlap the check on entry could still have missed.
+      @overlap_detected ||= !@busy
+      @busy = false
+    end
+  end
+
+  # Doubles for the frames handle_frame receives (#type / #data / #code).
+  FrameStruct = Struct.new(:type, :data, :code)
+
   # Records messages dispatched by the adapter in place of the gateway.
   class RecordingDispatcher
     attr_reader :messages
@@ -191,7 +247,7 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
     end
 
     should "connect the websocket with the required v and encoding query params" do
-      @adapter.stubs(:heartbeat_loop)
+      @adapter.stubs(:watchdog_loop)
       ws = mock("ws")
       ws.stubs(:on)
       ws.stubs(:close)
@@ -220,13 +276,54 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
     should "terminate #start without retry when the gateway closes with a fatal code" do
       @adapter.stubs(:fetch_bot_user_id).returns("B1")
       @adapter.expects(:gateway_url).once.returns("wss://gw")
-      @adapter.stubs(:heartbeat_loop).with { @adapter.send(:handle_close_frame, 4004); true }
+      @adapter.stubs(:watchdog_loop).with { @adapter.send(:handle_close_frame, 4004); true }
       ws = mock("ws")
       ws.stubs(:on)
       ws.stubs(:close)
       WebSocket::Client::Simple.stubs(:connect).returns(ws)
 
       assert_raises(DiscordApiError) { @adapter.start }
+    end
+
+    should "C-1.9: terminate #start without retry when a fatal API error escapes frame handling" do
+      # A token revoked mid-session makes the REST call that resolves the
+      # channel raise. The error must not be turned into an immediate,
+      # unthrottled reconnect: it terminates the adapter (ADR-006).
+      @adapter.stubs(:fetch_bot_user_id).returns("B1")
+      @adapter.expects(:gateway_url).once.returns("wss://gw")
+      @adapter.stubs(:fetch_channel).raises(DiscordApiError, "unauthorized")
+      ws = mock("ws")
+      ws.stubs(:on)
+      ws.stubs(:close)
+      WebSocket::Client::Simple.stubs(:connect).returns(ws)
+      frame = FrameStruct.new(:text, {
+        op: DiscordAdapter::OP_DISPATCH, t: "MESSAGE_CREATE",
+        d: guild_message(content: "<@B1> hello")
+      }.to_json, nil)
+      @adapter.stubs(:watchdog_loop).with { @adapter.send(:handle_frame, ws, frame); true }
+
+      assert_raises(DiscordApiError) { @adapter.start }
+    end
+
+    should "C-1.9: record a DiscordApiError escaping frame handling as the fatal close" do
+      @adapter.instance_variable_set(:@connection_ended, Queue.new)
+      @adapter.stubs(:handle_gateway_message).raises(DiscordApiError, "unauthorized")
+
+      @adapter.send(:handle_frame, FakeClient.new, FrameStruct.new(:text, "{}", nil))
+
+      assert_kind_of DiscordApiError, @adapter.instance_variable_get(:@fatal_close)
+      assert @adapter.instance_variable_get(:@connection_ended).pop(true)
+    end
+
+    should "C-1.9: leave a transient error escaping frame handling non-fatal" do
+      @adapter.instance_variable_set(:@connection_ended, Queue.new)
+      @adapter.stubs(:handle_gateway_message).raises(DiscordRequestError.new("HTTP 500", status: 500))
+
+      @adapter.send(:handle_frame, FakeClient.new, FrameStruct.new(:text, "{}", nil))
+
+      assert_nil @adapter.instance_variable_get(:@fatal_close),
+                 "a transient REST failure must not terminate the adapter"
+      assert @adapter.instance_variable_get(:@connection_ended).pop(true)
     end
 
     should "store the heartbeat interval and send Identify on Hello" do
@@ -239,7 +336,7 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
       end
       @adapter.instance_variable_set(:@ws, ws)
 
-      @adapter.handle_gateway_message({ op: DiscordAdapter::OP_HELLO, d: { heartbeat_interval: 41250 } }.to_json)
+      @adapter.handle_gateway_message(ws, { op: DiscordAdapter::OP_HELLO, d: { heartbeat_interval: 41250 } }.to_json)
 
       assert_in_delta 41.25, @adapter.instance_variable_get(:@heartbeat_interval), 0.001
     end
@@ -247,7 +344,7 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
     should "mark connected and reset the backoff on READY" do
       3.times { @adapter.send(:next_backoff) }
 
-      @adapter.handle_gateway_message({ op: DiscordAdapter::OP_DISPATCH, t: "READY", s: 1, d: { "user" => { "id" => "B1" } } }.to_json)
+      @adapter.handle_gateway_message(nil, { op: DiscordAdapter::OP_DISPATCH, t: "READY", s: 1, d: { "user" => { "id" => "B1" } } }.to_json)
 
       assert_predicate @adapter, :connected?
       assert_equal 1, @adapter.send(:next_backoff)
@@ -259,15 +356,32 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
       @adapter.instance_variable_set(:@ws, ws)
       @adapter.instance_variable_set(:@last_sequence, 7)
 
-      @adapter.handle_gateway_message({ op: DiscordAdapter::OP_HEARTBEAT }.to_json)
+      @adapter.handle_gateway_message(ws, { op: DiscordAdapter::OP_HEARTBEAT }.to_json)
     end
 
-    should "record a heartbeat ack" do
-      @adapter.instance_variable_set(:@heartbeat_acked, false)
+    should "keep the last sequence number of every payload that carries one" do
+      @adapter.handle_gateway_message(nil, { op: DiscordAdapter::OP_HEARTBEAT_ACK, s: 12 }.to_json)
 
-      @adapter.handle_gateway_message({ op: DiscordAdapter::OP_HEARTBEAT_ACK }.to_json)
+      assert_equal 12, @adapter.instance_variable_get(:@last_sequence)
+    end
 
-      assert @adapter.instance_variable_get(:@heartbeat_acked)
+    should "keep the previous sequence number for a payload that carries none" do
+      @adapter.instance_variable_set(:@last_sequence, 12)
+
+      @adapter.handle_gateway_message(nil, { op: DiscordAdapter::OP_HEARTBEAT_ACK }.to_json)
+
+      assert_equal 12, @adapter.instance_variable_get(:@last_sequence)
+    end
+
+    should "record a sequence number of zero rather than treating it as absent" do
+      @adapter.instance_variable_set(:@last_sequence, 12)
+
+      # Discord numbers dispatches from 1, so this does not occur in practice;
+      # the test pins down that only a missing "s" is skipped, since 0 is
+      # truthy in Ruby and the check would otherwise be ambiguous.
+      @adapter.handle_gateway_message(nil, { op: DiscordAdapter::OP_HEARTBEAT_ACK, s: 0 }.to_json)
+
+      assert_equal 0, @adapter.instance_variable_get(:@last_sequence)
     end
 
     should "request a reconnect on Reconnect (op 7) and Invalid Session (op 9)" do
@@ -275,7 +389,7 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
         adapter = DiscordAdapter.new
         adapter.instance_variable_set(:@connection_ended, Queue.new)
 
-        adapter.handle_gateway_message({ op: op }.to_json)
+        adapter.handle_gateway_message(nil, { op: op }.to_json)
 
         assert adapter.instance_variable_get(:@reconnect_requested), "op #{op} must request reconnect"
       end
@@ -295,15 +409,25 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
       assert_kind_of DiscordApiError, @adapter.instance_variable_get(:@fatal_close)
     end
 
-    should "request a reconnect when a heartbeat ack is missing at the next send time (zombie connection)" do
+    should "C-6.5.1: log the fatal close code and end the connection" do
       @adapter.instance_variable_set(:@connection_ended, Queue.new)
-      @adapter.instance_variable_set(:@heartbeat_interval, 0.01)
-      @adapter.instance_variable_set(:@heartbeat_acked, false)
-      @adapter.stubs(:send_heartbeat)
+      logger = mock("logger")
+      logger.expects(:error).with("discord: gateway closed with fatal code 4014")
+      @adapter.stubs(:ai_helper_logger).returns(logger)
 
-      @adapter.send(:heartbeat_loop)
+      DiscordAdapter::FATAL_CLOSE_CODES.each do |code|
+        adapter = DiscordAdapter.new
+        adapter.instance_variable_set(:@connection_ended, Queue.new)
 
-      assert @adapter.instance_variable_get(:@reconnect_requested)
+        adapter.handle_close_frame(code)
+
+        assert_kind_of DiscordApiError, adapter.instance_variable_get(:@fatal_close),
+                       "close code #{code} must be fatal"
+      end
+
+      @adapter.handle_close_frame(4014)
+
+      assert @adapter.instance_variable_get(:@connection_ended).pop(true)
     end
 
     should "not capture a fatal error on a transient close code" do
@@ -314,6 +438,17 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
       assert_nil @adapter.instance_variable_get(:@fatal_close)
     end
 
+    should "C-6.5.2: leave every other close code to the shared implementation" do
+      @adapter.instance_variable_set(:@connection_ended, Queue.new)
+      logger = mock("logger")
+      logger.expects(:info).with("discord: close frame received (code 1006)")
+      @adapter.stubs(:ai_helper_logger).returns(logger)
+
+      @adapter.handle_close_frame(1006)
+
+      assert @adapter.instance_variable_get(:@connection_ended).pop(true)
+    end
+
     should "evict the oldest reply target once the cap is exceeded, keeping recent ones" do
       cap = DiscordAdapter::MAX_REPLY_TARGETS
       (cap + 1).times { |i| @adapter.send(:record_reply_target, "key#{i}", "msg#{i}") }
@@ -322,6 +457,276 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
       assert_equal cap, reply_targets.size
       assert_not reply_targets.key?("key0"), "the oldest entry must be evicted"
       assert reply_targets.key?("key#{cap}"), "the newest entry must be kept"
+    end
+  end
+
+  # US2: liveness is judged only by whether frames keep arriving. The bound
+  # comes from the heartbeat interval Discord announces in Hello, so it
+  # follows a changed interval instead of a hard-coded number.
+  context "receive inactivity bound" do
+    should "C-6.1.1 / SC-002: bound the silence at 1.5x the announced heartbeat interval" do
+      @adapter.instance_variable_set(:@heartbeat_interval, 41.25)
+
+      assert_in_delta 61.875, @adapter.send(:receive_timeout_seconds), 0.001
+    end
+
+    should "C-6.1.1: follow the announced interval instead of a fixed number" do
+      @adapter.instance_variable_set(:@heartbeat_interval, 20.0)
+
+      assert_in_delta 30.0, @adapter.send(:receive_timeout_seconds), 0.001
+
+      @adapter.instance_variable_set(:@heartbeat_interval, 60.0)
+
+      assert_in_delta 90.0, @adapter.send(:receive_timeout_seconds), 0.001
+    end
+
+    should "C-6.1.2: fall back to the shared default before Hello announces an interval" do
+      assert_nil @adapter.instance_variable_get(:@heartbeat_interval)
+      assert_equal DiscordAdapter::DEFAULT_RECEIVE_TIMEOUT_SECONDS,
+                   @adapter.send(:receive_timeout_seconds)
+      assert_equal 30, @adapter.send(:receive_timeout_seconds)
+    end
+  end
+
+  # US2: the heartbeat Discord requires is sent as the monitor loop's
+  # scheduled action, so no second thread ever writes to the socket.
+  context "heartbeat scheduling" do
+    should "C-6.2.1: set the next heartbeat time to one interval ahead on Hello" do
+      Process.stubs(:clock_gettime).with(Process::CLOCK_MONOTONIC).returns(1000.0)
+      @adapter.stubs(:send_identify)
+
+      @adapter.handle_gateway_message(nil, { op: DiscordAdapter::OP_HELLO, d: { heartbeat_interval: 41250 } }.to_json)
+
+      assert_in_delta 41.25, @adapter.instance_variable_get(:@heartbeat_interval), 0.001
+      assert_in_delta 1041.25, @adapter.instance_variable_get(:@next_heartbeat_at), 0.001
+    end
+
+    should "C-6.2.2: report the seconds left until the next heartbeat" do
+      @adapter.instance_variable_set(:@heartbeat_interval, 41.25)
+      @adapter.instance_variable_set(:@next_heartbeat_at, 1041.25)
+      Process.stubs(:clock_gettime).with(Process::CLOCK_MONOTONIC).returns(1030.0)
+
+      assert_in_delta 11.25, @adapter.send(:next_scheduled_action_in), 0.001
+    end
+
+    should "C-6.2.2: poll every second while waiting for Hello" do
+      assert_nil @adapter.instance_variable_get(:@heartbeat_interval)
+
+      assert_equal DiscordAdapter::HELLO_WAIT_SECONDS, @adapter.send(:next_scheduled_action_in)
+    end
+
+    should "C-6.2.3 / INV-7: send the heartbeat once the scheduled time is reached and rearm it" do
+      @adapter.instance_variable_set(:@heartbeat_interval, 41.25)
+      @adapter.instance_variable_set(:@next_heartbeat_at, 1000.0)
+      Process.stubs(:clock_gettime).with(Process::CLOCK_MONOTONIC).returns(1000.5)
+      @adapter.expects(:send_heartbeat).once
+
+      @adapter.send(:perform_scheduled_action)
+
+      assert_in_delta 1041.75, @adapter.instance_variable_get(:@next_heartbeat_at), 0.001
+    end
+
+    should "C-6.2.3 / INV-7: count the next heartbeat from now when the wake-up came late" do
+      @adapter.instance_variable_set(:@heartbeat_interval, 41.25)
+      @adapter.instance_variable_set(:@next_heartbeat_at, 1000.0)
+      # Woken up 7 seconds after the heartbeat was due (a blocking REST call on
+      # the receive thread, a slow scheduler): the rhythm restarts from now
+      # rather than compressing the following intervals to catch up.
+      Process.stubs(:clock_gettime).with(Process::CLOCK_MONOTONIC).returns(1007.0)
+      @adapter.expects(:send_heartbeat).once
+
+      @adapter.send(:perform_scheduled_action)
+
+      assert_in_delta 1048.25, @adapter.instance_variable_get(:@next_heartbeat_at), 0.001
+    end
+
+    should "C-6.2.3: send no heartbeat once the adapter has been stopped" do
+      @adapter.instance_variable_set(:@heartbeat_interval, 41.25)
+      @adapter.instance_variable_set(:@next_heartbeat_at, 1000.0)
+      Process.stubs(:clock_gettime).with(Process::CLOCK_MONOTONIC).returns(1000.5)
+      @adapter.instance_variable_set(:@stopped, true)
+      @adapter.expects(:send_heartbeat).never
+
+      @adapter.send(:perform_scheduled_action)
+
+      assert_in_delta 1000.0, @adapter.instance_variable_get(:@next_heartbeat_at), 0.001
+    end
+
+    should "C-6.2.3: not send a heartbeat before the scheduled time, so short waits do not add up" do
+      @adapter.instance_variable_set(:@heartbeat_interval, 41.25)
+      @adapter.instance_variable_set(:@next_heartbeat_at, 1041.25)
+      Process.stubs(:clock_gettime).with(Process::CLOCK_MONOTONIC).returns(1020.0)
+      @adapter.expects(:send_heartbeat).never
+
+      @adapter.send(:perform_scheduled_action)
+
+      assert_in_delta 1041.25, @adapter.instance_variable_get(:@next_heartbeat_at), 0.001
+    end
+
+    should "C-6.2.4: send nothing while the heartbeat interval is unknown" do
+      @adapter.expects(:send_heartbeat).never
+
+      @adapter.send(:perform_scheduled_action)
+
+      assert_nil @adapter.instance_variable_get(:@next_heartbeat_at)
+    end
+
+    should "FR-009: keep the heartbeat payload unchanged (op 1 with the last sequence)" do
+      client = FakeClient.new
+      @adapter.instance_variable_set(:@ws, client)
+      @adapter.instance_variable_set(:@last_sequence, 42)
+
+      @adapter.send(:send_heartbeat, client)
+
+      assert_equal([ { "op" => DiscordAdapter::OP_HEARTBEAT, "d" => 42 } ],
+                   client.sent.map { |frame| JSON.parse(frame.data) })
+    end
+  end
+
+  # US2: acks are no longer counted. An ack is just another received frame,
+  # and a connection that stops answering is caught by the inactivity bound.
+  context "heartbeat acknowledgement" do
+    should "C-6.4.1: treat a heartbeat ack as a plain received frame" do
+      @adapter.instance_variable_set(:@ws, FakeClient.new)
+      @adapter.instance_variable_set(:@connection_ended, Queue.new)
+
+      @adapter.handle_gateway_message(nil, { op: DiscordAdapter::OP_HEARTBEAT_ACK }.to_json)
+
+      assert_empty @adapter.instance_variable_get(:@ws).sent
+      assert_not @adapter.instance_variable_get(:@reconnect_requested)
+      assert @adapter.instance_variable_get(:@connection_ended).empty?
+    end
+
+    should "C-6.4.2: not track acks at all" do
+      @adapter.handle_gateway_message(nil, { op: DiscordAdapter::OP_HEARTBEAT_ACK }.to_json)
+
+      assert_not @adapter.instance_variables.include?(:@heartbeat_acked)
+    end
+
+    should "C-6.4.3 / FR-008: have no zombie-connection path that reconnects on a missing ack" do
+      assert_not @adapter.respond_to?(:heartbeat_loop, true),
+                 "the ack-counting loop must be replaced by the shared receive-inactivity watchdog"
+    end
+  end
+
+  # US3: a frame is answered on the connection it arrived on. @ws is assigned
+  # only after WebSocket::Client::Simple.connect returns, and Discord's very
+  # first frame is Hello, so anything sent through @ws in that window would be
+  # dropped silently - and a gateway that never receives Identify closes the
+  # connection.
+  context "answering on the arriving connection" do
+    should "C-6.3.1: hand a text frame to the gateway parser together with its client" do
+      client = FakeClient.new
+      @adapter.expects(:handle_gateway_message).with(client, "raw payload")
+
+      @adapter.send(:handle_text_frame, client, "raw payload")
+    end
+
+    should "C-6.3.2 / INV-6: send Identify to the arriving connection while @ws is still nil" do
+      client = FakeClient.new
+      assert_nil @adapter.instance_variable_get(:@ws)
+
+      @adapter.handle_gateway_message(client, { op: DiscordAdapter::OP_HELLO, d: { heartbeat_interval: 41250 } }.to_json)
+
+      assert_nil @adapter.instance_variable_get(:@ws), "the pre-handshake window must not be papered over with @ws"
+      assert_equal([ DiscordAdapter::OP_IDENTIFY ], client.sent.map { |frame| JSON.parse(frame.data)["op"] })
+    end
+
+    should "C-6.2.5: answer a heartbeat request on the arriving connection without moving the schedule" do
+      client = FakeClient.new
+      @adapter.instance_variable_set(:@heartbeat_interval, 41.25)
+      @adapter.instance_variable_set(:@next_heartbeat_at, 1041.25)
+      @adapter.instance_variable_set(:@last_sequence, 9)
+
+      @adapter.handle_gateway_message(client, { op: DiscordAdapter::OP_HEARTBEAT }.to_json)
+
+      assert_equal([ { "op" => DiscordAdapter::OP_HEARTBEAT, "d" => 9 } ],
+                   client.sent.map { |frame| JSON.parse(frame.data) })
+      assert_in_delta 1041.25, @adapter.instance_variable_get(:@next_heartbeat_at), 0.001
+    end
+
+    should "C-6.3.3 / FR-017: keep the Identify payload exactly as it was" do
+      client = FakeClient.new
+
+      @adapter.send(:send_identify, client)
+
+      payload = JSON.parse(client.sent.first.data)
+      assert_equal DiscordAdapter::OP_IDENTIFY, payload["op"]
+      assert_equal BOT_TOKEN, payload["d"]["token"]
+      assert_equal 37376, payload["d"]["intents"]
+      assert_equal({ "os" => "linux", "browser" => "redmine_ai_helper", "device" => "redmine_ai_helper" },
+                   payload["d"]["properties"])
+    end
+
+    should "C-6.3.4: log a payload that cannot be parsed and keep the connection" do
+      @adapter.instance_variable_set(:@connection_ended, Queue.new)
+      logger = mock("logger")
+      logger.expects(:error).with(regexp_matches(/failed to parse gateway payload/))
+      @adapter.stubs(:ai_helper_logger).returns(logger)
+
+      assert_nothing_raised { @adapter.handle_gateway_message(FakeClient.new, "not json") }
+
+      assert @adapter.instance_variable_get(:@connection_ended).empty?
+    end
+  end
+
+  # US1: every write to the gateway socket - Identify, heartbeats, the answer
+  # to a heartbeat request and the close frame - goes through the single
+  # serialized send path in BaseAdapter, so two of them can never interleave
+  # and corrupt the connection.
+  context "send serialization" do
+    should "C-3.2: send Identify through the shared serialized send_frame" do
+      ws = mock("ws")
+      @adapter.instance_variable_set(:@ws, ws)
+      @adapter.expects(:send_frame).with do |client, data|
+        client == ws && JSON.parse(data)["op"] == DiscordAdapter::OP_IDENTIFY
+      end
+
+      @adapter.send(:send_identify, ws)
+    end
+
+    should "C-3.2: send heartbeats through the shared serialized send_frame" do
+      ws = mock("ws")
+      @adapter.instance_variable_set(:@ws, ws)
+      @adapter.instance_variable_set(:@last_sequence, 7)
+      @adapter.expects(:send_frame).with do |client, data|
+        client == ws && JSON.parse(data) == { "op" => DiscordAdapter::OP_HEARTBEAT, "d" => 7 }
+      end
+
+      @adapter.send(:send_heartbeat, ws)
+    end
+
+    should "C-3.1 / SC-001: never let two sending threads overlap on the socket" do
+      client = ConcurrencyDetectingClient.new
+      @adapter.instance_variable_set(:@ws, client)
+
+      threads = 6.times.map do |i|
+        Thread.new { i.even? ? @adapter.send(:send_identify, client) : @adapter.send(:send_heartbeat, client) }
+      end
+      threads.each(&:join)
+
+      assert_not client.overlap_detected
+      assert_equal 6, client.calls.size
+      # Complements overlap_detected: a truncated payload is what an interleaved
+      # write would leave behind if the overlap itself went unobserved.
+      assert client.calls.all? { |raw| JSON.parse(raw).key?("op") }, "no payload may be cut in half"
+    end
+
+    should "C-3.4 / FR-003: close the socket under the same mutex that serializes sends" do
+      ws = mock("ws")
+      ws.expects(:close)
+      @adapter.instance_variable_set(:@ws, ws)
+      mutex = @adapter.instance_variable_get(:@send_mutex)
+      mutex.expects(:synchronize).yields
+
+      @adapter.send(:close_socket)
+
+      assert_nil @adapter.instance_variable_get(:@ws)
+    end
+
+    should "FR-002: have no unserialized send path left" do
+      assert_not @adapter.respond_to?(:send_json, true),
+                 "send_json bypassed the send mutex and must be gone"
     end
   end
 

@@ -54,8 +54,6 @@ module RedmineAiHelper
         GATEWAY_QUERY_STRING = "v=10&encoding=json"
         # Open/read timeout for every REST call (contract: 10 seconds).
         HTTP_TIMEOUT_SECONDS = 10
-        # Upper bound of the exponential reconnect backoff.
-        MAX_BACKOFF_SECONDS = 60
         # Replies longer than this are split before posting (Discord's hard
         # limit is 2,000; 1,900 leaves headroom).
         MAX_MESSAGE_LENGTH = 1900
@@ -72,6 +70,13 @@ module RedmineAiHelper
         # Poll interval while waiting for the Hello opcode that carries the
         # real heartbeat interval.
         HELLO_WAIT_SECONDS = 1
+        # The connection counts as dead once nothing has been received for
+        # this multiple of the announced heartbeat interval. 1.5 tolerates one
+        # completely missed heartbeat round trip without tearing down a
+        # healthy connection, and still detects silence within about 61.9
+        # seconds at Discord's current interval of 41.25 seconds (research.md
+        # R-004).
+        RECEIVE_TIMEOUT_FACTOR = 1.5
         # Channel types that are threads (announcement, public, private).
         THREAD_CHANNEL_TYPES = [ 10, 11, 12 ].freeze
         # Message types this integration reacts to: DEFAULT and REPLY.
@@ -132,22 +137,19 @@ module RedmineAiHelper
 
         def initialize
           super
-          @stopped = false
           @reconnect_requested = false
           @connected = false
-          @backoff = 1
-          @heartbeat_acked = true
           @reply_targets = {}
         end
 
         # Connects to the Discord gateway and blocks while receiving events.
-        # Reconnects on Reconnect/Invalid Session opcodes, on missed heartbeat
-        # acks (zombie connection), on socket errors and on clean closes that
-        # never reached READY (all with exponential backoff). Authentication
+        # Reconnects on Reconnect/Invalid Session opcodes, on receive
+        # inactivity, on socket errors and on clean closes that never reached
+        # READY (the last two with exponential backoff). Authentication
         # failures (REST 401, close 4004/4013/4014) terminate without retry.
         # @return [void]
         def start
-          @stopped = false
+          clear_stop_flag
           @bot_user_id = fetch_bot_user_id
           ai_helper_logger.info "discord: starting gateway connection (bot user #{@bot_user_id})"
           until stopped?
@@ -170,34 +172,33 @@ module RedmineAiHelper
           ai_helper_logger.info "discord: adapter stopped"
         end
 
-        # Closes the connection and lets #start return.
-        # @return [void]
-        def stop
-          @stopped = true
-          @connection_ended&.push(true)
-          close_socket
-        end
-
         # Whether READY has been received on the current socket.
         # @return [Boolean]
         def connected?
           @connected
         end
 
-        # Handles one raw gateway payload (JSON text frame).
+        # Handles one raw gateway payload (JSON text frame). Answers go to
+        # +client+, the connection the payload arrived on, never to @ws: the
+        # first frame of a connection is Hello, and @ws is still nil while it
+        # is being handled (INV-6).
+        # @param client [WebSocket::Client::Simple::Client] the connection the payload arrived on
         # @param raw [String] the raw JSON payload
         # @return [void]
-        def handle_gateway_message(raw)
+        def handle_gateway_message(client, raw)
           payload = JSON.parse(raw)
           @last_sequence = payload["s"] if payload["s"]
           case payload["op"]
           when OP_HELLO
             @heartbeat_interval = payload.dig("d", "heartbeat_interval").to_f / 1000.0
-            send_identify
+            @next_heartbeat_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + @heartbeat_interval
+            send_identify(client)
           when OP_HEARTBEAT
-            send_heartbeat
+            send_heartbeat(client)
           when OP_HEARTBEAT_ACK
-            @heartbeat_acked = true
+            # Nothing to do: an ack matters only as a received frame, which
+            # the shared handler already recorded. Its content is unused, and
+            # the branch exists so an ack is not logged as an unknown opcode.
           when OP_RECONNECT, OP_INVALID_SESSION
             ai_helper_logger.info "discord: reconnect requested by gateway (op #{payload["op"]})"
             request_reconnect
@@ -211,17 +212,15 @@ module RedmineAiHelper
         end
 
         # Reacts to a gateway close frame, capturing fatal authentication
-        # close codes so #start can terminate without retry.
+        # close codes so #start can terminate without retry. Every other code
+        # is an ordinary close and is left to the shared implementation.
         # @param code [Integer, nil] the WebSocket close code
         # @return [void]
         def handle_close_frame(code)
-          if FATAL_CLOSE_CODES.include?(code)
-            @fatal_close = DiscordApiError.new("Discord gateway closed with fatal code #{code}")
-            ai_helper_logger.error "discord: gateway closed with fatal code #{code}"
-          else
-            ai_helper_logger.info "discord: gateway close frame received (code #{code})"
-          end
-          @connection_ended&.push(true)
+          return super unless FATAL_CLOSE_CODES.include?(code)
+
+          ai_helper_logger.error "discord: gateway closed with fatal code #{code}"
+          fatal_error!(DiscordApiError.new("Discord gateway closed with fatal code #{code}"))
         end
 
         # Posts a reply to the destination encoded in the thread_key, splitting
@@ -305,12 +304,6 @@ module RedmineAiHelper
 
         private
 
-        # Whether #stop has been called.
-        # @return [Boolean]
-        def stopped?
-          @stopped
-        end
-
         # Fetches the bot's own user id and validates the bot token.
         # @return [String]
         def fetch_bot_user_id
@@ -333,71 +326,87 @@ module RedmineAiHelper
           @reconnect_requested = false
           @connected = false
           @heartbeat_interval = nil
-          @heartbeat_acked = true
+          @next_heartbeat_at = nil
           @last_sequence = nil
           @fatal_close = nil
+          touch_received
           adapter = self
           @ws = WebSocket::Client::Simple.connect("#{url}?#{GATEWAY_QUERY_STRING}") do |ws|
-            ws.on(:message) do |msg|
-              case msg.type
-              when :text  then adapter.send(:handle_gateway_message, msg.data)
-              when :close then adapter.send(:handle_close_frame, msg.code)
-              end
-            end
+            ws.on(:message) { |msg| adapter.send(:handle_frame, ws, msg) }
             ws.on(:close) { |_error| adapter.send(:connection_ended!) }
             ws.on(:error) { |error| adapter.send(:socket_errored, error) }
           end
-          heartbeat_loop
-          raise @fatal_close if @fatal_close
+          watchdog_loop
+          raise_fatal_error!
         ensure
           close_socket
         end
 
-        # Sends heartbeats on the interval announced in Hello. A heartbeat
-        # whose ack never arrived before the next tick is a zombie connection
-        # and forces a reconnect.
-        # @return [void]
-        def heartbeat_loop
-          until stopped? || @reconnect_requested
-            wait = @heartbeat_interval || HELLO_WAIT_SECONDS
-            break if self.class.timed_queue_pop(@connection_ended, wait)
-            next if @heartbeat_interval.nil?
+        # The gateway counts as dead once nothing at all has arrived for one
+        # and a half heartbeat intervals. Before Hello announces the interval
+        # the shared default applies, which is why this is re-read on every
+        # pass of the watchdog rather than computed once.
+        # @return [Numeric] seconds of silence that end the connection
+        def receive_timeout_seconds
+          return super unless @heartbeat_interval
 
-            unless @heartbeat_acked
-              ai_helper_logger.warn "discord: heartbeat not acknowledged; reconnecting (zombie connection)"
-              request_reconnect
-              break
-            end
-            @heartbeat_acked = false
-            send_heartbeat
-          end
+          @heartbeat_interval * RECEIVE_TIMEOUT_FACTOR
+        end
+
+        # Seconds until the next heartbeat is due, or the Hello poll interval
+        # while the heartbeat interval is still unknown.
+        # @return [Numeric]
+        def next_scheduled_action_in
+          return HELLO_WAIT_SECONDS unless @heartbeat_interval
+
+          @next_heartbeat_at - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        end
+
+        # Sends the heartbeat Discord requires when its scheduled time has
+        # come. The next time is counted from now, so waking up early for the
+        # receive deadline never shifts the heartbeat rhythm (INV-7). Nothing
+        # is sent once #stop has run: @ws is read outside the send mutex, so
+        # writing during a shutdown would only produce an IOError on the socket
+        # #stop has just closed.
+        # @return [void]
+        def perform_scheduled_action
+          return if stopped?
+          return unless @heartbeat_interval
+          return if Process.clock_gettime(Process::CLOCK_MONOTONIC) < @next_heartbeat_at
+
+          # The watchdog only starts after connect returned, so @ws is set.
+          send_heartbeat(@ws)
+          @next_heartbeat_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + @heartbeat_interval
+        end
+
+        # Parses one gateway text frame.
+        # @param client [WebSocket::Client::Simple::Client] the connection the frame arrived on
+        # @param data [String] the frame payload
+        # @return [void]
+        def handle_text_frame(client, data)
+          handle_gateway_message(client, data)
         end
 
         # Sends the Identify payload. Discord closes the connection with 4014
         # when MESSAGE_CONTENT is requested but not enabled for the app.
+        # @param client [WebSocket::Client::Simple::Client] the connection to identify on
         # @return [void]
-        def send_identify
-          send_json(
+        def send_identify(client)
+          send_frame(client, {
             op: OP_IDENTIFY,
             d: {
               token: settings.bot_token,
               intents: GATEWAY_INTENTS,
               properties: { os: "linux", browser: "redmine_ai_helper", device: "redmine_ai_helper" }
             }
-          )
+          }.to_json)
         end
 
         # Sends a heartbeat carrying the last received sequence number.
+        # @param client [WebSocket::Client::Simple::Client] the connection to send on
         # @return [void]
-        def send_heartbeat
-          send_json(op: OP_HEARTBEAT, d: @last_sequence)
-        end
-
-        # Serializes and sends a gateway payload over the socket.
-        # @param payload [Hash] the gateway payload
-        # @return [void]
-        def send_json(payload)
-          @ws&.send(payload.to_json)
+        def send_heartbeat(client)
+          send_frame(client, { op: OP_HEARTBEAT, d: @last_sequence }.to_json)
         end
 
         # Dispatches a gateway dispatch event (opcode 0).
@@ -619,51 +628,6 @@ module RedmineAiHelper
           else
             [ thread_key.split(":", 2).last, nil ]
           end
-        end
-
-        # Asks the receive loop to end so #start reconnects with a fresh URL.
-        # @return [void]
-        def request_reconnect
-          @reconnect_requested = true
-          @connection_ended&.push(true)
-        end
-
-        # The socket was closed by the remote side.
-        # @return [void]
-        def connection_ended!
-          @connection_ended&.push(true)
-        end
-
-        # A socket error occurred; end the connection so #start can retry.
-        # @param error [Exception] the socket error
-        # @return [void]
-        def socket_errored(error)
-          ai_helper_logger.error "discord: websocket error: #{error.full_message}"
-          @connection_ended&.push(true)
-        end
-
-        # Closes the socket, ignoring the usual close-time IO errors.
-        # @return [void]
-        def close_socket
-          socket = @ws
-          @ws = nil
-          socket&.close
-        rescue IOError, SystemCallError => e
-          ai_helper_logger.debug "discord: error while closing socket: #{e.message}"
-        end
-
-        # Returns the current backoff delay and doubles it (capped).
-        # @return [Integer] seconds to wait
-        def next_backoff
-          current = @backoff
-          @backoff = [ @backoff * 2, MAX_BACKOFF_SECONDS ].min
-          current
-        end
-
-        # Resets the backoff after a successful connection.
-        # @return [void]
-        def reset_backoff
-          @backoff = 1
         end
 
         # Creates a thread from the question message. Returns the thread id
