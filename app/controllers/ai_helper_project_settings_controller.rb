@@ -8,7 +8,7 @@ class AiHelperProjectSettingsController < ApplicationController
 
   # Update AI helper project settings
   def update
-    @settings.attributes = params.require(:setting).permit(:issue_draft_instructions, :subtask_instructions, :health_report_instructions, :assignment_suggestion_instructions, :issue_summary_instructions, :lock_version)
+    @settings.attributes = params.expect(setting: [ :issue_draft_instructions, :subtask_instructions, :health_report_instructions, :assignment_suggestion_instructions, :issue_summary_instructions, :lock_version ])
     begin
       if @settings.save
         flash[:notice] = l(:notice_successful_update)
