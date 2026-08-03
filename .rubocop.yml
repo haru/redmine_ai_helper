@@ -261,6 +261,11 @@ Rails/RefuteMethods:
   Include:
     - "test/**/*"
 
+# params.expect is unavailable on the older Rails versions bundled with
+# Redmine 6.0/6.1-stable, which this plugin must still support.
+Rails/StrongParametersExpect:
+  Enabled: false
+
 # We generally prefer &&/|| but like low-precedence and/or in context
 Style/AndOr:
   Enabled: false
