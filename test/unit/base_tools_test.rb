@@ -132,6 +132,28 @@ class BaseToolsTest < ActiveSupport::TestCase
       end
     end
 
+    context "write_tool?" do
+      should "return false when write: is not specified" do
+        tool_class = @simple_tool_class.tool_classes.first
+
+        assert_equal false, tool_class.write_tool?
+      end
+
+      should "return true when write: true is specified" do
+        tool_class = Class.new(RedmineAiHelper::BaseTools) do
+          define_function :do_write, description: "Writes something", write: true do
+            property :value, type: "string", description: "value", required: true
+          end
+
+          def do_write(value:)
+            value
+          end
+        end.tool_classes.first
+
+        assert_equal true, tool_class.write_tool?
+      end
+    end
+
     context "tool execution via RubyLLM::Tool subclass" do
       should "delegate execute to the tools instance method" do
         tool_class = @simple_tool_class.tool_classes.first

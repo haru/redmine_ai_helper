@@ -37,7 +37,7 @@ class AiHelperModelProfilesController < ApplicationController
     @model_profile.safe_attributes = params[:ai_helper_model_profile]
     if @model_profile.save
       flash[:notice] = l(:notice_successful_create)
-      redirect_to ai_helper_setting_path
+      redirect_to ai_helper_setting_path(tab: "model")
     else
       render action: :new
     end
@@ -51,7 +51,7 @@ class AiHelperModelProfilesController < ApplicationController
     @model_profile.access_key = original_access_key if @model_profile.access_key == DUMMY_ACCESS_KEY
     if @model_profile.save
       flash[:notice] = l(:notice_successful_update)
-      redirect_to ai_helper_setting_path
+      redirect_to ai_helper_setting_path(tab: "model")
     else
       render action: :edit
     end
@@ -67,7 +67,7 @@ class AiHelperModelProfilesController < ApplicationController
         original = AiHelperModelProfile.find(params[:id])
         temp_profile.access_key = original.access_key
       else
-        render json: { success: false, error: l("ai_helper.model_profiles.messages.access_key_required") }, status: :unprocessable_entity
+        render json: { success: false, error: l("ai_helper.model_profiles.messages.access_key_required") }, status: :unprocessable_content
         return
       end
     end
@@ -77,7 +77,7 @@ class AiHelperModelProfilesController < ApplicationController
     unless temp_profile.llm_type.present? && temp_profile.llm_model.present? &&
            (temp_profile.access_key.present? || !temp_profile.access_key_required?) &&
            (temp_profile.base_uri.present? || !temp_profile.base_uri_required?)
-      render json: { success: false, error: l("ai_helper.model_profiles.messages.required_fields_missing") }, status: :unprocessable_entity
+      render json: { success: false, error: l("ai_helper.model_profiles.messages.required_fields_missing") }, status: :unprocessable_content
       return
     end
 
@@ -105,7 +105,7 @@ class AiHelperModelProfilesController < ApplicationController
       render json: { success: true }
     else
       render json: { success: false, errors: new_profile.errors.full_messages },
-             status: :unprocessable_entity
+             status: :unprocessable_content
     end
   end
 
@@ -113,10 +113,10 @@ class AiHelperModelProfilesController < ApplicationController
   def destroy
     if @model_profile.destroy
       flash[:notice] = l(:notice_successful_delete)
-      redirect_to ai_helper_setting_path
+      redirect_to ai_helper_setting_path(tab: "model")
     else
       flash[:error] = l(:error_failed_delete)
-      redirect_to ai_helper_setting_path
+      redirect_to ai_helper_setting_path(tab: "model")
     end
   rescue ActiveRecord::RecordNotFound
     render_404

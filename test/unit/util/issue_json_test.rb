@@ -187,6 +187,22 @@ class RedmineAiHelper::Util::IssueJsonTest < ActiveSupport::TestCase
       assert_equal source_issue.id, relation_data[:other_issue_id]
       assert_equal source_issue.subject, relation_data[:other_issue_subject]
     end
+
+    should "include custom_fields with id, name, and value" do
+      custom_field = IssueCustomField.create!(name: "Severity", field_format: "string", is_for_all: true, tracker_ids: Tracker.pluck(:id))
+      @issue.custom_field_values = { custom_field.id => "Critical" }
+      @issue.save!
+
+      issue_data = @test_class.generate_issue_data(@issue)
+
+      assert issue_data.key?(:custom_fields)
+      field_data = issue_data[:custom_fields].find { |f| f[:id] == custom_field.id }
+      assert_not_nil field_data
+      assert_equal custom_field.name, field_data[:name]
+      assert_equal "Critical", field_data[:value]
+
+      custom_field.destroy
+    end
   end
 
   class TestClass < RedmineAiHelper::BaseTools

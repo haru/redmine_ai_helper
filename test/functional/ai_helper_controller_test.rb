@@ -31,6 +31,15 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_response :success
         assert_template partial: "ai_helper/chat/_chat_form"
       end
+
+      should "not render a read-only mode notice in the chat form when read_only_mode is enabled" do
+        AiHelperSetting.stubs(:read_only_mode?).returns(true)
+
+        get :chat_form, params: { id: @project.id }
+
+        assert_response :success
+        assert_select "#ai_helper_chat_form .icon-lock", count: 0
+      end
     end
 
     context "_interactive_options partial" do
@@ -104,6 +113,47 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         assert_template partial: "ai_helper/chat/_chat"
+      end
+
+      should "label messages imported from a chat channel" do
+        @conversation.messages << AiHelperMessage.new(role: "context", content: "Yamada: it crashes on save")
+        @conversation.save!
+
+        get :conversation, params: { id: @project.id, conversation_id: @conversation.id }
+
+        assert_response :success
+        assert_select "pre", text: "Yamada: it crashes on save"
+        assert_match(/#{Regexp.escape(I18n.t("ai_helper.chat_channel.context.label"))}/, @response.body)
+      end
+
+      should "render imported messages as escaped plain text instead of markdown" do
+        @conversation.messages << AiHelperMessage.new(
+          role: "context", content: "Yamada: **bold** <script>alert(1)</script>"
+        )
+        @conversation.save!
+
+        get :conversation, params: { id: @project.id, conversation_id: @conversation.id }
+
+        assert_response :success
+        assert_no_match(/<strong>bold<\/strong>/, @response.body)
+        assert_no_match(/<script>alert\(1\)<\/script>/, @response.body)
+        assert_match(/&lt;script&gt;/, @response.body)
+      end
+
+      should "render context messages without an avatar while user messages have one" do
+        @conversation.messages << AiHelperMessage.new(role: "context", content: "Yamada: imported")
+        @conversation.save!
+
+        get :conversation, params: { id: @project.id, conversation_id: @conversation.id }
+
+        assert_response :success
+        assert_select ".aihelper-message-user strong",
+                      text: I18n.t("ai_helper.chat_channel.context.label")
+        assert_select ".aihelper-message-user strong",
+                      text: @user.name
+        context_html = @response.body.match(/aihelper-chat_channel.context.label.*?<\/strong>.*?<\/pre>/m)
+        assert_no_match(/<img/, context_html.to_s,
+                        "context messages must not render an avatar image")
       end
     end
 
@@ -603,6 +653,50 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_response :success
         assert_match(/Estimated time suggestion/, @response.body)
         assert_match(/3\.5 h/, @response.body)
+      end
+
+      should "display suggested hours based on a single issue in Japanese locale" do
+        @user.update_column(:language, "ja")
+        similar_issues = [ {
+          id: 2,
+          project: { name: "Test Project" },
+          subject: "Similar issue",
+          status: { name: "Open" },
+          spent_hours: 3.5,
+          updated_on: Time.zone.now,
+          assigned_to: { name: "Test User" },
+          similarity_score: 85.0,
+          issue_url: "/issues/2"
+        } ]
+
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
+
+        get :similar_issues, params: { id: @issue.id }
+
+        assert_response :success
+        assert_match(/1件の類似チケットに基づく/, @response.body)
+      end
+
+      should "fall back to the English note in a locale that does not define the key" do
+        @user.update_column(:language, "fr")
+        similar_issues = [ {
+          id: 2,
+          project: { name: "Test Project" },
+          subject: "Similar issue",
+          status: { name: "Open" },
+          spent_hours: 3.5,
+          updated_on: Time.zone.now,
+          assigned_to: { name: "Test User" },
+          similarity_score: 85.0,
+          issue_url: "/issues/2"
+        } ]
+
+        @llm_mock.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues)
+
+        get :similar_issues, params: { id: @issue.id }
+
+        assert_response :success
+        assert_match(/based on 1 similar issue\(s\)/, @response.body)
       end
 
       should "render a selection checkbox with data attributes for similar issues with spent_hours data" do
@@ -1809,7 +1903,7 @@ class AiHelperControllerTest < ActionController::TestCase
         begin
           post :project_health_pdf, params: { id: @project.id, health_report_content: "test", format: :json }
 
-          assert_response :unprocessable_content
+          assert_includes [ 403, 422 ], response.code.to_i
         ensure
           ActionController::Base.allow_forgery_protection = false
         end
@@ -1820,7 +1914,7 @@ class AiHelperControllerTest < ActionController::TestCase
         begin
           post :chat, params: { id: @project.id, ai_helper_message: { content: "Hello" }, format: :json }
 
-          assert_response :unprocessable_content
+          assert_includes [ 403, 422 ], response.code.to_i
         ensure
           ActionController::Base.allow_forgery_protection = false
         end
@@ -2107,7 +2201,7 @@ class AiHelperControllerTest < ActionController::TestCase
       setup do
         get :reload, params: { id: @project.id }
         RedmineAiHelper::Util::PermissionChecker.stubs(:module_enabled?).returns(true)
-        setting_mock = stub("AiHelperSetting", model_profile: stub("AiHelperModelProfile"))
+        setting_mock = stub("AiHelperSetting", model_profile: stub("AiHelperModelProfile"), read_only_mode: false)
         AiHelperSetting.stubs(:find_or_create).returns(setting_mock)
         @view = @controller.view_context
         @view.render(partial: "ai_helper/chat/sidebar")

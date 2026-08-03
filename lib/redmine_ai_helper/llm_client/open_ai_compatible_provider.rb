@@ -10,8 +10,11 @@ module RedmineAiHelper
       # Overrides base class to use provider: :openai and assume_model_exists: true.
       # @param instructions [String, nil] system prompt
       # @param tools [Array<Class>] tool classes to attach
+      # @param schema [Hash, nil] Unused: OpenAI-compatible providers have no
+      #   provider slug, so native structured output is never selected (the
+      #   keyword is accepted only for signature compatibility).
       # @return [RubyLLM::Chat]
-      def create_chat(instructions: nil, tools: [])
+      def create_chat(instructions: nil, tools: [], schema: nil) # rubocop:disable Lint/UnusedMethodArgument
         chat = context.chat(
           model: model_name,
           provider: :openai,

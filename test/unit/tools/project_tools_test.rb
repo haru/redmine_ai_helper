@@ -197,6 +197,22 @@ class ProjectToolsTest < ActiveSupport::TestCase
     assert_kind_of Array, response[:subprojects]
   end
 
+  def test_read_project_includes_custom_fields
+    project = Project.find(1)
+    custom_field = ProjectCustomField.create!(name: "Contract Type", field_format: "string", is_for_all: true)
+    project.custom_field_values = { custom_field.id => "Enterprise" }
+    project.save!
+
+    response = @provider.read_project(project_id: project.id)
+
+    assert response.key?(:custom_fields)
+    field_data = response[:custom_fields].find { |f| f[:id] == custom_field.id }
+    assert_equal custom_field.name, field_data[:name]
+    assert_equal "Enterprise", field_data[:value]
+
+    custom_field.destroy
+  end
+
   def test_project_members_permission_check
     project = Project.find(1)
     User.current = User.find(6) # User without permission

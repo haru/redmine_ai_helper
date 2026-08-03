@@ -8,7 +8,7 @@
           <span></span>
         </span>
         <span class="aihelper-title">
-          <%= t(:label_ai_helper) %>
+          <%= t(:label_ai_helper) %><%= t(:label_ai_helper_read_only_suffix) if AiHelperSetting.read_only_mode? %>
         </span>
         <span class="aihelper-arrow-button">
           <span class="aihelper-arrow-container">

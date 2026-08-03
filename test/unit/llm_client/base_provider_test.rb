@@ -407,6 +407,108 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
       end
     end
 
+    context "supports_structured_output?" do
+      should "return false when ruby_llm_provider_slug is nil" do
+        assert_equal false, @provider.supports_structured_output?
+      end
+
+      should "return false for AzureOpenAiProvider (slug nil)" do
+        azure_profile = AiHelperModelProfile.create!(
+          name: "Azure SO", llm_type: "AzureOpenAi", llm_model: "gpt-4o",
+          access_key: "k", base_uri: "https://x.azure.com"
+        )
+        provider = RedmineAiHelper::LlmClient::AzureOpenAiProvider.new(model_profile: azure_profile)
+
+        assert_equal false, provider.supports_structured_output?
+      ensure
+        azure_profile&.destroy
+      end
+
+      should "return false for OpenAiCompatibleProvider (slug nil)" do
+        compatible_profile = AiHelperModelProfile.create!(
+          name: "Compat SO", llm_type: "OpenAICompatible", llm_model: "m",
+          access_key: "k", base_uri: "https://x.com"
+        )
+        provider = RedmineAiHelper::LlmClient::OpenAiCompatibleProvider.new(model_profile: compatible_profile)
+
+        assert_equal false, provider.supports_structured_output?
+      ensure
+        compatible_profile&.destroy
+      end
+
+      context "with a provider that has a ruby_llm_provider_slug" do
+        setup do
+          @so_model_id = "so-test-model-001"
+          @so_profile = AiHelperModelProfile.create!(
+            name: "SO Profile", llm_type: "OpenAI", llm_model: @so_model_id, access_key: "k"
+          )
+          @so_provider = FakeOpenAiProvider.new(model_profile: @so_profile)
+        end
+
+        teardown do
+          @so_profile.destroy
+          RubyLLM.models.instance_variable_get(:@models).reject! { |m| m.id == @so_model_id }
+        end
+
+        should "return false when model is not in registry" do
+          assert_equal false, @so_provider.supports_structured_output?
+        end
+
+        should "return the model structured_output? value when registered as capable" do
+          capable = RubyLLM::Model::Info.new(
+            id: @so_model_id, provider: "openai", name: "Capable", capabilities: %w[structured_output]
+          )
+          RubyLLM.models.instance_variable_get(:@models) << capable
+
+          assert_equal true, @so_provider.supports_structured_output?
+        end
+
+        should "return false when registered model lacks structured_output capability" do
+          incapable = RubyLLM::Model::Info.new(
+            id: @so_model_id, provider: "openai", name: "Incapable", capabilities: %w[streaming]
+          )
+          RubyLLM.models.instance_variable_get(:@models) << incapable
+
+          assert_equal false, @so_provider.supports_structured_output?
+        end
+
+        should "return false when the registry lookup raises an error" do
+          RubyLLM.models.stubs(:by_provider).raises(StandardError.new("registry unavailable"))
+
+          assert_equal false, @so_provider.supports_structured_output?
+        end
+      end
+    end
+
+    context "create_chat with schema" do
+      should "apply with_schema when schema is provided" do
+        mock_context = mock("RubyLLM::Context")
+        mock_chat = mock("RubyLLM::Chat")
+        mock_chat.stubs(:with_temperature)
+        schema_payload = { name: "response", schema: { "type" => "object" }, strict: false }
+        mock_chat.expects(:with_schema).with(schema_payload).returns(mock_chat)
+
+        mock_context.expects(:chat).with(model: @setting.model_profile.llm_model).returns(mock_chat)
+        @provider.expects(:build_context).returns(mock_context)
+
+        chat = @provider.create_chat(schema: schema_payload)
+
+        assert_equal mock_chat, chat
+      end
+
+      should "not call with_schema when schema is nil (existing behavior)" do
+        mock_context = mock("RubyLLM::Context")
+        mock_chat = mock("RubyLLM::Chat")
+        mock_chat.stubs(:with_temperature)
+        mock_chat.expects(:with_schema).never
+
+        mock_context.expects(:chat).with(model: @setting.model_profile.llm_model).returns(mock_chat)
+        @provider.expects(:build_context).returns(mock_context)
+
+        @provider.create_chat
+      end
+    end
+
     context "apply_user_identifier" do
       setup do
         @original_send_user_id = @setting.send_user_id_enabled

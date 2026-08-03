@@ -6,6 +6,7 @@ en:
   label_ai_helper_custom_command_hint: "Type '/' to use custom commands."
   label_ai_helper_start_new_chat: "Start a new chat"
   label_ai_helper_free_input_option: "Other (type yourself)"
+  label_ai_helper_read_only_suffix: " (Read-only)"
   ai_helper_summary: "Summarize with AI Helper"
   ai_helper_similar_issues: "Find Similar Issues with AI Helper"
   ai_helper_find_similar_issues: "Find Similar Issues"
@@ -14,9 +15,7 @@ en:
   ai_helper_suggested_hours: "Estimated time suggestion"
   ai_helper_apply_suggested_hours: "Apply to this issue's estimated time"
   ai_helper_effort_select_all: "Select all effort hours"
-  ai_helper_suggested_hours_note:
-    one: "based on %{count} similar issue"
-    other: "based on %{count} similar issues"
+  ai_helper_suggested_hours_note: "based on %{count} similar issue(s)"
   ai_helper_scope_current_project: "Current project"
   ai_helper_scope_with_subprojects: "Include subprojects"
   ai_helper_scope_all_projects: "All projects"
@@ -33,6 +32,39 @@ en:
   label_ai_helper_report_detail_mobile: "Report Detail"
   label_ai_helper_close_detail: "Close Detail"
   ai_helper:
+    settings:
+      tab_general: "General"
+      tab_model: "Model"
+      tab_vector: "Vector search"
+      tab_channels: "Chat integrations"
+    chat_channel:
+      adapters:
+        slack: "Slack"
+        discord: "Discord"
+      settings:
+        enabled: "Enable"
+        app_token: "App Token"
+        bot_token: "Bot Token"
+        redmine_user: "Execution account"
+        redmine_user_info: "All questions from the chat tool are processed with this Redmine user's permissions. Restrict this account's roles to limit what the gateway can do."
+        default_project: "Default project"
+        bindings: "Channel bindings"
+        adapter: "Chat tool"
+        channel_id: "Channel ID"
+        channel_name: "Channel name"
+        add_binding: "Add binding"
+        restart_notice: "You need to restart the chat gateway for setting changes to take effect"
+        close_help: "Close help"
+      errors:
+        service_account_not_configured: "No active execution account is configured for this chat integration, so the request could not be processed. Please ask your administrator to configure the execution account."
+        service_account_unavailable: "The configured execution account has been deleted or deactivated, so the request could not be processed. Please ask your administrator to reconfigure the execution account."
+        default_project_not_configured: "No default project is configured for this chat integration. Please ask your administrator to configure it."
+        module_disabled: "The AI helper module is disabled for the associated project."
+        processing_failed: "An error occurred while generating the answer. Please check the AI helper log for details."
+        history_unavailable: "The recent messages of this conversation could not be retrieved, so the answer below does not take them into account."
+        empty_answer: "No answer could be provided."
+      context:
+        label: "Imported from the chat channel"
     notice_sub_issues_added: "Sub-issues have been added"
     error_invalid_assignee: "Invalid assignee for '%{subject}' - user is not authorized for this tracker"
     error_empty_issue_summary: "The AI model returned an empty summary. This can happen if the model runs out of tokens while reasoning; consider increasing max_tokens in the model profile."
@@ -218,6 +250,14 @@ en:
         name_duplicate: "Command name is already in use"
         project_required: "Project commands require a project"
   activerecord:
+    errors:
+      models:
+        ai_helper_chat_adapter_setting:
+          attributes:
+            redmine_user_name:
+              invalid: "does not match any user"
+            default_project_id:
+              blank: "can't be blank"
     models:
       ai_helper_model_profile: "Model Profile"
       ai_helper_setting: "AI Helper Setting"
@@ -253,6 +293,8 @@ en:
         mcp_server_enabled: "Enable MCP server"
         send_user_id_enabled: "Send user ID to LLM"
         send_user_id_enabled_description: "When enabled, the internal Redmine user ID is sent to the LLM provider. This allows per-user statistics tracking downstream (e.g. LiteLLM). Consider privacy implications before enabling."
+        read_only_mode: "Read-only mode"
+        read_only_mode_description: "When enabled, the AI Helper chat cannot create, update, or delete any data (issues, wiki pages, comments, etc.). External MCP server integration is also disabled."
       ai_helper_project_setting:
         issue_draft_instructions: "Instructions for issue comment generation"
         subtask_instructions: "Instructions for subtask generation"
@@ -266,5 +308,7 @@ en:
         prompt: "Prompt"
         description: "Description"
         user_scope: "Scope"
+      ai_helper_chat_adapter_setting:
+        default_project_id: "Default project"
 
   field_id: "ID"

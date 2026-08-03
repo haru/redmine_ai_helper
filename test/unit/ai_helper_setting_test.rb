@@ -273,4 +273,26 @@ class AiHelperSettingTest < ActiveSupport::TestCase
       assert_equal true, AiHelperSetting.send_user_id_enabled?
     end
   end
+
+  # ─── read_only_mode ────────────────────────────────────────────
+
+  context "read_only_mode" do
+    should "default to false" do
+      assert_equal false, @setting.read_only_mode
+    end
+  end
+
+  context "class method read_only_mode?" do
+    should "return false when read_only_mode is false" do
+      @setting.update!(read_only_mode: false)
+
+      assert_equal false, AiHelperSetting.read_only_mode?
+    end
+
+    should "return true when read_only_mode is true" do
+      @setting.update!(read_only_mode: true)
+
+      assert_equal true, AiHelperSetting.read_only_mode?
+    end
+  end
 end

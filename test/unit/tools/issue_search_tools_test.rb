@@ -235,6 +235,149 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
     end
   end
 
+  context "search_issues sort" do
+    setup do
+      @project = Project.find(1)
+      @tracker = Tracker.find(1)
+      @other_tracker = Tracker.find(2)
+      @user = User.find(2)
+      @previous_user = User.current
+      User.current = @user
+
+      # due_date/start_date/done_ratio must be set at creation time: update_column silently
+      # no-ops for these attributes (Issue overrides their accessors), so it can't be used to
+      # backfill them after the fact.
+      @issue_a = Issue.create!(
+        project: @project, tracker: @tracker, subject: "Sort Issue A",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first,
+        start_date: Date.current - 3, due_date: Date.current + 1, done_ratio: 0
+      )
+      @issue_b = Issue.create!(
+        project: @project, tracker: @tracker, subject: "Sort Issue B",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first,
+        start_date: Date.current - 2, due_date: Date.current + 2, done_ratio: 40
+      )
+      @issue_c = Issue.create!(
+        project: @project, tracker: @other_tracker, subject: "Sort Issue C",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first,
+        start_date: Date.current - 1, due_date: Date.current + 3, done_ratio: 80
+      )
+
+      # Issue#create! bumps lock_version via an internal callback save without syncing the
+      # in-memory attribute, so update_column's optimistic-locking WHERE clause matches 0 rows
+      # and silently no-ops (mysql2/postgresql) unless we reload to pick up the real lock_version.
+      [ @issue_a, @issue_b, @issue_c ].each(&:reload)
+
+      # Force a deterministic A < B < C ordering for created_on/updated_on too.
+      # id already ascends A < B < C by creation order.
+      base_time = Time.current
+      @issue_a.update_column(:created_on, base_time - 3.hours)
+      @issue_a.update_column(:updated_on, base_time - 3.hours)
+      @issue_b.update_column(:created_on, base_time - 2.hours)
+      @issue_b.update_column(:updated_on, base_time - 2.hours)
+      @issue_c.update_column(:created_on, base_time - 1.hour)
+      @issue_c.update_column(:updated_on, base_time - 1.hour)
+    end
+
+    teardown do
+      User.current = @previous_user
+      [ @issue_a, @issue_b, @issue_c ].each { |i| i&.destroy }
+    end
+
+    # C1
+    should "default to id descending order without error when sort is omitted" do
+      result = @provider.search_issues(project_id: @project.id)
+
+      ids = result[:issues].map { |i| i[:id] }
+      assert_equal ids.sort.reverse, ids
+    end
+
+    # C2
+    should "sort by created_on descending when direction is omitted" do
+      result = @provider.search_issues(project_id: @project.id, sort: { field: "created_on" })
+
+      our_ids = result[:issues].map { |i| i[:id] }.select { |id| [ @issue_a.id, @issue_b.id, @issue_c.id ].include?(id) }
+      assert_equal [ @issue_c.id, @issue_b.id, @issue_a.id ], our_ids
+    end
+
+    # C3
+    should "sort by updated_on ascending when direction is asc" do
+      result = @provider.search_issues(project_id: @project.id, sort: { field: "updated_on", direction: "asc" })
+
+      our_ids = result[:issues].map { |i| i[:id] }.select { |id| [ @issue_a.id, @issue_b.id, @issue_c.id ].include?(id) }
+      assert_equal [ @issue_a.id, @issue_b.id, @issue_c.id ], our_ids
+    end
+
+    # C4
+    should "apply sort to filtered results without breaking limit or visibility" do
+      # Make updated_on intentionally *not* correlate with id: the older issue (A) gets the
+      # newer updated_on. This way a "updated_on desc" result of [A, B] can only happen if the
+      # sort is actually applied in the filtered/query-builder path; if sort were ignored it would
+      # fall back to id desc and yield [B, A], failing the assertion below.
+      now = Time.current
+      @issue_a.update_column(:updated_on, now)
+      @issue_b.update_column(:updated_on, now - 1.hour)
+
+      result = @provider.search_issues(
+        project_id: @project.id,
+        fields: [ { field_name: "tracker_id", operator: "=", values: [ @tracker.id.to_s ] } ],
+        sort: { field: "updated_on", direction: "desc" }
+      )
+
+      returned_ids = result[:issues].map { |i| i[:id] }
+      assert_includes returned_ids, @issue_a.id
+      assert_includes returned_ids, @issue_b.id
+      assert_not_includes returned_ids, @issue_c.id, "issue with a different tracker must not be included"
+
+      our_ids = returned_ids.select { |id| [ @issue_a.id, @issue_b.id ].include?(id) }
+      assert_equal [ @issue_a.id, @issue_b.id ], our_ids
+    end
+
+    # C8
+    RedmineAiHelper::Tools::IssueSearchTools::SUPPORTED_SORT_FIELDS.each do |sort_field|
+      should "sort by #{sort_field} ascending and descending" do
+        asc_result = @provider.search_issues(project_id: @project.id, sort: { field: sort_field, direction: "asc" })
+        asc_ids = asc_result[:issues].map { |i| i[:id] }.select { |id| [ @issue_a.id, @issue_b.id, @issue_c.id ].include?(id) }
+        assert_equal [ @issue_a.id, @issue_b.id, @issue_c.id ], asc_ids
+
+        desc_result = @provider.search_issues(project_id: @project.id, sort: { field: sort_field, direction: "desc" })
+        desc_ids = desc_result[:issues].map { |i| i[:id] }.select { |id| [ @issue_a.id, @issue_b.id, @issue_c.id ].include?(id) }
+        assert_equal [ @issue_c.id, @issue_b.id, @issue_a.id ], desc_ids
+      end
+    end
+
+    # C5
+    should "raise a clear error listing supported fields when field is unsupported" do
+      error = assert_raises(RuntimeError) do
+        @provider.search_issues(project_id: @project.id, sort: { field: "assigned_to" })
+      end
+
+      assert_match(/assigned_to/, error.message)
+      %w[id created_on updated_on due_date start_date done_ratio].each do |field|
+        assert_match(/#{field}/, error.message)
+      end
+    end
+
+    # C6
+    should "raise a clear error when field is missing from sort" do
+      error = assert_raises(RuntimeError) do
+        @provider.search_issues(project_id: @project.id, sort: { direction: "asc" })
+      end
+
+      assert_match(/field/i, error.message)
+    end
+
+    # C7
+    should "raise a clear error when direction is invalid" do
+      error = assert_raises(RuntimeError) do
+        @provider.search_issues(project_id: @project.id, sort: { field: "id", direction: "sideways" })
+      end
+
+      assert_match(/asc/i, error.message)
+      assert_match(/desc/i, error.message)
+    end
+  end
+
   context "validate_search_params" do
     # T003
     context "when fields is nil" do

@@ -96,6 +96,7 @@ Follow TDD: write tests BEFORE implementing features.
 - If you believe the design has issues, **ASK THE USER FIRST** before implementing differently
 
 ## Commit & Pull Request Guidelines
+- **NEVER commit or push without explicit user permission** — always ask first
 - **Commit messages**: Concise, imperative, English (e.g., "Add health report history actions")
 - **PR body**: Summarize change set, list commands/tests executed, reference related Redmine issues
 - **UI changes**: Include screenshots
@@ -175,9 +176,3 @@ These rules apply only inside `/speckit.*` workflows. Conversational
 replies outside SDD steps are not affected.
 
 <!-- END token-budget concise-mode -->
-
-<!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan:
-specs/022-vector-project-selection/plan.md
-<!-- SPECKIT END -->

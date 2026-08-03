@@ -81,19 +81,13 @@ module RedmineAiHelper
         }
 
         prompt_text = prompt.format(
-          format_instructions: RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(json_schema)
+          format_instructions: format_instructions_for(json_schema)
         )
 
         newmessages = messages.dup
         newmessages << { role: "user", content: prompt_text }
         langfuse.create_span(name: "goal_generation", input: prompt_text)
-        json = chat(newmessages)
-        fixed_json = RedmineAiHelper::Util::StructuredOutputHelper.parse(
-          response: json,
-          json_schema: json_schema,
-          chat_method: method(:chat),
-          messages: newmessages
-        )
+        fixed_json = structured_chat(newmessages, json_schema: json_schema)
         langfuse.finish_current_span(output: fixed_json)
         fixed_json
       end
@@ -193,7 +187,7 @@ module RedmineAiHelper
         prompt_text = prompt.format(
           goal: goal,
           agent_list: agent_list_string,
-          format_instructions: RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(json_schema),
+          format_instructions: format_instructions_for(json_schema),
           json_examples: json_examples,
           lang: I18n.locale.to_s
         )
@@ -203,13 +197,7 @@ module RedmineAiHelper
         newmessages = messages.dup
         newmessages << { role: "user", content: prompt_text }
         langfuse.create_span(name: "steps_generation", input: prompt_text)
-        json = chat(newmessages)
-        fixed_json = RedmineAiHelper::Util::StructuredOutputHelper.parse(
-          response: json,
-          json_schema: json_schema,
-          chat_method: method(:chat),
-          messages: newmessages
-        )
+        fixed_json = structured_chat(newmessages, json_schema: json_schema)
         langfuse.finish_current_span(output: fixed_json)
         fixed_json
       end

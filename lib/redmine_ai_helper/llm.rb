@@ -119,7 +119,7 @@ module RedmineAiHelper
         langfuse.flush(output: sub_issues.inspect)
       rescue => e
         ai_helper_logger.error "error: #{e.full_message}"
-        throw e
+        raise
       end
       ai_helper_logger.info "sub issues: #{sub_issues.inspect}"
       sub_issues

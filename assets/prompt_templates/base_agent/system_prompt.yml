@@ -5,6 +5,7 @@ input_variables:
   - time
   - backstory
   - lang
+  - read_only_notice
 template: |-
   You are an agent of the RedmineAIHelper plugin.
   The RedmineAIHelper plugin answers questions from Redmine users about Redmine features, projects, issues, and more.
@@ -26,3 +27,4 @@ template: |-
 
   Your backstory is as follows.
   {backstory}
+  {read_only_notice}

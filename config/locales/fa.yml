@@ -82,3 +82,5 @@ fa:
         vector_search_api_key: "کلید API"
         embedding_model: "مدل embedding"
         dimension: "بعد (Dimension)"
+        read_only_mode: "Read-only mode"
+        read_only_mode_description: "When enabled, the AI Helper chat cannot create, update, or delete any data (issues, wiki pages, comments, etc.). External MCP server integration is also disabled."

@@ -17,6 +17,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
     @mock_ruby_llm_chat.stubs(:on_end_message).returns(@mock_ruby_llm_chat)
     @mock_ruby_llm_chat.stubs(:add_message)
     @mock_llm_provider.stubs(:create_chat).returns(@mock_ruby_llm_chat)
+    @mock_llm_provider.stubs(:supports_structured_output?).returns(false)
 
     RedmineAiHelper::LlmProvider.stubs(:get_llm_provider).returns(@mock_llm_provider)
 
@@ -57,11 +58,33 @@ class LeaderAgentTest < ActiveSupport::TestCase
       assert_equal "test goal", goal["goal"]
     end
 
+    context "structured_chat routing (US1)" do
+      should "route generate_goal through structured_chat" do
+        @agent.expects(:structured_chat).with(anything, json_schema: anything).returns(
+          { "goal" => "routed goal", "generate_steps_required" => false }
+        )
+
+        goal = @agent.generate_goal(@messages)
+
+        assert_equal "routed goal", goal["goal"]
+      end
+
+      should "route generate_steps through structured_chat" do
+        @agent.expects(:structured_chat).with(anything, json_schema: anything).returns(
+          { "steps" => [ { "agent" => "wiki_agent", "step" => "do x", "description_for_human" => "Doing x...", "use_think_model" => true } ] }
+        )
+
+        steps = @agent.generate_steps("goal", @messages)
+
+        assert_kind_of Array, steps["steps"]
+      end
+    end
+
     should "generate steps correctly" do
       steps_json = {
         "steps" => [
-          { "agent" => "project_agent", "step" => "my_projectのIDを教えてください", "description_for_human" => "Retrieving project information..." },
-          { "agent" => "project_agent", "step" => "my_projectの情報を取得してください", "description_for_human" => "Getting project details..." }
+          { "agent" => "project_agent", "step" => "my_projectのIDを教えてください", "description_for_human" => "Retrieving project information...", "use_think_model" => false },
+          { "agent" => "project_agent", "step" => "my_projectの情報を取得してください", "description_for_human" => "Getting project details...", "use_think_model" => false }
         ]
       }.to_json
       mock_response = mock("Response")

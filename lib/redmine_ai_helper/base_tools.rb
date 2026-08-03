@@ -46,8 +46,10 @@ module RedmineAiHelper
       # Define a function using a DSL that internally generates a RubyLLM::Tool subclass.
       # @param name [Symbol] function name (must match an instance method on this class)
       # @param description [String] human-readable description of the function
+      # @param write [Boolean] whether the function writes/modifies data. Write tools are
+      #   excluded from tool provisioning when read-only mode is enabled.
       # @param block [Proc] block containing property/item definitions
-      def define_function(name, description:, &block)
+      def define_function(name, description:, write: false, &block)
         tools_class = self
         func_name = name.to_sym
 
@@ -76,6 +78,7 @@ module RedmineAiHelper
         tool_class_name = "#{tools_class.name || "AnonymousTools"}::#{func_name.to_s.camelize}"
         tool_class.define_singleton_method(:name) { tool_class_name }
         tool_class.define_singleton_method(:to_s) { tool_class_name }
+        tool_class.define_singleton_method(:write_tool?) { write }
 
         # Register the tool class idempotently: if the same class body is evaluated
         # more than once (e.g. a tool file is both manually required and autoloaded,
