@@ -214,6 +214,71 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       assert_operator result[:total_count], :>=, 10
     end
 
+    should "search across all projects when project_id is omitted" do
+      other_project = Project.find(2)
+      issue_in_project_1 = Issue.create!(
+        project: @project, tracker: @tracker, subject: "Global search issue in project 1",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first
+      )
+      issue_in_project_2 = Issue.create!(
+        project: other_project, tracker: other_project.trackers.first || @tracker,
+        subject: "Global search issue in project 2",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first
+      )
+
+      result = @provider.search_issues
+
+      ids = result[:issues].map { |i| i[:id] }
+      assert_includes ids, issue_in_project_1.id
+      assert_includes ids, issue_in_project_2.id
+    ensure
+      issue_in_project_1&.destroy
+      issue_in_project_2&.destroy
+    end
+
+    should "only return globally visible issues to current user when project_id is omitted" do
+      private_tracker = Tracker.create!(name: "PrivateTracker#{Time.now.to_i}#{rand(10000)}", default_status: IssueStatus.first)
+      private_project = Project.create!(
+        name: "Private Test",
+        identifier: "private-test-#{Time.now.to_i}-#{rand(10000)}",
+        is_public: false
+      )
+      unless private_project.trackers.include?(private_tracker)
+        private_project.trackers << private_tracker
+      end
+      private_issue = Issue.create!(
+        project: private_project, tracker: private_tracker, subject: "Private Global Issue",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first
+      )
+
+      User.current = User.anonymous
+      result = @provider.search_issues
+
+      ids = result[:issues].map { |i| i[:id] }
+      assert_not_includes ids, private_issue.id
+    ensure
+      private_issue&.destroy
+      private_project&.destroy
+      private_tracker&.destroy
+    end
+
+    should "apply filter conditions across all projects when project_id is omitted" do
+      matching_issue = Issue.create!(
+        project: @project, tracker: @tracker, subject: "Filtered global issue",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first
+      )
+
+      result = @provider.search_issues(
+        fields: [ { field_name: "tracker_id", operator: "=", values: [ @tracker.id.to_s ] } ]
+      )
+
+      ids = result[:issues].map { |i| i[:id] }
+      assert_includes ids, matching_issue.id
+      assert(result[:issues].all? { |i| i[:tracker][:id] == @tracker.id })
+    ensure
+      matching_issue&.destroy
+    end
+
     should "return custom fields in correct format" do
       # Find a project with custom fields enabled
       issue = Issue.create!(

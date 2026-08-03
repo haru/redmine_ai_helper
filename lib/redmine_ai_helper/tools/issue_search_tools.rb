@@ -8,8 +8,8 @@ module RedmineAiHelper
       # related-object sorting (e.g. assignee name) is out of scope.
       SUPPORTED_SORT_FIELDS = %w[id created_on updated_on due_date start_date done_ratio].freeze
 
-      define_function :search_issues, description: "Search issues based on the filter conditions and return matching issues. For search items with '_id', specify the ID instead of the name of the search target. If you do not know the ID, you need to call capable_issue_properties in advance to obtain the ID. Default limit is 50 issues." do
-        property :project_id, type: "integer", description: "The project ID of the project to search in.", required: true
+      define_function :search_issues, description: "Search issues based on the filter conditions and return matching issues. For search items with '_id', specify the ID instead of the name of the search target. If you do not know the ID, you need to call capable_issue_properties in advance to obtain the ID. Default limit is 50 issues. Omit project_id to search across all projects visible to the current user." do
+        property :project_id, type: "integer", description: "The project ID of the project to search in. Omit to search across all projects visible to the current user.", required: false
         property :limit, type: "integer", description: "Maximum number of issues to return. Default is 50.", required: false
         property :fields, type: "array", description: "Search fields for the issue." do
           item type: "object", description: "Search field for the issue." do
@@ -80,7 +80,7 @@ module RedmineAiHelper
         end
       end
       # Search issues based on filter conditions and return matching issues
-      # @param project_id [Integer] The project ID of the project to search in.
+      # @param project_id [Integer, nil] The project ID of the project to search in. Omit to search across all projects visible to the current user.
       # @param limit [Integer] Maximum number of issues to return. Default is 50.
       # @param fields [Array] Search fields for the issue.
       # @param date_fields [Array] Date search fields for the issue.
@@ -91,7 +91,7 @@ module RedmineAiHelper
       # @param custom_fields [Array] Custom field search filters.
       # @param sort [Hash] Sort order with :field (one of SUPPORTED_SORT_FIELDS) and optional :direction (asc/desc, default desc). Defaults to id descending when omitted.
       # @return [Hash] A hash containing issues array and total_count.
-      def search_issues(project_id:, limit: 50, fields: [], date_fields: [], time_fields: [], number_fields: [], text_fields: [], status_field: [], custom_fields: [], sort: nil)
+      def search_issues(project_id: nil, limit: 50, fields: [], date_fields: [], time_fields: [], number_fields: [], text_fields: [], status_field: [], custom_fields: [], sort: nil)
         fields = deep_symbolize_array(fields)
         date_fields = deep_symbolize_array(date_fields)
         time_fields = deep_symbolize_array(time_fields)
@@ -102,15 +102,16 @@ module RedmineAiHelper
         sort = normalize_sort_param(deep_symbolize_hash(sort))
 
         limit = [ limit.to_i, 1 ].max
-        project = Project.find(project_id)
+        project = project_id.nil? ? nil : Project.find(project_id)
 
         if fields.empty? && date_fields.empty? && time_fields.empty? && number_fields.empty? && text_fields.empty? && status_field.empty? && custom_fields.empty?
-          # No conditions: return open visible issues for the project (same as Redmine default)
+          # No conditions: return open visible issues for the project (or across all projects when project_id is omitted)
+          scope = Issue.visible(User.current).open
+          scope = scope.where(project_id: project_id) if project_id
           order = sort ? { sort[:field] => sort[:direction] } : { id: :desc }
-          issues = Issue.visible(User.current).open.where(project_id: project_id)
-                        .includes(:status, :priority, :tracker, :assigned_to, :author, :custom_values)
+          issues = scope.includes(:status, :priority, :tracker, :assigned_to, :author, :custom_values)
                         .order(order).limit(limit)
-          total_count = Issue.visible(User.current).open.where(project_id: project_id).count
+          total_count = scope.count
           return { issues: format_issues(issues), total_count: total_count }
         end
 
@@ -118,9 +119,11 @@ module RedmineAiHelper
         raise(validate_errors.join("\n")) if validate_errors.length > 0
 
         params = { fields: [], operators: {}, values: {} }
-        params[:fields] << "project_id"
-        params[:operators]["project_id"] = "="
-        params[:values]["project_id"] = [ project_id.to_s ]
+        if project_id
+          params[:fields] << "project_id"
+          params[:operators]["project_id"] = "="
+          params[:values]["project_id"] = [ project_id.to_s ]
+        end
 
         fields.each do |field|
           params[:fields] << field[:field_name]
@@ -360,7 +363,7 @@ module RedmineAiHelper
         end
 
         # Execute the search and return issues
-        # @param project [Project] The project to search in
+        # @param project [Project, nil] The project to search in, or nil to search across all projects
         # @param user [User] The user to check visibility for
         # @param limit [Integer] Maximum number of issues to return
         # @return [Array<Issue>] Array of visible issues
@@ -372,7 +375,7 @@ module RedmineAiHelper
         end
 
         # Returns the total count of matching issues
-        # @param project [Project] The project to search in
+        # @param project [Project, nil] The project to search in, or nil to search across all projects
         # @param user [User] The user for visibility check
         # @return [Integer] Total count of matching issues
         def count(project, user: User.current)
@@ -383,7 +386,7 @@ module RedmineAiHelper
         private
 
         # Setup query with project and filters
-        # @param project [Project] The project to search in
+        # @param project [Project, nil] The project to search in, or nil to search across all projects
         # @param user [User] The user for visibility check
         # @return [void]
         def setup_query(project, user)
