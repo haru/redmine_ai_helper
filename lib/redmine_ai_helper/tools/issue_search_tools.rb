@@ -8,8 +8,8 @@ module RedmineAiHelper
       # related-object sorting (e.g. assignee name) is out of scope.
       SUPPORTED_SORT_FIELDS = %w[id created_on updated_on due_date start_date done_ratio].freeze
 
-      define_function :search_issues, description: "Search issues based on the filter conditions and return matching issues. For search items with '_id', specify the ID instead of the name of the search target. If you do not know the ID, you need to call capable_issue_properties in advance to obtain the ID. Default limit is 50 issues." do
-        property :project_id, type: "integer", description: "The project ID of the project to search in.", required: true
+      define_function :search_issues, description: "Search issues based on the filter conditions and return matching issues. For search items with '_id', specify the ID instead of the name of the search target. If you do not know the ID, you need to call capable_issue_properties in advance to obtain the ID. Default limit is 50 issues. Only projects with the AI Helper module enabled can be searched." do
+        property :project_id, type: "integer", description: "The project ID of the project to search in. Only projects with the AI Helper module enabled can be searched.", required: true
         property :limit, type: "integer", description: "Maximum number of issues to return. Default is 50.", required: false
         property :fields, type: "array", description: "Search fields for the issue." do
           item type: "object", description: "Search field for the issue." do
@@ -80,7 +80,7 @@ module RedmineAiHelper
         end
       end
       # Search issues based on filter conditions and return matching issues
-      # @param project_id [Integer] The project ID of the project to search in.
+      # @param project_id [Integer] The project ID of the project to search in. The project must have the ai_helper module enabled and be accessible to the current user.
       # @param limit [Integer] Maximum number of issues to return. Default is 50.
       # @param fields [Array] Search fields for the issue.
       # @param date_fields [Array] Date search fields for the issue.
@@ -91,7 +91,13 @@ module RedmineAiHelper
       # @param custom_fields [Array] Custom field search filters.
       # @param sort [Hash] Sort order with :field (one of SUPPORTED_SORT_FIELDS) and optional :direction (asc/desc, default desc). Defaults to id descending when omitted.
       # @return [Hash] A hash containing issues array and total_count.
+      # @raise [RuntimeError] if project_id is missing, or the project is not accessible with the ai_helper module enabled.
+      # @raise [ActiveRecord::RecordNotFound] if no project matches project_id.
       def search_issues(project_id:, limit: 50, fields: [], date_fields: [], time_fields: [], number_fields: [], text_fields: [], status_field: [], custom_fields: [], sort: nil)
+        # The LLM occasionally omits required parameters; without a project there is
+        # nothing to search, so fail instead of guessing a target.
+        raise "project_id is required" if project_id.nil?
+
         fields = deep_symbolize_array(fields)
         date_fields = deep_symbolize_array(date_fields)
         time_fields = deep_symbolize_array(time_fields)
@@ -103,6 +109,9 @@ module RedmineAiHelper
 
         limit = [ limit.to_i, 1 ].max
         project = Project.find(project_id)
+        # Guard both search paths at once: projects without the ai_helper module (or
+        # without access for the current user) must never expose their issues.
+        raise "ai_helper is not enabled for project: id = #{project_id}" unless accessible_project?(project)
 
         if fields.empty? && date_fields.empty? && time_fields.empty? && number_fields.empty? && text_fields.empty? && status_field.empty? && custom_fields.empty?
           # No conditions: return open visible issues for the project (same as Redmine default)
