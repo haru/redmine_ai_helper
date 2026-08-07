@@ -9,8 +9,12 @@ description: 'Compact one or more Spec-Driven Development artifacts in place to 
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: token-budget:commands/compact.md
+  source: extension:token-budget
+user-invocable: true
+disable-model-invocation: false
 ---
+
+# Token Budget Compact Skill
 
 # /speckit.token-budget.compact
 
@@ -141,7 +145,7 @@ is the deliverable.
 
 ## Scripts
 
-The helper script `.specify/scripts/bash/compact_helper.sh` provides:
+The helper script `.specify/extensions/token-budget/scripts/bash/compact_helper.sh` provides:
 - `snapshot <file>` — prints the current token count.
 - `backup_if_needed <file>` — copies to `.full.md` if no backup exists yet.
 - `summarize <before_path> <after_path>` — prints the one-line report row.

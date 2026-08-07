@@ -5,8 +5,12 @@ description: Rename non-compliant branches and spec folders to match the configu
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: branch-convention:commands/speckit.branch-convention.rename.md
+  source: extension:branch-convention
+user-invocable: true
+disable-model-invocation: false
 ---
+
+# Branch Convention Rename Skill
 
 # Rename to Convention
 

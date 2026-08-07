@@ -8,8 +8,12 @@ description: 'Show token usage for every SDD artifact in the active feature, the
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: token-budget:commands/usage.md
+  source: extension:token-budget
+user-invocable: true
+disable-model-invocation: false
 ---
+
+# Token Budget Usage Skill
 
 # /speckit.token-budget.usage
 

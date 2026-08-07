@@ -4,8 +4,12 @@ description: Set up branch and folder naming rules for the current project
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: branch-convention:commands/speckit.branch-convention.configure.md
+  source: extension:branch-convention
+user-invocable: true
+disable-model-invocation: false
 ---
+
+# Branch Convention Configure Skill
 
 # Configure Branch Convention
 
