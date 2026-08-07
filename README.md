@@ -44,6 +44,7 @@
     - [Recreating the Index](#recreating-the-index)
 - [🛠️ Build your own Agent](#️-build-your-own-agent)
 - [🪄 Langfuse integration](#-langfuse-integration)
+- [🔒 Running Without External Communication](#-running-without-external-communication)
 - [⚠️ Important Notice](#️-important-notice)
 - [🤝 Contributing](#-contributing)
   - [How to Run Tests](#how-to-run-tests)
@@ -582,6 +583,16 @@ langfuse:
   secret_key: "sk-lf-************"
   endpoint: https://us.cloud.langfuse.com # Change this to match your environment
 ```
+
+# 🔒 Running Without External Communication
+
+If you do not want the AI Helper to send anything outside your network, configure it as follows:
+
+- **LLM**: Use a locally hosted model, such as Ollama, through the OpenAI Compatible provider.
+- **Vector search**: Use a locally hosted Qdrant, together with a local embedding model.
+- **Langfuse**: Use a self-hosted Langfuse instance, or leave Langfuse unconfigured.
+- **MCP servers**: Use only MCP servers that do not communicate externally.
+- **Chat Channel Gateway**: Do not use it. It connects to Slack or Discord.
 
 # ⚠️ Important Notice
 
