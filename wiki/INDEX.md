@@ -8,6 +8,9 @@ page files, not here.
 - [Plugin Overview](./pages/plugin-overview.md) — what the plugin does and the hub linking every topic page.
 - [Multi-Agent Architecture](./pages/multi-agent-architecture.md) — request flow, LeaderAgent planning, agent auto-registration, tool system, provider layer, and streaming.
 
+## decision
+- [Agent Write-Capability Routing](./pages/agent-write-capability-routing.md) — why `can_write?`/`requires_write` guard write steps at dispatch time instead of being exposed to the router, and how skipped steps and the final-answer prompt stay consistent with what actually ran.
+
 ## component
 - [Chat Channel Gateway Architecture](./pages/chat-channel-gateway-architecture.md) — core + adapters structure, capability declaration, and gateway operational model.
 - [Chat Context Import](./pages/chat-context-import.md) — how surrounding messages are imported, cursored, persisted as `context` role, and fed to the LLM.

@@ -1,8 +1,8 @@
 ---
 title: MCP Integration
 type: component
-sources: [S002, S006, S007]
-updated: 2026-08-01
+sources: [S002, S006, S007, S016]
+updated: 2026-08-07
 ---
 
 # MCP Integration
@@ -45,6 +45,11 @@ transparent (S006). See [Multi-Agent Architecture](./multi-agent-architecture.md
 > **Read-only gotcha**: dynamically generated MCP agents are **auto-disabled
 > when `read_only_mode?` is on**, because external tools carry no granular
 > read/write classification, so the plugin cannot prove they are safe (S006).
+> For the same reason, these agents don't get the default `BaseAgent#can_write?`
+> (it depends on the same missing classification) — they override it to `true`
+> instead of guessing `false`, since read-only mode already disables the whole
+> agent above. See
+> [Agent Write-Capability Routing](./agent-write-capability-routing.md) (S016).
 
 ## Exposing Redmine as an MCP server
 
@@ -86,3 +91,5 @@ File (`analyze_content_files`), and Vector (`find_similar_issues`,
 - [Multi-Agent Architecture](./multi-agent-architecture.md) — where generated MCP
   agents plug in, and the read-only mode they respect.
 - [Plugin Overview](./plugin-overview.md)
+- [Agent Write-Capability Routing](./agent-write-capability-routing.md) —
+  why these agents override `can_write?` instead of using the default.
