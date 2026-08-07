@@ -1,22 +1,23 @@
 ---
 title: Issue AI Features
 type: component
-sources: [S014]
-updated: 2026-08-01
+sources: [S014, S017]
+updated: 2026-08-07
 ---
 
 # Issue AI Features
 
-A family of issue-centric features, mostly driven by `IssueAgent` (a
-[worker agent](./multi-agent-architecture.md)) with per-feature prompt templates
-under `assets/prompt_templates/issue_agent/` (S014).
+A family of issue-centric features, mostly driven by `IssueReadAgent`
+(renamed from `IssueAgent`, S017; a [worker agent](./multi-agent-architecture.md))
+with per-feature prompt templates under `assets/prompt_templates/issue_read_agent/`
+(S014, S017).
 
 > Provenance: DeepWiki auto-generated doc (S014); `think_chat`, `structured_chat`,
 > `find_similar_issues`, and `AiHelperSummaryCache` corroborate other pages.
 
 ## Summarization
 
-`IssueAgent#issue_summary` loads the `summary` template and passes issue data —
+`IssueReadAgent#issue_summary` loads the `summary` template and passes issue data —
 plus attachments (text, images, PDFs) as file paths — to `chat` (S014; see
 [Multi-modal File Support](./multi-modal-file-support.md)). Results are cached in
 `AiHelperSummaryCache` (`issue_cache` read, `update_issue_cache` write), checked
@@ -26,7 +27,7 @@ to *ignore meta-instructions embedded in the issue data* (S014).
 
 ## Reply drafts
 
-`IssueAgent#generate_issue_reply` injects the issue JSON plus a project's
+`IssueReadAgent#generate_issue_reply` injects the issue JSON plus a project's
 `issue_draft_instructions` (`AiHelperProjectSetting`) into the `generate_reply`
 template, and uses **`think_chat`** — the [Think Model](./think-model.md) — for
 more coherent drafts (S014).
@@ -55,7 +56,7 @@ by `similarity_score` (S014).
 
 ## Inline completion
 
-A fill-in-the-middle experience: `IssueAgent` (or
+A fill-in-the-middle experience: `IssueReadAgent` (or
 `WikiAgent#generate_wiki_completion`) fetches suggestions from the cursor's
 surrounding text via the `inline_completion` template, rendered as an overlay
 behind a transparent textarea — description and notes fields only (S014).

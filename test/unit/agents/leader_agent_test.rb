@@ -156,7 +156,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
 
     should "pass use_think_model: true for issue-answer step and false for retrieval step (US2 mixed)" do
       issue_answer_step = {
-        "agent" => "issue_agent",
+        "agent" => "issue_read_agent",
         "step" => "Write a detailed answer to Issue #42.",
         "description_for_human" => "Writing answer to Issue #42...",
         "use_think_model" => true,
@@ -174,13 +174,13 @@ class LeaderAgentTest < ActiveSupport::TestCase
       @agent.stubs(:generate_goal).returns({ "goal" => "test goal", "generate_steps_required" => true })
       @agent.stubs(:generate_steps).returns(steps_hash)
 
-      mock_issue_agent = mock("issue_agent")
-      mock_issue_agent.stubs(:add_message)
+      mock_issue_read_agent = mock("issue_read_agent")
+      mock_issue_read_agent.stubs(:add_message)
       mock_project_agent = mock("project_agent")
       mock_project_agent.stubs(:add_message)
 
       agent_list = RedmineAiHelper::AgentList.instance
-      agent_list.stubs(:get_agent_instance).with("issue_agent", anything).returns(mock_issue_agent)
+      agent_list.stubs(:get_agent_instance).with("issue_read_agent", anything).returns(mock_issue_read_agent)
       agent_list.stubs(:get_agent_instance).with("project_agent", anything).returns(mock_project_agent)
 
       mock_chat_room = mock("chat_room")
@@ -188,7 +188,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
       mock_chat_room.stubs(:share_goal)
       mock_chat_room.stubs(:messages).returns([])
       mock_chat_room.stubs(:execution_results_json).returns("[]")
-      mock_chat_room.expects(:send_task).with("leader", "issue_agent", issue_answer_step["step"], { use_think_model: true })
+      mock_chat_room.expects(:send_task).with("leader", "issue_read_agent", issue_answer_step["step"], { use_think_model: true })
       mock_chat_room.expects(:send_task).with("leader", "project_agent", retrieval_step["step"], { use_think_model: false })
 
       RedmineAiHelper::ChatRoom.stubs(:new).returns(mock_chat_room)
@@ -326,7 +326,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
     context "runtime write-capability guard (US2)" do
       should "skip send_task and record a failure when a write step is assigned to a read-only agent, and continue with later steps" do
         write_step = {
-          "agent" => "issue_agent",
+          "agent" => "issue_read_agent",
           "step" => "Create an issue titled 'Clean the air conditioner'.",
           "description_for_human" => "Creating an issue...",
           "use_think_model" => true,
@@ -344,15 +344,15 @@ class LeaderAgentTest < ActiveSupport::TestCase
         @agent.stubs(:generate_goal).returns({ "goal" => "test goal", "generate_steps_required" => true })
         @agent.stubs(:generate_steps).returns(steps_hash)
 
-        mock_issue_agent = mock("issue_agent")
-        mock_issue_agent.stubs(:add_message)
-        mock_issue_agent.stubs(:can_write?).returns(false)
+        mock_issue_read_agent = mock("issue_read_agent")
+        mock_issue_read_agent.stubs(:add_message)
+        mock_issue_read_agent.stubs(:can_write?).returns(false)
         mock_project_agent = mock("project_agent")
         mock_project_agent.stubs(:add_message)
         mock_project_agent.stubs(:can_write?).returns(false)
 
         agent_list = RedmineAiHelper::AgentList.instance
-        agent_list.stubs(:get_agent_instance).with("issue_agent", anything).returns(mock_issue_agent)
+        agent_list.stubs(:get_agent_instance).with("issue_read_agent", anything).returns(mock_issue_read_agent)
         agent_list.stubs(:get_agent_instance).with("project_agent", anything).returns(mock_project_agent)
 
         mock_chat_room = mock("chat_room")
@@ -360,7 +360,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
         mock_chat_room.stubs(:share_goal)
         mock_chat_room.stubs(:messages).returns([])
         mock_chat_room.stubs(:execution_results_json).returns("[]")
-        mock_chat_room.expects(:record_skipped_step).with(agent: "issue_agent", step: write_step["step"], error: anything)
+        mock_chat_room.expects(:record_skipped_step).with(agent: "issue_read_agent", step: write_step["step"], error: anything)
         mock_chat_room.expects(:send_task).once.with("leader", "project_agent", retrieval_step["step"], { use_think_model: false })
 
         RedmineAiHelper::ChatRoom.stubs(:new).returns(mock_chat_room)
@@ -443,14 +443,14 @@ class LeaderAgentTest < ActiveSupport::TestCase
     context "skipped steps are visible to later steps (FR-005c)" do
       should "add the unexecuted step to the shared history before the next step is dispatched" do
         write_step = {
-          "agent" => "issue_agent",
+          "agent" => "issue_read_agent",
           "step" => "Create an issue titled 'Clean the air conditioner'.",
           "description_for_human" => "Creating an issue...",
           "use_think_model" => true,
           "requires_write" => true
         }
         follow_up_step = {
-          "agent" => "issue_update_agent",
+          "agent" => "issue_write_agent",
           "step" => "Add a comment to the issue created in the previous step.",
           "description_for_human" => "Adding a comment...",
           "use_think_model" => false,
@@ -461,14 +461,14 @@ class LeaderAgentTest < ActiveSupport::TestCase
         @agent.stubs(:generate_goal).returns({ "goal" => "test goal", "generate_steps_required" => true })
         @agent.stubs(:generate_steps).returns(steps_hash)
 
-        mock_issue_agent = mock("issue_agent")
-        mock_issue_agent.stubs(:role).returns("issue_agent")
-        mock_issue_agent.stubs(:add_message)
-        mock_issue_agent.stubs(:can_write?).returns(false)
-        mock_issue_agent.expects(:perform_task).never
+        mock_issue_read_agent = mock("issue_read_agent")
+        mock_issue_read_agent.stubs(:role).returns("issue_read_agent")
+        mock_issue_read_agent.stubs(:add_message)
+        mock_issue_read_agent.stubs(:can_write?).returns(false)
+        mock_issue_read_agent.expects(:perform_task).never
 
-        mock_update_agent = mock("issue_update_agent")
-        mock_update_agent.stubs(:role).returns("issue_update_agent")
+        mock_update_agent = mock("issue_write_agent")
+        mock_update_agent.stubs(:role).returns("issue_write_agent")
         mock_update_agent.stubs(:add_message)
         mock_update_agent.stubs(:can_write?).returns(true)
         mock_update_agent.stubs(:perform_task).returns(
@@ -476,8 +476,8 @@ class LeaderAgentTest < ActiveSupport::TestCase
         )
 
         agent_list = RedmineAiHelper::AgentList.instance
-        agent_list.stubs(:get_agent_instance).with("issue_agent", anything).returns(mock_issue_agent)
-        agent_list.stubs(:get_agent_instance).with("issue_update_agent", anything).returns(mock_update_agent)
+        agent_list.stubs(:get_agent_instance).with("issue_read_agent", anything).returns(mock_issue_read_agent)
+        agent_list.stubs(:get_agent_instance).with("issue_write_agent", anything).returns(mock_update_agent)
 
         # A real ChatRoom is used here: the point of this test is what actually lands in the
         # shared message history that later agents read.
@@ -518,7 +518,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
         agent_list = RedmineAiHelper::AgentList.instance
         agent_list.stubs(:get_agent_instance).with("project_agent", anything).returns(mock_project_agent)
 
-        execution_json = '[{"agent":"issue_agent","step":"Create it.","status":"error","error":"no write capability"}]'
+        execution_json = '[{"agent":"issue_read_agent","step":"Create it.","status":"error","error":"no write capability"}]'
         mock_chat_room = mock("chat_room")
         mock_chat_room.stubs(:add_agent)
         mock_chat_room.stubs(:share_goal)

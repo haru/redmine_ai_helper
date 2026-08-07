@@ -18,9 +18,9 @@ class AgentsTest < ActiveSupport::TestCase
     end
   end
 
-  context "IssueAgent" do
+  context "IssueReadAgent" do
     setup do
-      @agent = RedmineAiHelper::Agents::IssueAgent.new({ project: Project.find(1) })
+      @agent = RedmineAiHelper::Agents::IssueReadAgent.new({ project: Project.find(1) })
     end
 
     should "return correct tool providers" do
@@ -50,9 +50,9 @@ class AgentsTest < ActiveSupport::TestCase
     end
   end
 
-  context "IssueUpdateAgent" do
+  context "IssueWriteAgent" do
     setup do
-      @agent = RedmineAiHelper::Agents::IssueUpdateAgent.new({ project: Project.find(1) })
+      @agent = RedmineAiHelper::Agents::IssueWriteAgent.new({ project: Project.find(1) })
     end
 
     should "return correct tool providers" do

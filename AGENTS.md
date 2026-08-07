@@ -114,7 +114,7 @@ Follow TDD: write tests BEFORE implementing features.
 - **Request Flow**: Controller → Llm class (creates Langfuse trace) → LeaderAgent → BaseAgent/BaseTools → RubyLLM
 - **Agent Registration**: All agents auto-register via `inherited` hook when loaded; inherit from `BaseAgent`
 - **Tool System**: Tools defined via DSL in `BaseTools` subclasses using `define_function`/`property` that generates `RubyLLM::Tool` subclasses
-- **Key Agents**: `IssueAgent`, `RepositoryAgent`, `WikiAgent`, `ProjectAgent`, `BoardAgent`, `SystemAgent`, `UserAgent`, `VersionAgent`, `DocumentationAgent`, `IssueUpdateAgent`, `LeaderAgent`, `McpAgent`
+- **Key Agents**: `IssueReadAgent`, `RepositoryAgent`, `WikiAgent`, `ProjectAgent`, `BoardAgent`, `SystemAgent`, `UserAgent`, `VersionAgent`, `DocumentationAgent`, `IssueWriteAgent`, `LeaderAgent`, `McpAgent`
 - **LLM Providers**: OpenAI, Anthropic, Gemini, Azure OpenAI, OpenAI-compatible (in `lib/redmine_ai_helper/llm_client/`)
 - **Streaming Support**: `AiHelper::Streaming` concern provides SSE streaming via `stream_llm_response`. Agents accept a `stream_proc` callback for incremental content delivery
 - **Langfuse Integration**: `LangfuseWrapper` manages traces and spans at the orchestration level. `BaseAgent#setup_langfuse_callbacks` registers `on_end_message` callbacks on `RubyLLM::Chat` instances to create Langfuse generations with token usage

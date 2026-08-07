@@ -147,7 +147,7 @@ zh:
           show: "这是版本 '%{version_name}' 的页面。版本 ID 是 %{version_id}。"
           other: "这是版本的页面。"
         other_page: "这是 %{controller_name} 的 %{action_name} 页面。"
-      issue_agent:
+      issue_read_agent:
         search_answer_instruction: "对于查找符合特定条件的多个问题的任务，例如'查找符合这些条件的问题'或'显示符合这些标准的问题'，请使用 search_issues 工具检索并返回问题列表。"
         search_answer_instruction_with_vector: "在搜索问题时，使用合适的工具：对于概念/语义搜索（例如'与异常相关的问题'、'性能问题'、'登录漏洞'），使用向量搜索 (ask_with_filter)。对于明确的过滤条件（例如'状态已关闭'、'分配给某人'、'本月更新'），使用 search_issues。"
       leader_agent:

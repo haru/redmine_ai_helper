@@ -1,15 +1,19 @@
 ---
 title: Multi-Agent Architecture
 type: concept
-sources: [S005, S008, S009, S016]
+sources: [S005, S008, S009, S016, S017]
 updated: 2026-08-07
 ---
 
 # Multi-Agent Architecture
 
 The plugin answers a chat request with a hierarchy of agents over RubyLLM: a
-`LeaderAgent` plans and routes, and specialized worker agents (IssueAgent,
-WikiAgent, …) do the domain work — all subclasses of `BaseAgent` (S005).
+`LeaderAgent` plans and routes, and specialized worker agents (IssueReadAgent,
+IssueWriteAgent, WikiAgent, …) do the domain work — all subclasses of
+`BaseAgent` (S005). `IssueReadAgent`/`IssueWriteAgent` were renamed from
+`IssueAgent`/`IssueUpdateAgent` so the read/write distinction reaches the
+router's `agent_name` field directly, not only its `backstory` prose (S017;
+see [Agent Write-Capability Routing](./agent-write-capability-routing.md)).
 
 > Provenance note: this page's structural claims come from the DeepWiki
 > auto-generated architecture doc (S005). Method *signatures* are described by

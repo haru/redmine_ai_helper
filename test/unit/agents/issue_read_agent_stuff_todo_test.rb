@@ -1,7 +1,7 @@
 require File.expand_path("../../../test_helper", __FILE__)
-require "redmine_ai_helper/agents/issue_agent"
+require "redmine_ai_helper/agents/issue_read_agent"
 
-class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
+class RedmineAiHelper::Agents::IssueReadAgentStuffTodoTest < ActiveSupport::TestCase
   fixtures :projects, :users, :issues, :issue_statuses, :trackers, :enumerations, :members, :member_roles, :roles
 
   context "suggest_stuff_todo" do
@@ -10,11 +10,11 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
       @user = User.find(2) # Normal user
       User.current = @user
       @langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: "Test input for Langfuse")
-      @agent = RedmineAiHelper::Agents::IssueAgent.new(project: @project, langfuse: @langfuse)
+      @agent = RedmineAiHelper::Agents::IssueReadAgent.new(project: @project, langfuse: @langfuse)
     end
 
     should "load stuff_todo prompt template" do
-      prompt = @agent.send(:load_prompt, "issue_agent/stuff_todo")
+      prompt = @agent.send(:load_prompt, "issue_read_agent/stuff_todo")
 
       assert_not_nil prompt
       assert_respond_to prompt, :format
@@ -22,7 +22,7 @@ class RedmineAiHelper::Agents::IssueAgentStuffTodoTest < ActiveSupport::TestCase
 
     should "load stuff_todo_ja prompt template" do
       I18n.with_locale(:ja) do
-        prompt = @agent.send(:load_prompt, "issue_agent/stuff_todo")
+        prompt = @agent.send(:load_prompt, "issue_read_agent/stuff_todo")
 
         assert_not_nil prompt
         assert_respond_to prompt, :format

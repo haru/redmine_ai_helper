@@ -6,24 +6,24 @@ module RedmineAiHelper
   module Agents
     # @!visibility private
     ROUTE_HELPERS = Rails.application.routes.url_helpers unless const_defined?(:ROUTE_HELPERS)
-    # IssueAgent is a specialized agent for handling Redmine issue-related queries.
-    class IssueAgent < RedmineAiHelper::BaseAgent
+    # IssueReadAgent is a specialized agent for handling Redmine issue-related queries.
+    class IssueReadAgent < RedmineAiHelper::BaseAgent
       include RedmineAiHelper::Util::IssueJson
       include RedmineAiHelper::Util::AttachmentFileHelper
       include ROUTE_HELPERS
 
-      # Backstory for the IssueAgent
+      # Backstory for the IssueReadAgent
       def backstory
         if AiHelperSetting.vector_search_enabled_for?(@project)
-          search_answer_instruction = I18n.t("ai_helper.prompts.issue_agent.search_answer_instruction_with_vector")
+          search_answer_instruction = I18n.t("ai_helper.prompts.issue_read_agent.search_answer_instruction_with_vector")
         else
-          search_answer_instruction = I18n.t("ai_helper.prompts.issue_agent.search_answer_instruction")
+          search_answer_instruction = I18n.t("ai_helper.prompts.issue_read_agent.search_answer_instruction")
         end
-        prompt = load_prompt("issue_agent/backstory")
+        prompt = load_prompt("issue_read_agent/backstory")
         prompt.format(issue_properties: issue_properties, search_answer_instruction: search_answer_instruction)
       end
 
-      # Returns the list of available RubyLLM::Tool subclasses for the IssueAgent.
+      # Returns the list of available RubyLLM::Tool subclasses for the IssueReadAgent.
       # @return [Array<Class>] Array of RubyLLM::Tool subclasses
       def available_tool_providers
         providers = []
@@ -46,7 +46,7 @@ module RedmineAiHelper
       def issue_summary(issue:, stream_proc: nil)
         return "Permission denied" unless issue.visible?
 
-        prompt = load_prompt("issue_agent/summary")
+        prompt = load_prompt("issue_read_agent/summary")
         issue_json = generate_issue_data(issue)
         # Convert issue data to JSON string for the prompt
         json_string = JSON.pretty_generate(issue_json)
@@ -68,7 +68,7 @@ module RedmineAiHelper
         return "Permission denied" unless issue.visible?
         return "Permission denied" unless issue.notes_addable?(User.current)
 
-        prompt = load_prompt("issue_agent/generate_reply")
+        prompt = load_prompt("issue_read_agent/generate_reply")
         project_setting = AiHelperProjectSetting.settings(issue.project)
         issue_json = generate_issue_data(issue)
         prompt_text = prompt.format(
@@ -93,7 +93,7 @@ module RedmineAiHelper
         return "Permission denied" unless issue.visible?
         return "Permission denied" unless User.current.allowed_to?(:add_issues, issue.project)
 
-        prompt = load_prompt("issue_agent/sub_issues_draft")
+        prompt = load_prompt("issue_read_agent/sub_issues_draft")
         json_schema = {
           type: "object",
           properties: {
@@ -272,7 +272,7 @@ module RedmineAiHelper
           suffix_text = (cursor_position && cursor_position < text.length) ? text[cursor_position..-1] : ""
 
           actual_context_type = context[:context_type] || context_type || "description"
-          template_name = actual_context_type == "note" ? "issue_agent/note_inline_completion" : "issue_agent/inline_completion"
+          template_name = actual_context_type == "note" ? "issue_read_agent/note_inline_completion" : "issue_read_agent/inline_completion"
 
           prompt = load_prompt(template_name)
           template_vars = build_completion_template_vars(context, actual_context_type, prefix_text, suffix_text, cursor_position)
@@ -284,7 +284,7 @@ module RedmineAiHelper
           ai_helper_logger.debug "Generated text completion: #{completion.length} characters"
           parse_completion_response(completion)
         rescue => e
-          ai_helper_logger.error "Text completion error in IssueAgent: #{e.message}"
+          ai_helper_logger.error "Text completion error in IssueReadAgent: #{e.message}"
           ai_helper_logger.error "Error backtrace: #{e.backtrace.join("\n")}"
           ""
         end
@@ -347,7 +347,7 @@ module RedmineAiHelper
         other_prioritized = prioritize_issues(other_project_issues).take(5)
 
         # Load prompt template
-        prompt = load_prompt("issue_agent/stuff_todo")
+        prompt = load_prompt("issue_read_agent/stuff_todo")
 
         # Format issues for prompt
         current_issues_text = format_issues_for_prompt(current_prioritized)

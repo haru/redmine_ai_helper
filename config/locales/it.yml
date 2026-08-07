@@ -183,7 +183,7 @@ it:
           show: "Questa è la pagina della versione '%{version_name}'. L'ID della versione è %{version_id}."
           other: "Questa è la pagina della versione."
         other_page: "Questa è la pagina %{action_name} per %{controller_name}."
-      issue_agent:
+      issue_read_agent:
         search_answer_instruction: "Per attività come la ricerca di più ticket che soddisfano determinate condizioni, ad esempio 'Trova i ticket che soddisfano queste condizioni' o 'Mostrami i ticket con questi criteri', utilizza lo strumento search_issues per recuperare e restituire un elenco di ticket."
         search_answer_instruction_with_vector: "Quando cerchi ticket, utilizza lo strumento appropriato: per ricerche concettuali/semantiche (es. 'ticket relativi a eccezioni', 'problemi di performance', 'bug di login'), usa la ricerca vettoriale (ask_with_filter). Per condizioni di filtro esplicite (es. 'stato chiuso', 'assegnato a qualcuno', 'aggiornato questo mese'), usa search_issues."
       leader_agent:

@@ -4,12 +4,12 @@ require_relative "../base_agent"
 
 module RedmineAiHelper
   module Agents
-    # IssueUpdateAgent is a specialized agent for handling Redmine issue updates.
-    class IssueUpdateAgent < RedmineAiHelper::BaseAgent
+    # IssueWriteAgent is a specialized agent for handling Redmine issue updates.
+    class IssueWriteAgent < RedmineAiHelper::BaseAgent
       # Get the agent's backstory
       # @return [String] The backstory prompt
       def backstory
-        prompt = load_prompt("issue_update_agent/backstory")
+        prompt = load_prompt("issue_write_agent/backstory")
         content = prompt.format(issue_properties: issue_properties)
         content
       end

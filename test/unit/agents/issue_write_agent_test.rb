@@ -1,15 +1,15 @@
 require File.expand_path("../../../test_helper", __FILE__)
-require "redmine_ai_helper/agents/issue_update_agent"
+require "redmine_ai_helper/agents/issue_write_agent"
 
-class RedmineAiHelper::Agents::IssueUpdateAgentTest < ActiveSupport::TestCase
+class RedmineAiHelper::Agents::IssueWriteAgentTest < ActiveSupport::TestCase
   fixtures :projects, :users, :issues, :issue_statuses, :trackers, :enumerations
 
-  context "IssueUpdateAgent" do
+  context "IssueWriteAgent" do
     setup do
       @project = Project.find(1)
       @user = User.find(1)
       @langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: "Test input for Langfuse")
-      @agent = RedmineAiHelper::Agents::IssueUpdateAgent.new(project: @project, langfuse: @langfuse)
+      @agent = RedmineAiHelper::Agents::IssueWriteAgent.new(project: @project, langfuse: @langfuse)
     end
 
     should "declare itself as the sole agent that actually creates and updates issues (US1)" do

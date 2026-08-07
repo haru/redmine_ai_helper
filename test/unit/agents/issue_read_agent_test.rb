@@ -1,16 +1,16 @@
 require File.expand_path("../../../test_helper", __FILE__)
-require "redmine_ai_helper/agents/issue_agent"
+require "redmine_ai_helper/agents/issue_read_agent"
 
-class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
+class RedmineAiHelper::Agents::IssueReadAgentTest < ActiveSupport::TestCase
   fixtures :projects, :users, :issues, :issue_statuses, :trackers, :enumerations
 
-  context "IssueAgent" do
+  context "IssueReadAgent" do
     setup do
       @project = Project.find(1)
       @user = User.find(1)
       @issue = Issue.find(1)
       @langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: "Test input for Langfuse")
-      @agent = RedmineAiHelper::Agents::IssueAgent.new(project: @project, langfuse: @langfuse)
+      @agent = RedmineAiHelper::Agents::IssueReadAgent.new(project: @project, langfuse: @langfuse)
     end
 
     should "generate backstory including issue properties" do
@@ -75,7 +75,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
       # Set up mock prompt
       mock_prompt = mock("Prompt")
       mock_prompt.stubs(:format).returns("Summarize this issue")
-      @agent.stubs(:load_prompt).with("issue_agent/summary").returns(mock_prompt)
+      @agent.stubs(:load_prompt).with("issue_read_agent/summary").returns(mock_prompt)
 
       # Mock chat method
       @agent.stubs(:chat).returns("This is a summary of the issue.")
@@ -97,7 +97,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
 
       mock_prompt = mock("Prompt")
       mock_prompt.stubs(:format).returns("Summarize this issue")
-      @agent.stubs(:load_prompt).with("issue_agent/summary").returns(mock_prompt)
+      @agent.stubs(:load_prompt).with("issue_read_agent/summary").returns(mock_prompt)
 
       file_paths = [ "/path/to/image.png" ]
       @agent.stubs(:supported_attachment_paths).with(@issue).returns(file_paths)
@@ -115,7 +115,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
 
       mock_prompt = mock("Prompt")
       mock_prompt.stubs(:format).returns("Summarize this issue")
-      @agent.stubs(:load_prompt).with("issue_agent/summary").returns(mock_prompt)
+      @agent.stubs(:load_prompt).with("issue_read_agent/summary").returns(mock_prompt)
 
       @agent.stubs(:supported_attachment_paths).with(@issue).returns([])
 
@@ -148,7 +148,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
         # Set up mock prompt
         mock_prompt = mock("Prompt")
         mock_prompt.stubs(:format).returns("Generate a reply for this issue")
-        @agent.stubs(:load_prompt).with("issue_agent/generate_reply").returns(mock_prompt)
+        @agent.stubs(:load_prompt).with("issue_read_agent/generate_reply").returns(mock_prompt)
 
         # Mock think_chat method
         @agent.stubs(:think_chat).returns("This is a generated reply.")
@@ -176,7 +176,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
           issue_draft_instructions: "Draft instructions for the issue.",
           format: Setting.text_formatting
         ).returns("Generate a reply for this issue with instructions.")
-        @agent.stubs(:load_prompt).with("issue_agent/generate_reply").returns(mock_prompt)
+        @agent.stubs(:load_prompt).with("issue_read_agent/generate_reply").returns(mock_prompt)
 
         @agent.stubs(:think_chat).returns("This is a generated reply.")
 
@@ -190,7 +190,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
 
         mock_prompt = mock("Prompt")
         mock_prompt.stubs(:format).returns("Generate a reply for this issue")
-        @agent.stubs(:load_prompt).with("issue_agent/generate_reply").returns(mock_prompt)
+        @agent.stubs(:load_prompt).with("issue_read_agent/generate_reply").returns(mock_prompt)
 
         file_paths = [ "/path/to/file1.pdf", "/path/to/file2.png" ]
         @agent.stubs(:supported_attachment_paths).with(@issue).returns(file_paths)
@@ -212,7 +212,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
 
         mock_prompt = mock("Prompt")
         mock_prompt.stubs(:format).returns("Generate a reply for this issue")
-        @agent.stubs(:load_prompt).with("issue_agent/generate_reply").returns(mock_prompt)
+        @agent.stubs(:load_prompt).with("issue_read_agent/generate_reply").returns(mock_prompt)
 
         @agent.stubs(:supported_attachment_paths).with(@issue).returns([])
 
@@ -234,14 +234,14 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
           @issue.stubs(:notes_addable?).returns(true)
           mock_prompt = mock("Prompt")
           mock_prompt.stubs(:format).returns("Generate a reply")
-          @agent.stubs(:load_prompt).with("issue_agent/generate_reply").returns(mock_prompt)
+          @agent.stubs(:load_prompt).with("issue_read_agent/generate_reply").returns(mock_prompt)
           @agent.stubs(:supported_attachment_paths).with(@issue).returns([])
         end
 
         should "call think_chat when think model is configured" do
           mock_think_provider = mock("think_llm_provider")
           RedmineAiHelper::LlmProvider.stubs(:get_think_llm_provider).returns(mock_think_provider)
-          agent = RedmineAiHelper::Agents::IssueAgent.new(project: @project, langfuse: @langfuse)
+          agent = RedmineAiHelper::Agents::IssueReadAgent.new(project: @project, langfuse: @langfuse)
           agent.stubs(:load_prompt).returns(mock("Prompt").tap { |p| p.stubs(:format).returns("prompt") })
           agent.stubs(:supported_attachment_paths).returns([])
           @issue.stubs(:notes_addable?).returns(true)
@@ -256,7 +256,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
 
         should "call think_chat (falling back to normal) when think model is NOT configured" do
           RedmineAiHelper::LlmProvider.stubs(:get_think_llm_provider).returns(nil)
-          agent = RedmineAiHelper::Agents::IssueAgent.new(project: @project, langfuse: @langfuse)
+          agent = RedmineAiHelper::Agents::IssueReadAgent.new(project: @project, langfuse: @langfuse)
           agent.stubs(:load_prompt).returns(mock("Prompt").tap { |p| p.stubs(:format).returns("prompt") })
           agent.stubs(:supported_attachment_paths).returns([])
           @issue.stubs(:notes_addable?).returns(true)
@@ -271,7 +271,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
         should "NOT call think_chat for issue_summary (sidebar chat exclusion)" do
           mock_prompt = mock("Prompt")
           mock_prompt.stubs(:format).returns("Summarize this issue")
-          @agent.stubs(:load_prompt).with("issue_agent/summary").returns(mock_prompt)
+          @agent.stubs(:load_prompt).with("issue_read_agent/summary").returns(mock_prompt)
 
           @agent.expects(:chat).returns("summary result")
           @agent.stubs(:think_chat).never
@@ -622,14 +622,14 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
       end
     end
 
-    # Tests for refactoring - methods moved from llm.rb to IssueAgent
+    # Tests for refactoring - methods moved from llm.rb to IssueReadAgent
     context "text completion methods (refactored from llm.rb)" do
       setup do
         @project = Project.find(1)
         @issue = Issue.find(1)
         @user = User.find(1)
         User.current = @user
-        @agent = RedmineAiHelper::Agents::IssueAgent.new(project: @project)
+        @agent = RedmineAiHelper::Agents::IssueReadAgent.new(project: @project)
       end
 
       should "build completion context for description" do
@@ -755,7 +755,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
           format: Setting.text_formatting
         ).returns("Complete the text")
 
-        @agent.expects(:load_prompt).with("issue_agent/inline_completion").returns(mock_prompt)
+        @agent.expects(:load_prompt).with("issue_read_agent/inline_completion").returns(mock_prompt)
         @agent.expects(:chat).returns("This is the completion.")
 
         result = @agent.generate_text_completion(
@@ -781,7 +781,7 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
         mock_prompt = mock("Prompt")
         mock_prompt.expects(:format).returns("Complete the note")
 
-        @agent.expects(:load_prompt).with("issue_agent/note_inline_completion").returns(mock_prompt)
+        @agent.expects(:load_prompt).with("issue_read_agent/note_inline_completion").returns(mock_prompt)
         @agent.expects(:chat).returns("I agree with the analysis.")
 
         result = @agent.generate_text_completion(
@@ -919,11 +919,11 @@ end
   # Additional tests for scoring and formatting helpers added to cover
   # due_date_score, priority_field_score, untouched_score and
   # format_issues_for_prompt implementations.
-  class RedmineAiHelper::Agents::IssueAgentScoringTest < ActiveSupport::TestCase
+  class RedmineAiHelper::Agents::IssueReadAgentScoringTest < ActiveSupport::TestCase
     setup do
       @project = Project.find(1)
       @langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: "Test input")
-      @agent = RedmineAiHelper::Agents::IssueAgent.new(project: @project, langfuse: @langfuse)
+      @agent = RedmineAiHelper::Agents::IssueReadAgent.new(project: @project, langfuse: @langfuse)
     end
 
     should "calculate due_date_score for various due dates" do

@@ -191,7 +191,7 @@ tr:
           show: "Bu, '%{version_name}' sürümünün sayfasıdır. Sürüm ID'si %{version_id}."
           other: "Bu, sürümün sayfasıdır."
         other_page: "Bu, %{controller_name} için %{action_name} sayfasıdır."
-      issue_agent:
+      issue_read_agent:
         search_answer_instruction: "'Şu koşullara uyan işleri bul' veya 'Bu kriterlere sahip işleri göster' gibi, belirli koşullara uyan birden fazla işi bulma görevlerinde, lütfen işlerin bir listesini almak ve döndürmek için search_issues aracını kullanın."
         search_answer_instruction_with_vector: "İşleri ararken uygun aracı kullanın: Kavramsal/anlamsal aramalar için (ör. 'istisnalarla ilgili işler', 'performans sorunları', 'giriş hataları'), vektör aramayı (ask_with_filter) kullanın. Açık filtre koşulları için (ör. 'durumu kapalı', 'birine atanmış', 'bu ay güncellenmiş'), search_issues kullanın."
       leader_agent:
