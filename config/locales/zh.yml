@@ -151,7 +151,7 @@ zh:
         search_answer_instruction: "对于查找符合特定条件的多个问题的任务，例如'查找符合这些条件的问题'或'显示符合这些标准的问题'，请使用 search_issues 工具检索并返回问题列表。"
         search_answer_instruction_with_vector: "在搜索问题时，使用合适的工具：对于概念/语义搜索（例如'与异常相关的问题'、'性能问题'、'登录漏洞'），使用向量搜索 (ask_with_filter)。对于明确的过滤条件（例如'状态已关闭'、'分配给某人'、'本月更新'），使用 search_issues。"
       leader_agent:
-        generate_final_response: "所有代理已完成任务。请为用户创建最终回复。如果您的回复包含带有离散选择的问题，请记得在末尾附加 <!--AIHELPER_OPTIONS:{...}--> 块。"
+        generate_final_response: "以下是计划中每个步骤的执行结果（按顺序）：%{execution_results} 请仅将这些结果作为事实，为用户撰写最终回复。不要将状态为 `error` 的步骤描述为已完成或成功。只有在工单确实被创建或更新时才在回复中包含其编号；如果没有，请不要提及编号或声称已创建/更新。不要在回复中提及内部实现细节，例如某个步骤分配给了哪个代理。如果您的回复包含带有离散选择的问题，请记得在末尾附加 <!--AIHELPER_OPTIONS:{...}--> 块。"
     custom_commands:
       label:
         title: 自定义命令

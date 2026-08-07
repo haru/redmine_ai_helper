@@ -109,6 +109,22 @@ module RedmineAiHelper
       true
     end
 
+    # Whether this agent can perform write operations (create, update, delete).
+    # Returns true if any of the available tool classes are write tools.
+    # When read-only mode is enabled, available_tool_classes already excludes write tools,
+    # so this will naturally return false.
+    #
+    # This is an internal check used by LeaderAgent to verify a step assignment before
+    # dispatching it. It is deliberately never exposed to the LLM (it is not included in
+    # AgentList#list_agents), because agents are not split into read-only and write-only
+    # roles: WikiAgent, for example, holds both read and write tools. Presenting this
+    # value as routing input would make such an agent read as "the write agent" and block
+    # read-only requests from being assigned to it.
+    # @return [Boolean] true if the agent has write capabilities
+    def can_write?
+      available_tool_classes.any?(&:write_tool?)
+    end
+
     # The content of the system prompt
     # @return [String] The system prompt content.
     def system_prompt

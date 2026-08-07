@@ -195,7 +195,7 @@ tr:
         search_answer_instruction: "'Şu koşullara uyan işleri bul' veya 'Bu kriterlere sahip işleri göster' gibi, belirli koşullara uyan birden fazla işi bulma görevlerinde, lütfen işlerin bir listesini almak ve döndürmek için search_issues aracını kullanın."
         search_answer_instruction_with_vector: "İşleri ararken uygun aracı kullanın: Kavramsal/anlamsal aramalar için (ör. 'istisnalarla ilgili işler', 'performans sorunları', 'giriş hataları'), vektör aramayı (ask_with_filter) kullanın. Açık filtre koşulları için (ör. 'durumu kapalı', 'birine atanmış', 'bu ay güncellenmiş'), search_issues kullanın."
       leader_agent:
-        generate_final_response: "Tüm ajanlar görevlerini tamamladı. Lütfen kullanıcı için nihai yanıtı oluşturun. Yanıtınız ayrık seçenekler içeren bir soru barındırıyorsa, en sonuna <!--AIHELPER_OPTIONS:{...}--> bloğunu eklemeyi unutmayın."
+        generate_final_response: "Plandaki her adımın yürütme sonuçları sırasıyla aşağıdadır: %{execution_results} Yalnızca bu sonuçları gerçek olarak kullanarak kullanıcı için nihai yanıtı oluşturun. Durumu `error` olan bir adımı tamamlanmış veya başarılı olarak tanımlamayın. Bir görev yalnızca gerçekten oluşturulmuş veya güncellenmişse kimliğini (ID) belirtin; aksi takdirde herhangi bir ID belirtmeyin veya bir şeyin oluşturulduğunu/güncellendiğini iddia etmeyin. Hangi ajanın hangi adıma atandığı gibi dahili uygulama ayrıntılarından bahsetmeyin. Yanıtınız ayrık seçenekler içeren bir soru barındırıyorsa, en sonuna <!--AIHELPER_OPTIONS:{...}--> bloğunu eklemeyi unutmayın."
     mcp:
       errors:
         disabled: "MCP sunucusu devre dışı"

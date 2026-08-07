@@ -20,6 +20,18 @@ class RedmineAiHelper::Agents::IssueAgentTest < ActiveSupport::TestCase
       assert_match(/Project ID: #{@project.id}/, backstory)
     end
 
+    should "declare itself read-only in the backstory (US1)" do
+      backstory = @agent.backstory
+
+      assert_match(/read-only issue agent/i, backstory)
+    end
+
+    should "declare itself read-only in the backstory in Japanese (US1)" do
+      backstory = I18n.with_locale(:ja) { @agent.backstory }
+
+      assert_match(/参照専用/, backstory)
+    end
+
     should "include vector tools when vector db is enabled" do
       @project.enable_module!(:ai_helper)
       AiHelperSetting.any_instance.stubs(:vector_search_enabled).returns(true)

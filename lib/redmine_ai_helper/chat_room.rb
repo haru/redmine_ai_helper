@@ -7,13 +7,14 @@ module RedmineAiHelper
   # The chat room is created by the LeaderAgent, and additional agents are added as needed.
   class ChatRoom
     include RedmineAiHelper::Logger
-    attr_accessor :agents, :messages
+    attr_accessor :agents, :messages, :step_results
 
     # @param goal [String] The user's goal.
     def initialize(goal)
       @agents = []
       @goal = goal
       @messages = []
+      @step_results = []
     end
 
     # Share the user's goal with all agents in the chat room.
@@ -81,7 +82,36 @@ module RedmineAiHelper
       end
       answer = agent.perform_task(option, proc)
       add_message("assistant", to, answer, from)
+      record_step_result(agent: to, step: task, response: answer)
       answer
+    end
+
+    # Record a step that was skipped without calling the assigned agent (no LLM call).
+    # @param agent [String] The name of the agent the step was assigned to
+    # @param step [String] The instruction content of the step
+    # @param error [String] The reason the step was skipped
+    # @return [void]
+    def record_skipped_step(agent:, step:, error:)
+      @step_results << { agent: agent, step: step, status: RedmineAiHelper::ToolResponse::STATUS_ERROR, error: error }
+    end
+
+    # Format the accumulated step results as a JSON array string, in plan order.
+    # @return [String] JSON array of step results
+    def execution_results_json
+      @step_results.to_json
+    end
+
+    private
+
+    # Record the outcome of a step executed via send_task.
+    # @param agent [String] The name of the agent that executed the step
+    # @param step [String] The instruction content of the step
+    # @param response [RedmineAiHelper::ToolResponse] The response returned by the agent
+    # @return [void]
+    def record_step_result(agent:, step:, response:)
+      result = { agent: agent, step: step, status: response.status }
+      result[:error] = response.error if response.is_error?
+      @step_results << result
     end
   end
 end

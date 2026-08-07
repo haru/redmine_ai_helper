@@ -728,6 +728,26 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
     end
   end
 
+  context "can_write?" do
+    should "return true when agent has write tools" do
+      agent = BaseAgentTestModele::MixedToolsAgent.new(@params)
+
+      assert agent.can_write?
+    end
+
+    should "return false when agent has no write tools" do
+      assert_equal false, @agent.can_write?
+      assert_equal false, @agent2.can_write?
+    end
+
+    should "return false when read_only_mode is true even if agent has write tools" do
+      AiHelperSetting.stubs(:read_only_mode?).returns(true)
+      agent = BaseAgentTestModele::MixedToolsAgent.new(@params)
+
+      assert_equal false, agent.can_write?
+    end
+  end
+
   context "AgentList" do
     setup do
       @agent_list = RedmineAiHelper::AgentList.instance
@@ -756,6 +776,19 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
         @agent_list.get_agent_instance("disabled_agent")
       end
       assert_equal "Agent is disabled: disabled_agent", error.message
+    end
+
+    should "not expose write capability in list_agents output (FR-002a)" do
+      # Agents are not split into read-only and write-only roles (WikiAgent holds both
+      # read and write tools), so exposing write capability as routing input would make
+      # such an agent read as "the write agent" and block read-only assignments to it.
+      @agent_list.add_agent("mixed_tools_agent", "BaseAgentTestModele::MixedToolsAgent")
+
+      agents = @agent_list.list_agents
+
+      assert agents.none? { |a| a.key?(:can_write) }, "list_agents must not expose can_write"
+      assert agents.all? { |a| a.keys.sort == [ :agent_name, :backstory ] },
+             "list_agents must expose only agent_name and backstory"
     end
   end
 

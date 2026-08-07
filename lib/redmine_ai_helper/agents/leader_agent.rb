@@ -30,7 +30,7 @@ module RedmineAiHelper
       # Get the complete system prompt including backstory
       # @return [String] The system prompt
       def system_prompt
-        "#{@system_prompt.prompt}\n\n#{backstory}"
+        "#{@system_prompt.prompt}\n\n#{backstory}#{read_only_notice}"
       end
 
       # Perform a user request by generating a goal and steps for the agents to follow.
@@ -53,7 +53,7 @@ module RedmineAiHelper
         callback.call(I18n.t("ai_helper.chat.generating_final_response") + "\n") if callback
 
         newmessages = messages + chat_room.messages
-        newmessages << { role: "user", content: I18n.t("ai_helper.prompts.leader_agent.generate_final_response") }
+        newmessages << { role: "user", content: I18n.t("ai_helper.prompts.leader_agent.generate_final_response", execution_results: chat_room.execution_results_json) }
         langfuse.create_span(name: "final_response", input: newmessages.last[:content])
 
         answer = chat(newmessages, option, callback)
@@ -121,9 +121,13 @@ module RedmineAiHelper
                   use_think_model: {
                     type: "boolean",
                     description: "Set to true if this step requires deep reasoning (e.g. creating content, code review, writing answers). Set to false for simple data retrieval."
+                  },
+                  requires_write: {
+                    type: "boolean",
+                    description: "Set to true if this step involves creating, updating, or deleting data. Set to false for read-only operations (retrieval, summarization, search)."
                   }
                 },
-                required: [ "agent", "step", "description_for_human", "use_think_model" ]
+                required: [ "agent", "step", "description_for_human", "use_think_model", "requires_write" ]
               },
               required: [ "steps" ]
             }
@@ -143,7 +147,8 @@ module RedmineAiHelper
                 "agent": "wiki_agent",
                 "step": "Read and summarize the Wiki page named 'ProjectOverview'.",
                 "description_for_human": "Reading the Wiki page 'ProjectOverview'...",
-                "use_think_model": false
+                "use_think_model": false,
+                "requires_write": false
               }
             ]
           }
@@ -160,13 +165,15 @@ module RedmineAiHelper
                 "agent": "project_agent",
                 "step": "Please provide the ID of the project named 'my_project'.",
                 "description_for_human": "Retrieving the project ID for 'my_project'...",
-                "use_think_model": false
+                "use_think_model": false,
+                "requires_write": false
               },
               {
                 "agent": "wiki_agent",
                 "step": "Create a new Wiki page with a comprehensive introduction to the project scope.",
                 "description_for_human": "Creating the Wiki page...",
-                "use_think_model": true
+                "use_think_model": true,
+                "requires_write": true
               }
             ]
           }
@@ -207,13 +214,24 @@ module RedmineAiHelper
       def execute_chat_room_steps(goal, steps, callback)
         chat_room = RedmineAiHelper::ChatRoom.new(goal)
         agent_list = RedmineAiHelper::AgentList.instance
+        agent_instances = {}
         steps["steps"].map { |step| step["agent"] }.uniq.reject { |a| a == "leader_agent" }.each do |agent|
           agent_instance = agent_list.get_agent_instance(agent, { project: @project, langfuse: langfuse })
+          agent_instances[agent] = agent_instance
           chat_room.add_agent(agent_instance)
         end
         chat_room.share_goal
         steps["steps"].each do |step|
           callback.call("- " + step["description_for_human"] + "\n") if callback
+          agent_instance = agent_instances[step["agent"]]
+          if step["requires_write"] && agent_instance && !agent_instance.can_write?
+            chat_room.record_skipped_step(
+              agent: step["agent"],
+              step: step["step"],
+              error: "The assigned agent has no write capability for this step."
+            )
+            next
+          end
           chat_room.send_task("leader", step["agent"], step["step"], { use_think_model: step["use_think_model"] })
         end
         chat_room

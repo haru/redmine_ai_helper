@@ -46,7 +46,7 @@ class AgentsTest < ActiveSupport::TestCase
     end
 
     should "return correct backstory" do
-      assert_includes @agent.backstory, "You are a issue agent for the RedmineAIHelper plugin"
+      assert_includes @agent.backstory, "You are a read-only issue agent for the RedmineAIHelper plugin"
     end
   end
 

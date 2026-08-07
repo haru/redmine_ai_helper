@@ -202,7 +202,7 @@ en:
         search_answer_instruction: "For tasks such as finding multiple issues that match certain conditions, like 'Find issues that meet these conditions' or 'Show me issues with these criteria,' please use the search_issues tool to retrieve and return a list of issues."
         search_answer_instruction_with_vector: "When searching for issues, use the appropriate tool: For conceptual/semantic searches (e.g., 'issues related to exceptions', 'performance problems', 'login bugs'), use vector search (ask_with_filter). For explicit filter conditions (e.g., 'status is closed', 'assigned to someone', 'updated this month'), use search_issues."
       leader_agent:
-        generate_final_response: "All agents have completed their tasks. Please create the final response for the user. If your response includes a question with discrete choices, remember to append the <!--AIHELPER_OPTIONS:{...}--> block at the very end."
+        generate_final_response: "Here are the execution results of each step in the plan, in order: %{execution_results} Using only these results as the facts, write the final response for the user. Do not describe a step whose status is `error` as completed or successful. Include the issue ID only if an issue was actually created or updated; otherwise do not mention any ID or claim that anything was created or updated. Do not mention internal implementation details such as which agent was assigned to a step. If your response includes a question with discrete choices, remember to append the <!--AIHELPER_OPTIONS:{...}--> block at the very end."
     mcp:
       errors:
         disabled: "MCP server is disabled"
