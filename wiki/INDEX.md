@@ -8,11 +8,14 @@ page files, not here.
 - [Plugin Overview](./pages/plugin-overview.md) — what the plugin does and the hub linking every topic page.
 - [Multi-Agent Architecture](./pages/multi-agent-architecture.md) — request flow, LeaderAgent planning, agent auto-registration, tool system, provider layer, and streaming.
 
+## decision
+- [Agent Write-Capability Routing](./pages/agent-write-capability-routing.md) — why `can_write?`/`requires_write` guard write steps at dispatch time instead of being exposed to the router, and how skipped steps and the final-answer prompt stay consistent with what actually ran.
+
 ## component
 - [Chat Channel Gateway Architecture](./pages/chat-channel-gateway-architecture.md) — core + adapters structure, capability declaration, and gateway operational model.
 - [Chat Context Import](./pages/chat-context-import.md) — how surrounding messages are imported, cursored, persisted as `context` role, and fed to the LLM.
 - [AI Chat Sidebar](./pages/chat-sidebar.md) — the sidebar UI: view-hook injection, the `AiHelper` JS class, SSE handling, conversation models, and Markdown/XSS.
-- [Issue AI Features](./pages/issue-ai-features.md) — `IssueAgent` summarization/caching, reply drafts, sub-issues, assignee suggestion, duplicate check, and inline completion.
+- [Issue AI Features](./pages/issue-ai-features.md) — `IssueReadAgent` summarization/caching, reply drafts, sub-issues, assignee suggestion, duplicate check, and inline completion.
 - [MCP Integration](./pages/mcp-integration.md) — consuming external MCP servers (dynamic agent generation, read-only gotcha) and exposing Redmine as an MCP server.
 - [Custom Commands](./pages/custom-commands.md) — reusable `/command` prompt shortcuts, scope precedence, template variables.
 - [Project Health Report](./pages/health-report.md) — `ProjectAgent` dual-pattern generation, `AiHelperHealthReport` storage, streamed comparison, export, and REST API.

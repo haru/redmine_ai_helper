@@ -1825,7 +1825,7 @@ class AiHelperControllerTest < ActionController::TestCase
         issue = Issue.find(1)
 
         # Test that the new architecture works end-to-end
-        # The controller should call llm.rb which delegates to IssueAgent
+        # The controller should call llm.rb which delegates to IssueReadAgent
         @request.headers["Content-Type"] = "application/json"
 
         post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id },
@@ -1846,12 +1846,12 @@ class AiHelperControllerTest < ActionController::TestCase
         mock_prompt = mock("Prompt")
         mock_prompt.stubs(:format).returns("Mocked prompt text")
 
-        # The IssueAgent should use PromptLoader via load_prompt
-        RedmineAiHelper::Agents::IssueAgent.any_instance.expects(:load_prompt)
-          .with("issue_agent/inline_completion")
+        # The IssueReadAgent should use PromptLoader via load_prompt
+        RedmineAiHelper::Agents::IssueReadAgent.any_instance.expects(:load_prompt)
+          .with("issue_read_agent/inline_completion")
           .returns(mock_prompt)
 
-        RedmineAiHelper::Agents::IssueAgent.any_instance.stubs(:chat).returns("Mocked completion")
+        RedmineAiHelper::Agents::IssueReadAgent.any_instance.stubs(:chat).returns("Mocked completion")
 
         @request.headers["Content-Type"] = "application/json"
         post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id },
@@ -1877,11 +1877,11 @@ class AiHelperControllerTest < ActionController::TestCase
         mock_prompt = mock("Prompt")
         mock_prompt.stubs(:format).returns("Note completion prompt")
 
-        RedmineAiHelper::Agents::IssueAgent.any_instance.expects(:load_prompt)
-          .with("issue_agent/note_inline_completion")
+        RedmineAiHelper::Agents::IssueReadAgent.any_instance.expects(:load_prompt)
+          .with("issue_read_agent/note_inline_completion")
           .returns(mock_prompt)
 
-        RedmineAiHelper::Agents::IssueAgent.any_instance.stubs(:chat).returns("Contextual note completion")
+        RedmineAiHelper::Agents::IssueReadAgent.any_instance.stubs(:chat).returns("Contextual note completion")
 
         @request.headers["Content-Type"] = "application/json"
         post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id },

@@ -52,7 +52,7 @@ Controller (AiHelperController)
 
 Agents inherit from `BaseAgent` and are **automatically registered** via the `inherited` hook — no manual registration needed. `LeaderAgent` coordinates multi-step tasks by routing to specialized agents.
 
-Key agents: `IssueAgent`, `RepositoryAgent`, `WikiAgent`, `ProjectAgent`, `McpAgent`, `BoardAgent`, `SystemAgent`, `UserAgent`, `VersionAgent`, `IssueUpdateAgent`, `DocumentationAgent`
+Key agents: `IssueReadAgent`, `RepositoryAgent`, `WikiAgent`, `ProjectAgent`, `McpAgent`, `BoardAgent`, `SystemAgent`, `UserAgent`, `VersionAgent`, `IssueWriteAgent`, `DocumentationAgent`
 
 ### Tool System
 
@@ -98,7 +98,7 @@ MCP servers configured in `config/ai_helper/config.json`. `McpServerLoader` auto
 Attached images on Issues, Wiki pages, and Board messages are sent to LLMs for visual understanding.
 
 - **Tool flow**: `IssueTools`/`WikiTools`/`BoardTools` use `AttachmentImageHelper` to collect image paths and return plain Ruby Hash data structures; images are provided to the LLM via `BaseAgent#chat(with:)` or image-related tools rather than `RubyLLM::Content`
-- **Summary flow**: `IssueAgent#issue_summary`/`WikiAgent#wiki_summary` pass image paths via `BaseAgent#chat(with:)` parameter
+- **Summary flow**: `IssueReadAgent#issue_summary`/`WikiAgent#wiki_summary` pass image paths via `BaseAgent#chat(with:)` parameter
 - **Security**: Disk file paths are never included in JSON text sent to the LLM — they are only passed via RubyLLM's `with:` parameter or dedicated image tool parameters, not embedded in the textual prompt
 - **Image detection**: Uses Redmine's `Attachment#image?` (extension-based: bmp, gif, jpg, jpe, jpeg, png, webp)
 

@@ -20,3 +20,5 @@ Sources are immutable inputs — the wiki never edits them.
 | S013 | https://deepwiki.com/haru/redmine_ai_helper/3.1-ai-chat-sidebar | url | 2026-08-01 | 2026-08-01 | chat-sidebar.md, plugin-overview.md |
 | S014 | https://deepwiki.com/haru/redmine_ai_helper/3.2-issue-ai-features | url | 2026-08-01 | 2026-08-01 | issue-ai-features.md, plugin-overview.md |
 | S015 | docs/adr/009-discord-message-content-intent-required.md | file | 2026-08-01 | 2026-08-01 | discord-message-content-intent.md |
+| S016 | specs/043-issue-create-routing (research.md + plan.md) | feature-artifact | 2026-08-07 | 2026-08-07 | agent-write-capability-routing.md, multi-agent-architecture.md, tool-system.md, mcp-integration.md |
+| S017 | docs/adr/016-issue-agent-read-write-rename.md | file | 2026-08-07 | 2026-08-07 | agent-write-capability-routing.md, issue-ai-features.md, multi-agent-architecture.md |

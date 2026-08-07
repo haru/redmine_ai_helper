@@ -1,8 +1,8 @@
 ---
 title: Tool System
 type: component
-sources: [S008]
-updated: 2026-08-01
+sources: [S008, S016]
+updated: 2026-08-07
 ---
 
 # Tool System
@@ -40,6 +40,11 @@ providers' functions it may call — a per-agent permission boundary (S008).
   disabled wholesale.
 - **Atomic writes**: `IssueUpdateTools` wraps changes in `Issue.transaction` so
   relations and custom fields persist consistently (S008).
+- **`write_tool?` reused for step-level routing safety**: `BaseAgent#can_write?`
+  (`available_tool_classes.any?(&:write_tool?)`) reuses this same flag to guard
+  which agent a write-requiring plan step may be dispatched to — an internal
+  check, never exposed to the LLM. See
+  [Agent Write-Capability Routing](./agent-write-capability-routing.md) (S016).
 - **`validate_only`**: a parameter that runs schema validation without
   persisting — an LLM pre-check before an actual write (S008).
 - **VectorTools dual filtering**: results are filtered first by Qdrant metadata,
@@ -69,3 +74,4 @@ providers' functions it may call — a per-agent permission boundary (S008).
 
 - [Multi-Agent Architecture](./multi-agent-architecture.md) ·
   [MCP Integration](./mcp-integration.md) · [Vector Search](./vector-search.md)
+- [Agent Write-Capability Routing](./agent-write-capability-routing.md)
