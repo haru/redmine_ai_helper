@@ -24,6 +24,7 @@
   - [Project Health Report](#project-health-report)
     - [Health Report History](#health-report-history)
     - [Health Report REST API](#health-report-rest-api)
+  - [Chat Channel Gateway](#chat-channel-gateway)
   - [Multi-modal File Support](#multi-modal-file-support)
 - [📦 Installation](#-installation)
 - [⚙️ Basic Configuration](#️-basic-configuration)
@@ -43,6 +44,7 @@
     - [Recreating the Index](#recreating-the-index)
 - [🛠️ Build your own Agent](#️-build-your-own-agent)
 - [🪄 Langfuse integration](#-langfuse-integration)
+- [🔒 Running Without External Communication](#-running-without-external-communication)
 - [⚠️ Important Notice](#️-important-notice)
 - [🤝 Contributing](#-contributing)
   - [How to Run Tests](#how-to-run-tests)
@@ -199,6 +201,55 @@ To generate health reports automatically every Monday at 9:00 AM, add the follow
 ```bash
 0 9 * * 1 curl -X POST -H "X-Redmine-API-Key: your_api_key_here" -H "Content-Type: application/json" https://your-redmine-instance.com/projects/your-project/ai_helper/health_report.json
 ```
+
+## Chat Channel Gateway
+
+The Chat Channel Gateway allows users to interact with the AI Helper from external chat tools such as Slack. All questions are processed under a dedicated Redmine service account (the **execution account**) selected by the administrator — restricting that account's roles restricts what the gateway can read and do. All existing behavior — custom commands, agent orchestration, Langfuse tracing — works identically to the web chat.
+
+The gateway runs as a separate background process that connects outward to chat services, so **no public URL is required** for your Redmine server.
+
+### Slack Integration
+
+1. Create a Slack App with **Socket Mode** enabled. Generate an App-Level Token (`xapp-`) and note the Bot User OAuth Token (`xoxb-`).
+2. Configure the following Bot Token Scopes: `app_mentions:read`, `im:history`, `chat:write`, `reactions:write`.
+3. Subscribe to bot events: `app_mention`, `message.im`.
+4. In **Administration → AI Helper → Chat integrations** tab, enable Slack, paste the tokens, select the **Execution account** (a Redmine service account, e.g. `ai_helper`, added to the target projects with an appropriate role), and save.
+5. Optionally set a **Default project for direct messages**.
+6. Under **Channel bindings**, map Slack channels to Redmine projects (each channel maps to one project with the AI Helper module enabled).
+
+See [`docs/slack_gateway_setup.md`](docs/slack_gateway_setup.md) for the full setup guide.
+
+### Running the Gateway
+
+Start the gateway as a long-running process, separate from the Redmine web server:
+
+```bash
+cd /path/to/redmine
+bundle exec rake redmine:plugins:ai_helper:chat_channel:gateway RAILS_ENV=production
+```
+
+### Running under systemd (example)
+
+```ini
+[Unit]
+Description=Redmine AI Helper chat gateway
+After=network.target
+
+[Service]
+Type=simple
+User=redmine
+WorkingDirectory=/path/to/redmine
+Environment=RAILS_ENV=production
+ExecStart=/usr/bin/bundle exec rake redmine:plugins:ai_helper:chat_channel:gateway
+Restart=on-failure
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+`Restart=on-failure` restarts on crashes (non-zero exit). Configuration errors (invalid tokens, no adapter enabled) exit with status **0** and are not restarted automatically — fix the configuration and start again.
 
 ## Multi-modal File Support
 
@@ -532,6 +583,16 @@ langfuse:
   secret_key: "sk-lf-************"
   endpoint: https://us.cloud.langfuse.com # Change this to match your environment
 ```
+
+# 🔒 Running Without External Communication
+
+If you do not want the AI Helper to send anything outside your network, configure it as follows:
+
+- **LLM**: Use a locally hosted model, such as Ollama, through the OpenAI Compatible provider.
+- **Vector search**: Use a locally hosted Qdrant, together with a local embedding model.
+- **Langfuse**: Use a self-hosted Langfuse instance, or leave Langfuse unconfigured.
+- **MCP servers**: Use only MCP servers that do not communicate externally.
+- **Chat Channel Gateway**: Do not use it. It connects to Slack or Discord.
 
 # ⚠️ Important Notice
 

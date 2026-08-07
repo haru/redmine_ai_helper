@@ -1,10 +1,16 @@
 require File.expand_path("../../../test_helper", __FILE__)
 
 class IssueSearchToolsTest < ActiveSupport::TestCase
-  fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields
+  fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields,
+           :enabled_modules, :roles, :members, :member_roles
 
   def setup
     @provider = RedmineAiHelper::Tools::IssueSearchTools.new
+    # search_issues requires the ai_helper module and the view_ai_helper permission
+    # on the searched project. Project 1 with role 1 (jsmith's role) is the baseline
+    # used by every search test below.
+    EnabledModule.create!(project_id: 1, name: "ai_helper")
+    Role.find(1).add_permission!(:view_ai_helper)
   end
 
   context "search_issues" do
@@ -58,7 +64,7 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       assert_operator result[:total_count], :>=, 55
     end
 
-    should "only return issues visible to current user" do
+    should "refuse to search a project that is not visible to the current user" do
       # Create a private project with a new tracker
       private_tracker = Tracker.create!(name: "PrivateTracker#{Time.now.to_i}#{rand(10000)}", default_status: IssueStatus.first)
       private_project = Project.create!(
@@ -70,6 +76,8 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       unless private_project.trackers.include?(private_tracker)
         private_project.trackers << private_tracker
       end
+      # Enable the module so that a disabled module cannot be the reason for the failure
+      EnabledModule.create!(project_id: private_project.id, name: "ai_helper")
 
       Issue.create!(
         project: private_project,
@@ -82,13 +90,36 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
 
       # Switch to anonymous user
       User.current = User.anonymous
-      result = @provider.search_issues(project_id: private_project.id)
 
-      assert_equal 0, result[:issues].length
-      assert_equal 0, result[:total_count]
+      assert_raises(RuntimeError) do
+        @provider.search_issues(project_id: private_project.id)
+      end
     ensure
       private_project&.destroy
       private_tracker&.destroy
+    end
+
+    should "exclude issues the current user cannot see inside an accessible project" do
+      # "default" visibility hides private issues from anyone but their author and assignee
+      Role.find(1).update!(issues_visibility: "default")
+      private_issue = Issue.create!(
+        project: @project, tracker: @tracker, subject: "Private Issue In Accessible Project",
+        author: User.find(3), status: IssueStatus.first, priority: IssuePriority.first,
+        is_private: true
+      )
+      visible_issue = Issue.create!(
+        project: @project, tracker: @tracker, subject: "Visible Issue In Accessible Project",
+        author: User.find(3), status: IssueStatus.first, priority: IssuePriority.first
+      )
+
+      result = @provider.search_issues(project_id: @project.id)
+      ids = result[:issues].map { |i| i[:id] }
+
+      assert_includes ids, visible_issue.id
+      assert_not_includes ids, private_issue.id
+    ensure
+      private_issue&.destroy
+      visible_issue&.destroy
     end
 
     should "return formatted issue data with id and name" do
@@ -232,6 +263,220 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       assert_kind_of Array, issue_data[:custom_fields]
     ensure
       issue&.destroy
+    end
+  end
+
+  context "search_issues access control" do
+    setup do
+      @project = Project.find(1)
+      @tracker = Tracker.find(1)
+      @user = User.find(2)
+      @previous_user = User.current
+      User.current = @user
+    end
+
+    teardown do
+      User.current = @previous_user
+    end
+
+    context "when the ai_helper module is disabled" do
+      setup do
+        EnabledModule.where(project_id: @project.id, name: "ai_helper").destroy_all
+      end
+
+      should "raise an error without search conditions" do
+        assert_raises(RuntimeError) do
+          @provider.search_issues(project_id: @project.id)
+        end
+      end
+
+      should "raise an error with filter conditions as well" do
+        assert_raises(RuntimeError) do
+          @provider.search_issues(project_id: @project.id, fields: [
+            { field_name: "tracker_id", operator: "=", values: [ @tracker.id.to_s ] }
+          ])
+        end
+      end
+
+      should "report the same error message as the other tools" do
+        error = assert_raises(RuntimeError) do
+          @provider.search_issues(project_id: @project.id)
+        end
+
+        assert_equal "ai_helper is not enabled for project: id = #{@project.id}", error.message
+      end
+    end
+
+    should "raise an error when the user lacks the view_ai_helper permission" do
+      Role.find(1).remove_permission!(:view_ai_helper)
+
+      assert_raises(RuntimeError) do
+        @provider.search_issues(project_id: @project.id)
+      end
+    end
+
+    should "raise an error when project_id is not given" do
+      assert_raises(RuntimeError) do
+        @provider.search_issues(project_id: nil)
+      end
+    end
+
+    should "raise a record not found error for a project that does not exist" do
+      assert_raises(ActiveRecord::RecordNotFound) do
+        @provider.search_issues(project_id: 0)
+      end
+    end
+
+    should "state in the tool description that only ai_helper enabled projects are searchable" do
+      schema = RedmineAiHelper::Tools::IssueSearchTools.function_schemas.to_openai_format.find do |f|
+        f[:function][:name].end_with?("__search_issues")
+      end
+
+      assert_match(/AI Helper module enabled/, schema[:function][:description])
+      assert_match(/AI Helper module enabled/, schema[:function][:parameters][:properties][:project_id][:description])
+    end
+  end
+
+  context "search_issues sort" do
+    setup do
+      @project = Project.find(1)
+      @tracker = Tracker.find(1)
+      @other_tracker = Tracker.find(2)
+      @user = User.find(2)
+      @previous_user = User.current
+      User.current = @user
+
+      # due_date/start_date/done_ratio must be set at creation time: update_column silently
+      # no-ops for these attributes (Issue overrides their accessors), so it can't be used to
+      # backfill them after the fact.
+      @issue_a = Issue.create!(
+        project: @project, tracker: @tracker, subject: "Sort Issue A",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first,
+        start_date: Date.current - 3, due_date: Date.current + 1, done_ratio: 0
+      )
+      @issue_b = Issue.create!(
+        project: @project, tracker: @tracker, subject: "Sort Issue B",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first,
+        start_date: Date.current - 2, due_date: Date.current + 2, done_ratio: 40
+      )
+      @issue_c = Issue.create!(
+        project: @project, tracker: @other_tracker, subject: "Sort Issue C",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first,
+        start_date: Date.current - 1, due_date: Date.current + 3, done_ratio: 80
+      )
+
+      # Issue#create! bumps lock_version via an internal callback save without syncing the
+      # in-memory attribute, so update_column's optimistic-locking WHERE clause matches 0 rows
+      # and silently no-ops (mysql2/postgresql) unless we reload to pick up the real lock_version.
+      [ @issue_a, @issue_b, @issue_c ].each(&:reload)
+
+      # Force a deterministic A < B < C ordering for created_on/updated_on too.
+      # id already ascends A < B < C by creation order.
+      base_time = Time.current
+      @issue_a.update_column(:created_on, base_time - 3.hours)
+      @issue_a.update_column(:updated_on, base_time - 3.hours)
+      @issue_b.update_column(:created_on, base_time - 2.hours)
+      @issue_b.update_column(:updated_on, base_time - 2.hours)
+      @issue_c.update_column(:created_on, base_time - 1.hour)
+      @issue_c.update_column(:updated_on, base_time - 1.hour)
+    end
+
+    teardown do
+      User.current = @previous_user
+      [ @issue_a, @issue_b, @issue_c ].each { |i| i&.destroy }
+    end
+
+    # C1
+    should "default to id descending order without error when sort is omitted" do
+      result = @provider.search_issues(project_id: @project.id)
+
+      ids = result[:issues].map { |i| i[:id] }
+      assert_equal ids.sort.reverse, ids
+    end
+
+    # C2
+    should "sort by created_on descending when direction is omitted" do
+      result = @provider.search_issues(project_id: @project.id, sort: { field: "created_on" })
+
+      our_ids = result[:issues].map { |i| i[:id] }.select { |id| [ @issue_a.id, @issue_b.id, @issue_c.id ].include?(id) }
+      assert_equal [ @issue_c.id, @issue_b.id, @issue_a.id ], our_ids
+    end
+
+    # C3
+    should "sort by updated_on ascending when direction is asc" do
+      result = @provider.search_issues(project_id: @project.id, sort: { field: "updated_on", direction: "asc" })
+
+      our_ids = result[:issues].map { |i| i[:id] }.select { |id| [ @issue_a.id, @issue_b.id, @issue_c.id ].include?(id) }
+      assert_equal [ @issue_a.id, @issue_b.id, @issue_c.id ], our_ids
+    end
+
+    # C4
+    should "apply sort to filtered results without breaking limit or visibility" do
+      # Make updated_on intentionally *not* correlate with id: the older issue (A) gets the
+      # newer updated_on. This way a "updated_on desc" result of [A, B] can only happen if the
+      # sort is actually applied in the filtered/query-builder path; if sort were ignored it would
+      # fall back to id desc and yield [B, A], failing the assertion below.
+      now = Time.current
+      @issue_a.update_column(:updated_on, now)
+      @issue_b.update_column(:updated_on, now - 1.hour)
+
+      result = @provider.search_issues(
+        project_id: @project.id,
+        fields: [ { field_name: "tracker_id", operator: "=", values: [ @tracker.id.to_s ] } ],
+        sort: { field: "updated_on", direction: "desc" }
+      )
+
+      returned_ids = result[:issues].map { |i| i[:id] }
+      assert_includes returned_ids, @issue_a.id
+      assert_includes returned_ids, @issue_b.id
+      assert_not_includes returned_ids, @issue_c.id, "issue with a different tracker must not be included"
+
+      our_ids = returned_ids.select { |id| [ @issue_a.id, @issue_b.id ].include?(id) }
+      assert_equal [ @issue_a.id, @issue_b.id ], our_ids
+    end
+
+    # C8
+    RedmineAiHelper::Tools::IssueSearchTools::SUPPORTED_SORT_FIELDS.each do |sort_field|
+      should "sort by #{sort_field} ascending and descending" do
+        asc_result = @provider.search_issues(project_id: @project.id, sort: { field: sort_field, direction: "asc" })
+        asc_ids = asc_result[:issues].map { |i| i[:id] }.select { |id| [ @issue_a.id, @issue_b.id, @issue_c.id ].include?(id) }
+        assert_equal [ @issue_a.id, @issue_b.id, @issue_c.id ], asc_ids
+
+        desc_result = @provider.search_issues(project_id: @project.id, sort: { field: sort_field, direction: "desc" })
+        desc_ids = desc_result[:issues].map { |i| i[:id] }.select { |id| [ @issue_a.id, @issue_b.id, @issue_c.id ].include?(id) }
+        assert_equal [ @issue_c.id, @issue_b.id, @issue_a.id ], desc_ids
+      end
+    end
+
+    # C5
+    should "raise a clear error listing supported fields when field is unsupported" do
+      error = assert_raises(RuntimeError) do
+        @provider.search_issues(project_id: @project.id, sort: { field: "assigned_to" })
+      end
+
+      assert_match(/assigned_to/, error.message)
+      %w[id created_on updated_on due_date start_date done_ratio].each do |field|
+        assert_match(/#{field}/, error.message)
+      end
+    end
+
+    # C6
+    should "raise a clear error when field is missing from sort" do
+      error = assert_raises(RuntimeError) do
+        @provider.search_issues(project_id: @project.id, sort: { direction: "asc" })
+      end
+
+      assert_match(/field/i, error.message)
+    end
+
+    # C7
+    should "raise a clear error when direction is invalid" do
+      error = assert_raises(RuntimeError) do
+        @provider.search_issues(project_id: @project.id, sort: { field: "id", direction: "sideways" })
+      end
+
+      assert_match(/asc/i, error.message)
+      assert_match(/desc/i, error.message)
     end
   end
 

@@ -6,7 +6,7 @@ cd $(dirname $0)
 cd ..
 yard stats --list-undoc | tee /dev/stderr |  grep -q "100.00%"
 
-rubocop
+rubocop --ignore-parent-exclusion
 
 cd /usr/local/redmine
 

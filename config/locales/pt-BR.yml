@@ -113,11 +113,11 @@ pt-BR:
           show: Esta é a página da versão '%{version_name}'. O ID da versão é %{version_id}.
           other: Esta é a página da versão.
         other_page: Esta é a página de %{action_name} para %{controller_name}.
-      issue_agent:
+      issue_read_agent:
         search_answer_instruction: Para tarefas como encontrar múltiplas tarefas que correspondam a certas condições, como 'Encontre tarefas que atendam a estas condições' ou 'Mostre-me tarefas com estes critérios', por favor, use a ferramenta search_issues para recuperar e retornar uma lista de tarefas.
         search_answer_instruction_with_vector: 'Ao pesquisar tarefas, use a ferramenta apropriada: Para pesquisas conceituais/semânticas (ex: ''tarefas relacionadas a exceções'', ''problemas de desempenho''), use a pesquisa vetorial (ask_with_filter). Para condições de filtro explícitas (ex: ''status fechado'', ''atribuído a alguém''), use search_issues.'
       leader_agent:
-        generate_final_response: Todos os agentes concluíram suas tarefas. Por favor, crie a resposta final para o usuário. Se sua resposta incluir uma pergunta com escolhas discretas, lembre-se de adicionar o bloco <!--AIHELPER_OPTIONS:{...}--> ao final.
+        generate_final_response: "Aqui estão os resultados da execução de cada etapa do plano, em ordem: %{execution_results} Use esses resultados apenas para julgar quais etapas foram bem-sucedidas e quais falharam; eles não contêm o conteúdo da resposta. Extraia esse conteúdo das respostas dos agentes na conversa acima e escreva a resposta final para o usuário. Não descreva uma etapa cujo status seja `error` como concluída ou bem-sucedida. Inclua o ID da tarefa somente se ela tiver sido realmente criada ou atualizada; caso contrário, não mencione nenhum ID nem afirme que algo foi criado ou atualizado. Não mencione detalhes internos de implementação, como qual agente foi designado para uma etapa. Se sua resposta incluir uma pergunta com escolhas discretas, lembre-se de adicionar o bloco <!--AIHELPER_OPTIONS:{...}--> ao final."
     error_invalid_assignee: Responsável inválido para '%{subject}' - o usuário não está autorizado para este rastreador
     health_report_comparison:
       compare_button: Comparar relatórios

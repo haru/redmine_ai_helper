@@ -4,8 +4,12 @@ module RedmineAiHelper
   module Tools
     # A class that provides functionality to the Agent for retrieving issue information
     class IssueSearchTools < RedmineAiHelper::BaseTools
-      define_function :search_issues, description: "Search issues based on the filter conditions and return matching issues. For search items with '_id', specify the ID instead of the name of the search target. If you do not know the ID, you need to call capable_issue_properties in advance to obtain the ID. Default limit is 50 issues." do
-        property :project_id, type: "integer", description: "The project ID of the project to search in.", required: true
+      # Sort fields supported by search_issues. Only attributes the Issue model holds directly;
+      # related-object sorting (e.g. assignee name) is out of scope.
+      SUPPORTED_SORT_FIELDS = %w[id created_on updated_on due_date start_date done_ratio].freeze
+
+      define_function :search_issues, description: "Search issues based on the filter conditions and return matching issues. For search items with '_id', specify the ID instead of the name of the search target. If you do not know the ID, you need to call capable_issue_properties in advance to obtain the ID. Default limit is 50 issues. Only projects with the AI Helper module enabled can be searched." do
+        property :project_id, type: "integer", description: "The project ID of the project to search in. Only projects with the AI Helper module enabled can be searched.", required: true
         property :limit, type: "integer", description: "Maximum number of issues to return. Default is 50.", required: false
         property :fields, type: "array", description: "Search fields for the issue." do
           item type: "object", description: "Search field for the issue." do
@@ -70,9 +74,13 @@ module RedmineAiHelper
             end
           end
         end
+        property :sort, type: "object", description: "Sort order for the results. Defaults to id descending (newest first) when omitted.", required: false do
+          property :field, type: "string", description: "Sort field. One of: id, created_on, updated_on, due_date, start_date, done_ratio.", required: true
+          property :direction, type: "string", description: "Sort direction. asc or desc. Defaults to desc.", required: false
+        end
       end
       # Search issues based on filter conditions and return matching issues
-      # @param project_id [Integer] The project ID of the project to search in.
+      # @param project_id [Integer] The project ID of the project to search in. The project must have the ai_helper module enabled and be accessible to the current user.
       # @param limit [Integer] Maximum number of issues to return. Default is 50.
       # @param fields [Array] Search fields for the issue.
       # @param date_fields [Array] Date search fields for the issue.
@@ -81,8 +89,15 @@ module RedmineAiHelper
       # @param text_fields [Array] Text search fields for the issue.
       # @param status_field [Array] Status search fields for the issue.
       # @param custom_fields [Array] Custom field search filters.
+      # @param sort [Hash] Sort order with :field (one of SUPPORTED_SORT_FIELDS) and optional :direction (asc/desc, default desc). Defaults to id descending when omitted.
       # @return [Hash] A hash containing issues array and total_count.
-      def search_issues(project_id:, limit: 50, fields: [], date_fields: [], time_fields: [], number_fields: [], text_fields: [], status_field: [], custom_fields: [])
+      # @raise [RuntimeError] if project_id is missing, or the project is not accessible with the ai_helper module enabled.
+      # @raise [ActiveRecord::RecordNotFound] if no project matches project_id.
+      def search_issues(project_id:, limit: 50, fields: [], date_fields: [], time_fields: [], number_fields: [], text_fields: [], status_field: [], custom_fields: [], sort: nil)
+        # The LLM occasionally omits required parameters; without a project there is
+        # nothing to search, so fail instead of guessing a target.
+        raise "project_id is required" if project_id.nil?
+
         fields = deep_symbolize_array(fields)
         date_fields = deep_symbolize_array(date_fields)
         time_fields = deep_symbolize_array(time_fields)
@@ -90,15 +105,20 @@ module RedmineAiHelper
         text_fields = deep_symbolize_array(text_fields)
         status_field = deep_symbolize_array(status_field)
         custom_fields = deep_symbolize_array(custom_fields)
+        sort = normalize_sort_param(deep_symbolize_hash(sort))
 
         limit = [ limit.to_i, 1 ].max
         project = Project.find(project_id)
+        # Guard both search paths at once: projects without the ai_helper module (or
+        # without access for the current user) must never expose their issues.
+        raise "ai_helper is not enabled for project: id = #{project_id}" unless accessible_project?(project)
 
         if fields.empty? && date_fields.empty? && time_fields.empty? && number_fields.empty? && text_fields.empty? && status_field.empty? && custom_fields.empty?
           # No conditions: return open visible issues for the project (same as Redmine default)
+          order = sort ? { sort[:field] => sort[:direction] } : { id: :desc }
           issues = Issue.visible(User.current).open.where(project_id: project_id)
                         .includes(:status, :priority, :tracker, :assigned_to, :author, :custom_values)
-                        .order(id: :desc).limit(limit)
+                        .order(order).limit(limit)
           total_count = Issue.visible(User.current).open.where(project_id: project_id).count
           return { issues: format_issues(issues), total_count: total_count }
         end
@@ -147,7 +167,7 @@ module RedmineAiHelper
           params[:values][field[:field_name]] = field[:values].map(&:to_s)
         end
 
-        builder = IssueQueryBuilder.new(params)
+        builder = IssueQueryBuilder.new(params, sort: sort)
         custom_fields.each do |field|
           builder.add_custom_field_filter(field[:field_id], field[:operator], field[:values].map(&:to_s))
         end
@@ -190,6 +210,30 @@ module RedmineAiHelper
         issue.custom_field_values.map do |cfv|
           { id: cfv.custom_field.id, name: cfv.custom_field.name, value: cfv.value }
         end
+      end
+
+      # Validate and normalize the sort param for the search_issues tool
+      # @param sort [Hash, nil] Raw sort param with :field (required) and :direction (optional)
+      # @return [Hash, nil] Normalized { field: Symbol, direction: Symbol }, or nil if sort was nil
+      def normalize_sort_param(sort)
+        return nil if sort.nil?
+
+        field = sort[:field]
+        if field.nil?
+          raise "sort.field is required. Supported sort fields are: #{SUPPORTED_SORT_FIELDS.join(', ')}."
+        end
+
+        field = field.to_s
+        unless SUPPORTED_SORT_FIELDS.include?(field)
+          raise "Unsupported sort field '#{field}'. Supported sort fields are: #{SUPPORTED_SORT_FIELDS.join(', ')}."
+        end
+
+        direction = sort[:direction].nil? ? "desc" : sort[:direction].to_s.downcase
+        unless %w[asc desc].include?(direction)
+          raise "Invalid sort direction '#{sort[:direction]}'. Direction must be 'asc' or 'desc'."
+        end
+
+        { field: field.to_sym, direction: direction.to_sym }
       end
 
       # Validate the parameters for the search_issues tool
@@ -282,12 +326,14 @@ module RedmineAiHelper
       class IssueQueryBuilder
         # Initializes a new IssueQueryBuilder instance.
         # @param params [Hash] The parameters for the query.
+        # @param sort [Hash, nil] Normalized sort with :field and :direction. Defaults to id descending when nil.
         # @return [IssueQueryBuilder] The initialized IssueQueryBuilder instance.
-        def initialize(params)
+        def initialize(params, sort: nil)
           @query = IssueQuery.new(name: "_")
           @params = params
+          @sort = sort || { field: :id, direction: :desc }
           @query.column_names = [ "project", "tracker", "status", "subject", "priority", "assigned_to", "updated_on" ]
-          @query.sort_criteria = [ [ "id", "desc" ] ]
+          @query.sort_criteria = [ [ @sort[:field].to_s, @sort[:direction].to_s ] ]
           # Keep the default status filter (open issues only) unless explicitly specified
         end
 
@@ -331,7 +377,7 @@ module RedmineAiHelper
           setup_query(project, user)
           scope = @query.base_scope
           scope.includes(:status, :priority, :tracker, :assigned_to, :author, :custom_values)
-               .order(id: :desc).limit(limit).to_a
+               .reorder(@sort[:field] => @sort[:direction]).limit(limit).to_a
         end
 
         # Returns the total count of matching issues

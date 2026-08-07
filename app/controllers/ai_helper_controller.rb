@@ -270,7 +270,7 @@ class AiHelperController < ApplicationController
     redirect_to issue_path(@issue), notice: l("ai_helper.notice_sub_issues_added")
   end
 
-  # Find similar issues using LLM and IssueAgent
+  # Find similar issues using LLM and IssueReadAgent
   def similar_issues
     begin
       llm = RedmineAiHelper::Llm.new

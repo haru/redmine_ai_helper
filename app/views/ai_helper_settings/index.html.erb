@@ -1,107 +1,26 @@
+<% content_for :header_tags do %>
+  <%= stylesheet_link_tag('ai_helper.css', plugin: :redmine_ai_helper) %>
+  <%= javascript_include_tag('ai_helper_chat_settings.js', plugin: :redmine_ai_helper) %>
+<% end %>
 <h2><%= t(:label_ai_helper) %></h2>
 <%= labelled_form_for @setting, url: ai_helper_setting_update_url, method: :post do |f| %>
-  <%= error_messages_for "setting" %>
-  <div class="box tabular">
-    <p>
-      <%
-            options = @model_profiles.map{|p| [p.display_name, p.id]}
-        %>
-      <%= f.select :model_profile_id, options, include_blank: true, required: true %>
-      <%= link_to ai_helper_model_profiles_new_url do %>
-        <%= sprite_icon('add') %>
-        <%= t(:label_new) %>
-      <% end %>
-    </p>
-    <div id="ai_helper_model_profile_description">
-    </div>
-    <hr>
-    <p>
-      <%= f.check_box :use_think_model %>
-      <span class="description"><%= t("activerecord.attributes.ai_helper_setting.think_model_description") %></span>
-    </p>
-    <div id="ai-helper-think-model-settings">
-      <p>
-        <%= f.select :think_model_profile_id, options, include_blank: true %>
-      </p>
-    </div>
-    <hr>
-    <p>
-      <%= f.check_box :attachment_send_enabled %>
-    </p>
-    <div id="ai-helper-attachment-settings">
-      <p>
-        <%= f.number_field :attachment_max_size_mb, min: 1, size: 10 %>
-      </p>
-    </div>
-    <hr>
-    <p>
-      <%= f.check_box :vector_search_enabled %>
-    </p>
-    <p>
-      <%= f.check_box :use_vector_model_profile %>
-      <span class="description"><%= t("activerecord.attributes.ai_helper_setting.vector_model_profile_description") %></span>
-    </p>
-    <div id="ai-helper-vector-model-profile-settings">
-      <p>
-        <%= f.select :vector_model_profile_id, options, include_blank: true %>
-      </p>
-    </div>
-    <div id="ai-helper-vector-search">
-      <p>
-        <%= f.text_field :vector_search_uri, size: 60, required: true %>
-      </p>
-      <p>
-        <%= f.text_field :vector_search_api_key, size: 60 %>
-      </p>
-      <p>
-        <%= f.text_field :embedding_model, size: 60 %>
-      </p>
-      <p id="ai_helper_dimension" style="display: none;">
-        <%= f.text_field :dimension, size: 60 %>
-      </p>
-      <p id="ai_helper_embedding_url" style="display: none;">
-        <%= f.text_field :embedding_url, size: 90 %>
-      </p>
-      <p>
-        <%= f.check_box :vector_register_all_projects %>
-        <span class="description"><%= t("activerecord.attributes.ai_helper_setting.vector_register_all_projects_description") %></span>
-      </p>
-      <div id="ai-helper-vector-target-projects" style="<%= 'display: none;' if @setting.vector_register_all_projects %>">
-        <% if @ai_helper_projects.any? %>
-          <% selected_project_ids = @setting.vector_target_project_ids.to_a %>
-          <fieldset class="box" id="ai_helper_vector_target_project_ids">
-            <legend><%= toggle_checkboxes_link("#ai_helper_vector_target_project_ids input[type=checkbox]") %><%= t(:label_project_plural) %></legend>
-            <div class="objects-selection">
-              <%= render_project_nested_lists(@ai_helper_projects) do |p|
-                content_tag('label', check_box_tag('ai_helper_setting[vector_target_project_ids][]', p.id, selected_project_ids.include?(p.id), :id => nil) + ' ' + h(p), :class => 'block')
-              end %>
-            </div>
-            <%= hidden_field_tag('ai_helper_setting[vector_target_project_ids][]', '', :id => nil) %>
-          </fieldset>
-        <% end %>
-      </div>
-    </div>
-    <hr>
-    <p>
-      <%= f.check_box :mcp_server_enabled %>
-    </p>
-    <hr>
-    <p>
-      <%= f.check_box :read_only_mode %>
-      <span class="description"><%= t("activerecord.attributes.ai_helper_setting.read_only_mode_description") %></span>
-    </p>
-    <hr>
-    <div id="ai-helper-send-user-id">
-      <p>
-        <%= f.check_box :send_user_id_enabled %>
-        <span class="description"><%= t("activerecord.attributes.ai_helper_setting.send_user_id_enabled_description") %></span>
-      </p>
-      <hr>
-    </div>
-    <p><%= f.text_area :additional_instructions, rows: 12 %></p>
-  </div>
+  <%= error_messages_for(@setting, *(@chat_adapter_settings&.values || [])) %>
+  <%= hidden_field_tag :tab, @selected_tab %>
+  <%= render_tabs ai_helper_settings_tabs(f), @selected_tab %>
   <%= f.submit t(:button_submit) %>
 <% end %>
+<script>
+  (function() {
+    const tabHidden = document.querySelector('input[name="tab"]');
+    const tabLinks = document.querySelectorAll('.tabs a[id^="tab-"]');
+    tabLinks.forEach(function(link) {
+      link.addEventListener('click', function() {
+        const name = this.id.replace('tab-', '');
+        if (tabHidden) { tabHidden.value = name; }
+      });
+    });
+  })();
+</script>
 <script>
   function loadModelProfile(id) {
       $.ajax({
@@ -153,7 +72,6 @@
       const registerAll = document.getElementById('ai_helper_setting_vector_register_all_projects');
       const container = document.getElementById('ai-helper-vector-target-projects');
       if (!registerAll || !container) return;
-      // Hidden but not disabled: the selection is still submitted so it is preserved (FR-006).
       container.style.display = registerAll.checked ? 'none' : '';
   }
 

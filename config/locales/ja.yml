@@ -32,6 +32,39 @@ ja:
   label_ai_helper_report_detail_mobile: "レポート詳細"
   label_ai_helper_close_detail: "詳細を閉じる"
   ai_helper:
+    settings:
+      tab_general: "全般"
+      tab_model: "モデル"
+      tab_vector: "ベクトル検索"
+      tab_channels: "チャット連携"
+    chat_channel:
+      adapters:
+        slack: "Slack"
+        discord: "Discord"
+      settings:
+        enabled: "有効にする"
+        app_token: "App Token"
+        bot_token: "Bot Token"
+        redmine_user: "実行アカウント"
+        redmine_user_info: "チャットツールからのすべての質問はこのRedmineユーザーの権限で処理されます。このアカウントのロールを絞ることで、ゲートウェイ経由で可能な操作を制限できます。"
+        default_project: "既定プロジェクト"
+        bindings: "チャンネル対応付け"
+        adapter: "チャットツール"
+        channel_id: "チャンネルID"
+        channel_name: "チャンネル名"
+        add_binding: "対応付けを追加"
+        restart_notice: "設定の変更を反映するためにはチャットゲートウェイの再起動が必要です"
+        close_help: "ヘルプを閉じる"
+      errors:
+        service_account_not_configured: "このチャット連携に有効な実行アカウントが設定されていないため、処理できませんでした。管理者に実行アカウントの設定を依頼してください。"
+        service_account_unavailable: "設定されていた実行アカウントが削除または無効化されているため、処理できませんでした。管理者に実行アカウントの再設定を依頼してください。"
+        default_project_not_configured: "このチャット連携に既定プロジェクトが設定されていません。管理者に設定を依頼してください。"
+        module_disabled: "対応付けられたプロジェクトでAIヘルパーモジュールが無効になっています。"
+        processing_failed: "回答の生成中にエラーが発生しました。詳細はAIヘルパーのログを確認してください。"
+        history_unavailable: "直近の会話内容を取得できなかったため、それを踏まえずに回答します。"
+        empty_answer: "回答を提示できませんでした。"
+      context:
+        label: "チャットチャンネルから取り込んだ発言"
     notice_sub_issues_added: "子チケットが追加されました"
     error_invalid_assignee: "'%{subject}' の担当者が無効です。このトラッカーに対する権限がありません"
     chat:
@@ -165,11 +198,11 @@ ja:
           show: "バージョン「%{version_name}」のページです。バージョンのIDは %{version_id} です。"
           other: "バージョンのページです。"
         other_page: "%{controller_name}の%{action_name}ページです"
-      issue_agent:
+      issue_read_agent:
         search_answer_instruction: "なお、「条件に合ったチケットを探して」「こういう条件のチケット見せて」の様な複数のチケットを探すタスクの場合には、search_issuesツールを使ってチケットの一覧を取得し、結果を返してください。"
         search_answer_instruction_with_vector: "チケットを検索する際は、以下のように使い分けてください：概念的・意味的な検索（「例外に関するチケット」「パフォーマンス問題」「ログイン関連のバグ」など）にはベクトル検索（ask_with_filter）を使用し、明確なフィルタ条件（「ステータスが完了」「担当者が○○」「今月更新された」など属性値で絞り込む場合）にはsearch_issuesを使用してください。"
       leader_agent:
-        generate_final_response: "全てのエージェントがタスクを完了しました。ユーザーへの最終的な回答を作成してください。回答に離散的な選択肢を提示する質問が含まれる場合は、最後に <!--AIHELPER_OPTIONS:{...}--> ブロックを追加することを忘れないでください。"
+        generate_final_response: "以下は、計画の各ステップの実行結果です: %{execution_results} この結果は、どのステップが成功しどのステップが失敗したかの判断にのみ使用してください。回答に記載すべき内容そのものは含まれていません。内容は上記の会話に含まれる各エージェントの応答から取得したうえで、ユーザーへの最終的な回答を作成してください。ステータスが `error` のステップを、完了した・成功したと述べないでください。実際にチケットの作成・更新が行われた場合のみIDを含めてください。行われていない場合はIDに言及したり、作成・更新したと述べたりしないでください。どのエージェントがどのステップを担当したかなど、内部的な実装の詳細には言及しないでください。回答に離散的な選択肢を提示する質問が含まれる場合は、最後に <!--AIHELPER_OPTIONS:{...}--> ブロックを追加することを忘れないでください。"
     mcp:
       errors:
         disabled: "MCPサーバーは無効です"
@@ -216,6 +249,14 @@ ja:
         name_duplicate: "コマンド名が既に使用されています"
         project_required: "プロジェクトコマンドにはプロジェクトが必要です"
   activerecord:
+    errors:
+      models:
+        ai_helper_chat_adapter_setting:
+          attributes:
+            redmine_user_name:
+              invalid: "一致するユーザーが見つかりません"
+            default_project_id:
+              blank: "を入力してください"
     models:
       ai_helper_model_profile: "モデルプロファイル"
       ai_helper_setting: "AIヘルパー設定"
@@ -265,5 +306,7 @@ ja:
         prompt: "プロンプト"
         description: "説明"
         user_scope: "スコープ"
+      ai_helper_chat_adapter_setting:
+        default_project_id: "既定プロジェクト"
 
   field_id: "ID"

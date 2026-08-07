@@ -96,6 +96,7 @@ Follow TDD: write tests BEFORE implementing features.
 - If you believe the design has issues, **ASK THE USER FIRST** before implementing differently
 
 ## Commit & Pull Request Guidelines
+- **NEVER commit or push without explicit user permission** — always ask first
 - **Commit messages**: Concise, imperative, English (e.g., "Add health report history actions")
 - **PR body**: Summarize change set, list commands/tests executed, reference related Redmine issues
 - **UI changes**: Include screenshots
@@ -113,22 +114,33 @@ Follow TDD: write tests BEFORE implementing features.
 - **Request Flow**: Controller → Llm class (creates Langfuse trace) → LeaderAgent → BaseAgent/BaseTools → RubyLLM
 - **Agent Registration**: All agents auto-register via `inherited` hook when loaded; inherit from `BaseAgent`
 - **Tool System**: Tools defined via DSL in `BaseTools` subclasses using `define_function`/`property` that generates `RubyLLM::Tool` subclasses
-- **Key Agents**: `IssueAgent`, `RepositoryAgent`, `WikiAgent`, `ProjectAgent`, `BoardAgent`, `SystemAgent`, `UserAgent`, `VersionAgent`, `DocumentationAgent`, `IssueUpdateAgent`, `LeaderAgent`, `McpAgent`
+- **Key Agents**: `IssueReadAgent`, `IssueWriteAgent`, `RepositoryAgent`, `WikiAgent`, `ProjectAgent`, `BoardAgent`, `SystemAgent`, `UserAgent`, `VersionAgent`, `DocumentationAgent`, `FileAgent`, `LeaderAgent`, `McpAgent`
 - **LLM Providers**: OpenAI, Anthropic, Gemini, Azure OpenAI, OpenAI-compatible (in `lib/redmine_ai_helper/llm_client/`)
 - **Streaming Support**: `AiHelper::Streaming` concern provides SSE streaming via `stream_llm_response`. Agents accept a `stream_proc` callback for incremental content delivery
 - **Langfuse Integration**: `LangfuseWrapper` manages traces and spans at the orchestration level. `BaseAgent#setup_langfuse_callbacks` registers `on_end_message` callbacks on `RubyLLM::Chat` instances to create Langfuse generations with token usage
+- **Read-only mode / write-tool classification**: `BaseTools.define_function` accepts `write: true`; generated `RubyLLM::Tool` subclasses expose `write_tool?`. `BaseAgent#available_tool_classes` drops write tools when `AiHelperSetting.read_only_mode?` is true; `BaseAgent#can_write?` (derived from `write_tool?`) gates whether `LeaderAgent` may dispatch a step with `requires_write: true` to that agent. External MCP sub-agents are disabled wholesale (not filtered) under read-only mode via `SubMcpAgent#enabled?`. See `docs/adr/005-write-tool-classification-for-read-only-mode.md` and `docs/adr/015-agent-write-capability-routing.md`.
 
 ## Key Integration Points
 - **Hooks**: `init.rb` for registration, `lib/redmine_ai_helper/view_hook.rb` for UI integration
 - **Patches**: Extend Redmine core classes via `*_patch.rb` files
 - **Vector Search (Qdrant)**: `AiHelperVectorData` model, `lib/redmine_ai_helper/vector/`
-- **MCP**: Dynamic agent generation via `McpServerLoader` from `config/ai_helper/mcp_servers/`
+- **Using external MCP servers**: Dynamic agent generation via `McpServerLoader` (`lib/redmine_ai_helper/util/mcp_server_loader.rb`) from `config/ai_helper/config.json`; generates one `SubMcpAgent` per configured server (STDIO, HTTP, or SSE transport)
+- **Exposing Redmine as an MCP server**: `lib/redmine_ai_helper/mcp/` (`Server`, `SessionStrategy`, `ToolAdapter`) publishes registered `BaseTools` as a stateless MCP endpoint via `AiHelperMcpController` (`POST /ai_helper/mcp`, API-key authenticated); respects the same `write_tool?` filtering as read-only mode
+- **Chat Channel Gateway**: `lib/redmine_ai_helper/chat_channel/` (`Gateway`, adapter classes under `adapters/`, `MessageHandler`, `ContextImporter`) bridges external chat tools (Slack, Discord) to the same agent/tool pipeline, running as a separate long-lived process (`bundle exec rake redmine:plugins:ai_helper:chat_channel:gateway`, task in `lib/tasks/chat_channel.rake`) under a configured Redmine service account. Settings/state: `AiHelperChatAdapterSetting`, `AiHelperChannelBinding`, `AiHelperChannelConversation`. See `docs/slack_gateway_setup.md`, `docs/discord_gateway_setup.md`, ADR-006 through ADR-009 and ADR-012 through ADR-014
+- **Custom Commands**: `AiHelperCustomCommand` model (global/project/user scope) expanded by `CustomCommandExpander` — `/command_name input` syntax with template variables `{input}`, `{user_name}`, `{project_name}`, `{datetime}`
+- **Project Health Reports**: `AiHelperHealthReport` model; generated report history, PDF export via `lib/redmine_ai_helper/export/pdf/`, and a REST endpoint (`POST /projects/:id/ai_helper/health_report.json`) for scheduled generation
+- **Assignee/effort suggestions**: `AssignmentSuggestion` and `EffortEstimation` service classes derive suggestions from assignment history and vector-similar issues (vector search required)
 
 ## Frontend Security
 - Build HTML structures in ERB templates (`*.html.erb`), NOT in JavaScript
 - This prevents XSS and injection vulnerabilities by leveraging Rails' automatic escaping
 - JavaScript should only manipulate existing DOM elements rendered by ERB
 - Use `sprite_icon` helper for icons, `t()` / `l()` for i18n text in templates
+
+## Multi-modal Attachment Support
+- Images/PDFs/text/code/audio attached to Issues, Wiki pages, and Board messages can be sent to the LLM (`AttachmentFileHelper`, `FileAgent`/`file_tools.rb`)
+- **Security**: disk file paths are never embedded in JSON/text sent to the LLM — pass them only via `BaseAgent#chat(with:)` or dedicated file-tool parameters
+- Image detection is extension-based via Redmine's `Attachment#image?`
 
 ## Error Handling Best Practices
 - **NEVER implement fallback error handling** — fallbacks hide real problems
@@ -175,9 +187,3 @@ These rules apply only inside `/speckit.*` workflows. Conversational
 replies outside SDD steps are not affected.
 
 <!-- END token-budget concise-mode -->
-
-<!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan:
-specs/022-vector-project-selection/plan.md
-<!-- SPECKIT END -->

@@ -1,0 +1,22 @@
+<% f = tab[:f] %>
+<div class="box tabular">
+  <p>
+    <%= f.select :model_profile_id, ai_helper_model_profile_options(@model_profiles), include_blank: true, required: true %>
+    <%= link_to ai_helper_model_profiles_new_url do %>
+      <%= sprite_icon('add') %>
+      <%= t(:label_new) %>
+    <% end %>
+  </p>
+  <div id="ai_helper_model_profile_description">
+  </div>
+  <hr>
+  <p>
+    <%= f.check_box :use_think_model %>
+    <span class="description"><%= t("activerecord.attributes.ai_helper_setting.think_model_description") %></span>
+  </p>
+  <div id="ai-helper-think-model-settings">
+    <p>
+      <%= f.select :think_model_profile_id, ai_helper_model_profile_options(@model_profiles), include_blank: true %>
+    </p>
+  </div>
+</div>

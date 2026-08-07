@@ -216,6 +216,47 @@ class McpServerLoaderTest < ActiveSupport::TestCase
       end
     end
 
+    context "can_write? for a generated MCP agent (FR-004a)" do
+      setup do
+        config = {
+          "mcpServers" => {
+            "filesystem" => {
+              "command" => "node",
+              "args" => [ "server.js" ]
+            }
+          }
+        }
+        server_config = config["mcpServers"]["filesystem"]
+        fake_client = mock("mcp_client")
+        mock_logger = create_mock_logger
+
+        @loader.stubs(:load_config).returns(config)
+        @loader.expects(:create_mcp_client).with("filesystem", server_config).returns(fake_client)
+        RedmineAiHelper::CustomLogger.stubs(:instance).returns(mock_logger)
+        # Tools coming from an external MCP server carry no write/read classification,
+        # so they do not respond to write_tool? (see ADR-005).
+        RedmineAiHelper::Tools::McpTools.stubs(:generate_tool_classes).returns(build_fake_tool_instances)
+        stub_llm_provider
+
+        @loader.send(:generate_mcp_agent_classes)
+        @agent = Object.const_get("AiHelperMcpFilesystem").new
+      end
+
+      should "report itself as write-capable instead of raising on unclassified tools" do
+        AiHelperSetting.stubs(:read_only_mode?).returns(false)
+
+        assert_equal true, @agent.can_write?
+      end
+
+      should "not depend on the tools responding to write_tool?" do
+        AiHelperSetting.stubs(:read_only_mode?).returns(false)
+
+        assert @agent.available_tool_classes.none? { |tool| tool.respond_to?(:write_tool?) },
+               "the fixture must model unclassified MCP tools"
+        assert_equal true, @agent.can_write?
+      end
+    end
+
     should "return empty tool providers and log error when tool generation fails" do
       config = {
         "mcpServers" => {
