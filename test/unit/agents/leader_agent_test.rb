@@ -2,6 +2,23 @@ require File.expand_path("../../../test_helper", __FILE__)
 require "redmine_ai_helper/agents/leader_agent"
 
 class LeaderAgentTest < ActiveSupport::TestCase
+  # locale => [wording that must not appear, wording that must appear]
+  # The forbidden entries are the "use only these results as the facts" phrasings: the
+  # execution results carry step outcomes only, never the content of the answer, so an
+  # instruction to treat them as the sole facts drops legitimate content from the reply
+  # (FR-007a). The required entries point the model at the conversation for that content
+  # (FR-006a).
+  FINAL_RESPONSE_WORDING = {
+    "en" => [ /Using only these results as the facts/i, /conversation above/i ],
+    "ja" => [ /この結果のみを事実として/, /上記の会話/ ],
+    "fr" => [ /uniquement sur ces résultats comme des faits/i, /conversation ci-dessus/i ],
+    "it" => [ /Usando solo questi risultati come fatti/i, /conversazione precedente/i ],
+    "tr" => [ /Yalnızca bu sonuçları gerçek olarak kullanarak/, /yukarıdaki konuşma/ ],
+    "zh" => [ /仅将这些结果作为事实/, /上文对话/ ],
+    "pt-BR" => [ /Usando apenas esses resultados como fatos/i, /conversa acima/i ],
+    "fa" => [ /به‌عنوان تنها واقعیت‌ها/, /گفتگوی بالا/ ]
+  }.freeze
+
   fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :enabled_modules
   setup do
     # Mock LLM provider
@@ -423,6 +440,63 @@ class LeaderAgentTest < ActiveSupport::TestCase
       end
     end
 
+    context "skipped steps are visible to later steps (FR-005c)" do
+      should "add the unexecuted step to the shared history before the next step is dispatched" do
+        write_step = {
+          "agent" => "issue_agent",
+          "step" => "Create an issue titled 'Clean the air conditioner'.",
+          "description_for_human" => "Creating an issue...",
+          "use_think_model" => true,
+          "requires_write" => true
+        }
+        follow_up_step = {
+          "agent" => "issue_update_agent",
+          "step" => "Add a comment to the issue created in the previous step.",
+          "description_for_human" => "Adding a comment...",
+          "use_think_model" => false,
+          "requires_write" => true
+        }
+        steps_hash = { "steps" => [ write_step, follow_up_step ] }
+
+        @agent.stubs(:generate_goal).returns({ "goal" => "test goal", "generate_steps_required" => true })
+        @agent.stubs(:generate_steps).returns(steps_hash)
+
+        mock_issue_agent = mock("issue_agent")
+        mock_issue_agent.stubs(:role).returns("issue_agent")
+        mock_issue_agent.stubs(:add_message)
+        mock_issue_agent.stubs(:can_write?).returns(false)
+        mock_issue_agent.expects(:perform_task).never
+
+        mock_update_agent = mock("issue_update_agent")
+        mock_update_agent.stubs(:role).returns("issue_update_agent")
+        mock_update_agent.stubs(:add_message)
+        mock_update_agent.stubs(:can_write?).returns(true)
+        mock_update_agent.stubs(:perform_task).returns(
+          RedmineAiHelper::BaseAgent::TaskResponse.create_success("comment added")
+        )
+
+        agent_list = RedmineAiHelper::AgentList.instance
+        agent_list.stubs(:get_agent_instance).with("issue_agent", anything).returns(mock_issue_agent)
+        agent_list.stubs(:get_agent_instance).with("issue_update_agent", anything).returns(mock_update_agent)
+
+        # A real ChatRoom is used here: the point of this test is what actually lands in the
+        # shared message history that later agents read.
+        real_chat_room = RedmineAiHelper::ChatRoom.new("test goal")
+        RedmineAiHelper::ChatRoom.stubs(:new).returns(real_chat_room)
+        @mock_ruby_llm_chat.stubs(:ask).returns(stub(content: "final answer"))
+
+        @agent.perform_user_request(@messages)
+
+        skipped_index = real_chat_room.messages.index { |m| m[:content].match?(/not executed/i) }
+        follow_up_index = real_chat_room.messages.index { |m| m[:content].include?(follow_up_step["step"]) }
+
+        assert_not_nil skipped_index, "the guarded step must be added to the shared history"
+        assert_not_nil follow_up_index
+        assert skipped_index < follow_up_index,
+               "the next agent must see the unexecuted step before receiving its own task"
+      end
+    end
+
     context "final answer reflects execution results (US2)" do
       should "pass chat_room's execution_results_json into the final response instruction" do
         step = {
@@ -486,20 +560,36 @@ class LeaderAgentTest < ActiveSupport::TestCase
 
     context "generate_final_response locale content (US2)" do
       should "include %{execution_results} placeholder and drop success-presupposing wording in all locales" do
-        locales = %w[en ja fr it tr zh pt-BR fa]
         old_wording = /All agents have completed their tasks|全てのエージェントがタスクを完了しました/
 
-        locales.each do |locale|
-          yaml_path = File.expand_path("../../../../config/locales/#{locale}.yml", __FILE__)
-          data = YAML.load_file(yaml_path)
-          text = data.dig(locale, "ai_helper", "prompts", "leader_agent", "generate_final_response")
+        FINAL_RESPONSE_WORDING.each_key do |locale|
+          text = final_response_text(locale)
 
           assert_not_nil text, "#{locale}: generate_final_response key must exist"
           assert_includes text, "%{execution_results}", "#{locale}: must include the %{execution_results} placeholder"
           assert_no_match old_wording, text, "#{locale}: must not presuppose success"
         end
       end
+
+      should "separate outcome judgement from answer content in all locales (FR-006a, FR-007a)" do
+        FINAL_RESPONSE_WORDING.each do |locale, (forbidden, required)|
+          text = final_response_text(locale)
+
+          assert_no_match forbidden, text,
+                          "#{locale}: must not ask the model to treat the execution results as the only facts"
+          assert_match required, text,
+                       "#{locale}: must point the model at the conversation for the content of the answer"
+        end
+      end
     end
+  end
+
+  # Reads the generate_final_response instruction straight from the locale YAML, so the
+  # assertions cover the shipped file rather than whatever I18n has already loaded.
+  def final_response_text(locale)
+    yaml_path = File.expand_path("../../../../config/locales/#{locale}.yml", __FILE__)
+    data = YAML.load_file(yaml_path)
+    data.dig(locale, "ai_helper", "prompts", "leader_agent", "generate_final_response")
   end
 
   class DummyLangfuse

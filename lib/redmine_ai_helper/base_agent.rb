@@ -111,8 +111,16 @@ module RedmineAiHelper
 
     # Whether this agent can perform write operations (create, update, delete).
     # Returns true if any of the available tool classes are write tools.
-    # When read-only mode is enabled, available_tool_classes already excludes write tools,
-    # so this will naturally return false.
+    #
+    # This implementation only applies to agents that expose their tools through
+    # available_tool_providers, because write_tool? is metadata attached by the BaseTools
+    # DSL. For those agents, read-only mode needs no special handling here:
+    # available_tool_classes already excludes write tools, so this returns false.
+    # An agent that overrides available_tool_classes with tools carrying no such metadata
+    # — the agents generated for external MCP servers do — must override this method too;
+    # see McpServerLoader#create_mcp_agent_subclass. No respond_to? fallback is used here
+    # on purpose: silently reporting unclassified tools as read-only would make legitimate
+    # write steps fail with no visible cause.
     #
     # This is an internal check used by LeaderAgent to verify a step assignment before
     # dispatching it. It is deliberately never exposed to the LLM (it is not included in

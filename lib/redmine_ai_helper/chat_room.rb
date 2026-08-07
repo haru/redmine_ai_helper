@@ -87,12 +87,22 @@ module RedmineAiHelper
     end
 
     # Record a step that was skipped without calling the assigned agent (no LLM call).
+    # The skip is also added to the shared message history: agents handling later steps
+    # would otherwise assume this step completed and act on results that do not exist.
     # @param agent [String] The name of the agent the step was assigned to
     # @param step [String] The instruction content of the step
     # @param error [String] The reason the step was skipped
     # @return [void]
     def record_skipped_step(agent:, step:, error:)
       @step_results << { agent: agent, step: step, status: RedmineAiHelper::ToolResponse::STATUS_ERROR, error: error }
+      notice = <<~EOS
+        The following step was not executed, and produced no result:
+
+        #{step}
+
+        Reason: #{error}
+      EOS
+      add_message("assistant", agent, notice, "all")
     end
 
     # Format the accumulated step results as a JSON array string, in plan order.

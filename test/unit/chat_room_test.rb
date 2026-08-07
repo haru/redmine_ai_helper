@@ -91,6 +91,34 @@ class RedmineAiHelper::ChatRoomTest < ActiveSupport::TestCase
         assert_equal "no write capability", result[:error]
       end
 
+      should "share the skipped step with the other agents through the message history (FR-005c)" do
+        @mock_agent.expects(:add_message).at_least_once
+        @chat_room.add_agent(@mock_agent)
+
+        @chat_room.record_skipped_step(agent: "mock_agent", step: "Create an issue", error: "no write capability")
+
+        assert_equal 1, @chat_room.messages.size
+        content = @chat_room.messages.last[:content]
+        assert_match(/not executed/i, content)
+        assert_includes content, "Create an issue"
+        assert_includes content, "no write capability"
+      end
+
+      should "keep the skipped step visible to a step that runs after it (FR-005c)" do
+        @chat_room.add_agent(@mock_agent)
+
+        @chat_room.record_skipped_step(agent: "mock_agent", step: "Create an issue", error: "no write capability")
+        @chat_room.send_task("leader", "mock_agent", "Add a comment to the created issue")
+
+        skipped_index = @chat_room.messages.index { |m| m[:content].match?(/not executed/i) }
+        follow_up_index = @chat_room.messages.index { |m| m[:content].include?("Add a comment to the created issue") }
+
+        assert_not_nil skipped_index
+        assert_not_nil follow_up_index
+        assert skipped_index < follow_up_index,
+               "the skipped step must be in the history before the following step is dispatched"
+      end
+
       should "format step_results as a JSON array string in plan order" do
         @chat_room.add_agent(@mock_agent)
         @chat_room.send_task("leader", "mock_agent", "First task")

@@ -67,4 +67,4 @@ Briefly describe alternatives that were rejected and why.
 | [012](./012-slack-only-scope-for-websocket-transport-fixes.md) | Scope the WebSocket transport fixes to the Slack adapter, leaving the same latent defects in Discord | Accepted (scope decision superseded by ADR-014) |
 | [013](./013-slack-receive-inactivity-liveness-detection.md) | Replace Slack's self-initiated ping/pong-count liveness check with receive-inactivity monitoring | Accepted |
 | [014](./014-shared-websocket-transport-in-base-adapter.md) | Move the shared WebSocket transport handling into `BaseAdapter` and apply it to Discord | Accepted |
-| [015](./015-agent-write-capability-routing.md) | Guard write-capable steps with an internal capability check that is never exposed to the router | Proposed |
+| [015](./015-agent-write-capability-routing.md) | Guard write-capable steps with an internal capability check that is never exposed to the router | Accepted |

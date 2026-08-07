@@ -746,6 +746,18 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
 
       assert_equal false, agent.can_write?
     end
+
+    # The default implementation only applies to agents that expose their tools through
+    # available_tool_providers, because write_tool? is metadata added by the BaseTools DSL.
+    # This test does not endorse raising as desirable behaviour: it guarantees that no
+    # respond_to? fallback silently reports unclassified tools as read-only, which would
+    # make legitimate write steps fail for no visible reason. Agents whose tools carry no
+    # classification must override can_write? themselves (see McpServerLoader).
+    should "not silently treat unclassified tools as read-only" do
+      agent = BaseAgentTestModele::UnclassifiedToolsAgent.new(@params)
+
+      assert_raises(NoMethodError) { agent.can_write? }
+    end
   end
 
   context "AgentList" do
@@ -904,6 +916,23 @@ module BaseAgentTestModele
 
     def generate_response(_prompt:, **_options)
       "書き込みツールテスト用エージェントの応答"
+    end
+  end
+
+  # Models an agent that overrides available_tool_classes directly and returns tools
+  # carrying no write/read classification, the way agents generated for external MCP
+  # servers do. Such tools do not respond to write_tool?.
+  class UnclassifiedToolsAgent < RedmineAiHelper::BaseAgent
+    def available_tool_classes
+      [ Struct.new(:name, :description).new("list_dir", "List directory contents") ]
+    end
+
+    def backstory
+      "分類情報のないツールを持つテスト用エージェントのバックストーリー"
+    end
+
+    def generate_response(_prompt:, **_options)
+      "分類情報のないツールを持つテスト用エージェントの応答"
     end
   end
 end
