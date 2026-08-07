@@ -81,7 +81,8 @@ module RedmineAiHelper
         raise error
       end
       answer = agent.perform_task(option, proc)
-      add_message("assistant", to, answer, from)
+      reply_text = answer.is_error? ? "Error: #{answer.error}" : answer.value
+      add_message("assistant", to, reply_text, from)
       record_step_result(agent: to, step: task, response: answer)
       answer
     end

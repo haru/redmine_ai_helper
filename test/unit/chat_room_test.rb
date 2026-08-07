@@ -47,6 +47,25 @@ class RedmineAiHelper::ChatRoomTest < ActiveSupport::TestCase
       assert_match "Perform this task", @chat_room.messages[-2][:content]
     end
 
+    should "record the agent's reply text in the message history, not the raw response object" do
+      @chat_room.add_agent(@mock_agent)
+      @chat_room.send_task("leader", "mock_agent", "Perform this task")
+
+      assert_match "Task completed", @chat_room.messages.last[:content]
+      assert_no_match(/:status=>/, @chat_room.messages.last[:content])
+    end
+
+    should "record the error message in the message history when the task fails" do
+      error_response = RedmineAiHelper::ToolResponse.create_error("boom")
+      @mock_agent.stubs(:perform_task).returns(error_response)
+      @chat_room.add_agent(@mock_agent)
+
+      @chat_room.send_task("leader", "mock_agent", "Perform this task")
+
+      assert_match "boom", @chat_room.messages.last[:content]
+      assert_no_match(/:status=>/, @chat_room.messages.last[:content])
+    end
+
     should "raise error if agent not found" do
       error = assert_raises(RuntimeError) do
         @chat_room.send_task("leader", "non_existent_agent", "Perform this task")
