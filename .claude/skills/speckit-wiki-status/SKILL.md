@@ -5,8 +5,12 @@ description: 'Compact wiki snapshot: counts, freshness, open lint issues, and on
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: wiki:commands/speckit.wiki.status.md
+  source: extension:wiki
+user-invocable: true
+disable-model-invocation: false
 ---
+
+# Wiki Status Skill
 
 # Wiki Status
 
