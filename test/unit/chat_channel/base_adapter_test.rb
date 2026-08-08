@@ -134,9 +134,24 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
   # Doubles for the frames handle_frame receives (#type / #data / #code).
   FrameStruct = Struct.new(:type, :data, :code)
 
+  # An abstract intermediate subclass that never overrides .channel_type
+  # (like InboundAdapter), used to prove .adapters tolerates it.
+  class AbstractIntermediateAdapter < RedmineAiHelper::ChatChannel::BaseAdapter
+  end
+
   context "automatic registration" do
     should "register subclasses by channel_type" do
       assert_equal FakeAdapter, RedmineAiHelper::ChatChannel::BaseAdapter.adapters["fake_chat"]
+    end
+
+    should "exclude an abstract intermediate subclass that does not override .channel_type" do
+      assert_not_includes RedmineAiHelper::ChatChannel::BaseAdapter.adapters.values, AbstractIntermediateAdapter
+    end
+  end
+
+  context "inbound? capability declaration" do
+    should "default to false" do
+      assert_not FakeAdapter.inbound?
     end
   end
 

@@ -48,6 +48,8 @@ ja:
         redmine_user: "実行アカウント"
         redmine_user_info: "チャットツールからのすべての質問はこのRedmineユーザーの権限で処理されます。このアカウントのロールを絞ることで、ゲートウェイ経由で可能な操作を制限できます。"
         default_project: "既定プロジェクト"
+        webhook_url: "Webhook URL"
+        webhook_url_info: "このURLを外部サービスに登録すると、この連携にメッセージが配信されます。"
         bindings: "チャンネル対応付け"
         adapter: "チャットツール"
         channel_id: "チャンネルID"

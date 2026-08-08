@@ -193,6 +193,15 @@ class ChatChannelGatewayTest < ActiveSupport::TestCase
       assert_equal 1, adapters.size
       assert_kind_of FakeGatewayAdapter, adapters.first
     end
+
+    # FR-010 / SC-006: adding the (abstract) InboundAdapter base class must
+    # not change how the gateway enumerates and starts existing adapters.
+    should "build from the real registry without error, and never include the abstract InboundAdapter itself" do
+      adapters = @gateway.send(:build_enabled_adapters)
+
+      assert_kind_of Array, adapters
+      assert_not_includes adapters.map(&:class), RedmineAiHelper::ChatChannel::InboundAdapter
+    end
   end
 
   context "dispatch without a gateway" do
