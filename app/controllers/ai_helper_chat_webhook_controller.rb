@@ -53,23 +53,25 @@ class AiHelperChatWebhookController < ApplicationController
   # (contracts/webhook_endpoint.md).
   # @return [RedmineAiHelper::ChatChannel::InboundAdapter, nil]
   def resolve_inbound_adapter
-    channel_type = params[:channel_type]
-    adapter_class = RedmineAiHelper::ChatChannel::BaseAdapter.adapters[channel_type]
+    adapter_class = RedmineAiHelper::ChatChannel::BaseAdapter.adapters[params[:channel_type]]
     unless adapter_class
-      ai_helper_logger.warn "ai_helper_chat_webhook: unknown channel_type=#{channel_type}"
+      # Quoted because this is the only branch that logs an unverified value
+      # straight from the URL: quoting keeps a crafted value from passing
+      # itself off as further log content.
+      ai_helper_logger.warn "ai_helper_chat_webhook: unknown channel_type=#{params[:channel_type].inspect}"
       head :not_found
       return nil
     end
 
     unless adapter_class.inbound?
-      ai_helper_logger.warn "ai_helper_chat_webhook: channel_type=#{channel_type} is not an inbound adapter"
+      ai_helper_logger.warn "ai_helper_chat_webhook: channel_type=#{adapter_class.channel_type} is not an inbound adapter"
       head :not_found
       return nil
     end
 
     adapter = adapter_class.new
     unless adapter.enabled?
-      ai_helper_logger.warn "ai_helper_chat_webhook: channel_type=#{channel_type} is not enabled"
+      ai_helper_logger.warn "ai_helper_chat_webhook: channel_type=#{adapter_class.channel_type} is not enabled"
       head :not_found
       return nil
     end
@@ -85,17 +87,30 @@ class AiHelperChatWebhookController < ApplicationController
   # @param adapter [RedmineAiHelper::ChatChannel::InboundAdapter]
   # @return [void]
   def store_events(adapter)
-    channel_type = params[:channel_type]
     events = begin
       adapter.parse_events(request)
     rescue => e
-      ai_helper_logger.error "ai_helper_chat_webhook: failed to parse payload for channel_type=#{channel_type}: #{e.full_message}"
+      ai_helper_logger.error "ai_helper_chat_webhook: failed to parse payload for channel_type=#{adapter.channel_type}: #{e.full_message}"
       []
     end
 
-    events.each do |event|
-      saved = AiHelperInboundEvent.record_event(channel_type: channel_type, received_at: Time.current, **event)
-      ai_helper_logger.info "ai_helper_chat_webhook: duplicate event_key=#{event[:event_key]} for channel_type=#{channel_type}" unless saved
-    end
+    events.each { |event| store_event(adapter.channel_type, event) }
+  end
+
+  # Stores one normalized event as a pending row. An event that does not
+  # meet the contracts/inbound_adapter.md event shape (an unknown key, a
+  # missing required field) is a defect in the adapter: it is logged with its
+  # full backtrace and skipped, so it neither becomes a 500 the external
+  # service would answer by resending the same broken payload forever, nor
+  # takes the other events of the same delivery down with it.
+  # @param channel_type [String] the adapter's identifier
+  # @param event [Hash] one event returned by the adapter
+  # @return [void]
+  def store_event(channel_type, event)
+    event_key = event[:event_key] if event.is_a?(Hash)
+    saved = AiHelperInboundEvent.record_event(channel_type: channel_type, received_at: Time.current, **event)
+    ai_helper_logger.info "ai_helper_chat_webhook: duplicate event_key=#{event_key} for channel_type=#{channel_type}" unless saved
+  rescue => e
+    ai_helper_logger.error "ai_helper_chat_webhook: failed to store event #{event_key} for channel_type=#{channel_type}: #{e.full_message}"
   end
 end

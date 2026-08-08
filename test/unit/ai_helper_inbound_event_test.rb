@@ -80,6 +80,50 @@ class AiHelperInboundEventTest < ActiveSupport::TestCase
       assert_nil result
       assert_equal 1, AiHelperInboundEvent.where(channel_type: "webhook_test", event_key: "evt-3").count
     end
+
+    should "raise when the event is invalid for a reason other than duplication" do
+      assert_raises(ActiveRecord::RecordInvalid) do
+        AiHelperInboundEvent.record_event(
+          channel_type: "webhook_test", event_key: "evt-invalid", text: "",
+          channel_id: "C1", thread_key: "C1:T1", received_at: Time.current
+        )
+      end
+
+      assert_equal 0, AiHelperInboundEvent.where(event_key: "evt-invalid").count
+    end
+
+    should "store a Hash reply_metadata as JSON" do
+      event = AiHelperInboundEvent.record_event(
+        channel_type: "webhook_test", event_key: "evt-meta", text: "hi",
+        channel_id: "C1", thread_key: "C1:T1", received_at: Time.current,
+        reply_metadata: { "reply_token" => "tok" }
+      )
+
+      assert_equal({ "reply_token" => "tok" }, JSON.parse(event.reload.reply_metadata))
+    end
+  end
+
+  context "#reply_metadata=" do
+    should "serialize a Hash to JSON, as the adapter contract promises" do
+      event = build_event(event_key: "evt-hash-meta", reply_metadata: { "reply_token" => "abc" })
+      event.save!
+
+      assert_equal({ "reply_token" => "abc" }, JSON.parse(event.reload.reply_metadata))
+    end
+
+    should "keep a String that is already JSON as given" do
+      event = build_event(event_key: "evt-string-meta", reply_metadata: '{"reply_token":"abc"}')
+      event.save!
+
+      assert_equal '{"reply_token":"abc"}', event.reload.reply_metadata
+    end
+
+    should "keep nil as nil" do
+      event = build_event(event_key: "evt-nil-meta", reply_metadata: nil)
+      event.save!
+
+      assert_nil event.reload.reply_metadata
+    end
   end
 
   context ".pending_for" do

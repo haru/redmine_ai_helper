@@ -77,17 +77,42 @@ module RedmineAiHelper
         end
       end
 
-      # Reply metadata saved with the most recently claimed event of the
-      # given thread (R-008). The gateway's worker is single-threaded, so
-      # this always resolves to the event currently being answered.
+      # Adds this adapter's per-thread reply position to the state BaseAdapter
+      # sets up. See #reply_metadata_for.
+      # @return [void]
+      def initialize
+        super
+        @answered_up_to = {}
+      end
+
+      # Reply metadata of the next claimed event of the given thread, in claim
+      # order, consuming it so the following call moves on to the one after
+      # it (R-008).
+      #
+      # Claim order rather than "most recently claimed": #poll_cycle claims a
+      # whole batch and hands it to the gateway's queue, so several events of
+      # one thread can already be +processed+ while the single worker is still
+      # answering the first of them. The worker answers them in the order they
+      # were enqueued, which is the order they were claimed, so the oldest
+      # not-yet-answered event is the one being answered now.
+      #
+      # The position is kept as the id of the last answered event, which is
+      # also what orders the query: ids are assigned at receive time, so id
+      # order is receive order, and one integer per thread describes the
+      # position exactly. An event whose reply never happens (the worker
+      # raised before #send_message) leaves the position where it is, so the
+      # next reply in that thread consumes it instead.
       # @param thread_key [String]
       # @return [Hash, nil]
       def reply_metadata_for(thread_key:)
-        event = AiHelperInboundEvent.where(channel_type: channel_type, thread_key: thread_key, status: "processed")
-                                     .order(received_at: :desc).first
-        return nil if event&.reply_metadata.blank?
+        event = AiHelperInboundEvent.processed
+                                    .where(channel_type: channel_type, thread_key: thread_key)
+                                    .where("id > ?", @answered_up_to[thread_key] || 0)
+                                    .order(:id).first
+        return nil unless event
 
-        JSON.parse(event.reply_metadata)
+        @answered_up_to[thread_key] = event.id
+        JSON.parse(event.reply_metadata) if event.reply_metadata.present?
       end
 
       private

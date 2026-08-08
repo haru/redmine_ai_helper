@@ -131,7 +131,7 @@ class ChatChannelInboundAdapterTest < ActiveSupport::TestCase
       )
       event = create_pending_event
       adapter = ReferenceInboundAdapter.new
-      ReferenceInboundAdapter.stubs(:timed_queue_pop).with { |_queue, _timeout| adapter.stop; true }.returns(nil)
+      stub_dispatch_stop(adapter)
 
       Timeout.timeout(5) { adapter.start }
 
@@ -142,7 +142,7 @@ class ChatChannelInboundAdapterTest < ActiveSupport::TestCase
 
     should "exit the loop once #stop has been called" do
       adapter = ReferenceInboundAdapter.new
-      ReferenceInboundAdapter.stubs(:timed_queue_pop).with { |_queue, _timeout| adapter.stop; true }.returns(nil)
+      stub_dispatch_stop(adapter)
 
       assert_nothing_raised { Timeout.timeout(5) { adapter.start } }
       assert adapter.send(:stopped?)
@@ -155,20 +155,60 @@ class ChatChannelInboundAdapterTest < ActiveSupport::TestCase
       logger = mock("logger")
       logger.expects(:error).with(regexp_matches(/handler exploded/))
       adapter.stubs(:ai_helper_logger).returns(logger)
-      ReferenceInboundAdapter.stubs(:timed_queue_pop).with { |_queue, _timeout| adapter.stop; true }.returns(nil)
+      stub_dispatch_stop(adapter)
 
       assert_nothing_raised { Timeout.timeout(5) { adapter.start } }
     end
   end
 
   context "#reply_metadata_for" do
-    should "return the parsed reply_metadata of the most recently claimed event for the thread" do
+    should "return the parsed reply_metadata of the claimed event for the thread" do
       event = create_pending_event(reply_metadata: { reply_token: "abc" }.to_json)
       event.claim
 
       metadata = ReferenceInboundAdapter.new.reply_metadata_for(thread_key: "RC1:T1")
 
       assert_equal({ "reply_token" => "abc" }, metadata)
+    end
+
+    # A poll cycle claims a whole batch before the single worker answers any
+    # of it, so several events of one thread can be "processed" at the same
+    # time. The worker answers them in claim order, so each call must hand
+    # back the next one rather than the most recent one.
+    should "hand out metadata in claim order when a thread has several claimed events" do
+      create_pending_event(event_key: "fifo-1", received_at: 20.seconds.ago,
+                           reply_metadata: { "reply_token" => "first" }).claim
+      create_pending_event(event_key: "fifo-2", received_at: 10.seconds.ago,
+                           reply_metadata: { "reply_token" => "second" }).claim
+      adapter = ReferenceInboundAdapter.new
+
+      assert_equal({ "reply_token" => "first" }, adapter.reply_metadata_for(thread_key: "RC1:T1"))
+      assert_equal({ "reply_token" => "second" }, adapter.reply_metadata_for(thread_key: "RC1:T1"))
+      assert_nil adapter.reply_metadata_for(thread_key: "RC1:T1")
+    end
+
+    should "track each thread independently" do
+      create_pending_event(event_key: "thread-a", thread_key: "RC1:TA",
+                           reply_metadata: { "reply_token" => "a" }).claim
+      create_pending_event(event_key: "thread-b", thread_key: "RC1:TB",
+                           reply_metadata: { "reply_token" => "b" }).claim
+      adapter = ReferenceInboundAdapter.new
+
+      assert_equal({ "reply_token" => "a" }, adapter.reply_metadata_for(thread_key: "RC1:TA"))
+      assert_equal({ "reply_token" => "b" }, adapter.reply_metadata_for(thread_key: "RC1:TB"))
+    end
+
+    # An event without metadata must still advance the thread's position:
+    # otherwise it would stay at the head of the queue and every later reply
+    # in that thread would keep getting nil.
+    should "advance past a claimed event that carries no reply_metadata" do
+      create_pending_event(event_key: "no-meta").claim
+      create_pending_event(event_key: "with-meta", received_at: 1.second.from_now,
+                           reply_metadata: { "reply_token" => "later" }).claim
+      adapter = ReferenceInboundAdapter.new
+
+      assert_nil adapter.reply_metadata_for(thread_key: "RC1:T1")
+      assert_equal({ "reply_token" => "later" }, adapter.reply_metadata_for(thread_key: "RC1:T1"))
     end
 
     should "return nil when no claimed event exists for the thread" do
@@ -184,6 +224,34 @@ class ChatChannelInboundAdapterTest < ActiveSupport::TestCase
       metadata = ReferenceInboundAdapter.new.reply_metadata_for(thread_key: "RC1:T1")
 
       assert_nil metadata
+    end
+
+    # The contract lets an adapter return :reply_metadata as a Hash; only the
+    # column holds JSON. Passing a pre-encoded String (as the test above does)
+    # would not exercise that conversion.
+    should "return the metadata an adapter supplied as a Hash at parse time" do
+      event = create_pending_event(reply_metadata: { "reply_token" => "hash-token" })
+      event.claim
+
+      metadata = ReferenceInboundAdapter.new.reply_metadata_for(thread_key: "RC1:T1")
+
+      assert_equal({ "reply_token" => "hash-token" }, metadata)
+    end
+  end
+
+  context "poll batch size" do
+    should "claim at most POLL_BATCH_SIZE events per cycle" do
+      batch_size = RedmineAiHelper::ChatChannel::InboundAdapter::POLL_BATCH_SIZE
+      (batch_size + 1).times { |i| create_pending_event(event_key: "batch-#{i}") }
+      adapter = ReferenceInboundAdapter.new
+      dispatched = 0
+      adapter.stubs(:dispatch).with { |_message| dispatched += 1; true }
+      stub_dispatch_stop(adapter)
+
+      Timeout.timeout(5) { adapter.start }
+
+      assert_equal batch_size, dispatched
+      assert_equal 1, AiHelperInboundEvent.where(channel_type: "reference_inbound", status: "pending").count
     end
   end
 
@@ -247,7 +315,7 @@ class ChatChannelInboundAdapterTest < ActiveSupport::TestCase
       )
       recent_row = create_pending_event(event_key: "ret-recent", status: "expired", received_at: 1.day.ago)
       adapter = ReferenceInboundAdapter.new
-      ReferenceInboundAdapter.stubs(:timed_queue_pop).with { |_queue, _timeout| adapter.stop; true }.returns(nil)
+      stub_dispatch_stop(adapter)
 
       Timeout.timeout(5) { adapter.start }
 
@@ -286,7 +354,7 @@ class ChatChannelInboundAdapterTest < ActiveSupport::TestCase
       # once polling resumes.
       event = create_pending_event(event_key: "downtime-1", received_at: 90.seconds.ago)
       adapter = ReferenceInboundAdapter.new
-      ReferenceInboundAdapter.stubs(:timed_queue_pop).with { |_queue, _timeout| adapter.stop; true }.returns(nil)
+      stub_dispatch_stop(adapter)
 
       Timeout.timeout(5) { adapter.start }
 
@@ -325,8 +393,12 @@ class ChatChannelInboundAdapterEndToEndTest < ActionController::TestCase
     RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(
       AiHelperMessage.new(role: "assistant", content: "end to end answer")
     )
+    # reply_metadata is supplied as the Hash the adapter contract defines, so
+    # this covers the Hash -> JSON column -> parsed Hash round trip an adapter
+    # that needs a reply token actually depends on.
     ReferenceInboundAdapter.events_to_parse = [
-      { event_key: "e2e-1", text: "hello from e2e", channel_id: "E2E1", thread_key: "E2E1:T1" }
+      { event_key: "e2e-1", text: "hello from e2e", channel_id: "E2E1", thread_key: "E2E1:T1",
+        reply_metadata: { "reply_token" => "e2e-token" } }
     ]
 
     post :receive, params: { channel_type: "reference_inbound" }, body: "{}"
@@ -342,5 +414,6 @@ class ChatChannelInboundAdapterEndToEndTest < ActionController::TestCase
 
     assert_equal "processed", event.reload.status
     assert_equal [ { channel_id: "E2E1", thread_key: "E2E1:T1", text: "end to end answer" } ], adapter.sent_messages
+    assert_equal({ "reply_token" => "e2e-token" }, adapter.reply_metadata_for(thread_key: "E2E1:T1"))
   end
 end

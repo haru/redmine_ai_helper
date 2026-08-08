@@ -74,9 +74,11 @@ Required. Convert the verified request into zero or more normalized event hashes
 | `:message_ts` | String | no | Individual message id, if the platform has one |
 | `:dm` | Boolean | no | Direct message flag (default `false`) |
 | `:in_thread` | Boolean | no | Reply-in-thread flag (default `false`) |
-| `:reply_metadata` | Hash | no | Platform-specific data needed later to reply; JSON-encoded when stored |
+| `:reply_metadata` | Hash | no | Platform-specific data needed later to reply; `AiHelperInboundEvent#reply_metadata=` JSON-encodes it on the way into the column |
 
-Never include the bot's own messages, and never put speaker identity into `:reply_metadata` or `:text` (FR-003 — this plugin does not record who asked a question, only the configured service account that answers it, exactly as for the existing outbound adapters). A request that cannot be parsed (malformed JSON, an unexpected shape) should raise; the controller catches it, logs the full backtrace, and still returns `200` so the platform does not retry forever.
+Return exactly these keys — an event carrying anything else is logged as an error and skipped, since it cannot be stored.
+
+Never include the bot's own messages, and never put speaker identity into `:reply_metadata` or `:text` (FR-003 — this plugin does not record who asked a question, only the configured service account that answers it, exactly as for the existing outbound adapters). A request that cannot be parsed (malformed JSON, an unexpected shape) should raise; the controller catches it, logs the full backtrace, and still returns `200` so the platform does not retry forever. The same holds for a single event that cannot be stored: it is logged with its backtrace and skipped, the other events of that delivery are still stored, and the platform still gets a `200`.
 
 ### 4. Implement `#challenge_response(request)` only if the platform needs it
 
@@ -84,7 +86,9 @@ Optional — the default returns `nil`. Some platforms verify a webhook URL at r
 
 ### 5. Reply metadata, if the platform needs more than channel_id/thread_key to reply
 
-`InboundAdapter#reply_metadata_for(thread_key:)` returns the parsed `reply_metadata` of the most recently claimed event for a thread. Call it from `#send_message` if your platform's reply call needs something beyond `channel_id`/`thread_key` (e.g. a reply token). Most platforms that support pushing a message by channel id alone do not need this.
+`InboundAdapter#reply_metadata_for(thread_key:)` returns the parsed `reply_metadata` of the next claimed event of that thread, in claim order, and consumes it — so calling it once per `#send_message` walks the thread's events in the same order the worker answers them. Call it from `#send_message` if your platform's reply call needs something beyond `channel_id`/`thread_key` (e.g. a reply token). Most platforms that support pushing a message by channel id alone do not need this.
+
+Call it exactly once per reply. A poll cycle claims a whole batch before the single worker answers any of it, so "the most recent event of this thread" is *not* the one being answered; the position is per thread and only advances when you call this method.
 
 ### 6. Settings and the webhook URL
 

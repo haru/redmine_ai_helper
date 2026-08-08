@@ -105,6 +105,16 @@ class AiHelperChatWebhookControllerTest < ActionController::TestCase
       assert_response :unauthorized
       assert_equal 0, AiHelperInboundEvent.count
     end
+
+    should "not answer the connectivity handshake when verification fails (order of steps 4 and 5)" do
+      WebhookReferenceAdapter.verify_result = false
+      WebhookReferenceAdapter.challenge_result = { status: 200, content_type: "text/plain", body: "challenge-echo" }
+
+      post :receive, params: { channel_type: "webhook_reference" }, body: "{}"
+
+      assert_response :unauthorized
+      assert_not_equal "challenge-echo", @response.body
+    end
   end
 
   context "challenge response (FR-013)" do
@@ -188,6 +198,56 @@ class AiHelperChatWebhookControllerTest < ActionController::TestCase
 
       assert_response :success
       assert_equal 0, AiHelperInboundEvent.count
+    end
+  end
+
+  context "unstorable event" do
+    should "log an error and still return 200 when an event fails validation" do
+      WebhookReferenceAdapter.events_to_parse = [ valid_event(text: "") ]
+      RedmineAiHelper::CustomLogger.instance.expects(:error).with(regexp_matches(/failed to store event/))
+
+      post :receive, params: { channel_type: "webhook_reference" }, body: "{}"
+
+      assert_response :success
+      assert_equal 0, AiHelperInboundEvent.count
+    end
+
+    should "store the remaining events when one carries a key outside the event contract" do
+      WebhookReferenceAdapter.events_to_parse = [
+        valid_event(event_key: "evt-bad", user_id: "U1"), valid_event(event_key: "evt-good")
+      ]
+
+      post :receive, params: { channel_type: "webhook_reference" }, body: "{}"
+
+      assert_response :success
+      assert_equal [ "evt-good" ], AiHelperInboundEvent.pluck(:event_key)
+    end
+  end
+
+  context "reply metadata" do
+    should "store a Hash returned by parse_events as JSON (adapter contract)" do
+      WebhookReferenceAdapter.events_to_parse = [
+        valid_event(event_key: "evt-meta", reply_metadata: { "reply_token" => "tok-1" })
+      ]
+
+      post :receive, params: { channel_type: "webhook_reference" }, body: "{}"
+
+      assert_response :success
+      assert_equal({ "reply_token" => "tok-1" }, JSON.parse(AiHelperInboundEvent.last.reply_metadata))
+    end
+  end
+
+  context "login_required" do
+    should "receive the event even when Setting.login_required is on (Issue #304)" do
+      Setting.login_required = "1"
+      WebhookReferenceAdapter.events_to_parse = [ valid_event(event_key: "evt-login") ]
+
+      post :receive, params: { channel_type: "webhook_reference" }, body: "{}"
+
+      assert_response :success
+      assert_equal 1, AiHelperInboundEvent.count
+    ensure
+      Setting.login_required = "0"
     end
   end
 

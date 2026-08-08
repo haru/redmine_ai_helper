@@ -5,11 +5,15 @@
 # persistent queue between the Redmine web process (receive) and the
 # resident gateway process (poll and process): see data-model.md.
 class AiHelperInboundEvent < ApplicationRecord
-  # Valid values of +status+: see the state diagram in data-model.md.
-  STATUSES = %w[pending processed expired].freeze
+  # Valid values of +status+: see the state diagram in data-model.md. Declared
+  # as an enum so the values live in one place instead of as string literals
+  # spread over the model and the polling adapter. +validate: true+ keeps an
+  # unknown value a validation error rather than an ArgumentError raised at
+  # assignment time.
+  STATUSES = { pending: "pending", processed: "processed", expired: "expired" }.freeze
+  enum :status, STATUSES, validate: true
 
   validates :channel_type, :event_key, :text, :channel_id, :thread_key, :received_at, presence: true
-  validates :status, inclusion: { in: STATUSES }
   validates :event_key, uniqueness: { scope: :channel_type }
 
   class << self
@@ -18,15 +22,25 @@ class AiHelperInboundEvent < ApplicationRecord
     # [channel_type, event_key] is the source of truth for deduplication
     # under concurrent receives (R-004), where two inserts can both pass
     # validation before either commits.
+    #
+    # Only duplication is answered with nil. Any other validation failure
+    # means the adapter produced an event that does not meet the
+    # contracts/inbound_adapter.md event shape, which is a defect in that
+    # adapter: it is raised so the caller can log it as the error it is,
+    # rather than being silently folded into "already received".
     # @param attrs [Hash] channel_type:, event_key:, text:, channel_id:,
     #   thread_key:, received_at: (required), plus the optional message_ts:,
     #   dm:, in_thread:, reply_metadata:
+    # @raise [ActiveRecord::RecordInvalid] when the event is invalid for any
+    #   reason other than duplication
     # @return [AiHelperInboundEvent, nil] the saved event, or nil when the
     #   same channel_type/event_key was already received
     def record_event(**attrs)
       event = new(attrs)
-      event.save
-      event.persisted? ? event : nil
+      return event if event.save
+      return nil if event.errors.of_kind?(:event_key, :taken)
+
+      raise ActiveRecord::RecordInvalid, event
     rescue ActiveRecord::RecordNotUnique
       nil
     end
@@ -36,11 +50,14 @@ class AiHelperInboundEvent < ApplicationRecord
     # @param limit [Integer] Maximum number of rows to return
     # @return [ActiveRecord::Relation<AiHelperInboundEvent>]
     def pending_for(channel_type, limit:)
-      where(channel_type: channel_type, status: "pending").order(:received_at).limit(limit)
+      pending.where(channel_type: channel_type).order(:received_at).limit(limit)
     end
 
     # Deletes rows of the given channel_type received before the given time
-    # (FR-009).
+    # (FR-009). Deliberately independent of +status+: the row is kept only to
+    # deduplicate resends, and a row this old can no longer be answered
+    # whatever state it is in (FRESHNESS_LIMIT_SECONDS is orders of magnitude
+    # shorter than the retention period).
     # @param channel_type [String] Adapter identifier
     # @param before [Time] Cutoff; rows received earlier than this are deleted
     # @return [void]
@@ -57,16 +74,28 @@ class AiHelperInboundEvent < ApplicationRecord
   # @return [Boolean] whether this call performed the claim
   def claim
     # rubocop:disable Rails/SkipsModelValidations
-    updated = self.class.where(id: id, status: "pending").update_all(status: "processed")
+    updated = self.class.pending.where(id: id).update_all(status: STATUSES[:processed])
     # rubocop:enable Rails/SkipsModelValidations
     reload if updated.positive?
     updated.positive?
   end
 
+  # Stores the adapter's reply metadata. contracts/inbound_adapter.md lets
+  # +parse_events+ return +:reply_metadata+ as a Hash while the column holds
+  # JSON, so the conversion belongs here rather than in every caller: without
+  # it a Hash would reach the text column and be stored as its Ruby
+  # inspect form, which +InboundAdapter#reply_metadata_for+ cannot parse. A
+  # String is assumed to be JSON already and is stored as given.
+  # @param value [Hash, String, nil] the metadata to store
+  # @return [void]
+  def reply_metadata=(value)
+    super(value.is_a?(Hash) ? value.to_json : value)
+  end
+
   # Marks the row as expired (FR-008a): received too long ago to answer.
   # @return [void]
   def expire!
-    update!(status: "expired")
+    expired!
   end
 
   # Whether +received_at+ is older than +limit_seconds+.
