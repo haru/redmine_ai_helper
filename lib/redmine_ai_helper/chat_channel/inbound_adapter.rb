@@ -3,6 +3,8 @@
 require "json"
 require "redmine_ai_helper/logger"
 require "redmine_ai_helper/chat_channel/base_adapter"
+require "redmine_ai_helper/chat_channel/inbound_event_message"
+require "redmine_ai_helper/chat_channel/message_handler"
 
 module RedmineAiHelper
   module ChatChannel
@@ -77,42 +79,71 @@ module RedmineAiHelper
         end
       end
 
-      # Adds this adapter's per-thread reply position to the state BaseAdapter
-      # sets up. See #reply_metadata_for.
+      # MessageHandler variant that records which stored event the message
+      # being handled was built from, for as long as it is being handled.
+      # #send_message receives only channel_id/thread_key/text, so this is
+      # what lets #reply_metadata_for name the exact event a reply answers.
+      class EventScopedHandler < MessageHandler
+        # @param message [InboundEventMessage] the message to process
+        # @return [void]
+        def handle(message)
+          @adapter.answering(message.event_id) { super }
+        end
+      end
+
+      # Adds the id of the event currently being answered to the state
+      # BaseAdapter sets up. See #reply_metadata_for.
       # @return [void]
       def initialize
         super
-        @answered_up_to = {}
+        @answering_event_id = nil
       end
 
-      # Reply metadata of the next claimed event of the given thread, in claim
-      # order, consuming it so the following call moves on to the one after
-      # it (R-008).
+      # The handler this adapter replies through, wrapped so replies know
+      # which event they answer.
+      # @return [EventScopedHandler]
+      def handler
+        @handler ||= EventScopedHandler.new(self)
+      end
+
+      # Runs the given block with +event_id+ recorded as the event being
+      # answered. One adapter never handles two messages at once - the gateway
+      # serializes every message through a single worker thread, and an
+      # adapter running without a gateway handles them inline on its own
+      # polling thread - so a single instance variable describes the state
+      # exactly. Public because EventScopedHandler calls it; it is not part of
+      # the interface an adapter author implements.
+      # @param event_id [Integer, nil] the event being answered
+      # @return [void]
+      def answering(event_id)
+        previous = @answering_event_id
+        @answering_event_id = event_id
+        yield
+      ensure
+        @answering_event_id = previous
+      end
+
+      # Reply metadata stored with the event currently being answered (R-008),
+      # or nil when that event carries none, when +thread_key+ is not the
+      # thread being answered, or when no reply is in progress.
       #
-      # Claim order rather than "most recently claimed": #poll_cycle claims a
-      # whole batch and hands it to the gateway's queue, so several events of
-      # one thread can already be +processed+ while the single worker is still
-      # answering the first of them. The worker answers them in the order they
-      # were enqueued, which is the order they were claimed, so the oldest
-      # not-yet-answered event is the one being answered now.
-      #
-      # The position is kept as the id of the last answered event, which is
-      # also what orders the query: ids are assigned at receive time, so id
-      # order is receive order, and one integer per thread describes the
-      # position exactly. An event whose reply never happens (the worker
-      # raised before #send_message) leaves the position where it is, so the
-      # next reply in that thread consumes it instead.
-      # @param thread_key [String]
+      # Resolved by event id rather than by position in the thread: #poll_cycle
+      # claims a whole batch at once, so several events of one thread can be
+      # +processed+ while the first of them is still being answered, and the
+      # rows stay in the table for RETENTION_DAYS after that. An id carried on
+      # the message itself identifies the event under every one of those
+      # conditions, including the first reply after a gateway restart, and does
+      # not depend on how many times a single reply calls this method.
+      # @param thread_key [String] the thread being replied to
       # @return [Hash, nil]
       def reply_metadata_for(thread_key:)
-        event = AiHelperInboundEvent.processed
-                                    .where(channel_type: channel_type, thread_key: thread_key)
-                                    .where("id > ?", @answered_up_to[thread_key] || 0)
-                                    .order(:id).first
-        return nil unless event
+        return nil unless @answering_event_id
 
-        @answered_up_to[thread_key] = event.id
-        JSON.parse(event.reply_metadata) if event.reply_metadata.present?
+        event = AiHelperInboundEvent.find_by(id: @answering_event_id, channel_type: channel_type,
+                                             thread_key: thread_key)
+        return nil if event.nil? || event.reply_metadata.blank?
+
+        JSON.parse(event.reply_metadata)
       end
 
       private

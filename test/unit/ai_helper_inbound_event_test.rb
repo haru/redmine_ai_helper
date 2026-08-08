@@ -237,5 +237,21 @@ class AiHelperInboundEventTest < ActiveSupport::TestCase
       assert message.dm?
       assert message.in_thread?
     end
+
+    # The id is what lets InboundAdapter#reply_metadata_for resolve the exact
+    # event a reply is answering, so it has to survive the trip through the
+    # gateway queue with the message.
+    should "carry the row id so the reply can be tied back to this event" do
+      event = build_event
+      event.save!
+
+      message = event.to_incoming_message
+
+      assert_kind_of RedmineAiHelper::ChatChannel::InboundEventMessage, message
+      assert_equal event.id, message.event_id
+      # IncomingMessage freezes itself, so event_id must be assigned before
+      # the superclass initializer runs.
+      assert message.frozen?
+    end
   end
 end

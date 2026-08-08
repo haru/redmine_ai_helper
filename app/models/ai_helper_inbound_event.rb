@@ -106,9 +106,13 @@ class AiHelperInboundEvent < ApplicationRecord
   end
 
   # Builds the normalized message the existing chat channel core consumes.
-  # @return [RedmineAiHelper::ChatChannel::IncomingMessage]
+  # Carries this row's id so that the reply posted for this message can be
+  # tied back to it (InboundAdapter#reply_metadata_for); the core treats it
+  # as the plain IncomingMessage it is a subclass of.
+  # @return [RedmineAiHelper::ChatChannel::InboundEventMessage]
   def to_incoming_message
-    RedmineAiHelper::ChatChannel::IncomingMessage.new(
+    RedmineAiHelper::ChatChannel::InboundEventMessage.new(
+      event_id: id,
       channel_type: channel_type, channel_id: channel_id, thread_key: thread_key,
       text: text, message_ts: message_ts, dm: dm, in_thread: in_thread
     )

@@ -86,9 +86,9 @@ Optional — the default returns `nil`. Some platforms verify a webhook URL at r
 
 ### 5. Reply metadata, if the platform needs more than channel_id/thread_key to reply
 
-`InboundAdapter#reply_metadata_for(thread_key:)` returns the parsed `reply_metadata` of the next claimed event of that thread, in claim order, and consumes it — so calling it once per `#send_message` walks the thread's events in the same order the worker answers them. Call it from `#send_message` if your platform's reply call needs something beyond `channel_id`/`thread_key` (e.g. a reply token). Most platforms that support pushing a message by channel id alone do not need this.
+`InboundAdapter#reply_metadata_for(thread_key:)` returns the parsed `reply_metadata` of the event currently being answered. Call it from `#send_message` if your platform's reply call needs something beyond `channel_id`/`thread_key` (e.g. a reply token). Most platforms that support pushing a message by channel id alone do not need this.
 
-Call it exactly once per reply. A poll cycle claims a whole batch before the single worker answers any of it, so "the most recent event of this thread" is *not* the one being answered; the position is per thread and only advances when you call this method.
+Call it as often as you like: it is resolved from the id of the event the reply belongs to, so every call during one reply returns the same value, and a reply never sees another event's metadata — not the next event of a batch the poll cycle claimed alongside it, and not an event answered days ago whose row is still retained for deduplication. It returns `nil` outside a reply, when the event carries no metadata, or when `thread_key` is not the thread being answered.
 
 ### 6. Settings and the webhook URL
 
