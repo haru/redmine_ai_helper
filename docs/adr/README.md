@@ -69,3 +69,4 @@ Briefly describe alternatives that were rejected and why.
 | [014](./014-shared-websocket-transport-in-base-adapter.md) | Move the shared WebSocket transport handling into `BaseAdapter` and apply it to Discord | Accepted |
 | [015](./015-agent-write-capability-routing.md) | Guard write-capable steps with an internal capability check that is never exposed to the router | Accepted |
 | [016](./016-issue-agent-read-write-rename.md) | Rename IssueAgent/IssueUpdateAgent to IssueReadAgent/IssueWriteAgent | Accepted |
+| [017](./017-inbound-chat-webhook-gateway.md) | Inbound chat webhook gateway (amends the scope of ADR-006) | Accepted |

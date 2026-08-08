@@ -30,10 +30,20 @@ module RedmineAiHelper
           @registered_subclasses ||= []
         end
 
-        # Registered adapter classes keyed by channel_type.
+        # Registered adapter classes keyed by channel_type. Abstract
+        # intermediate classes (e.g. InboundAdapter) are registered by the
+        # +inherited+ hook exactly like every other subclass, but never
+        # override .channel_type, so they are filtered out here rather than
+        # at registration time: a class becomes a usable adapter simply by
+        # overriding .channel_type, with no separate "am I abstract" flag to
+        # keep in sync.
         # @return [Hash{String => Class}]
         def adapters
-          BaseAdapter.registered_subclasses.index_by(&:channel_type)
+          BaseAdapter.registered_subclasses.each_with_object({}) do |klass, hash|
+            hash[klass.channel_type] = klass
+          rescue NotImplementedError
+            next
+          end
         end
 
         # Automatically registers subclasses (same pattern as BaseAgent).
@@ -55,6 +65,15 @@ module RedmineAiHelper
         # @return [Array<Symbol>]
         def required_setting_fields
           []
+        end
+
+        # Whether this adapter receives events via the shared inbound webhook
+        # endpoint rather than an outgoing connection (R-010). Used by the
+        # settings UI to decide whether to display the webhook URL to
+        # register with the external service.
+        # @return [Boolean]
+        def inbound?
+          false
         end
 
         # Pops from queue, waiting up to timeout seconds for a value.

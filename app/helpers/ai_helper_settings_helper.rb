@@ -96,6 +96,21 @@ module AiHelperSettingsHelper
     params_tab
   end
 
+  # The webhook URL to register with the external service for an inbound
+  # adapter (FR-011), or nil when the adapter does not receive events by
+  # webhook. Built from Setting.protocol/Setting.host_name rather than a
+  # request-scoped url_for, so it also resolves for adapters that are not
+  # currently reachable within the running request.
+  #
+  # @param channel_type [String] adapter identifier (e.g. "line")
+  # @return [String, nil]
+  def ai_helper_chat_webhook_url_for(channel_type)
+    adapter_class = RedmineAiHelper::ChatChannel::BaseAdapter.adapters[channel_type]
+    return nil unless adapter_class&.inbound?
+
+    "#{Setting.protocol}://#{Setting.host_name}/ai_helper/chat_webhook/#{channel_type}"
+  end
+
   # Returns options for model profile select fields.
   #
   # @param profiles [ActiveRecord::Relation] collection of model profiles

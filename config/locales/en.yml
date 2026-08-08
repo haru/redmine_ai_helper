@@ -48,6 +48,8 @@ en:
         redmine_user: "Execution account"
         redmine_user_info: "All questions from the chat tool are processed with this Redmine user's permissions. Restrict this account's roles to limit what the gateway can do."
         default_project: "Default project"
+        webhook_url: "Webhook URL"
+        webhook_url_info: "Register this URL with the external service so it can deliver messages to this integration."
         bindings: "Channel bindings"
         adapter: "Chat tool"
         channel_id: "Channel ID"

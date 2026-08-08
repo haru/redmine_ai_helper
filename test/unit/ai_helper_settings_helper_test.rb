@@ -5,6 +5,24 @@ require_relative "../test_helper"
 class AiHelperSettingsHelperTest < ActionView::TestCase
   include AiHelperSettingsHelper
 
+  # Test-only adapters registered for the webhook URL helper tests, so the
+  # helper test does not depend on any real inbound adapter (spec Assumptions).
+  class HelperTestInboundAdapter < RedmineAiHelper::ChatChannel::InboundAdapter
+    class << self
+      def channel_type
+        "helper_test_inbound"
+      end
+    end
+  end
+
+  class HelperTestOutboundAdapter < RedmineAiHelper::ChatChannel::BaseAdapter
+    class << self
+      def channel_type
+        "helper_test_outbound"
+      end
+    end
+  end
+
   context "ai_helper_settings_tabs" do
     should "return 4 tab definitions in order: general, model, vector, channels" do
       f = build_form_builder
@@ -81,6 +99,25 @@ class AiHelperSettingsHelperTest < ActionView::TestCase
     should "return nil when errors array is empty and params_tab is nil" do
       tab = ai_helper_settings_selected_tab([], nil)
       assert_nil tab
+    end
+  end
+
+  context "ai_helper_chat_webhook_url_for" do
+    should "build the URL from Setting.protocol and Setting.host_name for an inbound adapter" do
+      Setting.stubs(:protocol).returns("https")
+      Setting.stubs(:host_name).returns("redmine.example.com")
+
+      url = ai_helper_chat_webhook_url_for("helper_test_inbound")
+
+      assert_equal "https://redmine.example.com/ai_helper/chat_webhook/helper_test_inbound", url
+    end
+
+    should "return nil for an adapter that does not declare inbound?" do
+      assert_nil ai_helper_chat_webhook_url_for("helper_test_outbound")
+    end
+
+    should "return nil for an unregistered channel_type" do
+      assert_nil ai_helper_chat_webhook_url_for("no_such_channel")
     end
   end
 
