@@ -9,6 +9,17 @@
 class AiHelperChatWebhookController < ApplicationController
   include RedmineAiHelper::Logger
 
+  # The keys +parse_events+ is allowed to return (the event shape of
+  # contracts/inbound_adapter.md). +channel_type+, +received_at+ and +status+
+  # are deliberately absent: they belong to the receiving side, and an adapter
+  # that supplied one would rewrite the deduplication scope, the freshness
+  # clock or the queue state of its own row. An event carrying any other key
+  # is rejected in #store_event rather than trimmed, so the adapter defect
+  # shows up in the log instead of being silently dropped.
+  EVENT_CONTRACT_KEYS = %i[
+    event_key text channel_id thread_key message_ts dm in_thread reply_metadata
+  ].freeze
+
   # No session is involved: the request comes from an external service, not
   # a browser with a Redmine session cookie. Authenticity is established by
   # the adapter's own #verify_request (typically a signature check), not by
@@ -29,7 +40,7 @@ class AiHelperChatWebhookController < ApplicationController
     return unless adapter
 
     unless adapter.verify_request(request)
-      ai_helper_logger.warn "ai_helper_chat_webhook: request verification failed for channel_type=#{params[:channel_type]}"
+      ai_helper_logger.warn "ai_helper_chat_webhook: request verification failed for channel_type=#{adapter.channel_type}"
       head :unauthorized
       return
     end
@@ -103,14 +114,36 @@ class AiHelperChatWebhookController < ApplicationController
   # full backtrace and skipped, so it neither becomes a 500 the external
   # service would answer by resending the same broken payload forever, nor
   # takes the other events of the same delivery down with it.
+  #
+  # +channel_type+ and +received_at+ are set here rather than taken from the
+  # event, and an event supplying either of them is rejected by
+  # #check_event_shape!, so an adapter cannot store a row against another
+  # channel or backdate its own freshness deadline.
   # @param channel_type [String] the adapter's identifier
   # @param event [Hash] one event returned by the adapter
   # @return [void]
   def store_event(channel_type, event)
     event_key = event[:event_key] if event.is_a?(Hash)
+    check_event_shape!(event)
     saved = AiHelperInboundEvent.record_event(channel_type: channel_type, received_at: Time.current, **event)
     ai_helper_logger.info "ai_helper_chat_webhook: duplicate event_key=#{event_key} for channel_type=#{channel_type}" unless saved
   rescue => e
     ai_helper_logger.error "ai_helper_chat_webhook: failed to store event #{event_key} for channel_type=#{channel_type}: #{e.full_message}"
+  end
+
+  # Raises unless the event is a Hash whose keys all belong to
+  # EVENT_CONTRACT_KEYS. Rejecting the whole event is intentional: an
+  # out-of-contract key means the adapter and the queue disagree about what
+  # the event is, and quietly trimming the key would store a row that
+  # silently differs from what the adapter believed it produced.
+  # @param event [Object] one event returned by the adapter
+  # @raise [ArgumentError] when the event is not a Hash or carries an
+  #   out-of-contract key
+  # @return [void]
+  def check_event_shape!(event)
+    raise ArgumentError, "event must be a Hash, got #{event.class}" unless event.is_a?(Hash)
+
+    unexpected = event.keys - EVENT_CONTRACT_KEYS
+    raise ArgumentError, "event carries keys outside the contract: #{unexpected.inspect}" if unexpected.any?
   end
 end

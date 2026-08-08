@@ -98,9 +98,14 @@ module AiHelperSettingsHelper
 
   # The webhook URL to register with the external service for an inbound
   # adapter (FR-011), or nil when the adapter does not receive events by
-  # webhook. Built from Setting.protocol/Setting.host_name rather than a
-  # request-scoped url_for, so it also resolves for adapters that are not
-  # currently reachable within the running request.
+  # webhook. Built from the route helper and Mailer.default_url_options
+  # rather than a request-scoped url_for: the URL has to be the one the
+  # external service will call, which is the deployment's own base URL and
+  # not necessarily the host of the request that renders this page.
+  # Setting.host_name may embed a port and/or a path prefix
+  # (e.g. "r.example.com:3000/redmine"), and default_url_options already
+  # parses that into :host, :port and :script_name the way the rest of
+  # Redmine expects (same reasoning as ChatChannel::IssueLinkFormatter).
   #
   # @param channel_type [String] adapter identifier (e.g. "line")
   # @return [String, nil]
@@ -108,7 +113,9 @@ module AiHelperSettingsHelper
     adapter_class = RedmineAiHelper::ChatChannel::BaseAdapter.adapters[channel_type]
     return nil unless adapter_class&.inbound?
 
-    "#{Setting.protocol}://#{Setting.host_name}/ai_helper/chat_webhook/#{channel_type}"
+    Rails.application.routes.url_helpers.ai_helper_chat_webhook_url(
+      channel_type: channel_type, **Mailer.default_url_options
+    )
   end
 
   # Returns options for model profile select fields.

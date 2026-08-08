@@ -222,6 +222,46 @@ class AiHelperChatWebhookControllerTest < ActionController::TestCase
       assert_response :success
       assert_equal [ "evt-good" ], AiHelperInboundEvent.pluck(:event_key)
     end
+
+    should "reject an event that carries received_at so the adapter cannot move the freshness clock" do
+      WebhookReferenceAdapter.events_to_parse = [
+        valid_event(event_key: "evt-backdated", received_at: 3.days.ago), valid_event(event_key: "evt-good")
+      ]
+
+      post :receive, params: { channel_type: "webhook_reference" }, body: "{}"
+
+      assert_response :success
+      assert_equal [ "evt-good" ], AiHelperInboundEvent.pluck(:event_key)
+    end
+
+    should "reject an event that carries status so the adapter cannot skip the queue" do
+      WebhookReferenceAdapter.events_to_parse = [ valid_event(event_key: "evt-preprocessed", status: "processed") ]
+
+      post :receive, params: { channel_type: "webhook_reference" }, body: "{}"
+
+      assert_response :success
+      assert_equal 0, AiHelperInboundEvent.count
+    end
+
+    should "reject an event that carries channel_type so the adapter cannot write outside its own channel" do
+      WebhookReferenceAdapter.events_to_parse = [ valid_event(event_key: "evt-other", channel_type: "slack") ]
+
+      post :receive, params: { channel_type: "webhook_reference" }, body: "{}"
+
+      assert_response :success
+      assert_equal 0, AiHelperInboundEvent.count
+    end
+  end
+
+  context "received_at" do
+    should "be stamped by the receiving side at receive time" do
+      WebhookReferenceAdapter.events_to_parse = [ valid_event(event_key: "evt-stamped") ]
+
+      post :receive, params: { channel_type: "webhook_reference" }, body: "{}"
+
+      assert_response :success
+      assert_in_delta Time.current, AiHelperInboundEvent.last.received_at, 5.seconds
+    end
   end
 
   context "reply metadata" do
