@@ -1,8 +1,8 @@
 ---
 title: MCP Integration
 type: component
-sources: [S002, S006, S007, S016]
-updated: 2026-08-07
+sources: [S002, S006, S007, S016, S018]
+updated: 2026-08-08
 ---
 
 # MCP Integration
@@ -76,6 +76,12 @@ the global `mcp_server_enabled` flag gates the entire endpoint (S002, S006).
   (S006).
 - **No rate limiting** in the initial implementation — deliberately deferred as a
   future extension (S007).
+- **Anonymous-endpoint pattern**: this controller established how the plugin
+  serves anonymous POSTs — `skip_before_action :verify_authenticity_token` plus
+  `skip_before_action :check_if_login_required, raise: false`, the latter being
+  the fix for 403s under `Setting.login_required` (Issue #304). The inbound chat
+  webhook endpoint reuses it verbatim — see
+  [Inbound Webhook Endpoint](./inbound-webhook-endpoint.md) (S018).
 
 Internal `RubyLLM::Tool` subclasses are converted into `MCP::Tool` instances by
 `ToolAdapter` (`lib/redmine_ai_helper/mcp/tool_adapter.rb`), with permission

@@ -10,9 +10,13 @@ page files, not here.
 
 ## decision
 - [Agent Write-Capability Routing](./pages/agent-write-capability-routing.md) — why `can_write?`/`requires_write` guard write steps at dispatch time instead of being exposed to the router, and how skipped steps and the final-answer prompt stay consistent with what actually ran.
+- [Inbound Chat Webhook Ingest](./pages/inbound-chat-webhook-ingest.md) — why webhook events land on a Rails endpoint in Redmine, hand off through a DB table, and are polled by `InboundAdapter#start` so the gateway core stays unchanged.
+- [Public URL Scope for Chat Adapters](./pages/public-url-scope.md) — ADR-017's amendment to ADR-006: "no public URL required" is an outbound-adapter property, not a whole-plugin invariant.
 
 ## component
 - [Chat Channel Gateway Architecture](./pages/chat-channel-gateway-architecture.md) — core + adapters structure, capability declaration, and gateway operational model.
+- [Inbound Webhook Endpoint](./pages/inbound-webhook-endpoint.md) — the anonymous `POST /ai_helper/chat_webhook/:channel_type` controller: skipped filters, raw-body signature verification, challenge responses, webhook URL display.
+- [Inbound Event Queue](./pages/inbound-event-queue.md) — the `ai_helper_inbound_events` table: atomic claiming, freshness expiry, retention purge, and reply metadata resolved by event id.
 - [Chat Context Import](./pages/chat-context-import.md) — how surrounding messages are imported, cursored, persisted as `context` role, and fed to the LLM.
 - [AI Chat Sidebar](./pages/chat-sidebar.md) — the sidebar UI: view-hook injection, the `AiHelper` JS class, SSE handling, conversation models, and Markdown/XSS.
 - [Issue AI Features](./pages/issue-ai-features.md) — `IssueReadAgent` summarization/caching, reply drafts, sub-issues, assignee suggestion, duplicate check, and inline completion.
@@ -33,3 +37,4 @@ page files, not here.
 
 ## howto
 - [Nginx SSE Proxy Settings](./pages/nginx-sse-proxy.md) — the five directives SSE streaming needs behind Nginx.
+- [Developing an Inbound Chat Adapter](./pages/inbound-adapter-development.md) — subclassing `InboundAdapter`: the methods to implement, settings and webhook URL, proxy rate limiting, and the reference-adapter test pattern.
