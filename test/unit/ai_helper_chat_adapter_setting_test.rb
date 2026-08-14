@@ -126,9 +126,38 @@ class AiHelperChatAdapterSettingTest < ActiveSupport::TestCase
       assert_not setting.valid?
       assert_predicate setting.errors[:redmine_user_name], :present?
     end
+
+    should "reject an enabled teams row without a tenant_id" do
+      setting = AiHelperChatAdapterSetting.new(
+        channel_type: "teams", enabled: true,
+        app_token: "app-id", bot_token: "client-secret", tenant_id: "",
+        redmine_user_id: 2, default_project_id: 1
+      )
+
+      assert_not setting.valid?
+      assert_predicate setting.errors[:tenant_id], :present?
+    end
+
+    should "accept an enabled teams row with every required field present" do
+      setting = AiHelperChatAdapterSetting.new(
+        channel_type: "teams", enabled: true,
+        app_token: "app-id", bot_token: "client-secret",
+        tenant_id: "11111111-2222-3333-4444-555555555555",
+        redmine_user_id: 2, default_project_id: 1
+      )
+
+      assert_predicate setting, :valid?
+    end
   end
 
   context "safe_attributes" do
+    should "accept tenant_id" do
+      setting = create(:ai_helper_chat_adapter_setting, channel_type: "teams")
+      setting.safe_attributes = { "tenant_id" => "11111111-2222-3333-4444-555555555555" }
+
+      assert_equal "11111111-2222-3333-4444-555555555555", setting.tenant_id
+    end
+
     should "accept enabled, tokens, default_project_id and redmine_user_id" do
       setting = create(:ai_helper_chat_adapter_setting)
       setting.safe_attributes = {

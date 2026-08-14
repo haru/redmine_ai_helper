@@ -23,7 +23,7 @@ class AiHelperChatAdapterSetting < ApplicationRecord
   validate :default_project_present_when_enabled
   validate :redmine_user_name_matches_existing_user
 
-  safe_attributes "enabled", "app_token", "bot_token", "default_project_id", "redmine_user_id", "redmine_user_name"
+  safe_attributes "enabled", "app_token", "bot_token", "tenant_id", "default_project_id", "redmine_user_id", "redmine_user_name"
 
   # Reads the default project id from the physical dm_default_project_id column.
   # @return [Integer, nil]

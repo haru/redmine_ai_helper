@@ -41,10 +41,13 @@ tr:
       adapters:
         slack: "Slack"
         discord: "Discord"
+        teams: "Microsoft Teams"
       settings:
         enabled: "Etkinleştir"
         app_token: "Uygulama Token'ı"
         bot_token: "Bot Token'ı"
+        tenant_id: "Kiracı (Tenant) ID'si"
+        tenant_id_info: "Bu entegrasyonu kullanmasına izin verilen kuruluşun dizin (kiracı) ID'si. Diğer kuruluşlardan gelen istekler reddedilir."
         redmine_user: "Çalıştırma hesabı"
         redmine_user_info: "Sohbet aracından gelen tüm sorular bu Redmine kullanıcısının izinleriyle işlenir. Ağ geçidinin yapabileceklerini sınırlamak için bu hesabın rollerini kısıtlayın."
         default_project: "Varsayılan proje"

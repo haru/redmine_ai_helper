@@ -17,7 +17,8 @@
                         data: { adapter_type: channel_type }, class: "adapter-enabled-checkbox" %>
     </p>
     <div id="adapter-settings-<%= channel_type %>">
-      <% token_fields = RedmineAiHelper::ChatChannel::BaseAdapter.adapters[channel_type].required_setting_fields & [:app_token, :bot_token] %>
+      <% required_fields = RedmineAiHelper::ChatChannel::BaseAdapter.adapters[channel_type].required_setting_fields %>
+      <% token_fields = required_fields & [:app_token, :bot_token] %>
       <% token_fields.each do |token_field| %>
         <p>
           <label><%= t("ai_helper.chat_channel.settings.#{token_field}") %> <span class="required">*</span></label>
@@ -26,6 +27,17 @@
                                  size: 60, id: nil, autocomplete: "new-password" %>
           <% if adapter_setting.send(token_field).present? %>
             <em class="info"><%= adapter_setting.send("masked_#{token_field}") %></em>
+          <% end %>
+        </p>
+      <% end %>
+      <% (required_fields - token_fields).each do |plain_field| %>
+        <p>
+          <label><%= t("ai_helper.chat_channel.settings.#{plain_field}") %> <span class="required">*</span></label>
+          <%= text_field_tag "chat_adapter_settings[#{channel_type}][#{plain_field}]",
+                             adapter_setting.send(plain_field), size: 60, id: nil %>
+          <% field_info = t("ai_helper.chat_channel.settings.#{plain_field}_info", default: "") %>
+          <% if field_info.present? %>
+            <em class="info"><%= field_info %></em>
           <% end %>
         </p>
       <% end %>

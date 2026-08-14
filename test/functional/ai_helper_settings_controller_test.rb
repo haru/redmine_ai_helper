@@ -679,6 +679,73 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert_equal 2, setting.redmine_user_id
     end
 
+    should "render a plain text field for required fields that are not tokens" do
+      get :index, params: { tab: "channels" }
+
+      assert_response :success
+      assert_select "#tab-content-channels input[name='chat_adapter_settings[teams][tenant_id]'][type=text]"
+      assert_select "#tab-content-channels input[name='chat_adapter_settings[teams][tenant_id]'][type=password]", { count: 0 }
+    end
+
+    should "not render a tenant id field for adapters that do not require one" do
+      get :index, params: { tab: "channels" }
+
+      assert_response :success
+      assert_select "#tab-content-channels input[name='chat_adapter_settings[ui_chat][tenant_id]']", { count: 0 }
+      assert_select "#tab-content-channels input[name='chat_adapter_settings[slack][tenant_id]']", { count: 0 }
+      assert_select "#tab-content-channels input[name='chat_adapter_settings[discord][tenant_id]']", { count: 0 }
+    end
+
+    should "show the webhook URL to register for the teams integration" do
+      get :index, params: { tab: "channels" }
+
+      assert_response :success
+      assert_match %r{https?://[^"]*/ai_helper/chat_webhook/teams}, @response.body
+    end
+
+    should "serve the teams setup guide through the help endpoint" do
+      get :help, params: { channel_type: "teams" }
+
+      assert_response :success
+      assert_includes @response.body, "Microsoft Teams Gateway Setup Guide"
+    end
+
+    should "save teams settings including the tenant id" do
+      post :update, params: {
+        tab: "channels",
+        ai_helper_setting: {},
+        chat_adapter_settings: {
+          "teams" => { "enabled" => "1", "app_token" => "app-id", "bot_token" => "client-secret",
+                       "tenant_id" => "tenant-guid", "redmine_user_name" => User.find(2).name,
+                       "redmine_user_id" => "2", "default_project_id" => "1" }
+        }
+      }
+
+      assert_redirected_to controller: "ai_helper_settings", action: :index, tab: "channels"
+      setting = AiHelperChatAdapterSetting.for_channel("teams")
+      assert setting.enabled
+      assert_equal "app-id", setting.app_token
+      assert_equal "client-secret", setting.bot_token
+      assert_equal "tenant-guid", setting.tenant_id
+      assert_equal 1, setting.default_project_id
+    end
+
+    should "reject enabling teams without a tenant id" do
+      post :update, params: {
+        tab: "channels",
+        ai_helper_setting: {},
+        chat_adapter_settings: {
+          "teams" => { "enabled" => "1", "app_token" => "app-id", "bot_token" => "client-secret",
+                       "tenant_id" => "", "redmine_user_id" => "2", "default_project_id" => "1" }
+        }
+      }
+
+      assert_response :success
+      assert_equal "channels", assigns(:selected_tab)
+      assert_not AiHelperChatAdapterSetting.enabled?("teams")
+      assert_select "#errorExplanation"
+    end
+
     should "reject enabling an adapter without a default project (C1)" do
       post :update, params: {
         tab: "general",
