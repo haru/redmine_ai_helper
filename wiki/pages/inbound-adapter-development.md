@@ -7,8 +7,8 @@ updated: 2026-08-14
 
 # Developing an Inbound Chat Adapter
 
-How to support a webhook-push platform (Teams, LINE) on the feature 044
-foundation. [Teams](./teams-adapter.md) is the worked example — a real adapter
+How to support a webhook-push platform (Teams, LINE) on the
+044-inbound-chat-webhook foundation. [Teams](./teams-adapter.md) is the worked example — a real adapter
 built to this guide (S021). This is the *developer* counterpart to `docs/slack_gateway_setup.md`
 / `docs/discord_gateway_setup.md`, which document *operator* setup for the
 outgoing-connection adapters (S020).

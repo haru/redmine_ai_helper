@@ -8,8 +8,8 @@ updated: 2026-08-14
 # Teams Inbound Chat Adapter
 
 Microsoft Teams support (feature 044-teams-chat-adapter) is a **single class**,
-`ChatChannel::Adapters::TeamsAdapter < InboundAdapter`, added on the feature 044
-webhook foundation. It implements only `verify_request`, `parse_events`,
+`ChatChannel::Adapters::TeamsAdapter < InboundAdapter`, added on the
+044-inbound-chat-webhook foundation. It implements only `verify_request`, `parse_events`,
 `send_message`, `supports_history?`, `fetch_thread_history`,
 `fetch_channel_history`, `issue_link_format` and `fatal_config_error?`; the
 polling loop, de-duplication, freshness judgement and retention purge are

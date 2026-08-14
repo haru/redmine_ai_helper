@@ -8,8 +8,10 @@ updated: 2026-08-14
 # Chat History APIs
 
 How the Slack, Discord and Teams adapters actually retrieve surrounding messages for
-[Chat Context Import](./chat-context-import.md). Both return newest-first and are
-re-sorted to ascending by the adapter before returning (S001).
+[Chat Context Import](./chat-context-import.md). All three hand the core ascending
+order, but they arrive there differently: Slack and Discord return newest-first and
+the adapter reverses the page (S001), while Graph's ordering is not relied on at
+all — the Teams adapter sorts by numeric message id (S021).
 
 ## Slack
 

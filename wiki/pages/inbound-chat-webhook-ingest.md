@@ -7,7 +7,7 @@ updated: 2026-08-08
 
 # Inbound Chat Webhook Ingest
 
-Feature 044 adds the foundation for chat services that **push** messages over a
+Feature 044-inbound-chat-webhook adds the foundation for services that **push** messages over a
 webhook (LINE, Microsoft Teams) instead of accepting an outward socket
 connection like Slack/Discord do. Those platforms deliver events *only* by
 POSTing to a URL registered with them, so building on ADR-006 unchanged would

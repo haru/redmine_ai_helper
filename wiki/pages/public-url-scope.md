@@ -17,7 +17,7 @@ property, not a whole-plugin invariant (S018, S019).
 - **Outbound adapters** (Slack Socket Mode, Discord Gateway) open the
   connection themselves and still need no public URL. ADR-006 decision 1 is
   neither revisited nor weakened for them, and outbound-only deployments —
-  every deployment before feature 044 — are provably unaffected: the whole
+  every deployment before 044-inbound-chat-webhook — are provably unaffected: the whole
   pre-existing test suite, `gateway_test.rb` and both adapters' tests included,
   passes unmodified (S019).
 - **Inbound adapters** do require a public HTTPS URL, because platforms like

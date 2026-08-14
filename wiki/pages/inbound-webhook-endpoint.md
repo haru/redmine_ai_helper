@@ -7,7 +7,7 @@ updated: 2026-08-08
 
 # Inbound Webhook Endpoint
 
-The HTTP half of feature 044: `AiHelperChatWebhookController` at `POST
+The HTTP half of 044-inbound-chat-webhook: `AiHelperChatWebhookController` at `POST
 /ai_helper/chat_webhook/:channel_type`, running inside Redmine's web process.
 It verifies, normalizes and stores an event, then answers — it never calls the
 LLM (S018, S019). An inbound adapter supplies three methods to it:

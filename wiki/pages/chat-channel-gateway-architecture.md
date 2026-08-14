@@ -14,8 +14,10 @@ per-tool implementations under `adapters/` (S001).
 
 ## Structure
 
-- **Core** (tool-independent): `context_importer.rb`, `message_handler.rb`,
-  `incoming_message.rb`, `history_message.rb`, `base_adapter.rb`.
+- **Core** (tool-independent): `gateway.rb`, `context_importer.rb`,
+  `message_handler.rb`, `incoming_message.rb`, `history_message.rb`,
+  `issue_link_formatter.rb`, `base_adapter.rb` (S001) — plus `inbound_adapter.rb`
+  and `inbound_event_message.rb`, added by 044-inbound-chat-webhook (S018).
 - **Adapters** (tool-specific): `adapters/slack_adapter.rb`,
   `adapters/discord_adapter.rb`, and `adapters/teams_adapter.rb` (S021).
   Adapters are registered via the same `inherited` hook pattern used elsewhere
@@ -70,7 +72,7 @@ override these to `true` and implement both fetch methods, though Teams returns
 
 ## Inbound adapters
 
-Feature 044 adds `BaseAdapter.inbound?` in the same declaration style (default
+044-inbound-chat-webhook adds `BaseAdapter.inbound?` in the same style (default
 `false`, `true` on `InboundAdapter`). An inbound adapter has no socket: its
 `start` polls `ai_helper_inbound_events` for webhook events stored by a Rails
 endpoint in Redmine, then `dispatch`es them into the same worker loop, leaving
@@ -90,8 +92,8 @@ as the proof ADR-017 set out to obtain (S022).
 
 - [Chat Context Import](./chat-context-import.md) — how surrounding messages
   are pulled in and fed to the LLM.
-- [Chat History APIs](./chat-history-apis.md) — the Slack/Discord retrieval
-  details behind the fetch methods.
+- [Chat History APIs](./chat-history-apis.md) — the Slack/Discord/Teams
+  retrieval details behind the fetch methods.
 - [Discord Message Content Intent](./discord-message-content-intent.md) — a
   hard constraint on the Discord adapter's connection.
 - [Teams Inbound Chat Adapter](./teams-adapter.md) — the first concrete inbound
