@@ -1,14 +1,15 @@
 ---
 title: Developing an Inbound Chat Adapter
 type: howto
-sources: [S020]
-updated: 2026-08-08
+sources: [S020, S021]
+updated: 2026-08-14
 ---
 
 # Developing an Inbound Chat Adapter
 
-How to support a webhook-push platform (LINE, Teams) on the feature 044
-foundation. This is the *developer* counterpart to `docs/slack_gateway_setup.md`
+How to support a webhook-push platform (Teams, LINE) on the feature 044
+foundation. [Teams](./teams-adapter.md) is the worked example — a real adapter
+built to this guide (S021). This is the *developer* counterpart to `docs/slack_gateway_setup.md`
 / `docs/discord_gateway_setup.md`, which document *operator* setup for the
 outgoing-connection adapters (S020).
 
@@ -28,7 +29,7 @@ so there is no manual registration step (S020). Declare `channel_type` and
 
 | Method | Required | Notes |
 |---|---|---|
-| `verify_request(request)` | yes — no default | HMAC over `request.raw_post` |
+| `verify_request(request)` | yes — no default | HMAC over `request.raw_post`, or a bearer JWT (Teams) |
 | `parse_events(request)` | yes | returns the normalized event hashes |
 | `challenge_response(request)` | no — defaults to `nil` | only if the platform handshakes |
 | `send_message(channel_id:, thread_key:, text:)` | yes | posts the reply via the platform API |
@@ -43,15 +44,23 @@ so there is no manual registration step (S020). Declare `channel_type` and
   delivery carries nothing to answer, such as a delivery receipt or the bot's
   own message (S020).
 - **`reply_metadata_for(thread_key:)`** is worth calling from `send_message`
-  only when replying needs more than `channel_id`/`thread_key` (a reply token,
-  say). Most platforms that can push by channel id alone never need it (S020).
+  only when replying needs more than `channel_id`/`thread_key` — see
+  [Inbound Reply Metadata](./inbound-reply-metadata.md) (S020).
 
 ## Settings and the webhook URL
 
 No new settings model: `AiHelperChatAdapterSetting` already carries the columns
 every adapter shares (`enabled`, `app_token`, `bot_token`, execution account,
 default project). Declare the ones you need via `required_setting_fields`,
-exactly as an outbound adapter does (S020).
+exactly as an outbound adapter does (S020). Reuse `app_token`/`bot_token` for
+whatever credential pair the platform issues — Teams maps them to App ID and
+client secret (S021).
+
+A non-credential setting is one column on `AiHelperChatAdapterSetting` named in
+`required_setting_fields`: the view renders every declared non-token field as a
+plain unmasked text input, adapter-driven rather than keyed on `channel_type`,
+and `required_fields_present_when_enabled` covers it for free. Teams'
+allowed-tenant id is the first; token-only adapters render as before (S021).
 
 Once enabled under *Administration → AI Helper → Chat integrations*, the
 adapter's block shows `https://<Setting.host_name>/ai_helper/chat_webhook/<channel_type>`
@@ -87,3 +96,5 @@ a real webhook call or a live platform (S020).
   your `#start` inherits.
 - [Inbound Chat Webhook Ingest](./inbound-chat-webhook-ingest.md) — why the
   foundation is shaped this way.
+- [Teams Inbound Chat Adapter](./teams-adapter.md) — every method above, filled
+  in for a real platform.

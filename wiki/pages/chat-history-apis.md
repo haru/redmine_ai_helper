@@ -1,13 +1,13 @@
 ---
 title: Chat History APIs
 type: reference
-sources: [S001]
-updated: 2026-08-01
+sources: [S001, S021]
+updated: 2026-08-14
 ---
 
 # Chat History APIs
 
-How the Slack and Discord adapters actually retrieve surrounding messages for
+How the Slack, Discord and Teams adapters actually retrieve surrounding messages for
 [Chat Context Import](./chat-context-import.md). Both return newest-first and are
 re-sorted to ascending by the adapter before returning (S001).
 
@@ -50,7 +50,26 @@ re-sorted to ascending by the adapter before returning (S001).
 - Message content availability depends on the
   [Message Content Intent](./discord-message-content-intent.md) (S001).
 
-## Excluded messages (both tools)
+## Teams (Microsoft Graph v1.0)
+
+| Purpose | API | Key params |
+|---|---|---|
+| Messages in a thread | `GET /teams/{aadGroupId}/channels/{channelId}/messages/{rootId}/replies` | `$top=50`, follow `@odata.nextLink` until past the `after` cursor |
+| Channel top-level | `GET /teams/{aadGroupId}/channels/{channelId}/messages` | `$top={limit}`, one page, filtered to `createdDateTime >= since` and `id < before` |
+
+- On a first import (`after` empty) the thread's root message is fetched
+  separately via `GET …/messages/{rootId}` (S021).
+- Tokens: `POST https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token`
+  with `scope=https://graph.microsoft.com/.default`, same App ID and secret as
+  the bot. Access needs the RSC permission `ChannelMessage.Read.Group` (S021).
+- **Display names** come from `from.user.displayName` in the payload, so no
+  resolution call is needed (S021).
+- 1:1 chats return `[]` without any call, and failures (403 for missing
+  permission, 404, anything else) are raised so the answer can carry the
+  `history_unavailable` notice — see
+  [Teams History via Microsoft Graph](./teams-graph-history.md) (S021).
+
+## Excluded messages
 
 Exclusion is decided in the adapter (mention/system-message syntax is
 tool-specific). Excluded: the gateway's own messages; mention-questions to the
@@ -61,3 +80,5 @@ in `[nil, "bot_message", "thread_broadcast", "file_share"]` (S001).
 ## Related
 
 - [Chat Channel Gateway Architecture](./chat-channel-gateway-architecture.md)
+- [Teams History via Microsoft Graph](./teams-graph-history.md) — why Teams
+  pulls from Graph rather than consuming pushed messages.

@@ -12,11 +12,17 @@ page files, not here.
 - [Agent Write-Capability Routing](./pages/agent-write-capability-routing.md) — why `can_write?`/`requires_write` guard write steps at dispatch time instead of being exposed to the router, and how skipped steps and the final-answer prompt stay consistent with what actually ran.
 - [Inbound Chat Webhook Ingest](./pages/inbound-chat-webhook-ingest.md) — why webhook events land on a Rails endpoint in Redmine, hand off through a DB table, and are polled by `InboundAdapter#start` so the gateway core stays unchanged.
 - [Public URL Scope for Chat Adapters](./pages/public-url-scope.md) — ADR-017's amendment to ADR-006: "no public URL required" is an outbound-adapter property, not a whole-plugin invariant.
+- [Teams 1:1 Session Window](./pages/teams-one-to-one-session-window.md) — why a threadless 1:1 chat is cut into conversations by a 24-hour gap, judged from the inbound event table at receipt.
+- [Teams History via Microsoft Graph](./pages/teams-graph-history.md) — why context is pulled from Graph instead of consuming RSC-pushed messages, plus consent scope, `aadGroupId` resolution, and the protected-API risk.
 
 ## component
 - [Chat Channel Gateway Architecture](./pages/chat-channel-gateway-architecture.md) — core + adapters structure, capability declaration, and gateway operational model.
 - [Inbound Webhook Endpoint](./pages/inbound-webhook-endpoint.md) — the anonymous `POST /ai_helper/chat_webhook/:channel_type` controller: skipped filters, raw-body signature verification, challenge responses, webhook URL display.
 - [Inbound Event Queue](./pages/inbound-event-queue.md) — the `ai_helper_inbound_events` table: atomic claiming, freshness expiry, retention purge, and reply metadata resolved by event id.
+- [Inbound Reply Metadata](./pages/inbound-reply-metadata.md) — `reply_metadata` resolved by event row id: why thread position fails, and which platforms need it.
+- [Teams Inbound Chat Adapter](./pages/teams-adapter.md) — the one-class Teams adapter: implemented methods, settings and credentials, and the three in-memory caches with their class-vs-instance rule.
+- [Teams Reply Delivery](./pages/teams-reply-delivery.md) — the outbound half: Bot Connector token and activity POST, message splitting, and send-failure classification.
+- [Teams Activity Mapping](./pages/teams-activity-mapping.md) — which Bot Framework activities become questions, mention stripping, and the `channel_id`/`thread_key`/`in_thread`/`event_key` derivation.
 - [Chat Context Import](./pages/chat-context-import.md) — how surrounding messages are imported, cursored, persisted as `context` role, and fed to the LLM.
 - [AI Chat Sidebar](./pages/chat-sidebar.md) — the sidebar UI: view-hook injection, the `AiHelper` JS class, SSE handling, conversation models, and Markdown/XSS.
 - [Issue AI Features](./pages/issue-ai-features.md) — `IssueReadAgent` summarization/caching, reply drafts, sub-issues, assignee suggestion, duplicate check, and inline completion.
@@ -32,6 +38,7 @@ page files, not here.
 ## reference
 - [Chat History APIs](./pages/chat-history-apis.md) — Slack/Discord message-retrieval APIs, scopes, display-name resolution, exclusion rules.
 - [Discord Message Content Intent](./pages/discord-message-content-intent.md) — why Identify requests the privileged intent (37376) and fails fast on close code 4014.
+- [Teams Request Verification](./pages/teams-request-verification.md) — the Bot Connector JWT checks, JWKS caching, the `jwt` gem dependency, and why the allowed-tenant gate sits beside signature verification.
 - [Vector Search](./pages/vector-search.md) — Qdrant setup, index rake tasks, the embedding-provider constraint, and the optional vector model profile.
 - [Multi-modal File Support](./pages/multi-modal-file-support.md) — supported file types, attachment-to-LLM setting, and vector-index integration.
 

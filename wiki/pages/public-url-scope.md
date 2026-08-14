@@ -1,8 +1,8 @@
 ---
 title: Public URL Scope for Chat Adapters
 type: decision
-sources: [S018, S019]
-updated: 2026-08-08
+sources: [S018, S019, S021]
+updated: 2026-08-14
 ---
 
 # Public URL Scope for Chat Adapters
@@ -24,6 +24,8 @@ property, not a whole-plugin invariant (S018, S019).
   LINE and Teams deliver events only by POSTing to a URL registered with them.
   Operators expose `/ai_helper/chat_webhook/:channel_type` behind the reverse
   proxy already serving Redmine — no new port, no separate TLS setup (S019).
+  The Teams adapter makes this concrete: Bot Framework delivers only inbound, so
+  a public HTTPS URL is a hard precondition of enabling it (S021).
 
 ADR-017 books the extra requirement explicitly as a **negative** consequence:
 unavoidable given how those platforms work, not a choice the feature makes
@@ -53,3 +55,5 @@ in `docs/inbound_chat_adapter_development.md` (S019).
   public URL points at.
 - [Chat Channel Gateway Architecture](./chat-channel-gateway-architecture.md) —
   the outbound operational model the guarantee originally described.
+- [Teams Inbound Chat Adapter](./teams-adapter.md) — the first adapter to which
+  the inbound half applies.
