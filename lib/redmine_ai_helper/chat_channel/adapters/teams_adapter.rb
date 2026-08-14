@@ -20,8 +20,12 @@ module RedmineAiHelper
       #
       # The settings columns are reused with Teams meanings: +app_token+ is the
       # Microsoft App ID, +bot_token+ the client secret and +tenant_id+ the
-      # organization allowed to reach this integration. None of them is ever
-      # written to the log or to an exception message.
+      # organization allowed to reach this integration. The secrets among them
+      # -- the client secret and the access tokens obtained with it -- are never
+      # written to the log or to an exception message. The tenant is not a
+      # secret and does appear in both: a rejected activity is logged with the
+      # tenant that sent it, and the tenant is part of the Graph token endpoint
+      # URL that request logging prints.
       class TeamsAdapter < InboundAdapter
         # Raised on authentication/configuration failures (Bot Connector or
         # Graph 401/403, token endpoint 400/401). Classified as a fatal config
