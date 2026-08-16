@@ -9,7 +9,8 @@ page files, not here.
 - [Multi-Agent Architecture](./pages/multi-agent-architecture.md) — request flow, LeaderAgent planning, agent auto-registration, tool system, provider layer, and streaming.
 
 ## decision
-- [Agent Write-Capability Routing](./pages/agent-write-capability-routing.md) — why `can_write?`/`requires_write` guard write steps at dispatch time instead of being exposed to the router, and how skipped steps and the final-answer prompt stay consistent with what actually ran.
+- [Agent Write-Capability Routing](./pages/agent-write-capability-routing.md) — the misrouted-write bug, `can_write?` built from existing tool metadata, why the router never sees it, and the read/write agent rename.
+- [Write-Capable Step Guard](./pages/agent-write-step-guard.md) — the dispatch-time `requires_write` check: skipping instead of re-routing, keeping skipped steps visible to later steps, grounding the final answer in what ran, and why unclassifiable MCP tools default to write-capable.
 - [Inbound Chat Webhook Ingest](./pages/inbound-chat-webhook-ingest.md) — why webhook events land on a Rails endpoint in Redmine, hand off through a DB table, and are polled by `InboundAdapter#start` so the gateway core stays unchanged.
 - [Public URL Scope for Chat Adapters](./pages/public-url-scope.md) — ADR-017's amendment to ADR-006: "no public URL required" is an outbound-adapter property, not a whole-plugin invariant.
 - [Teams 1:1 Session Window](./pages/teams-one-to-one-session-window.md) — why a threadless 1:1 chat is cut into conversations by a 24-hour gap, judged from the inbound event table at receipt.
@@ -20,7 +21,7 @@ page files, not here.
 - [Inbound Webhook Endpoint](./pages/inbound-webhook-endpoint.md) — the anonymous `POST /ai_helper/chat_webhook/:channel_type` controller: skipped filters, raw-body signature verification, challenge responses, webhook URL display.
 - [Inbound Event Queue](./pages/inbound-event-queue.md) — the `ai_helper_inbound_events` table: atomic claiming, freshness expiry, retention purge, and reply metadata resolved by event id.
 - [Inbound Reply Metadata](./pages/inbound-reply-metadata.md) — `reply_metadata` resolved by event row id: why thread position fails, and which platforms need it.
-- [Teams Inbound Chat Adapter](./pages/teams-adapter.md) — the one-class Teams adapter: implemented methods, settings and credentials, and the three in-memory caches with their class-vs-instance rule.
+- [Teams Inbound Chat Adapter](./pages/teams-adapter.md) — the one-class Teams adapter: implemented methods, settings and credentials, the single-tenant constraint and its reach limit, and the three in-memory caches with their class-vs-instance rule.
 - [Teams Reply Delivery](./pages/teams-reply-delivery.md) — the outbound half: Bot Connector token and activity POST, message splitting, and send-failure classification.
 - [Teams Activity Mapping](./pages/teams-activity-mapping.md) — which Bot Framework activities become questions, mention stripping, and the `channel_id`/`thread_key`/`in_thread`/`event_key` derivation.
 - [Chat Context Import](./pages/chat-context-import.md) — how surrounding messages are imported, cursored, persisted as `context` role, and fed to the LLM.
@@ -44,4 +45,5 @@ page files, not here.
 
 ## howto
 - [Nginx SSE Proxy Settings](./pages/nginx-sse-proxy.md) — the five directives SSE streaming needs behind Nginx.
-- [Developing an Inbound Chat Adapter](./pages/inbound-adapter-development.md) — subclassing `InboundAdapter`: the methods to implement, settings and webhook URL, proxy rate limiting, and the reference-adapter test pattern.
+- [Developing an Inbound Chat Adapter](./pages/inbound-adapter-development.md) — subclassing `InboundAdapter`: the methods to implement, settings and webhook URL, locale files, and proxy rate limiting.
+- [Testing an Inbound Chat Adapter](./pages/inbound-adapter-testing.md) — the reference-adapter pattern, signing your own JWTs, resetting class-level caches, and leaving the shared chat tests untouched.

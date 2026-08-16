@@ -2,7 +2,7 @@
 title: Developing an Inbound Chat Adapter
 type: howto
 sources: [S020, S021]
-updated: 2026-08-14
+updated: 2026-08-16
 ---
 
 # Developing an Inbound Chat Adapter
@@ -78,15 +78,16 @@ the integration actually expects: per-request work is cheap (verify, normalize,
 insert one row), so the limit exists to bound abuse, not to protect throughput
 (S020).
 
+Only the locale files that already carry `chat_channel` keys need the new
+adapter's name and any new setting label — `en.yml`, `ja.yml` and `tr.yml`, three
+of the plugin's locales, not all of them (S021).
+
 ## Testing
 
-Follow the reference adapter pattern in
-`test/unit/chat_channel/inbound_adapter_test.rb`: a test-only subclass with
-toggles for `verify_request`/`parse_events`/`challenge_response`, registered
-inside the test file and never under `lib/`, driven through one poll cycle by
-stubbing `InboundAdapter.timed_queue_pop` to call `#stop` as a side effect.
-That proves integration with the shared `Gateway`/`MessageHandler` path without
-a real webhook call or a live platform (S020).
+See [Testing an Inbound Chat Adapter](./inbound-adapter-testing.md) — the
+reference-adapter pattern, how to exercise a signature-verifying path with keys
+you generate yourself, and why the existing chat tests must stay untouched
+(S020, S021).
 
 ## Related
 

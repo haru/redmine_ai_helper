@@ -42,6 +42,18 @@ Discord's settings blocks are unchanged, since they declare tokens only (S021).
 every access token is requested from — the bot is a single-tenant app
 (**ADR-019**), so a wrong tenant also stops replies from being posted (S023).
 
+Single tenant is not a preference but the only shape Azure still issues: since
+2025-07-31 the portal's **Type of App** list offers just *Single Tenant* and
+*User-Assigned Managed Identity*. Bots registered as multi-tenant earlier keep
+working, but this integration does not support them — an operator holding one
+registers a new single-tenant bot instead. Carrying an app-type setting was
+rejected: it would keep a branch alive for a registration Microsoft no longer
+issues, and the adapter had not shipped, so there is no installed base to stay
+compatible with. Reach follows from the same fact — the integration serves the
+organization it is registered in, and answering from another organization's
+Teams means publishing through the Teams Store / AppSource, outside this
+plugin's scope (S023).
+
 There is no URL handshake to implement: Bot Framework registers a messaging
 endpoint on the Azure Bot resource and never challenges it, so
 `challenge_response` keeps the base `nil` (S021).

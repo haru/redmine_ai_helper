@@ -40,6 +40,13 @@ option for new integrations (**ADR-019**, Accepted 2026-08-16). The Graph token
 of [Teams Graph History](./teams-graph-history.md) comes from the same endpoint;
 only the scope differs (S023).
 
+Two nearby designs went down with it. Asking `botframework.com` for the token
+regardless of app type fails by construction — a single-tenant app has no
+service principal in that directory, which is the very breakage the change
+repairs. Trying the tenant endpoint and *falling back* to `botframework.com` was
+rejected as worse than either: it hides a configuration error behind a second
+request, where a rejected credential has to surface at once (S023).
+
 These Bot Connector calls are the baseline cost of answering; importing context
 adds Graph calls on top of them (S022).
 
@@ -51,6 +58,11 @@ adds Graph calls on top of them (S022).
 | 429 | wait per `Retry-After`, up to 3 attempts |
 | 5xx | exponential backoff 1s → 2s → 4s, up to 3 attempts |
 | 404 / other 4xx | no retry, logged |
+
+The 429 branch is not hypothetical: Teams meters sends **per conversation** —
+Microsoft documents roughly 7 requests per second and 60 per 30 seconds — and
+returns `Retry-After` when a bot exceeds them, which its guidance says to honour
+before backing off exponentially (S021).
 
 Retries are capped at 3 because replies are processed serially by the single
 worker, so unbounded retry stalls later questions. Exhausted and non-retryable

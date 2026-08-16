@@ -91,3 +91,5 @@ before any LLM work, any queue row, and any log of question content (S022).
   runs after verification succeeds.
 - [Inbound Webhook Endpoint](./inbound-webhook-endpoint.md) — the controller
   that turns `false` into a 401.
+- [Testing an Inbound Chat Adapter](./inbound-adapter-testing.md) — how these
+  JWT cases are exercised without a real Microsoft signing key.

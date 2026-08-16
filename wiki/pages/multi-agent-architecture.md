@@ -49,7 +49,7 @@ AiHelperController  →  RedmineAiHelper::Llm  →  LeaderAgent  →  worker age
   each planned step carries a `requires_write` flag, and `LeaderAgent` checks
   it against the assigned agent's `can_write?` immediately before dispatch —
   routing itself still relies on backstory wording, not this check. See
-  [Agent Write-Capability Routing](./agent-write-capability-routing.md) (S016).
+  [Write-Capable Step Guard](./agent-write-step-guard.md) (S016).
 
 ## Tool system
 
@@ -83,5 +83,7 @@ proxy settings ([Nginx SSE Proxy](./nginx-sse-proxy.md)).
 - [Plugin Overview](./plugin-overview.md) · [MCP Integration](./mcp-integration.md)
 - [Chat Channel Gateway Architecture](./chat-channel-gateway-architecture.md) —
   an alternate entry point that reuses this same agent stack.
-- [Agent Write-Capability Routing](./agent-write-capability-routing.md) — the
+- [Agent Write-Capability Routing](./agent-write-capability-routing.md) — how
+  an agent's write capability is defined and kept out of routing.
+- [Write-Capable Step Guard](./agent-write-step-guard.md) — the
   `requires_write`/`can_write?` guard mentioned above.
