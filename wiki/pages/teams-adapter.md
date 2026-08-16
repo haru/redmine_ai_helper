@@ -1,8 +1,8 @@
 ---
 title: Teams Inbound Chat Adapter
 type: component
-sources: [S021, S022]
-updated: 2026-08-14
+sources: [S021, S022, S023]
+updated: 2026-08-16
 ---
 
 # Teams Inbound Chat Adapter
@@ -36,6 +36,11 @@ text fields through a **generic** block rather than hardcoding `"teams"`; a
 tenant id is a directory identifier, not a secret, so it is unmasked, while the
 tokens keep the existing masking and `DUMMY_TOKEN` handling. Slack's and
 Discord's settings blocks are unchanged, since they declare tokens only (S021).
+
+`tenant_id` carries two jobs: the allowed-organization gate of
+[Teams Request Verification](./teams-request-verification.md), and the directory
+every access token is requested from — the bot is a single-tenant app
+(**ADR-019**), so a wrong tenant also stops replies from being posted (S023).
 
 There is no URL handshake to implement: Bot Framework registers a messaging
 endpoint on the Azure Bot resource and never challenges it, so

@@ -47,7 +47,7 @@ en:
         app_token: "App Token"
         bot_token: "Bot Token"
         tenant_id: "Tenant ID"
-        tenant_id_info: "The directory (tenant) ID of the organization allowed to use this integration. Requests from any other organization are rejected."
+        tenant_id_info: "The directory (tenant) ID of the organization allowed to use this integration. Requests from any other organization are rejected, and the bot's access tokens are requested from this tenant, so a wrong value also stops replies from being posted."
         redmine_user: "Execution account"
         redmine_user_info: "All questions from the chat tool are processed with this Redmine user's permissions. Restrict this account's roles to limit what the gateway can do."
         default_project: "Default project"

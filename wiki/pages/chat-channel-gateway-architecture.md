@@ -1,8 +1,8 @@
 ---
 title: Chat Channel Gateway Architecture
 type: component
-sources: [S001, S002, S018, S019, S021, S022]
-updated: 2026-08-14
+sources: [S001, S002, S018, S019, S021, S022, S023]
+updated: 2026-08-16
 ---
 
 # Chat Channel Gateway Architecture
@@ -110,7 +110,9 @@ as the proof ADR-017 set out to obtain (S022).
 Design decisions are recorded in ADR-006 (gateway architecture), ADR-007
 (Discord connection design) and ADR-017 (inbound webhook gateway, an accepted
 amendment to ADR-006's scope) and ADR-018 (Teams inbound adapter design,
-Accepted 2026-08-14 — tenant gate, 24-hour 1:1 window, Graph pull) under
-`docs/adr/` (S001, S019, S022). Full setup guides live in
+Accepted 2026-08-14 — tenant gate, 24-hour 1:1 window, Graph pull), amended in
+turn by ADR-019 (Accepted 2026-08-16 — single-tenant bots only, both tokens from
+the configured tenant), under
+`docs/adr/` (S001, S019, S022, S023). Full setup guides live in
 `docs/slack_gateway_setup.md`, `docs/discord_gateway_setup.md` and
 `docs/teams_gateway_setup.md` (S002, S021).

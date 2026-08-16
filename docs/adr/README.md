@@ -71,3 +71,4 @@ Briefly describe alternatives that were rejected and why.
 | [016](./016-issue-agent-read-write-rename.md) | Rename IssueAgent/IssueUpdateAgent to IssueReadAgent/IssueWriteAgent | Accepted |
 | [017](./017-inbound-chat-webhook-gateway.md) | Inbound chat webhook gateway (amends the scope of ADR-006) | Accepted |
 | [018](./018-teams-inbound-adapter-design.md) | Microsoft Teams inbound adapter design | Accepted |
+| [019](./019-teams-single-tenant-bot.md) | Teams integration targets single-tenant bots (amends the premise of ADR-018) | Accepted |

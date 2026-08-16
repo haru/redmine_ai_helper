@@ -20,12 +20,13 @@ module RedmineAiHelper
       #
       # The settings columns are reused with Teams meanings: +app_token+ is the
       # Microsoft App ID, +bot_token+ the client secret and +tenant_id+ the
-      # organization allowed to reach this integration. The secrets among them
-      # -- the client secret and the access tokens obtained with it -- are never
-      # written to the log or to an exception message. The tenant is not a
+      # organization allowed to reach this integration, which is also the
+      # directory the bot's single-tenant credentials live in. The secrets among
+      # them -- the client secret and the access tokens obtained with it -- are
+      # never written to the log or to an exception message. The tenant is not a
       # secret and does appear in both: a rejected activity is logged with the
-      # tenant that sent it, and the tenant is part of the Graph token endpoint
-      # URL that request logging prints.
+      # tenant that sent it, and the tenant is part of the token endpoint URL
+      # that request logging prints.
       class TeamsAdapter < InboundAdapter
         # Raised on authentication/configuration failures (Bot Connector or
         # Graph 401/403, token endpoint 400/401). Classified as a fatal config
@@ -71,12 +72,12 @@ module RedmineAiHelper
         # Entra ID host issuing the client-credentials tokens.
         LOGIN_HOST = "https://login.microsoftonline.com"
 
-        # Token audiences the adapter acquires, with the Entra ID path segment
-        # (the tenant placeholder is filled in for Graph) and the scope of the
-        # client-credentials request (contracts/teams_external_apis.md E-3).
-        TOKEN_AUDIENCES = {
-          connector: { tenant: "botframework.com", scope: "https://api.botframework.com/.default" },
-          graph: { tenant: nil, scope: "https://graph.microsoft.com/.default" }
+        # The scope of the client-credentials request per audience
+        # (contracts/teams_external_apis.md E-3). Both tokens are issued by the
+        # configured tenant, so the scope is all that separates them.
+        TOKEN_SCOPES = {
+          connector: "https://api.botframework.com/.default",
+          graph: "https://graph.microsoft.com/.default"
         }.freeze
 
         # A cached access token is renewed this many seconds before it expires.
@@ -856,11 +857,11 @@ module RedmineAiHelper
         # @return [String] the bearer token
         def fetch_access_token(audience)
           setting = settings
-          uri = URI(token_endpoint(audience))
+          uri = URI(token_endpoint)
           request = Net::HTTP::Post.new(uri.request_uri)
           request.set_form_data(
             "grant_type" => "client_credentials", "client_id" => setting.app_token,
-            "client_secret" => setting.bot_token, "scope" => TOKEN_AUDIENCES.fetch(audience)[:scope]
+            "client_secret" => setting.bot_token, "scope" => TOKEN_SCOPES.fetch(audience)
           )
           body = token_response_body(build_http(uri).request(request), audience)
           # An accepted request with no token in it is not a credential error:
@@ -877,14 +878,14 @@ module RedmineAiHelper
           token
         end
 
-        # The Entra ID token endpoint of the given audience. Graph tokens are
-        # issued by the configured organization, Bot Connector tokens by the
-        # fixed botframework.com tenant (E-3).
-        # @param audience [Symbol] :connector or :graph
+        # The Entra ID token endpoint both tokens are issued by. The bot is a
+        # single-tenant app, so its credentials exist only in the configured
+        # organization's directory: the fixed botframework.com endpoint belongs
+        # to multi-tenant bots, which Microsoft stopped registering, and it
+        # rejects the credentials of a single-tenant one (E-3).
         # @return [String] the absolute URL
-        def token_endpoint(audience)
-          tenant = TOKEN_AUDIENCES.fetch(audience)[:tenant] || configured_tenant_id
-          "#{LOGIN_HOST}/#{tenant}/oauth2/v2.0/token"
+        def token_endpoint
+          "#{LOGIN_HOST}/#{configured_tenant_id}/oauth2/v2.0/token"
         end
 
         # The parsed body of a token response. A rejected client credential is

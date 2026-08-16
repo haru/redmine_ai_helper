@@ -29,8 +29,10 @@ other chat tools.
 
 ## 1. Create the Azure Bot
 
-1. In the Azure portal, create an **Azure Bot** resource. Choose the
-   **Multi-tenant** application type.
+1. In the Azure portal, create an **Azure Bot** resource. For **Type of App**,
+   choose **Single Tenant**. (Microsoft stopped registering multi-tenant bots on
+   July 31, 2025, and the portal no longer offers that type. This integration
+   supports single-tenant bots only.)
 2. Copy the **Microsoft App ID** of the bot. This is the value Redmine stores
    as the **App Token**.
 3. Open the bot's app registration and create a new **Client secret**. Copy the
@@ -46,10 +48,17 @@ In the Microsoft Entra admin center, open **Overview** for your organization
 and copy the **Directory (tenant) ID** (a GUID). This is the value Redmine
 stores as the **Tenant ID**.
 
-Redmine accepts activities from this organization only. A multi-tenant bot can
-be installed by other organizations, and their requests carry a valid Bot
-Framework signature, so this identifier — not the signature alone — is what
-keeps another organization from using your integration.
+This identifier is used twice, so a wrong value breaks the integration in two
+different ways:
+
+- **Incoming**: Redmine accepts activities from this organization only. A Bot
+  Framework signature proves the request comes from Microsoft, not which
+  organization it came from, so this identifier is what keeps another
+  organization from using your integration.
+- **Outgoing**: a single-tenant bot's credentials exist only in its own
+  directory, so this is also the tenant Redmine requests its Bot Connector and
+  Microsoft Graph access tokens from. A wrong tenant makes every reply fail
+  with a credential error.
 
 ## 3. Build the Teams app package
 
@@ -194,6 +203,8 @@ Common causes:
 gateway: adapter teams terminated (configuration/credential error)
 ```
 
-The client secret expired or was rejected. Credential errors are never
-retried; create a new secret (step 1.3), update the **Bot Token** and start the
-gateway again. Other enabled chat tools keep running.
+The client secret expired or was rejected, or the **Tenant ID** is not the
+directory the bot is registered in — a single-tenant bot's token request is
+rejected by any other tenant. Credential errors are never retried; create a new
+secret (step 1.3) or correct the Tenant ID (step 2), then start the gateway
+again. Other enabled chat tools keep running.

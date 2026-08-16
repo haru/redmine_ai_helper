@@ -47,7 +47,7 @@ tr:
         app_token: "Uygulama Token'ı"
         bot_token: "Bot Token'ı"
         tenant_id: "Kiracı (Tenant) ID'si"
-        tenant_id_info: "Bu entegrasyonu kullanmasına izin verilen kuruluşun dizin (kiracı) ID'si. Diğer kuruluşlardan gelen istekler reddedilir."
+        tenant_id_info: "Bu entegrasyonu kullanmasına izin verilen kuruluşun dizin (kiracı) ID'si. Diğer kuruluşlardan gelen istekler reddedilir; botun erişim belirteçleri de bu kiracıdan alınır, bu nedenle yanlış bir değer yanıtların gönderilmesini de engeller."
         redmine_user: "Çalıştırma hesabı"
         redmine_user_info: "Sohbet aracından gelen tüm sorular bu Redmine kullanıcısının izinleriyle işlenir. Ağ geçidinin yapabileceklerini sınırlamak için bu hesabın rollerini kısıtlayın."
         default_project: "Varsayılan proje"

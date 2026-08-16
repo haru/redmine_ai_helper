@@ -158,8 +158,11 @@ class ChatChannelTeamsAdapterTest < ActiveSupport::TestCase
     @http_uris.drop(3).map(&:to_s)
   end
 
+  # +created+ defaults to a moment inside the window #imported asks for. A
+  # fixed date would leave that window as the days pass and drop every message
+  # before the conversion under test ever ran.
   def graph_message(id:, text: "a message", speaker: "Taro Yamada", content_type: "text",
-                    message_type: "message", created: "2026-08-14T00:00:00Z", from: nil,
+                    message_type: "message", created: 1.hour.ago.utc.iso8601, from: nil,
                     mentions: nil)
     message = {
       "id" => id, "messageType" => message_type, "createdDateTime" => created,
@@ -229,12 +232,15 @@ class ChatChannelTeamsAdapterTest < ActiveSupport::TestCase
   end
 
   context "access tokens" do
-    should "request a Bot Connector token from the botframework endpoint" do
+    # The bot is a single-tenant app, so its credentials only exist in the
+    # configured directory: the fixed botframework.com endpoint is for
+    # multi-tenant bots and rejects them.
+    should "request a Bot Connector token from the tenant endpoint" do
       stub_http(token_response(token: "connector-token"))
 
       assert_equal "connector-token", @adapter.send(:access_token, :connector)
       assert_equal "login.microsoftonline.com", @http_uris.first.host
-      assert_equal "/botframework.com/oauth2/v2.0/token", @http_uris.first.path
+      assert_equal "/#{TENANT_ID}/oauth2/v2.0/token", @http_uris.first.path
       assert_equal({ "grant_type" => "client_credentials", "client_id" => APP_ID,
                      "client_secret" => CLIENT_SECRET,
                      "scope" => "https://api.botframework.com/.default" },

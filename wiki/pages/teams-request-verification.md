@@ -1,8 +1,8 @@
 ---
 title: Teams Request Verification
 type: reference
-sources: [S021, S022]
-updated: 2026-08-14
+sources: [S021, S022, S023]
+updated: 2026-08-16
 ---
 
 # Teams Request Verification
@@ -59,13 +59,14 @@ a mismatch makes `verify_request` return `false`, which the endpoint answers
 **401** with nothing stored (S021).
 
 The gate belongs next to signature verification rather than downstream, because
-a multi-tenant bot can be installed in other organizations' Teams and their
-requests are **genuinely signed** — `aud` is the bot's own App ID, so JWT
-validation alone passes them. Multi-tenant is not a choice that could be avoided
-by registering the Azure Bot differently: it is the only configuration that works
-with the app-package installation flow Teams administrators actually use, so
-foreign-but-valid deliveries are a permanent property of the integration rather
-than a misconfiguration to fix (S022). Placing the check in `verify_request` also settles
+a Bot Framework signature attests that **Microsoft** sent the request, never
+which organization it came from — `iss` is `https://api.botframework.com` and
+`aud` is the bot's own App ID, so JWT validation alone says nothing about the
+sender's tenant. The configured tenant id is the only thing in the system that
+does (S023). With the bot registered as single-tenant (**ADR-019**) no outside
+organization can install the app, so the gate is defence in depth rather than
+the load-bearing check it was under the original multi-tenant premise
+(S022). Placing the check in `verify_request` also settles
 the rejection before the event is queued, which is what guarantees no answer is
 ever generated for a foreign tenant (S021).
 

@@ -1,8 +1,8 @@
 ---
 title: Teams Reply Delivery
 type: component
-sources: [S021, S022]
-updated: 2026-08-14
+sources: [S021, S022, S023]
+updated: 2026-08-16
 ---
 
 # Teams Reply Delivery
@@ -15,7 +15,7 @@ adapter's identity, settings and caches stay on the parent page.
 ## Posting the answer
 
 A client-credentials token from
-`https://login.microsoftonline.com/botframework.com/oauth2/v2.0/token`
+`https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token`
 (`scope=https://api.botframework.com/.default`) is cached in-process until 60s
 before expiry, then the reply is `POST
 {serviceUrl}v3/conversations/{conversationId}/activities`. Both `serviceUrl` and
@@ -31,6 +31,14 @@ the ~28KB activity limit — split paragraph → line → hard cut with
 `MARKDOWN_LINK_FORMAT` constant defined **inside the adapter**: identical in
 effect to `IssueLinkFormatter::DISCORD`, but the shared file is left untouched
 until a third copy justifies extracting it (S021).
+
+The token comes from the configured tenant rather than the fixed
+`botframework.com` endpoint because the bot is registered as a **single-tenant**
+app, whose credentials exist only in its own directory — Microsoft stopped
+registering multi-tenant bots on 2025-07-31, so that endpoint is no longer an
+option for new integrations (**ADR-019**, Accepted 2026-08-16). The Graph token
+of [Teams Graph History](./teams-graph-history.md) comes from the same endpoint;
+only the scope differs (S023).
 
 These Bot Connector calls are the baseline cost of answering; importing context
 adds Graph calls on top of them (S022).
