@@ -308,6 +308,18 @@ class ChatChannelTeamsAdapterTest < ActiveSupport::TestCase
       assert_raises(TeamsAdapter::TeamsRequestError) { @adapter.send(:access_token, :connector) }
     end
 
+    should "raise when an accepted token response carries no expires_in" do
+      stub_http(http_response(200, { "access_token" => "token" }))
+
+      assert_raises(TeamsAdapter::TeamsRequestError) { @adapter.send(:access_token, :connector) }
+    end
+
+    should "raise when an accepted token response carries a non-numeric expires_in" do
+      stub_http(http_response(200, { "access_token" => "token", "expires_in" => "forever" }))
+
+      assert_raises(TeamsAdapter::TeamsRequestError) { @adapter.send(:access_token, :connector) }
+    end
+
     # #mentions_bot? asks for the app id once per imported message and
     # #verify_request asks for it and for the tenant on every delivery: an
     # unmemoized read puts one SELECT behind each of those.
@@ -373,6 +385,21 @@ class ChatChannelTeamsAdapterTest < ActiveSupport::TestCase
       assert_equal 4, @http_requests.size
     end
 
+    should "not refetch the signing keys when forced refresh was already attempted recently" do
+      stub_http(http_response(200, { "issuer" => ISSUER, "jwks_uri" => JWKS_URI }),
+                http_response(200, jwks_body(kid: "rotated-away")),
+                http_response(200, { "issuer" => ISSUER, "jwks_uri" => JWKS_URI }),
+                http_response(200, jwks_body(kid: "rotated-away")))
+
+      assert_raises(TeamsAdapter::TeamsRequestError) { @adapter.verify_request(teams_request(channel_activity)) }
+      assert_equal 4, @http_requests.size
+
+      new_adapter = TeamsAdapter.new
+      new_adapter.stubs(:build_http).returns(Net::HTTP.new("stubbed.invalid", 443))
+      assert_raises(TeamsAdapter::TeamsRequestError) { new_adapter.verify_request(teams_request(channel_activity)) }
+      assert_equal 4, @http_requests.size
+    end
+
     should "refetch the signing keys once the cache is a day old" do
       stub_jwks(http_response(200, { "jwks_uri" => JWKS_URI }), http_response(200, jwks_body))
       @adapter.verify_request(teams_request(channel_activity))
@@ -397,6 +424,17 @@ class ChatChannelTeamsAdapterTest < ActiveSupport::TestCase
 
     should "raise rather than refuse when the signing keys cannot be read" do
       stub_http(http_response(500, { "error" => "unavailable" }))
+
+      assert_raises(TeamsAdapter::TeamsRequestError) do
+        @adapter.verify_request(teams_request(channel_activity))
+      end
+    end
+
+    should "raise rather than refuse when the JWKS document has no keys" do
+      stub_http(http_response(200, { "issuer" => ISSUER, "jwks_uri" => JWKS_URI }),
+                http_response(200, { "keys" => [] }),
+                http_response(200, { "issuer" => ISSUER, "jwks_uri" => JWKS_URI }),
+                http_response(200, { "keys" => [] }))
 
       assert_raises(TeamsAdapter::TeamsRequestError) do
         @adapter.verify_request(teams_request(channel_activity))
@@ -847,6 +885,39 @@ class ChatChannelTeamsAdapterTest < ActiveSupport::TestCase
 
       assert_equal [ "readable" ], history.map(&:text)
     end
+
+    should "warn when a message timestamp cannot be read" do
+      logged = []
+      logger = stub("logger")
+      logger.stubs(:warn).with { |msg| logged << msg; true }
+      logger.stubs(:info)
+      logger.stubs(:debug)
+      @adapter.stubs(:ai_helper_logger).returns(logger)
+      imported(graph_message(id: "1700000000100", text: "broken", created: "the other day"))
+
+      assert(logged.any? { |msg| msg.include?("1700000000100") && msg.include?("createdDateTime") })
+    end
+  end
+
+  context "graph pagination" do
+    setup do
+      stored_event
+      @adapter.stubs(:sleep)
+    end
+
+    should "stop paginating after a maximum number of pages" do
+      stub_history(
+        *11.times.map { |i|
+          next_link = "https://graph.example.com/replies?skiptoken=p#{i + 1}"
+          http_response(200, { "value" => [ graph_message(id: "170000000#{i.to_s.rjust(4, "0")}", text: "msg #{i}") ],
+                               "@odata.nextLink" => next_link })
+        }
+      )
+
+      assert_raises(TeamsAdapter::TeamsRequestError) do
+        @adapter.fetch_thread_history(channel_id: CHANNEL_ID, thread_key: CONVERSATION_ID)
+      end
+    end
   end
 
   context "history failures" do
@@ -951,11 +1022,75 @@ class ChatChannelTeamsAdapterTest < ActiveSupport::TestCase
     end
   end
 
+  context "startup credential verification" do
+    should "verify the connector token before entering the poll loop" do
+      stub_http(token_response)
+      @adapter.stubs(:poll_cycle)
+      @adapter.stubs(:stopped?).returns(true)
+
+      @adapter.start
+
+      assert_equal "/#{TENANT_ID}/oauth2/v2.0/token", @http_uris.first.path
+    end
+
+    should "raise a fatal error when the connector token is rejected at startup" do
+      @adapter = TeamsAdapter.new
+      stub_http(http_response(401, { "error" => "invalid_client" }))
+
+      error = assert_raises(TeamsAdapter::TeamsApiError) { @adapter.start }
+
+      assert @adapter.fatal_config_error?(error)
+    end
+
+    should "not enter the poll loop when the startup check fails" do
+      @adapter = TeamsAdapter.new
+      @adapter.stubs(:poll_cycle).never
+      stub_http(http_response(400, { "error" => "invalid_client" }))
+
+      assert_raises(TeamsAdapter::TeamsApiError) { @adapter.start }
+    end
+  end
+
   context "#send_message failures" do
     setup do
       @event = stored_event
       @slept = []
       @adapter.stubs(:sleep).with { |seconds| @slept << seconds; true }
+    end
+
+    should "retry on a network-level connection failure" do
+      @adapter.stubs(:access_token).returns("connector-token")
+      api_error = Errno::ECONNRESET.new("Connection reset by peer")
+      Net::HTTP.any_instance.stubs(:request)
+              .raises(api_error)
+              .then.returns(http_response(200))
+
+      send_reply(@event, "answer")
+
+      assert_equal [ 1 ], @slept
+    end
+
+    should "give up after three network failures" do
+      @adapter.stubs(:access_token).returns("connector-token")
+      api_error = Errno::ECONNRESET.new("Connection reset by peer")
+      Net::HTTP.any_instance.stubs(:request).raises(api_error)
+
+      error = assert_raises(TeamsAdapter::TeamsRequestError) { send_reply(@event, "answer") }
+
+      assert_match(/Connection reset/, error.message)
+      assert_equal [ 1, 2, 4 ], @slept
+      assert_not @adapter.fatal_config_error?(error)
+    end
+
+    should "retry on a read timeout" do
+      @adapter.stubs(:access_token).returns("connector-token")
+      Net::HTTP.any_instance.stubs(:request)
+              .raises(Net::ReadTimeout.new("Read timeout"))
+              .then.returns(http_response(200))
+
+      send_reply(@event, "answer")
+
+      assert_equal [ 1 ], @slept
     end
 
     should "give up without retrying when the credentials are refused" do
@@ -1136,6 +1271,18 @@ class ChatChannelTeamsAdapterTest < ActiveSupport::TestCase
       assert_equal([ "a" * 5000, "b" * 5000, "c" * 5000 ], posted_bodies.map { |body| body["text"] })
       assert_equal [ "#{SERVICE_URL}v3/conversations/#{CONVERSATION_ID}/activities" ] * 3,
                    @http_uris.drop(1).map(&:to_s)
+    end
+
+    should "include the chunk position in the error when a split send fails mid-way" do
+      event = stored_event
+      @adapter.stubs(:access_token).returns("connector-token")
+      chunk1 = http_response(200)
+      chunk2_fail = http_response(500)
+      Net::HTTP.any_instance.stubs(:request).returns(chunk1, chunk2_fail)
+
+      error = assert_raises(TeamsAdapter::TeamsRequestError) { send_reply(event, "a" * 7000) }
+
+      assert_match(/chunk 2 of 2/, error.message)
     end
   end
 end

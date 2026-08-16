@@ -18,6 +18,9 @@ other chat tools.
 
 ## Requirements
 
+- The **AI Helper** plugin must be up to date: run `bundle install` and
+  `bundle exec rake redmine:plugins:migrate` from the Redmine root before
+  starting.
 - A public **HTTPS** URL for your Redmine server. For local development, expose
   it through a tunnel (`dev tunnels`, `ngrok`, …) and register the tunnel URL.
 - An Azure subscription that may create an **Azure Bot** resource.
@@ -116,9 +119,11 @@ Zip the manifest together with its icons and upload it:
    registered in step 1.4; confirm the two match.
 4. Under **Channel bindings**, map each Teams channel to a Redmine project.
    To get a channel ID, open the channel in Teams, choose **⋯ → Get link to
-   channel**, and take the `threadId` parameter of the URL — it looks like
-   `19:xxxxxxxx@thread.tacv2`. The project must have the **AI Helper** module
-   enabled.
+   channel**, and extract the channel identifier from the URL path — it looks
+   like `19:xxxxxxxx@thread.tacv2` and appears URL-encoded as
+   `19%3Axxxxxxxx%40thread.tacv2`. Decode `%3A` back to `:` and `%40` back
+   to `@` before pasting it into the binding. The project must have the
+   **AI Helper** module enabled.
 
 Channels without a binding, and one-to-one chats, are answered in the default
 project's context.
@@ -134,8 +139,10 @@ bundle exec rake redmine:plugins:ai_helper:chat_channel:gateway RAILS_ENV=produc
 ```
 
 `log/ai_helper.log` lists the adapters it started. Received activities are
-stored by the web process and picked up by the gateway within a few seconds, so
-both processes must run for Teams to be answered.
+stored by the web process and picked up by the gateway within a few seconds,
+so both processes must run for Teams to be answered. Activities that wait
+more than 120 seconds in the queue are discarded unanswered (the gateway
+was not running or was overloaded).
 
 ## 6. Use it
 
@@ -175,7 +182,7 @@ the adapter's own warning, names it.
 The endpoint answers `404` when the Teams integration is disabled or its
 required fields are incomplete, which looks the same from the outside as an
 unknown URL. Re-check step 4, then confirm the messaging endpoint is reachable
-from the internet (`curl -i https://<host>/ai_helper/chat_webhook/teams`
+from the internet (`curl -i -X POST https://<host>/ai_helper/chat_webhook/teams`
 returns `401`, not a connection error — the endpoint rejects unsigned requests).
 
 ### The answer is prefixed with "The recent messages … could not be retrieved"

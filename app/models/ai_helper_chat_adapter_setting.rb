@@ -17,7 +17,13 @@ class AiHelperChatAdapterSetting < ApplicationRecord
 
   attr_accessor :redmine_user_name
 
+  # A directory (tenant) identifier as Azure issues it: a GUID. Operators copy
+  # it out of the Azure portal, so the value is checked rather than trusted --
+  # a wrong tenant stops both request verification and every reply (ADR-019).
+  TENANT_ID_FORMAT = /\A\h{8}-\h{4}-\h{4}-\h{4}-\h{12}\z/
+
   validates :channel_type, presence: true, uniqueness: true
+  validates :tenant_id, format: { with: TENANT_ID_FORMAT }, allow_blank: true
   validate :required_fields_present_when_enabled
   validate :service_account_present_when_enabled
   validate :default_project_present_when_enabled
@@ -35,6 +41,18 @@ class AiHelperChatAdapterSetting < ApplicationRecord
   # @param value [Integer, String, nil]
   def default_project_id=(value)
     self.dm_default_project_id = value
+  end
+
+  # Writes the tenant id, trimming the whitespace a copy and paste out of the
+  # Azure portal tends to carry along. A value that is not a GUID is still
+  # stored -- so the form can show back what was typed -- but the error is
+  # reported right away, without waiting for a save that the matching format
+  # validation would reject anyway.
+  # @param value [String, nil]
+  def tenant_id=(value)
+    value = value.strip if value.is_a?(String)
+    errors.add(:tenant_id, :invalid) if value.present? && !value.match?(TENANT_ID_FORMAT)
+    super
   end
 
   class << self

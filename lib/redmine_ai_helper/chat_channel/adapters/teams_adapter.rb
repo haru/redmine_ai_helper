@@ -24,14 +24,15 @@ module RedmineAiHelper
       # directory the bot's single-tenant credentials live in. The secrets among
       # them -- the client secret and the access tokens obtained with it -- are
       # never written to the log or to an exception message. The tenant is not a
-      # secret and does appear in both: a rejected activity is logged with the
-      # tenant that sent it, and the tenant is part of the token endpoint URL
-      # that request logging prints.
+      # secret and appears in a rejected activity's log line; the token endpoint
+      # URL that #api_request logs also contains it.
       class TeamsAdapter < InboundAdapter
         # Raised on authentication/configuration failures (Bot Connector or
         # Graph 401/403, token endpoint 400/401). Classified as a fatal config
         # error so the gateway does not retry into the same broken credentials
-        # (ADR-006). Credential values never appear here.
+        # (ADR-006). Credential values never appear here. The start method
+        # validates the connector token at startup so that this classification
+        # actually reaches the gateway's handle_adapter_exit.
         class TeamsApiError < StandardError; end
 
         # Raised on non-authentication API failures (404, other 4xx, exhausted
@@ -100,6 +101,19 @@ module RedmineAiHelper
         # Upper bound on the cached team id to group id pairs (R-013).
         MAX_CACHED_TEAMS = 100
 
+        # Network-level exceptions that are retried alongside 429/5xx statuses.
+        # A connection reset or read timeout is at least as transient as an HTTP
+        # 503, and more likely on a chatty API like Graph.
+        NETWORK_RETRY_ERRORS = [
+          Net::ReadTimeout, Net::OpenTimeout, Errno::ECONNREFUSED,
+          Errno::ECONNRESET, SocketError, EOFError, OpenSSL::SSL::SSLError
+        ].freeze
+
+        # Maximum number of Graph pages to follow before giving up. A
+        # self-referential @odata.nextLink would otherwise loop forever on the
+        # shared worker thread.
+        MAX_GRAPH_PAGES = 10
+
         # Speaker name used when Graph does not name the sender, so the
         # imported messages stay attributable to distinct speakers (INV-T16).
         UNKNOWN_SPEAKER = "(unknown)"
@@ -135,6 +149,15 @@ module RedmineAiHelper
           /\[#\d+\]\(https?:\/\/[^\s)]+\)/
         ).freeze
 
+        # Minimum interval between two forced JWKS refreshes (key not found
+        # triggers). A forced refresh discards the cache and re-fetches from
+        # the network, so an unauthenticated request with a bogus kid could
+        # force one refresh per request and hold every other delivery behind
+        # the mutex. Limiting forced refreshes to once per this interval
+        # bounds the damage while still allowing a genuine key rotation to be
+        # picked up within a reasonable window.
+        JWKS_FORCE_REFRESH_COOLDOWN_SECONDS = 300
+
         # The Bot Framework signing keys and when they were read. Held on the
         # class rather than on an instance because #verify_request runs in the
         # Redmine web process, which builds a new adapter for every delivery:
@@ -145,6 +168,7 @@ module RedmineAiHelper
         @jwks = nil
         @jwks_fetched_at = nil
         @jwks_mutex = Mutex.new
+        @jwks_last_force_refresh_at = nil
 
         class << self
           # @return [String] the adapter identifier
@@ -155,13 +179,27 @@ module RedmineAiHelper
           # The cached signing keys, read through the given block when the
           # cache is empty, stale, or explicitly refreshed. The lock is held
           # across the read so that concurrent deliveries arriving on a cold
-          # cache wait for one read instead of each starting its own; a read
+          # cache wait for one read instead of each starting their own; a read
           # that raises caches nothing and the next delivery tries again.
+          # A forced refresh (key not found) is rate-limited to once per
+          # JWKS_FORCE_REFRESH_COOLDOWN_SECONDS: an attacker with an
+          # unauthenticated POST and a bogus kid cannot force unlimited
+          # network fetches under the mutex.
           # @param refresh [Boolean] read the keys again even when cached
           # @yieldreturn [Hash] the freshly read JWKS document
           # @return [Hash] the JWKS document
           def cached_jwks(refresh: false)
             @jwks_mutex.synchronize do
+              if refresh
+                cooldown_elapsed = @jwks_last_force_refresh_at.nil? ||
+                                   (monotonic_now - @jwks_last_force_refresh_at) >= JWKS_FORCE_REFRESH_COOLDOWN_SECONDS
+                unless cooldown_elapsed
+                  return @jwks if @jwks
+
+                  raise
+                end
+                @jwks_last_force_refresh_at = monotonic_now
+              end
               @jwks = nil if refresh
               @jwks = nil if @jwks_fetched_at && (monotonic_now - @jwks_fetched_at) >= JWKS_CACHE_SECONDS
               unless @jwks
@@ -181,6 +219,7 @@ module RedmineAiHelper
             @jwks_mutex.synchronize do
               @jwks = nil
               @jwks_fetched_at = nil
+              @jwks_last_force_refresh_at = nil
             end
           end
 
@@ -219,9 +258,10 @@ module RedmineAiHelper
         # storing anything.
         #
         # The signature is checked on the token from the Authorization header;
-        # the body is parsed only to compare the serviceUrl and the tenant with
-        # what the token claims (INV-T2). A body that cannot be parsed is not
-        # accepted, because neither comparison could then be made.
+        # the body is parsed only to compare the serviceUrl with what the token
+        # claims and to check the tenant against the configured value
+        # (INV-T2). A body that cannot be parsed is not accepted, because
+        # neither comparison could then be made.
         #
         # Being unable to read the signing keys is not a refusal and is
         # deliberately not turned into one: answering 401 would tell Teams to
@@ -287,8 +327,14 @@ module RedmineAiHelper
           service_url = require_field(metadata["service_url"], "reply_metadata.service_url")
           conversation_id = require_field(metadata["conversation_id"], "reply_metadata.conversation_id")
           uri = URI("#{service_url.chomp("/")}/v3/conversations/#{conversation_id}/activities")
-          split_text(text).each do |chunk|
+          chunks = split_text(text)
+          chunks.each_with_index do |chunk, index|
             api_request(:post, uri, audience: :connector, body: { type: "message", text: chunk })
+          rescue TeamsRequestError => e
+            raise TeamsRequestError.new(
+                  "teams: failed to send chunk #{index + 1} of #{chunks.size}: #{e.message}",
+                  status: e.status
+                )
           end
         end
 
@@ -317,6 +363,19 @@ module RedmineAiHelper
           history_messages(raw.select { |message| after.blank? || message["id"].to_i > after.to_i })
         end
 
+        # Polls the pending queue until #stop is called, just like the base
+        # implementation. Before entering the loop, the connector token is fetched
+        # once so that a broken client secret or wrong tenant produces a
+        # TeamsApiError that escapes start and reaches the gateway's
+        # handle_adapter_exit, where it is classified as a fatal config error
+        # (ADR-006 / C-7). The same design is used by SlackAdapter#start,
+        # which calls fetch_bot_user_id for the same purpose.
+        # @return [void]
+        def start
+          verify_credentials_at_startup
+          super
+        end
+
         # The most recent top-level messages of a channel, oldest first (C-4).
         # Graph orders channel messages by the last activity of their reply
         # chain rather than by creation, so the page is filtered and reordered
@@ -343,7 +402,9 @@ module RedmineAiHelper
 
         # Classifies TeamsApiError as a fatal configuration/credential error so
         # the gateway exits cleanly rather than retrying broken credentials
-        # (ADR-006 / C-7).
+        # (ADR-006 / C-7). The connector token is verified at startup (#start)
+        # so that a credential failure propagates out of the adapter thread,
+        # where the gateway's handle_adapter_exit sees it.
         # @param error [Exception] the error raised by the adapter
         # @return [Boolean]
         def fatal_config_error?(error)
@@ -351,6 +412,15 @@ module RedmineAiHelper
         end
 
         private
+
+        # Fetches the connector token once at startup so that a broken client
+        # secret or wrong tenant produces a TeamsApiError that propagates out of
+        # #start and reaches the gateway's handle_adapter_exit. The token itself
+        # is discarded: the purpose is the validation, not the value.
+        # @return [void]
+        def verify_credentials_at_startup
+          fetch_access_token(:connector)
+        end
 
         # The token of an +Authorization: Bearer <token>+ header, or nil when
         # the header is absent or has another scheme.
@@ -390,12 +460,20 @@ module RedmineAiHelper
             leeway: CLOCK_SKEW_SECONDS
           )
           payload
-        rescue JWT::DecodeError => e
+        rescue JWT::VerificationError, JWT::ExpiredSignature, JWT::InvalidAudError,
+               JWT::InvalidIssuerError, JWT::ImmatureSignature, JWT::IncorrectAlgorithm => e
           # The message names the failed check (signature, aud, iss, exp, ...)
-          # and never contains a credential: JWT builds it from the claim
-          # names alone.
+          # and the expected audience value (the app id, which is not a secret);
+          # the actual token value is never included.
           reject("token verification failed: #{e.message}")
           nil
+        rescue JWT::DecodeError => e
+          # A DecodeError that is not one of the specific subclasses above means
+          # the key material could not be read or was structurally unusable
+          # (e.g. empty JWKS, unknown kid after refresh). This is NOT a token
+          # refusal: answering 401 would tell Teams to drop the delivery for good.
+          # Let it propagate so the endpoint answers 5xx and Teams retries.
+          raise TeamsRequestError, "teams: could not verify inbound token: #{e.message}"
         end
 
         # The loader the JWT gem resolves signing keys through. The keys are
@@ -565,18 +643,22 @@ module RedmineAiHelper
         end
 
         # Reads a paged Graph collection, following the continuation links
-        # until the collection is exhausted.
+        # until the collection is exhausted or MAX_GRAPH_PAGES is reached.
         # @param uri [URI] the absolute URL of the first page
         # @return [Array<Hash>] the raw messages of every page
         def graph_pages(uri)
           collected = []
           next_uri = uri
-          while next_uri
+          MAX_GRAPH_PAGES.times do
+            break unless next_uri
+
             page = graph_get(next_uri)
             collected.concat(Array(page["value"]))
             next_link = page["@odata.nextLink"]
             next_uri = next_link.present? ? URI(next_link) : nil
           end
+          raise TeamsRequestError, "teams: graph pagination exceeded #{MAX_GRAPH_PAGES} pages" if next_uri
+
           collected
         end
 
@@ -616,6 +698,7 @@ module RedmineAiHelper
         def posted_at(raw)
           Time.iso8601(raw["createdDateTime"].to_s)
         rescue ArgumentError
+          ai_helper_logger.warn "teams: dropping message #{raw["id"].inspect}: createdDateTime is unreadable"
           nil
         end
 
@@ -838,8 +921,8 @@ module RedmineAiHelper
 
         # A valid access token for the given audience, from the process-local
         # cache when one is still valid (INV-T13). The two audiences are cached
-        # separately: they are issued by different Entra ID endpoints and are
-        # not interchangeable.
+        # separately because the Bot Framework and Graph do not accept each
+        # other's tokens.
         # @param audience [Symbol] :connector or :graph
         # @return [String] the bearer token
         def access_token(audience)
@@ -864,16 +947,15 @@ module RedmineAiHelper
             "client_secret" => setting.bot_token, "scope" => TOKEN_SCOPES.fetch(audience)
           )
           body = token_response_body(build_http(uri).request(request), audience)
-          # An accepted request with no token in it is not a credential error:
-          # caching the nil would send an empty Authorization header and turn
-          # the next call's 401 into "your credentials are wrong", which is
-          # not what happened.
           token = body["access_token"]
           raise TeamsRequestError.new("teams: the #{audience} token response carried no access token") if token.blank?
 
+          expires_in = body["expires_in"].to_i
+          raise TeamsRequestError.new("teams: the #{audience} token response carried no expires_in") if expires_in <= 0
+
           @access_tokens[audience] = {
             token: token,
-            expires_at: monotonic_now + body["expires_in"].to_i - TOKEN_EXPIRY_MARGIN_SECONDS
+            expires_at: monotonic_now + expires_in - TOKEN_EXPIRY_MARGIN_SECONDS
           }
           token
         end
@@ -908,8 +990,9 @@ module RedmineAiHelper
         # 401/403 means the credentials or the granted permissions are wrong,
         # which no retry can fix (FR-028). 429 and 5xx are retried up to
         # +retries+ times, honouring Retry-After when the response names one;
-        # every other status fails immediately. Only the method and the URL are
-        # logged - never a token, a credential or a request body (FR-027).
+        # network-level failures (timeouts, connection resets, SSL errors) are
+        # retried on the same budget. Only the method and the URL are logged -
+        # never a token, a credential or a request body (FR-027).
         # @param http_method [Symbol] :get or :post
         # @param uri [URI] the absolute request URI
         # @param audience [Symbol] :connector or :graph
@@ -922,7 +1005,17 @@ module RedmineAiHelper
           loop do
             ai_helper_logger.debug "teams: #{http_method.to_s.upcase} #{uri}"
             request = build_request(http_method, uri, audience: audience, body: body)
-            response = build_http(uri).request(request)
+            begin
+              response = build_http(uri).request(request)
+            rescue *NETWORK_RETRY_ERRORS => e
+              raise TeamsRequestError, "teams: #{http_method.to_s.upcase} #{uri} failed: #{e.message}" unless attempt < retries
+
+              delay = RETRY_BACKOFF_BASE_SECONDS * (2**attempt)
+              ai_helper_logger.warn "teams: #{http_method.to_s.upcase} #{uri} raised #{e.class}: #{e.message}; retrying in #{delay}s"
+              sleep(delay)
+              attempt += 1
+              next
+            end
             code = response.code.to_i
             return parse_json_body(response) if (200..299).cover?(code)
             raise TeamsApiError, "teams: #{http_method.to_s.upcase} #{uri} failed: HTTP #{code}" if [ 401, 403 ].include?(code)

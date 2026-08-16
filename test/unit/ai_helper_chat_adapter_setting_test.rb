@@ -158,6 +158,20 @@ class AiHelperChatAdapterSettingTest < ActiveSupport::TestCase
       assert_equal "11111111-2222-3333-4444-555555555555", setting.tenant_id
     end
 
+    should "strip leading and trailing whitespace from tenant_id" do
+      setting = create(:ai_helper_chat_adapter_setting, channel_type: "teams")
+      setting.safe_attributes = { "tenant_id" => "  11111111-2222-3333-4444-555555555555  " }
+
+      assert_equal "11111111-2222-3333-4444-555555555555", setting.tenant_id
+    end
+
+    should "reject tenant_id that is not a GUID format" do
+      setting = create(:ai_helper_chat_adapter_setting, channel_type: "teams")
+      setting.safe_attributes = { "tenant_id" => "not-a-guid" }
+
+      assert_predicate setting.errors[:tenant_id], :present?
+    end
+
     should "accept enabled, tokens, default_project_id and redmine_user_id" do
       setting = create(:ai_helper_chat_adapter_setting)
       setting.safe_attributes = {

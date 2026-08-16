@@ -716,7 +716,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
         ai_helper_setting: {},
         chat_adapter_settings: {
           "teams" => { "enabled" => "1", "app_token" => "app-id", "bot_token" => "client-secret",
-                       "tenant_id" => "tenant-guid", "redmine_user_name" => User.find(2).name,
+                       "tenant_id" => "11111111-2222-3333-4444-555555555555", "redmine_user_name" => User.find(2).name,
                        "redmine_user_id" => "2", "default_project_id" => "1" }
         }
       }
@@ -726,7 +726,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert setting.enabled
       assert_equal "app-id", setting.app_token
       assert_equal "client-secret", setting.bot_token
-      assert_equal "tenant-guid", setting.tenant_id
+      assert_equal "11111111-2222-3333-4444-555555555555", setting.tenant_id
       assert_equal 1, setting.default_project_id
     end
 
