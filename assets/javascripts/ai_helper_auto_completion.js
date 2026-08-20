@@ -187,7 +187,7 @@ class AiHelperAutoCompletion {
         return false;
       } else if (e.key === 'Escape') {
         e.preventDefault();
-        this.clearSuggestion();
+        this.dismissSuggestion();
         return false;
       }
     }
@@ -206,7 +206,7 @@ class AiHelperAutoCompletion {
       if (this.overlay) {
         this.overlay.style.display = 'none';
       }
-      this.clearSuggestion();
+      this.dismissSuggestion();
     }, 100);
   }
 
@@ -237,8 +237,10 @@ class AiHelperAutoCompletion {
     const cursorPosition = this.textarea.selectionStart;
 
     // Nothing changed since the last request that produced an answer, so the
-    // answer would be the same. A request that was aborted or failed clears the
-    // snapshot again, so only an answered state is suppressed here.
+    // answer would be the same. The snapshot is dropped again whenever that
+    // answer stops being useful — the request was aborted or failed, or the
+    // user dismissed the suggestion — so only a state whose answer is still in
+    // hand suppresses a request here.
     if (text === this.lastTextSnapshot && cursorPosition === this.lastCursorPosition) {
       return;
     }
@@ -489,13 +491,10 @@ class AiHelperAutoCompletion {
     const newCursorPos = cursorPos + suggestion.length;
     this.textarea.setSelectionRange(newCursorPos, newCursorPos);
 
-    // Record the accepted state as already requested. The input event dispatched
-    // below, and the keyup/click handlers bound to onTextChange, therefore find
-    // nothing changed and accepting alone starts no new request
-    this.lastTextSnapshot = newText;
-    this.lastCursorPosition = newCursorPos;
-
-    // Clear suggestion
+    // Clear suggestion. Accepting inserted the text, so this is a genuinely new
+    // state and the snapshot must not be pinned to it: the input event dispatched
+    // below has to reach the debounce and fetch the follow-on suggestion, the way
+    // accepting one completion leads into the next.
     this.clearSuggestion();
 
     // Trigger input event for any listeners
@@ -503,6 +502,18 @@ class AiHelperAutoCompletion {
 
     // Focus back on textarea
     this.textarea.focus();
+  }
+
+  // Throw the suggestion away because the user turned away from it (Esc, focus
+  // loss). Nothing was inserted, so unlike accepting, the textarea is left in
+  // the very state the snapshot records. That snapshot has to go as well: it
+  // only earns its suppression while the answer it stands for is on screen, and
+  // keeping it here would block every later request at this exact text/cursor,
+  // leaving the user with no suggestion and no way to ask for one.
+  // See docs/adr/019-completion-request-suppression-tied-to-displayed-suggestion.md.
+  dismissSuggestion() {
+    this.forgetRequestSnapshot(this.textarea.value, this.textarea.selectionStart);
+    this.clearSuggestion();
   }
 
   clearSuggestion() {

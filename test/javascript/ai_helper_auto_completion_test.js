@@ -539,8 +539,8 @@ function testManualTriggerDoesNotBypassSnapshot() {
   console.log('C-5 PASSED: the manual trigger respects the unchanged check');
 }
 
-// Test: accepting a suggestion does not itself start a new request
-async function testAcceptSuggestionDoesNotTriggerNewRequest() {
+// Test: accepting a suggestion leads into exactly one follow-on request
+async function testAcceptSuggestionRequestsTheNextCompletion() {
   const fetchStub = installFetchStub();
   const { container, textarea } = createTextareaDOM();
   const completion = createCompletion(textarea, { debounceDelay: 5 });
@@ -552,12 +552,17 @@ async function testAcceptSuggestionDoesNotTriggerNewRequest() {
   completion.acceptSuggestion();
   await wait(40);
 
-  console.assert(fetchStub.calls.length === 0,
-    `C-5 FAILED: accepting a suggestion must not start a request, got ${fetchStub.calls.length}`);
+  // Accepting inserted text, so the next completion has to follow. The input,
+  // keyup and click events accepting sets off must collapse into a single one.
+  console.assert(fetchStub.calls.length === 1,
+    `C-5 FAILED: accepting must start exactly one follow-on request, got ${fetchStub.calls.length}`);
+  const sentText = JSON.parse(fetchStub.calls[0].options.body).text;
+  console.assert(sentText === 'some text completed',
+    `C-5 FAILED: the follow-on request must carry the accepted text, got ${sentText}`);
 
   container.remove();
   fetchStub.restore();
-  console.log('C-5 PASSED: accepting a suggestion starts no new request');
+  console.log('C-5 PASSED: accepting a suggestion requests the next completion');
 }
 
 // Test: a repeat is still suppressed once the request has actually been answered
@@ -581,6 +586,89 @@ async function testAnsweredStateStillSuppressesRepeat() {
   container.remove();
   fetchStub.restore();
   console.log('C-5 PASSED: an answered text/cursor pair is not requested again');
+}
+
+// Test: dismissing an answered suggestion with Esc leaves it re-requestable
+async function testDismissedSuggestionCanBeRequestedAgain() {
+  const fetchStub = installFetchStub();
+  const { container, textarea } = createTextareaDOM();
+  const completion = createCompletion(textarea);
+
+  textarea.value = 'unchanged text';
+  textarea.setSelectionRange(14, 14);
+
+  completion.requestSuggestion();
+  fetchStub.calls[0].resolve({ suggestion: ' more' });
+  await flushPromises();
+
+  // The user reads the suggestion and turns it down without editing anything
+  completion.onKeyDown({ key: 'Escape', preventDefault: () => {} });
+
+  completion.requestSuggestion();
+
+  console.assert(fetchStub.calls.length === 2,
+    `C-5 FAILED: a dismissed suggestion must be requestable again, got ${fetchStub.calls.length}`);
+
+  container.remove();
+  fetchStub.restore();
+  console.log('C-5 PASSED: a dismissed suggestion can be requested again');
+}
+
+// Test: losing focus on an answered suggestion leaves it re-requestable
+async function testBlurredSuggestionCanBeRequestedAgain() {
+  const fetchStub = installFetchStub();
+  const { container, textarea } = createTextareaDOM();
+  const completion = createCompletion(textarea);
+
+  textarea.value = 'unchanged text';
+  textarea.setSelectionRange(14, 14);
+
+  completion.requestSuggestion();
+  fetchStub.calls[0].resolve({ suggestion: ' more' });
+  await flushPromises();
+
+  // onBlur defers its teardown by 100ms
+  completion.onBlur();
+  await new Promise((resolve) => setTimeout(resolve, 150));
+
+  completion.requestSuggestion();
+
+  console.assert(fetchStub.calls.length === 2,
+    `C-5 FAILED: a suggestion dropped on blur must be requestable again, got ${fetchStub.calls.length}`);
+
+  container.remove();
+  fetchStub.restore();
+  console.log('C-5 PASSED: a suggestion dropped on blur can be requested again');
+}
+
+// Test: dismissing must not clear a snapshot that belongs to a newer request
+async function testDismissKeepsUnrelatedSnapshot() {
+  const fetchStub = installFetchStub();
+  const { container, textarea } = createTextareaDOM();
+  const completion = createCompletion(textarea);
+
+  textarea.value = 'first text';
+  textarea.setSelectionRange(10, 10);
+  completion.requestSuggestion();
+  fetchStub.calls[0].resolve({ suggestion: ' more' });
+  await flushPromises();
+
+  // The user types on, so the snapshot now describes the newer state
+  textarea.value = 'second text';
+  textarea.setSelectionRange(11, 11);
+  completion.requestSuggestion();
+
+  // Dismissing while the cursor sits somewhere else must leave that snapshot be
+  textarea.value = 'first text';
+  textarea.setSelectionRange(10, 10);
+  completion.dismissSuggestion();
+
+  console.assert(completion.lastTextSnapshot === 'second text',
+    `C-5 FAILED: dismissing must not clear an unrelated snapshot, got ${completion.lastTextSnapshot}`);
+
+  container.remove();
+  fetchStub.restore();
+  console.log('C-5 PASSED: dismissing leaves an unrelated snapshot intact');
 }
 
 // Test: an aborted request leaves the position re-requestable
@@ -757,8 +845,11 @@ async function runAllTests() {
   testNoRequestWhenTextAndCursorUnchanged();
   testCursorMoveAloneIsRequestedOnce();
   testManualTriggerDoesNotBypassSnapshot();
-  await testAcceptSuggestionDoesNotTriggerNewRequest();
+  await testAcceptSuggestionRequestsTheNextCompletion();
   await testAnsweredStateStillSuppressesRepeat();
+  await testDismissedSuggestionCanBeRequestedAgain();
+  await testBlurredSuggestionCanBeRequestedAgain();
+  await testDismissKeepsUnrelatedSnapshot();
   await testAbortedRequestCanBeRetried();
   await testFailedRequestCanBeRetried();
   await testStaleFailureKeepsNewerSnapshot();

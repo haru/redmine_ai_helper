@@ -72,6 +72,7 @@ the existing error-level log + `""` behaviour (S021).
 ## Related
 
 - [Inline Completion Request Flow](./inline-completion-request-flow.md) ·
+  [Completion Suppression Scope](./completion-suppression-scope.md) ·
   [LLM Provider Layer](./llm-provider-layer.md) ·
   [BaseAgent LLM Calls](./base-agent-llm-calls.md) ·
   [Issue AI Features](./issue-ai-features.md)

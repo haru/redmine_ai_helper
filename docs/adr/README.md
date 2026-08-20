@@ -71,3 +71,4 @@ Briefly describe alternatives that were rejected and why.
 | [016](./016-issue-agent-read-write-rename.md) | Rename IssueAgent/IssueUpdateAgent to IssueReadAgent/IssueWriteAgent | Accepted |
 | [017](./017-inbound-chat-webhook-gateway.md) | Inbound chat webhook gateway (amends the scope of ADR-006) | Accepted |
 | [018](./018-completion-llm-requests-timeout-no-retry.md) | Inline completion LLM requests use a short timeout and no retries | Accepted |
+| [019](./019-completion-request-suppression-tied-to-displayed-suggestion.md) | Completion request suppression lasts only while the suggestion is displayed | Accepted |

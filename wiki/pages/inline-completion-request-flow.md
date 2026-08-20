@@ -39,8 +39,13 @@ The pre-existing request-ID staleness check (`isRequestStale()`) is kept as the
 If text **and** cursor position are unchanged since the last request, no request
 is issued — including via the manual `Ctrl+Space` trigger, because the
 requirement is unconditional and carving out an exception would deviate from the
-spec (S021). A user who dismissed a suggestion can re-request it by moving the
-cursor or typing (S021).
+spec (S021).
+
+The comparison snapshot lives only as long as the suggestion it belongs to: it is
+discarded on abort/error and on `dismissSuggestion`, and is never written by
+`acceptSuggestion` (S021). See
+[Completion Suppression Scope](./completion-suppression-scope.md) for why both
+halves of that rule are load-bearing.
 
 Two related client bugs are fixed in the same place: `keyup` and `click` both fed
 `onTextChange` without any snapshot comparison, and `scheduleCompletion()`
@@ -78,6 +83,7 @@ treated as `{}` with a warning so the page still renders (S021).
 ## Related
 
 - [Completion Request Timeout Policy](./completion-request-timeout-policy.md) ·
+  [Completion Suppression Scope](./completion-suppression-scope.md) ·
   [Issue AI Features](./issue-ai-features.md) ·
   [Browser-Side JavaScript Tests](./js-test-convention.md) ·
   [AI Chat Sidebar](./chat-sidebar.md)
