@@ -8,6 +8,7 @@ class AiHelperAutoCompletion {
     this.currentSuggestion = null;
     this.debounceTimer = null;
     this.currentRequestId = 0; // Request ID management
+    this.abortController = null; // Aborts the in-flight completion request
     this.lastTextSnapshot = '';
     this.lastCursorPosition = 0;
     this.checkbox = null; // ON/OFF checkbox
@@ -170,11 +171,9 @@ class AiHelperAutoCompletion {
   }
 
   onTextChange() {
-    // Clear existing suggestion immediately when input changes
+    // Clear existing suggestion immediately when input changes. This also
+    // cancels the pending request, so no separate cancel call is needed here.
     this.clearSuggestion();
-
-    // Cancel pending request
-    this.cancelPendingRequest();
 
     // Start new debounce
     this.scheduleCompletion();
@@ -212,20 +211,22 @@ class AiHelperAutoCompletion {
   }
 
   scheduleCompletion() {
+    // Drop any completion scheduled earlier: either it is superseded by this
+    // call, or the conditions below no longer allow it to run
+    clearTimeout(this.debounceTimer);
+
     // Skip processing if autocompletion is disabled
     if (!this.isEnabled) {
       return;
     }
 
     const text = this.textarea.value;
-    const cursorPosition = this.textarea.selectionStart;
 
     // Check minimum length requirement
     if (text.length < this.options.minLength) {
       return;
     }
 
-    clearTimeout(this.debounceTimer);
     this.debounceTimer = setTimeout(() => {
       this.requestSuggestion();
     }, this.options.debounceDelay);
@@ -234,6 +235,13 @@ class AiHelperAutoCompletion {
   requestSuggestion() {
     const text = this.textarea.value;
     const cursorPosition = this.textarea.selectionStart;
+
+    // Nothing changed since the last request that produced an answer, so the
+    // answer would be the same. A request that was aborted or failed clears the
+    // snapshot again, so only an answered state is suppressed here.
+    if (text === this.lastTextSnapshot && cursorPosition === this.lastCursorPosition) {
+      return;
+    }
 
     // Save snapshot
     this.lastTextSnapshot = text;
@@ -285,10 +293,21 @@ class AiHelperAutoCompletion {
           }
         }
       }
-    }    fetch(this.options.endpoint, {
+    }
+
+    // Abort the previous in-flight request so that at most one completion
+    // request per instance is ever open
+    if (this.abortController) {
+      this.abortController.abort();
+    }
+    const controller = new AbortController();
+    this.abortController = controller;
+
+    fetch(this.options.endpoint, {
       method: 'POST',
       headers: headers,
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
     })
     .then(response => {
       if (!response.ok) {
@@ -297,6 +316,8 @@ class AiHelperAutoCompletion {
       return response.json();
     })
     .then(data => {
+      this.releaseAbortController(controller);
+
       // Check for race condition when receiving response
       if (this.isRequestStale(requestId, text, cursorPosition)) {
         return;
@@ -307,10 +328,41 @@ class AiHelperAutoCompletion {
       }
     })
     .catch(error => {
+      this.releaseAbortController(controller);
+
+      // This text/cursor pair never got an answer, so it must not stay recorded
+      // as already requested. Without this, aborting (blur, Esc, accept) or a
+      // failing request would suppress every later attempt at the same position
+      // until the user edits the text again.
+      this.forgetRequestSnapshot(text, cursorPosition);
+
+      // Aborting a superseded request is expected, not a failure
+      if (error.name === 'AbortError') {
+        return;
+      }
+
       if (this.currentRequestId === requestId) {
         console.error('Completion error:', error);
       }
     });
+  }
+
+  // Forget the given controller when it is still the current one, so that
+  // a non-null abortController always means a request is in flight
+  releaseAbortController(controller) {
+    if (this.abortController === controller) {
+      this.abortController = null;
+    }
+  }
+
+  // Drop the recorded snapshot when it still describes the given request, so a
+  // newer request that has already overwritten it is left alone. null is used
+  // rather than '' / 0 so the snapshot can never match a real textarea state.
+  forgetRequestSnapshot(text, cursorPosition) {
+    if (this.lastTextSnapshot === text && this.lastCursorPosition === cursorPosition) {
+      this.lastTextSnapshot = null;
+      this.lastCursorPosition = null;
+    }
   }
 
   isRequestStale(requestId, originalText, originalCursor) {
@@ -329,6 +381,13 @@ class AiHelperAutoCompletion {
   cancelPendingRequest() {
     // Invalidate existing request by advancing request ID
     this.currentRequestId++;
+
+    // Abort the in-flight request at the network level so the connection is
+    // released immediately instead of only being ignored on arrival
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+    }
   }
 
   // Get textarea background color for masking
@@ -430,6 +489,12 @@ class AiHelperAutoCompletion {
     const newCursorPos = cursorPos + suggestion.length;
     this.textarea.setSelectionRange(newCursorPos, newCursorPos);
 
+    // Record the accepted state as already requested. The input event dispatched
+    // below, and the keyup/click handlers bound to onTextChange, therefore find
+    // nothing changed and accepting alone starts no new request
+    this.lastTextSnapshot = newText;
+    this.lastCursorPosition = newCursorPos;
+
     // Clear suggestion
     this.clearSuggestion();
 
@@ -441,6 +506,10 @@ class AiHelperAutoCompletion {
   }
 
   clearSuggestion() {
+    // Every teardown path (disabling, blur, accept, dismiss, new input) goes
+    // through here, so cancelling the in-flight request in one place covers all
+    this.cancelPendingRequest();
+
     // Clear displayed suggestion
     this.currentSuggestion = null;
     if (this.overlay) {
@@ -563,6 +632,9 @@ class AiHelperAutoCompletion {
 
     // Clear timers
     clearTimeout(this.debounceTimer);
+
+    // Abort the in-flight request so navigating away leaves nothing pending
+    this.cancelPendingRequest();
 
     // Remove DOM elements
     if (this.overlay) {

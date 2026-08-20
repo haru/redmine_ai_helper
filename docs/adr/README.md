@@ -70,3 +70,4 @@ Briefly describe alternatives that were rejected and why.
 | [015](./015-agent-write-capability-routing.md) | Guard write-capable steps with an internal capability check that is never exposed to the router | Accepted |
 | [016](./016-issue-agent-read-write-rename.md) | Rename IssueAgent/IssueUpdateAgent to IssueReadAgent/IssueWriteAgent | Accepted |
 | [017](./017-inbound-chat-webhook-gateway.md) | Inbound chat webhook gateway (amends the scope of ADR-006) | Accepted |
+| [018](./018-completion-llm-requests-timeout-no-retry.md) | Inline completion LLM requests use a short timeout and no retries | Accepted |

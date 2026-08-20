@@ -136,6 +136,24 @@ class AiHelperControllerWikiTest < Redmine::ControllerTest
     assert_kind_of String, json["suggestion"]
   end
 
+  test "suggest_wiki_completion should return an empty suggestion when the LLM request times out" do
+    RedmineAiHelper::Agents::WikiAgent.any_instance.stubs(:chat)
+      .raises(Faraday::TimeoutError.new("execution expired"))
+
+    @request.headers["Content-Type"] = "application/json"
+    post :suggest_wiki_completion,
+         params: { id: @project.identifier },
+         body: JSON.generate({
+           text: "Timeout test",
+           cursor_position: 12
+         })
+
+    assert_response :success
+    json_response = JSON.parse(response.body)
+
+    assert_equal "", json_response["suggestion"]
+  end
+
   test "suggest_wiki_completion should handle LLM errors gracefully" do
     RedmineAiHelper::Llm.any_instance.stubs(:generate_wiki_completion).raises(StandardError.new("Test error"))
 
