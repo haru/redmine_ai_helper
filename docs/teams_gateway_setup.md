@@ -38,9 +38,11 @@ other chat tools.
    supports single-tenant bots only.)
 2. Copy the **Microsoft App ID** of the bot. This is the value Redmine stores
    as the **App Token**.
-3. Open the bot's app registration and create a new **Client secret**. Copy the
-   secret **value** immediately — it is shown only once. This is the value
-   Redmine stores as the **Bot Token**.
+3. Open the bot resource's **Configuration** blade and click **Manage
+   password** next to **Microsoft App ID** — this opens the underlying app
+   registration's **Certificates & secrets** page. Create a new **Client
+   secret** there and copy the secret **value** immediately — it is shown only
+   once. This is the value Redmine stores as the **Bot Token**.
 4. In **Configuration**, set the **Messaging endpoint** to
    `https://<your-redmine-host>/ai_helper/chat_webhook/teams`.
 5. In **Channels**, add the **Microsoft Teams** channel.
