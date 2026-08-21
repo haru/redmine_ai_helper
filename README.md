@@ -134,7 +134,7 @@ autocompletion:
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
-| `timeout` | Integer, 1–600 (seconds) | `30` | Time limit for the completion request to the LLM. The request is not retried; on timeout the editor simply shows no suggestion. See [ADR-018](./docs/adr/018-completion-llm-requests-timeout-no-retry.md). |
+| `timeout` | Number, 1–600 (seconds) | `30` | Time limit for the completion request to the LLM. A non-integer value is truncated toward zero before the range check, so `45.9` means 45 seconds. The request is not retried; on timeout the editor simply shows no suggestion. See [ADR-018](./docs/adr/018-completion-llm-requests-timeout-no-retry.md). |
 | `debounce_delay` | Number > 0 (milliseconds) | `500` for issues, `300` for wiki pages | How long typing must pause before a completion is requested. |
 | `min_length` | Integer ≥ 0 (characters) | `5` | Minimum body length before completions are requested. |
 | `wiki_min_length` | Integer ≥ 0 (characters) | falls back to `min_length` | Same as `min_length`, but for wiki pages only. Set it to give the wiki editor a threshold of its own. |

@@ -26,3 +26,5 @@ Sources are immutable inputs — the wiki never edits them.
 | S019 | docs/adr/017-inbound-chat-webhook-gateway.md | file | 2026-08-08 | 2026-08-08 | public-url-scope.md, chat-channel-gateway-architecture.md, inbound-chat-webhook-ingest.md, inbound-webhook-endpoint.md |
 | S020 | docs/inbound_chat_adapter_development.md | file | 2026-08-08 | 2026-08-08 | inbound-adapter-development.md, inbound-webhook-endpoint.md, inbound-event-queue.md |
 | S021 | specs/045-fix-autocompletion-request-pileup (research.md + plan.md) | feature-artifact | 2026-08-20 | 2026-08-20 | completion-request-timeout-policy.md, completion-suppression-scope.md, inline-completion-request-flow.md, js-test-convention.md, issue-ai-features.md, llm-provider-layer.md, base-agent-llm-calls.md |
+| S022 | docs/adr/020-plugin-logger-falls-back-to-rails-logger.md | file | 2026-08-21 | 2026-08-21 | inline-completion-request-flow.md |
+| S023 | docs/adr/021-snapshot-teardown-belongs-to-clear-suggestion.md | file | 2026-08-21 | 2026-08-21 | completion-suppression-scope.md, inline-completion-request-flow.md, completion-request-timeout-policy.md, js-test-convention.md |

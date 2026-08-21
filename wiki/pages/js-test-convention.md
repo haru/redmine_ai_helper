@@ -1,8 +1,8 @@
 ---
 title: Browser-Side JavaScript Tests
 type: howto
-sources: [S021]
-updated: 2026-08-20
+sources: [S021, S023]
+updated: 2026-08-21
 ---
 
 # Browser-Side JavaScript Tests
@@ -24,6 +24,19 @@ Follow that format when adding a test for browser behaviour — e.g.
 `ai_helper_auto_completion_test.js` covers abort-on-new-request, snapshot
 comparison and debounce-timer clearing for the
 [inline completion flow](./inline-completion-request-flow.md) (S021).
+
+## Assertions must be able to fail
+
+`console.assert` neither throws nor returns anything, so a file that used it
+printed its own `PASSED` line whatever the assertions found — a failing test and
+a passing one looked identical. `ai_helper_auto_completion_test.js` therefore
+routes every assertion through a `check(condition, message)` helper that counts
+failures, and a `runTest(name, fn)` runner that prints `PASSED` only for a test
+that recorded none, catches an exception thrown inside a test, and lets
+`runAllTests()` return the total number of failed assertions (S023).
+
+Keep that shape when adding a browser test: an assertion that cannot fail is
+worse than no assertion, because it reads as coverage.
 
 ## What this means for coverage
 

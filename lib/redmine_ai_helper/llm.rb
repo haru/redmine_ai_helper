@@ -434,7 +434,7 @@ module RedmineAiHelper
     # Completion is triggered while the user types, so it runs with a short
     # timeout and no retries to keep a slow backend from occupying a worker.
     # See docs/adr/018-completion-llm-requests-timeout-no-retry.md.
-    # @return [Hash] Options accepted by BaseProvider#initialize.
+    # @return [Hash] Options passed as BaseProvider#initialize's `request_options:`.
     def completion_request_options
       { request_timeout: RedmineAiHelper::Util::ConfigFile.autocompletion_settings[:timeout], max_retries: 0 }
     end

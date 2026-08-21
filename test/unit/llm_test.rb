@@ -648,10 +648,15 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       end
 
       should "use the default timeout when the configuration does not set one" do
-        RedmineAiHelper::Util::ConfigFile.stubs(:autocompletion_settings).returns({ timeout: 30 })
+        # No stub on autocompletion_settings: the real validation has to be the
+        # thing that produces the default, or this test proves nothing.
+        File.stubs(:exist?).with(Rails.root.join("config/ai_helper/config.yml")).returns(false)
         completion_provider = mock("completion_provider")
         RedmineAiHelper::LlmProvider.expects(:get_llm_provider)
-          .with(request_options: { request_timeout: 30, max_retries: 0 })
+          .with(request_options: {
+            request_timeout: RedmineAiHelper::Util::ConfigFile::AUTOCOMPLETION_DEFAULT_TIMEOUT,
+            max_retries: 0
+          })
           .returns(completion_provider)
 
         mock_agent = mock("IssueReadAgent")

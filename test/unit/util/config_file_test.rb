@@ -18,6 +18,24 @@ class RedmineAiHelper::Util::ConfigFileTest < ActiveSupport::TestCase
     RedmineAiHelper::Util::ConfigFile.autocompletion_settings
   end
 
+  # Take the plugin logger away the way a broken config.yml does: CustomLogger
+  # reads the same file, so constructing it fails while we are reporting that
+  # very file. Clears the memoized logger on both sides so the stub is seen.
+  def without_plugin_logger
+    RedmineAiHelper::Util::ConfigFile.unstub(:ai_helper_logger)
+    forget_memoized_logger
+    RedmineAiHelper::CustomLogger.stubs(:instance)
+      .raises(Psych::SyntaxError.new("config.yml", 1, 1, 0, "broken", "context"))
+    yield
+  ensure
+    forget_memoized_logger
+  end
+
+  def forget_memoized_logger
+    config_file = RedmineAiHelper::Util::ConfigFile
+    config_file.remove_instance_variable(:@ai_helper_logger) if config_file.instance_variable_defined?(:@ai_helper_logger)
+  end
+
   context "ConfigFile" do
     setup do
       @config_path = Rails.root.join("config/ai_helper/config.yml")
@@ -111,26 +129,26 @@ class RedmineAiHelper::Util::ConfigFileTest < ActiveSupport::TestCase
       end
 
       # CustomLogger parses this same file the first time it is instantiated, so
-      # asking for the plugin logger raises for exactly the reason we are trying
-      # to report. That failure must not escape to the caller.
+      # building the plugin logger fails for exactly the reason we are trying to
+      # report. That failure must not escape to the caller: ai_helper_logger
+      # hands out Rails.logger instead (ADR-020).
       should "return defaults when the plugin logger itself cannot be initialised" do
-        RedmineAiHelper::Util::ConfigFile.unstub(:ai_helper_logger)
-        RedmineAiHelper::Util::ConfigFile.stubs(:ai_helper_logger)
-          .raises(Psych::SyntaxError.new("config.yml", 1, 1, 0, "broken", "context"))
-        Rails.logger.stubs(:warn)
+        without_plugin_logger do
+          Rails.logger.stubs(:warn)
 
-        assert_nothing_raised do
-          assert_equal 30, settings[:timeout]
+          assert_nothing_raised do
+            assert_equal 30, settings[:timeout]
+          end
         end
       end
 
-      should "fall back to Rails.logger when the plugin logger is unusable" do
-        RedmineAiHelper::Util::ConfigFile.unstub(:ai_helper_logger)
-        RedmineAiHelper::Util::ConfigFile.stubs(:ai_helper_logger)
-          .raises(Psych::SyntaxError.new("config.yml", 1, 1, 0, "broken", "context"))
-        Rails.logger.expects(:warn).once
+      should "still report the broken file when the plugin logger is unusable" do
+        without_plugin_logger do
+          Rails.logger.expects(:warn).with { |message| message.include?("Failed to read") }.once
+          Rails.logger.expects(:warn).with { |message| message.include?("plugin logger unavailable") }.once
 
-        settings
+          settings
+        end
       end
     end
 
@@ -182,6 +200,19 @@ class RedmineAiHelper::Util::ConfigFileTest < ActiveSupport::TestCase
         end
       end
 
+      # YAML parses .inf / .nan into Floats whose to_i raises FloatDomainError,
+      # so they have to be rejected before any arithmetic touches them.
+      [ Float::INFINITY, -Float::INFINITY, Float::NAN, "Infinity" ].each do |special|
+        should "reject #{special.inspect} without raising" do
+          stub_autocompletion({ "timeout" => special })
+          @logger.expects(:warn).once
+
+          assert_nothing_raised do
+            assert_equal 30, settings[:timeout]
+          end
+        end
+      end
+
       should "name the key, the value and the reason in the warning" do
         stub_autocompletion({ "timeout" => 601 })
         @logger.expects(:warn).with do |message|
@@ -227,12 +258,14 @@ class RedmineAiHelper::Util::ConfigFileTest < ActiveSupport::TestCase
         assert_equal 800, settings[:debounce_delay]
       end
 
-      [ 0, -1, "abc", [] ].each do |invalid|
+      [ 0, -1, "abc", [], Float::INFINITY, Float::NAN ].each do |invalid|
         should "reject #{invalid.inspect}" do
           stub_autocompletion({ "debounce_delay" => invalid })
           @logger.expects(:warn).once
 
-          assert_nil settings[:debounce_delay]
+          assert_nothing_raised do
+            assert_nil settings[:debounce_delay]
+          end
         end
       end
 
@@ -259,12 +292,14 @@ class RedmineAiHelper::Util::ConfigFileTest < ActiveSupport::TestCase
         assert_equal 12, settings[:min_length]
       end
 
-      [ -1, 2.5, "abc", {} ].each do |invalid|
+      [ -1, 2.5, "abc", {}, Float::INFINITY, Float::NAN ].each do |invalid|
         should "reject #{invalid.inspect}" do
           stub_autocompletion({ "min_length" => invalid })
           @logger.expects(:warn).once
 
-          assert_nil settings[:min_length]
+          assert_nothing_raised do
+            assert_nil settings[:min_length]
+          end
         end
       end
     end

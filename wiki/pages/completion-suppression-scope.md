@@ -2,7 +2,7 @@
 title: Completion Suppression Scope
 type: decision
 sources: [S021]
-updated: 2026-08-20
+updated: 2026-08-21
 ---
 
 # Completion Suppression Scope
@@ -15,13 +15,20 @@ mechanism it constrains is described in
 ## Decision
 
 The snapshot (`lastTextSnapshot` / `lastCursorPosition`) that suppression
-compares against is **discarded on two paths** (S021):
+compares against is **discarded on three paths** (S021):
 
 1. in `catch` — when the request was aborted or failed;
-2. in `dismissSuggestion` — when a suggestion is thrown away without being
-   accepted (Esc, focus loss).
+2. in `then` — when the answer had nothing to display: no candidate, or the empty
+   `suggestion` a timeout returns with `200` (ADR-018);
+3. in `clearSuggestion` — whenever a displayed suggestion leaves the screen
+   without being accepted (Esc, focus loss, disabling, new input).
 
 `acceptSuggestion` deliberately **does not write a snapshot** (S021).
+
+Path 3 was originally a separate `dismissSuggestion()` that only Esc and blur
+called, which left the checkbox and `onTextChange` paths clearing the suggestion
+while the snapshot survived. ADR-021 folded it into `clearSuggestion` — the one
+way a suggestion can leave the screen — so the rule holds by construction (S021).
 
 ## Why suppression must not outlive the suggestion
 
@@ -35,6 +42,15 @@ the *follow-on* completion after a Tab confirmation (spec's US3 scenario 3).
 Acceptance is not a suppression case at all — it changes the body text, so the
 snapshot no longer matches, and the `input` / `keyup` / `click` events it fires
 are coalesced by the debounce into a single request (S021).
+
+## Events that change nothing
+
+`onTextChange` is bound to `keyup` and `click`, which fire for a released
+modifier key or a click landing on the caret. Those reach `onTextChange` with the
+very state the displayed suggestion was computed for, so it returns early: the
+suggestion stays, nothing is torn down and nothing is requested (ADR-021, S021).
+Without that, path 3 would turn every such event into a discard plus a refetch of
+the identical request.
 
 ## Relation to the unconditional rule
 

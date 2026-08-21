@@ -45,8 +45,9 @@ module RedmineAiHelper
       #
       # This method never raises: a missing file, a broken YAML document or an
       # invalid value all yield defaults so that the edit screens keep rendering.
-      # Every rejected value is reported once, through the plugin logger when it
-      # is usable and through Rails.logger otherwise (see {warn_config}).
+      # Every rejected value is reported on each call — that is once per edit
+      # screen render and once per completion request, because the file is read
+      # again every time.
       #
       # @return [Hash] Validated settings:
       #   * +:timeout+ [Integer] always within AUTOCOMPLETION_TIMEOUT_RANGE
@@ -77,7 +78,7 @@ module RedmineAiHelper
         warn_invalid_setting(:autocompletion, section, "not a mapping")
         {}
       rescue StandardError => e
-        warn_config("Failed to read #{config_file_path} (#{e.class}: #{e.message}). Using default autocompletion settings.")
+        ai_helper_logger.warn("Failed to read #{config_file_path} (#{e.class}: #{e.message}). Using default autocompletion settings.")
         {}
       end
       private_class_method :autocompletion_section
@@ -87,7 +88,7 @@ module RedmineAiHelper
       # @return [void]
       def self.warn_unknown_keys(section)
         (section.keys - AUTOCOMPLETION_KNOWN_KEYS).each do |key|
-          warn_config("Ignoring unknown autocompletion setting #{key} in #{config_file_path}.")
+          ai_helper_logger.warn("Ignoring unknown autocompletion setting #{key} in #{config_file_path}.")
         end
       end
       private_class_method :warn_unknown_keys
@@ -172,6 +173,10 @@ module RedmineAiHelper
         when String then Float(value, exception: false)
         end
         return nil if number.nil?
+        # NaN and +-Infinity are numbers YAML accepts (.nan / .inf) but that no
+        # caller can use: to_i raises FloatDomainError on them. Reject them here
+        # like any other non-numeric value.
+        return nil if number.is_a?(Float) && !number.finite?
 
         number == number.to_i ? number.to_i : number
       end
@@ -183,24 +188,9 @@ module RedmineAiHelper
       # @param reason [String] Why the value was rejected.
       # @return [void]
       def self.warn_invalid_setting(key, value, reason)
-        warn_config("Ignoring autocompletion setting #{key}=#{value.inspect} in #{config_file_path}: #{reason}. Using the default value.")
+        ai_helper_logger.warn("Ignoring autocompletion setting #{key}=#{value.inspect} in #{config_file_path}: #{reason}. Using the default value.")
       end
       private_class_method :warn_invalid_setting
-
-      # Write a configuration warning without ever raising.
-      #
-      # CustomLogger parses this same configuration file when it is first
-      # instantiated, so asking for the plugin logger can fail for exactly the
-      # reason we are trying to report. Falling back to Rails.logger keeps that
-      # failure from escaping and breaking the caller.
-      # @param message [String] The warning to record.
-      # @return [void]
-      def self.warn_config(message)
-        ai_helper_logger.warn message
-      rescue StandardError
-        Rails.logger&.warn message
-      end
-      private_class_method :warn_config
     end
   end
 end

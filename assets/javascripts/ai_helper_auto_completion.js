@@ -9,8 +9,8 @@ class AiHelperAutoCompletion {
     this.debounceTimer = null;
     this.currentRequestId = 0; // Request ID management
     this.abortController = null; // Aborts the in-flight completion request
-    this.lastTextSnapshot = '';
-    this.lastCursorPosition = 0;
+    this.lastTextSnapshot = null;
+    this.lastCursorPosition = null;
     this.checkbox = null; // ON/OFF checkbox
     this.userId = options.userId || 'anonymous';
     this.storageKey = `aiHelperAutoCompletion_${this.userId}`;
@@ -134,23 +134,31 @@ class AiHelperAutoCompletion {
   }
 
   attachEventListeners() {
-    // Text change events
-    this.textarea.addEventListener('input', () => this.onTextChange());
-    this.textarea.addEventListener('keyup', () => this.onTextChange());
-    this.textarea.addEventListener('click', () => this.onTextChange());
-    this.textarea.addEventListener('keydown', (e) => this.onKeyDown(e));
-
-    // Focus events
-    this.textarea.addEventListener('focus', () => this.onFocus());
-    this.textarea.addEventListener('blur', () => this.onBlur());
-
-    // Manual trigger shortcut
-    this.textarea.addEventListener('keydown', (e) => {
+    // Kept on the instance so destroy() can pass the identical references to
+    // removeEventListener: a fresh wrapper would silently remove nothing.
+    this.boundOnTextChange = () => this.onTextChange();
+    this.boundOnKeyDown = (e) => this.onKeyDown(e);
+    this.boundOnFocus = () => this.onFocus();
+    this.boundOnBlur = () => this.onBlur();
+    this.boundOnManualTrigger = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.code === 'Space') {
         e.preventDefault();
         this.requestSuggestion();
       }
-    });
+    };
+
+    // Text change events
+    this.textarea.addEventListener('input', this.boundOnTextChange);
+    this.textarea.addEventListener('keyup', this.boundOnTextChange);
+    this.textarea.addEventListener('click', this.boundOnTextChange);
+    this.textarea.addEventListener('keydown', this.boundOnKeyDown);
+
+    // Focus events
+    this.textarea.addEventListener('focus', this.boundOnFocus);
+    this.textarea.addEventListener('blur', this.boundOnBlur);
+
+    // Manual trigger shortcut
+    this.textarea.addEventListener('keydown', this.boundOnManualTrigger);
   }
 
   loadSettings() {
@@ -171,8 +179,17 @@ class AiHelperAutoCompletion {
   }
 
   onTextChange() {
+    // keyup and click fire for things that change nothing — a modifier key
+    // released, a click landing on the caret. The displayed suggestion still
+    // answers this exact state, so it stays, and there is nothing to request.
+    if (this.textarea.value === this.lastTextSnapshot &&
+        this.textarea.selectionStart === this.lastCursorPosition) {
+      return;
+    }
+
     // Clear existing suggestion immediately when input changes. This also
-    // cancels the pending request, so no separate cancel call is needed here.
+    // cancels the in-flight and the scheduled request, so no separate cancel
+    // call is needed here.
     this.clearSuggestion();
 
     // Start new debounce
@@ -187,7 +204,7 @@ class AiHelperAutoCompletion {
         return false;
       } else if (e.key === 'Escape') {
         e.preventDefault();
-        this.dismissSuggestion();
+        this.clearSuggestion();
         return false;
       }
     }
@@ -206,7 +223,7 @@ class AiHelperAutoCompletion {
       if (this.overlay) {
         this.overlay.style.display = 'none';
       }
-      this.dismissSuggestion();
+      this.clearSuggestion();
     }, 100);
   }
 
@@ -237,19 +254,18 @@ class AiHelperAutoCompletion {
     const cursorPosition = this.textarea.selectionStart;
 
     // Nothing changed since the last request that produced an answer, so the
-    // answer would be the same. The snapshot is dropped again whenever that
-    // answer stops being useful — the request was aborted or failed, or the
-    // user dismissed the suggestion — so only a state whose answer is still in
-    // hand suppresses a request here.
+    // answer would be the same. The snapshot is dropped again the moment that
+    // answer stops being in hand — aborted, failed, empty, or taken off screen —
+    // so only a state whose answer the user still has suppresses a request here.
+    // See docs/adr/019-completion-request-suppression-tied-to-displayed-suggestion.md
+    // and docs/adr/021-snapshot-teardown-belongs-to-clear-suggestion.md.
     if (text === this.lastTextSnapshot && cursorPosition === this.lastCursorPosition) {
       return;
     }
 
-    // Save snapshot
     this.lastTextSnapshot = text;
     this.lastCursorPosition = cursorPosition;
 
-    // Generate new request ID
     const requestId = ++this.currentRequestId;
 
     // API call
@@ -322,12 +338,20 @@ class AiHelperAutoCompletion {
 
       // Check for race condition when receiving response
       if (this.isRequestStale(requestId, text, cursorPosition)) {
+        this.forgetRequestSnapshot(text, cursorPosition);
         return;
       }
 
       if (data.suggestion && data.suggestion.trim()) {
         this.displayInlineSuggestion(data.suggestion, cursorPosition);
+        return;
       }
+
+      // The server answered with nothing to show — no candidate, or a timeout,
+      // which returns 200 with an empty suggestion by design (ADR-018). With no
+      // suggestion on screen the snapshot has nothing to stand for, so keeping
+      // it would lock completion at this position until the text changes.
+      this.forgetRequestSnapshot(text, cursorPosition);
     })
     .catch(error => {
       this.releaseAbortController(controller);
@@ -343,9 +367,10 @@ class AiHelperAutoCompletion {
         return;
       }
 
-      if (this.currentRequestId === requestId) {
-        console.error('Completion error:', error);
-      }
+      // Logged unconditionally: clearSuggestion advances the request ID on
+      // every keystroke, click and blur, so gating the log on it would hide
+      // genuine server errors behind an ordinary click in the textarea.
+      console.error('Completion error:', error);
     });
   }
 
@@ -381,6 +406,11 @@ class AiHelperAutoCompletion {
   }
 
   cancelPendingRequest() {
+    // Drop the completion that is merely scheduled. Nothing reschedules it on
+    // the disable, blur and destroy paths, so without this a request still
+    // fires after the user has turned completion off or left the field.
+    clearTimeout(this.debounceTimer);
+
     // Invalidate existing request by advancing request ID
     this.currentRequestId++;
 
@@ -491,10 +521,9 @@ class AiHelperAutoCompletion {
     const newCursorPos = cursorPos + suggestion.length;
     this.textarea.setSelectionRange(newCursorPos, newCursorPos);
 
-    // Clear suggestion. Accepting inserted the text, so this is a genuinely new
-    // state and the snapshot must not be pinned to it: the input event dispatched
-    // below has to reach the debounce and fetch the follow-on suggestion, the way
-    // accepting one completion leads into the next.
+    // Accepting inserted text, so the textarea no longer matches the snapshot:
+    // the input event dispatched below reaches the debounce and fetches the
+    // follow-on suggestion, the way accepting one completion leads into the next.
     this.clearSuggestion();
 
     // Trigger input event for any listeners
@@ -504,21 +533,22 @@ class AiHelperAutoCompletion {
     this.textarea.focus();
   }
 
-  // Throw the suggestion away because the user turned away from it (Esc, focus
-  // loss). Nothing was inserted, so unlike accepting, the textarea is left in
-  // the very state the snapshot records. That snapshot has to go as well: it
-  // only earns its suppression while the answer it stands for is on screen, and
-  // keeping it here would block every later request at this exact text/cursor,
-  // leaving the user with no suggestion and no way to ask for one.
-  // See docs/adr/019-completion-request-suppression-tied-to-displayed-suggestion.md.
-  dismissSuggestion() {
-    this.forgetRequestSnapshot(this.textarea.value, this.textarea.selectionStart);
-    this.clearSuggestion();
-  }
-
   clearSuggestion() {
-    // Every teardown path (disabling, blur, accept, dismiss, new input) goes
-    // through here, so cancelling the in-flight request in one place covers all
+    // A snapshot only earns its suppression while the answer it stands for is
+    // on screen, so taking a suggestion off screen takes the snapshot with it —
+    // whichever path got us here. Keeping it would block every later request at
+    // this exact text/cursor, leaving the user with no suggestion and no way to
+    // ask for one. Accepting is unaffected: it rewrites the textarea first, so
+    // the guard inside forgetRequestSnapshot leaves the old snapshot alone.
+    // See docs/adr/019-completion-request-suppression-tied-to-displayed-suggestion.md.
+    if (this.currentSuggestion) {
+      this.forgetRequestSnapshot(this.textarea.value, this.textarea.selectionStart);
+    }
+
+    // Every teardown path (disabling, blur, accept, Esc, new input) goes through
+    // here, so cancelling the in-flight and the scheduled request in one place
+    // covers all of them; destroy() cancels separately because it tears the
+    // instance down without clearing the UI.
     this.cancelPendingRequest();
 
     // Clear displayed suggestion
@@ -633,18 +663,18 @@ class AiHelperAutoCompletion {
 
   // Cleanup method
   destroy() {
-    // Remove event listeners
-    this.textarea.removeEventListener('input', this.onTextChange);
-    this.textarea.removeEventListener('keyup', this.onTextChange);
-    this.textarea.removeEventListener('click', this.onTextChange);
-    this.textarea.removeEventListener('keydown', this.onKeyDown);
-    this.textarea.removeEventListener('focus', this.onFocus);
-    this.textarea.removeEventListener('blur', this.onBlur);
+    // Remove event listeners, using the same references attachEventListeners
+    // registered — removeEventListener silently ignores anything else
+    this.textarea.removeEventListener('input', this.boundOnTextChange);
+    this.textarea.removeEventListener('keyup', this.boundOnTextChange);
+    this.textarea.removeEventListener('click', this.boundOnTextChange);
+    this.textarea.removeEventListener('keydown', this.boundOnKeyDown);
+    this.textarea.removeEventListener('focus', this.boundOnFocus);
+    this.textarea.removeEventListener('blur', this.boundOnBlur);
+    this.textarea.removeEventListener('keydown', this.boundOnManualTrigger);
 
-    // Clear timers
-    clearTimeout(this.debounceTimer);
-
-    // Abort the in-flight request so navigating away leaves nothing pending
+    // Abort the in-flight request and drop the scheduled one, so navigating
+    // away leaves nothing pending
     this.cancelPendingRequest();
 
     // Remove DOM elements

@@ -2,7 +2,7 @@
 title: Completion Request Timeout Policy
 type: decision
 sources: [S021]
-updated: 2026-08-20
+updated: 2026-08-21
 ---
 
 # Completion Request Timeout Policy
@@ -55,8 +55,13 @@ statuses only, and the error middleware converts responses, not transport
 exceptions (S021). With retries disabled, `Faraday::TimeoutError` propagates raw
 (connection-establishment failure surfaces as `Faraday::ConnectionFailed`)
 (S021). Both completion agent methods rescue it, log at **warn** level with
-context type / project / elapsed seconds, and return `""`; other exceptions keep
-the existing error-level log + `""` behaviour (S021).
+context type, project and the Faraday error message, and return `""`; other
+exceptions keep the existing error-level log + `""` behaviour (S021).
+
+A timeout therefore reaches the browser as `200` with `{"suggestion": ""}` —
+indistinguishable from "the model had nothing to add". The client treats both the
+same way and frees the position for a later request, so a timeout never locks
+completion where it happened (ADR-021).
 
 ## Alternatives rejected
 
