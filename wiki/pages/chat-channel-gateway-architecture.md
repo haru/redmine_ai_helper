@@ -1,7 +1,7 @@
 ---
 title: Chat Channel Gateway Architecture
 type: component
-sources: [S001, S002, S018, S019, S021, S022, S023]
+sources: [S001, S002, S018, S019, S024, S025, S026]
 updated: 2026-08-16
 ---
 
@@ -19,7 +19,7 @@ per-tool implementations under `adapters/` (S001).
   `issue_link_formatter.rb`, `base_adapter.rb` (S001) — plus `inbound_adapter.rb`
   and `inbound_event_message.rb`, added by 044-inbound-chat-webhook (S018).
 - **Adapters** (tool-specific): `adapters/slack_adapter.rb`,
-  `adapters/discord_adapter.rb`, and `adapters/teams_adapter.rb` (S021).
+  `adapters/discord_adapter.rb`, and `adapters/teams_adapter.rb` (S024).
   Adapters are registered via the same `inherited` hook pattern used elsewhere
   in the plugin (S001).
 - Everything a specific tool "knows" — API parameters, mention syntax, system
@@ -68,7 +68,7 @@ An adapter with `supports_history? == false` is a valid normal case — the core
 simply proceeds with no prior context. This mirrors 028's
 `required_setting_fields` declaration style (S001). Slack, Discord and Teams all
 override these to `true` and implement both fetch methods, though Teams returns
-`[]` for 1:1 chats (S021).
+`[]` for 1:1 chats (S024).
 
 ## Inbound adapters
 
@@ -83,10 +83,10 @@ unmodified (S019).
 
 [Microsoft Teams](./teams-adapter.md) is the first platform built on that
 foundation, and confirms the "one class per webhook tool" claim: one adapter file
-plus one settings column, core and existing adapters untouched (S021). ADR-018
+plus one settings column, core and existing adapters untouched (S024). ADR-022
 names what "untouched" covers — the shared endpoint, the queue, `Gateway`,
 `MessageHandler`, `ContextImporter` and both existing adapters — and treats that
-as the proof ADR-017 set out to obtain (S022).
+as the proof ADR-017 set out to obtain (S025).
 
 ## Related
 
@@ -109,10 +109,10 @@ as the proof ADR-017 set out to obtain (S022).
 
 Design decisions are recorded in ADR-006 (gateway architecture), ADR-007
 (Discord connection design) and ADR-017 (inbound webhook gateway, an accepted
-amendment to ADR-006's scope) and ADR-018 (Teams inbound adapter design,
+amendment to ADR-006's scope) and ADR-022 (Teams inbound adapter design,
 Accepted 2026-08-14 — tenant gate, 24-hour 1:1 window, Graph pull), amended in
-turn by ADR-019 (Accepted 2026-08-16 — single-tenant bots only, both tokens from
+turn by ADR-023 (Accepted 2026-08-16 — single-tenant bots only, both tokens from
 the configured tenant), under
-`docs/adr/` (S001, S019, S022, S023). Full setup guides live in
+`docs/adr/` (S001, S019, S025, S026). Full setup guides live in
 `docs/slack_gateway_setup.md`, `docs/discord_gateway_setup.md` and
-`docs/teams_gateway_setup.md` (S002, S021).
+`docs/teams_gateway_setup.md` (S002, S024).

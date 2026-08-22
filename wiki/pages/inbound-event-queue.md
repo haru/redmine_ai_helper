@@ -1,7 +1,7 @@
 ---
 title: Inbound Event Queue
 type: component
-sources: [S018, S020, S021]
+sources: [S018, S020, S024]
 updated: 2026-08-14
 ---
 
@@ -61,7 +61,7 @@ The `reply_metadata` column and `reply_metadata_for(thread_key:)` — resolved b
 event **row id** rather than by thread position, and used by Teams to recover
 `serviceUrl` — moved to
 [Inbound Reply Metadata](./inbound-reply-metadata.md) when this page outgrew the
-600-word page limit (S018, S020, S021).
+600-word page limit (S018, S020, S024).
 
 ## Read at receipt, too
 
@@ -70,7 +70,7 @@ newest row for its `channel_type`/`channel_id` inside `parse_events` to decide
 whether a 1:1 chat continues an existing session — so `RETENTION_DAYS` doubles as
 the horizon of that judgement, and an expired row simply means a fresh
 conversation. No `channel_id` index was added for it: 7-day retention at chat
-volumes makes a scan harmless, and the shared table stays unmodified (S021). See
+volumes makes a scan harmless, and the shared table stays unmodified (S024). See
 [Teams 1:1 Session Window](./teams-one-to-one-session-window.md).
 
 ## Related

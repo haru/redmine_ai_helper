@@ -1,13 +1,13 @@
-# ADR-019: Teams integration targets single-tenant bots (amends ADR-018)
+# ADR-023: Teams integration targets single-tenant bots (amends ADR-022)
 
 **Date**: 2026-08-16
 **Status**: Accepted
 
 ## Context
 
-ADR-018 designed the Microsoft Teams inbound adapter around a bot registered as a *multi-tenant* Azure Bot resource, and described that configuration as the only one that works for the app-package installation flow Teams administrators use.
+ADR-022 designed the Microsoft Teams inbound adapter around a bot registered as a *multi-tenant* Azure Bot resource, and described that configuration as the only one that works for the app-package installation flow Teams administrators use.
 
-That premise no longer holds. Microsoft stopped registering multi-tenant bots on July 31, 2025: the Azure portal's **Type of App** list now offers only **Single Tenant** and **User-Assigned Managed Identity**, so a new integration cannot be created the way ADR-018 assumed. Existing multi-tenant bots keep working, but none can be created, and reaching organizations outside your own is now expected to go through the Teams Store / AppSource rather than through a multi-tenant registration.
+That premise no longer holds. Microsoft stopped registering multi-tenant bots on July 31, 2025: the Azure portal's **Type of App** list now offers only **Single Tenant** and **User-Assigned Managed Identity**, so a new integration cannot be created the way ADR-022 assumed. Existing multi-tenant bots keep working, but none can be created, and reaching organizations outside your own is now expected to go through the Teams Store / AppSource rather than through a multi-tenant registration.
 
 The two directions of Bot Framework authentication are affected differently:
 
@@ -18,11 +18,11 @@ The two directions of Bot Framework authentication are affected differently:
 
 1. **The integration targets single-tenant bots only.** No support is kept or added for multi-tenant registrations. The setup guide instructs operators to choose **Single Tenant**.
 
-2. **Both access tokens are requested from the configured tenant.** `TeamsAdapter` builds one token endpoint, `https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token`, for the Bot Connector and for Microsoft Graph alike; only the requested scope separates them. The `tenant_id` setting introduced by ADR-018 therefore carries a second responsibility, and a wrong value now also makes every reply fail.
+2. **Both access tokens are requested from the configured tenant.** `TeamsAdapter` builds one token endpoint, `https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token`, for the Bot Connector and for Microsoft Graph alike; only the requested scope separates them. The `tenant_id` setting introduced by ADR-022 therefore carries a second responsibility, and a wrong value now also makes every reply fail.
 
-3. **Request verification is unchanged.** The issuer, the JWKS source, the audience, the lifetime checks and the `serviceUrl` comparison stay exactly as ADR-018 decision 1 specified.
+3. **Request verification is unchanged.** The issuer, the JWKS source, the audience, the lifetime checks and the `serviceUrl` comparison stay exactly as ADR-022 decision 1 specified.
 
-4. **The tenant comparison stays, with a new justification.** ADR-018 justified it by multi-tenant bots being installable elsewhere. With a single-tenant bot no other organization can install the app at all, but the check is kept as defence in depth: the Bot Framework signature attests that Microsoft sent the request, never which organization it originated in, and the configured tenant is the only thing in the system that does.
+4. **The tenant comparison stays, with a new justification.** ADR-022 justified it by multi-tenant bots being installable elsewhere. With a single-tenant bot no other organization can install the app at all, but the check is kept as defence in depth: the Bot Framework signature attests that Microsoft sent the request, never which organization it originated in, and the configured tenant is the only thing in the system that does.
 
 ## Consequences
 
@@ -36,7 +36,7 @@ The two directions of Bot Framework authentication are affected differently:
 
 - Operators with an existing multi-tenant bot cannot use this integration with it; they must register a single-tenant bot. This is accepted rather than worked around, because supporting both would mean carrying an app-type setting for a configuration Microsoft no longer issues.
 - Serving organizations other than your own now requires publishing the Teams app through AppSource, which is outside this plugin's scope.
-- ADR-018's Context section still describes the multi-tenant premise; it is preserved as written, and this record is what supersedes that paragraph.
+- ADR-022's Context section still describes the multi-tenant premise; it is preserved as written, and this record is what supersedes that paragraph.
 
 ## Alternatives Considered
 

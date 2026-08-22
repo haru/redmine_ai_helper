@@ -1,7 +1,7 @@
 ---
 title: Chat History APIs
 type: reference
-sources: [S001, S021]
+sources: [S001, S024]
 updated: 2026-08-14
 ---
 
@@ -11,7 +11,7 @@ How the Slack, Discord and Teams adapters actually retrieve surrounding messages
 [Chat Context Import](./chat-context-import.md). All three hand the core ascending
 order, but they arrive there differently: Slack and Discord return newest-first and
 the adapter reverses the page (S001), while Graph's ordering is not relied on at
-all — the Teams adapter sorts by numeric message id (S021).
+all — the Teams adapter sorts by numeric message id (S024).
 
 ## Slack
 
@@ -60,16 +60,16 @@ all — the Teams adapter sorts by numeric message id (S021).
 | Channel top-level | `GET /teams/{aadGroupId}/channels/{channelId}/messages` | `$top={limit}`, one page, filtered to `createdDateTime >= since` and `id < before` |
 
 - On a first import (`after` empty) the thread's root message is fetched
-  separately via `GET …/messages/{rootId}` (S021).
+  separately via `GET …/messages/{rootId}` (S024).
 - Tokens: `POST https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token`
   with `scope=https://graph.microsoft.com/.default`, same App ID and secret as
-  the bot. Access needs the RSC permission `ChannelMessage.Read.Group` (S021).
+  the bot. Access needs the RSC permission `ChannelMessage.Read.Group` (S024).
 - **Display names** come from `from.user.displayName` in the payload, so no
-  resolution call is needed (S021).
+  resolution call is needed (S024).
 - 1:1 chats return `[]` without any call, and failures (403 for missing
   permission, 404, anything else) are raised so the answer can carry the
   `history_unavailable` notice — see
-  [Teams History via Microsoft Graph](./teams-graph-history.md) (S021).
+  [Teams History via Microsoft Graph](./teams-graph-history.md) (S024).
 
 ## Excluded messages
 

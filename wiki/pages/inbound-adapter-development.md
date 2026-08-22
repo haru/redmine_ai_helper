@@ -1,7 +1,7 @@
 ---
 title: Developing an Inbound Chat Adapter
 type: howto
-sources: [S020, S021]
+sources: [S020, S024]
 updated: 2026-08-16
 ---
 
@@ -9,7 +9,7 @@ updated: 2026-08-16
 
 How to support a webhook-push platform (Teams, LINE) on the
 044-inbound-chat-webhook foundation. [Teams](./teams-adapter.md) is the worked example — a real adapter
-built to this guide (S021). This is the *developer* counterpart to `docs/slack_gateway_setup.md`
+built to this guide (S024). This is the *developer* counterpart to `docs/slack_gateway_setup.md`
 / `docs/discord_gateway_setup.md`, which document *operator* setup for the
 outgoing-connection adapters (S020).
 
@@ -54,13 +54,13 @@ every adapter shares (`enabled`, `app_token`, `bot_token`, execution account,
 default project). Declare the ones you need via `required_setting_fields`,
 exactly as an outbound adapter does (S020). Reuse `app_token`/`bot_token` for
 whatever credential pair the platform issues — Teams maps them to App ID and
-client secret (S021).
+client secret (S024).
 
 A non-credential setting is one column on `AiHelperChatAdapterSetting` named in
 `required_setting_fields`: the view renders every declared non-token field as a
 plain unmasked text input, adapter-driven rather than keyed on `channel_type`,
 and `required_fields_present_when_enabled` covers it for free. Teams'
-allowed-tenant id is the first; token-only adapters render as before (S021).
+allowed-tenant id is the first; token-only adapters render as before (S024).
 
 Once enabled under *Administration → AI Helper → Chat integrations*, the
 adapter's block shows `https://<Setting.host_name>/ai_helper/chat_webhook/<channel_type>`
@@ -80,14 +80,14 @@ insert one row), so the limit exists to bound abuse, not to protect throughput
 
 Only the locale files that already carry `chat_channel` keys need the new
 adapter's name and any new setting label — `en.yml`, `ja.yml` and `tr.yml`, three
-of the plugin's locales, not all of them (S021).
+of the plugin's locales, not all of them (S024).
 
 ## Testing
 
 See [Testing an Inbound Chat Adapter](./inbound-adapter-testing.md) — the
 reference-adapter pattern, how to exercise a signature-verifying path with keys
 you generate yourself, and why the existing chat tests must stay untouched
-(S020, S021).
+(S020, S024).
 
 ## Related
 

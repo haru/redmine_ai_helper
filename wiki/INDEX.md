@@ -15,6 +15,8 @@ page files, not here.
 - [Public URL Scope for Chat Adapters](./pages/public-url-scope.md) — ADR-017's amendment to ADR-006: "no public URL required" is an outbound-adapter property, not a whole-plugin invariant.
 - [Teams 1:1 Session Window](./pages/teams-one-to-one-session-window.md) — why a threadless 1:1 chat is cut into conversations by a 24-hour gap, judged from the inbound event table at receipt.
 - [Teams History via Microsoft Graph](./pages/teams-graph-history.md) — why context is pulled from Graph instead of consuming RSC-pushed messages, plus consent scope, `aadGroupId` resolution, and the protected-API risk.
+- [Completion Request Timeout Policy](./pages/completion-request-timeout-policy.md) — ADR-018: why completion LLM calls override RubyLLM's 300 s / 3-retry defaults per context, the injection path, and the alternatives rejected.
+- [Completion Suppression Scope](./pages/completion-suppression-scope.md) — ADR-019 and ADR-021: why no-change suppression lasts only while a suggestion is displayed, why `clearSuggestion` owns the teardown, and why accept must not write a snapshot.
 
 ## component
 - [Chat Channel Gateway Architecture](./pages/chat-channel-gateway-architecture.md) — core + adapters structure, capability declaration, and gateway operational model.
@@ -27,6 +29,7 @@ page files, not here.
 - [Chat Context Import](./pages/chat-context-import.md) — how surrounding messages are imported, cursored, persisted as `context` role, and fed to the LLM.
 - [AI Chat Sidebar](./pages/chat-sidebar.md) — the sidebar UI: view-hook injection, the `AiHelper` JS class, SSE handling, conversation models, and Markdown/XSS.
 - [Issue AI Features](./pages/issue-ai-features.md) — `IssueReadAgent` summarization/caching, reply drafts, sub-issues, assignee suggestion, duplicate check, and inline completion.
+- [Inline Completion Request Flow](./pages/inline-completion-request-flow.md) — AbortController cancellation, no-change suppression, debounce-timer clearing, and where the autocompletion settings are read and validated.
 - [MCP Integration](./pages/mcp-integration.md) — consuming external MCP servers (dynamic agent generation, read-only gotcha) and exposing Redmine as an MCP server.
 - [Custom Commands](./pages/custom-commands.md) — reusable `/command` prompt shortcuts, scope precedence, template variables.
 - [Project Health Report](./pages/health-report.md) — `ProjectAgent` dual-pattern generation, `AiHelperHealthReport` storage, streamed comparison, export, and REST API.
@@ -45,5 +48,6 @@ page files, not here.
 
 ## howto
 - [Nginx SSE Proxy Settings](./pages/nginx-sse-proxy.md) — the five directives SSE streaming needs behind Nginx.
+- [Browser-Side JavaScript Tests](./pages/js-test-convention.md) — no JS runner in the repo: the self-contained `test/javascript/` convention and how measurable browser behaviour is verified.
 - [Developing an Inbound Chat Adapter](./pages/inbound-adapter-development.md) — subclassing `InboundAdapter`: the methods to implement, settings and webhook URL, locale files, and proxy rate limiting.
 - [Testing an Inbound Chat Adapter](./pages/inbound-adapter-testing.md) — the reference-adapter pattern, signing your own JWTs, resetting class-level caches, and leaving the shared chat tests untouched.

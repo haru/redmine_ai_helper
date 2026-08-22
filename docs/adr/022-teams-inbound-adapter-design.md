@@ -1,4 +1,4 @@
-# ADR-018: Microsoft Teams inbound adapter design
+# ADR-022: Microsoft Teams inbound adapter design
 
 **Date**: 2026-08-14
 **Status**: Accepted

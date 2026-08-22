@@ -283,6 +283,11 @@ module RedmineAiHelper
 
           ai_helper_logger.debug "Generated text completion: #{completion.length} characters"
           parse_completion_response(completion)
+        rescue Faraday::TimeoutError => e
+          # Completion runs under a short timeout on purpose; giving up quietly
+          # is the expected outcome for a slow backend, not a failure to report.
+          ai_helper_logger.warn "Text completion timed out in IssueReadAgent (context_type=#{context_type}, project=#{project&.identifier}): #{e.message}"
+          ""
         rescue => e
           ai_helper_logger.error "Text completion error in IssueReadAgent: #{e.message}"
           ai_helper_logger.error "Error backtrace: #{e.backtrace.join("\n")}"

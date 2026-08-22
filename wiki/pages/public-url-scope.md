@@ -1,7 +1,7 @@
 ---
 title: Public URL Scope for Chat Adapters
 type: decision
-sources: [S018, S019, S021]
+sources: [S018, S019, S024]
 updated: 2026-08-14
 ---
 
@@ -25,7 +25,7 @@ property, not a whole-plugin invariant (S018, S019).
   Operators expose `/ai_helper/chat_webhook/:channel_type` behind the reverse
   proxy already serving Redmine — no new port, no separate TLS setup (S019).
   The Teams adapter makes this concrete: Bot Framework delivers only inbound, so
-  a public HTTPS URL is a hard precondition of enabling it (S021).
+  a public HTTPS URL is a hard precondition of enabling it (S024).
 
 ADR-017 books the extra requirement explicitly as a **negative** consequence:
 unavoidable given how those platforms work, not a choice the feature makes

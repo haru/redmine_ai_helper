@@ -11,12 +11,22 @@ module RedmineAiHelper
 
     # Class methods for logging
     module ClassMethods
-      # Get the AI Helper logger instance
-      # @return [CustomLogger] The logger instance
+      # Get the AI Helper logger instance.
+      #
+      # CustomLogger reads config/ai_helper/config.yml when it is first
+      # instantiated, so a broken configuration file makes the plugin logger
+      # itself unavailable — and the code most likely to notice is the code
+      # reporting that very problem. Rails.logger stands in for that case so the
+      # message still lands somewhere and the caller is not brought down by it.
+      # This is the only place in the plugin allowed to reach for Rails.logger;
+      # see docs/adr/020-plugin-logger-falls-back-to-rails-logger.md.
+      # The fallback is not memoized, so a later call retries the plugin logger.
+      # @return [CustomLogger, ::Logger] The plugin logger, or Rails.logger when it cannot be built
       def ai_helper_logger
-        @ai_helper_logger ||= begin
-            RedmineAiHelper::CustomLogger.instance
-          end
+        @ai_helper_logger ||= RedmineAiHelper::CustomLogger.instance
+      rescue StandardError => e
+        Rails.logger.warn "[RedmineAiHelper] plugin logger unavailable (#{e.class}: #{e.message}); falling back to Rails.logger"
+        Rails.logger
       end
 
       # Log debug message

@@ -235,6 +235,7 @@ module RedmineAiHelper
         langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: text)
         options = { langfuse: langfuse, project: project }
         agent = RedmineAiHelper::Agents::WikiAgent.new(options)
+        agent.llm_provider = LlmProvider.get_llm_provider(request_options: completion_request_options)
 
         langfuse.create_span(name: "wiki_completion", input: text)
 
@@ -272,6 +273,7 @@ module RedmineAiHelper
         langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: text)
         options = { langfuse: langfuse, project: project }
         agent = RedmineAiHelper::Agents::IssueReadAgent.new(options)
+        agent.llm_provider = LlmProvider.get_llm_provider(request_options: completion_request_options)
 
         langfuse.create_span(name: "text_completion", input: text)
 
@@ -424,6 +426,17 @@ module RedmineAiHelper
       end
       ai_helper_logger.info "answer: #{answer}"
       answer
+    end
+
+    private
+
+    # HTTP options for inline completion LLM requests.
+    # Completion is triggered while the user types, so it runs with a short
+    # timeout and no retries to keep a slow backend from occupying a worker.
+    # See docs/adr/018-completion-llm-requests-timeout-no-retry.md.
+    # @return [Hash] Options passed as BaseProvider#initialize's `request_options:`.
+    def completion_request_options
+      { request_timeout: RedmineAiHelper::Util::ConfigFile.autocompletion_settings[:timeout], max_retries: 0 }
     end
   end
 end

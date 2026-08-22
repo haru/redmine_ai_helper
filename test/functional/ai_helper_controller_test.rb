@@ -1725,6 +1725,21 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_equal "Invalid cursor position", json_response["error"]
       end
 
+      should "return an empty suggestion when the completion LLM request times out" do
+        issue = Issue.find(1)
+        RedmineAiHelper::Agents::IssueReadAgent.any_instance.stubs(:chat)
+          .raises(Faraday::TimeoutError.new("execution expired"))
+
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id },
+             body: { text: "Login page error", cursor_position: 16 }.to_json
+
+        assert_response :success
+        json_response = JSON.parse(response.body)
+
+        assert_equal "", json_response["suggestion"]
+      end
+
       should "handle LLM error gracefully in suggest_completion" do
         issue = Issue.find(1)
         RedmineAiHelper::Llm.any_instance.stubs(:generate_text_completion).raises(StandardError, "LLM error")

@@ -808,6 +808,87 @@ class RedmineAiHelper::Agents::IssueReadAgentTest < ActiveSupport::TestCase
 
         assert_equal "", result
       end
+
+      context "when the LLM request times out" do
+        setup do
+          mock_prompt = mock("Prompt")
+          mock_prompt.stubs(:format).returns("Complete the text")
+          @agent.stubs(:load_prompt).returns(mock_prompt)
+          @agent.stubs(:chat).raises(Faraday::TimeoutError.new("execution expired"))
+
+          @logger = mock("ai_helper_logger")
+          @logger.stubs(:debug)
+          @logger.stubs(:info)
+          @agent.stubs(:ai_helper_logger).returns(@logger)
+        end
+
+        should "return an empty string instead of propagating the error" do
+          @logger.stubs(:warn)
+
+          result = @agent.generate_text_completion(
+            text: "Test completion",
+            cursor_position: 4,
+            context_type: "description",
+            project: @project,
+            issue: @issue
+          )
+
+          assert_equal "", result
+        end
+
+        should "log a warning naming the context type and the project" do
+          @logger.expects(:warn).with do |message|
+            message.include?("description") && message.include?(@project.identifier)
+          end
+
+          @agent.generate_text_completion(
+            text: "Test completion",
+            cursor_position: 4,
+            context_type: "description",
+            project: @project,
+            issue: @issue
+          )
+        end
+
+        should "not log the timeout as an error" do
+          @logger.stubs(:warn)
+          @logger.expects(:error).never
+
+          @agent.generate_text_completion(
+            text: "Test completion",
+            cursor_position: 4,
+            context_type: "note",
+            project: @project,
+            issue: @issue
+          )
+        end
+      end
+
+      context "when the LLM request fails for another reason" do
+        should "keep logging an error and returning an empty string" do
+          mock_prompt = mock("Prompt")
+          mock_prompt.stubs(:format).returns("Complete the text")
+          @agent.stubs(:load_prompt).returns(mock_prompt)
+          @agent.stubs(:chat).raises(StandardError, "boom")
+
+          logger = mock("ai_helper_logger")
+          logger.stubs(:debug)
+          logger.stubs(:info)
+          logger.expects(:warn).never
+          logger.expects(:error).at_least_once
+          @agent.stubs(:ai_helper_logger).returns(logger)
+
+          result = @agent.generate_text_completion(
+            text: "Test completion",
+            cursor_position: 4,
+            context_type: "description",
+            project: @project,
+            issue: @issue
+          )
+
+          assert_equal "", result
+        end
+      end
     end
 
     context "prompt injection prevention" do

@@ -1,7 +1,7 @@
 ---
 title: Inbound Reply Metadata
 type: component
-sources: [S018, S020, S021]
+sources: [S018, S020, S024]
 updated: 2026-08-14
 ---
 
@@ -45,7 +45,7 @@ using it is the normal case" stance as `supports_history?` (S018).
 
 Teams is the case the helper was built for: it stores `serviceUrl` (which varies
 by tenant and region) and the conversation id, neither of which is recoverable
-from `channel_id`/`thread_key` after a gateway restart (S021).
+from `channel_id`/`thread_key` after a gateway restart (S024).
 
 > LINE's `replyToken` expires in tens of seconds, which the 2-minute freshness
 > window plus LLM latency cannot fit. A LINE adapter is expected to reply with

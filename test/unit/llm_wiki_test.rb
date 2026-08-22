@@ -43,6 +43,7 @@ class LlmWikiTest < ActiveSupport::TestCase
 
   test "generate_wiki_completion should create WikiAgent with correct options" do
     mock_agent = mock("wiki_agent")
+    mock_agent.stubs(:llm_provider=)
     mock_agent.stubs(:generate_wiki_completion).returns("completion")
 
     RedmineAiHelper::Agents::WikiAgent.expects(:new).with(
@@ -58,6 +59,7 @@ class LlmWikiTest < ActiveSupport::TestCase
 
   test "generate_wiki_completion should pass correct parameters to agent" do
     mock_agent = mock("wiki_agent")
+    mock_agent.stubs(:llm_provider=)
 
     mock_agent.expects(:generate_wiki_completion).with(
       text: "test content",
@@ -92,6 +94,7 @@ class LlmWikiTest < ActiveSupport::TestCase
 
   test "generate_wiki_completion should handle section editing parameters" do
     mock_agent = mock("wiki_agent")
+    mock_agent.stubs(:llm_provider=)
 
     mock_agent.expects(:generate_wiki_completion).with(
       text: "test content",
@@ -112,5 +115,54 @@ class LlmWikiTest < ActiveSupport::TestCase
     )
 
     assert_equal "section completion", result
+  end
+
+  # Completion requests must run with a bounded timeout and no retries so a
+  # slow backend cannot occupy an application worker for minutes (ADR-018).
+  test "generate_wiki_completion should build request options from the configured timeout" do
+    RedmineAiHelper::Util::ConfigFile.stubs(:autocompletion_settings).returns({ timeout: 12 })
+    completion_provider = mock("completion_provider")
+    RedmineAiHelper::LlmProvider.expects(:get_llm_provider)
+      .with(request_options: { request_timeout: 12, max_retries: 0 })
+      .returns(completion_provider)
+
+    mock_agent = mock("WikiAgent")
+    mock_agent.expects(:llm_provider=).with(completion_provider)
+    mock_agent.expects(:generate_wiki_completion).returns("completion")
+    RedmineAiHelper::Agents::WikiAgent.expects(:new).returns(mock_agent)
+
+    result = @llm.generate_wiki_completion(
+      text: "test content",
+      cursor_position: 12,
+      project: @project,
+      wiki_page: @wiki_page
+    )
+
+    assert_equal "completion", result
+  end
+
+  test "generate_wiki_completion should use the default timeout when unset" do
+    # No stub on autocompletion_settings: the real validation has to be the
+    # thing that produces the default, or this test proves nothing.
+    File.stubs(:exist?).with(Rails.root.join("config/ai_helper/config.yml")).returns(false)
+    completion_provider = mock("completion_provider")
+    RedmineAiHelper::LlmProvider.expects(:get_llm_provider)
+      .with(request_options: {
+        request_timeout: RedmineAiHelper::Util::ConfigFile::AUTOCOMPLETION_DEFAULT_TIMEOUT,
+        max_retries: 0
+      })
+      .returns(completion_provider)
+
+    mock_agent = mock("WikiAgent")
+    mock_agent.expects(:llm_provider=).with(completion_provider)
+    mock_agent.expects(:generate_wiki_completion).returns("completion")
+    RedmineAiHelper::Agents::WikiAgent.expects(:new).returns(mock_agent)
+
+    @llm.generate_wiki_completion(
+      text: "test content",
+      cursor_position: 12,
+      project: @project,
+      wiki_page: @wiki_page
+    )
   end
 end

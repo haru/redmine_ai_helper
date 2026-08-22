@@ -1,8 +1,8 @@
 ---
 title: LLM Provider Layer
 type: component
-sources: [S009]
-updated: 2026-08-01
+sources: [S009, S021]
+updated: 2026-08-20
 ---
 
 # LLM Provider Layer
@@ -43,6 +43,12 @@ All inherit `RedmineAiHelper::LlmClient::BaseProvider` (S009):
   temperature, and any structured-output schema from the profile (S009).
 - `embed` generates embeddings; `supports_structured_output?` reports native
   JSON-schema support (S009).
+- **Per-call HTTP options**: `initialize` accepts an optional `request_options:`
+  (`request_timeout` / `max_retries`) that `context` applies to `context.config`
+  *after* `build_context`, and `get_llm_provider` / `provider_for_profile` pass
+  it through. `RubyLLM.context` `dup`s the global config, so the override is
+  caller-scoped and the five subclasses need no change (S021). Its only current
+  user is [inline completion](./completion-request-timeout-policy.md).
 
 ## Provider quirks (gotchas)
 
@@ -75,4 +81,5 @@ injected into the prompt instead of calling the native API.
 
 - [Multi-Agent Architecture](./multi-agent-architecture.md) ·
   [BaseAgent LLM Calls](./base-agent-llm-calls.md) ·
-  [Think Model](./think-model.md) · [Vector Search](./vector-search.md)
+  [Think Model](./think-model.md) · [Vector Search](./vector-search.md) ·
+  [Completion Request Timeout Policy](./completion-request-timeout-policy.md)

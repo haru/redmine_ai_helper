@@ -1,7 +1,7 @@
 ---
 title: Testing an Inbound Chat Adapter
 type: howto
-sources: [S020, S021, S022]
+sources: [S020, S024, S025]
 updated: 2026-08-16
 ---
 
@@ -24,7 +24,7 @@ real webhook call or a live platform (S020).
 ## A verification path you can actually exercise
 
 Teams is the worked example (`test/unit/chat_channel/adapters/teams_adapter_test.rb`,
-shoulda + mocha). Two techniques make an inbound adapter testable (S021):
+shoulda + mocha). Two techniques make an inbound adapter testable (S024):
 
 - **Sign your own tokens.** JWT cases — valid, bad signature, `aud` mismatch,
   `iss` mismatch, expired, `serviceUrl` mismatch — are built from an RSA key pair
@@ -33,9 +33,9 @@ shoulda + mocha). Two techniques make an inbound adapter testable (S021):
   all. One key pair is shared by the suite; RSA generation is slow enough to
   matter per-test.
 - **Reset process-level caches in `setup`.** The JWKS cache lives on the adapter
-  **class**, not the instance (S022), so it outlives each test's adapter; the
+  **class**, not the instance (S025), so it outlives each test's adapter; the
   adapter exposes a cache-reset hook so that tests asserting how often keys are
-  fetched start from a known state (S021). Any class-level cache an adapter adds
+  fetched start from a known state (S024). Any class-level cache an adapter adds
   needs the same hook.
 
 Only external services are stubbed — `Net::HTTP` via mocha, per Constitution I.
@@ -44,14 +44,14 @@ covering are the ones with no counterpart in an outbound adapter: request
 verification and tenant rejection, which activities count as questions, the
 derived `thread_key`/`in_thread`/`event_key`, the session-window rule, reply
 splitting and send-failure classes, and history import including its permission
-failure (S021).
+failure (S024).
 
 ## Leave the existing suite alone
 
 The Teams feature set a hard condition: `slack_adapter_test.rb`,
 `discord_adapter_test.rb`, `inbound_adapter_test.rb`,
 `ai_helper_chat_webhook_controller_test.rb`, `gateway_test.rb` and
-`message_handler_test.rb` are **not modified by a single line** (S021). That is
+`message_handler_test.rb` are **not modified by a single line** (S024). That is
 the check on the "one adapter class" claim (SC-006/SC-007): if a new platform
 forces an edit to the shared tests, the shared code was not general enough — the
 edit is the signal, not an inconvenience to work around.

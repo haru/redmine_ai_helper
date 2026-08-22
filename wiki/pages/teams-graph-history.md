@@ -1,7 +1,7 @@
 ---
 title: Teams History via Microsoft Graph
 type: decision
-sources: [S021, S022]
+sources: [S024, S025]
 updated: 2026-08-14
 ---
 
@@ -10,15 +10,15 @@ updated: 2026-08-14
 Surrounding-message import for Teams **pulls from Microsoft Graph** rather than
 accumulating pushed messages. `supports_history?` is `true` and both fetch
 methods are implemented, so the pull-shaped contract already used by Slack and
-Discord absorbs Teams with no core change (S021). Recorded as decision 3 of
-**ADR-018** (Accepted 2026-08-14) (S022). See
+Discord absorbs Teams with no core change (S024). Recorded as decision 3 of
+**ADR-022** (Accepted 2026-08-14) (S025). See
 [Chat History APIs](./chat-history-apis.md) for the calls themselves.
 
 ## Why pull, not push
 
 Granting the RSC permission `ChannelMessage.Read.Group` also makes Teams **push**
 every channel message to the bot, which would need no retrieval API at all. It
-was rejected on four counts, the last decisive (S021):
+was rejected on four counts, the last decisive (S024):
 
 - storing the non-question messages requires a dedicated table, so the feature
   stops being "one adapter class";
@@ -31,11 +31,11 @@ was rejected on four counts, the last decisive (S021):
 Pull inverts that last point: Graph answers **403** when the permission is
 absent, so the failure is a signal. Import errors are raised, and the existing
 `MessageHandler#import_context` catches them and answers anyway with the
-`history_unavailable` notice (S021).
+`history_unavailable` notice (S024).
 
 Also rejected: the tenant-wide `ChannelMessage.Read.All`, which needs a
 one-shot admin consent and contradicts the per-team consent this feature assumes
-(S021).
+(S024).
 
 ## Consent and scope
 
@@ -44,18 +44,18 @@ RSC is declared in the app manifest under
 member of the team the bot was added to** — no organization-wide admin approval.
 Scope follows from that: history is reachable only for teams hosting the bot, and
 naming any other team's channel simply returns 403, so the restriction is
-enforced by Graph rather than by adapter code (S021).
+enforced by Graph rather than by adapter code (S024).
 
 Graph tokens come from
 `https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token` with
 `scope=https://graph.microsoft.com/.default`, using the same App ID and secret as
-the bot (S021). Speaker display names arrive as `from.user.displayName` in the
-response, so no name-resolution call is needed — unlike Slack (S021).
+the bot (S024). Speaker display names arrive as `from.user.displayName` in the
+response, so no name-resolution call is needed — unlike Slack (S024).
 
 **1:1 chats import nothing** and return `[]`. RSC for personal-scope chats grants
 only `ChatMessageReadReceipt.Read.Chat`, and in any case a 1:1 chat contains only
 the user's questions and the bot's answers, both already recorded in the Redmine
-conversation (S021).
+conversation (S024).
 
 ## Resolving `aadGroupId`
 
@@ -66,19 +66,19 @@ bot token) and caches `teamId → aadGroupId` in-process, FIFO-capped at 100, th
 same shape as the Discord adapter's `@reply_targets`. Reading
 `channelData.team.aadGroupId` directly was rejected as the primary path: it is
 populated when the app is added to a team but **not guaranteed** on ordinary
-message activities, which would fail only intermittently (S021).
+message activities, which would fail only intermittently (S024).
 
 ## Standing risk
 
 Pulling costs Graph calls **on top of** the Bot Connector calls the reply already
-makes — the price of the decision, booked by ADR-018 as a negative consequence
-rather than treated as free (S022).
+makes — the price of the decision, booked by ADR-022 as a negative consequence
+rather than treated as free (S025).
 
 `GET /teams/{id}/channels/{id}/messages` is one of Microsoft's *protected APIs*;
 some tenants return 403 despite RSC consent (it has been outside the metered
 billing scope since 2025-08-25). The degraded behaviour is the specified one —
 still answer, with the notice attached — and the setup guide states the
-precondition (S021).
+precondition (S024).
 
 ## Related
 
