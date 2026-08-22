@@ -368,28 +368,19 @@ class AiHelperTypoChecker {
     }, 10);
   }
 
-  buildOverlayContent() {
-    const text = this.textarea.value;
-    this.overlay.innerHTML = '';
-
-    // Validate and correct suggestions by position 
-    const validatedSuggestions = this.suggestions.map(suggestion => {
+  static validateAndGroupSuggestions(suggestions, text) {
+    const validatedSuggestions = suggestions.map(suggestion => {
       const replacementLength = suggestion.length || suggestion.original.length;
       const actualText = text.substring(suggestion.position, suggestion.position + replacementLength);
-      
-      
-      // Basic validation - position should be valid
-      if (suggestion.position < 0 || 
+
+      if (suggestion.position < 0 ||
           suggestion.position >= text.length ||
-          !suggestion.original || 
+          !suggestion.original ||
           !suggestion.corrected) {
         return null;
       }
-      
-      // If text doesn't match, try to find the correct position
+
       if (actualText !== suggestion.original) {
-        
-        // Find all occurrences of the original text
         const allPositions = [];
         let searchPos = 0;
         while (searchPos < text.length) {
@@ -398,12 +389,11 @@ class AiHelperTypoChecker {
           allPositions.push(foundPos);
           searchPos = foundPos + 1;
         }
-        
+
         if (allPositions.length > 0) {
-          // Choose the position closest to the original suggestion
           let bestPosition = allPositions[0];
           let minDistance = Math.abs(allPositions[0] - suggestion.position);
-          
+
           for (const pos of allPositions) {
             const distance = Math.abs(pos - suggestion.position);
             if (distance < minDistance) {
@@ -411,8 +401,7 @@ class AiHelperTypoChecker {
               bestPosition = pos;
             }
           }
-          
-          // Create corrected suggestion
+
           return {
             ...suggestion,
             position: bestPosition
@@ -421,47 +410,38 @@ class AiHelperTypoChecker {
           return null;
         }
       }
-      
+
       return suggestion;
     }).filter(s => s !== null);
-    
+
     const sortedSuggestions = validatedSuggestions.sort((a, b) => a.position - b.position);
 
-    // Group suggestions by position and original text to handle duplicates
-    // Only group suggestions that have EXACTLY the same position AND original text
     const groupedSuggestions = [];
     sortedSuggestions.forEach(suggestion => {
-      
-      // Find existing group with EXACT same position and original text
-      const existingGroup = groupedSuggestions.find(group => 
-        group.position === suggestion.position && 
+      const existingGroup = groupedSuggestions.find(group =>
+        group.position === suggestion.position &&
         group.original === suggestion.original &&
         group.length === (suggestion.length || suggestion.original.length)
       );
-      
+
       if (existingGroup) {
-        // Add this suggestion to existing group
         existingGroup.suggestions.push(suggestion);
-        // Combine reasons - check both 'reason' and 'reasons' fields
         const newReasons = [];
         if (suggestion.reasons && suggestion.reasons.length > 0) {
           newReasons.push(...suggestion.reasons);
         } else if (suggestion.reason && suggestion.reason.trim()) {
           newReasons.push(suggestion.reason);
         }
-        // Add new reasons that aren't already in the group
         newReasons.forEach(reason => {
           if (!existingGroup.reasons.includes(reason)) {
             existingGroup.reasons.push(reason);
           }
         });
-        // Use the highest confidence suggestion as the primary corrected text
-        if (suggestion.confidence === 'high' || 
+        if (suggestion.confidence === 'high' ||
             (suggestion.confidence === 'medium' && existingGroup.corrected === existingGroup.suggestions[0].corrected)) {
           existingGroup.corrected = suggestion.corrected;
         }
       } else {
-        // Create new group - preserve both 'reason' and 'reasons' fields
         const newGroup = {
           position: suggestion.position,
           original: suggestion.original,
@@ -471,18 +451,51 @@ class AiHelperTypoChecker {
           suggestions: [suggestion],
           confidence: suggestion.confidence
         };
-        
-        // Preserve reason information from the original suggestion
+
         if (suggestion.reasons && suggestion.reasons.length > 0) {
           newGroup.reasons = [...suggestion.reasons];
         } else if (suggestion.reason && suggestion.reason.trim()) {
           newGroup.reasons = [suggestion.reason];
         }
-        
+
         groupedSuggestions.push(newGroup);
       }
     });
 
+    return groupedSuggestions;
+  }
+
+  static applyAllSuggestionTexts(suggestions, text) {
+    const sortedSuggestions = [...suggestions].sort((a, b) => b.position - a.position);
+    let result = text;
+
+    sortedSuggestions.forEach(suggestion => {
+      const actualText = result.substring(suggestion.position, suggestion.position + suggestion.original.length);
+      if (actualText === suggestion.original) {
+        result = result.substring(0, suggestion.position) +
+               suggestion.corrected +
+               result.substring(suggestion.position + suggestion.original.length);
+      }
+    });
+
+    return result;
+  }
+
+  static updateSuggestionPositions(suggestions, editPosition, originalLength, newLength) {
+    const lengthDiff = newLength - originalLength;
+    return suggestions.map(suggestion => {
+      if (suggestion.position > editPosition) {
+        return { ...suggestion, position: suggestion.position + lengthDiff };
+      }
+      return suggestion;
+    });
+  }
+
+  buildOverlayContent() {
+    const text = this.textarea.value;
+    this.overlay.innerHTML = '';
+
+    const groupedSuggestions = AiHelperTypoChecker.validateAndGroupSuggestions(this.suggestions, text);
 
     // Update the main suggestions array with grouped data
     this.suggestions = groupedSuggestions;
@@ -834,26 +847,7 @@ class AiHelperTypoChecker {
     // Set processing flag to prevent input event from hiding overlay
     this.isProcessingSuggestion = true;
 
-    // Sort suggestions by position (descending) to apply from end to beginning
-    // This prevents position shifts from affecting subsequent applications
-    const sortedSuggestions = [...this.suggestions].sort((a, b) => b.position - a.position);
-    
-    let text = this.textarea.value;
-
-    sortedSuggestions.forEach(suggestion => {
-      // Verify the text matches what we expect at the position
-      const actualText = text.substring(suggestion.position, suggestion.position + suggestion.original.length);
-
-      if (actualText === suggestion.original) {
-        // Apply the suggestion
-        text = text.substring(0, suggestion.position) +
-               suggestion.corrected +
-               text.substring(suggestion.position + suggestion.original.length);
-      }
-    });
-    
-    // Update textarea with all changes
-    this.textarea.value = text;
+    this.textarea.value = AiHelperTypoChecker.applyAllSuggestionTexts(this.suggestions, this.textarea.value);
     
     // Clear all suggestions and hide overlay
     this.suggestions = [];
@@ -869,13 +863,9 @@ class AiHelperTypoChecker {
   }
 
   updateSuggestionsAfterEdit(editPosition, originalLength, newLength) {
-    const lengthDiff = newLength - originalLength;
-    
-    this.suggestions.forEach(suggestion => {
-      if (suggestion.position > editPosition) {
-        suggestion.position += lengthDiff;
-      }
-    });
+    this.suggestions = AiHelperTypoChecker.updateSuggestionPositions(
+      this.suggestions, editPosition, originalLength, newLength
+    );
   }
 
   hideOverlay() {

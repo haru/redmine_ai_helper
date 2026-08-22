@@ -762,4 +762,263 @@ describe("AiHelperAutoCompletion request lifecycle", () => {
       expect(fetchStub.calls).toHaveLength(1);
     });
   });
+
+  describe("displayInlineSuggestion", () => {
+    it("sets up overlay with before, suggestion, and after spans", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+
+      dom.textarea.value = "hello world";
+      dom.textarea.setSelectionRange(5, 5);
+
+      completion.displayInlineSuggestion(" friend", 5);
+
+      expect(completion.currentSuggestion).toEqual({
+        text: " friend",
+        cursorPosition: 5,
+      });
+      expect(completion.overlay.innerHTML).toContain("friend");
+      expect(dom.textarea.style.color).toBe("transparent");
+    });
+
+    it("handles empty suggestion text", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+
+      dom.textarea.value = "hello";
+      completion.displayInlineSuggestion("", 5);
+
+      expect(completion.currentSuggestion.text).toBe("");
+    });
+  });
+
+  describe("getTextareaBackgroundColor", () => {
+    it("returns textarea background when not transparent", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+      dom.textarea.style.backgroundColor = "rgb(200, 200, 255)";
+
+      expect(completion.getTextareaBackgroundColor()).toBe("rgb(200, 200, 255)");
+    });
+
+    it("returns parent background when textarea is transparent", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+      dom.textarea.style.backgroundColor = "transparent";
+      dom.container.style.backgroundColor = "rgb(240, 240, 240)";
+
+      expect(completion.getTextareaBackgroundColor()).toBe("rgb(240, 240, 240)");
+    });
+
+    it("defaults to white when both are transparent", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+      dom.textarea.style.backgroundColor = "transparent";
+      dom.container.style.backgroundColor = "transparent";
+
+      expect(completion.getTextareaBackgroundColor()).toBe("#ffffff");
+    });
+
+    it("static resolveBackgroundColor works with any element", () => {
+      const el = document.createElement("div");
+      el.style.backgroundColor = "rgb(100, 100, 100)";
+      document.body.appendChild(el);
+
+      expect(window.AiHelperAutoCompletion.resolveBackgroundColor(el)).toBe("rgb(100, 100, 100)");
+      el.remove();
+    });
+  });
+
+  describe("isRequestStale", () => {
+    it("returns true when request ID has advanced", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+
+      expect(completion.isRequestStale(1, "text", 5)).toBe(true);
+    });
+
+    it("returns true when text has changed", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+      dom.textarea.value = "original";
+      dom.textarea.setSelectionRange(8, 8);
+      completion.currentRequestId = 1;
+
+      expect(completion.isRequestStale(1, "original", 8)).toBe(false);
+      dom.textarea.value = "changed";
+      expect(completion.isRequestStale(1, "original", 8)).toBe(true);
+    });
+
+    it("returns true when cursor has moved", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+      dom.textarea.value = "hello world";
+      dom.textarea.setSelectionRange(5, 5);
+      completion.currentRequestId = 1;
+
+      expect(completion.isRequestStale(1, "hello world", 5)).toBe(false);
+      dom.textarea.setSelectionRange(6, 6);
+      expect(completion.isRequestStale(1, "hello world", 5)).toBe(true);
+    });
+  });
+
+  describe("forgetRequestSnapshot", () => {
+    it("clears snapshot when it matches the given request", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+      completion.lastTextSnapshot = "test";
+      completion.lastCursorPosition = 4;
+
+      completion.forgetRequestSnapshot("test", 4);
+      expect(completion.lastTextSnapshot).toBeNull();
+      expect(completion.lastCursorPosition).toBeNull();
+    });
+
+    it("does not clear snapshot when text differs", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+      completion.lastTextSnapshot = "test";
+      completion.lastCursorPosition = 4;
+
+      completion.forgetRequestSnapshot("other", 4);
+      expect(completion.lastTextSnapshot).toBe("test");
+    });
+  });
+
+  describe("releaseAbortController", () => {
+    it("clears controller when it is still the current one", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+      const ctrl = new AbortController();
+      completion.abortController = ctrl;
+
+      completion.releaseAbortController(ctrl);
+      expect(completion.abortController).toBeNull();
+    });
+
+    it("does not clear when a different controller is current", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+      const ctrl1 = new AbortController();
+      const ctrl2 = new AbortController();
+      completion.abortController = ctrl2;
+
+      completion.releaseAbortController(ctrl1);
+      expect(completion.abortController).toBe(ctrl2);
+    });
+  });
+
+  describe("loadSettings / saveSettings", () => {
+    it("loads false (disabled) from localStorage by default", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+      completion.loadSettings();
+
+      expect(completion.isEnabled).toBe(false);
+      if (completion.checkbox) {
+        expect(completion.checkbox.checked).toBe(false);
+      }
+    });
+
+    it("loads true (enabled) from localStorage", () => {
+      localStorage.setItem("aiHelperAutoCompletion_anonymous", JSON.stringify({ enabled: true }));
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+      completion.loadSettings();
+
+      expect(completion.isEnabled).toBe(true);
+      if (completion.checkbox) {
+        expect(completion.checkbox.checked).toBe(true);
+      }
+    });
+
+    it("saves settings to localStorage", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+      completion.saveSettings();
+
+      const saved = JSON.parse(localStorage.getItem(completion.storageKey));
+      expect(saved.enabled).toBe(completion.isEnabled);
+    });
+  });
+
+  describe("onTextChange", () => {
+    it("returns early when text and cursor unchanged", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+      dom.textarea.value = "hello";
+      dom.textarea.setSelectionRange(5, 5);
+      completion.lastTextSnapshot = "hello";
+      completion.lastCursorPosition = 5;
+
+      completion.onTextChange();
+      expect(fetchStub.calls).toHaveLength(0);
+    });
+  });
+
+  describe("onKeyDown", () => {
+    it("accepts suggestion on Tab", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+      dom.textarea.value = "hello ";
+      dom.textarea.setSelectionRange(6, 6);
+      completion.currentSuggestion = { text: "suggestion", cursorPosition: 6 };
+
+      const result = completion.onKeyDown({ key: "Tab", preventDefault: () => {} });
+      expect(result).toBe(false);
+      expect(dom.textarea.value).toBe("hello suggestion");
+    });
+
+    it("clears suggestion on Escape", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+      completion.currentSuggestion = { text: " suggestion", cursorPosition: 5 };
+
+      const result = completion.onKeyDown({ key: "Escape", preventDefault: () => {} });
+      expect(result).toBe(false);
+      expect(completion.currentSuggestion).toBeNull();
+    });
+  });
+
+  describe("onFocus / onBlur", () => {
+    it("shows overlay on focus", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+      completion.overlay.style.display = "none";
+
+      completion.onFocus();
+      expect(completion.overlay.style.display).toBe("block");
+    });
+
+    it("hides overlay on blur after delay", async () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+      completion.overlay.style.display = "block";
+
+      completion.onBlur();
+      await wait(150);
+
+      expect(completion.overlay.style.display).toBe("none");
+    });
+  });
 });

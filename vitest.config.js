@@ -15,8 +15,11 @@ export default defineConfig({
       // down from the measured value for a safe margin. Target: 90 (FR-021).
       // stage 1: ~4.95% (122/2463) -> 4
       // stage 2: ~18.48% (456/2467) -> 18
+      // stage 3 (typo_checker): ~35.5% (878/2473) -> 35
+      // stage 3 (ai_helper): ~46.51% (1153/2479) -> 46
+      // stage 3 (auto_completion): ~46.63% (1156/2479) -> 46
       thresholds: {
-        lines: 18,
+        lines: 46,
         perFile: false,
       },
     },
