@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Retrieve configuration from meta tags
   const urlMeta = document.querySelector('meta[name="ai-helper-stuff-todo-url"]');
-  const loadingMeta = document.querySelector('meta[name="ai-helper-stuff-todo-loading"]');
   const errorMeta = document.querySelector('meta[name="ai-helper-stuff-todo-error"]');
 
   // Hide the menu link on non-project pages where meta tag is not present
@@ -33,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
       return;
     }
-  } catch (error) {
+  } catch {
     return;
   }
 
@@ -108,7 +107,7 @@ document.addEventListener('DOMContentLoaded', function() {
           body.innerHTML = '<div class="ai-helper-final-content">' +
             formattedContent + '</div>';
         }
-      } catch (error) {
+      } catch {
         // Silently handle parsing errors
       }
     };
@@ -116,6 +115,7 @@ document.addEventListener('DOMContentLoaded', function() {
     eventSource.onerror = function() {
       eventSource.close();
       currentEventSource = null;
+      const errorText = errorMeta ? errorMeta.getAttribute('content') : 'Error';
       body.innerHTML = '<div class="ai-helper-error">' + errorText + '</div>';
     };
   }

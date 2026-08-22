@@ -166,9 +166,6 @@ class AiHelperTypoChecker {
     if (buttonId) {
       this.checkButton = document.getElementById(buttonId);
     }
-    
-    if (!this.checkButton) {
-    }
   }
 
   attachEventListeners() {
@@ -491,19 +488,11 @@ class AiHelperTypoChecker {
     this.suggestions = groupedSuggestions;
 
     let currentPosition = 0;
-    let overlayContent = document.createElement('div');
+    const overlayContent = document.createElement('div');
     overlayContent.classList.add('ai-helper-overlay-content');
     overlayContent.style.lineHeight = window.getComputedStyle(this.textarea).lineHeight;
 
-    groupedSuggestions.forEach((suggestion, sortedIndex) => {
-      // Find the original index in this.suggestions array
-      const originalIndex = this.suggestions.findIndex(s => 
-        s.position === suggestion.position && 
-        s.original === suggestion.original &&
-        s.corrected === suggestion.corrected
-      );
-      
-
+    groupedSuggestions.forEach((suggestion) => {
       // Add text before the typo
       if (currentPosition < suggestion.position) {
         const beforeText = text.substring(currentPosition, suggestion.position);
@@ -850,20 +839,16 @@ class AiHelperTypoChecker {
     const sortedSuggestions = [...this.suggestions].sort((a, b) => b.position - a.position);
     
     let text = this.textarea.value;
-    let successfulApplications = 0;
-    
+
     sortedSuggestions.forEach(suggestion => {
-      
       // Verify the text matches what we expect at the position
       const actualText = text.substring(suggestion.position, suggestion.position + suggestion.original.length);
-      
+
       if (actualText === suggestion.original) {
         // Apply the suggestion
-        text = text.substring(0, suggestion.position) + 
-               suggestion.corrected + 
+        text = text.substring(0, suggestion.position) +
+               suggestion.corrected +
                text.substring(suggestion.position + suggestion.original.length);
-        successfulApplications++;
-      } else {
       }
     });
     

@@ -125,13 +125,13 @@ class AiHelper {
     let lastProcessedIndex = 0;
     let pendingEventType = null;
 
-    xhr.onprogress = function (event) {
+    xhr.onprogress = function () {
       const text = xhr.responseText.substring(lastProcessedIndex);
       lastProcessedIndex = xhr.responseText.length;
       buffer += text;
 
       // Process line by line to handle named events (event: interactive_options)
-      let lines = buffer.split('\n');
+      const lines = buffer.split('\n');
       // Keep the last incomplete line in the buffer
       buffer = lines.pop();
 
@@ -299,7 +299,7 @@ class AiHelper {
         }
       },
       // onCompleteCallback
-      function(fullResponse) {
+      function() {
         const loaderArea = document.getElementById("ai-helper-loader-area");
         if (loaderArea) {
           loaderArea.style.display = "none";
@@ -931,4 +931,5 @@ class AiHelper {
 };
 
 // Default instance for backward compatibility
-var ai_helper = new AiHelper();
+window.AiHelper = AiHelper;
+window.ai_helper = new AiHelper();

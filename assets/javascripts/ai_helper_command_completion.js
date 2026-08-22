@@ -35,7 +35,7 @@
       document.addEventListener('click', this.handleDocumentClick.bind(this));
     }
 
-    handleInput(event) {
+    handleInput() {
       const value = this.input.value;
 
       if (!value.startsWith(COMMAND_PREFIX)) {

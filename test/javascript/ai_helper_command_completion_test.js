@@ -83,7 +83,7 @@ function testEnterSelectsSingleCandidate() {
     { name: 'abc_command', description: 'ABC command' }
   ];
 
-  const completion = createCompletionWithCommands(input, commands);
+  createCompletionWithCommands(input, commands);
   input.value = '/abc';
 
   let formSubmitted = false;
@@ -107,7 +107,7 @@ function testArrowSelectionThenEnter() {
     { name: 'gamma', description: 'Gamma' }
   ];
 
-  const completion = createCompletionWithCommands(input, commands);
+  createCompletionWithCommands(input, commands);
   input.value = '/';
 
   // Press ArrowDown twice to select 'beta' (index 1)
@@ -181,7 +181,7 @@ function testShiftEnterNewline() {
   input.value = '/';
 
   // Shift+Enter should not trigger command selection
-  const event = simulateKeyDown(input, 'Enter', { shiftKey: true });
+  simulateKeyDown(input, 'Enter', { shiftKey: true });
 
   // CommandCompletion's handleKeyDown checks for 'Enter' but not shiftKey,
   // however ai_helper.js checks shiftKey first and returns true (allowing newline)

@@ -18,6 +18,8 @@ rm -rf .ruby-lsp
 ln -s /dev/null .ruby-lsp
 rm -f /usr/local/redmine/.rubocop.yml
 
+npm ci
+
 cd $REDMINE_ROOT
 
 rm -rf .ruby-lsp

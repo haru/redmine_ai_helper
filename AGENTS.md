@@ -26,7 +26,7 @@ bundle exec rake redmine:plugins:test NAME=redmine_ai_helper TESTOPTS="--name=/t
 # RuboCop (must use --ignore-parent-exclusion to avoid Redmine root's config)
 rubocop --ignore-parent-exclusion
 
-# Regression check (YARD 100% → RuboCop → full test suite)
+# Regression check (JS lint → JS tests+coverage → YARD 100% → RuboCop → full test suite)
 .devcontainer/regression-check.sh
 
 # YARD doc coverage
@@ -37,6 +37,22 @@ bundle exec rake redmine:plugins:ai_helper:vector:generate
 bundle exec rake redmine:plugins:ai_helper:vector:regist
 bundle exec rake redmine:plugins:ai_helper:vector:destroy
 ```
+
+JavaScript commands run from the **plugin directory**
+(`plugins/redmine_ai_helper`), and require Node.js >= 22 (`npm ci` once to
+install):
+
+```bash
+npm run lint           # ESLint over assets/javascripts/ and test/javascript/
+npm run lint:fix       # Auto-fix what ESLint can fix
+npm test               # Vitest (jsdom, no browser/network)
+npm run test:coverage  # Vitest + coverage threshold gate
+```
+
+The coverage threshold (`vitest.config.js`'s `coverage.thresholds.lines`) is
+a ratchet: it only ever increases, tracked toward 90%. See
+[docs/javascript_quality_tooling.md](docs/javascript_quality_tooling.md) and
+[ADR-023](docs/adr/023-javascript-coverage-ratchet-policy.md).
 
 ## Specification & Design Reference
 - **Design docs in `specs/` are AUTHORITATIVE and MANDATORY** — never deviate without explicit user approval

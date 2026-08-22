@@ -53,6 +53,20 @@ jobs:
       - name: RuboCop
         run: rubocop
 
+  javascript:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test:coverage
+
   build:
     permissions:
       contents: read
@@ -132,8 +146,8 @@ jobs:
 
   notify:
     name: Slack Notification on Failure
-    needs: [lint, build]
-    if: always() && (needs.lint.result == 'failure' || needs.build.result == 'failure')
+    needs: [lint, build, javascript]
+    if: always() && (needs.lint.result == 'failure' || needs.build.result == 'failure' || needs.javascript.result == 'failure')
     runs-on: ubuntu-latest
     steps:
       - name: Slack Notification

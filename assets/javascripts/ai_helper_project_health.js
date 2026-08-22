@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
       return;
     }
-  } catch (error) {
+  } catch {
     return;
   }
 
@@ -164,7 +164,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Get the result div that should already exist in the scrollable container
-    let resultDiv = document.getElementById('ai-helper-project-health-result');
+    const resultDiv = document.getElementById('ai-helper-project-health-result');
 
     // If no result div exists, something is wrong with the DOM structure
     if (!resultDiv) {
@@ -278,12 +278,12 @@ document.addEventListener('DOMContentLoaded', function() {
             refreshProjectHealthMetadata();
           }
         }
-      } catch (error) {
+      } catch {
         // Silently handle parsing errors
       }
     };
 
-    eventSource.onerror = function(event) {
+    eventSource.onerror = function() {
       eventSource.close();
       currentEventSource = null;
       if (resultDiv) {

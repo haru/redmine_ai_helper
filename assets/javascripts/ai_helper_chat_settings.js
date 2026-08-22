@@ -171,8 +171,8 @@ function setupHelpDialogDragging() {
       const dialogRect = dialog.getBoundingClientRect();
       const maxLeft = Math.max(window.innerWidth - dialogRect.width, 0);
       const maxTop = Math.max(window.innerHeight - dialogRect.height, 0);
-      let left = Math.min(Math.max(startLeft + (e.clientX - startX), 0), maxLeft);
-      let top = Math.min(Math.max(startTop + (e.clientY - startY), 0), maxTop);
+      const left = Math.min(Math.max(startLeft + (e.clientX - startX), 0), maxLeft);
+      const top = Math.min(Math.max(startTop + (e.clientY - startY), 0), maxTop);
       dialog.style.left = left + "px";
       dialog.style.top = top + "px";
     }
@@ -198,3 +198,6 @@ function setupHelpDialogDragging() {
     });
   });
 }
+
+window.setupDatalistHandlers = setupDatalistHandlers;
+window.setupBindingFormIsolation = setupBindingFormIsolation;

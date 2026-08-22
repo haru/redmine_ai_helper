@@ -305,7 +305,7 @@ class AiHelperAutoCompletion {
           requestBody.project_id = projectId;
         } else {
           // Try to get from URL
-          const urlMatch = window.location.pathname.match(/\/projects\/([^\/]+)/);
+          const urlMatch = window.location.pathname.match(/\/projects\/([^/]+)/);
           if (urlMatch) {
             requestBody.project_identifier = urlMatch[1];
           }
@@ -694,3 +694,4 @@ class AiHelperAutoCompletion {
 
 // Auto-completion class for AI Helper
 // Initialization is handled by view partials
+window.AiHelperAutoCompletion = AiHelperAutoCompletion;

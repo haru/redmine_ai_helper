@@ -160,7 +160,6 @@ class AiHelperMasterDetail {
     const reportId = data.id;
     const projectId = this.getProjectId();
     const exportLabel = this.getI18nText('label_export_to', 'Export to');
-    const reportDetailLabel = this.getI18nText('label_ai_helper_health_report_detail', 'Report Detail');
     const createdOnLabel = this.getI18nText('field_created_on', 'Created on');
     const authorLabel = this.getI18nText('field_author', 'Author');
 
@@ -271,7 +270,6 @@ class AiHelperMasterDetail {
 
   attachExportEvents(data) {
     const markdownExportLink = document.getElementById('ai-helper-markdown-export-detail');
-    const pdfExportLink = document.getElementById('ai-helper-pdf-export-detail');
 
     if (markdownExportLink) {
       markdownExportLink.addEventListener('click', (e) => {
@@ -320,7 +318,7 @@ class AiHelperMasterDetail {
 
   getProjectId() {
     // Extract project ID from URL
-    const match = window.location.pathname.match(/\/projects\/([^\/]+)/);
+    const match = window.location.pathname.match(/\/projects\/([^/]+)/);
     return match ? match[1] : '';
   }
 
@@ -347,7 +345,7 @@ window.updateHealthReportHistory = function(callback) {
   const historyContainer = document.getElementById('ai-helper-health-report-history-container');
   if (!historyContainer) return;
 
-  const projectId = window.location.pathname.match(/\/projects\/([^\/]+)/)[1];
+  const projectId = window.location.pathname.match(/\/projects\/([^/]+)/)[1];
   const url = `/projects/${projectId}/ai_helper/health_reports`;
 
   const xhr = new XMLHttpRequest();
