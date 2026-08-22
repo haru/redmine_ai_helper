@@ -123,8 +123,15 @@ if (typeof AiHelperMarkdownParser === "undefined") {
           unmasked += masked.slice(cursor);
           break;
         }
-        unmasked += masked.slice(cursor, start);
         const closeIndex = masked.indexOf("\x00", start + openTag.length);
+        if (closeIndex === -1) {
+          // No matching close marker: not a real mask token: treat literally
+          // and advance past it so the scan always makes progress.
+          unmasked += masked.slice(cursor, start + openTag.length);
+          cursor = start + openTag.length;
+          continue;
+        }
+        unmasked += masked.slice(cursor, start);
         const maskIndex = masked.slice(start + openTag.length, closeIndex);
         unmasked += masks[parseInt(maskIndex, 10)];
         cursor = closeIndex + 1;

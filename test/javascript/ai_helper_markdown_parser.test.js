@@ -108,4 +108,14 @@ describe("AiHelperMarkdownParser issue reference linkification", () => {
     const html = parser.parse("See #abc");
     expect(html).not.toContain('<a href="/issues/');
   });
+
+  it("terminates instead of hanging on an unterminated internal mask marker", () => {
+    setupIssueBaseUrl("/issues/__ID__");
+    const parser = new window.AiHelperMarkdownParser();
+    // The internal masking delimiter is a NUL byte followed by "AIH_MASK_";
+    // this input contains the opening marker with no matching closing NUL.
+    const unterminated = "See #1234 and \x00AIH_MASK_0 with no closing marker";
+    const html = parser.parse(unterminated);
+    expect(html).toContain('<a href="/issues/1234">#1234</a>');
+  });
 });
