@@ -85,6 +85,7 @@ module RedmineAiHelper
       # @param output [String, nil] If provided, updates the trace output before flushing.
       # @return [void]
       def flush(output: nil)
+        return unless enabled?
         update_trace_output(output: output) if output
         Langfuse.flush
       end

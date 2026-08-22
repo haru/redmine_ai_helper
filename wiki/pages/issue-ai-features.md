@@ -1,8 +1,8 @@
 ---
 title: Issue AI Features
 type: component
-sources: [S014, S017]
-updated: 2026-08-07
+sources: [S014, S017, S021]
+updated: 2026-08-20
 ---
 
 # Issue AI Features
@@ -61,8 +61,16 @@ A fill-in-the-middle experience: `IssueReadAgent` (or
 surrounding text via the `inline_completion` template, rendered as an overlay
 behind a transparent textarea — description and notes fields only (S014).
 
+Unlike the other features here, completion fires *while typing*, so its requests
+must be debounced, deduplicated, aborted when superseded, and bounded by a short
+server-side timeout with retries disabled — otherwise stale requests pile up and
+block unrelated actions such as saving the issue (S021). See
+[Inline Completion Request Flow](./inline-completion-request-flow.md) and
+[Completion Request Timeout Policy](./completion-request-timeout-policy.md).
+
 ## Related
 
 - [Multi-Agent Architecture](./multi-agent-architecture.md) ·
   [Think Model](./think-model.md) · [Vector Search](./vector-search.md) ·
-  [Tool System](./tool-system.md) · [Plugin Overview](./plugin-overview.md)
+  [Tool System](./tool-system.md) · [Plugin Overview](./plugin-overview.md) ·
+  [Inline Completion Request Flow](./inline-completion-request-flow.md)

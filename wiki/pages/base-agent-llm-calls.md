@@ -1,8 +1,8 @@
 ---
 title: BaseAgent LLM Calls
 type: component
-sources: [S003, S005, S009]
-updated: 2026-08-01
+sources: [S003, S005, S009, S021]
+updated: 2026-08-20
 ---
 
 # BaseAgent LLM Calls
@@ -48,6 +48,14 @@ Because every think-model target task already uses `chat()` (one-shot),
 `think_chat()` alone covers the feature — no `@think_assistant` or shared-chat
 machinery was needed (S003). This is the start of an `effective_llm_provider`
 pattern for future dynamic switching (S003).
+
+## Swapping a provider from the caller
+
+`@llm_provider` is exposed as an `attr_accessor`, so a caller can hand an agent a
+differently-configured provider after construction instead of extending the
+agent's params API — this is how completion calls get their short-timeout,
+no-retry provider without touching `BaseAgent`
+([Completion Request Timeout Policy](./completion-request-timeout-policy.md), S021).
 
 ## Gotcha: `with_model` does not switch providers
 

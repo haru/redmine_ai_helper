@@ -74,6 +74,31 @@ class LoggerTest < ActiveSupport::TestCase
     assert_same logger1, logger2
   end
 
+  # A broken config/ai_helper/config.yml stops CustomLogger from being built —
+  # and the code most likely to notice is the code reporting that file. The
+  # plugin logger stands aside for Rails.logger there instead of raising
+  # (ADR-020).
+  def test_ai_helper_logger_falls_back_to_rails_logger
+    RedmineAiHelper::CustomLogger.stubs(:instance)
+      .raises(Psych::SyntaxError.new("config.yml", 1, 1, 0, "broken", "context"))
+    Rails.logger.expects(:warn).with { |message| message.include?("plugin logger unavailable") }.once
+
+    assert_same Rails.logger, LoggerTest.ai_helper_logger
+  end
+
+  def test_ai_helper_logger_retries_after_falling_back
+    mock_logger = mock("mock_logger")
+    RedmineAiHelper::CustomLogger.stubs(:instance)
+      .raises(Psych::SyntaxError.new("config.yml", 1, 1, 0, "broken", "context"))
+      .then.returns(mock_logger)
+    Rails.logger.stubs(:warn)
+
+    LoggerTest.ai_helper_logger
+
+    # The fallback must not be memoized: fixing the file has to be enough.
+    assert_same mock_logger, LoggerTest.ai_helper_logger
+  end
+
   def test_instance_ai_helper_logger_delegates_to_class
     mock_logger = mock("mock_logger")
     RedmineAiHelper::CustomLogger.stubs(:instance).returns(mock_logger)

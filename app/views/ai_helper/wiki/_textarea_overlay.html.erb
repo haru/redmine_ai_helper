@@ -41,22 +41,14 @@ function initializeWikiCompletion() {
 
   const wikiTextarea = document.getElementById('content_text');
 
-  <%
-    config_path = Rails.root.join('plugins', 'redmine_ai_helper', 'config', 'ai_helper', 'config.yml')
-    autocompletion_config = {}
-    if File.exist?(config_path)
-      begin
-        config_data = YAML.load_file(config_path)
-        autocompletion_config = config_data['autocompletion'] || {}
-      rescue => e
-        autocompletion_config = {}
-      end
-    end
-  %>
+  <%# Load validated configuration; nil means "use the default below" %>
+  <%# wiki_min_length overrides min_length here, so the wiki editor can keep a %>
+  <%# threshold of its own as it did before the settings were consolidated. %>
+  <% autocompletion_config = RedmineAiHelper::Util::ConfigFile.autocompletion_settings %>
   const config = {
-    debounce_delay: <%= autocompletion_config['debounce_delay'] || 300 %>,
-    min_length: <%= autocompletion_config['wiki_min_length'] || 5 %>,
-    suggestion_color: '<%= autocompletion_config['suggestion_color'] || '#888888' %>'
+    debounce_delay: <%= autocompletion_config[:debounce_delay] || 300 %>,
+    min_length: <%= autocompletion_config[:wiki_min_length] || autocompletion_config[:min_length] || 5 %>,
+    suggestion_color: '<%= autocompletion_config[:suggestion_color] || '#888888' %>'
   };
 
   if (wikiTextarea && typeof AiHelperAutoCompletion !== 'undefined') {
