@@ -1068,7 +1068,7 @@ window.AiHelperTypoChecker = AiHelperTypoChecker;
 AiHelperTypoChecker.initFromConfig = function(container, textareaId, buttonId) {
   if (!container) return null;
   const textarea = document.getElementById(textareaId);
-  if (!textarea || typeof AiHelperTypoChecker === 'undefined') return null;
+  if (!textarea) return null;
 
   const config = JSON.parse(container.dataset.config || '{}');
   const checker = new AiHelperTypoChecker(textarea, {

@@ -3,6 +3,9 @@
  * Extracted from wiki/_textarea_overlay.html.erb.
  */
 
+/**
+ * Wire up auto-completion for the wiki content textarea and reposition its checkbox.
+ */
 function initializeWikiCompletion() {
   if (window.aiHelperWikiCompletionInitialized) {
     return;
@@ -71,7 +74,9 @@ function initializeWikiCompletion() {
   window.aiHelperWikiCompletionInitialized = true;
 }
 
-// Initialize wiki typo checking with direct button binding
+/**
+ * Bind the typo-check button/overlay for the wiki content textarea.
+ */
 function initializeWikiTextareaTypoChecker() {
   const container = document.getElementById('ai-helper-wiki-typo-overlay');
   if (container) {

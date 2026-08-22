@@ -11,7 +11,27 @@ function removeExistingNotesCheckbox() {
 }
 removeExistingNotesCheckbox();
 
-function initalizeIssueCompletion() {
+/**
+ * Move `container` to immediately follow `textarea` in the DOM and reveal it.
+ * @param {HTMLElement} textarea
+ * @param {HTMLElement} container
+ */
+function moveContainerAfterTextarea(textarea, container) {
+  const parent = textarea.parentNode;
+  const nextSibling = textarea.nextSibling;
+  if (nextSibling) {
+    parent.insertBefore(container, nextSibling);
+  } else {
+    parent.appendChild(container);
+  }
+  container.style.display = 'block';
+}
+
+/**
+ * Wire up description/notes auto-completion, duplicate-check, and
+ * checkbox placement for the issue textarea overlay.
+ */
+function initializeIssueCompletion() {
 
   // Prevent multiple initialization by checking if already processed
   if (window.aiHelperAutoCompletionInitialized) {
@@ -56,14 +76,7 @@ function initalizeIssueCompletion() {
     const descriptionContainer = document.getElementById('ai-helper-description-checkbox-container');
 
     if (descriptionContainer && descriptionTextarea) {
-      const parent = descriptionTextarea.parentNode;
-      const nextSibling = descriptionTextarea.nextSibling;
-      if (nextSibling) {
-        parent.insertBefore(descriptionContainer, nextSibling);
-      } else {
-        parent.appendChild(descriptionContainer);
-      }
-      descriptionContainer.style.display = 'block';
+      moveContainerAfterTextarea(descriptionTextarea, descriptionContainer);
     }
 
 
@@ -174,15 +187,7 @@ function initalizeIssueCompletion() {
     const notesContainer = document.getElementById('ai-helper-notes-checkbox-container');
 
     if (notesContainer && notesTextarea) {
-      const parent = notesTextarea.parentNode;
-      const nextSibling = notesTextarea.nextSibling;
-
-      if (nextSibling) {
-        parent.insertBefore(notesContainer, nextSibling);
-      } else {
-        parent.appendChild(notesContainer);
-      }
-      notesContainer.style.display = 'block';
+      moveContainerAfterTextarea(notesTextarea, notesContainer);
     }
 
 
@@ -195,7 +200,9 @@ function initalizeIssueCompletion() {
 
 }
 
-// Initialize typo checking with direct button binding
+/**
+ * Bind the typo-check button/overlay for the issue description and notes textareas.
+ */
 function initializeIssueTypoChecker() {
   const container = document.getElementById('ai-helper-issue-typo-overlay');
   if (!container) return;
@@ -208,7 +215,9 @@ function initializeIssueTypoChecker() {
   );
 }
 
-// Initialize assignment suggestion
+/**
+ * Wire up the assignee-suggestion feature for the issue's "Assignee" field.
+ */
 function initializeAssignmentSuggestion() {
   const container = document.getElementById('ai-helper-issue-textarea-overlay');
   if (!container) return;
@@ -227,7 +236,7 @@ function initializeAssignmentSuggestion() {
 }
 
 setTimeout( function() {
-  initalizeIssueCompletion();
+  initializeIssueCompletion();
   initializeIssueTypoChecker();
   initializeAssignmentSuggestion();
 }, 500); // Delay to ensure DOM is fully loaded

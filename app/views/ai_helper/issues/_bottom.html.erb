@@ -10,7 +10,7 @@
   similarIssuesUrl: ai_helper_similar_issues_path(id: @issue.id),
   errorMessage: l(:ai_helper_error_occurred),
   hasSummary: summary.present?
-}.to_json %>'
+}.to_json %>'>
     <legend onclick="toggleFieldset(this);aiHelperSaveSummaryState();" class="icon icon-collapsed">
     <%= sprite_icon("angle-right") %>
     <strong>

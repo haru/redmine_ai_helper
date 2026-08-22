@@ -1,5 +1,6 @@
 <%
   project = @wiki&.project || @project
+  ac = RedmineAiHelper::Util::ConfigFile.autocompletion_settings
 %>
 
 
@@ -10,18 +11,9 @@
   projectIdentifier: project.identifier,
   userId: User.current.id,
   isSectionEdit: @section.present?,
-  debounceDelay: begin
-    ac = RedmineAiHelper::Util::ConfigFile.autocompletion_settings
-    ac[:debounce_delay] || 300
-  end,
-  minLength: begin
-    ac = RedmineAiHelper::Util::ConfigFile.autocompletion_settings
-    ac[:wiki_min_length] || ac[:min_length] || 5
-  end,
-  suggestionColor: begin
-    ac = RedmineAiHelper::Util::ConfigFile.autocompletion_settings
-    ac[:suggestion_color] || '#888888'
-  end,
+  debounceDelay: ac[:debounce_delay] || 300,
+  minLength: ac[:wiki_min_length] || ac[:min_length] || 5,
+  suggestionColor: ac[:suggestion_color] || '#888888',
   labels: {
     commonToggleLabel: t('ai_helper.autocompletion.common_toggle_label'),
     loading: t('ai_helper.autocompletion.loading'),

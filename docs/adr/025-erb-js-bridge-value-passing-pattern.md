@@ -32,15 +32,31 @@ For elements that may appear multiple times on the same page (e.g., sub-issue ro
 
 ### Pattern B: Pre-existing page-scope globals (unchanged)
 
-Three global identifiers are consumed by `ai_helper.js` (which is out of scope for this refactor). These are preserved as-is:
+One global identifier is consumed by `ai_helper.js` (which is out of scope for this refactor). It is preserved as-is:
 
-| Identifier | Defined in ERB | Consumed by (out of scope) |
+| Identifier | Defined in | Consumed by (out of scope) |
 |---|---|---|
 | `window.ai_helper_urls` | `chat/_sidebar.html.erb` | `ai_helper.js`, `ai_helper_markdown_parser.js` |
-| `window.getSummary` | `issues/_bottom.html.erb` | `ai_helper.js` |
-| `window.getWikiSummary` | `wiki/_summary.html.erb` | `ai_helper.js` |
 
-No new page-scope globals are introduced. If cross-module shared state is needed, it is attached to a single namespace object (e.g., `window.AiHelperCollapsibleFieldset`).
+If cross-module shared state is needed, it is attached to a single namespace object (e.g., `window.AiHelperCollapsibleFieldset`).
+
+### Pattern C: Callback globals for legacy inline `onclick` attributes
+
+A handful of extracted modules still expose a `window.*` function purely so that a pre-existing inline `onclick="..."` attribute in ERB keeps working. This is a deliberate, narrow exception to "no new globals," not the default:
+
+| Identifier | Defined in | Called from `onclick` in |
+|---|---|---|
+| `window.getSummary` | `ai_helper_issue_summary.js` | `ai_helper.js` (out of scope) |
+| `window.getWikiSummary` | `ai_helper_wiki_summary.js` | `ai_helper.js` (out of scope) |
+| `window.generateSummaryStream` | `ai_helper_issue_summary.js` | `issues/_bottom.html.erb`, and `issues/_summary.html.erb` (unmodified, out of scope for this refactor) |
+| `window.aiHelperSaveSummaryState` | `ai_helper_issue_summary.js` | `issues/_bottom.html.erb` |
+| `window.findSimilarIssues` | `ai_helper_issue_summary.js` | `issues/_bottom.html.erb` |
+| `window.aiHelperSaveReplyState` | `ai_helper_collapsible_fieldset.js` | `issues/_form.html.erb` |
+| `window.ai_helper_generate_reply` | `ai_helper_collapsible_fieldset.js` | `issues/_form.html.erb` |
+| `window.aiHelperGenerateSubIssues` | `ai_helper_sub_issues.js` | `issues/subissues/_index.html.erb` |
+| `window.showSubissuerGenerator` | `ai_helper_sub_issues.js` | `issues/subissues/_description_bottom.html.erb` |
+
+`generateSummaryStream` in particular cannot be converted to Pattern A within this refactor's scope: `issues/_summary.html.erb` still calls it via inline `onclick` and was not touched by this refactor. To keep one consistent story for the whole callback-global set rather than migrating some call sites and not others, the remaining identifiers in this table follow the same pattern. A future refactor that also touches `issues/_summary.html.erb` could convert all of Pattern C to Pattern A and remove this exception entirely.
 
 ### CSRF token handling
 
@@ -54,7 +70,8 @@ All POST requests continue reading the CSRF token from `meta[name="csrf-token"]`
 
 - **Positive**: All new extractions follow a single, predictable pattern. Element-scoped config avoids naming collisions on pages with multiple instances.
 - **Positive**: ERB templates are reduced to data attribution + a single initialization call, making the Ruby↔JS boundary visually obvious.
-- **Negative**: The three pre-existing globals cannot be migrated to Pattern A without modifying `ai_helper.js`, which is out of scope. This creates a small inconsistency that must be documented for future maintainers.
+- **Negative**: `window.ai_helper_urls` cannot be migrated to Pattern A without modifying `ai_helper.js`, which is out of scope. This creates a small inconsistency that must be documented for future maintainers.
+- **Negative**: The Pattern C callback globals could not all be eliminated in this refactor because `issues/_summary.html.erb` (out of scope) still depends on `generateSummaryStream` as a global. Rather than migrate some call sites to Pattern A and leave others on Pattern C, all of that group was kept consistent on Pattern C pending a future refactor that also touches `issues/_summary.html.erb`.
 
 ## Alternatives Considered
 

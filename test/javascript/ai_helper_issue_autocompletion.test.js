@@ -3,7 +3,7 @@ import { loadScript } from "./support/load_script.js";
 
 // --- T020: Characterization tests for shared/_textarea_overlay.html.erb extraction ---
 
-describe("initalizeIssueCompletion (from shared/_textarea_overlay.html.erb)", () => {
+describe("initializeIssueCompletion (from shared/_textarea_overlay.html.erb)", () => {
   let container;
   let autoCompletionMock;
 

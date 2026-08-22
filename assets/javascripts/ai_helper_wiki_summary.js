@@ -59,7 +59,7 @@ function generateWikiSummaryStream() {
  * Toggle the open/closed state of the wiki summary fieldset.
  * @param {boolean} flag - true to expand, false to collapse.
  */
-function aiHelperSetWikiSummayExpanded(flag) {
+function aiHelperSetWikiSummaryExpanded(flag) {
   AiHelperCollapsibleFieldset.setExpanded('ai-helper-wiki-summary-fields', flag);
 }
 
@@ -97,9 +97,9 @@ function initWikiSummary() {
 
   const savedState = localStorage.getItem('aiHelperWikiSummaryState_' + config.userId);
   if (savedState === 'expanded') {
-    aiHelperSetWikiSummayExpanded(true);
+    aiHelperSetWikiSummaryExpanded(true);
   } else {
-    aiHelperSetWikiSummayExpanded(false);
+    aiHelperSetWikiSummaryExpanded(false);
   }
 
   if (config.hasSummary) {

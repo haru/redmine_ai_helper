@@ -330,6 +330,41 @@ describe("AiHelperModelProfile.initForm (from _form.html.erb)", () => {
       meta.remove();
     });
 
+    it("shows the failure label when the server does not return JSON", async () => {
+      addFormMarkup();
+      const { btn, result, meta } = addTestConnectionMarkup();
+      vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({
+        headers: { get: () => "text/html" },
+        text: () => Promise.resolve("<html>oops</html>"),
+      })));
+
+      await loadScript("assets/javascripts/ai_helper_model_profile");
+      window.AiHelperModelProfile.initForm();
+      btn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(result.textContent).toBe("Failed: Failed");
+      expect(result.className).toBe("ai-helper-connection-failure");
+      expect(btn.disabled).toBe(false);
+      meta.remove();
+    });
+
+    it("shows the failure label with the error message when the fetch request itself fails", async () => {
+      addFormMarkup();
+      const { btn, result, meta } = addTestConnectionMarkup();
+      vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("network down"))));
+
+      await loadScript("assets/javascripts/ai_helper_model_profile");
+      window.AiHelperModelProfile.initForm();
+      btn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(result.textContent).toBe("Failed: network down");
+      expect(result.className).toBe("ai-helper-connection-failure");
+      expect(btn.disabled).toBe(false);
+      meta.remove();
+    });
+
     it("clears the result text when any form field changes", async () => {
       addFormMarkup();
       const { form, result, meta } = addTestConnectionMarkup();

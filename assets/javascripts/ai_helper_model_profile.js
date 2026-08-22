@@ -97,6 +97,14 @@ const AiHelperModelProfile = (() => {
     }
 
     /**
+     * @param {HTMLElement|null} element
+     * @param {boolean} visible
+     */
+    function setVisible(element, visible) {
+      if (element) element.style.display = visible ? 'block' : 'none';
+    }
+
+    /**
      * Show/hide the base URI, access key requirement, and organization ID
      * fields based on the currently selected LLM type.
      */
@@ -106,23 +114,9 @@ const AiHelperModelProfile = (() => {
       const accessKeyRequiredElement = document.querySelector('#ai-helper-mode-access-key .required');
       const organizationIdElement = document.getElementById('ai-helper-model-organization-id');
 
-      if (isBaseUriRequired(selectedValue) === true) {
-        if (baseUriElement) baseUriElement.style.display = 'block';
-      } else {
-        if (baseUriElement) baseUriElement.style.display = 'none';
-      }
-
-      if (selectedValue === config.compatibleType) {
-        if (accessKeyRequiredElement) accessKeyRequiredElement.style.display = 'none';
-      } else {
-        if (accessKeyRequiredElement) accessKeyRequiredElement.style.display = 'block';
-      }
-
-      if (selectedValue === config.openaiType) {
-        if (organizationIdElement) organizationIdElement.style.display = 'block';
-      } else {
-        if (organizationIdElement) organizationIdElement.style.display = 'none';
-      }
+      setVisible(baseUriElement, isBaseUriRequired(selectedValue));
+      setVisible(accessKeyRequiredElement, selectedValue !== config.compatibleType);
+      setVisible(organizationIdElement, selectedValue === config.openaiType);
     }
 
     if (llmTypeSelect) {

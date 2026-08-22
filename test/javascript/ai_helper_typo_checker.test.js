@@ -1336,20 +1336,17 @@ describe("AiHelperTypoChecker", () => {
   });
 });
 
-// --- T018: Characterization tests for wiki/_typo_overlay.html.erb extraction ---
+// --- T018: Characterization tests for the #ai-helper-wiki-typo-overlay container ---
 //
-// wiki/_typo_overlay.html.erb is never rendered by view_hook.rb (only
-// wiki/_textarea_overlay.html.erb is, and it renders the same
-// #ai-helper-wiki-typo-overlay container id with its own button-bound
-// initFromConfig call from ai_helper_wiki_autocompletion.js). A module-load-time
-// `DOMContentLoaded` auto-init here would therefore create a second, unbound
-// AiHelperTypoChecker instance on every real wiki page -- a behavior change
-// this file's Step1 move must not introduce (FR-008). So no such auto-init is
-// defined; these tests instead characterize that loading the script has no
-// side effects on its own, and that initFromConfig (the shared factory used
-// by all real call sites) behaves the same way regardless of which container
-// id is passed in.
-describe("wiki/_typo_overlay.html.erb extraction (no module-level auto-init)", () => {
+// wiki/_textarea_overlay.html.erb renders the #ai-helper-wiki-typo-overlay
+// container with its own button-bound initFromConfig call from
+// ai_helper_wiki_autocompletion.js. A module-load-time `DOMContentLoaded`
+// auto-init here would create a second, unbound AiHelperTypoChecker instance
+// on every real wiki page (FR-008). So no such auto-init is defined; these
+// tests characterize that loading the script has no side effects on its own,
+// and that initFromConfig (the shared factory used by all real call sites)
+// behaves the same way regardless of which container id is passed in.
+describe("#ai-helper-wiki-typo-overlay container (no module-level auto-init)", () => {
   beforeEach(async () => {
     await loadScript("assets/javascripts/ai_helper_typo_checker");
   });

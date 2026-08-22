@@ -58,7 +58,8 @@ window.aiHelperSaveReplyState = aiHelperSaveReplyState;
  * Trigger AI-generated reply text for the given issue.
  * Exposed on `window` because the "generate" button's inline `onclick`
  * calls it directly.
- * @param {number} issueId
+ * @param {number} _issueId - unused; the issue ID and config are read from the
+ *   '#ai-helper-reply-fields' container's data-config instead.
  */
 function ai_helper_generate_reply(_issueId) {
   const container = document.getElementById('ai-helper-reply-fields');

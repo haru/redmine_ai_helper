@@ -61,7 +61,7 @@ window.generateSummaryStream = generateSummaryStream;
  * Toggle the open/closed state of the issue summary fieldset.
  * @param {boolean} flag - true to expand, false to collapse.
  */
-function aiHelperSetSummayExpanded(flag) {
+function aiHelperSetSummaryExpanded(flag) {
   AiHelperCollapsibleFieldset.setExpanded('ai-helper-summary-fields', flag);
 }
 
@@ -243,9 +243,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
   const savedState = localStorage.getItem('aiHelperIssueSummaryState_' + config.userId);
   if (savedState === 'expanded') {
-    aiHelperSetSummayExpanded(true);
+    aiHelperSetSummaryExpanded(true);
   } else {
-    aiHelperSetSummayExpanded(false);
+    aiHelperSetSummaryExpanded(false);
   }
 
   if (config.hasSummary) {

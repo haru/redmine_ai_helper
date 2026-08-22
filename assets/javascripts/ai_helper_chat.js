@@ -64,7 +64,8 @@ const AiHelperChat = (() => {
       let additionalInfo;
       try {
         additionalInfo = JSON.parse(sidebarElement.dataset.additionalInfo || '{}');
-      } catch {
+      } catch (error) {
+        console.error('AiHelperChat: failed to parse sidebar additional-info JSON', error, sidebarElement.dataset.additionalInfo);
         additionalInfo = {};
       }
       for (const key in additionalInfo) {
