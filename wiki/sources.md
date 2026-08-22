@@ -28,3 +28,4 @@ Sources are immutable inputs — the wiki never edits them.
 | S021 | specs/045-fix-autocompletion-request-pileup (research.md + plan.md) | feature-artifact | 2026-08-20 | 2026-08-20 | completion-request-timeout-policy.md, completion-suppression-scope.md, inline-completion-request-flow.md, js-test-convention.md, issue-ai-features.md, llm-provider-layer.md, base-agent-llm-calls.md |
 | S022 | docs/adr/020-plugin-logger-falls-back-to-rails-logger.md | file | 2026-08-21 | 2026-08-21 | inline-completion-request-flow.md |
 | S023 | docs/adr/021-snapshot-teardown-belongs-to-clear-suggestion.md | file | 2026-08-21 | 2026-08-21 | completion-suppression-scope.md, inline-completion-request-flow.md, completion-request-timeout-policy.md, js-test-convention.md |
+| S024 | specs/046-js-quality-tooling (research.md + plan.md) | feature-artifact | 2026-08-22 | 2026-08-22 | js-quality-tooling.md, classic-script-testing-strategy.md, js-coverage-ratchet-policy.md, js-test-convention.md |
