@@ -345,7 +345,9 @@ window.updateHealthReportHistory = function(callback) {
   const historyContainer = document.getElementById('ai-helper-health-report-history-container');
   if (!historyContainer) return;
 
-  const projectId = window.location.pathname.match(/\/projects\/([^/]+)/)[1];
+  const match = window.location.pathname.match(/\/projects\/([^/]+)/);
+  if (!match) return;
+  const projectId = match[1];
   const url = `/projects/${projectId}/ai_helper/health_reports`;
 
   const xhr = new XMLHttpRequest();
