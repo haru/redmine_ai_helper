@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { loadScriptAndFireDOMContentLoaded } from "./support/dom_content_loaded.js";
 import { loadScript } from "./support/load_script.js";
 
 // Ported from the pre-existing (never-run) test/javascript/ai_helper_command_completion_test.js.
@@ -15,6 +16,7 @@ describe("CommandCompletion", () => {
   afterEach(() => {
     if (container) container.remove();
     container = undefined;
+    vi.unstubAllGlobals();
   });
 
   function createTestDOM() {
@@ -223,5 +225,185 @@ describe("CommandCompletion", () => {
     const completion = new window.CommandCompletion(input);
 
     expect(completion.acceptSuggestion()).toBe(false);
+  });
+
+  it("ArrowUp moves the selection to the previous item", () => {
+    const { input } = createTestDOM();
+    createCompletionWithCommands(input, [
+      { name: "alpha", description: "Alpha" },
+      { name: "beta", description: "Beta" },
+      { name: "gamma", description: "Gamma" },
+    ]);
+    input.value = "/";
+
+    simulateKeyDown(input, "ArrowDown");
+    simulateKeyDown(input, "ArrowDown");
+    simulateKeyDown(input, "ArrowDown");
+    simulateKeyDown(input, "ArrowUp");
+    simulateKeyDown(input, "Enter");
+
+    expect(input.value).toBe("/beta");
+  });
+
+  it("ArrowUp does not move past the first item", () => {
+    const { input } = createTestDOM();
+    createCompletionWithCommands(input, [
+      { name: "alpha", description: "Alpha" },
+      { name: "beta", description: "Beta" },
+    ]);
+    input.value = "/";
+
+    simulateKeyDown(input, "ArrowUp");
+    simulateKeyDown(input, "Enter");
+
+    expect(input.value).toBe("/alpha");
+  });
+
+  describe("handleInput", () => {
+    it("fetches commands when the input starts with the command prefix", () => {
+      const { input } = createTestDOM();
+      const fetchMock = vi.fn(() => new Promise(() => {}));
+      vi.stubGlobal("fetch", fetchMock);
+      new window.CommandCompletion(input, "/ai_helper/commands");
+
+      input.value = "/al";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(fetchMock.mock.calls[0][0]).toContain("prefix=al");
+    });
+
+    it("hides suggestions and does not fetch when the input has no leading `/`", () => {
+      const { input } = createTestDOM();
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
+      const completion = createCompletionWithCommands(input, [{ name: "alpha", description: "Alpha" }]);
+
+      input.value = "hello";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(completion.isSuggestionsVisible()).toBe(false);
+    });
+  });
+
+  describe("fetchCommands", () => {
+    it("does nothing when no commandsUrl was provided", async () => {
+      const { input } = createTestDOM();
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
+      const completion = new window.CommandCompletion(input);
+
+      await completion.fetchCommands("a");
+
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("populates commands and shows suggestions on a successful response", async () => {
+      const { input } = createTestDOM();
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => ({
+          json: async () => ({ commands: [{ name: "alpha", description: "Alpha" }] }),
+        })),
+      );
+      const completion = new window.CommandCompletion(input, "/ai_helper/commands");
+
+      await completion.fetchCommands("al");
+
+      expect(completion.commands).toEqual([{ name: "alpha", description: "Alpha" }]);
+      expect(completion.isSuggestionsVisible()).toBe(true);
+    });
+
+    it("defaults to an empty command list when the response has none", async () => {
+      const { input } = createTestDOM();
+      vi.stubGlobal("fetch", vi.fn(async () => ({ json: async () => ({}) })));
+      const completion = new window.CommandCompletion(input, "/ai_helper/commands");
+
+      await completion.fetchCommands("z");
+
+      expect(completion.commands).toEqual([]);
+      expect(completion.isSuggestionsVisible()).toBe(false);
+    });
+
+    it("hides suggestions and logs an error when the request fails", async () => {
+      const { input } = createTestDOM();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("network down"); }));
+      const completion = new window.CommandCompletion(input, "/ai_helper/commands");
+      completion.commands = [{ name: "alpha", description: "Alpha" }];
+      completion.showSuggestions();
+
+      await completion.fetchCommands("a");
+
+      expect(completion.isSuggestionsVisible()).toBe(false);
+      expect(errorSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+  });
+
+  describe("handleDocumentClick", () => {
+    it("hides suggestions when clicking outside the input and suggestion box", () => {
+      const { input } = createTestDOM();
+      const completion = createCompletionWithCommands(input, [{ name: "alpha", description: "Alpha" }]);
+
+      document.body.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+      expect(completion.isSuggestionsVisible()).toBe(false);
+    });
+
+    it("keeps suggestions open when clicking the input itself", () => {
+      const { input } = createTestDOM();
+      const completion = createCompletionWithCommands(input, [{ name: "alpha", description: "Alpha" }]);
+
+      input.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+      expect(completion.isSuggestionsVisible()).toBe(true);
+    });
+
+    it("keeps suggestions open when clicking inside the suggestion box", () => {
+      const { input } = createTestDOM();
+      const completion = createCompletionWithCommands(input, [{ name: "alpha", description: "Alpha" }]);
+
+      completion.suggestionBox.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+      expect(completion.isSuggestionsVisible()).toBe(true);
+    });
+  });
+
+  describe("auto-init on DOMContentLoaded", () => {
+    let cleanup;
+
+    afterEach(() => {
+      cleanup?.removeRegisteredListeners();
+      cleanup = undefined;
+    });
+
+    it("initializes CommandCompletion on the chat input and marks it initialized", async () => {
+      const { input } = createTestDOM();
+      input.dataset.commandsUrl = "/ai_helper/commands";
+
+      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_command_completion");
+
+      expect(input._commandCompletion).toBeInstanceOf(window.CommandCompletion);
+      expect(input.dataset.commandCompletionInitialized).toBe("true");
+    });
+
+    it("does not initialize twice when already marked as initialized", async () => {
+      const { input } = createTestDOM();
+      input.dataset.commandCompletionInitialized = "true";
+
+      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_command_completion");
+
+      expect(input._commandCompletion).toBeUndefined();
+    });
+
+    it("does nothing when the chat input is absent", async () => {
+      await expect(
+        (async () => {
+          cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_command_completion");
+        })(),
+      ).resolves.toBeUndefined();
+    });
   });
 });
