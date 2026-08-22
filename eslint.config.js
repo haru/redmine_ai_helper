@@ -37,11 +37,6 @@ export default [
       globals: {
         ...globals.node,
         ...globals.browser,
-        // The corresponding assets/javascripts/*.js file assigns these to
-        // `window`; not-yet-ported test/javascript/*_test.js files
-        // (pre-dating Vitest) reference them as bare identifiers.
-        AiHelperAutoCompletion: "readonly",
-        CommandCompletion: "readonly",
         describe: "readonly",
         it: "readonly",
         test: "readonly",

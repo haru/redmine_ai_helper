@@ -118,4 +118,15 @@ describe("AiHelperMarkdownParser issue reference linkification", () => {
     const html = parser.parse(unterminated);
     expect(html).toContain('<a href="/issues/1234">#1234</a>');
   });
+
+  it("does not render 'undefined' for a mask marker with an out-of-range index", () => {
+    setupIssueBaseUrl("/issues/__ID__");
+    const parser = new window.AiHelperMarkdownParser();
+    // A well-formed marker (both NUL delimiters present) but with an index
+    // that was never actually masked -- there is nothing at masks[99].
+    const bogus = "See #1234 and \x00AIH_MASK_99\x00 in the text";
+    const html = parser.parse(bogus);
+    expect(html).toContain('<a href="/issues/1234">#1234</a>');
+    expect(html).not.toContain("undefined");
+  });
 });

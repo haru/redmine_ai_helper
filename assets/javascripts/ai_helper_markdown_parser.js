@@ -112,8 +112,10 @@ if (typeof AiHelperMarkdownParser === "undefined") {
         return `${prefix}<a href="${href}">#${id}</a>`;
       });
 
-      // Unmask via manual scan (not a regex) to avoid embedding a raw
-      // control character in a regex literal.
+      // Unmask via manual scan rather than a regex literal: ESLint's
+      // no-control-regex (which this project does not disable or
+      // eslint-disable around, per FR-007/SC-002) flags a literal NUL in a
+      // regex, and the marker below is a NUL byte by construction.
       let unmasked = "";
       let cursor = 0;
       const openTag = "\x00AIH_MASK_";
@@ -124,16 +126,18 @@ if (typeof AiHelperMarkdownParser === "undefined") {
           break;
         }
         const closeIndex = masked.indexOf("\x00", start + openTag.length);
-        if (closeIndex === -1) {
-          // No matching close marker: not a real mask token: treat literally
-          // and advance past it so the scan always makes progress.
+        const digits = closeIndex === -1 ? "" : masked.slice(start + openTag.length, closeIndex);
+        const maskEntry = /^\d+$/.test(digits) ? masks[parseInt(digits, 10)] : undefined;
+        if (closeIndex === -1 || maskEntry === undefined) {
+          // Not a real mask token (no close marker, non-numeric index, or the
+          // index is out of range): treat literally and advance past just the
+          // open tag so the scan always makes progress.
           unmasked += masked.slice(cursor, start + openTag.length);
           cursor = start + openTag.length;
           continue;
         }
         unmasked += masked.slice(cursor, start);
-        const maskIndex = masked.slice(start + openTag.length, closeIndex);
-        unmasked += masks[parseInt(maskIndex, 10)];
+        unmasked += maskEntry;
         cursor = closeIndex + 1;
       }
       return unmasked;

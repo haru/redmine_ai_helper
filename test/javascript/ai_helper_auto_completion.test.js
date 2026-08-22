@@ -66,13 +66,13 @@ function createCompletion(textarea, options = {}) {
 
 /**
  * Helper: Replace global fetch with a stub that records every call and lets
- * the test settle each call individually.
+ * the test settle each call individually. Restored by vi.unstubAllGlobals()
+ * in afterEach.
  */
 function installFetchStub() {
-  const originalFetch = globalThis.fetch;
   const calls = [];
 
-  globalThis.fetch = function (url, options) {
+  vi.stubGlobal("fetch", function (url, options) {
     const call = { url, options, resolve: null, reject: null };
     call.promise = new Promise((resolve, reject) => {
       call.resolve = (data) => resolve({ ok: true, status: 200, json: () => Promise.resolve(data) });
@@ -80,22 +80,20 @@ function installFetchStub() {
     });
     calls.push(call);
     return call.promise;
-  };
+  });
 
-  return {
-    calls,
-    restore: () => { globalThis.fetch = originalFetch; },
-  };
+  return { calls };
 }
 
 /**
  * Helper: Wrap global AbortController so that abort() calls can be counted.
+ * Restored by vi.unstubAllGlobals() in afterEach.
  */
 function installAbortControllerSpy() {
   const OriginalAbortController = globalThis.AbortController;
   const instances = [];
 
-  globalThis.AbortController = class SpyAbortController extends OriginalAbortController {
+  vi.stubGlobal("AbortController", class SpyAbortController extends OriginalAbortController {
     constructor() {
       super();
       this.abortCallCount = 0;
@@ -106,12 +104,9 @@ function installAbortControllerSpy() {
       this.abortCallCount++;
       super.abort();
     }
-  };
+  });
 
-  return {
-    instances,
-    restore: () => { globalThis.AbortController = OriginalAbortController; },
-  };
+  return { instances };
 }
 
 /** Helper: Build a DOMException-like AbortError, matching what fetch rejects with. */
@@ -145,8 +140,7 @@ describe("AiHelperAutoCompletion request lifecycle", () => {
   afterEach(() => {
     if (container) container.remove();
     container = undefined;
-    fetchStub.restore();
-    abortSpy.restore();
+    vi.unstubAllGlobals();
   });
 
   describe("C-1: single in-flight request (FR-001, FR-002)", () => {

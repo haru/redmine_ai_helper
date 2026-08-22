@@ -129,14 +129,20 @@ describe("CommandCompletion", () => {
     expect(completion.isSuggestionsVisible()).toBe(false);
   });
 
-  it("Shift+Enter does not interfere with command completion state", () => {
+  it("Shift+Enter selects the suggestion just like plain Enter", () => {
+    // CommandCompletion's own handleKeyDown does not special-case shiftKey --
+    // it is ai_helper.js's keydown handler that checks shiftKey first and
+    // returns early to allow a newline, before this class ever sees the
+    // event. In isolation, Shift+Enter behaves exactly like Enter here.
     const { input } = createTestDOM();
     const completion = createCompletionWithCommands(input, [{ name: "alpha", description: "Alpha" }]);
     input.value = "/";
 
-    simulateKeyDown(input, "Enter", { shiftKey: true });
+    const event = simulateKeyDown(input, "Enter", { shiftKey: true });
 
-    expect(completion.commands.length).toBeGreaterThan(0);
+    expect(event.defaultPrevented).toBe(true);
+    expect(input.value).toBe("/alpha");
+    expect(completion.isSuggestionsVisible()).toBe(false);
   });
 
   it("Escape closes suggestions without changing the input text", () => {
