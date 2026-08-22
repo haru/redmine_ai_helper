@@ -53,6 +53,29 @@ jobs:
       - name: RuboCop
         run: rubocop
 
+  javascript:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test:coverage
+      - uses: codecov/codecov-action@v7
+        if: env.CODECOV_TOKEN != ''
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage-js/lcov.info
+          flags: javascript
+          fail_ci_if_error: true
+
   build:
     permissions:
       contents: read
@@ -128,12 +151,13 @@ jobs:
         if: env.CODECOV_TOKEN != ''
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          flags: ruby
           fail_ci_if_error: true
 
   notify:
     name: Slack Notification on Failure
-    needs: [lint, build]
-    if: always() && (needs.lint.result == 'failure' || needs.build.result == 'failure')
+    needs: [lint, build, javascript]
+    if: always() && (needs.lint.result == 'failure' || needs.build.result == 'failure' || needs.javascript.result == 'failure')
     runs-on: ubuntu-latest
     steps:
       - name: Slack Notification

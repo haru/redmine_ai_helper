@@ -239,3 +239,5 @@ class AiHelperAssignmentSuggestion {
     return div.innerHTML;
   }
 }
+
+window.AiHelperAssignmentSuggestion = AiHelperAssignmentSuggestion;

@@ -118,70 +118,75 @@ class AiHelper {
     });
   };
 
-  // SSE stream processing helper
+  static parseSSELines(lines, pendingEventType, fullResponse, onContentCallback, onCompleteCallback, onInteractiveOptionsCallback) {
+    let eventType = pendingEventType;
+    let response = fullResponse;
+
+    for (const line of lines) {
+      if (line.startsWith('event: ')) {
+        eventType = line.substring('event: '.length).trim();
+      } else if (line.startsWith('data: ')) {
+        const dataStr = line.substring('data: '.length).trim();
+        if (eventType === 'interactive_options') {
+          try {
+            const data = JSON.parse(dataStr);
+            if (onInteractiveOptionsCallback && data.choices) {
+              onInteractiveOptionsCallback(data.choices);
+            }
+          } catch (e) {
+            console.error('Parse error for interactive_options:', e);
+          }
+          eventType = null;
+        } else {
+          eventType = null;
+          try {
+            const data = JSON.parse(dataStr);
+            const content = data.choices && data.choices[0]?.delta?.content;
+            if (content) {
+              response += content;
+              if (onContentCallback) {
+                onContentCallback(content, response);
+              }
+            }
+            if (data.choices && data.choices[0]?.finish_reason === 'stop') {
+              if (onCompleteCallback) {
+                onCompleteCallback(response);
+              }
+            }
+          } catch (e) {
+            console.error('Parse error:', e);
+          }
+        }
+      } else if (line === '') {
+        if (eventType !== null) {
+          eventType = null;
+        }
+      }
+    }
+
+    return { eventType, fullResponse: response };
+  }
+
   handleSSEStream = function(xhr, onContentCallback, onCompleteCallback, onInteractiveOptionsCallback) {
     let fullResponse = '';
     let buffer = '';
     let lastProcessedIndex = 0;
     let pendingEventType = null;
 
-    xhr.onprogress = function (event) {
+    xhr.onprogress = function () {
       const text = xhr.responseText.substring(lastProcessedIndex);
       lastProcessedIndex = xhr.responseText.length;
       buffer += text;
 
-      // Process line by line to handle named events (event: interactive_options)
-      let lines = buffer.split('\n');
-      // Keep the last incomplete line in the buffer
+      const lines = buffer.split('\n');
       buffer = lines.pop();
 
-      lines.forEach(line => {
-        if (line.startsWith('event: ')) {
-          pendingEventType = line.substring('event: '.length).trim();
-        } else if (line.startsWith('data: ')) {
-          const dataStr = line.substring('data: '.length).trim();
-          if (pendingEventType === 'interactive_options') {
-            // Handle interactive options event
-            try {
-              const data = JSON.parse(dataStr);
-              if (onInteractiveOptionsCallback && data.choices) {
-                onInteractiveOptionsCallback(data.choices);
-              }
-            } catch (e) {
-              console.error('Parse error for interactive_options:', e);
-            }
-            pendingEventType = null;
-          } else {
-            // Handle regular SSE data chunk
-            pendingEventType = null;
-            try {
-              const data = JSON.parse(dataStr);
-
-              // Get content from chunk
-              const content = data.choices && data.choices[0]?.delta?.content;
-              if (content) {
-                fullResponse += content;
-                if (onContentCallback) {
-                  onContentCallback(content, fullResponse);
-                }
-              }
-
-              if (data.choices && data.choices[0]?.finish_reason === 'stop') {
-                if (onCompleteCallback) {
-                  onCompleteCallback(fullResponse);
-                }
-              }
-            } catch (e) {
-              console.error('Parse error:', e);
-            }
-          }
-        } else if (line === '') {
-          // Empty line resets pending event type if not already consumed
-          if (pendingEventType !== null) {
-            pendingEventType = null;
-          }
-        }
-      });
+      const result = AiHelper.parseSSELines(
+        lines, pendingEventType, fullResponse,
+        onContentCallback, onCompleteCallback, onInteractiveOptionsCallback
+      );
+      pendingEventType = result.eventType;
+      fullResponse = result.fullResponse;
     };
   };
 
@@ -299,7 +304,7 @@ class AiHelper {
         }
       },
       // onCompleteCallback
-      function(fullResponse) {
+      function() {
         const loaderArea = document.getElementById("ai-helper-loader-area");
         if (loaderArea) {
           loaderArea.style.display = "none";
@@ -931,4 +936,5 @@ class AiHelper {
 };
 
 // Default instance for backward compatibility
-var ai_helper = new AiHelper();
+window.AiHelper = AiHelper;
+window.ai_helper = new AiHelper();

@@ -14,6 +14,8 @@ page files, not here.
 - [Public URL Scope for Chat Adapters](./pages/public-url-scope.md) — ADR-017's amendment to ADR-006: "no public URL required" is an outbound-adapter property, not a whole-plugin invariant.
 - [Completion Request Timeout Policy](./pages/completion-request-timeout-policy.md) — ADR-018: why completion LLM calls override RubyLLM's 300 s / 3-retry defaults per context, the injection path, and the alternatives rejected.
 - [Completion Suppression Scope](./pages/completion-suppression-scope.md) — ADR-019 and ADR-021: why no-change suppression lasts only while a suggestion is displayed, why `clearSuggestion` owns the teardown, and why accept must not write a snapshot.
+- [Testing Classic Scripts via Dynamic Import](./pages/classic-script-testing-strategy.md) — why tests load target files as side-effect-only dynamic imports, the 4 files needing a new `window.X` line, and the `ai_helper.js` `var`→`window.ai_helper` fix.
+- [JavaScript Coverage Ratchet Policy](./pages/js-coverage-ratchet-policy.md) — why the 90% lines threshold is a literal in `vitest.config.js`, raised only, and why it's separate from Ruby's 95%.
 
 ## component
 - [Chat Channel Gateway Architecture](./pages/chat-channel-gateway-architecture.md) — core + adapters structure, capability declaration, and gateway operational model.
@@ -31,6 +33,7 @@ page files, not here.
 - [Tool System](./pages/tool-system.md) — the `BaseTools` DSL, `write: true`/read-only filtering, per-tool permission checks, and the tool providers.
 - [LLM Provider Layer](./pages/llm-provider-layer.md) — the `LlmProvider` factory, resolution paths, provider subclasses/quirks, profile config, and structured output.
 - [Vector Search Internals](./pages/vector-search-internals.md) — Qdrant subsystem components, hybrid content/embeddings, payload indexes, rake tasks, staleness sync, and project-selection scope/gating.
+- [JavaScript Quality Tooling](./pages/js-quality-tooling.md) — ESLint 10 flat config + Vitest 4/jsdom + `@vitest/coverage-v8`, Node.js/npm setup, and regression-check/CI wiring.
 
 ## reference
 - [Chat History APIs](./pages/chat-history-apis.md) — Slack/Discord message-retrieval APIs, scopes, display-name resolution, exclusion rules.
@@ -40,5 +43,5 @@ page files, not here.
 
 ## howto
 - [Nginx SSE Proxy Settings](./pages/nginx-sse-proxy.md) — the five directives SSE streaming needs behind Nginx.
-- [Browser-Side JavaScript Tests](./pages/js-test-convention.md) — no JS runner in the repo: the self-contained `test/javascript/` convention and how measurable browser behaviour is verified.
+- [Browser-Side JavaScript Tests](./pages/js-test-convention.md) — the ESLint+Vitest test runner (feature 046), the superseded self-contained `test/javascript/` convention, and how measurable browser behaviour is verified.
 - [Developing an Inbound Chat Adapter](./pages/inbound-adapter-development.md) — subclassing `InboundAdapter`: the methods to implement, settings and webhook URL, proxy rate limiting, and the reference-adapter test pattern.

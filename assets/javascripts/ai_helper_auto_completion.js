@@ -305,7 +305,7 @@ class AiHelperAutoCompletion {
           requestBody.project_id = projectId;
         } else {
           // Try to get from URL
-          const urlMatch = window.location.pathname.match(/\/projects\/([^\/]+)/);
+          const urlMatch = window.location.pathname.match(/\/projects\/([^/]+)/);
           if (urlMatch) {
             requestBody.project_identifier = urlMatch[1];
           }
@@ -392,17 +392,18 @@ class AiHelperAutoCompletion {
     }
   }
 
-  isRequestStale(requestId, originalText, originalCursor) {
-    // Request ID is stale
-    if (requestId !== this.currentRequestId) {
+  static isRequestStale(requestId, currentRequestId, originalText, currentText, originalCursor, currentCursor) {
+    if (requestId !== currentRequestId) {
       return true;
     }
-
-    // Text or cursor position has changed
-    const currentText = this.textarea.value;
-    const currentCursor = this.textarea.selectionStart;
-
     return (originalText !== currentText || originalCursor !== currentCursor);
+  }
+
+  isRequestStale(requestId, originalText, originalCursor) {
+    return AiHelperAutoCompletion.isRequestStale(
+      requestId, this.currentRequestId, originalText,
+      this.textarea.value, originalCursor, this.textarea.selectionStart
+    );
   }
 
   cancelPendingRequest() {
@@ -422,24 +423,26 @@ class AiHelperAutoCompletion {
     }
   }
 
-  // Get textarea background color for masking
-  getTextareaBackgroundColor() {
-    const computedStyle = window.getComputedStyle(this.textarea);
+  static resolveBackgroundColor(element) {
+    const computedStyle = window.getComputedStyle(element);
     let bgColor = computedStyle.backgroundColor;
 
-    // If transparent or rgba(0,0,0,0), use parent background or default to white
     if (bgColor === 'transparent' || bgColor === 'rgba(0, 0, 0, 0)') {
-      const parent = this.textarea.parentNode;
+      const parent = element.parentNode;
       const parentStyle = window.getComputedStyle(parent);
       bgColor = parentStyle.backgroundColor;
 
-      // If still transparent, default to white
       if (bgColor === 'transparent' || bgColor === 'rgba(0, 0, 0, 0)') {
         bgColor = '#ffffff';
       }
     }
 
     return bgColor;
+  }
+
+  // Get textarea background color for masking
+  getTextareaBackgroundColor() {
+    return AiHelperAutoCompletion.resolveBackgroundColor(this.textarea);
   }
 
 
@@ -694,3 +697,4 @@ class AiHelperAutoCompletion {
 
 // Auto-completion class for AI Helper
 // Initialization is handled by view partials
+window.AiHelperAutoCompletion = AiHelperAutoCompletion;

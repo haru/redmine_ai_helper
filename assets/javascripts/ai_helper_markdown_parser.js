@@ -54,7 +54,7 @@ if (typeof AiHelperMarkdownParser === "undefined") {
         },
         // Paragraphs - exclude HTML tags and empty lines
         {
-          pattern: /^(?!<[a-z\/])(?!$).+$/gm,
+          pattern: /^(?!<[a-z/])(?!$).+$/gm,
           replacement: match => `<p>${match}</p>`
         }
       ];
@@ -102,7 +102,7 @@ if (typeof AiHelperMarkdownParser === "undefined") {
       // Mask existing <a>, <pre>, and <code> blocks so their content is not re-linked
       const maskPattern = /<a\b[^>]*>[\s\S]*?<\/a>|<pre>[\s\S]*?<\/pre>|<code>[\s\S]*?<\/code>/gi;
       let masked = html.replace(maskPattern, (match) => {
-        const token = `\x00AIH_MASK_${masks.length}\x00`;
+        const token = "\x00AIH_MASK_" + masks.length + "\x00";
         masks.push(match);
         return token;
       });
@@ -112,7 +112,35 @@ if (typeof AiHelperMarkdownParser === "undefined") {
         return `${prefix}<a href="${href}">#${id}</a>`;
       });
 
-      return masked.replace(/\x00AIH_MASK_(\d+)\x00/g, (_full, idx) => masks[parseInt(idx, 10)]);
+      // Unmask via manual scan rather than a regex literal: ESLint's
+      // no-control-regex (which this project does not disable or
+      // eslint-disable around, per FR-007/SC-002) flags a literal NUL in a
+      // regex, and the marker below is a NUL byte by construction.
+      let unmasked = "";
+      let cursor = 0;
+      const openTag = "\x00AIH_MASK_";
+      while (true) {
+        const start = masked.indexOf(openTag, cursor);
+        if (start === -1) {
+          unmasked += masked.slice(cursor);
+          break;
+        }
+        const closeIndex = masked.indexOf("\x00", start + openTag.length);
+        const digits = closeIndex === -1 ? "" : masked.slice(start + openTag.length, closeIndex);
+        const maskEntry = /^\d+$/.test(digits) ? masks[parseInt(digits, 10)] : undefined;
+        if (closeIndex === -1 || maskEntry === undefined) {
+          // Not a real mask token (no close marker, non-numeric index, or the
+          // index is out of range): treat literally and advance past just the
+          // open tag so the scan always makes progress.
+          unmasked += masked.slice(cursor, start + openTag.length);
+          cursor = start + openTag.length;
+          continue;
+        }
+        unmasked += masked.slice(cursor, start);
+        unmasked += maskEntry;
+        cursor = closeIndex + 1;
+      }
+      return unmasked;
     }
 
     // Remove dangerous HTML patterns from the output using DOMParser
@@ -170,7 +198,7 @@ if (typeof AiHelperMarkdownParser === "undefined") {
       const headerSeparatorRegex = /^\|(\s*:?-+:?\s*\|)+$/;
 
       const lines = markdown.split("\n");
-      let html = [];
+      const html = [];
       let inTable = false;
       let tableData = [];
       let alignments = [];
@@ -238,7 +266,7 @@ if (typeof AiHelperMarkdownParser === "undefined") {
     convertTableToHtml(tableData, alignments) {
       if (tableData.length === 0) return "";
 
-      let html = ['<table class="list">'];
+      const html = ['<table class="list">'];
 
       // Add header row
       html.push("<thead>");
@@ -273,8 +301,8 @@ if (typeof AiHelperMarkdownParser === "undefined") {
 
     processLists(markdown) {
       const lines = markdown.split("\n");
-      let html = [];
-      let listStack = []; // Stack to manage nested lists: [{type: 'ol'|'ul', indent: number}]
+      const html = [];
+      const listStack = []; // Stack to manage nested lists: [{type: 'ol'|'ul', indent: number}]
       let emptyLineCount = 0;
 
       for (let i = 0; i < lines.length; i++) {
@@ -289,7 +317,7 @@ if (typeof AiHelperMarkdownParser === "undefined") {
           const content = unorderedMatch ? unorderedMatch[2] : orderedMatch[3];
 
           // Determine current indent level
-          let currentLevel = Math.floor(indent / 2); // Assume 2 spaces per level
+          const currentLevel = Math.floor(indent / 2); // Assume 2 spaces per level
 
           // Close deeper nested lists if we're back at a shallower level
           while (

@@ -16,7 +16,7 @@ if (!window.aiHelperComparisonInitialized) {
       } else {
         return;
       }
-    } catch (error) {
+    } catch {
       return;
     }
 
@@ -89,12 +89,12 @@ if (!window.aiHelperComparisonInitialized) {
               exportDiv.style.display = 'block';
             }
           }
-        } catch (error) {
+        } catch {
           // Error handling done in onerror
         }
       };
 
-      eventSource.onerror = function(event) {
+      eventSource.onerror = function() {
         eventSource.close();
         currentEventSource = null;
 

@@ -74,3 +74,6 @@ Briefly describe alternatives that were rejected and why.
 | [019](./019-completion-request-suppression-tied-to-displayed-suggestion.md) | Completion request suppression lasts only while the suggestion is displayed | Accepted (mechanism in decision 2 refined by ADR-021) |
 | [020](./020-plugin-logger-falls-back-to-rails-logger.md) | The plugin logger falls back to Rails.logger when it cannot be built | Accepted |
 | [021](./021-snapshot-teardown-belongs-to-clear-suggestion.md) | Snapshot teardown belongs to clearSuggestion, and no-op editor events are ignored | Accepted |
+| [022](./022-javascript-test-tooling-for-classic-scripts.md) | Vitest + jsdom for testing classic scripts via side-effect dynamic import | Accepted |
+| [023](./023-javascript-coverage-ratchet-policy.md) | JavaScript coverage ratchet from measured baseline to 90%, distinct from Ruby's 95% | Accepted (Codecov clause amended by ADR-024) |
+| [024](./024-javascript-coverage-sent-to-codecov-informational-only.md) | JavaScript coverage is uploaded to Codecov as an informational-only flag | Accepted |
