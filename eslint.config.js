@@ -18,6 +18,7 @@ export default [
         // Assigned via `window.AiHelperMarkdownParser = class {...}` (no local
         // declaration), then referenced as a bare identifier from other files.
         AiHelperMarkdownParser: "readonly",
+        CommandCompletion: "readonly",
       },
     },
     rules: {

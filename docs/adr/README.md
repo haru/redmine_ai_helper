@@ -77,3 +77,5 @@ Briefly describe alternatives that were rejected and why.
 | [022](./022-javascript-test-tooling-for-classic-scripts.md) | Vitest + jsdom for testing classic scripts via side-effect dynamic import | Accepted |
 | [023](./023-javascript-coverage-ratchet-policy.md) | JavaScript coverage ratchet from measured baseline to 90%, distinct from Ruby's 95% | Accepted (Codecov clause amended by ADR-024) |
 | [024](./024-javascript-coverage-sent-to-codecov-informational-only.md) | JavaScript coverage is uploaded to Codecov as an informational-only flag | Accepted |
+| [025](./025-erb-js-bridge-value-passing-pattern.md) | ERB-JS bridge value passing pattern (data-* attributes + init call) | Accepted |
+| [026](./026-shared-js-helper-extraction-threshold.md) | Shared JS helper extraction threshold (3+ occurrences or substantively identical) | Accepted |
