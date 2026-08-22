@@ -3,7 +3,7 @@ import { loadScript } from "./support/load_script.js";
 
 // Ported from the pre-existing (never-run) test/javascript/ai_helper_markdown_parser_test.js.
 // Each case below preserves the verification intent of the corresponding
-// console.assert in that file.
+// assertion in that file.
 
 describe("AiHelperMarkdownParser issue reference linkification", () => {
   beforeEach(async () => {
