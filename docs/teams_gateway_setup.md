@@ -18,13 +18,11 @@ other chat tools.
 
 ## Requirements
 
-- The **AI Helper** plugin must be up to date: run `bundle install` and
-  `bundle exec rake redmine:plugins:migrate` from the Redmine root before
-  starting.
-- A public **HTTPS** URL for your Redmine server. For local development, expose
-  it through a tunnel (`dev tunnels`, `ngrok`, …) and register the tunnel URL.
+- A public **HTTPS** URL for your Redmine server.
 - An Azure subscription that may create an **Azure Bot** resource.
-- A Microsoft 365 tenant that allows **custom app upload** to Teams.
+- A Microsoft 365 tenant that allows **custom app upload** to Teams. A free
+  personal Teams account has no Microsoft Entra tenant and no admin center, so
+  it cannot be used.
 - A dedicated Redmine **service account** (e.g. a user named `ai_helper`) that
   the gateway runs as. Add it to the relevant projects with an appropriate
   role — every question from Teams is answered with **this account's
@@ -52,18 +50,6 @@ other chat tools.
 In the Microsoft Entra admin center, open **Overview** for your organization
 and copy the **Directory (tenant) ID** (a GUID). This is the value Redmine
 stores as the **Tenant ID**.
-
-This identifier is used twice, so a wrong value breaks the integration in two
-different ways:
-
-- **Incoming**: Redmine accepts activities from this organization only. A Bot
-  Framework signature proves the request comes from Microsoft, not which
-  organization it came from, so this identifier is what keeps another
-  organization from using your integration.
-- **Outgoing**: a single-tenant bot's credentials exist only in its own
-  directory, so this is also the tenant Redmine requests its Bot Connector and
-  Microsoft Graph access tokens from. A wrong tenant makes every reply fail
-  with a credential error.
 
 ## 3. Build the Teams app package
 
