@@ -1,7 +1,7 @@
 ---
 title: JavaScript Coverage Ratchet Policy
 type: decision
-sources: [S024]
+sources: [S024, S025]
 updated: 2026-08-22
 ---
 
@@ -42,11 +42,17 @@ suites are never merged (Ruby's coverage/ measurement and rules are
 unchanged), and JS carries a higher share of DOM-wiring code where pushing
 past 90% would mean writing tests with little verification value (S024).
 
-Sending JS coverage to Codecov alongside Ruby's existing setup was
-considered and rejected — it would keep tooling consistent with the Ruby
-side, but moves the "developer-referenceable record" outside the repo and
-breaks parity between what CI checks and what `regression-check.sh` checks
-locally (S024).
+Sending JS coverage to Codecov *as the gate* was considered and rejected —
+it would keep tooling consistent with the Ruby side, but moves the
+"developer-referenceable record" outside the repo and breaks parity between
+what CI checks and what `regression-check.sh` checks locally (S024).
+
+> Amended by ADR-024 (S025): the `javascript` CI job now uploads
+> `coverage-js/lcov.info` to Codecov under a separate `javascript` flag, for
+> PR diff-coverage visualization only. `codecov.yml` marks that flag
+> `informational: true`, so it can never fail a PR check — the gate
+> described above is unchanged. Ruby and JavaScript stay separate flags,
+> never combined into one number (S025).
 
 ## Related
 

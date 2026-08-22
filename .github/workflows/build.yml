@@ -57,6 +57,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
@@ -66,6 +68,13 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run test:coverage
+      - uses: codecov/codecov-action@v7
+        if: env.CODECOV_TOKEN != ''
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage-js/lcov.info
+          flags: javascript
+          fail_ci_if_error: true
 
   build:
     permissions:
@@ -142,6 +151,7 @@ jobs:
         if: env.CODECOV_TOKEN != ''
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          flags: ruby
           fail_ci_if_error: true
 
   notify:

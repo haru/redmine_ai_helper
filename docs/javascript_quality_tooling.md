@@ -73,3 +73,14 @@ To see which lines are still untested, open the HTML report after running
 ```sh
 open coverage-js/index.html   # or your OS's equivalent
 ```
+
+## Codecov
+
+CI also uploads `coverage-js/lcov.info` to Codecov under the `javascript`
+flag, purely for visualization (PR diff-coverage comments, trend graphs).
+It never gates a PR — `javascript` is configured as an informational-only
+check in `codecov.yml`, kept separate from the `ruby` flag. The actual pass/
+fail gate stays local: `vitest.config.js`'s `coverage.thresholds.lines`,
+enforced by `npm run test:coverage` in both CI and
+`.devcontainer/regression-check.sh`. See
+[ADR-024](adr/024-javascript-coverage-sent-to-codecov-informational-only.md).
