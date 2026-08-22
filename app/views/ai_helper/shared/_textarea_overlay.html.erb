@@ -3,6 +3,7 @@
 <%
   # Determine project from @issue if @project is not available
   project = @project || (@issue&.project)
+  autocompletion_config = RedmineAiHelper::Util::ConfigFile.autocompletion_settings
 %>
 <% if RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: project) %>
 
@@ -46,16 +47,6 @@
 </div>
 <% end %>
 
-<script>
-  function removeExistingNotesCheckbox() {
-    const existingNotesCheckbox = document.getElementById('ai-helper-notes-checkbox-container');
-    if (existingNotesCheckbox) {
-      existingNotesCheckbox.remove();
-    }
-  }
-  removeExistingNotesCheckbox();
-</script>
-
 <% if @issue&.persisted? && !@issue.new_record? %>
 <div id="ai-helper-notes-checkbox-container" class="ai-helper-autocompletion-controls" style="display: none;">
   <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -95,294 +86,72 @@
   </button>
 </div>
 
-<script>
-
-
-
-function initalizeIssueCompletion() {
-
-  // Prevent multiple initialization by checking if already processed
-  if (window.aiHelperAutoCompletionInitialized) {
-    return;
+<div id="ai-helper-issue-typo-overlay" data-config='<%= {
+  endpoint: ai_helper_check_typos_path(project),
+  labels: {
+    suggestionsTitle: t('ai_helper.typo_check.suggestions_title'),
+    noSuggestions: t('ai_helper.typo_check.no_suggestions'),
+    checkButton: t('ai_helper.typo_check.check_button'),
+    checking: t('ai_helper.typo_check.checking'),
+    acceptSuggestion: t('ai_helper.typo_check.accept_suggestion'),
+    dismissSuggestion: t('ai_helper.typo_check.dismiss_suggestion'),
+    acceptAll: t('ai_helper.typo_check.accept_all'),
+    dismissAll: t('ai_helper.typo_check.dismiss_all'),
+    errorOccurred: t('ai_helper.typo_check.error_occurred'),
+    correctionTooltip: t('ai_helper.typo_check.correction_tooltip'),
+    applyFailed: t('ai_helper.typo_check.apply_failed')
   }
+}.to_json %>'></div>
 
+<div id="ai-helper-issue-textarea-overlay"
+     data-config='<%= {
+       descriptionEndpoint: ai_helper_suggest_completion_path(id: (@issue&.project&.id || @project&.id), issue_id: (@issue&.persisted? ? @issue.id : 'new')),
+       userId: User.current.id,
+       isPersistedIssue: (@issue&.persisted? && !@issue.new_record?),
+       issueId: @issue&.id,
+       projectId: project&.id,
+       debounceDelay: autocompletion_config[:debounce_delay] || 500,
+       minLength: autocompletion_config[:min_length] || 5,
+       suggestionColor: autocompletion_config[:suggestion_color] || '#888888',
+       duplicateCheckEndpoint: ai_helper_check_duplicates_path(id: project.id),
+       notesEndpoint: @issue&.persisted? ? ai_helper_suggest_completion_path(id: @issue.project.id, issue_id: @issue.id) : '#',
+       labels: {
+         commonToggleLabel: t('ai_helper.autocompletion.common_toggle_label'),
+         loading: t('ai_helper.autocompletion.loading'),
+         noSuggestions: t('ai_helper.autocompletion.no_suggestions'),
+         acceptSuggestion: t('ai_helper.autocompletion.accept_suggestion'),
+         dismiss: t('ai_helper.autocompletion.dismiss'),
+         enabledTooltip: t('ai_helper.autocompletion.enabled_tooltip'),
+         disabledTooltip: t('ai_helper.autocompletion.disabled_tooltip'),
+         noteEnabledTooltip: t('ai_helper.autocompletion.note_enabled_tooltip'),
+         noteDisabledTooltip: t('ai_helper.autocompletion.note_disabled_tooltip')
+       },
+       duplicateCheckLabels: {
+         emptyContent: t('ai_helper.duplicate_check.empty_content')
+       }
+     }.to_json %>'
 
-  // Find ticket description and notes textarea elements
-  const descriptionTextarea = document.getElementById('issue_description');
-  const notesTextarea = document.getElementById('issue_notes');
-
-
-  // Load validated configuration; nil means "use the default below"
-  <% autocompletion_config = RedmineAiHelper::Util::ConfigFile.autocompletion_settings %>
-  const config = {
-    debounce_delay: <%= autocompletion_config[:debounce_delay] || 500 %>,
-    min_length: <%= autocompletion_config[:min_length] || 5 %>,
-    suggestion_color: '<%= autocompletion_config[:suggestion_color] || '#888888' %>'
-  };
-
-  // Initialize autocompletion for description field
-  if (descriptionTextarea && typeof AiHelperAutoCompletion !== 'undefined') {
-
-    const autoCompletion = new AiHelperAutoCompletion(descriptionTextarea, {
-      contextType: 'description',
-      endpoint: '<%= ai_helper_suggest_completion_path(id: (@issue&.project&.id || @project&.id), issue_id: (@issue&.persisted? ? @issue.id : 'new')) %>',
-      userId: '<%= User.current.id %>',
-      debounceDelay: config.debounce_delay,
-      minLength: config.min_length,
-      suggestionColor: config.suggestion_color,
-      // I18n labels
-      labels: {
-        commonToggleLabel: '<%= t('ai_helper.autocompletion.common_toggle_label') %>',
-        loading: '<%= t('ai_helper.autocompletion.loading') %>',
-        noSuggestions: '<%= t('ai_helper.autocompletion.no_suggestions') %>',
-        acceptSuggestion: '<%= t('ai_helper.autocompletion.accept_suggestion') %>',
-        dismiss: '<%= t('ai_helper.autocompletion.dismiss') %>',
-        enabledTooltip: '<%= t('ai_helper.autocompletion.enabled_tooltip') %>',
-        disabledTooltip: '<%= t('ai_helper.autocompletion.disabled_tooltip') %>'
-      }
-    });
-
-    autoCompletion.init();
-
-    // Move the description checkbox to below the description textarea
-
-    const descriptionContainer = document.getElementById('ai-helper-description-checkbox-container');
-
-    if (descriptionContainer && descriptionTextarea) {
-      const parent = descriptionTextarea.parentNode;
-      const nextSibling = descriptionTextarea.nextSibling;
-      if (nextSibling) {
-        parent.insertBefore(descriptionContainer, nextSibling);
-      } else {
-        parent.appendChild(descriptionContainer);
-      }
-      descriptionContainer.style.display = 'block';
-    }
-
-
-    // Store reference globally for potential updates
-    if (!window.aiHelperInstances) {
-      window.aiHelperInstances = {};
-    }
-    window.aiHelperInstances.autoCompletion = autoCompletion;
-  }
-
-  // Initialize duplicate check for new issues
-  const duplicateCheckContainer = document.getElementById('ai-helper-duplicate-check-container');
-  if (duplicateCheckContainer && descriptionTextarea) {
-    // Move the duplicate check container below the description checkbox container
-    const descriptionContainer = document.getElementById('ai-helper-description-checkbox-container');
-    if (descriptionContainer && descriptionContainer.parentNode) {
-      descriptionContainer.parentNode.insertBefore(duplicateCheckContainer, descriptionContainer.nextSibling);
-    }
-    duplicateCheckContainer.style.display = 'block';
-
-    // Initialize duplicate check functionality
-    const duplicateCheckBtn = document.getElementById('ai-helper-duplicate-check-btn');
-    const duplicateCheckResults = document.getElementById('ai-helper-duplicate-check-results');
-    const duplicateCheckLoading = document.getElementById('ai-helper-duplicate-check-loading');
-    const subjectInput = document.getElementById('issue_subject');
-
-    if (duplicateCheckBtn) {
-      duplicateCheckBtn.addEventListener('click', async function() {
-        const subject = subjectInput ? subjectInput.value : '';
-        const description = descriptionTextarea ? descriptionTextarea.value : '';
-
-        if (!subject.trim() && !description.trim()) {
-          alert('<%= j t('ai_helper.duplicate_check.empty_content') %>');
-          return;
-        }
-
-        // Show loading, hide results
-        duplicateCheckLoading.style.display = 'flex';
-        duplicateCheckResults.style.display = 'none';
-        duplicateCheckBtn.classList.add('disabled');
-
-        try {
-          const response = await fetch('<%= ai_helper_check_duplicates_path(id: project.id) %>', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
-            },
-            body: JSON.stringify({
-              subject: subject,
-              description: description
-            })
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Unknown error');
-          }
-
-          const html = await response.text();
-          duplicateCheckResults.innerHTML = html;
-          duplicateCheckResults.style.display = 'block';
-        } catch (error) {
-          console.error('Duplicate check error:', error);
-          duplicateCheckResults.innerHTML = '';
-          const errorParagraph = document.createElement('p');
-          errorParagraph.className = 'ai-helper-error';
-          errorParagraph.textContent = error.message;
-          duplicateCheckResults.appendChild(errorParagraph);
-          duplicateCheckResults.style.display = 'block';
-        } finally {
-          duplicateCheckLoading.style.display = 'none';
-          duplicateCheckBtn.classList.remove('disabled');
-        }
-      });
-    }
-  }
-
-  // Initialize autocompletion for notes field (only for existing issues, not for new issue creation)
-  if (notesTextarea && typeof AiHelperAutoCompletion !== 'undefined' && <%= (@issue&.persisted? && !@issue.new_record?) ? 'true' : 'false' %>) {
-
-    const notesAutoCompletion = new AiHelperAutoCompletion(notesTextarea, {
-      contextType: 'note',
-      endpoint: '<%= @issue&.persisted? ? ai_helper_suggest_completion_path(id: @issue.project.id, issue_id: @issue.id) : '#' %>',
-      userId: '<%= User.current.id %>',
-      debounceDelay: config.debounce_delay,
-      minLength: config.min_length,
-      suggestionColor: config.suggestion_color,
-      issueId: '<%= @issue&.id %>',
-      projectId: '<%= project&.id %>',
-      // I18n labels
-      labels: {
-        commonToggleLabel: '<%= t('ai_helper.autocompletion.common_toggle_label') %>',
-        loading: '<%= t('ai_helper.autocompletion.loading') %>',
-        noSuggestions: '<%= t('ai_helper.autocompletion.no_suggestions') %>',
-        acceptSuggestion: '<%= t('ai_helper.autocompletion.accept_suggestion') %>',
-        dismiss: '<%= t('ai_helper.autocompletion.dismiss') %>',
-        enabledTooltip: '<%= t('ai_helper.autocompletion.note_enabled_tooltip') %>',
-        disabledTooltip: '<%= t('ai_helper.autocompletion.note_disabled_tooltip') %>'
-      }
-    });
-
-    notesAutoCompletion.init();
-
-    // Move the notes checkbox to right below the notes textarea
-
-    const notesContainer = document.getElementById('ai-helper-notes-checkbox-container');
-
-    if (notesContainer && notesTextarea) {
-      const parent = notesTextarea.parentNode;
-      const nextSibling = notesTextarea.nextSibling;
-
-      if (nextSibling) {
-        parent.insertBefore(notesContainer, nextSibling);
-      } else {
-        parent.appendChild(notesContainer);
-      }
-      notesContainer.style.display = 'block';
-    }
-
-
-    // Store reference globally for potential updates
-    if (!window.aiHelperInstances) {
-      window.aiHelperInstances = {};
-    }
-    window.aiHelperInstances.notesAutoCompletion = notesAutoCompletion;
-  }
-
-}
-
-// Initialize typo checking with direct button binding
-function initializeIssueTypoChecker() {
-  const issueDescTextarea = document.getElementById('issue_description');
-  const issueNotesTextarea = document.getElementById('issue_notes');
-  const descButton = document.getElementById('ai-helper-typo-check-description-btn');
-  const notesButton = document.getElementById('ai-helper-typo-check-notes-btn');
-
-  if (typeof AiHelperTypoChecker !== 'undefined') {
-    if (issueDescTextarea && descButton) {
-      const descTypoChecker = new AiHelperTypoChecker(issueDescTextarea, {
-        endpoint: '<%= ai_helper_check_typos_path(project) %>',
+      data-assignment-config='<%= {
+        endpoint: ai_helper_suggest_assignees_path(id: (project&.id), issue_id: (@issue&.persisted? ? @issue.id : 'new')),
+        robotIconHtml: j(sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper)),
         labels: {
-          suggestionsTitle: '<%= t('ai_helper.typo_check.suggestions_title') %>',
-          noSuggestions: '<%= t('ai_helper.typo_check.no_suggestions') %>',
-          checkButton: '<%= t('ai_helper.typo_check.check_button') %>',
-          checking: '<%= t('ai_helper.typo_check.checking') %>',
-          acceptSuggestion: '<%= t('ai_helper.typo_check.accept_suggestion') %>',
-          dismissSuggestion: '<%= t('ai_helper.typo_check.dismiss_suggestion') %>',
-          acceptAll: '<%= t('ai_helper.typo_check.accept_all') %>',
-          dismissAll: '<%= t('ai_helper.typo_check.dismiss_all') %>',
-          errorOccurred: '<%= t('ai_helper.typo_check.error_occurred') %>',
-          correctionTooltip: '<%= t('ai_helper.typo_check.correction_tooltip') %>',
-          applyFailed: '<%= t('ai_helper.typo_check.apply_failed') %>'
+          linkLabel: j(t('ai_helper.assignment_suggestion.link_label')),
+          loading: j(t('ai_helper.assignment_suggestion.loading')),
+          close: j(t('ai_helper.assignment_suggestion.close')),
+          noSuggestions: j(t('ai_helper.assignment_suggestion.no_suggestions')),
+          error: j(t('ai_helper.assignment_suggestion.error')),
+          emptyContent: j(t('ai_helper.assignment_suggestion.empty_content')),
+          historyTitle: j(t('ai_helper.assignment_suggestion.history_based.title')),
+          historyScore: j(t('ai_helper.assignment_suggestion.history_based.score')),
+          historySimilarCount: j(t('ai_helper.assignment_suggestion.history_based.similar_count')),
+          workloadTitle: j(t('ai_helper.assignment_suggestion.workload_based.title')),
+          workloadOpenIssues: j(t('ai_helper.assignment_suggestion.workload_based.open_issues')),
+          workloadUnit: j(t('ai_helper.assignment_suggestion.workload_based.issues_unit')),
+          instructionTitle: j(t('ai_helper.assignment_suggestion.instruction_based.title')),
+          instructionReason: j(t('ai_helper.assignment_suggestion.instruction_based.reason'))
         }
-      });
-      descTypoChecker.init();
+     }.to_json %>'></div>
 
-      // Bind existing button directly
-      descButton.addEventListener('click', () => {
-        descTypoChecker.checkTypos();
-      });
-    }
-
-    if (issueNotesTextarea && notesButton) {
-      const notesTypoChecker = new AiHelperTypoChecker(issueNotesTextarea, {
-        endpoint: '<%= ai_helper_check_typos_path(project) %>',
-        labels: {
-          suggestionsTitle: '<%= t('ai_helper.typo_check.suggestions_title') %>',
-          noSuggestions: '<%= t('ai_helper.typo_check.no_suggestions') %>',
-          checkButton: '<%= t('ai_helper.typo_check.check_button') %>',
-          checking: '<%= t('ai_helper.typo_check.checking') %>',
-          acceptSuggestion: '<%= t('ai_helper.typo_check.accept_suggestion') %>',
-          dismissSuggestion: '<%= t('ai_helper.typo_check.dismiss_suggestion') %>',
-          acceptAll: '<%= t('ai_helper.typo_check.accept_all') %>',
-          dismissAll: '<%= t('ai_helper.typo_check.dismiss_all') %>',
-          errorOccurred: '<%= t('ai_helper.typo_check.error_occurred') %>',
-          correctionTooltip: '<%= t('ai_helper.typo_check.correction_tooltip') %>',
-          applyFailed: '<%= t('ai_helper.typo_check.apply_failed') %>'
-        }
-      });
-      notesTypoChecker.init();
-
-      // Bind existing button directly
-      notesButton.addEventListener('click', () => {
-        notesTypoChecker.checkTypos();
-      });
-    }
-  }
-}
-
-// Initialize assignment suggestion
-function initializeAssignmentSuggestion() {
-  if (typeof AiHelperAssignmentSuggestion === 'undefined') return;
-  const assignedToSelect = document.getElementById('issue_assigned_to_id');
-  if (!assignedToSelect) return;
-
-  const suggestion = new AiHelperAssignmentSuggestion({
-    endpoint: '<%= ai_helper_suggest_assignees_path(id: (project&.id), issue_id: (@issue&.persisted? ? @issue.id : 'new')) %>',
-    robotIconHtml: '<%= j sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>',
-    labels: {
-      linkLabel: '<%= j t('ai_helper.assignment_suggestion.link_label') %>',
-      loading: '<%= j t('ai_helper.assignment_suggestion.loading') %>',
-      close: '<%= j t('ai_helper.assignment_suggestion.close') %>',
-      noSuggestions: '<%= j t('ai_helper.assignment_suggestion.no_suggestions') %>',
-      error: '<%= j t('ai_helper.assignment_suggestion.error') %>',
-      emptyContent: '<%= j t('ai_helper.assignment_suggestion.empty_content') %>',
-      historyTitle: '<%= j t('ai_helper.assignment_suggestion.history_based.title') %>',
-      historyScore: '<%= j t('ai_helper.assignment_suggestion.history_based.score') %>',
-      historySimilarCount: '<%= j t('ai_helper.assignment_suggestion.history_based.similar_count') %>',
-      workloadTitle: '<%= j t('ai_helper.assignment_suggestion.workload_based.title') %>',
-      workloadOpenIssues: '<%= j t('ai_helper.assignment_suggestion.workload_based.open_issues') %>',
-      workloadUnit: '<%= j t('ai_helper.assignment_suggestion.workload_based.issues_unit') %>',
-      instructionTitle: '<%= j t('ai_helper.assignment_suggestion.instruction_based.title') %>',
-      instructionReason: '<%= j t('ai_helper.assignment_suggestion.instruction_based.reason') %>',
-    }
-  });
-  suggestion.init();
-}
-
-setTimeout( function() {
-  initalizeIssueCompletion();
-  initializeIssueTypoChecker();
-  initializeAssignmentSuggestion();
-}, 500); // Delay to ensure DOM is fully loaded
-
-</script>
 <% else %>
 <!-- AI Helper auto-completion not available (project module disabled or insufficient permissions) -->
 <% end %>

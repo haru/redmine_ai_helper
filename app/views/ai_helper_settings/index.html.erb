@@ -1,155 +1,25 @@
 <% content_for :header_tags do %>
   <%= stylesheet_link_tag('ai_helper.css', plugin: :redmine_ai_helper) %>
   <%= javascript_include_tag('ai_helper_chat_settings.js', plugin: :redmine_ai_helper) %>
+  <%= javascript_include_tag('ai_helper_settings.js', plugin: :redmine_ai_helper) %>
+  <%= javascript_include_tag('ai_helper_model_profile.js', plugin: :redmine_ai_helper) %>
 <% end %>
 <h2><%= t(:label_ai_helper) %></h2>
+<div id="ai-helper-settings-index" data-config='<%= {
+  modelProfilesPath: ai_helper_model_profiles_path,
+  compatibleType: RedmineAiHelper::LlmProvider::LLM_OPENAI_COMPATIBLE,
+  azureType: RedmineAiHelper::LlmProvider::LLM_AZURE_OPENAI,
+  userIdSupportedTypes: [
+    RedmineAiHelper::LlmProvider::LLM_OPENAI,
+    RedmineAiHelper::LlmProvider::LLM_OPENAI_COMPATIBLE,
+    RedmineAiHelper::LlmProvider::LLM_AZURE_OPENAI
+  ]
+}.to_json %>'>
 <%= labelled_form_for @setting, url: ai_helper_setting_update_url, method: :post do |f| %>
   <%= error_messages_for(@setting, *(@chat_adapter_settings&.values || [])) %>
   <%= hidden_field_tag :tab, @selected_tab %>
   <%= render_tabs ai_helper_settings_tabs(f), @selected_tab %>
   <%= f.submit t(:button_submit) %>
 <% end %>
-<script>
-  (function() {
-    const tabHidden = document.querySelector('input[name="tab"]');
-    const tabLinks = document.querySelectorAll('.tabs a[id^="tab-"]');
-    tabLinks.forEach(function(link) {
-      link.addEventListener('click', function() {
-        const name = this.id.replace('tab-', '');
-        if (tabHidden) { tabHidden.value = name; }
-      });
-    });
-  })();
-</script>
-<script>
-  function loadModelProfile(id) {
-      $.ajax({
-          url: '<%= ai_helper_model_profiles_path%>/' + id,
-          type: 'GET',
-          success: function(data) {
-              $('#ai_helper_model_profile_description').html(data);
-              modelTypeChanged();
-          },
-          error: function() {
-              $('#ai_helper_model_profile_description').html('error');
-          }
-      });
-  }
-
-  function setModelProfile() {
-      var selectedId = $('#ai_helper_setting_model_profile_id').val();
-      if (selectedId) {
-          loadModelProfile(selectedId);
-
-      } else {
-          $('#ai_helper_model_profile_description').html('');
-      }
-  }
-
-  function setThinkModelVisible() {
-      const thinkEnabled = document.getElementById('ai_helper_setting_use_think_model').checked;
-      const settingsDiv = document.getElementById('ai-helper-think-model-settings');
-      settingsDiv.style.display = thinkEnabled ? '' : 'none';
-  }
-
-  function setAttachmentSettingsVisible() {
-      const attachmentEnabled = document.getElementById('ai_helper_setting_attachment_send_enabled').checked;
-      const settingsDiv = document.getElementById('ai-helper-attachment-settings');
-      settingsDiv.style.display = attachmentEnabled ? '' : 'none';
-  }
-
-  function setVectorSearchVisible() {
-      var vectorSearchEnabled = $('#ai_helper_setting_vector_search_enabled').is(':checked');
-      if (vectorSearchEnabled) {
-          $('#ai-helper-vector-search').show();
-      } else {
-          $('#ai-helper-vector-search').hide();
-      }
-      setVectorModelProfileToggleVisible();
-  }
-
-  function setVectorTargetProjectsVisible() {
-      const registerAll = document.getElementById('ai_helper_setting_vector_register_all_projects');
-      const container = document.getElementById('ai-helper-vector-target-projects');
-      if (!registerAll || !container) return;
-      container.style.display = registerAll.checked ? 'none' : '';
-  }
-
-  function setVectorModelProfileVisible() {
-      const enabled = document.getElementById('ai_helper_setting_use_vector_model_profile').checked;
-      const settingsDiv = document.getElementById('ai-helper-vector-model-profile-settings');
-      settingsDiv.style.display = enabled ? '' : 'none';
-  }
-
-  function setVectorModelProfileToggleVisible() {
-      const vectorSearchEnabled = document.getElementById('ai_helper_setting_vector_search_enabled').checked;
-      const toggleRow = document.getElementById('ai_helper_setting_use_vector_model_profile');
-      if (toggleRow) {
-          const parentP = toggleRow.closest('p');
-          if (parentP) {
-              parentP.style.display = vectorSearchEnabled ? '' : 'none';
-          }
-          if (!vectorSearchEnabled) {
-              const settingsDiv = document.getElementById('ai-helper-vector-model-profile-settings');
-              if (settingsDiv) settingsDiv.style.display = 'none';
-          } else {
-              setVectorModelProfileVisible();
-          }
-      }
-  }
-
-  const USER_ID_SUPPORTED_TYPES = [
-      '<%= RedmineAiHelper::LlmProvider::LLM_OPENAI %>',
-      '<%= RedmineAiHelper::LlmProvider::LLM_OPENAI_COMPATIBLE %>',
-      '<%= RedmineAiHelper::LlmProvider::LLM_AZURE_OPENAI %>'
-  ];
-
-  function setSendUserIdVisible() {
-      const modelType = $('#ai_helper_model_type').text();
-      const supported = modelType !== '' && USER_ID_SUPPORTED_TYPES.includes(modelType);
-      $('#ai-helper-send-user-id').toggle(supported);
-  }
-
-  function modelTypeChanged() {
-      var modelType = $('#ai_helper_model_type').text();
-      if (modelType === '<%= RedmineAiHelper::LlmProvider::LLM_OPENAI_COMPATIBLE %>') {
-          $('#ai_helper_dimension').show();
-      } else {
-          $('#ai_helper_dimension').hide();
-      }
-      if (modelType === '<%= RedmineAiHelper::LlmProvider::LLM_AZURE_OPENAI %>') {
-          $('#ai_helper_embedding_url').show();
-      } else {
-          $('#ai_helper_embedding_url').hide();
-      }
-      setSendUserIdVisible();
-  }
-
-
-  $(document).ready(function() {
-      $('#ai_helper_setting_model_profile_id').change(function() {
-          setModelProfile();
-      });
-      document.getElementById('ai_helper_setting_use_think_model').addEventListener('change', function() {
-          setThinkModelVisible();
-      });
-      document.getElementById('ai_helper_setting_attachment_send_enabled').addEventListener('change', function() {
-          setAttachmentSettingsVisible();
-      });
-      $('#ai_helper_setting_vector_search_enabled').change(function() {
-          setVectorSearchVisible();
-      });
-      document.getElementById('ai_helper_setting_vector_register_all_projects').addEventListener('change', function() {
-          setVectorTargetProjectsVisible();
-      });
-      document.getElementById('ai_helper_setting_use_vector_model_profile').addEventListener('change', function() {
-          setVectorModelProfileVisible();
-      });
-  });
-  setModelProfile();
-  setThinkModelVisible();
-  setAttachmentSettingsVisible();
-  setVectorSearchVisible();
-  setVectorTargetProjectsVisible();
-  setSendUserIdVisible();
-</script>
+</div>
+<script>initAiHelperSettingsPage();</script>

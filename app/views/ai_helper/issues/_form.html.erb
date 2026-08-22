@@ -1,38 +1,11 @@
 <% if RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: @project, permission: { controller: :ai_helper, action: :chat_form }) and AiHelperSetting.find_or_create.model_profile %>
-<script>
-    // Function to toggle the open/closed state of a fieldset
-    // flag: true to expand, false to collapse
-    function aiHelperSetReplyExpanded(flag) {
-        const fieldset = document.getElementById('ai-helper-reply-fields');
-        const legend = fieldset.querySelector('legend');
-        isOpen = !fieldset.classList.contains('collapsed');
-        if (isOpen !== flag) {
-            toggleFieldset(legend);
-        }
-    };
-
-    // Function to save the open/closed state of the fieldset
-    function aiHelperSaveReplyState() {
-        const fieldset = document.getElementById('ai-helper-reply-fields');
-        const isOpen = !fieldset.classList.contains('collapsed');
-        const state = { replyExpanded: isOpen };
-        localStorage.setItem('aiHelperReplyState_<%= User.current.id %>', JSON.stringify(state));
-    }
-
-    // Load the saved state from localStorage when the page loads
-    document.addEventListener('DOMContentLoaded', function() {
-        const state = localStorage.getItem('aiHelperReplyState_<%= User.current.id %>');
-        if (state) {
-            const parsedState = JSON.parse(state);
-            if (parsedState.replyExpanded) {
-                aiHelperSetReplyExpanded(true);
-            } else {
-                aiHelperSetReplyExpanded(false);
-            }
-        }
-    });
-</script>
-<fieldset id="ai-helper-reply-fields" class="collapsible collapsed">
+<fieldset id="ai-helper-reply-fields" class="collapsible collapsed" data-config='<%= {
+  userId: User.current.id,
+  generateReplyUrl: ai_helper_generate_issue_reply_path(id: @issue.id),
+  errorMessage: l(:error_occurred),
+  applyLabel: l(:button_apply),
+  copyIconHtml: sprite_icon("copy-link", l(:button_copy))
+}.to_json %>'
     <legend onclick="toggleFieldset(this);aiHelperSaveReplyState();" class="icon icon-collapsed">
     <%= sprite_icon("angle-right") %>
     <strong>
@@ -55,19 +28,5 @@
 
     </div>
 </fieldset>
-
-<script>
-    function ai_helper_generate_reply(issue_id) {
-        const instructions = document.getElementById("ai-helper-reply-instructions").value;
-        ai_helper.generateReplyStream(
-            "<%= ai_helper_generate_issue_reply_path(id: @issue.id)%>",
-            instructions,
-            '<%= j l(:error_occurred) %>',
-            '<%= j l(:button_apply) %>',
-            '<%= j sprite_icon("copy-link", l(:button_copy)) %>'
-        );
-    };
-</script>
-
 
 <% end %>

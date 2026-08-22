@@ -1,3 +1,7 @@
 <h2><%= l('ai_helper.custom_commands.label.new') %></h2>
 
 <%= render partial: 'form' %>
+
+<% content_for :header_tags do %>
+  <%= javascript_include_tag('ai_helper_custom_commands.js', plugin: :redmine_ai_helper) %>
+<% end %>

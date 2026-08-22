@@ -8,33 +8,4 @@
 <%= render partial: 'ai_helper/issues/subissues/index', locals: {issue: @issue} %>
 </div>
 
-<script>
-    // Function to show the subissuer generator area
-    function showSubissuerGenerator() {
-        const generatorArea = document.getElementById('ai-helper-subissuer-generator-area');
-        if (generatorArea) {
-            generatorArea.style.display = generatorArea.style.display === 'none' ? 'block' : 'none';
-        }
-    }
-    // Add span#ai-helper-subissuer-generator-menu as the first child of div#issue_tree > div.contextual
-    document.addEventListener('DOMContentLoaded', function() {
-        const contextualDiv = document.querySelector('#issue_tree > div.contextual');
-        if (contextualDiv) {
-            const menuSpan = document.getElementById('ai-helper-subissuer-generator-menu');
-            if (menuSpan) {
-                // Insert the menuSpan as the first child for i18n support
-                contextualDiv.insertBefore(menuSpan, contextualDiv.firstChild);
-            }
-        }
-
-        const issueTreeDiv = document.getElementById('issue_tree');
-        if (issueTreeDiv) {
-            const generatorArea = document.getElementById('ai-helper-subissuer-generator-area');
-            if (generatorArea) {
-                issueTreeDiv.appendChild(generatorArea);
-                generatorArea.style.display = 'none';
-            }
-        }
-    });
-</script>
 <% end %>

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadScript } from "./support/load_script.js";
+import { loadScriptAndFireDOMContentLoaded } from "./support/dom_content_loaded.js";
 
 // ai_helper_sub_issues.js is an IIFE with no window-exposed API; it wires up
 // DOM event listeners and a MutationObserver on load. We drive it purely
@@ -198,5 +199,146 @@ describe("ai_helper_sub_issues (IIFE)", () => {
     stubFetch(async () => ({ ok: true, json: async () => [] }));
 
     await expect(load()).resolves.toBeUndefined();
+  });
+});
+
+// T041: characterization tests for issues/subissues/_index.html.erb (T030)
+// and issues/subissues/_description_bottom.html.erb (T031) extraction.
+
+describe("aiHelperGenerateSubIssues (window-exposed, from subissues/_index.html.erb)", () => {
+  let wrapper;
+  let resultContainer;
+  let instructionsField;
+  let meta;
+
+  beforeEach(async () => {
+    wrapper = document.createElement("div");
+    wrapper.id = "ai-helper-subissues-index";
+    wrapper.dataset.config = JSON.stringify({ generateUrl: "/issues/5/ai_helper/subissue_gen" });
+    document.body.appendChild(wrapper);
+
+    resultContainer = document.createElement("div");
+    resultContainer.id = "ai-helper-generated-subissues";
+    document.body.appendChild(resultContainer);
+
+    instructionsField = document.createElement("textarea");
+    instructionsField.id = "ai_helper_subissues_instructions";
+    instructionsField.value = "split by component";
+    document.body.appendChild(instructionsField);
+
+    meta = document.createElement("meta");
+    meta.name = "csrf-token";
+    meta.content = "test-csrf-token";
+    document.head.appendChild(meta);
+
+    await loadScript("assets/javascripts/ai_helper_sub_issues");
+  });
+
+  afterEach(() => {
+    wrapper.remove();
+    resultContainer.remove();
+    instructionsField.remove();
+    meta.remove();
+    vi.unstubAllGlobals();
+    delete window.aiHelperGenerateSubIssues;
+  });
+
+  it("shows a loader, then POSTs the instructions with CSRF token and renders the response", async () => {
+    let capturedUrl;
+    let capturedOptions;
+    const fetchMock = vi.fn((url, options) => {
+      capturedUrl = url;
+      capturedOptions = options;
+      expect(resultContainer.innerHTML).toContain("ai-helper-loader");
+      return Promise.resolve({ text: () => Promise.resolve("<p>drafted</p>") });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    window.aiHelperGenerateSubIssues(5);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(capturedUrl).toBe("/issues/5/ai_helper/subissue_gen");
+    expect(capturedOptions.method).toBe("POST");
+    expect(capturedOptions.headers["X-CSRF-Token"]).toBe("test-csrf-token");
+    expect(JSON.parse(capturedOptions.body)).toEqual({ instructions: "split by component" });
+    expect(resultContainer.innerHTML).toBe("<p>drafted</p>");
+  });
+
+  it("shows an error message when the request fails", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("network down"))));
+
+    window.aiHelperGenerateSubIssues(5);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(resultContainer.innerHTML).toBe("<p>Error generating sub issues. Please try again later.</p>");
+    expect(errorSpy).toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+});
+
+describe("showSubissuerGenerator and menu/area relocation (window-exposed, from subissues/_description_bottom.html.erb)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete window.showSubissuerGenerator;
+  });
+
+  it("toggles the generator area's display between 'none' and 'block'", async () => {
+    const generatorArea = document.createElement("div");
+    generatorArea.id = "ai-helper-subissuer-generator-area";
+    generatorArea.style.display = "none";
+    document.body.appendChild(generatorArea);
+
+    await loadScript("assets/javascripts/ai_helper_sub_issues");
+    window.showSubissuerGenerator();
+    expect(generatorArea.style.display).toBe("block");
+
+    window.showSubissuerGenerator();
+    expect(generatorArea.style.display).toBe("none");
+
+    generatorArea.remove();
+  });
+
+  it("moves the generator menu span to be the first child of #issue_tree > .contextual, and relocates the generator area into #issue_tree (hidden)", async () => {
+    const issueTree = document.createElement("div");
+    issueTree.id = "issue_tree";
+    const contextual = document.createElement("div");
+    contextual.className = "contextual";
+    const existingChild = document.createElement("span");
+    contextual.appendChild(existingChild);
+    issueTree.appendChild(contextual);
+    document.body.appendChild(issueTree);
+
+    const menuSpan = document.createElement("span");
+    menuSpan.id = "ai-helper-subissuer-generator-menu";
+    document.body.appendChild(menuSpan);
+
+    const generatorArea = document.createElement("div");
+    generatorArea.id = "ai-helper-subissuer-generator-area";
+    generatorArea.style.display = "block";
+    document.body.appendChild(generatorArea);
+
+    const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_sub_issues");
+
+    expect(contextual.firstChild).toBe(menuSpan);
+    expect(issueTree.contains(generatorArea)).toBe(true);
+    expect(generatorArea.style.display).toBe("none");
+
+    cleanup.removeRegisteredListeners();
+    issueTree.remove();
+    menuSpan.remove();
+    generatorArea.remove();
+  });
+
+  it("does nothing when #issue_tree > .contextual is absent", async () => {
+    const menuSpan = document.createElement("span");
+    menuSpan.id = "ai-helper-subissuer-generator-menu";
+    document.body.appendChild(menuSpan);
+
+    const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_sub_issues");
+
+    expect(document.body.contains(menuSpan)).toBe(true);
+    cleanup.removeRegisteredListeners();
+    menuSpan.remove();
   });
 });

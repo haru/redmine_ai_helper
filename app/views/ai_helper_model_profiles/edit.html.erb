@@ -1,3 +1,6 @@
+<% content_for :header_tags do %>
+  <%= javascript_include_tag('ai_helper_model_profile.js', plugin: :redmine_ai_helper) %>
+<% end %>
 <% html_title l('ai_helper.model_profiles.edit_profile_title')%>
 <h2><%= l('ai_helper.model_profiles.edit_profile_title') %></h2>
 <%= labelled_form_for @model_profile, url: ai_helper_model_profiles_update_path(id: @model_profile), method: :post, html: {autocomplete: "off"} do |f| %>

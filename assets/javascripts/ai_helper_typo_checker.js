@@ -1055,3 +1055,36 @@ class AiHelperTypoChecker {
 }
 
 window.AiHelperTypoChecker = AiHelperTypoChecker;
+
+/**
+ * Factory: create and init a typo checker from a container element's data-config.
+ * Also binds a check button if its ID matches the textarea-to-button map.
+ *
+ * @param {HTMLElement} container - Element with data-config (JSON: {endpoint, labels})
+ * @param {string} textareaId - ID of the target textarea
+ * @param {string} [buttonId] - If provided, bind the button's click to checkTypos()
+ * @returns {AiHelperTypoChecker|null}
+ */
+AiHelperTypoChecker.initFromConfig = function(container, textareaId, buttonId) {
+  if (!container) return null;
+  const textarea = document.getElementById(textareaId);
+  if (!textarea || typeof AiHelperTypoChecker === 'undefined') return null;
+
+  const config = JSON.parse(container.dataset.config || '{}');
+  const checker = new AiHelperTypoChecker(textarea, {
+    endpoint: config.endpoint,
+    labels: config.labels
+  });
+  checker.init();
+
+  if (buttonId) {
+    const button = document.getElementById(buttonId);
+    if (button) {
+      button.addEventListener('click', () => {
+        checker.checkTypos();
+      });
+    }
+  }
+
+  return checker;
+};
