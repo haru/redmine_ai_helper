@@ -118,10 +118,10 @@ function createCompletion(textarea, options = {}) {
  * @returns {{calls: Array, restore: Function}} calls have {url, options, resolve, reject}
  */
 function installFetchStub() {
-  const originalFetch = global.fetch;
+  const originalFetch = globalThis.fetch;
   const calls = [];
 
-  global.fetch = function (url, options) {
+  globalThis.fetch = function (url, options) {
     const call = { url: url, options: options, resolve: null, reject: null };
     call.promise = new Promise((resolve, reject) => {
       call.resolve = (data) => resolve({ ok: true, status: 200, json: () => Promise.resolve(data) });
@@ -133,7 +133,7 @@ function installFetchStub() {
 
   return {
     calls: calls,
-    restore: () => { global.fetch = originalFetch; }
+    restore: () => { globalThis.fetch = originalFetch; }
   };
 }
 
@@ -142,10 +142,10 @@ function installFetchStub() {
  * Each created instance is recorded in the returned `instances` array.
  */
 function installAbortControllerSpy() {
-  const OriginalAbortController = global.AbortController;
+  const OriginalAbortController = globalThis.AbortController;
   const instances = [];
 
-  global.AbortController = class SpyAbortController extends OriginalAbortController {
+  globalThis.AbortController = class SpyAbortController extends OriginalAbortController {
     constructor() {
       super();
       this.abortCallCount = 0;
@@ -160,7 +160,7 @@ function installAbortControllerSpy() {
 
   return {
     instances: instances,
-    restore: () => { global.AbortController = OriginalAbortController; }
+    restore: () => { globalThis.AbortController = OriginalAbortController; }
   };
 }
 

@@ -94,12 +94,14 @@ which intentionally differ and must not change (S021). `wiki_min_length` falls
 back to `min_length` when it is unset, so an installation that only sets
 `min_length` gets that threshold in the wiki editor too (S021).
 
-`ConfigFile` itself treats an unparseable YAML file as `{}` with a warning, so
-the edit screen still renders — but in practice a syntax error stops the instance
-from booting, because `init.rb` builds `CustomLogger` at boot and that reads the
-same file without a rescue (S021). Reporting the problem cannot depend on the
-plugin logger for the same reason, which is why `ai_helper_logger` falls back to
-`Rails.logger` (ADR-020).
+`ConfigFile.autocompletion_settings` treats an unparseable YAML file as `{}`
+with a warning, so the edit screen still renders — `load_config` itself has no
+such rescue and raises on invalid YAML or a non-Hash root. In practice a syntax
+error still stops the instance from booting, because `init.rb` builds
+`CustomLogger` at boot and that reads the same file through `load_config`
+(S021). Reporting the problem cannot depend on the plugin logger for the same
+reason, which is why `ai_helper_logger` falls back to `Rails.logger`
+(ADR-020).
 
 ## Related
 
