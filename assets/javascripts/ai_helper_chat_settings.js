@@ -201,3 +201,8 @@ function setupHelpDialogDragging() {
 
 window.setupDatalistHandlers = setupDatalistHandlers;
 window.setupBindingFormIsolation = setupBindingFormIsolation;
+window.setAdapterSettingsVisible = setAdapterSettingsVisible;
+window.setupAdapterCheckboxListeners = setupAdapterCheckboxListeners;
+window.setupHelpDialogListeners = setupHelpDialogListeners;
+window.positionHelpDialog = positionHelpDialog;
+window.setupHelpDialogDragging = setupHelpDialogDragging;
