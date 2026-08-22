@@ -832,4 +832,586 @@ describe("AiHelper", () => {
       expect(result.eventType).toBeNull();
     });
   });
+
+  describe("set_form_handlers", () => {
+    it("does nothing when the chat form is absent", () => {
+      dom.form.remove();
+      expect(() => helper.set_form_handlers()).not.toThrow();
+    });
+
+    it("does nothing when the submit button is absent", () => {
+      dom.submitBtn.remove();
+      expect(() => helper.set_form_handlers()).not.toThrow();
+    });
+
+    it("does nothing when the message input is absent", () => {
+      dom.textInput.remove();
+      expect(() => helper.set_form_handlers()).not.toThrow();
+    });
+
+    it("prevents the default form submit behavior", () => {
+      helper.set_form_handlers();
+      const event = new Event("submit", { bubbles: true, cancelable: true });
+      dom.form.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(true);
+    });
+
+    it("does not send a request when the submit button is clicked with empty text", () => {
+      helper.set_form_handlers();
+      dom.textInput.value = "   ";
+
+      dom.submitBtn.click();
+
+      expect(xhr.send).not.toHaveBeenCalled();
+    });
+
+    it("populates hidden fields and posts the message when the submit button is clicked", () => {
+      helper.set_form_handlers();
+      dom.textInput.value = "Hello there";
+
+      dom.submitBtn.click();
+
+      expect(document.getElementById("ai_helper_controller_name").value).toBe("issues");
+      expect(document.getElementById("ai_helper_action_name").value).toBe("show");
+      expect(document.getElementById("ai_helper_content_id").value).toBe("1");
+      expect(xhr.open).toHaveBeenCalledWith("POST", "/ai_helper/chat/send", true);
+      expect(xhr.send).toHaveBeenCalledTimes(1);
+    });
+
+    it("hides interactive options when the submit button is clicked", () => {
+      dom.interactiveOptions.hidden = false;
+      helper.set_form_handlers();
+      dom.textInput.value = "Hi";
+
+      dom.submitBtn.click();
+
+      expect(dom.interactiveOptions.hidden).toBe(true);
+    });
+
+    it("renders the response and reloads the LLM call on a successful submit", () => {
+      helper.set_form_handlers();
+      dom.textInput.value = "Hi";
+      dom.submitBtn.click();
+
+      const callLlmSpy = vi.spyOn(helper, "call_llm").mockImplementation(() => {});
+      xhr.status = 200;
+      xhr.responseText = "<p>response</p>";
+      xhr.onload();
+
+      expect(dom.chatConversation.innerHTML).toContain("response");
+      expect(dom.loader.style.display).toBe("block");
+      expect(callLlmSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("logs an error when the submit response is not 200", () => {
+      helper.set_form_handlers();
+      dom.textInput.value = "Hi";
+      dom.submitBtn.click();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      xhr.status = 500;
+      xhr.statusText = "Server Error";
+      xhr.onload();
+
+      expect(errorSpy).toHaveBeenCalledWith("Error:", "Server Error");
+      errorSpy.mockRestore();
+    });
+
+    it("logs an error on xhr.onerror during submit", () => {
+      helper.set_form_handlers();
+      dom.textInput.value = "Hi";
+      dom.submitBtn.click();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      xhr.onerror();
+
+      expect(errorSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+
+    it("stops propagation of the chat input's change event", () => {
+      helper.set_form_handlers();
+      const event = new Event("change", { bubbles: true });
+      const stopSpy = vi.spyOn(event, "stopPropagation");
+
+      dom.textInput.dispatchEvent(event);
+
+      expect(stopSpy).toHaveBeenCalled();
+    });
+
+    it("submits on Enter without shift", () => {
+      helper.set_form_handlers();
+      dom.textInput.value = "Hi";
+
+      const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+      dom.textInput.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(xhr.send).toHaveBeenCalledTimes(1);
+    });
+
+    it("allows a line break on Shift+Enter without submitting", () => {
+      helper.set_form_handlers();
+      dom.textInput.value = "Hi";
+
+      const event = new KeyboardEvent("keydown", { key: "Enter", shiftKey: true, bubbles: true, cancelable: true });
+      dom.textInput.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(xhr.send).not.toHaveBeenCalled();
+    });
+
+    it("ignores Enter while composing an IME conversion", () => {
+      helper.set_form_handlers();
+      dom.textInput.value = "Hi";
+
+      const event = new KeyboardEvent("keydown", { key: "Enter", isComposing: true, bubbles: true, cancelable: true });
+      dom.textInput.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(xhr.send).not.toHaveBeenCalled();
+    });
+
+    it("lets command completion handle Enter when its suggestions are visible", () => {
+      helper.set_form_handlers();
+      dom.textInput.value = "/";
+      dom.textInput._commandCompletion = { isSuggestionsVisible: () => true };
+
+      const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+      dom.textInput.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(xhr.send).not.toHaveBeenCalled();
+    });
+
+    it("submits on Enter when command completion has no visible suggestions", () => {
+      helper.set_form_handlers();
+      dom.textInput.value = "Hi";
+      dom.textInput._commandCompletion = { isSuggestionsVisible: () => false };
+
+      const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+      dom.textInput.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(xhr.send).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("call_llm", () => {
+    it("posts the page info with the CSRF token and hides interactive options", () => {
+      dom.interactiveOptions.hidden = false;
+
+      helper.call_llm();
+
+      expect(xhr.open).toHaveBeenCalledWith("POST", "/ai_helper/call_llm", true);
+      expect(xhr.setRequestHeader).toHaveBeenCalledWith("Content-Type", "application/json");
+      expect(xhr.setRequestHeader).toHaveBeenCalledWith("X-CSRF-Token", "test-csrf-token");
+      expect(JSON.parse(xhr.send.mock.calls[0][0])).toMatchObject({ controller_name: "issues" });
+      expect(dom.interactiveOptions.hidden).toBe(true);
+    });
+
+    it("streams content into the last message and scrolls the conversation", () => {
+      helper.call_llm();
+
+      xhr.onprogress();
+      Object.assign(xhr, { responseText: 'data: {"choices":[{"delta":{"content":"Hi"}}]}\n' });
+      xhr.onprogress();
+
+      expect(dom.lastMessage.innerHTML).toContain("Hi");
+    });
+
+    it("hides the loader and reloads the chat when the stream completes", () => {
+      const reloadSpy = vi.spyOn(helper, "reload_chat").mockImplementation(() => {});
+      dom.loader.style.display = "block";
+      helper.call_llm();
+
+      xhr.responseText = 'data: {"choices":[{"delta":{"content":"Hi"},"finish_reason":"stop"}]}\n';
+      xhr.onprogress();
+
+      expect(dom.loader.style.display).toBe("none");
+      expect(reloadSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("renders interactive options via the SSE callback", () => {
+      helper.call_llm();
+
+      xhr.responseText = 'event: interactive_options\ndata: {"choices":[{"label":"Yes","value":"yes"}]}\n\n';
+      xhr.onprogress();
+
+      expect(dom.interactiveOptions.hidden).toBe(false);
+    });
+
+    it("shows an error message in the last message area on xhr.onerror", () => {
+      dom.loader.style.display = "block";
+      helper.call_llm();
+
+      xhr.onerror();
+
+      expect(dom.loader.style.display).toBe("none");
+      expect(dom.lastMessage.textContent).toBe("An error has occurred");
+    });
+
+    it("shows the HTTP status in the last message area on a non-200 response", () => {
+      helper.call_llm();
+
+      xhr.status = 500;
+      xhr.statusText = "Server Error";
+      xhr.onload();
+
+      expect(dom.lastMessage.textContent).toBe("Error: 500 Server Error");
+    });
+
+    it("does not touch the last message area on a successful response", () => {
+      helper.call_llm();
+      dom.lastMessage.textContent = "unchanged";
+
+      xhr.status = 200;
+      xhr.onload();
+
+      expect(dom.lastMessage.textContent).toBe("unchanged");
+    });
+  });
+
+  describe("reload_chat", () => {
+    it("does nothing when the chat conversation area is absent", () => {
+      dom.chatConversation.remove();
+      expect(() => helper.reload_chat()).not.toThrow();
+      expect(xhr.open).not.toHaveBeenCalled();
+    });
+
+    it("hides interactive options and issues a GET request", () => {
+      dom.interactiveOptions.hidden = false;
+
+      helper.reload_chat();
+
+      expect(dom.interactiveOptions.hidden).toBe(true);
+      expect(xhr.open).toHaveBeenCalledWith("GET", "/ai_helper/reload", true);
+    });
+
+    it("replaces the conversation content on success", () => {
+      helper.reload_chat();
+
+      xhr.status = 200;
+      xhr.responseText = "<p>new content</p>";
+      xhr.onload();
+
+      expect(dom.chatConversation.innerHTML).toContain("new content");
+    });
+
+    it("logs an error on a non-200 response", () => {
+      helper.reload_chat();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      xhr.status = 500;
+      xhr.statusText = "Server Error";
+      xhr.onload();
+
+      expect(errorSpy).toHaveBeenCalledWith("Failed to reload chat conversation:", "Server Error");
+      errorSpy.mockRestore();
+    });
+
+    it("logs an error on xhr.onerror", () => {
+      helper.reload_chat();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      xhr.onerror();
+
+      expect(errorSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+  });
+
+  describe("load_history", () => {
+    it("does nothing when the history container is absent", () => {
+      dom.historyEl.remove();
+      expect(() => helper.load_history()).not.toThrow();
+      expect(xhr.open).not.toHaveBeenCalled();
+    });
+
+    it("fetches and renders the history on success", () => {
+      helper.load_history();
+
+      expect(xhr.open).toHaveBeenCalledWith("GET", "/ai_helper/history", true);
+
+      xhr.status = 200;
+      xhr.responseText = "<li>entry</li>";
+      xhr.onload();
+
+      expect(dom.historyEl.innerHTML).toContain("entry");
+    });
+
+    it("logs an error on a non-200 response", () => {
+      helper.load_history();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      xhr.status = 500;
+      xhr.onload();
+
+      expect(errorSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+
+    it("logs an error on xhr.onerror", () => {
+      helper.load_history();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      xhr.onerror();
+
+      expect(errorSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+  });
+
+  describe("clear_chat", () => {
+    it("closes the dropdown and reloads the chat on success", () => {
+      helper.clear_chat();
+
+      expect(xhr.open).toHaveBeenCalledWith("GET", "/ai_helper/clear", true);
+
+      const closeSpy = vi.spyOn(helper, "close_dropdown_menu").mockImplementation(() => {});
+      const reloadSpy = vi.spyOn(helper, "reload_chat").mockImplementation(() => {});
+      xhr.status = 200;
+      xhr.onload();
+
+      expect(closeSpy).toHaveBeenCalledTimes(1);
+      expect(reloadSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("logs an error on a non-200 response", () => {
+      helper.clear_chat();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      xhr.status = 500;
+      xhr.onload();
+
+      expect(errorSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+
+    it("logs an error on xhr.onerror", () => {
+      helper.clear_chat();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      xhr.onerror();
+
+      expect(errorSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+  });
+
+  describe("set_hamberger_menu", () => {
+    // set_hamberger_menu() registers a document-level click listener each
+    // time it runs; document persists across tests in this file, so it must
+    // be removed afterwards or later tests would trigger every prior test's
+    // listener too.
+    let documentClickListener;
+
+    function callSetHambergerMenu() {
+      const spy = vi.spyOn(document, "addEventListener");
+      helper.set_hamberger_menu();
+      const call = spy.mock.calls.find(([type]) => type === "click");
+      documentClickListener = call ? call[1] : undefined;
+      spy.mockRestore();
+    }
+
+    afterEach(() => {
+      if (documentClickListener) document.removeEventListener("click", documentClickListener);
+      documentClickListener = undefined;
+    });
+
+    it("loads history, toggles active class, and opens the dropdown", () => {
+      const loadHistorySpy = vi.spyOn(helper, "load_history").mockImplementation(() => {});
+      callSetHambergerMenu();
+
+      const clickEvent = new MouseEvent("click", { bubbles: true, cancelable: true });
+      const stopSpy = vi.spyOn(clickEvent, "stopPropagation");
+      dom.hamburger.dispatchEvent(clickEvent);
+
+      expect(loadHistorySpy).toHaveBeenCalledTimes(1);
+      expect(stopSpy).toHaveBeenCalled();
+      expect(dom.hamburger.classList.contains("active")).toBe(true);
+      expect(dom.dropdownMenu.style.display).toBe("block");
+    });
+
+    it("closes an already-open dropdown on a second click", () => {
+      vi.spyOn(helper, "load_history").mockImplementation(() => {});
+      vi.useFakeTimers();
+      callSetHambergerMenu();
+
+      dom.hamburger.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      dom.hamburger.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+      vi.advanceTimersByTime(400);
+      expect(dom.dropdownMenu.style.display).toBe("none");
+      vi.useRealTimers();
+    });
+
+    it("stops propagation for clicks inside the dropdown menu", () => {
+      vi.spyOn(helper, "load_history").mockImplementation(() => {});
+      callSetHambergerMenu();
+
+      const event = new MouseEvent("click", { bubbles: true, cancelable: true });
+      const stopSpy = vi.spyOn(event, "stopPropagation");
+      dom.dropdownMenu.dispatchEvent(event);
+
+      expect(stopSpy).toHaveBeenCalled();
+    });
+
+    it("closes the dropdown when clicking anywhere else on the document", () => {
+      vi.spyOn(helper, "load_history").mockImplementation(() => {});
+      const closeSpy = vi.spyOn(helper, "close_dropdown_menu");
+      callSetHambergerMenu();
+
+      document.body.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+      expect(closeSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("jump_to_history and delete_history (chained requests)", () => {
+    function createXhrQueueMock() {
+      const instances = [];
+      vi.stubGlobal(
+        "XMLHttpRequest",
+        class {
+          constructor() {
+            this.open = vi.fn();
+            this.send = vi.fn();
+            this.setRequestHeader = vi.fn();
+            this.responseText = "";
+            this.status = 200;
+            this.statusText = "OK";
+            this.onload = null;
+            this.onerror = null;
+            instances.push(this);
+          }
+        },
+      );
+      return instances;
+    }
+
+    it("jump_to_history prevents default, closes the dropdown, unfolds, and renders the response", () => {
+      const instances = createXhrQueueMock();
+      const closeSpy = vi.spyOn(helper, "close_dropdown_menu").mockImplementation(() => {});
+      const foldSpy = vi.spyOn(helper, "fold_chat").mockImplementation(() => {});
+      const event = { preventDefault: vi.fn() };
+
+      helper.jump_to_history(event, "/ai_helper/history/1");
+
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(instances[0].open).toHaveBeenCalledWith("GET", "/ai_helper/history/1", true);
+
+      instances[0].status = 200;
+      instances[0].responseText = "<p>history entry</p>";
+      instances[0].onload();
+
+      expect(closeSpy).toHaveBeenCalledTimes(1);
+      expect(foldSpy).toHaveBeenCalledWith(false);
+      expect(dom.chatConversation.innerHTML).toContain("history entry");
+    });
+
+    it("jump_to_history does nothing when the chat conversation area is absent", () => {
+      const instances = createXhrQueueMock();
+      dom.chatConversation.remove();
+      const event = { preventDefault: vi.fn() };
+
+      helper.jump_to_history(event, "/ai_helper/history/1");
+
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(instances.length).toBe(0);
+    });
+
+    it("jump_to_history logs an error on a non-200 response", () => {
+      const instances = createXhrQueueMock();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      helper.jump_to_history({ preventDefault: vi.fn() }, "/x");
+
+      instances[0].status = 500;
+      instances[0].onload();
+
+      expect(errorSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+
+    it("jump_to_history logs an error on xhr.onerror", () => {
+      const instances = createXhrQueueMock();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      helper.jump_to_history({ preventDefault: vi.fn() }, "/x");
+
+      instances[0].onerror();
+
+      expect(errorSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+
+    it("delete_history sends the CSRF token, reloads history, and reloads the chat when told to", () => {
+      const instances = createXhrQueueMock();
+      const loadHistorySpy = vi.spyOn(helper, "load_history").mockImplementation(() => {});
+      const reloadSpy = vi.spyOn(helper, "reload_chat").mockImplementation(() => {});
+      const event = { preventDefault: vi.fn() };
+
+      helper.delete_history(event, "/ai_helper/history/1");
+
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(instances[0].open).toHaveBeenCalledWith("DELETE", "/ai_helper/history/1", true);
+      expect(instances[0].setRequestHeader).toHaveBeenCalledWith("X-CSRF-Token", "test-csrf-token");
+
+      instances[0].status = 200;
+      instances[0].responseText = JSON.stringify({ reload: true });
+      instances[0].onload();
+
+      expect(loadHistorySpy).toHaveBeenCalledTimes(1);
+      expect(reloadSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("delete_history does not reload the chat when the response says not to", () => {
+      const instances = createXhrQueueMock();
+      vi.spyOn(helper, "load_history").mockImplementation(() => {});
+      const reloadSpy = vi.spyOn(helper, "reload_chat").mockImplementation(() => {});
+
+      helper.delete_history({ preventDefault: vi.fn() }, "/x");
+      instances[0].status = 200;
+      instances[0].responseText = JSON.stringify({ reload: false });
+      instances[0].onload();
+
+      expect(reloadSpy).not.toHaveBeenCalled();
+    });
+
+    it("delete_history logs an error when the response is not valid JSON", () => {
+      const instances = createXhrQueueMock();
+      vi.spyOn(helper, "load_history").mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      helper.delete_history({ preventDefault: vi.fn() }, "/x");
+      instances[0].status = 200;
+      instances[0].responseText = "not json";
+      instances[0].onload();
+
+      expect(errorSpy).toHaveBeenCalledWith("Failed to parse response:", expect.any(Error));
+      errorSpy.mockRestore();
+    });
+
+    it("delete_history logs an error on a non-200 response", () => {
+      const instances = createXhrQueueMock();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      helper.delete_history({ preventDefault: vi.fn() }, "/x");
+      instances[0].status = 500;
+      instances[0].onload();
+
+      expect(errorSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+
+    it("delete_history logs an error on xhr.onerror", () => {
+      const instances = createXhrQueueMock();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      helper.delete_history({ preventDefault: vi.fn() }, "/x");
+      instances[0].onerror();
+
+      expect(errorSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+  });
 });

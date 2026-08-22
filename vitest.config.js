@@ -18,8 +18,9 @@ export default defineConfig({
       // stage 3 (typo_checker): ~35.5% (878/2473) -> 35
       // stage 3 (ai_helper): ~46.51% (1153/2479) -> 46
       // stage 3 (auto_completion): ~46.63% (1156/2479) -> 46
+      // stage 4: 92.19% (2290/2484) reached the 90% target -> fixed at 90
       thresholds: {
-        lines: 46,
+        lines: 90,
         perFile: false,
       },
     },
