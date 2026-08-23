@@ -244,6 +244,19 @@ describe("AiHelperTypoChecker overlay", () => {
       expect(checker.suggestions).toHaveLength(1);
       expect(checker.suggestions[0].original).toBe("world");
     });
+
+    it("rebuilds overlay when suggestions remain after index-based reject", () => {
+      textarea.value = "teh qwick";
+      checker.suggestions = [
+        { position: 0, original: "teh", corrected: "the" },
+        { position: 4, original: "qwick", corrected: "quick" },
+      ];
+
+      checker.rejectSuggestion(0);
+
+      expect(checker.suggestions).toHaveLength(1);
+      expect(checker.suggestions[0].original).toBe("qwick");
+    });
   });
 
   describe("acceptSuggestionBySuggestion", () => {
@@ -297,6 +310,37 @@ describe("AiHelperTypoChecker overlay", () => {
 
       expect(textarea.value).toBe("teh cat");
       expect(checker.suggestions).toEqual([]);
+    });
+
+    it("logs error and resets flag when suggestion is not found", () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      textarea.value = "hello world";
+      checker.suggestions = [
+        { position: 0, original: "hello", corrected: "hi" },
+      ];
+
+      checker.rejectSuggestionBySuggestion({
+        position: 99,
+        original: "nope",
+        corrected: "nope2",
+      });
+
+      expect(consoleError).toHaveBeenCalled();
+      expect(checker.isProcessingSuggestion).toBe(false);
+      expect(checker.suggestions).toHaveLength(1);
+      consoleError.mockRestore();
+    });
+
+    it("rebuilds overlay when suggestions remain after reject", () => {
+      textarea.value = "teh qwick";
+      const s1 = { position: 0, original: "teh", corrected: "the" };
+      const s2 = { position: 4, original: "qwick", corrected: "quick" };
+      checker.suggestions = [s1, s2];
+
+      checker.rejectSuggestionBySuggestion(s1);
+
+      expect(checker.suggestions).toHaveLength(1);
+      expect(checker.suggestions[0].original).toBe("qwick");
     });
   });
 

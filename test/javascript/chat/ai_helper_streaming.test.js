@@ -287,4 +287,168 @@ describe("AiHelper streaming", () => {
       expect(result.eventType).toBeNull();
     });
   });
+
+  describe("generateSummaryStream error handling", () => {
+    it("shows error text on xhr.onerror", () => {
+      const summaryArea = document.createElement("div");
+      summaryArea.id = "ai-helper-summary-area";
+      document.body.appendChild(summaryArea);
+
+      helper.generateSummaryStream("/summary/url", "Summary error");
+
+      xhr.onerror();
+
+      const streaming = summaryArea.querySelector("#ai-helper-streaming-summary");
+      expect(streaming.textContent).toBe("Summary error");
+      expect(streaming.previousElementSibling.style.display).toBe("none");
+
+      summaryArea.remove();
+    });
+
+    it("shows error text on non-200 onload", () => {
+      const summaryArea = document.createElement("div");
+      summaryArea.id = "ai-helper-summary-area";
+      document.body.appendChild(summaryArea);
+
+      helper.generateSummaryStream("/summary/url", "Summary error");
+
+      xhr.status = 500;
+      xhr.statusText = "Internal Server Error";
+      xhr.onload();
+
+      const streaming = summaryArea.querySelector("#ai-helper-streaming-summary");
+      expect(streaming.textContent).toBe("Error: 500 Internal Server Error");
+
+      summaryArea.remove();
+    });
+
+    it("hides loader on first content chunk", () => {
+      const summaryArea = document.createElement("div");
+      summaryArea.id = "ai-helper-summary-area";
+      document.body.appendChild(summaryArea);
+
+      helper.generateSummaryStream("/summary/url", "Err");
+
+      xhr.responseText = 'data: {"choices":[{"delta":{"content":"Hi"}}]}\n';
+      xhr.onprogress();
+
+      const loader = summaryArea.querySelector(".ai-helper-loader");
+      expect(loader.style.display).toBe("none");
+
+      summaryArea.remove();
+    });
+  });
+
+  describe("generateReplyStream error and complete handling", () => {
+    it("shows error text on xhr.onerror", () => {
+      const replyArea = document.createElement("div");
+      replyArea.id = "ai-helper-generate_reply-area";
+      document.body.appendChild(replyArea);
+
+      helper.generateReplyStream("/reply/url", "Fix", "Err", "Apply", "Copy");
+
+      xhr.onerror();
+
+      const streaming = replyArea.querySelector("#ai-helper-streaming-reply");
+      expect(streaming.textContent).toBe("Err");
+
+      replyArea.remove();
+    });
+
+    it("shows error text on non-200 onload", () => {
+      const replyArea = document.createElement("div");
+      replyArea.id = "ai-helper-generate_reply-area";
+      document.body.appendChild(replyArea);
+
+      helper.generateReplyStream("/reply/url", "Fix", "Err", "Apply", "Copy");
+
+      xhr.status = 502;
+      xhr.statusText = "Bad Gateway";
+      xhr.onload();
+
+      const streaming = replyArea.querySelector("#ai-helper-streaming-reply");
+      expect(streaming.textContent).toBe("Error: 502 Bad Gateway");
+
+      replyArea.remove();
+    });
+
+    it("creates apply button that sets issue_notes on complete", () => {
+      const replyArea = document.createElement("div");
+      replyArea.id = "ai-helper-generate_reply-area";
+      document.body.appendChild(replyArea);
+
+      const issueNotes = document.createElement("textarea");
+      issueNotes.id = "issue_notes";
+      document.body.appendChild(issueNotes);
+
+      helper.generateReplyStream("/reply/url", "Fix", "Err", "Apply", "Copy");
+
+      xhr.responseText = 'data: {"choices":[{"delta":{"content":"Reply text"},"finish_reason":"stop"}]}\n';
+      xhr.onprogress();
+
+      const applyBtn = replyArea.querySelector("button");
+      expect(applyBtn.textContent).toBe("Apply");
+      applyBtn.click();
+      expect(issueNotes.value).toBe("Reply text");
+
+      replyArea.remove();
+      issueNotes.remove();
+    });
+
+    it("creates copy link that writes to clipboard on complete", () => {
+      const replyArea = document.createElement("div");
+      replyArea.id = "ai-helper-generate_reply-area";
+      document.body.appendChild(replyArea);
+
+      const writeText = vi.fn();
+      vi.stubGlobal("navigator", { clipboard: { writeText } });
+
+      helper.generateReplyStream("/reply/url", "Fix", "Err", "Apply", "Copy");
+
+      xhr.responseText = 'data: {"choices":[{"delta":{"content":"Reply text"},"finish_reason":"stop"}]}\n';
+      xhr.onprogress();
+
+      const copyLink = replyArea.querySelector("a");
+      expect(copyLink.textContent).toBe("Copy");
+      copyLink.click();
+      expect(writeText).toHaveBeenCalledWith("Reply text");
+
+      replyArea.remove();
+      vi.unstubAllGlobals();
+    });
+  });
+
+  describe("generateWikiSummaryStream error handling", () => {
+    it("shows error text on xhr.onerror", () => {
+      const summaryArea = document.createElement("div");
+      summaryArea.id = "ai-helper-wiki-summary-area";
+      document.body.appendChild(summaryArea);
+
+      helper.generateWikiSummaryStream("/wiki/summary/url", "Wiki err");
+
+      xhr.onerror();
+
+      const streaming = summaryArea.querySelector("#ai-helper-streaming-wiki-summary");
+      expect(streaming.textContent).toBe("Wiki err");
+
+      summaryArea.remove();
+    });
+
+    it("shows error text on non-200 onload", () => {
+      const summaryArea = document.createElement("div");
+      summaryArea.id = "ai-helper-wiki-summary-area";
+      document.body.appendChild(summaryArea);
+
+      helper.generateWikiSummaryStream("/wiki/summary/url", "Wiki err");
+
+      xhr.status = 403;
+      xhr.statusText = "Forbidden";
+      xhr.onload();
+
+      const streaming = summaryArea.querySelector("#ai-helper-streaming-wiki-summary");
+      expect(streaming.textContent).toBe("Error: 403 Forbidden");
+
+      summaryArea.remove();
+    });
+  });
 });

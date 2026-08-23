@@ -221,6 +221,24 @@ describe("AiHelper", () => {
       expect(dom.arrowLeft.style.display).toBe("none");
     });
 
+    it("unfolds with animation when disableAnimation is false", () => {
+      vi.useFakeTimers();
+      helper.fold_chat(true, true);
+
+      helper.fold_chat(false);
+
+      expect(dom.foldArea.style.display).toBe("block");
+      expect(dom.foldArea.style.transition).toBe("height 300ms");
+
+      vi.advanceTimersByTime(20);
+      expect(dom.foldArea.style.height).toBe(dom.foldArea.scrollHeight + "px");
+
+      vi.advanceTimersByTime(400);
+      expect(dom.foldArea.style.height).toBe("");
+      expect(dom.foldArea.style.transition).toBe("");
+      vi.useRealTimers();
+    });
+
     it("saves fold state to localStorage", () => {
       helper.fold_chat(true, true);
       expect(localStorage.getItem(helper.chat_fold_storage_key)).toBe("true");
@@ -566,6 +584,35 @@ describe("AiHelper", () => {
 
       expect(dom.interactiveOptions.hidden).toBe(true);
       expect(focusSpy).toHaveBeenCalled();
+    });
+
+    it("Enter key on option button triggers click", () => {
+      helper.initializeInteractiveOptionsHandlers(dom.interactiveOptions);
+      helper.renderInteractiveOptions([
+        { label: "Option A", value: "a" },
+      ]);
+
+      const btn = dom.interactiveOptions.querySelector(
+        '.aihelper-option-btn:not([data-free-input])'
+      );
+      btn.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+      expect(dom.textInput.value).toBe("a");
+      expect(dom.interactiveOptions.hidden).toBe(true);
+    });
+
+    it("Space key on option button triggers click", () => {
+      helper.initializeInteractiveOptionsHandlers(dom.interactiveOptions);
+      helper.renderInteractiveOptions([
+        { label: "Option B", value: "b" },
+      ]);
+
+      const btn = dom.interactiveOptions.querySelector(
+        '.aihelper-option-btn:not([data-free-input])'
+      );
+      btn.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
+
+      expect(dom.textInput.value).toBe("b");
     });
   });
 
