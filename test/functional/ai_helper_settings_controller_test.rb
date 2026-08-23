@@ -612,6 +612,32 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
     end
   end
 
+  # Test-only inbound adapter (US2): proves the channels tab shows a webhook
+  # URL for adapters that declare inbound?, and only for those; also used by
+  # AiHelperChatWebhookControllerInboundEnablementTest (US2-2) to prove a
+  # required field left blank keeps the webhook endpoint at 404.
+  class FakeInboundAdapter < RedmineAiHelper::ChatChannel::InboundAdapter
+    class << self
+      def channel_type
+        "fake_inbound"
+      end
+
+      def required_setting_fields
+        [ :bot_token ]
+      end
+    end
+
+    def verify_request(_request)
+      true
+    end
+
+    def parse_events(_request)
+      []
+    end
+
+    def send_message(channel_id:, thread_key:, text:); end
+  end
+
   context "channels tab" do
     setup do
       AiHelperChatAdapterSetting.delete_all
@@ -1022,6 +1048,22 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
         assert_select "#errorExplanation", text: /does not match any user/
       end
     end
+
+    context "webhook URL display (US2)" do
+      should "display the webhook URL for an inbound adapter" do
+        get :index, params: { tab: "channels" }
+
+        assert_response :success
+        assert_match %r{https?://[^"]*/ai_helper/chat_webhook/fake_inbound}, @response.body
+      end
+
+      should "not display a webhook URL for an outbound adapter" do
+        get :index, params: { tab: "channels" }
+
+        assert_response :success
+        assert_no_match(%r{ai_helper/chat_webhook/ui_chat}, @response.body)
+      end
+    end
   end
 
   # Discord adapter is auto-registered via the init.rb glob, so the existing
@@ -1104,5 +1146,32 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
       assert_response :not_found
     end
+  end
+end
+
+# US2-2: an inbound adapter enabled without its required fields must not
+# receive webhook traffic. Exercises AiHelperChatWebhookController rather
+# than AiHelperSettingsController, so it needs its own ActionController::TestCase.
+class AiHelperChatWebhookControllerInboundEnablementTest < ActionController::TestCase
+  tests AiHelperChatWebhookController
+
+  def setup
+    @controller = AiHelperChatWebhookController.new
+    @request = ActionController::TestRequest.create(@controller.class)
+    @response = ActionDispatch::TestResponse.create
+    AiHelperChatAdapterSetting.delete_all
+  end
+
+  should "return 404 when the inbound adapter is enabled but its required field is blank" do
+    # update_column bypasses validation, simulating a row saved before the
+    # adapter declared bot_token as required (same technique as
+    # ChatChannelBaseAdapterTest#enabled?); the validation itself already
+    # prevents reaching this state through the settings form.
+    setting = AiHelperChatAdapterSetting.create!(channel_type: "fake_inbound", enabled: false, redmine_user_id: 2)
+    setting.update_column(:enabled, true)
+
+    post :receive, params: { channel_type: "fake_inbound" }, body: "{}"
+
+    assert_response :not_found
   end
 end

@@ -177,5 +177,43 @@ class LlmProviderTest < ActiveSupport::TestCase
         end
       end
     end
+
+    context "request_options pass-through" do
+      setup do
+        @setting = AiHelperSetting.find_or_create
+        @profile = @setting.model_profile
+        @profile.llm_type = "OpenAI"
+        @profile.save!
+        @request_options = { request_timeout: 30, max_retries: 0 }
+      end
+
+      should "hand request_options to the provider built by get_llm_provider" do
+        RedmineAiHelper::LlmClient::OpenAiProvider.expects(:new)
+          .with(model_profile: @profile, request_options: @request_options)
+          .returns(:completion_provider)
+
+        assert_equal :completion_provider, @llm_provider.get_llm_provider(request_options: @request_options)
+      end
+
+      should "hand request_options to the provider built by provider_for_profile" do
+        RedmineAiHelper::LlmClient::OpenAiProvider.expects(:new)
+          .with(model_profile: @profile, request_options: @request_options)
+          .returns(:completion_provider)
+
+        assert_equal :completion_provider, @llm_provider.provider_for_profile(@profile, request_options: @request_options)
+      end
+
+      should "pass nil when request_options is omitted" do
+        RedmineAiHelper::LlmClient::OpenAiProvider.expects(:new)
+          .with(model_profile: @profile, request_options: nil)
+          .returns(:plain_provider)
+
+        assert_equal :plain_provider, @llm_provider.get_llm_provider
+      end
+
+      should "still build a working provider when request_options is omitted" do
+        assert_instance_of RedmineAiHelper::LlmClient::OpenAiProvider, @llm_provider.get_llm_provider
+      end
+    end
   end
 end

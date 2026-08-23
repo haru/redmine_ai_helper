@@ -513,6 +513,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
         # Mock IssueReadAgent
         mock_agent = mock("IssueReadAgent")
+        mock_agent.stubs(:llm_provider=)
         mock_agent.expects(:generate_text_completion).with(
           text: "Test text",
           cursor_position: 4,
@@ -544,6 +545,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
         # Mock IssueReadAgent to raise an error
         mock_agent = mock("IssueReadAgent")
+        mock_agent.stubs(:llm_provider=)
         mock_agent.expects(:generate_text_completion).raises(StandardError, "Agent failed")
 
         RedmineAiHelper::Agents::IssueReadAgent.expects(:new).returns(mock_agent)
@@ -571,6 +573,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         expected_options = { langfuse: mock_langfuse, project: @project }
 
         mock_agent = mock("IssueReadAgent")
+        mock_agent.stubs(:llm_provider=)
         mock_agent.expects(:generate_text_completion).returns("Result")
 
         RedmineAiHelper::Agents::IssueReadAgent.expects(:new).with(expected_options).returns(mock_agent)
@@ -597,6 +600,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
         # Mock IssueReadAgent
         mock_agent = mock("IssueReadAgent")
+        mock_agent.stubs(:llm_provider=)
         mock_agent.stubs(:generate_text_completion).returns(test_output)
         RedmineAiHelper::Agents::IssueReadAgent.stubs(:new).returns(mock_agent)
 
@@ -607,6 +611,64 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         )
 
         assert_equal test_output, result
+      end
+    end
+
+    # Completion requests must run with a bounded timeout and no retries so a
+    # slow backend cannot occupy an application worker for minutes (ADR-018).
+    context "generate_text_completion request options" do
+      setup do
+        mock_langfuse = mock("LangfuseWrapper")
+        mock_langfuse.stubs(:create_span)
+        mock_langfuse.stubs(:finish_current_span)
+        mock_langfuse.stubs(:flush)
+        RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
+      end
+
+      should "build the request options from the configured autocompletion timeout" do
+        RedmineAiHelper::Util::ConfigFile.stubs(:autocompletion_settings).returns({ timeout: 12 })
+        completion_provider = mock("completion_provider")
+        RedmineAiHelper::LlmProvider.expects(:get_llm_provider)
+          .with(request_options: { request_timeout: 12, max_retries: 0 })
+          .returns(completion_provider)
+
+        mock_agent = mock("IssueReadAgent")
+        mock_agent.expects(:llm_provider=).with(completion_provider)
+        mock_agent.expects(:generate_text_completion).returns("Completed")
+        RedmineAiHelper::Agents::IssueReadAgent.expects(:new).returns(mock_agent)
+
+        result = @llm.generate_text_completion(
+          text: "Test text",
+          context_type: "description",
+          cursor_position: 4,
+          project: @project
+        )
+
+        assert_equal "Completed", result
+      end
+
+      should "use the default timeout when the configuration does not set one" do
+        # No stub on autocompletion_settings: the real validation has to be the
+        # thing that produces the default, or this test proves nothing.
+        File.stubs(:exist?).with(Rails.root.join("config/ai_helper/config.yml")).returns(false)
+        completion_provider = mock("completion_provider")
+        RedmineAiHelper::LlmProvider.expects(:get_llm_provider)
+          .with(request_options: {
+            request_timeout: RedmineAiHelper::Util::ConfigFile::AUTOCOMPLETION_DEFAULT_TIMEOUT,
+            max_retries: 0
+          })
+          .returns(completion_provider)
+
+        mock_agent = mock("IssueReadAgent")
+        mock_agent.expects(:llm_provider=).with(completion_provider)
+        mock_agent.expects(:generate_text_completion).returns("Completed")
+        RedmineAiHelper::Agents::IssueReadAgent.expects(:new).returns(mock_agent)
+
+        @llm.generate_text_completion(
+          text: "Test text",
+          context_type: "description",
+          project: @project
+        )
       end
     end
   end

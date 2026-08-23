@@ -2,7 +2,14 @@
   <%= stylesheet_link_tag 'ai_helper', plugin: 'redmine_ai_helper' %>
 <% end %>
 <%= error_messages_for "model_profile" %>
-<div class="box tabular">
+<div id="ai-helper-model-profile-form" class="box tabular" data-config='<%= {
+  compatibleType: RedmineAiHelper::LlmProvider::LLM_OPENAI_COMPATIBLE,
+  azureType: RedmineAiHelper::LlmProvider::LLM_AZURE_OPENAI,
+  openaiType: RedmineAiHelper::LlmProvider::LLM_OPENAI,
+  testConnectionUrl: ai_helper_model_profiles_test_connection_path,
+  testConnectionFailedLabel: l("ai_helper.model_profiles.test_connection_failed"),
+  testConnectionSuccessLabel: l("ai_helper.model_profiles.test_connection_success")
+}.to_json %>'>
   <p><%= f.select :llm_type, RedmineAiHelper::LlmProvider.option_for_select %></p>
   <p>
     <%= f.text_field :name, size: 60, required: true, autocomplete: "off" %>
@@ -40,124 +47,3 @@
     <span id="ai-helper-test-connection-result"></span>
   </p>
 </div>
-
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // LLM type select box change event
-    const llmTypeSelect = document.getElementById('ai_helper_model_profile_llm_type');
-
-    function isBaseUriRequired(selectValue) {
-      if (selectValue == '<%= RedmineAiHelper::LlmProvider::LLM_OPENAI_COMPATIBLE %>' ||
-          selectValue == '<%= RedmineAiHelper::LlmProvider::LLM_AZURE_OPENAI %>') {
-        return true;
-      }
-      return false; // Base URI is not required for other LLM types
-    }
-
-    function handleLlmTypeChange() {
-      const selectedValue = llmTypeSelect.value;
-      const baseUriElement = document.getElementById('ai-helper-model-base-uri');
-      const accessKeyRequiredElement = document.querySelector('#ai-helper-mode-access-key .required');
-      const organizationIdElement = document.getElementById('ai-helper-model-organization-id');
-
-      if (isBaseUriRequired(selectedValue) == true) {
-        if (baseUriElement) baseUriElement.style.display = 'block';
-      } else {
-        if (baseUriElement) baseUriElement.style.display = 'none';
-      }
-
-      if (selectedValue == '<%= RedmineAiHelper::LlmProvider::LLM_OPENAI_COMPATIBLE %>') {
-        if (accessKeyRequiredElement) accessKeyRequiredElement.style.display = 'none';
-      } else {
-        if (accessKeyRequiredElement) accessKeyRequiredElement.style.display = 'block';
-      }
-
-      if (selectedValue == '<%= RedmineAiHelper::LlmProvider::LLM_OPENAI %>') {
-        if (organizationIdElement) organizationIdElement.style.display = 'block';
-      } else {
-        if (organizationIdElement) organizationIdElement.style.display = 'none';
-      }
-    }
-
-    if (llmTypeSelect) {
-      llmTypeSelect.addEventListener('change', handleLlmTypeChange);
-
-      // Trigger change event on page load
-      handleLlmTypeChange();
-    }
-
-    // Prevent browser autofill from injecting saved credentials into sensitive fields.
-    // Fields are rendered readonly so the browser skips them; readonly is removed on user interaction.
-    ['ai_helper_model_profile_organization_id', 'ai_helper_model_profile_access_key'].forEach(function(id) {
-      const input = document.getElementById(id);
-      if (input) {
-        const clearReadonly = function() { input.removeAttribute('readonly'); };
-        input.addEventListener('focus', clearReadonly);
-        input.addEventListener('mousedown', clearReadonly);
-      }
-    });
-
-    // Connection test button
-    const testConnectionBtn = document.getElementById('ai-helper-test-connection-btn');
-    const testConnectionResult = document.getElementById('ai-helper-test-connection-result');
-
-    if (testConnectionBtn) {
-      testConnectionBtn.addEventListener('click', function(event) {
-        event.preventDefault();
-        if (testConnectionBtn.dataset.loading) return;
-        testConnectionBtn.dataset.loading = 'true';
-        testConnectionBtn.disabled = true;
-        testConnectionResult.textContent = '';
-        testConnectionResult.className = '';
-
-        const form = testConnectionBtn.closest('form');
-        const formData = new FormData(form);
-        const idField = document.getElementById('id');
-        if (idField) {
-          formData.set('id', idField.value);
-        }
-
-        fetch('<%= ai_helper_model_profiles_test_connection_path %>', {
-          method: 'POST',
-          headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content },
-          body: formData
-        })
-        .then(function(response) {
-          const contentType = response.headers.get('Content-Type') || '';
-          if (!contentType.includes('application/json')) {
-            return response.text().then(function() {
-              return { success: false, error: '<%= j l("ai_helper.model_profiles.test_connection_failed") %>' };
-            });
-          }
-          return response.json();
-        })
-        .then(function(data) {
-          if (data.success) {
-            testConnectionResult.textContent = '<%= j l("ai_helper.model_profiles.test_connection_success") %>';
-            testConnectionResult.className = 'ai-helper-connection-success';
-          } else {
-            testConnectionResult.textContent = '<%= j l("ai_helper.model_profiles.test_connection_failed") %>' + (data.error ? ': ' + data.error : '');
-            testConnectionResult.className = 'ai-helper-connection-failure';
-          }
-        })
-        .catch(function(error) {
-          testConnectionResult.textContent = '<%= j l("ai_helper.model_profiles.test_connection_failed") %>: ' + error.message;
-          testConnectionResult.className = 'ai-helper-connection-failure';
-        })
-        .finally(function() {
-          delete testConnectionBtn.dataset.loading;
-          testConnectionBtn.disabled = false;
-        });
-      });
-
-      // Auto-clear result when any form field changes
-      const form = testConnectionBtn.closest('form');
-      if (form) {
-        form.querySelectorAll('input, select, textarea').forEach(function(field) {
-          field.addEventListener('input', function() { testConnectionResult.textContent = ''; });
-          field.addEventListener('change', function() { testConnectionResult.textContent = ''; });
-        });
-      }
-    }
-  });
-</script>

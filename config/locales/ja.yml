@@ -48,6 +48,8 @@ ja:
         redmine_user: "実行アカウント"
         redmine_user_info: "チャットツールからのすべての質問はこのRedmineユーザーの権限で処理されます。このアカウントのロールを絞ることで、ゲートウェイ経由で可能な操作を制限できます。"
         default_project: "既定プロジェクト"
+        webhook_url: "Webhook URL"
+        webhook_url_info: "このURLを外部サービスに登録すると、この連携にメッセージが配信されます。"
         bindings: "チャンネル対応付け"
         adapter: "チャットツール"
         channel_id: "チャンネルID"
@@ -298,7 +300,7 @@ ja:
         issue_draft_instructions: "チケットのコメントを生成する際の指示"
         subtask_instructions: "子チケットを生成する際の指示"
         health_report_instructions: "健全性レポートを生成する際の指示"
-        assignment_suggestion_instructions: "担当者提案インストラクション"
+        assignment_suggestion_instructions: "担当者提案をする際の指示"
       ai_helper_custom_command:
         name: "コマンド名"
         command_type: "コマンドタイプ"

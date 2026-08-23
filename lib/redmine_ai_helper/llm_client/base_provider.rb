@@ -15,8 +15,13 @@ module RedmineAiHelper
       #   When nil, falls back to the current AiHelperSetting#model_profile.
       #   Pass an explicit profile when instantiating a provider for a non-default
       #   profile (e.g. the Think model profile).
-      def initialize(model_profile: nil)
+      # @param request_options [Hash, nil] Per-context HTTP overrides applied on
+      #   top of the RubyLLM global configuration. Recognised keys are
+      #   +:request_timeout+ (seconds) and +:max_retries+. When nil, the global
+      #   configuration is used unchanged.
+      def initialize(model_profile: nil, request_options: nil)
         @model_profile = model_profile
+        @request_options = request_options
       end
 
       # Returns the memoized RubyLLM::Context for this provider instance.
@@ -26,7 +31,7 @@ module RedmineAiHelper
       def context
         @context ||= begin
           ensure_model_registered!
-          build_context
+          apply_request_options(build_context)
         end
       end
 
@@ -176,6 +181,19 @@ module RedmineAiHelper
       # @return [RubyLLM::Context] provider-specific configuration context
       def build_context
         raise NotImplementedError, "Subclasses must implement build_context"
+      end
+
+      # Applies the per-context HTTP overrides given at construction time.
+      # RubyLLM.context duplicates the global configuration, so writing to
+      # context.config affects this context only.
+      # @param context [RubyLLM::Context] the context built by the subclass
+      # @return [RubyLLM::Context] the same context
+      def apply_request_options(context)
+        return context unless @request_options
+
+        context.config.request_timeout = @request_options[:request_timeout] if @request_options.key?(:request_timeout)
+        context.config.max_retries = @request_options[:max_retries] if @request_options.key?(:max_retries)
+        context
       end
 
       private

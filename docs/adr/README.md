@@ -69,3 +69,13 @@ Briefly describe alternatives that were rejected and why.
 | [014](./014-shared-websocket-transport-in-base-adapter.md) | Move the shared WebSocket transport handling into `BaseAdapter` and apply it to Discord | Accepted |
 | [015](./015-agent-write-capability-routing.md) | Guard write-capable steps with an internal capability check that is never exposed to the router | Accepted |
 | [016](./016-issue-agent-read-write-rename.md) | Rename IssueAgent/IssueUpdateAgent to IssueReadAgent/IssueWriteAgent | Accepted |
+| [017](./017-inbound-chat-webhook-gateway.md) | Inbound chat webhook gateway (amends the scope of ADR-006) | Accepted |
+| [018](./018-completion-llm-requests-timeout-no-retry.md) | Inline completion LLM requests use a short timeout and no retries | Accepted |
+| [019](./019-completion-request-suppression-tied-to-displayed-suggestion.md) | Completion request suppression lasts only while the suggestion is displayed | Accepted (mechanism in decision 2 refined by ADR-021) |
+| [020](./020-plugin-logger-falls-back-to-rails-logger.md) | The plugin logger falls back to Rails.logger when it cannot be built | Accepted |
+| [021](./021-snapshot-teardown-belongs-to-clear-suggestion.md) | Snapshot teardown belongs to clearSuggestion, and no-op editor events are ignored | Accepted |
+| [022](./022-javascript-test-tooling-for-classic-scripts.md) | Vitest + jsdom for testing classic scripts via side-effect dynamic import | Accepted |
+| [023](./023-javascript-coverage-ratchet-policy.md) | JavaScript coverage ratchet from measured baseline to 90%, distinct from Ruby's 95% | Accepted (Codecov clause amended by ADR-024) |
+| [024](./024-javascript-coverage-sent-to-codecov-informational-only.md) | JavaScript coverage is uploaded to Codecov as an informational-only flag | Accepted |
+| [025](./025-erb-js-bridge-value-passing-pattern.md) | ERB-JS bridge value passing pattern (data-* attributes + init call) | Accepted |
+| [026](./026-shared-js-helper-extraction-threshold.md) | Shared JS helper extraction threshold (3+ occurrences or substantively identical) | Accepted |

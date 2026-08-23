@@ -91,18 +91,24 @@ class IssuesBottomPartialTest < ActionView::TestCase
       end
     end
 
-    context "JavaScript" do
-      should "include getSelectedScope function" do
+    context "JavaScript bridge" do
+      # getSelectedScope()/similar-issues scope handling was extracted to
+      # assets/javascripts/summary/ai_helper_issue_summary.js (047-erb-js-refactoring);
+      # that behavior (appending the checked scope as a query param) is
+      # characterized in test/javascript/ai_helper_issue_summary.test.js. This
+      # view spec only checks the ERB->JS bridge contract: the fieldset's
+      # data-config carries the URL the JS-side scope logic needs, and the
+      # button wires up to the JS-side init function by name.
+      should "pass the similar issues URL to the JS bridge via data-config" do
         html = render(partial: "ai_helper/issues/bottom", locals: {})
 
-        assert_includes html, "getSelectedScope"
+        assert_match(/data-config='[^']*&quot;similarIssuesUrl&quot;:&quot;[^&]*similar_issues[^&]*&quot;/, html)
       end
 
-      should "pass scope parameter to similar issues URL" do
+      should "wire the similar issues button to the findSimilarIssues bridge function" do
         html = render(partial: "ai_helper/issues/bottom", locals: {})
 
-        assert_includes html, "scope"
-        assert_includes html, "getSelectedScope()"
+        assert_includes html, "findSimilarIssues()"
       end
     end
   end

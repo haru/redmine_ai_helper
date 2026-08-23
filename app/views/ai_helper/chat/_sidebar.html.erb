@@ -1,6 +1,36 @@
 <% if RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: @project, permission: { controller: :ai_helper, action: :chat_form }) and AiHelperSetting.find_or_create.model_profile %>
   <% content_for :sidebar do %>
-    <div id="aihelper-sidebar">
+    <% content_id = nil
+       additional_info = {}
+       case controller_name
+       when "issues"
+         content_id = @issue.id if @issue
+       when "wiki"
+         if @page.nil? and action_name == "show"
+           @page = WikiPage.find_by_title(@wiki.start_page)
+         end
+         content_id = @page.id if @page
+       when "repositories"
+         content_id = @repository.id if @repository
+         additional_info[:path] = @path if @path
+         additional_info[:rev] = @rev if @rev
+         additional_info[:rev_to] = @rev_to if @rev_to
+         additional_info[:diff] = @diff if @diff
+         additional_info[:changeset] = @changeset if @changeset
+         additional_info[:changeset_to] = @changeset_to if @changeset_to
+       when "boards"
+         content_id = @board.id if @board
+       when "messages"
+         content_id = @message.id if @message
+       when "versions"
+         content_id = @version.id if @version
+       end %>
+    <div id="aihelper-sidebar"
+         data-chat-form-url="<%= ai_helper_chat_form_path(@project) %>"
+         data-content-id="<%= content_id %>"
+         data-controller-name="<%= controller_name %>"
+         data-action-name="<%= action_name %>"
+         data-additional-info="<%= additional_info.to_json %>">
       <div class="aihelper-header">
         <span class="aihelper-hamburger">
           <span></span>
@@ -41,50 +71,8 @@
         <hr>
       </div>
     </div>
-    <% content_id = nil
-       additional_info = {}
-       case controller_name
-       when "issues"
-         content_id = @issue.id if @issue
-       when "wiki"
-         if @page.nil? and action_name == "show"
-           @page = WikiPage.find_by_title(@wiki.start_page)
-         end
-         content_id = @page.id if @page
-       when "repositories"
-         content_id = @repository.id if @repository
-         additional_info[:path] = @path if @path
-         additional_info[:rev] = @rev if @rev
-         additional_info[:rev_to] = @rev_to if @rev_to
-         additional_info[:diff] = @diff if @diff
-         additional_info[:changeset] = @changeset if @changeset
-         additional_info[:changeset_to] = @changeset_to if @changeset_to
-       when "boards"
-         content_id = @board.id if @board
-       when "messages"
-         content_id = @message.id if @message
-       when "versions"
-         content_id = @version.id if @version
-       end %>
     <script>
-      const is_sidebar_exist = function() {
-        return document.getElementById('sidebar-wrapper') !== null;
-      }
-
       document.addEventListener('DOMContentLoaded', function() {
-        if (!is_sidebar_exist()) {
-          return;
-        }
-
-        // div#aihelper-sidebar を div#sidebar-wrapper の最初に追加
-        const sidebarElement = document.getElementById('aihelper-sidebar');
-        const sidebarWrapper = document.getElementById('sidebar-wrapper');
-        if (sidebarElement && sidebarWrapper) {
-          sidebarWrapper.insertBefore(sidebarElement, sidebarWrapper.firstChild);
-        }
-
-        ai_helper.init_fold_flag();
-
         ai_helper_urls = {
           chat: '<%= ai_helper_chat_path(@project) %>',
           reload: '<%= ai_helper_reload_path(@project) %>',
@@ -93,30 +81,7 @@
           history: '<%= ai_helper_history_path(@project) %>',
           issue_base: '<%= issue_path("__ID__") %>'
         };
-        ai_helper.reload_chat();
-
-        const chatForm = document.getElementById('aihelper-chat-form-area');
-        const form_url = '<%= ai_helper_chat_form_path(@project) %>';
-
-        if (chatForm) {
-          const xhr = new XMLHttpRequest();
-          xhr.open('GET', form_url, true);
-          xhr.onload = function() {
-            if (xhr.status === 200) {
-              ai_helper.innerHTMLwithScripts(chatForm, xhr.responseText);
-            }
-          };
-          xhr.send();
-        }
-
-        ai_helper.page_info['content_id'] = '<%= content_id %>';
-        ai_helper.page_info['controller_name'] = '<%= controller_name %>';
-        ai_helper.page_info['action_name'] = '<%= action_name %>';
-        <% additional_info.each do |key, value|%>
-          ai_helper.page_info['additional_info']['<%= key %>'] = '<%= value %>';
-        <% end %>
-
-        ai_helper.set_hamberger_menu();
+        AiHelperChat.initSidebar();
       });
     </script>
   <% end %>

@@ -1,8 +1,8 @@
 ---
 title: Chat Channel Gateway Architecture
 type: component
-sources: [S001, S002]
-updated: 2026-08-01
+sources: [S001, S002, S018, S019]
+updated: 2026-08-08
 ---
 
 # Chat Channel Gateway Architecture
@@ -31,6 +31,10 @@ turned into an `IncomingMessage` and handled through `MessageHandler` (S001).
 - It runs as a **separate background process** that connects *outward* to the
   chat service, so **no public URL** is required for the Redmine server (S002).
   Start it with `rake redmine:plugins:ai_helper:chat_channel:gateway` (S002).
+  ADR-017 scopes that guarantee to **outbound** adapters — it is not a
+  whole-plugin invariant, and enabling an inbound adapter does require a public
+  HTTPS URL. Slack/Discord are unaffected (S019). See
+  [Public URL Scope for Chat Adapters](./public-url-scope.md).
 - Every question is processed under a single Redmine **execution account**
   chosen by the admin; restricting that account's roles restricts what the
   gateway can read and do. Custom commands, agent orchestration, and Langfuse
@@ -62,6 +66,17 @@ simply proceeds with no prior context. This mirrors 028's
 `required_setting_fields` declaration style (S001). Slack and Discord override
 these to `true` and implement both fetch methods.
 
+## Inbound adapters
+
+Feature 044 adds `BaseAdapter.inbound?` in the same declaration style (default
+`false`, `true` on `InboundAdapter`). An inbound adapter has no socket: its
+`start` polls `ai_helper_inbound_events` for webhook events stored by a Rails
+endpoint in Redmine, then `dispatch`es them into the same worker loop, leaving
+`Gateway`, `MessageHandler`, `IncomingMessage` and the Slack/Discord adapters
+unchanged (S018). ADR-017 records that claim as verified: the whole pre-existing
+suite, `gateway_test.rb` and both concrete adapters' tests included, passes
+unmodified (S019).
+
 ## Related
 
 - [Chat Context Import](./chat-context-import.md) — how surrounding messages
@@ -70,9 +85,16 @@ these to `true` and implement both fetch methods.
   details behind the fetch methods.
 - [Discord Message Content Intent](./discord-message-content-intent.md) — a
   hard constraint on the Discord adapter's connection.
+- [Inbound Chat Webhook Ingest](./inbound-chat-webhook-ingest.md) — the
+  decisions behind webhook-push adapters.
+- [Inbound Webhook Endpoint](./inbound-webhook-endpoint.md) — the receiving
+  controller and its security rules.
+- [Inbound Event Queue](./inbound-event-queue.md) — the event table, claiming,
+  expiry, retention, and reply metadata.
 - [Plugin Overview](./plugin-overview.md) — where the gateway sits among the
   plugin's features.
 
-Design decisions are recorded in ADR-006 (gateway architecture) and ADR-007
-(Discord connection design) under `docs/adr/` (S001). Full setup guides live in
+Design decisions are recorded in ADR-006 (gateway architecture), ADR-007
+(Discord connection design) and ADR-017 (inbound webhook gateway, an accepted
+amendment to ADR-006's scope) under `docs/adr/` (S001, S019). Full setup guides live in
 `docs/slack_gateway_setup.md` and `docs/discord_gateway_setup.md` (S002).

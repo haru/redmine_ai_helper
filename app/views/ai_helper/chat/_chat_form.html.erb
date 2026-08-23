@@ -11,18 +11,7 @@
   <%= hidden_field_tag :content_id, "", id: 'ai_helper_content_id' %>
   <%= f.submit t(:button_submit), id: 'aihelper-chat-submit' %>
 <% end %>
-<script>
+  <script>
   ai_helper.set_form_handlers();
-
-  // Initialize command completion for dynamically loaded chat form
-  (function() {
-    const chatInput = document.getElementById('ai-helper-message-input');
-    if (chatInput && !chatInput.dataset.commandCompletionInitialized) {
-      const commandsUrl = chatInput.dataset.commandsUrl;
-      if (typeof CommandCompletion !== 'undefined') {
-        new CommandCompletion(chatInput, commandsUrl);
-        chatInput.dataset.commandCompletionInitialized = 'true';
-      }
-    }
-  })();
+  AiHelperChat.initChatForm();
 </script>

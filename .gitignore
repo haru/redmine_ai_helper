@@ -54,6 +54,9 @@ bower.json
 # Ignore node_modules
 node_modules/
 
+# Ignore JavaScript coverage output (separate from Ruby's /coverage/)
+coverage-js/
+
 # Ignore precompiled javascript packs
 /public/packs
 /public/packs-test

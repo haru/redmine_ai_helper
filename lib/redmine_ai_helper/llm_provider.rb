@@ -21,10 +21,12 @@ module RedmineAiHelper
     LLM_AZURE_OPENAI = "AzureOpenAi".freeze
     class << self
       # Returns an instance of the appropriate LLM client based on the system settings.
+      # @param request_options [Hash, nil] Per-request HTTP overrides forwarded to
+      #   the provider (see BaseProvider#initialize). nil keeps the global settings.
       # @return [Object] An instance of the appropriate LLM client.
-      def get_llm_provider
+      def get_llm_provider(request_options: nil)
         setting = AiHelperSetting.find_or_create
-        provider_for_profile(setting.model_profile)
+        provider_for_profile(setting.model_profile, request_options: request_options)
       end
 
       # Returns an LLM provider instance for vector operations.
@@ -65,19 +67,21 @@ module RedmineAiHelper
 
       # Instantiates the correct provider for a given AiHelperModelProfile.
       # @param profile [AiHelperModelProfile] The model profile to use.
+      # @param request_options [Hash, nil] Per-request HTTP overrides forwarded to
+      #   the provider (see BaseProvider#initialize). nil keeps the global settings.
       # @return [Object] An instance of the appropriate LLM client.
-      def provider_for_profile(profile)
+      def provider_for_profile(profile, request_options: nil)
         case profile.llm_type
         when LLM_OPENAI
-          RedmineAiHelper::LlmClient::OpenAiProvider.new(model_profile: profile)
+          RedmineAiHelper::LlmClient::OpenAiProvider.new(model_profile: profile, request_options: request_options)
         when LLM_OPENAI_COMPATIBLE
-          RedmineAiHelper::LlmClient::OpenAiCompatibleProvider.new(model_profile: profile)
+          RedmineAiHelper::LlmClient::OpenAiCompatibleProvider.new(model_profile: profile, request_options: request_options)
         when LLM_GEMINI
-          RedmineAiHelper::LlmClient::GeminiProvider.new(model_profile: profile)
+          RedmineAiHelper::LlmClient::GeminiProvider.new(model_profile: profile, request_options: request_options)
         when LLM_ANTHROPIC
-          RedmineAiHelper::LlmClient::AnthropicProvider.new(model_profile: profile)
+          RedmineAiHelper::LlmClient::AnthropicProvider.new(model_profile: profile, request_options: request_options)
         when LLM_AZURE_OPENAI
-          RedmineAiHelper::LlmClient::AzureOpenAiProvider.new(model_profile: profile)
+          RedmineAiHelper::LlmClient::AzureOpenAiProvider.new(model_profile: profile, request_options: request_options)
         else
           raise NotImplementedError, "LLM provider not found"
         end
