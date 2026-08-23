@@ -2,6 +2,11 @@
 if (!window.aiHelperProjectHealthInitialized) {
   window.aiHelperProjectHealthInitialized = true;
 
+  /**
+   * Read the project health metadata endpoint URL and "created" label from
+   * their meta tags.
+   * @returns {{url: string|null, label: string}} The metadata refresh config.
+   */
   function getProjectHealthMetadataConfig() {
     const urlMeta = document.querySelector('meta[name="ai-helper-project-health-metadata-url"]');
     const labelMeta = document.querySelector('meta[name="ai-helper-project-health-created-label"]');
@@ -11,6 +16,12 @@ if (!window.aiHelperProjectHealthInitialized) {
     };
   }
 
+  /**
+   * Render (or remove, if `formattedValue` is falsy) the "created" metadata
+   * paragraph above the health report.
+   * @param {string} label - The metadata label (e.g. "Created").
+   * @param {string|null} formattedValue - The formatted timestamp, or null/empty to clear it.
+   */
   function renderProjectHealthMetadata(label, formattedValue) {
     const container = document.querySelector('.ai-helper-project-health');
     if (!container) {
@@ -47,6 +58,10 @@ if (!window.aiHelperProjectHealthInitialized) {
     metaParagraph.appendChild(document.createTextNode(' ' + formattedValue));
   }
 
+  /**
+   * Fetch the latest "created" metadata for the report and re-render it.
+   * Silently ignores failures so a metadata refresh never interrupts the UX.
+   */
   function refreshProjectHealthMetadata() {
     const metadata = getProjectHealthMetadataConfig();
     if (!metadata.url) {
@@ -78,8 +93,10 @@ if (!window.aiHelperProjectHealthInitialized) {
       });
   }
 
-  // Auto-scroll the streaming result container to the bottom. Split out to
-  // keep the eventSource.onmessage handler under ESLint's max-depth limit.
+  /**
+   * Auto-scroll the streaming result container to the bottom. Split out to
+   * keep the eventSource.onmessage handler under ESLint's max-depth limit.
+   */
   function scrollHealthContentToBottom() {
     const scrollableContainer = document.querySelector('.ai-helper-project-health-content.has-report');
     if (scrollableContainer) {
@@ -87,8 +104,13 @@ if (!window.aiHelperProjectHealthInitialized) {
     }
   }
 
-  // Render an incoming streaming chunk. Split out of eventSource.onmessage
-  // to keep it under ESLint's max-depth limit.
+  /**
+   * Render an incoming streaming chunk. Split out of eventSource.onmessage
+   * to keep it under ESLint's max-depth limit.
+   * @param {HTMLElement} resultDiv - The report result container.
+   * @param {AiHelperMarkdownParser} parser - Parser used to render the accumulated markdown.
+   * @param {string} content - The full accumulated content so far.
+   */
   function appendStreamingChunk(resultDiv, parser, content) {
     // Hide loader on first content
     const loader = resultDiv.querySelector('.ai-helper-loader');
@@ -106,9 +128,11 @@ if (!window.aiHelperProjectHealthInitialized) {
     scrollHealthContentToBottom();
   }
 
-  // Update the health report history in the master-detail layout once
-  // generation finishes. Split out of eventSource.onmessage to keep it
-  // under ESLint's max-depth limit.
+  /**
+   * Update the health report history in the master-detail layout once
+   * generation finishes. Split out of eventSource.onmessage to keep it
+   * under ESLint's max-depth limit.
+   */
   function refreshHealthReportHistory() {
     if (typeof window.updateHealthReportHistory !== 'function') {
       refreshProjectHealthMetadata();
@@ -134,8 +158,13 @@ if (!window.aiHelperProjectHealthInitialized) {
     }, 1000);
   }
 
-  // Render the completed report once streaming finishes. Split out of
-  // eventSource.onmessage to keep it under ESLint's max-depth limit.
+  /**
+   * Render the completed report once streaming finishes. Split out of
+   * eventSource.onmessage to keep it under ESLint's max-depth limit.
+   * @param {HTMLElement} resultDiv - The report result container.
+   * @param {AiHelperMarkdownParser} parser - Parser used to render the final markdown.
+   * @param {string} content - The full generated report content.
+   */
   function finalizeStreamingContent(resultDiv, parser, content) {
     const formattedContent = parser.parse(content);
     const finalHTML = '<div class="ai-helper-final-content">' +
@@ -158,7 +187,9 @@ if (!window.aiHelperProjectHealthInitialized) {
     refreshProjectHealthMetadata();
   }
 
-  // Function to add PDF export button after report generation
+  /**
+   * Add the PDF/Markdown export links below the report, unless already present.
+   */
   function addPdfExportButton() {
     const healthDiv = document.querySelector('.ai-helper-project-health');
     if (healthDiv) {
@@ -206,7 +237,9 @@ if (!window.aiHelperProjectHealthInitialized) {
     }
   }
 
-  // Function to remove PDF export button
+  /**
+   * Remove the PDF/Markdown export links, if present.
+   */
   function removePdfExportButton() {
     const healthDiv = document.querySelector('.ai-helper-project-health');
     if (healthDiv) {
@@ -217,7 +250,11 @@ if (!window.aiHelperProjectHealthInitialized) {
     }
   }
 
-  // Function to update hidden field with report content
+  /**
+   * Store the report's markdown content in a hidden field for later export,
+   * creating the field if it doesn't exist yet.
+   * @param {string} content - The report's raw markdown content.
+   */
   function updateHiddenReportContent(content) {
     let hiddenField = document.getElementById('ai-helper-health-report-content');
     if (!hiddenField) {
@@ -231,7 +268,11 @@ if (!window.aiHelperProjectHealthInitialized) {
     hiddenField.value = content;
   }
 
-  // Function to handle PDF export with current content
+  /**
+   * Submit the stored report content to the PDF export endpoint via a
+   * generated form.
+   * @param {MouseEvent} event - The export link's click event.
+   */
   function handlePdfExport(event) {
     event.preventDefault();
     const hiddenField = document.getElementById('ai-helper-health-report-content');
@@ -259,7 +300,11 @@ if (!window.aiHelperProjectHealthInitialized) {
     }
   }
 
-  // Function to handle Markdown export with current content
+  /**
+   * Submit the stored report content to the Markdown export endpoint via a
+   * generated form.
+   * @param {MouseEvent} event - The export link's click event.
+   */
   function handleMarkdownExport(event) {
     event.preventDefault();
     const hiddenField = document.getElementById('ai-helper-health-report-content');

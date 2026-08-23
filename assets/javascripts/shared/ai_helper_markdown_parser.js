@@ -1,6 +1,14 @@
 // Prevent duplicate class declaration
 if (typeof AiHelperMarkdownParser === "undefined") {
+  /**
+   * A minimal client-side Markdown-to-HTML renderer for streamed/cached
+   * AI-generated content (summaries, replies, health reports). Escapes and
+   * sanitizes its input/output since it renders untrusted LLM text.
+   */
   window.AiHelperMarkdownParser = class {
+    /**
+     * Set up the ordered list of regex-based rendering rules applied by `parse`.
+     */
     constructor() {
       this.rules = [
         // Headers
@@ -60,6 +68,11 @@ if (typeof AiHelperMarkdownParser === "undefined") {
       ];
     }
 
+    /**
+     * Render a Markdown string to sanitized HTML.
+     * @param {string} markdown - The raw (untrusted) Markdown source.
+     * @returns {string} The rendered, sanitized HTML.
+     */
     parse(markdown) {
       // Escape HTML special characters in the source so any raw HTML embedded
       // in the report content (e.g. <script>, <img onerror=...>, attribute
@@ -94,6 +107,13 @@ if (typeof AiHelperMarkdownParser === "undefined") {
       return html;
     }
 
+    /**
+     * Turn `#123`-style issue references into links, using
+     * `ai_helper_urls.issue_base`. Existing `<a>`/`<pre>`/`<code>` blocks are
+     * masked out first so their content is never re-linked.
+     * @param {string} html - HTML already rendered by the other rules.
+     * @returns {string} HTML with issue references linkified.
+     */
     linkifyIssueReferences(html) {
       const template = (typeof ai_helper_urls !== 'undefined') ? ai_helper_urls.issue_base : null;
       if (!template) {return html;}
@@ -143,8 +163,12 @@ if (typeof AiHelperMarkdownParser === "undefined") {
       return unmasked;
     }
 
-    // Remove dangerous HTML patterns from the output using DOMParser
-    // for robust sanitization that handles nested/malformed tags correctly.
+    /**
+     * Remove dangerous HTML patterns from the output using DOMParser for
+     * robust sanitization that handles nested/malformed tags correctly.
+     * @param {string} html - HTML already rendered by the other rules.
+     * @returns {string} Sanitized HTML, with dangerous tags/attributes stripped.
+     */
     sanitizeOutput(html) {
       const doc = new DOMParser().parseFromString(html, 'text/html');
       // Remove dangerous elements and their content
@@ -168,7 +192,11 @@ if (typeof AiHelperMarkdownParser === "undefined") {
       return doc.body.innerHTML;
     }
 
-    // Escape HTML special characters so raw HTML in the input renders as text.
+    /**
+     * Escape HTML special characters so raw HTML in the input renders as text.
+     * @param {string} text - The raw value to escape (`null`/`undefined` become `''`).
+     * @returns {string} The HTML-escaped text.
+     */
     static escapeHtml(text) {
       if (text == null) {return "";}
       return String(text)
@@ -179,7 +207,11 @@ if (typeof AiHelperMarkdownParser === "undefined") {
         .replace(/'/g, "&#39;");
     }
 
-    // Validate URL protocol to prevent javascript: XSS
+    /**
+     * Validate URL protocol to prevent javascript: XSS.
+     * @param {string} url - The URL from a `[text](url)` markdown link.
+     * @returns {string|null} The trimmed URL if its protocol is allowed, otherwise `null`.
+     */
     static sanitizeUrl(url) {
       if (!url) {return null;}
       const trimmed = url.trim();
@@ -193,6 +225,12 @@ if (typeof AiHelperMarkdownParser === "undefined") {
       return null;
     }
 
+    /**
+     * Render GitHub-flavored Markdown tables (with header/alignment rows)
+     * to HTML `<table>` markup; lines outside of a table pass through unchanged.
+     * @param {string} markdown - The (HTML-escaped) source text.
+     * @returns {string} The source with tables replaced by HTML.
+     */
     processTables(markdown) {
       const tableRegex = /^\|(.+)\|$/;
       const headerSeparatorRegex = /^\|(\s*:?-+:?\s*\|)+$/;
@@ -263,6 +301,12 @@ if (typeof AiHelperMarkdownParser === "undefined") {
       return html.join("\n");
     }
 
+    /**
+     * Build a `<table>` element's HTML from parsed rows and column alignments.
+     * @param {string[][]} tableData - Cell text, one array per row (row 0 is the header).
+     * @param {string[]} alignments - Per-column alignment (`'left'`, `'center'`, or `'right'`).
+     * @returns {string} The rendered `<table>` HTML, or `''` if `tableData` is empty.
+     */
     convertTableToHtml(tableData, alignments) {
       if (tableData.length === 0) {return "";}
 
@@ -299,6 +343,12 @@ if (typeof AiHelperMarkdownParser === "undefined") {
       return html.join("\n");
     }
 
+    /**
+     * Render (possibly nested) Markdown bullet/numbered lists to HTML
+     * `<ul>`/`<ol>` markup, tracking nesting via indentation.
+     * @param {string} markdown - The (HTML-escaped) source text.
+     * @returns {string} The source with lists replaced by HTML.
+     */
     processLists(markdown) {
       const lines = markdown.split("\n");
       const html = [];
@@ -353,9 +403,14 @@ if (typeof AiHelperMarkdownParser === "undefined") {
       return html.join("\n");
     }
 
-    // Handles a non-empty, non-list-item line encountered while walking the
-    // markdown for processLists(). Split out to keep processLists() under
-    // ESLint's max-depth limit.
+    /**
+     * Handles a non-empty, non-list-item line encountered while walking the
+     * markdown for processLists(). Split out to keep processLists() under
+     * ESLint's max-depth limit.
+     * @param {string} line - The current source line.
+     * @param {Array<{type: string, indent: number}>} listStack - Currently open lists, outermost first.
+     * @param {string[]} html - Output buffer; mutated in place.
+     */
     processNonListLine(line, listStack, html) {
       if (listStack.length === 0) {
         html.push(line);
@@ -376,8 +431,13 @@ if (typeof AiHelperMarkdownParser === "undefined") {
       html.push(line);
     }
 
-    // Close any list levels deeper than currentLevel. Split out of
-    // processLists() to keep it under ESLint's max-depth limit.
+    /**
+     * Close any list levels deeper than currentLevel. Split out of
+     * processLists() to keep it under ESLint's max-depth limit.
+     * @param {Array<{type: string, indent: number}>} listStack - Currently open lists; mutated in place.
+     * @param {string[]} html - Output buffer; mutated in place.
+     * @param {number} currentLevel - The indent level of the line being processed.
+     */
     closeDeeperLists(listStack, html, currentLevel) {
       while (
         listStack.length > 0 &&
@@ -392,8 +452,14 @@ if (typeof AiHelperMarkdownParser === "undefined") {
       }
     }
 
-    // Close the current-level list if the list type (ul/ol) changed. Split
-    // out of processLists() to keep it under ESLint's max-depth limit.
+    /**
+     * Close the current-level list if the list type (ul/ol) changed. Split
+     * out of processLists() to keep it under ESLint's max-depth limit.
+     * @param {Array<{type: string, indent: number}>} listStack - Currently open lists; mutated in place.
+     * @param {string[]} html - Output buffer; mutated in place.
+     * @param {number} currentLevel - The indent level of the line being processed.
+     * @param {string} currentListType - `'ul'` or `'ol'`, the list type of the line being processed.
+     */
     closeSameLevelListIfTypeChanged(listStack, html, currentLevel, currentListType) {
       if (
         listStack.length > 0 &&
@@ -408,8 +474,14 @@ if (typeof AiHelperMarkdownParser === "undefined") {
       }
     }
 
-    // Open a new nested list, or continue the current one. Split out of
-    // processLists() to keep it under ESLint's max-depth limit.
+    /**
+     * Open a new nested list, or continue the current one. Split out of
+     * processLists() to keep it under ESLint's max-depth limit.
+     * @param {Array<{type: string, indent: number}>} listStack - Currently open lists; mutated in place.
+     * @param {string[]} html - Output buffer; mutated in place.
+     * @param {number} currentLevel - The indent level of the line being processed.
+     * @param {string} currentListType - `'ul'` or `'ol'`, the list type of the line being processed.
+     */
     openOrContinueList(listStack, html, currentLevel, currentListType) {
       if (
         listStack.length === 0 ||
@@ -428,8 +500,12 @@ if (typeof AiHelperMarkdownParser === "undefined") {
       }
     }
 
-    // Close all remaining open lists. Split out of processLists() to keep
-    // it under ESLint's max-depth limit.
+    /**
+     * Close all remaining open lists. Split out of processLists() to keep
+     * it under ESLint's max-depth limit.
+     * @param {Array<{type: string, indent: number}>} listStack - Currently open lists; mutated in place (emptied).
+     * @param {string[]} html - Output buffer; mutated in place.
+     */
     closeAllLists(listStack, html) {
       while (listStack.length > 0) {
         html.push("</li>");

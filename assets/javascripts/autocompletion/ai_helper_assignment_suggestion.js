@@ -5,9 +5,9 @@
  */
 class AiHelperAssignmentSuggestion {
   /**
-   * @param {Object} options
+   * @param {object} options - Configuration for the suggestion feature.
    * @param {string} options.endpoint - API endpoint URL
-   * @param {Object} options.labels - I18n labels
+   * @param {object} options.labels - I18n labels
    * @param {string} options.robotIconHtml - HTML for the robot icon SVG
    */
   constructor(options) {
@@ -230,8 +230,8 @@ class AiHelperAssignmentSuggestion {
   /**
    * Escape HTML special characters to prevent XSS.
    * Only used for client-side labels in loading/error states.
-   * @param {string} text
-   * @returns {string}
+   * @param {string} text - The raw text to escape.
+   * @returns {string} The HTML-escaped text.
    */
   escapeHtml(text) {
     const div = document.createElement('div');

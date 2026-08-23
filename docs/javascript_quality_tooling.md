@@ -72,6 +72,15 @@ as the coverage threshold below. See
 [ADR-027](adr/027-eslint-quality-rule-ratchet.md) for the measured baseline
 and full rationale.
 
+## JSDoc enforcement
+
+`eslint-plugin-jsdoc`'s `flat/recommended` rules (all promoted to `"error"`)
+check every class, ES6 class method, and `foo = function () {}` class-field
+method for a JSDoc block with a description and `@param`/`@returns`
+descriptions. See
+[ADR-028](adr/028-eslint-plugin-jsdoc-enforcement.md) for the exact scope
+and why nested callbacks are excluded.
+
 ## Coverage threshold ratchet
 
 `vitest.config.js`'s `coverage.thresholds.lines` starts at the coverage

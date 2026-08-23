@@ -30,6 +30,11 @@ else (Ruby, agents, tools, git workflow).
   same "document the why, not the what" standard as code comments applies
   to the description line; `@param`/`@returns` should still state the type
   and meaning of each value.
+- Enforced by `eslint-plugin-jsdoc` (`jsdoc/*` rules in `eslint.config.js`,
+  all "error"): classes, ES6 class methods, and the `foo = function () {}`
+  class-field method style all require a JSDoc block; every `@param` and
+  `@returns` needs a description, not just a type. See
+  [ADR-028](../../docs/adr/028-eslint-plugin-jsdoc-enforcement.md).
 
 ## Testing
 
@@ -82,6 +87,7 @@ passes locally.
 - [docs/javascript_quality_tooling.md](../../docs/javascript_quality_tooling.md)
 - [ADR-022](../../docs/adr/022-javascript-test-tooling-for-classic-scripts.md) — dynamic-import test strategy
 - [ADR-023](../../docs/adr/023-javascript-coverage-ratchet-policy.md) — coverage ratchet policy
+- [ADR-028](../../docs/adr/028-eslint-plugin-jsdoc-enforcement.md) — eslint-plugin-jsdoc enforcement
 - Wiki: `wiki/pages/js-quality-tooling.md`,
   `wiki/pages/classic-script-testing-strategy.md`,
   `wiki/pages/js-coverage-ratchet-policy.md`,

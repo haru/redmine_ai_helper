@@ -79,3 +79,5 @@ Briefly describe alternatives that were rejected and why.
 | [024](./024-javascript-coverage-sent-to-codecov-informational-only.md) | JavaScript coverage is uploaded to Codecov as an informational-only flag | Accepted |
 | [025](./025-erb-js-bridge-value-passing-pattern.md) | ERB-JS bridge value passing pattern (data-* attributes + init call) | Accepted |
 | [026](./026-shared-js-helper-extraction-threshold.md) | Shared JS helper extraction threshold (3+ occurrences or substantively identical) | Accepted |
+| [027](./027-eslint-quality-rule-ratchet.md) | ESLint naming/explicitness/size/complexity rules start at a measured baseline and ratchet down | Accepted |
+| [028](./028-eslint-plugin-jsdoc-enforcement.md) | eslint-plugin-jsdoc enforces the existing JSDoc convention | Accepted |
