@@ -178,7 +178,27 @@ if (!window.aiHelperProjectHealthInitialized) {
         const markdownUrlHref = markdownUrl ? markdownUrl.getAttribute('content') : '#';
         const pdfUrlHref = pdfUrl ? pdfUrl.getAttribute('content') : '#';
 
-        otherFormatsP.innerHTML = exportLabelText + ' <span><a href="' + markdownUrlHref + '" class="text" id="ai-helper-markdown-export-link-dynamic">Markdown</a></span> <span><a href="' + pdfUrlHref + '" class="pdf" id="ai-helper-pdf-export-link-dynamic">PDF</a></span>';
+        otherFormatsP.appendChild(document.createTextNode(exportLabelText + ' '));
+
+        const markdownSpan = document.createElement('span');
+        const markdownLink = document.createElement('a');
+        markdownLink.href = markdownUrlHref;
+        markdownLink.className = 'text';
+        markdownLink.id = 'ai-helper-markdown-export-link-dynamic';
+        markdownLink.textContent = 'Markdown';
+        markdownSpan.appendChild(markdownLink);
+        otherFormatsP.appendChild(markdownSpan);
+
+        otherFormatsP.appendChild(document.createTextNode(' '));
+
+        const pdfSpan = document.createElement('span');
+        const pdfLink = document.createElement('a');
+        pdfLink.href = pdfUrlHref;
+        pdfLink.className = 'pdf';
+        pdfLink.id = 'ai-helper-pdf-export-link-dynamic';
+        pdfLink.textContent = 'PDF';
+        pdfSpan.appendChild(pdfLink);
+        otherFormatsP.appendChild(pdfSpan);
 
         // Add the button to the health div
         healthDiv.appendChild(otherFormatsP);
@@ -411,8 +431,8 @@ document.addEventListener('DOMContentLoaded', function() {
             finalizeStreamingContent(resultDiv, parser, content);
           }
         }
-      } catch {
-        // Silently handle parsing errors
+      } catch (error) {
+        console.error('Failed to parse project health streaming event data:', error, event.data);
       }
     };
 

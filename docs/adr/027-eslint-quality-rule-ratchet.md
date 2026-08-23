@@ -29,7 +29,8 @@ refactor instead of incremental improvement.
 - Every numeric threshold is set from the value actually measured in the
   codebase on 2026-08-23 (via `eslint --rule '{"<rule>": ["error", 1]}'`,
   which forces every location to report its actual value), not from an
-  external style guide's ideal target. Baseline:
+  external style guide's ideal target. Initial baseline when the rules were
+  added:
   - `assets/javascripts/**`: `max-lines` 1092 -> 1100, `max-lines-per-function`
     418 -> 420, `complexity` 30, `max-depth` 6, `max-params` 6.
   - `test/javascript/**`: `max-lines` 1493 -> 1500, `complexity` 12,
@@ -40,6 +41,14 @@ refactor instead of incremental improvement.
   - Same policy as `vitest.config.js`'s coverage threshold (ADR-023):
     thresholds are only ever lowered (tightened), never raised, as files and
     functions get split up.
+  - That policy took effect immediately: the same PR that introduced these
+    rules also split every file/function over the ideal targets, so the
+    thresholds actually committed to `eslint.config.js` are already tighter
+    than this initial baseline — currently `max-lines` 400,
+    `max-lines-per-function` 130, `complexity` 14, `max-depth` 3,
+    `max-params` 6 for `assets/javascripts/**`. `eslint.config.js` is the
+    source of truth for the current numbers; a threshold's `git blame` there
+    is the audit trail for when and why it moved (see Consequences).
 - `camelcase`, `eqeqeq`, `curly`, and `no-implicit-coercion` have no
   meaningful "threshold" to ratchet (they're pass/fail), so instead of
   starting loose, the ~168 existing violations were fixed directly: the

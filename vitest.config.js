@@ -20,7 +20,6 @@ export default defineConfig({
       // stage 3 (auto_completion): ~46.63% (1156/2479) -> 46
       // stage 4: 92.19% (2290/2484) -> 90
       // stage 5: 96.11% (2972/3092) raised to 95 to match Ruby coverage target
-      // raised to 95 to match Ruby coverage target
       thresholds: {
         lines: 95,
         perFile: false,
