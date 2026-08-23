@@ -272,6 +272,38 @@ class AiHelperAutoCompletion {
     this.callCompletionAPI(text, cursorPosition, requestId);
   }
 
+  // Try to get project_identifier from the URL for new-issue forms
+  getProjectIdentifierFromUrl() {
+    const urlMatch = window.location.pathname.match(/\/projects\/([^/]+)/);
+    return urlMatch ? urlMatch[1] : null;
+  }
+
+  // Build the default completion request body, including project_id/
+  // project_identifier for new-issue forms. Split out of callCompletionAPI
+  // to keep it under ESLint's max-depth limit.
+  buildDefaultRequestBody(text, cursorPosition) {
+    const requestBody = {
+      text: text,
+      cursor_position: cursorPosition
+    };
+
+    // For new issues, try to get project_id from form or URL
+    if (this.options.endpoint.includes('/new/')) {
+      const projectSelect = document.querySelector('#issue_project_id');
+      const projectId = projectSelect ? projectSelect.value : null;
+      if (projectId) {
+        requestBody.project_id = projectId;
+      } else {
+        const projectIdentifier = this.getProjectIdentifierFromUrl();
+        if (projectIdentifier) {
+          requestBody.project_identifier = projectIdentifier;
+        }
+      }
+    }
+
+    return requestBody;
+  }
+
   callCompletionAPI(text, cursorPosition, requestId) {
     // Get CSRF token
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -292,25 +324,7 @@ class AiHelperAutoCompletion {
     if (this.options.customRequestData && typeof this.options.customRequestData === 'function') {
       requestBody = this.options.customRequestData(text, cursorPosition);
     } else {
-      requestBody = {
-        text: text,
-        cursor_position: cursorPosition
-      };
-
-      // For new issues, try to get project_id from form or URL
-      if (this.options.endpoint.includes('/new/')) {
-        const projectSelect = document.querySelector('#issue_project_id');
-        const projectId = projectSelect ? projectSelect.value : null;
-        if (projectId) {
-          requestBody.project_id = projectId;
-        } else {
-          // Try to get from URL
-          const urlMatch = window.location.pathname.match(/\/projects\/([^/]+)/);
-          if (urlMatch) {
-            requestBody.project_identifier = urlMatch[1];
-          }
-        }
-      }
+      requestBody = this.buildDefaultRequestBody(text, cursorPosition);
     }
 
     // Abort the previous in-flight request so that at most one completion

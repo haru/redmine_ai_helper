@@ -61,19 +61,26 @@ const AiHelperChat = (() => {
       ai_helper.page_info['controller_name'] = sidebarElement.dataset.controllerName || '';
       ai_helper.page_info['action_name'] = sidebarElement.dataset.actionName || '';
 
-      try {
-        const additionalInfo = JSON.parse(sidebarElement.dataset.additionalInfo || '{}');
-        for (const key in additionalInfo) {
-          if (Object.prototype.hasOwnProperty.call(additionalInfo, key)) {
-            ai_helper.page_info['additional_info'][key] = String(additionalInfo[key]);
-          }
-        }
-      } catch (error) {
-        console.error('AiHelperChat: failed to parse sidebar additional-info JSON; repository path/revision/diff context will be unavailable', error, sidebarElement.dataset.additionalInfo);
-      }
+      applyAdditionalInfo(sidebarElement);
     }
 
     ai_helper.set_hamberger_menu();
+  }
+
+  /**
+   * Merge the sidebar's data-additional-info JSON into ai_helper.page_info.
+   */
+  function applyAdditionalInfo(sidebarElement) {
+    try {
+      const additionalInfo = JSON.parse(sidebarElement.dataset.additionalInfo || '{}');
+      for (const key in additionalInfo) {
+        if (Object.prototype.hasOwnProperty.call(additionalInfo, key)) {
+          ai_helper.page_info['additional_info'][key] = String(additionalInfo[key]);
+        }
+      }
+    } catch (error) {
+      console.error('AiHelperChat: failed to parse sidebar additional-info JSON; repository path/revision/diff context will be unavailable', error, sidebarElement.dataset.additionalInfo);
+    }
   }
 
   return {

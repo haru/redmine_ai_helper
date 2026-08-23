@@ -85,6 +85,7 @@ describe("AiHelperTypoChecker", () => {
 
   beforeEach(async () => {
     await loadScript("assets/javascripts/ai_helper_typo_checker");
+    await loadScript("assets/javascripts/ai_helper_typo_suggestion_overlay");
     dom = createTypoCheckerDOM();
     textarea = dom.textarea;
     textarea.value = "";

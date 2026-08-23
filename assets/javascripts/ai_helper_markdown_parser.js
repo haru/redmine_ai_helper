@@ -319,48 +319,9 @@ if (typeof AiHelperMarkdownParser === "undefined") {
           // Determine current indent level
           const currentLevel = Math.floor(indent / 2); // Assume 2 spaces per level
 
-          // Close deeper nested lists if we're back at a shallower level
-          while (
-            listStack.length > 0 &&
-            listStack[listStack.length - 1].indent > currentLevel
-          ) {
-            const closingList = listStack.pop();
-            html.push(`</${closingList.type}>`);
-            // If we have a parent list, close the parent's li tag
-            if (listStack.length > 0) {
-              html.push("</li>");
-            }
-          }
-
-          // Close same-level list if type changes
-          if (
-            listStack.length > 0 &&
-            listStack[listStack.length - 1].indent === currentLevel &&
-            listStack[listStack.length - 1].type !== currentListType
-          ) {
-            const closingList = listStack.pop();
-            html.push(`</${closingList.type}>`);
-            if (listStack.length > 0) {
-              html.push("</li>");
-            }
-          }
-
-          // Open new nested list if indent level increased
-          if (
-            listStack.length === 0 ||
-            listStack[listStack.length - 1].indent < currentLevel
-          ) {
-            html.push(`<${currentListType}>`);
-            listStack.push({ type: currentListType, indent: currentLevel });
-          } else if (
-            listStack.length > 0 &&
-            listStack[listStack.length - 1].indent === currentLevel
-          ) {
-            // Same level - close previous li if it exists
-            if (html[html.length - 1] !== `<${currentListType}>`) {
-              html.push("</li>");
-            }
-          }
+          this.closeDeeperLists(listStack, html, currentLevel);
+          this.closeSameLevelListIfTypeChanged(listStack, html, currentLevel, currentListType);
+          this.openOrContinueList(listStack, html, currentLevel, currentListType);
 
           html.push(`<li>${content}`);
           emptyLineCount = 0;
@@ -374,52 +335,107 @@ if (typeof AiHelperMarkdownParser === "undefined") {
           const nextIsListItem = /^\s*[-*+]|\d+\./.test(nextLine);
 
           if (emptyLineCount >= 2 || (isLastLine && !nextIsListItem)) {
-            // Close all open list items and lists
-            while (listStack.length > 0) {
-              html.push("</li>");
-              const closingList = listStack.pop();
-              html.push(`</${closingList.type}>`);
-            }
+            this.closeAllLists(listStack, html);
             emptyLineCount = 0;
             html.push(line);
           }
           // Skip adding empty lines while in list to prevent paragraph conversion
         } else {
           // Non-empty, non-list line
-          if (listStack.length > 0) {
-            // Check if this is a continuation line (indented text following a list item)
-            const isIndented = line.match(/^\s+\S/);
-
-            if (isIndented) {
-              // This is a continuation of the previous list item
-              // Append to the current list item content (remove extra whitespace at beginning)
-              const trimmedContent = line.trim();
-              html.push(`<br>${trimmedContent}`);
-              emptyLineCount = 0;
-            } else {
-              // Close all open lists
-              while (listStack.length > 0) {
-                html.push("</li>");
-                const closingList = listStack.pop();
-                html.push(`</${closingList.type}>`);
-              }
-              emptyLineCount = 0;
-              html.push(line);
-            }
-          } else {
-            html.push(line);
-          }
+          this.processNonListLine(line, listStack, html);
+          emptyLineCount = 0;
         }
       }
 
       // Close any remaining open lists
+      this.closeAllLists(listStack, html);
+
+      return html.join("\n");
+    }
+
+    // Handles a non-empty, non-list-item line encountered while walking the
+    // markdown for processLists(). Split out to keep processLists() under
+    // ESLint's max-depth limit.
+    processNonListLine(line, listStack, html) {
+      if (listStack.length === 0) {
+        html.push(line);
+        return;
+      }
+
+      // Check if this is a continuation line (indented text following a list item)
+      const isIndented = line.match(/^\s+\S/);
+      if (isIndented) {
+        // This is a continuation of the previous list item
+        // Append to the current list item content (remove extra whitespace at beginning)
+        const trimmedContent = line.trim();
+        html.push(`<br>${trimmedContent}`);
+        return;
+      }
+
+      this.closeAllLists(listStack, html);
+      html.push(line);
+    }
+
+    // Close any list levels deeper than currentLevel. Split out of
+    // processLists() to keep it under ESLint's max-depth limit.
+    closeDeeperLists(listStack, html, currentLevel) {
+      while (
+        listStack.length > 0 &&
+        listStack[listStack.length - 1].indent > currentLevel
+      ) {
+        const closingList = listStack.pop();
+        html.push(`</${closingList.type}>`);
+        // If we have a parent list, close the parent's li tag
+        if (listStack.length > 0) {
+          html.push("</li>");
+        }
+      }
+    }
+
+    // Close the current-level list if the list type (ul/ol) changed. Split
+    // out of processLists() to keep it under ESLint's max-depth limit.
+    closeSameLevelListIfTypeChanged(listStack, html, currentLevel, currentListType) {
+      if (
+        listStack.length > 0 &&
+        listStack[listStack.length - 1].indent === currentLevel &&
+        listStack[listStack.length - 1].type !== currentListType
+      ) {
+        const closingList = listStack.pop();
+        html.push(`</${closingList.type}>`);
+        if (listStack.length > 0) {
+          html.push("</li>");
+        }
+      }
+    }
+
+    // Open a new nested list, or continue the current one. Split out of
+    // processLists() to keep it under ESLint's max-depth limit.
+    openOrContinueList(listStack, html, currentLevel, currentListType) {
+      if (
+        listStack.length === 0 ||
+        listStack[listStack.length - 1].indent < currentLevel
+      ) {
+        html.push(`<${currentListType}>`);
+        listStack.push({ type: currentListType, indent: currentLevel });
+      } else if (
+        listStack.length > 0 &&
+        listStack[listStack.length - 1].indent === currentLevel
+      ) {
+        // Same level - close previous li if it exists
+        if (html[html.length - 1] !== `<${currentListType}>`) {
+          html.push("</li>");
+        }
+      }
+    }
+
+    // Close all remaining open lists. Split out of processLists() to keep
+    // it under ESLint's max-depth limit.
+    closeAllLists(listStack, html) {
       while (listStack.length > 0) {
         html.push("</li>");
         const closingList = listStack.pop();
         html.push(`</${closingList.type}>`);
       }
-
-      return html.join("\n");
     }
   };
 }

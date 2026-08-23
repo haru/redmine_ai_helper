@@ -49,23 +49,13 @@ export default [
       curly: "error",
       "no-implicit-coercion": "error",
 
-      // File/function size limits and complexity control.
-      //
-      // Ratchet, same policy as vitest.config.js's coverage threshold (see
-      // ADR-023): these start near the codebase's current worst offenders
-      // instead of an ideal target, so the rule doesn't fail CI outright on
-      // adoption, and are only ever tightened (never loosened) as files and
-      // functions get split up. See ADR-027 for the full rationale.
-      // Baseline measured 2026-08-23:
-      //   max-lines: 1092 (ai_helper_typo_checker.js) -> 1100
-      //   max-lines-per-function: 418 (ai_helper_project_health.js) -> 420
-      //   complexity: 30 (ai_helper_markdown_parser.js#processLists) -> 30
-      //   max-depth: 6 (ai_helper.js#parseSSELines) -> 6
-      //   max-params: 6 (ai_helper.js#parseSSELines) -> 6
-      "max-lines": ["error", { max: 1100, skipBlankLines: true, skipComments: true }],
-      "max-lines-per-function": ["error", { max: 420, skipBlankLines: true, skipComments: true }],
+      // File/function size limits and complexity control. Ratchet policy:
+      // only ever lowered, never raised, as files/functions get split up.
+      // See ADR-027.
+      "max-lines": ["error", { max: 520, skipBlankLines: true, skipComments: true }],
+      "max-lines-per-function": ["error", { max: 320, skipBlankLines: true, skipComments: true }],
       complexity: ["error", 30],
-      "max-depth": ["error", 6],
+      "max-depth": ["error", 3],
       "max-params": ["error", 6],
     },
   },
@@ -105,15 +95,40 @@ export default [
   {
     // getSummary/getWikiSummary are declared as `function` in
     // ai_helper_issue_summary.js/ai_helper_wiki_summary.js and referenced as
-    // bare identifiers from ai_helper.js (contract B: existing page-scoped
-    // global names, kept stable across the refactor). Scoped here so linting
-    // the declaring files themselves doesn't conflict with their own
-    // function declaration (no-redeclare).
-    files: ["assets/javascripts/ai_helper.js"],
+    // bare identifiers from ai_helper.js and ai_helper_streaming.js
+    // (contract B: existing page-scoped global names, kept stable across the
+    // refactor). Scoped here so linting the declaring files themselves
+    // doesn't conflict with their own function declaration (no-redeclare).
+    files: ["assets/javascripts/ai_helper.js", "assets/javascripts/ai_helper_streaming.js"],
     languageOptions: {
       globals: {
         getSummary: "readonly",
         getWikiSummary: "readonly",
+      },
+    },
+  },
+  {
+    // AiHelper is declared via `class AiHelper {...}` in ai_helper.js and
+    // extended (static/prototype) from this file, which is split out purely
+    // to stay under max-lines (see ADR-027) — see the comment at the top of
+    // ai_helper_streaming.js. Scoped here for the same no-redeclare reason
+    // as the blocks above.
+    files: ["assets/javascripts/ai_helper_streaming.js"],
+    languageOptions: {
+      globals: {
+        AiHelper: "readonly",
+      },
+    },
+  },
+  {
+    // AiHelperTypoChecker is declared via `class AiHelperTypoChecker {...}`
+    // in ai_helper_typo_checker.js and extended (static/prototype) from this
+    // file, split out for the same max-lines reason as the block above —
+    // see the comment at the top of ai_helper_typo_suggestion_overlay.js.
+    files: ["assets/javascripts/ai_helper_typo_suggestion_overlay.js"],
+    languageOptions: {
+      globals: {
+        AiHelperTypoChecker: "readonly",
       },
     },
   },

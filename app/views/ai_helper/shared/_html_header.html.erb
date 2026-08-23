@@ -6,6 +6,7 @@
 <% if RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: project) %>
     <%= stylesheet_link_tag('ai_helper.css', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('ai_helper.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('ai_helper_streaming.js', plugin: :redmine_ai_helper) %>
     <script>
       // Update the existing instance with user ID for user-specific localStorage
       ai_helper.setUserId('<%= User.current.id %>');
@@ -18,6 +19,7 @@
     <%= javascript_include_tag('ai_helper_wiki_autocompletion.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('ai_helper_issue_autocompletion.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('ai_helper_typo_checker.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('ai_helper_typo_suggestion_overlay.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('ai_helper_project_health.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('ai_helper_assignment_suggestion.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('ai_helper_master_detail.js', plugin: :redmine_ai_helper) %>

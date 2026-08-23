@@ -159,6 +159,7 @@ describe("AiHelper", () => {
   beforeEach(async () => {
     await loadScript("assets/javascripts/ai_helper_markdown_parser");
     await loadScript("assets/javascripts/ai_helper");
+    await loadScript("assets/javascripts/ai_helper_streaming");
     dom = createAiHelperDOM();
     xhr = createXhrMock();
     window.ai_helper_urls = {
