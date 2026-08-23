@@ -205,6 +205,10 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       mock_response.stubs(:content).returns("answer")
       mock_chat_instance.stubs(:ask).returns(mock_response)
 
+      # system_prompt embeds Time.now.iso8601, so freeze it here to avoid a flaky
+      # mismatch when the two system_prompt calls below straddle a second boundary.
+      frozen_time = Time.now.utc
+      Time.stubs(:now).returns(frozen_time)
       @mock_llm_provider.expects(:create_chat).with(instructions: @agent.system_prompt).returns(mock_chat_instance)
 
       messages = [ { role: "user", content: "Hello" } ]
