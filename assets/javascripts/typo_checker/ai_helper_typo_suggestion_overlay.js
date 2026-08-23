@@ -7,7 +7,12 @@
 // class body. Must load after ai_helper_typo_checker.js (which declares
 // `window.AiHelperTypoChecker`).
 
-// Find the occurrence of `original` closest to the suggestion's reported position
+/**
+ * Find the occurrence of `original` closest to the suggestion's reported position.
+ * @param {number[]} positions - Candidate positions where the original text occurs.
+ * @param {number} targetPosition - The suggestion's reported (possibly stale) position.
+ * @returns {number} The candidate position closest to `targetPosition`.
+ */
 function findClosestPosition(positions, targetPosition) {
   let bestPosition = positions[0];
   let minDistance = Math.abs(positions[0] - targetPosition);

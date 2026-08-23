@@ -69,6 +69,7 @@ const AiHelperChat = (() => {
 
   /**
    * Merge the sidebar's data-additional-info JSON into ai_helper.page_info.
+   * @param {HTMLElement} sidebarElement - The `#aihelper-sidebar` element.
    */
   function applyAdditionalInfo(sidebarElement) {
     try {

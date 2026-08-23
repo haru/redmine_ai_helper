@@ -11,11 +11,11 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
   },
-  "dependencies": {},
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^10.9.0",
+    "eslint-plugin-jsdoc": "^64.2.1",
     "globals": "^17.11.0",
     "jsdom": "^30.0.1",
     "vitest": "^4.1.11"

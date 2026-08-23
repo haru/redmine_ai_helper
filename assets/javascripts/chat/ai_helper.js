@@ -1,3 +1,7 @@
+/**
+ * Chat sidebar controller: form submission, streaming responses, chat
+ * fold/history state, and the inline sub-issue subject/description editors.
+ */
 class AiHelper {
   ai_helper_urls = {};
   page_info = {
@@ -7,12 +11,19 @@ class AiHelper {
   chat_fold_storage_key = 'aihelper-fold-flag_anonymous';
   interactiveOptionsHandlersInitialized = false;
 
-  // Method to update user ID without recreating the instance
+  /**
+   * Update the user ID without recreating the instance.
+   * @param {string} userId - The current Redmine user's ID.
+   */
   setUserId(userId) {
     this.userId = userId;
     this.chat_fold_storage_key = `aihelper-fold-flag_${userId}`;
   }
 
+  /**
+   * Wire up the chat form's submit button and Enter-to-submit textarea
+   * behavior.
+   */
   set_form_handlers = function () {
     // Prevent the default submit behavior of the form
     const form = document.getElementById("ai_helper_chat_form");
@@ -37,7 +48,9 @@ class AiHelper {
       return false;
     });
 
-    // submitAction
+    /**
+     * Submit the chat form's message via XHR and reset the input.
+     */
     function submitAction() {
       document.getElementById("ai_helper_controller_name").value = ai_helper.page_info["controller_name"];
       document.getElementById("ai_helper_action_name").value = ai_helper.page_info["action_name"];
@@ -121,7 +134,11 @@ class AiHelper {
   // SSE parsing/streaming (static parseSSELines, handleSSEStream) live in
   // ai_helper_streaming.js — see the comment there for why.
 
-  // Attach delegated click/keydown handlers to the container once
+  /**
+   * Attach delegated click/keydown handlers to the interactive-options
+   * container once.
+   * @param {HTMLElement} container - The interactive options container.
+   */
   initializeInteractiveOptionsHandlers = function(container) {
     if (this.interactiveOptionsHandlersInitialized) {return;}
 
@@ -160,7 +177,10 @@ class AiHelper {
     this.interactiveOptionsHandlersInitialized = true;
   };
 
-  // Render interactive option buttons for the given choices array
+  /**
+   * Render interactive option buttons for the given choices array.
+   * @param {Array<{label: string, value: string}>} choices - Options offered by the assistant's reply.
+   */
   renderInteractiveOptions = function(choices) {
     const container = document.getElementById('aihelper-interactive-options');
     if (!container) {return;}
@@ -193,7 +213,9 @@ class AiHelper {
     }
   };
 
-  // Hide the interactive options container (on reload/clear)
+  /**
+   * Hide the interactive options container (on reload/clear).
+   */
   hideInteractiveOptions = function() {
     const container = document.getElementById('aihelper-interactive-options');
     if (container) {
@@ -201,6 +223,10 @@ class AiHelper {
     }
   };
 
+  /**
+   * Send the current page context to the LLM endpoint and stream the
+   * response into the chat conversation.
+   */
   call_llm = function () {
     const url = ai_helper_urls.call_llm;
     const data = JSON.stringify(this.page_info);
@@ -273,6 +299,10 @@ class AiHelper {
     xhr.send(data);
   };
 
+  /**
+   * Show or hide the chat's "clear history" button.
+   * @param {boolean} flag - Whether the button should be visible.
+   */
   setClearButtonVisible(flag) {
     const clearButton = document.getElementById("aihelper-chat-clear");
     if (clearButton) {
@@ -289,6 +319,12 @@ class AiHelper {
   // ai_helper_history.js alongside the chat-history/dropdown-menu concern
   // they share.
 
+  /**
+   * Fold or unfold the chat area, animating the transition unless disabled,
+   * and persist the fold state to local storage.
+   * @param {boolean} flag - True to fold (collapse) the chat, false to unfold it.
+   * @param {boolean} [disableAnimation] - Skip the slide animation (used on initial page load).
+   */
   fold_chat = function (flag, disableAnimation = false) {
     const chatArea = document.getElementById("aihelper-foldable-area");
     const arrowDown = document.getElementById("aihelper-arrow-down");
@@ -343,6 +379,9 @@ class AiHelper {
     localStorage.setItem(this.chat_fold_storage_key, flag);
   };
 
+  /**
+   * Apply the chat's fold state saved in local storage on page load.
+   */
   init_fold_flag = function () {
     const flag = localStorage.getItem(this.chat_fold_storage_key);
     if (flag === "true") {
@@ -352,6 +391,12 @@ class AiHelper {
     }
   };
 
+  /**
+   * Set an element's HTML and execute any `<script>` tags it contains.
+   * Plain `element.innerHTML = html` does not execute embedded scripts.
+   * @param {HTMLElement} element - The element to fill.
+   * @param {string} html - HTML string, server-rendered from ERB templates.
+   */
   innerHTMLwithScripts = function (element, html) {
     element.innerHTML = html;
 
@@ -365,6 +410,9 @@ class AiHelper {
 
   }
 
+  /**
+   * Copy the AI-generated reply text into the issue's notes field.
+   */
   apply_generated_issue_reply = function () {
     const replyEl = document.getElementById("ai-helper-generated-reply-content");
     if (!replyEl) {return;}
@@ -375,6 +423,10 @@ class AiHelper {
     replyInputArea.value = replyContent;
   }
 
+  /**
+   * Switch a suggested sub-issue's subject row into edit mode.
+   * @param {number} i - Index of the sub-issue in the suggestion list.
+   */
   edit_sub_issue_subject = function(i) {
     const subjectSpan = document.getElementById(`ai_helper_sub_issue_subject_${i}`);
     const subjectEditSpan = document.getElementById(`ai_helper_sub_issue_subject_edit_${i}`);
@@ -383,6 +435,10 @@ class AiHelper {
     subjectEditSpan.style.display = 'inline';
   }
 
+  /**
+   * Save the edited subject back onto a suggested sub-issue and exit edit mode.
+   * @param {number} i - Index of the sub-issue in the suggestion list.
+   */
   apply_sub_issue_subject = function(i) {
     const subjectSpan = document.getElementById(`ai_helper_sub_issue_subject_${i}`);
     const subjectEditSpan = document.getElementById(`ai_helper_sub_issue_subject_edit_${i}`);
@@ -401,6 +457,10 @@ class AiHelper {
     subjectEditSpan.style.display = 'none';
   }
 
+  /**
+   * Discard the subject edit and exit edit mode, restoring the original text.
+   * @param {number} i - Index of the sub-issue in the suggestion list.
+   */
   cancel_sub_issue_subject = function(i) {
     const subjectSpan = document.getElementById(`ai_helper_sub_issue_subject_${i}`);
     const subjectEditSpan = document.getElementById(`ai_helper_sub_issue_subject_edit_${i}`);
@@ -412,6 +472,10 @@ class AiHelper {
     subjectEditSpan.style.display = 'none';
   }
 
+  /**
+   * Switch a suggested sub-issue's description row into edit mode.
+   * @param {number} i - Index of the sub-issue in the suggestion list.
+   */
   edit_sub_issue_description = function(i) {
     const descriptionSpan = document.getElementById(`ai_helper_sub_issue_description_${i}`);
     const descriptionEditSpan = document.getElementById(`ai_helper_sub_issue_description_edit_${i}`);
@@ -420,6 +484,10 @@ class AiHelper {
     descriptionEditSpan.style.display = 'inline';
   }
 
+  /**
+   * Save the edited description back onto a suggested sub-issue and exit edit mode.
+   * @param {number} i - Index of the sub-issue in the suggestion list.
+   */
   apply_sub_issue_description = function(i) {
     const descriptionSpan = document.getElementById(`ai_helper_sub_issue_description_${i}`);
     const descriptionEditSpan = document.getElementById(`ai_helper_sub_issue_description_edit_${i}`);
@@ -436,6 +504,10 @@ class AiHelper {
     descriptionEditSpan.style.display = 'none';
   }
 
+  /**
+   * Discard the description edit and exit edit mode, restoring the original text.
+   * @param {number} i - Index of the sub-issue in the suggestion list.
+   */
   cancel_sub_issue_description = function(i) {
     const descriptionSpan = document.getElementById(`ai_helper_sub_issue_description_${i}`);
     const descriptionEditSpan = document.getElementById(`ai_helper_sub_issue_description_edit_${i}`);

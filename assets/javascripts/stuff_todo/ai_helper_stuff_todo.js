@@ -49,7 +49,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
   let currentEventSource = null;
 
-  // Open modal and start streaming
+  /**
+   * Open the stuff-todo modal and start streaming suggestions into it.
+   */
   function openModal() {
     overlay.style.display = 'block';
     modal.style.display = 'block';
@@ -57,7 +59,9 @@ document.addEventListener('DOMContentLoaded', function() {
     streamStuffTodo();
   }
 
-  // Close modal and abort streaming
+  /**
+   * Close the stuff-todo modal and abort any in-flight streaming.
+   */
   function closeModal() {
     overlay.style.display = 'none';
     modal.style.display = 'none';
@@ -67,7 +71,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // Stream stuff todo suggestions via SSE
+  /**
+   * Open an SSE connection to `stuffTodoUrl` and render the streamed
+   * markdown content into the modal body as it arrives.
+   */
   function streamStuffTodo() {
     if (currentEventSource) {
       currentEventSource.close();

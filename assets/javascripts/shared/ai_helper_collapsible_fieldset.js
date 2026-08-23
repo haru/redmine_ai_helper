@@ -8,7 +8,7 @@
 const AiHelperCollapsibleFieldset = (() => {
   /**
    * Toggle the open/closed state of a fieldset to match `flag`.
-   * @param {string} fieldsetId
+   * @param {string} fieldsetId - DOM id of the fieldset element.
    * @param {boolean} flag - true to expand, false to collapse.
    */
   function setExpanded(fieldsetId, flag) {

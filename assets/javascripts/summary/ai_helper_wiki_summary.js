@@ -8,7 +8,6 @@
  * Fetch the (cached or freshly generated) wiki summary and render it into
  * the summary area. Exposed on `window` because ai_helper.js calls it
  * directly after a summary-generation stream completes.
- *
  * @param {boolean} [update] - when true, requests a forced regeneration.
  */
 function getWikiSummary(update) {
@@ -48,6 +47,9 @@ function getWikiSummary(update) {
 }
 window.getWikiSummary = getWikiSummary;
 
+/**
+ * Trigger streaming (re)generation of the wiki summary via ai_helper.js.
+ */
 function generateWikiSummaryStream() {
   const container = document.getElementById('ai-helper-wiki-summary-fields');
   if (!container) {return;}
@@ -75,6 +77,11 @@ function aiHelperSaveWikiSummaryState() {
 }
 window.aiHelperSaveWikiSummaryState = aiHelperSaveWikiSummaryState;
 
+/**
+ * Wire up the wiki summary panel: relocate it to the top of the wiki
+ * content, restore its fold state, bind the generate button, and load an
+ * existing summary if one is cached.
+ */
 function initWikiSummary() {
   const container = document.getElementById('ai-helper-wiki-summary-fields');
   if (!container) {return;}
