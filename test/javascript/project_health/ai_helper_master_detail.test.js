@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadScriptAndFireDOMContentLoaded } from "./support/dom_content_loaded.js";
-import { loadScript } from "./support/load_script.js";
+import { loadScriptAndFireDOMContentLoaded } from "../support/dom_content_loaded.js";
+import { loadScript } from "../support/load_script.js";
 
 function createXhrMock() {
   const instances = [];
@@ -101,7 +101,7 @@ describe("AiHelperMasterDetail", () => {
   }
 
   async function loadClass() {
-    await loadScript("assets/javascripts/ai_helper_master_detail");
+    await loadScript("assets/javascripts/project_health/ai_helper_master_detail");
     return window.AiHelperMasterDetail;
   }
 
@@ -168,7 +168,7 @@ describe("AiHelperMasterDetail", () => {
 
     it("uses the markdown parser to format content when it is available", async () => {
       vi.useFakeTimers();
-      await loadScript("assets/javascripts/ai_helper_markdown_parser");
+      await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
       addLayout();
       const { cell } = addReportRow({ reportId: "9", reportContent: "**strong**" });
       const AiHelperMasterDetail = await loadClass();
@@ -611,7 +611,7 @@ describe("AiHelperMasterDetail", () => {
       addLayout();
       addReportRow({ reportId: "1", selected: true });
 
-      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_master_detail");
+      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/project_health/ai_helper_master_detail");
 
       expect(button.disabled).toBe(true);
     });

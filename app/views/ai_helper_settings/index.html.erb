@@ -1,8 +1,8 @@
 <% content_for :header_tags do %>
   <%= stylesheet_link_tag('ai_helper.css', plugin: :redmine_ai_helper) %>
-  <%= javascript_include_tag('ai_helper_chat_settings.js', plugin: :redmine_ai_helper) %>
-  <%= javascript_include_tag('ai_helper_settings.js', plugin: :redmine_ai_helper) %>
-  <%= javascript_include_tag('ai_helper_model_profile.js', plugin: :redmine_ai_helper) %>
+  <%= javascript_include_tag('settings/ai_helper_chat_settings.js', plugin: :redmine_ai_helper) %>
+  <%= javascript_include_tag('settings/ai_helper_settings.js', plugin: :redmine_ai_helper) %>
+  <%= javascript_include_tag('settings/ai_helper_model_profile.js', plugin: :redmine_ai_helper) %>
 <% end %>
 <h2><%= t(:label_ai_helper) %></h2>
 <div id="ai-helper-settings-index" data-config='<%= {

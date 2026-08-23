@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadScript } from "./support/load_script.js";
-import { loadScriptAndFireDOMContentLoaded } from "./support/dom_content_loaded.js";
+import { loadScript } from "../support/load_script.js";
+import { loadScriptAndFireDOMContentLoaded } from "../support/dom_content_loaded.js";
 
 // --- T019: Characterization tests for wiki/_textarea_overlay.html.erb extraction ---
 
@@ -68,7 +68,7 @@ describe("initializeWikiCompletion (from wiki/_textarea_overlay.html.erb)", () =
   it("creates an AiHelperAutoCompletion instance for wiki textarea", async () => {
     autoCompletionMock.mockImplementation(function() { this.init = vi.fn(); });
     const dom = createWikiDOM();
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_wiki_autocompletion");
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/autocompletion/ai_helper_wiki_autocompletion");
 
     expect(autoCompletionMock).toHaveBeenCalledTimes(1);
     const callArgs = autoCompletionMock.mock.calls[0];
@@ -86,7 +86,7 @@ describe("initializeWikiCompletion (from wiki/_textarea_overlay.html.erb)", () =
   it("does not reinitialize if aiHelperWikiCompletionInitialized is true", async () => {
     const dom = createWikiDOM();
     window.aiHelperWikiCompletionInitialized = true;
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_wiki_autocompletion");
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/autocompletion/ai_helper_wiki_autocompletion");
 
     expect(autoCompletionMock).not.toHaveBeenCalled();
     dom.parent.remove();
@@ -97,7 +97,7 @@ describe("initializeWikiCompletion (from wiki/_textarea_overlay.html.erb)", () =
     autoCompletionMock.mockImplementation(function() { return mockInstance; });
 
     const dom = createWikiDOM();
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_wiki_autocompletion");
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/autocompletion/ai_helper_wiki_autocompletion");
 
     expect(window.aiHelperInstances.wikiAutoCompletion).toBe(mockInstance);
     dom.parent.remove();
@@ -106,7 +106,7 @@ describe("initializeWikiCompletion (from wiki/_textarea_overlay.html.erb)", () =
   it("moves the checkbox container to below the textarea", async () => {
     autoCompletionMock.mockImplementation(function() { this.init = vi.fn(); });
     const dom = createWikiDOM();
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_wiki_autocompletion");
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/autocompletion/ai_helper_wiki_autocompletion");
 
     expect(dom.checkboxContainer.style.display).toBe("block");
     expect(dom.checkboxContainer.nextSibling).toBeNull();
@@ -119,7 +119,7 @@ describe("initializeWikiCompletion (from wiki/_textarea_overlay.html.erb)", () =
       pathname: "/projects/test/wiki/SomePage/edit",
     });
     const dom = createWikiDOM();
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_wiki_autocompletion");
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/autocompletion/ai_helper_wiki_autocompletion");
 
     const callArgs = autoCompletionMock.mock.calls[0];
     expect(callArgs[1].endpoint).toBe(
@@ -130,13 +130,13 @@ describe("initializeWikiCompletion (from wiki/_textarea_overlay.html.erb)", () =
 
   it("does nothing when container element does not exist", async () => {
     container.remove();
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_wiki_autocompletion");
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/autocompletion/ai_helper_wiki_autocompletion");
 
     expect(autoCompletionMock).not.toHaveBeenCalled();
   });
 
   it("does nothing when textarea does not exist", async () => {
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_wiki_autocompletion");
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/autocompletion/ai_helper_wiki_autocompletion");
 
     expect(autoCompletionMock).not.toHaveBeenCalled();
   });
@@ -144,7 +144,7 @@ describe("initializeWikiCompletion (from wiki/_textarea_overlay.html.erb)", () =
   it("does nothing when AiHelperAutoCompletion is undefined", async () => {
     vi.unstubAllGlobals();
     const dom = createWikiDOM();
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_wiki_autocompletion");
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/autocompletion/ai_helper_wiki_autocompletion");
 
     expect(window.aiHelperWikiCompletionInitialized).toBe(true);
     dom.parent.remove();
@@ -195,7 +195,7 @@ describe("initializeWikiTextareaTypoChecker (from wiki/_textarea_overlay.html.er
   }
 
   beforeEach(async () => {
-    await loadScript("assets/javascripts/ai_helper_typo_checker");
+    await loadScript("assets/javascripts/typo_checker/ai_helper_typo_checker");
 
     container = document.createElement("div");
     container.id = "ai-helper-wiki-typo-overlay";
@@ -231,14 +231,14 @@ describe("initializeWikiTextareaTypoChecker (from wiki/_textarea_overlay.html.er
 
   it("creates a typo checker and binds the check button click", async () => {
     const dom = createWikiTypoDOM();
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_wiki_autocompletion");
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/autocompletion/ai_helper_wiki_autocompletion");
 
     expect(dom.textarea.classList.contains("ai-helper-textarea-positioned")).toBe(true);
     dom.parent.remove();
   });
 
   it("does nothing when textarea does not exist", async () => {
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_wiki_autocompletion");
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/autocompletion/ai_helper_wiki_autocompletion");
 
     // No error thrown
   });

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadScriptAndFireDOMContentLoaded } from "./support/dom_content_loaded.js";
-import { loadScript } from "./support/load_script.js";
+import { loadScriptAndFireDOMContentLoaded } from "../support/dom_content_loaded.js";
+import { loadScript } from "../support/load_script.js";
 
 class FakeEventSource {
   constructor(url) {
@@ -28,7 +28,7 @@ describe("ai_helper_comparison", () => {
     vi.stubGlobal("EventSource", FakeEventSource);
     delete window.aiHelperComparisonInitialized;
     delete window.AiHelperMarkdownParser;
-    await loadScript("assets/javascripts/ai_helper_markdown_parser");
+    await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
   });
 
   afterEach(() => {
@@ -85,7 +85,7 @@ describe("ai_helper_comparison", () => {
   }
 
   async function load() {
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_comparison");
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/project_health/ai_helper_comparison");
     return cleanup;
   }
 

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadScript } from "./support/load_script.js";
-import { loadScriptAndFireDOMContentLoaded } from "./support/dom_content_loaded.js";
+import { loadScript } from "../support/load_script.js";
+import { loadScriptAndFireDOMContentLoaded } from "../support/dom_content_loaded.js";
 
 // T039: characterization tests for issues/_form.html.erb extraction.
 
@@ -51,7 +51,7 @@ describe("ai_helper_collapsible_fieldset", () => {
     it("expands a collapsed fieldset by toggling it", async () => {
       addFieldset();
       container.classList.add("collapsed");
-      await loadScript("assets/javascripts/ai_helper_collapsible_fieldset");
+      await loadScript("assets/javascripts/shared/ai_helper_collapsible_fieldset");
 
       window.AiHelperCollapsibleFieldset.setExpanded("ai-helper-reply-fields", true);
 
@@ -61,7 +61,7 @@ describe("ai_helper_collapsible_fieldset", () => {
     it("leaves an already-expanded fieldset untouched", async () => {
       addFieldset();
       container.classList.remove("collapsed");
-      await loadScript("assets/javascripts/ai_helper_collapsible_fieldset");
+      await loadScript("assets/javascripts/shared/ai_helper_collapsible_fieldset");
 
       window.AiHelperCollapsibleFieldset.setExpanded("ai-helper-reply-fields", true);
 
@@ -69,7 +69,7 @@ describe("ai_helper_collapsible_fieldset", () => {
     });
 
     it("does nothing when the fieldset does not exist", async () => {
-      await loadScript("assets/javascripts/ai_helper_collapsible_fieldset");
+      await loadScript("assets/javascripts/shared/ai_helper_collapsible_fieldset");
 
       expect(() => window.AiHelperCollapsibleFieldset.setExpanded("nonexistent", true)).not.toThrow();
     });
@@ -79,7 +79,7 @@ describe("ai_helper_collapsible_fieldset", () => {
     it("saves replyExpanded: true when the fieldset is not collapsed", async () => {
       addFieldset({ userId: 42 });
       container.classList.remove("collapsed");
-      await loadScript("assets/javascripts/ai_helper_collapsible_fieldset");
+      await loadScript("assets/javascripts/shared/ai_helper_collapsible_fieldset");
 
       window.aiHelperSaveReplyState();
 
@@ -89,7 +89,7 @@ describe("ai_helper_collapsible_fieldset", () => {
     it("saves replyExpanded: false when the fieldset is collapsed", async () => {
       addFieldset({ userId: 42 });
       container.classList.add("collapsed");
-      await loadScript("assets/javascripts/ai_helper_collapsible_fieldset");
+      await loadScript("assets/javascripts/shared/ai_helper_collapsible_fieldset");
 
       window.aiHelperSaveReplyState();
 
@@ -104,7 +104,7 @@ describe("ai_helper_collapsible_fieldset", () => {
       textarea.id = "ai-helper-reply-instructions";
       textarea.value = "please be nice";
       document.body.appendChild(textarea);
-      await loadScript("assets/javascripts/ai_helper_collapsible_fieldset");
+      await loadScript("assets/javascripts/shared/ai_helper_collapsible_fieldset");
 
       window.ai_helper_generate_reply(123);
 
@@ -118,7 +118,7 @@ describe("ai_helper_collapsible_fieldset", () => {
       addFieldset({ userId: 1 });
       localStorage.setItem("aiHelperReplyState_1", JSON.stringify({ replyExpanded: true }));
 
-      const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_collapsible_fieldset");
+      const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/shared/ai_helper_collapsible_fieldset");
 
       expect(container.classList.contains("collapsed")).toBe(false);
       cleanup.removeRegisteredListeners();
@@ -129,7 +129,7 @@ describe("ai_helper_collapsible_fieldset", () => {
       container.classList.remove("collapsed");
       localStorage.setItem("aiHelperReplyState_1", JSON.stringify({ replyExpanded: false }));
 
-      const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_collapsible_fieldset");
+      const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/shared/ai_helper_collapsible_fieldset");
 
       expect(container.classList.contains("collapsed")).toBe(true);
       cleanup.removeRegisteredListeners();
@@ -138,14 +138,14 @@ describe("ai_helper_collapsible_fieldset", () => {
     it("leaves the fieldset untouched when no saved state exists", async () => {
       addFieldset({ userId: 2 });
 
-      const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_collapsible_fieldset");
+      const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/shared/ai_helper_collapsible_fieldset");
 
       expect(container.classList.contains("collapsed")).toBe(true);
       cleanup.removeRegisteredListeners();
     });
 
     it("does nothing when the fieldset is absent", async () => {
-      await expect(loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_collapsible_fieldset")).resolves.toBeDefined();
+      await expect(loadScriptAndFireDOMContentLoaded("assets/javascripts/shared/ai_helper_collapsible_fieldset")).resolves.toBeDefined();
     });
   });
 });

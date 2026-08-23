@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { loadScript } from "./support/load_script.js";
+import { loadScript } from "../support/load_script.js";
 
 // T043: characterization tests for custom_commands/_form.html.erb extraction.
 
@@ -41,7 +41,7 @@ describe("AiHelperCustomCommands", () => {
   });
 
   async function load() {
-    await loadScript("assets/javascripts/ai_helper_custom_commands");
+    await loadScript("assets/javascripts/settings/ai_helper_custom_commands");
   }
 
   it("hides the user-scope field on init when command type is not 'user'", async () => {

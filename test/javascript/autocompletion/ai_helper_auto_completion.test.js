@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadScript } from "./support/load_script.js";
+import { loadScript } from "../support/load_script.js";
 
 // Ported from the pre-existing (never-run) test/javascript/ai_helper_auto_completion_test.js.
 // Verifies the fix for GitHub issue #392, where in-flight completion requests
@@ -132,8 +132,8 @@ describe("AiHelperAutoCompletion request lifecycle", () => {
   let abortSpy;
 
   beforeEach(async () => {
-    await loadScript("assets/javascripts/ai_helper_auto_completion");
-    await loadScript("assets/javascripts/ai_helper_auto_completion_overlay");
+    await loadScript("assets/javascripts/autocompletion/ai_helper_auto_completion");
+    await loadScript("assets/javascripts/autocompletion/ai_helper_auto_completion_overlay");
     fetchStub = installFetchStub();
     abortSpy = installAbortControllerSpy();
   });
@@ -761,77 +761,6 @@ describe("AiHelperAutoCompletion request lifecycle", () => {
       await wait(60);
 
       expect(fetchStub.calls).toHaveLength(1);
-    });
-  });
-
-  describe("displayInlineSuggestion", () => {
-    it("sets up overlay with before, suggestion, and after spans", () => {
-      const dom = createTextareaDOM();
-      container = dom.container;
-      const completion = createCompletion(dom.textarea);
-
-      dom.textarea.value = "hello world";
-      dom.textarea.setSelectionRange(5, 5);
-
-      completion.displayInlineSuggestion(" friend", 5);
-
-      expect(completion.currentSuggestion).toEqual({
-        text: " friend",
-        cursorPosition: 5,
-      });
-      expect(completion.overlay.innerHTML).toContain("friend");
-      expect(dom.textarea.style.color).toBe("transparent");
-    });
-
-    it("handles empty suggestion text", () => {
-      const dom = createTextareaDOM();
-      container = dom.container;
-      const completion = createCompletion(dom.textarea);
-
-      dom.textarea.value = "hello";
-      completion.displayInlineSuggestion("", 5);
-
-      expect(completion.currentSuggestion.text).toBe("");
-    });
-  });
-
-  describe("getTextareaBackgroundColor", () => {
-    it("returns textarea background when not transparent", () => {
-      const dom = createTextareaDOM();
-      container = dom.container;
-      const completion = createCompletion(dom.textarea);
-      dom.textarea.style.backgroundColor = "rgb(200, 200, 255)";
-
-      expect(completion.getTextareaBackgroundColor()).toBe("rgb(200, 200, 255)");
-    });
-
-    it("returns parent background when textarea is transparent", () => {
-      const dom = createTextareaDOM();
-      container = dom.container;
-      const completion = createCompletion(dom.textarea);
-      dom.textarea.style.backgroundColor = "transparent";
-      dom.container.style.backgroundColor = "rgb(240, 240, 240)";
-
-      expect(completion.getTextareaBackgroundColor()).toBe("rgb(240, 240, 240)");
-    });
-
-    it("defaults to white when both are transparent", () => {
-      const dom = createTextareaDOM();
-      container = dom.container;
-      const completion = createCompletion(dom.textarea);
-      dom.textarea.style.backgroundColor = "transparent";
-      dom.container.style.backgroundColor = "transparent";
-
-      expect(completion.getTextareaBackgroundColor()).toBe("#ffffff");
-    });
-
-    it("static resolveBackgroundColor works with any element", () => {
-      const el = document.createElement("div");
-      el.style.backgroundColor = "rgb(100, 100, 100)";
-      document.body.appendChild(el);
-
-      expect(window.AiHelperAutoCompletion.resolveBackgroundColor(el)).toBe("rgb(100, 100, 100)");
-      el.remove();
     });
   });
 

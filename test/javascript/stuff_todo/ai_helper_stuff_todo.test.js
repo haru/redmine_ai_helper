@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadScript } from "./support/load_script.js";
+import { loadScript } from "../support/load_script.js";
 
 // ai_helper_stuff_todo.js wires up a "stuff to do" modal fed by an SSE
 // (EventSource) stream. jsdom has no EventSource, so we stub a minimal fake
@@ -30,7 +30,7 @@ describe("ai_helper_stuff_todo", () => {
     vi.stubGlobal("EventSource", FakeEventSource);
     delete window.aiHelperStuffTodoInitialized;
     delete window.AiHelperMarkdownParser;
-    await loadScript("assets/javascripts/ai_helper_markdown_parser");
+    await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
   });
 
   afterEach(() => {
@@ -89,7 +89,7 @@ describe("ai_helper_stuff_todo", () => {
         return Document.prototype.addEventListener.call(document, type, listener, options);
       });
 
-    await loadScript("assets/javascripts/ai_helper_stuff_todo");
+    await loadScript("assets/javascripts/stuff_todo/ai_helper_stuff_todo");
     addEventListenerSpy.mockRestore();
 
     handler();
@@ -276,7 +276,7 @@ describe("ai_helper_stuff_todo", () => {
     // re-importing with the guard flag already set must be a no-op: the
     // script never reaches document.addEventListener('DOMContentLoaded', ...).
     const addEventListenerSpy = vi.spyOn(document, "addEventListener");
-    await loadScript("assets/javascripts/ai_helper_stuff_todo");
+    await loadScript("assets/javascripts/stuff_todo/ai_helper_stuff_todo");
 
     expect(addEventListenerSpy).not.toHaveBeenCalledWith("DOMContentLoaded", expect.any(Function));
     addEventListenerSpy.mockRestore();

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadScript } from "./support/load_script.js";
-import { loadScriptAndFireDOMContentLoaded } from "./support/dom_content_loaded.js";
+import { loadScript } from "../support/load_script.js";
+import { loadScriptAndFireDOMContentLoaded } from "../support/dom_content_loaded.js";
 
 // T038: characterization tests for wiki/_summary.html.erb extraction.
 
@@ -75,7 +75,7 @@ describe("ai_helper_wiki_summary", () => {
       }
       vi.stubGlobal("XMLHttpRequest", MockXHR);
 
-      await loadScript("assets/javascripts/ai_helper_wiki_summary");
+      await loadScript("assets/javascripts/summary/ai_helper_wiki_summary");
       window.getWikiSummary();
 
       expect(createdInstance.open).toHaveBeenCalledWith("GET", "/projects/test/ai_helper/wiki/Foo/summary", true);
@@ -98,7 +98,7 @@ describe("ai_helper_wiki_summary", () => {
       }
       vi.stubGlobal("XMLHttpRequest", MockXHR);
 
-      await loadScript("assets/javascripts/ai_helper_wiki_summary");
+      await loadScript("assets/javascripts/summary/ai_helper_wiki_summary");
       window.getWikiSummary(true);
 
       expect(createdInstance.open).toHaveBeenCalledWith("GET", "/projects/test/ai_helper/wiki/Foo/summary?update=true", true);
@@ -118,7 +118,7 @@ describe("ai_helper_wiki_summary", () => {
       }
       vi.stubGlobal("XMLHttpRequest", MockXHR);
 
-      await loadScript("assets/javascripts/ai_helper_wiki_summary");
+      await loadScript("assets/javascripts/summary/ai_helper_wiki_summary");
       window.getWikiSummary();
       createdInstance.status = 500;
       createdInstance.statusText = "Internal Server Error";
@@ -142,7 +142,7 @@ describe("ai_helper_wiki_summary", () => {
       }
       vi.stubGlobal("XMLHttpRequest", MockXHR);
 
-      await loadScript("assets/javascripts/ai_helper_wiki_summary");
+      await loadScript("assets/javascripts/summary/ai_helper_wiki_summary");
       window.getWikiSummary();
       createdInstance.onerror();
 
@@ -151,7 +151,7 @@ describe("ai_helper_wiki_summary", () => {
     });
 
     it("does nothing when the fieldset is absent", async () => {
-      await loadScript("assets/javascripts/ai_helper_wiki_summary");
+      await loadScript("assets/javascripts/summary/ai_helper_wiki_summary");
       expect(() => window.getWikiSummary()).not.toThrow();
     });
   });
@@ -163,7 +163,7 @@ describe("ai_helper_wiki_summary", () => {
       button.className = "ai-helper-wiki-summary-button";
       document.body.appendChild(button);
 
-      const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_wiki_summary");
+      const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/summary/ai_helper_wiki_summary");
       button.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 
       expect(aiHelperMock.generateWikiSummaryStream).toHaveBeenCalledWith("/gen-url", "boom");
@@ -176,7 +176,7 @@ describe("ai_helper_wiki_summary", () => {
     it("saves 'expanded' to localStorage when the fieldset is not collapsed", async () => {
       addFieldset({ userId: 42 });
       fieldset.classList.remove("collapsed");
-      await loadScript("assets/javascripts/ai_helper_wiki_summary");
+      await loadScript("assets/javascripts/summary/ai_helper_wiki_summary");
 
       window.aiHelperSaveWikiSummaryState();
 
@@ -186,7 +186,7 @@ describe("ai_helper_wiki_summary", () => {
     it("saves 'collapsed' to localStorage when the fieldset is collapsed", async () => {
       addFieldset({ userId: 42 });
       fieldset.classList.add("collapsed");
-      await loadScript("assets/javascripts/ai_helper_wiki_summary");
+      await loadScript("assets/javascripts/summary/ai_helper_wiki_summary");
 
       window.aiHelperSaveWikiSummaryState();
 
@@ -205,7 +205,7 @@ describe("ai_helper_wiki_summary", () => {
       contentDiv.appendChild(fieldset);
       document.body.appendChild(contentDiv);
 
-      const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_wiki_summary");
+      const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/summary/ai_helper_wiki_summary");
 
       expect(wikiDiv.previousElementSibling).toBe(fieldset);
       expect(fieldset.style.display).toBe("block");
@@ -217,7 +217,7 @@ describe("ai_helper_wiki_summary", () => {
       addFieldset({ userId: 1 });
       localStorage.setItem("aiHelperWikiSummaryState_1", "expanded");
 
-      const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_wiki_summary");
+      const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/summary/ai_helper_wiki_summary");
 
       expect(fieldset.classList.contains("collapsed")).toBe(false);
       cleanup.removeRegisteredListeners();
@@ -226,7 +226,7 @@ describe("ai_helper_wiki_summary", () => {
     it("keeps the fieldset collapsed when no saved state exists", async () => {
       addFieldset({ userId: 2 });
 
-      const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_wiki_summary");
+      const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/summary/ai_helper_wiki_summary");
 
       expect(fieldset.classList.contains("collapsed")).toBe(true);
       cleanup.removeRegisteredListeners();
@@ -242,7 +242,7 @@ describe("ai_helper_wiki_summary", () => {
       }
       vi.stubGlobal("XMLHttpRequest", MockXHR);
 
-      const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_wiki_summary");
+      const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/summary/ai_helper_wiki_summary");
 
       expect(createdInstance.open).toHaveBeenCalledWith("GET", "/auto-load", true);
       cleanup.removeRegisteredListeners();
@@ -253,14 +253,14 @@ describe("ai_helper_wiki_summary", () => {
       const xhrSpy = vi.fn();
       vi.stubGlobal("XMLHttpRequest", xhrSpy);
 
-      const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_wiki_summary");
+      const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/summary/ai_helper_wiki_summary");
 
       expect(xhrSpy).not.toHaveBeenCalled();
       cleanup.removeRegisteredListeners();
     });
 
     it("does nothing when the fieldset is absent", async () => {
-      await expect(loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_wiki_summary")).resolves.toBeDefined();
+      await expect(loadScriptAndFireDOMContentLoaded("assets/javascripts/summary/ai_helper_wiki_summary")).resolves.toBeDefined();
     });
   });
 });

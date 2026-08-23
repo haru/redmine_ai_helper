@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadScript } from "./support/load_script.js";
+import { loadScript } from "../support/load_script.js";
 
 describe("AiHelperChat.initChatForm (from _chat_form.html.erb)", () => {
   let chatInput;
@@ -22,7 +22,7 @@ describe("AiHelperChat.initChatForm (from _chat_form.html.erb)", () => {
   });
 
   async function load() {
-    await loadScript("assets/javascripts/ai_helper_chat");
+    await loadScript("assets/javascripts/chat/ai_helper_chat");
   }
 
   it("creates a CommandCompletion instance when the input exists and CommandCompletion is defined", async () => {
@@ -100,7 +100,7 @@ describe("AiHelperChat.initSidebar (from _sidebar.html.erb)", () => {
   });
 
   async function load() {
-    await loadScript("assets/javascripts/ai_helper_chat");
+    await loadScript("assets/javascripts/chat/ai_helper_chat");
   }
 
   it("moves aihelper-sidebar to be the first child of sidebar-wrapper", async () => {

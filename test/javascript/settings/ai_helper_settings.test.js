@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { loadScript } from "./support/load_script.js";
+import { loadScript } from "../support/load_script.js";
 
 // T057: characterization tests for ai_helper_settings/index.html.erb extraction.
 //
@@ -83,7 +83,7 @@ describe("initAiHelperSettingsPage", () => {
 
   it("syncs the hidden tab field when a tab link is clicked", async () => {
     const { tabHidden, tabLink } = addMarkup();
-    await loadScript("assets/javascripts/ai_helper_settings");
+    await loadScript("assets/javascripts/settings/ai_helper_settings");
 
     window.initAiHelperSettingsPage();
     tabLink.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -112,7 +112,7 @@ describe("initAiHelperSettingsPage", () => {
       });
     }));
 
-    await loadScript("assets/javascripts/ai_helper_settings");
+    await loadScript("assets/javascripts/settings/ai_helper_settings");
     expect(typeof window.ai_helper).toBe("undefined");
     window.initAiHelperSettingsPage();
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -138,7 +138,7 @@ describe("initAiHelperSettingsPage", () => {
     modelProfileSelect.value = "42";
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({ ok: false })));
 
-    await loadScript("assets/javascripts/ai_helper_settings");
+    await loadScript("assets/javascripts/settings/ai_helper_settings");
     window.initAiHelperSettingsPage();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -149,7 +149,7 @@ describe("initAiHelperSettingsPage", () => {
     const { descriptionDiv } = addMarkup();
     descriptionDiv.innerHTML = "stale content";
 
-    await loadScript("assets/javascripts/ai_helper_settings");
+    await loadScript("assets/javascripts/settings/ai_helper_settings");
     window.initAiHelperSettingsPage();
 
     expect(descriptionDiv.innerHTML).toBe("");
@@ -159,7 +159,7 @@ describe("initAiHelperSettingsPage", () => {
     addMarkup();
     const thinkCheckbox = document.getElementById("ai_helper_setting_use_think_model");
     thinkCheckbox.checked = true;
-    await loadScript("assets/javascripts/ai_helper_settings");
+    await loadScript("assets/javascripts/settings/ai_helper_settings");
 
     window.initAiHelperSettingsPage();
 
@@ -174,7 +174,7 @@ describe("initAiHelperSettingsPage", () => {
     addMarkup();
     const attachmentCheckbox = document.getElementById("ai_helper_setting_attachment_send_enabled");
     attachmentCheckbox.checked = false;
-    await loadScript("assets/javascripts/ai_helper_settings");
+    await loadScript("assets/javascripts/settings/ai_helper_settings");
 
     window.initAiHelperSettingsPage();
 
@@ -185,7 +185,7 @@ describe("initAiHelperSettingsPage", () => {
     addMarkup();
     const registerAll = document.getElementById("ai_helper_setting_vector_register_all_projects");
     registerAll.checked = true;
-    await loadScript("assets/javascripts/ai_helper_settings");
+    await loadScript("assets/javascripts/settings/ai_helper_settings");
 
     window.initAiHelperSettingsPage();
 
@@ -194,7 +194,7 @@ describe("initAiHelperSettingsPage", () => {
 
   it("hides the vector model profile toggle row when vector search is disabled", async () => {
     addMarkup();
-    await loadScript("assets/javascripts/ai_helper_settings");
+    await loadScript("assets/javascripts/settings/ai_helper_settings");
 
     window.initAiHelperSettingsPage();
 
@@ -207,7 +207,7 @@ describe("initAiHelperSettingsPage", () => {
     addMarkup();
     const vectorSearchCheckbox = document.getElementById("ai_helper_setting_vector_search_enabled");
     vectorSearchCheckbox.checked = true;
-    await loadScript("assets/javascripts/ai_helper_settings");
+    await loadScript("assets/javascripts/settings/ai_helper_settings");
 
     window.initAiHelperSettingsPage();
 
@@ -217,7 +217,7 @@ describe("initAiHelperSettingsPage", () => {
 
   it("modelTypeChanged shows the dimension field for the compatible type", async () => {
     const { modelTypeMeta } = addMarkup();
-    await loadScript("assets/javascripts/ai_helper_settings");
+    await loadScript("assets/javascripts/settings/ai_helper_settings");
     modelTypeMeta.textContent = "openai_compatible";
 
     window.modelTypeChanged();
@@ -228,7 +228,7 @@ describe("initAiHelperSettingsPage", () => {
 
   it("modelTypeChanged shows the embedding URL field for the azure type", async () => {
     const { modelTypeMeta } = addMarkup();
-    await loadScript("assets/javascripts/ai_helper_settings");
+    await loadScript("assets/javascripts/settings/ai_helper_settings");
     modelTypeMeta.textContent = "azure_openai";
 
     window.modelTypeChanged();
@@ -239,7 +239,7 @@ describe("initAiHelperSettingsPage", () => {
 
   it("toggles the send-user-id row only for supported model types", async () => {
     const { modelTypeMeta } = addMarkup();
-    await loadScript("assets/javascripts/ai_helper_settings");
+    await loadScript("assets/javascripts/settings/ai_helper_settings");
     modelTypeMeta.textContent = "azure_openai";
 
     window.setSendUserIdVisible();
@@ -249,7 +249,7 @@ describe("initAiHelperSettingsPage", () => {
 
   it("does not show the send-user-id row for unsupported model types", async () => {
     const { modelTypeMeta } = addMarkup();
-    await loadScript("assets/javascripts/ai_helper_settings");
+    await loadScript("assets/javascripts/settings/ai_helper_settings");
     modelTypeMeta.textContent = "anthropic";
 
     window.setSendUserIdVisible();
@@ -271,7 +271,7 @@ describe("initAiHelperSettingsPage", () => {
     document.getElementById("ai-helper-send-user-id").remove();
     document.getElementById("ai_helper_dimension").remove();
     document.getElementById("ai_helper_embedding_url").remove();
-    await loadScript("assets/javascripts/ai_helper_settings");
+    await loadScript("assets/javascripts/settings/ai_helper_settings");
 
     expect(() => window.initAiHelperSettingsPage()).not.toThrow();
   });

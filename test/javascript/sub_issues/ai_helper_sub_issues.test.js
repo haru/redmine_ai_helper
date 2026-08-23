@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadScript } from "./support/load_script.js";
-import { loadScriptAndFireDOMContentLoaded } from "./support/dom_content_loaded.js";
+import { loadScript } from "../support/load_script.js";
+import { loadScriptAndFireDOMContentLoaded } from "../support/dom_content_loaded.js";
 
 // ai_helper_sub_issues.js is an IIFE with no window-exposed API; it wires up
 // DOM event listeners and a MutationObserver on load. We drive it purely
@@ -89,7 +89,7 @@ describe("ai_helper_sub_issues (IIFE)", () => {
     }
     vi.stubGlobal("MutationObserver", TrackedMutationObserver);
 
-    await loadScript("assets/javascripts/ai_helper_sub_issues");
+    await loadScript("assets/javascripts/sub_issues/ai_helper_sub_issues");
     addEventListenerSpy.mockRestore();
     // Initial init runs on a 100ms setTimeout.
     await new Promise((resolve) => setTimeout(resolve, 150));
@@ -261,7 +261,7 @@ describe("aiHelperGenerateSubIssues (window-exposed, from subissues/_index.html.
     meta.content = "test-csrf-token";
     document.head.appendChild(meta);
 
-    await loadScript("assets/javascripts/ai_helper_sub_issues");
+    await loadScript("assets/javascripts/sub_issues/ai_helper_sub_issues");
   });
 
   afterEach(() => {
@@ -319,7 +319,7 @@ describe("showSubissuerGenerator and menu/area relocation (window-exposed, from 
     generatorArea.style.display = "none";
     document.body.appendChild(generatorArea);
 
-    await loadScript("assets/javascripts/ai_helper_sub_issues");
+    await loadScript("assets/javascripts/sub_issues/ai_helper_sub_issues");
     window.showSubissuerGenerator();
     expect(generatorArea.style.display).toBe("block");
 
@@ -348,7 +348,7 @@ describe("showSubissuerGenerator and menu/area relocation (window-exposed, from 
     generatorArea.style.display = "block";
     document.body.appendChild(generatorArea);
 
-    const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_sub_issues");
+    const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/sub_issues/ai_helper_sub_issues");
 
     expect(contextual.firstChild).toBe(menuSpan);
     expect(issueTree.contains(generatorArea)).toBe(true);
@@ -365,7 +365,7 @@ describe("showSubissuerGenerator and menu/area relocation (window-exposed, from 
     menuSpan.id = "ai-helper-subissuer-generator-menu";
     document.body.appendChild(menuSpan);
 
-    const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_sub_issues");
+    const cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/sub_issues/ai_helper_sub_issues");
 
     expect(document.body.contains(menuSpan)).toBe(true);
     cleanup.removeRegisteredListeners();

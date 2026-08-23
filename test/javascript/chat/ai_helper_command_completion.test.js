@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadScriptAndFireDOMContentLoaded } from "./support/dom_content_loaded.js";
-import { loadScript } from "./support/load_script.js";
+import { loadScriptAndFireDOMContentLoaded } from "../support/dom_content_loaded.js";
+import { loadScript } from "../support/load_script.js";
 
 // Ported from the pre-existing (never-run) test/javascript/ai_helper_command_completion_test.js.
 // Verifies the fix where Enter selects a suggestion instead of submitting
@@ -10,7 +10,7 @@ describe("CommandCompletion", () => {
   let container;
 
   beforeEach(async () => {
-    await loadScript("assets/javascripts/ai_helper_command_completion");
+    await loadScript("assets/javascripts/chat/ai_helper_command_completion");
   });
 
   afterEach(() => {
@@ -383,7 +383,7 @@ describe("CommandCompletion", () => {
       const { input } = createTestDOM();
       input.dataset.commandsUrl = "/ai_helper/commands";
 
-      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_command_completion");
+      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/chat/ai_helper_command_completion");
 
       expect(input._commandCompletion).toBeInstanceOf(window.CommandCompletion);
       expect(input.dataset.commandCompletionInitialized).toBe("true");
@@ -393,7 +393,7 @@ describe("CommandCompletion", () => {
       const { input } = createTestDOM();
       input.dataset.commandCompletionInitialized = "true";
 
-      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_command_completion");
+      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/chat/ai_helper_command_completion");
 
       expect(input._commandCompletion).toBeUndefined();
     });
@@ -401,7 +401,7 @@ describe("CommandCompletion", () => {
     it("does nothing when the chat input is absent", async () => {
       await expect(
         (async () => {
-          cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_command_completion");
+          cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/chat/ai_helper_command_completion");
         })(),
       ).resolves.toBeUndefined();
     });

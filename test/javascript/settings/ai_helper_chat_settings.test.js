@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadScriptAndFireDOMContentLoaded } from "./support/dom_content_loaded.js";
-import { loadScript } from "./support/load_script.js";
+import { loadScriptAndFireDOMContentLoaded } from "../support/dom_content_loaded.js";
+import { loadScript } from "../support/load_script.js";
 
 // Ported from the pre-existing (never-run) test/javascript/ai_helper_chat_settings_test.js.
 // These cover two fixes:
@@ -19,7 +19,7 @@ describe("ai_helper_chat_settings.js", () => {
   let container;
 
   beforeEach(async () => {
-    await loadScript("assets/javascripts/ai_helper_chat_settings");
+    await loadScript("assets/javascripts/settings/ai_helper_chat_settings");
   });
 
   afterEach(() => {
@@ -456,7 +456,7 @@ describe("ai_helper_chat_settings.js", () => {
     it("wires up adapter visibility, datalists, binding isolation, and help dialogs together", async () => {
       const { checkbox, settingsDiv } = createAdapterVisibilityDOM("ui_chat", { checked: true });
 
-      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_chat_settings");
+      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/settings/ai_helper_chat_settings");
 
       // setAdapterSettingsVisible ran once for the already-checked adapter.
       expect(settingsDiv.style.display).toBe("");

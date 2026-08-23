@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadScript } from "./support/load_script.js";
-import { loadScriptAndFireDOMContentLoaded } from "./support/dom_content_loaded.js";
+import { loadScript } from "../support/load_script.js";
+import { loadScriptAndFireDOMContentLoaded } from "../support/dom_content_loaded.js";
 
 // T040: characterization tests for issues/_bottom.html.erb extraction.
 
@@ -93,7 +93,7 @@ describe("ai_helper_issue_summary", () => {
       document.body.appendChild(summaryArea);
       const getInstance = stubXHR();
 
-      await loadScript("assets/javascripts/ai_helper_issue_summary");
+      await loadScript("assets/javascripts/summary/ai_helper_issue_summary");
       window.getSummary();
 
       expect(getInstance().open).toHaveBeenCalledWith("GET", "/issues/1/ai_helper/summary", true);
@@ -107,7 +107,7 @@ describe("ai_helper_issue_summary", () => {
     it("appends ?update=true when update is requested", async () => {
       addFieldset();
       const getInstance = stubXHR();
-      await loadScript("assets/javascripts/ai_helper_issue_summary");
+      await loadScript("assets/javascripts/summary/ai_helper_issue_summary");
       window.getSummary(true);
 
       expect(getInstance().open).toHaveBeenCalledWith("GET", "/issues/1/ai_helper/summary?update=true", true);
@@ -120,7 +120,7 @@ describe("ai_helper_issue_summary", () => {
       document.body.appendChild(summaryArea);
       const getInstance = stubXHR();
 
-      await loadScript("assets/javascripts/ai_helper_issue_summary");
+      await loadScript("assets/javascripts/summary/ai_helper_issue_summary");
       window.getSummary();
       getInstance().status = 500;
       getInstance().statusText = "Internal Server Error";
@@ -136,7 +136,7 @@ describe("ai_helper_issue_summary", () => {
       document.body.appendChild(summaryArea);
       const getInstance = stubXHR();
 
-      await loadScript("assets/javascripts/ai_helper_issue_summary");
+      await loadScript("assets/javascripts/summary/ai_helper_issue_summary");
       window.getSummary();
       getInstance().onerror();
 
@@ -147,7 +147,7 @@ describe("ai_helper_issue_summary", () => {
   describe("generateSummaryStream", () => {
     it("delegates to ai_helper.generateSummaryStream with the configured URL and error message", async () => {
       addFieldset({ generateUrl: "/gen", errorMessage: "boom" });
-      await loadScript("assets/javascripts/ai_helper_issue_summary");
+      await loadScript("assets/javascripts/summary/ai_helper_issue_summary");
 
       window.generateSummaryStream();
 
@@ -159,7 +159,7 @@ describe("ai_helper_issue_summary", () => {
     it("saves 'expanded' to localStorage when the fieldset is not collapsed", async () => {
       addFieldset({ userId: 42 });
       fieldset.classList.remove("collapsed");
-      await loadScript("assets/javascripts/ai_helper_issue_summary");
+      await loadScript("assets/javascripts/summary/ai_helper_issue_summary");
 
       window.aiHelperSaveSummaryState();
 
@@ -181,7 +181,7 @@ describe("ai_helper_issue_summary", () => {
       document.body.appendChild(area);
       const getInstance = stubXHR();
 
-      await loadScript("assets/javascripts/ai_helper_issue_summary");
+      await loadScript("assets/javascripts/summary/ai_helper_issue_summary");
       window.findSimilarIssues();
 
       expect(getInstance().open).toHaveBeenCalledWith("GET", "/similar?scope=all", true);
@@ -196,7 +196,7 @@ describe("ai_helper_issue_summary", () => {
       addFieldset({ similarIssuesUrl: "/similar" });
       const getInstance = stubXHR();
 
-      await loadScript("assets/javascripts/ai_helper_issue_summary");
+      await loadScript("assets/javascripts/summary/ai_helper_issue_summary");
       window.findSimilarIssues();
 
       expect(getInstance().open).toHaveBeenCalledWith("GET", "/similar?scope=with_subprojects", true);
@@ -244,7 +244,7 @@ describe("ai_helper_issue_summary", () => {
       const cb1 = addEffortCheckbox(area, { checked: true, spentHours: 4, similarityScore: 0.8 });
       addEffortCheckbox(area, { checked: false, spentHours: 10, similarityScore: 0.5 });
 
-      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_summary");
+      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/summary/ai_helper_issue_summary");
       cb1.dispatchEvent(new Event("change", { bubbles: true }));
 
       expect(block.style.display).toBe("");
@@ -258,7 +258,7 @@ describe("ai_helper_issue_summary", () => {
       const { block } = addSuggestedHoursBlock(area);
       addEffortCheckbox(area, { checked: false, spentHours: 4, similarityScore: 0.8 });
 
-      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_summary");
+      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/summary/ai_helper_issue_summary");
 
       expect(block.style.display).toBe("none");
     });
@@ -270,7 +270,7 @@ describe("ai_helper_issue_summary", () => {
       addEffortCheckbox(area, { checked: true, similarityScore: 0.8 }); // no spentHours -> NaN, skipped
       const cb2 = addEffortCheckbox(area, { checked: true, spentHours: 6, similarityScore: 1 });
 
-      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_summary");
+      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/summary/ai_helper_issue_summary");
       cb2.dispatchEvent(new Event("change", { bubbles: true }));
 
       expect(valueSpan.textContent).toBe("6.0");
@@ -287,7 +287,7 @@ describe("ai_helper_issue_summary", () => {
       selectAll.id = "ai-helper-effort-select-all";
       area.appendChild(selectAll);
 
-      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_summary");
+      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/summary/ai_helper_issue_summary");
       selectAll.checked = true;
       selectAll.dispatchEvent(new Event("change", { bubbles: true }));
 
@@ -306,7 +306,7 @@ describe("ai_helper_issue_summary", () => {
       selectAll.id = "ai-helper-effort-select-all";
       area.appendChild(selectAll);
 
-      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_summary");
+      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/summary/ai_helper_issue_summary");
 
       expect(selectAll.indeterminate).toBe(true);
       expect(selectAll.checked).toBe(false);
@@ -324,7 +324,7 @@ describe("ai_helper_issue_summary", () => {
       estimatedHoursField.id = "issue_estimated_hours";
       document.body.appendChild(estimatedHoursField);
 
-      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_summary");
+      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/summary/ai_helper_issue_summary");
       applyButton.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 
       expect(estimatedHoursField.value).toBe("3.5");
@@ -342,7 +342,7 @@ describe("ai_helper_issue_summary", () => {
       similarSection.id = "ai-helper-similar-issues-section";
       document.body.appendChild(similarSection);
 
-      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_summary");
+      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/summary/ai_helper_issue_summary");
 
       expect(relations.nextElementSibling).toBe(similarSection);
     });
@@ -351,7 +351,7 @@ describe("ai_helper_issue_summary", () => {
       addFieldset({ userId: 1 });
       localStorage.setItem("aiHelperIssueSummaryState_1", "expanded");
 
-      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_summary");
+      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/summary/ai_helper_issue_summary");
 
       expect(fieldset.classList.contains("collapsed")).toBe(false);
     });
@@ -360,13 +360,13 @@ describe("ai_helper_issue_summary", () => {
       addFieldset({ hasSummary: true, summaryUrl: "/auto-load" });
       const getInstance = stubXHR();
 
-      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_summary");
+      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/summary/ai_helper_issue_summary");
 
       expect(getInstance().open).toHaveBeenCalledWith("GET", "/auto-load", true);
     });
 
     it("does nothing when the fieldset is absent", async () => {
-      await expect(loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_summary")).resolves.toBeDefined();
+      await expect(loadScriptAndFireDOMContentLoaded("assets/javascripts/summary/ai_helper_issue_summary")).resolves.toBeDefined();
     });
   });
 });

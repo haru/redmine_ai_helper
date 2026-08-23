@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { loadScript } from "./support/load_script.js";
+import { loadScript } from "../support/load_script.js";
 
 // T056: characterization tests for ai_helper_model_profiles/_show.html.erb
 // (T051) and _form.html.erb (T052) extraction.
@@ -64,7 +64,7 @@ describe("AiHelperModelProfile.initShow (from _show.html.erb)", () => {
     nameInput.value = "stale";
     errorEl.style.display = "block";
     const focusSpy = vi.spyOn(nameInput, "focus");
-    await loadScript("assets/javascripts/ai_helper_model_profile");
+    await loadScript("assets/javascripts/settings/ai_helper_model_profile");
 
     window.AiHelperModelProfile.initShow();
     copyBtn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
@@ -91,7 +91,7 @@ describe("AiHelperModelProfile.initShow (from _show.html.erb)", () => {
     delete window.location;
     window.location = { href: "" };
 
-    await loadScript("assets/javascripts/ai_helper_model_profile");
+    await loadScript("assets/javascripts/settings/ai_helper_model_profile");
     window.AiHelperModelProfile.initShow();
     submitBtn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -110,7 +110,7 @@ describe("AiHelperModelProfile.initShow (from _show.html.erb)", () => {
       json: () => Promise.resolve({ success: false, errors: ["Name is required"] }),
     })));
 
-    await loadScript("assets/javascripts/ai_helper_model_profile");
+    await loadScript("assets/javascripts/settings/ai_helper_model_profile");
     window.AiHelperModelProfile.initShow();
     submitBtn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -127,7 +127,7 @@ describe("AiHelperModelProfile.initShow (from _show.html.erb)", () => {
       text: () => Promise.resolve("<html>oops</html>"),
     })));
 
-    await loadScript("assets/javascripts/ai_helper_model_profile");
+    await loadScript("assets/javascripts/settings/ai_helper_model_profile");
     window.AiHelperModelProfile.initShow();
     submitBtn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -138,7 +138,7 @@ describe("AiHelperModelProfile.initShow (from _show.html.erb)", () => {
 
   it("closes the dialog when cancel is clicked", async () => {
     const { cancelBtn, dialog: dlg } = addShowMarkup();
-    await loadScript("assets/javascripts/ai_helper_model_profile");
+    await loadScript("assets/javascripts/settings/ai_helper_model_profile");
     window.AiHelperModelProfile.initShow();
 
     cancelBtn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
@@ -149,7 +149,7 @@ describe("AiHelperModelProfile.initShow (from _show.html.erb)", () => {
   it("submits via Enter key in the name input", async () => {
     const { nameInput, submitBtn } = addShowMarkup();
     const clickSpy = vi.spyOn(submitBtn, "click");
-    await loadScript("assets/javascripts/ai_helper_model_profile");
+    await loadScript("assets/javascripts/settings/ai_helper_model_profile");
     window.AiHelperModelProfile.initShow();
 
     nameInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
@@ -158,7 +158,7 @@ describe("AiHelperModelProfile.initShow (from _show.html.erb)", () => {
   });
 
   it("does nothing when the dialog is absent", async () => {
-    await loadScript("assets/javascripts/ai_helper_model_profile");
+    await loadScript("assets/javascripts/settings/ai_helper_model_profile");
     expect(() => window.AiHelperModelProfile.initShow()).not.toThrow();
   });
 });
@@ -217,7 +217,7 @@ describe("AiHelperModelProfile.initForm (from _form.html.erb)", () => {
   it("shows the base URI field for the compatible type and hides it otherwise", async () => {
     const { llmTypeSelect, baseUriElement } = addFormMarkup();
     llmTypeSelect.value = "openai_compatible";
-    await loadScript("assets/javascripts/ai_helper_model_profile");
+    await loadScript("assets/javascripts/settings/ai_helper_model_profile");
     window.AiHelperModelProfile.initForm();
 
     expect(baseUriElement.style.display).toBe("block");
@@ -230,7 +230,7 @@ describe("AiHelperModelProfile.initForm (from _form.html.erb)", () => {
   it("shows the base URI field for the azure type", async () => {
     const { llmTypeSelect, baseUriElement } = addFormMarkup();
     llmTypeSelect.value = "azure_openai";
-    await loadScript("assets/javascripts/ai_helper_model_profile");
+    await loadScript("assets/javascripts/settings/ai_helper_model_profile");
     window.AiHelperModelProfile.initForm();
 
     expect(baseUriElement.style.display).toBe("block");
@@ -239,7 +239,7 @@ describe("AiHelperModelProfile.initForm (from _form.html.erb)", () => {
   it("hides the required marker on the access key for the compatible type only", async () => {
     const { llmTypeSelect, requiredSpan } = addFormMarkup();
     llmTypeSelect.value = "openai_compatible";
-    await loadScript("assets/javascripts/ai_helper_model_profile");
+    await loadScript("assets/javascripts/settings/ai_helper_model_profile");
     window.AiHelperModelProfile.initForm();
 
     expect(requiredSpan.style.display).toBe("none");
@@ -252,7 +252,7 @@ describe("AiHelperModelProfile.initForm (from _form.html.erb)", () => {
   it("shows the organization ID field for the openai type only", async () => {
     const { llmTypeSelect, organizationIdElement } = addFormMarkup();
     llmTypeSelect.value = "openai";
-    await loadScript("assets/javascripts/ai_helper_model_profile");
+    await loadScript("assets/javascripts/settings/ai_helper_model_profile");
     window.AiHelperModelProfile.initForm();
 
     expect(organizationIdElement.style.display).toBe("block");
@@ -269,7 +269,7 @@ describe("AiHelperModelProfile.initForm (from _form.html.erb)", () => {
     accessKeyInput.setAttribute("readonly", "readonly");
     container.appendChild(accessKeyInput);
 
-    await loadScript("assets/javascripts/ai_helper_model_profile");
+    await loadScript("assets/javascripts/settings/ai_helper_model_profile");
     window.AiHelperModelProfile.initForm();
 
     accessKeyInput.dispatchEvent(new Event("focus"));
@@ -301,7 +301,7 @@ describe("AiHelperModelProfile.initForm (from _form.html.erb)", () => {
         json: () => Promise.resolve({ success: true }),
       })));
 
-      await loadScript("assets/javascripts/ai_helper_model_profile");
+      await loadScript("assets/javascripts/settings/ai_helper_model_profile");
       window.AiHelperModelProfile.initForm();
       btn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -320,7 +320,7 @@ describe("AiHelperModelProfile.initForm (from _form.html.erb)", () => {
         json: () => Promise.resolve({ success: false, error: "bad key" }),
       })));
 
-      await loadScript("assets/javascripts/ai_helper_model_profile");
+      await loadScript("assets/javascripts/settings/ai_helper_model_profile");
       window.AiHelperModelProfile.initForm();
       btn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -338,7 +338,7 @@ describe("AiHelperModelProfile.initForm (from _form.html.erb)", () => {
         text: () => Promise.resolve("<html>oops</html>"),
       })));
 
-      await loadScript("assets/javascripts/ai_helper_model_profile");
+      await loadScript("assets/javascripts/settings/ai_helper_model_profile");
       window.AiHelperModelProfile.initForm();
       btn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -354,7 +354,7 @@ describe("AiHelperModelProfile.initForm (from _form.html.erb)", () => {
       const { btn, result, meta } = addTestConnectionMarkup();
       vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("network down"))));
 
-      await loadScript("assets/javascripts/ai_helper_model_profile");
+      await loadScript("assets/javascripts/settings/ai_helper_model_profile");
       window.AiHelperModelProfile.initForm();
       btn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -372,7 +372,7 @@ describe("AiHelperModelProfile.initForm (from _form.html.erb)", () => {
       form.appendChild(field);
       result.textContent = "previous result";
 
-      await loadScript("assets/javascripts/ai_helper_model_profile");
+      await loadScript("assets/javascripts/settings/ai_helper_model_profile");
       window.AiHelperModelProfile.initForm();
       field.dispatchEvent(new Event("input", { bubbles: true }));
 
@@ -382,7 +382,7 @@ describe("AiHelperModelProfile.initForm (from _form.html.erb)", () => {
   });
 
   it("does nothing when the form container is absent", async () => {
-    await loadScript("assets/javascripts/ai_helper_model_profile");
+    await loadScript("assets/javascripts/settings/ai_helper_model_profile");
     expect(() => window.AiHelperModelProfile.initForm()).not.toThrow();
   });
 });

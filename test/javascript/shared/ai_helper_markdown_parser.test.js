@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { loadScript } from "./support/load_script.js";
+import { loadScript } from "../support/load_script.js";
 
 // Ported from the pre-existing (never-run) test/javascript/ai_helper_markdown_parser_test.js.
 // Each case below preserves the verification intent of the corresponding
@@ -8,7 +8,7 @@ import { loadScript } from "./support/load_script.js";
 describe("AiHelperMarkdownParser issue reference linkification", () => {
   beforeEach(async () => {
     delete window.ai_helper_urls;
-    await loadScript("assets/javascripts/ai_helper_markdown_parser");
+    await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
   });
 
   afterEach(() => {
@@ -136,7 +136,7 @@ describe("AiHelperMarkdownParser basic rendering", () => {
 
   beforeEach(async () => {
     delete window.ai_helper_urls;
-    await loadScript("assets/javascripts/ai_helper_markdown_parser");
+    await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
     parser = new window.AiHelperMarkdownParser();
   });
 
@@ -203,13 +203,13 @@ describe("AiHelperMarkdownParser.escapeHtml", () => {
   });
 
   beforeEach(async () => {
-    await loadScript("assets/javascripts/ai_helper_markdown_parser");
+    await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
   });
 });
 
 describe("AiHelperMarkdownParser.sanitizeUrl", () => {
   beforeEach(async () => {
-    await loadScript("assets/javascripts/ai_helper_markdown_parser");
+    await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
   });
 
   it("allows http(s) and mailto URLs", () => {
@@ -244,7 +244,7 @@ describe("AiHelperMarkdownParser sanitizeOutput", () => {
   let parser;
 
   beforeEach(async () => {
-    await loadScript("assets/javascripts/ai_helper_markdown_parser");
+    await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
     parser = new window.AiHelperMarkdownParser();
   });
 
@@ -274,7 +274,7 @@ describe("AiHelperMarkdownParser tables", () => {
   let parser;
 
   beforeEach(async () => {
-    await loadScript("assets/javascripts/ai_helper_markdown_parser");
+    await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
     parser = new window.AiHelperMarkdownParser();
   });
 
@@ -307,7 +307,7 @@ describe("AiHelperMarkdownParser nested and mixed lists", () => {
   let parser;
 
   beforeEach(async () => {
-    await loadScript("assets/javascripts/ai_helper_markdown_parser");
+    await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
     parser = new window.AiHelperMarkdownParser();
   });
 

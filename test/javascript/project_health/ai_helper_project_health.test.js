@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadScriptAndFireDOMContentLoaded } from "./support/dom_content_loaded.js";
-import { loadScript } from "./support/load_script.js";
+import { loadScriptAndFireDOMContentLoaded } from "../support/dom_content_loaded.js";
+import { loadScript } from "../support/load_script.js";
 
 class FakeEventSource {
   constructor(url) {
@@ -30,7 +30,7 @@ describe("ai_helper_project_health", () => {
     delete window.aiHelperProjectHealthLoaded;
     delete window.AiHelperMarkdownParser;
     delete window.updateHealthReportHistory;
-    await loadScript("assets/javascripts/ai_helper_markdown_parser");
+    await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
   });
 
   afterEach(() => {
@@ -85,7 +85,7 @@ describe("ai_helper_project_health", () => {
   }
 
   async function load() {
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_project_health");
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/project_health/ai_helper_project_health");
     return cleanup;
   }
 
@@ -614,7 +614,7 @@ describe("project/_health_report_detail_pane.html.erb extraction", () => {
     elements = [];
     delete window.AiHelperMarkdownParser;
     delete window.aiHelperProjectHealthInitialized;
-    await loadScript("assets/javascripts/ai_helper_markdown_parser");
+    await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
   });
 
   afterEach(() => {
@@ -649,7 +649,7 @@ describe("project/_health_report_detail_pane.html.erb extraction", () => {
   it("re-parses the stored Markdown into the result div on load", async () => {
     const { resultDiv } = addDetailPane();
 
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_project_health");
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/project_health/ai_helper_project_health");
 
     expect(resultDiv.innerHTML).toBe('<div class="ai-helper-final-content"><strong>bold report</strong></div>');
   });
@@ -658,7 +658,7 @@ describe("project/_health_report_detail_pane.html.erb extraction", () => {
     const { resultDiv, hiddenField } = addDetailPane();
     hiddenField.value = "";
 
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_project_health");
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/project_health/ai_helper_project_health");
 
     expect(resultDiv.innerHTML).toBe("");
   });
@@ -670,7 +670,7 @@ describe("project/_health_report_detail_pane.html.erb extraction", () => {
     meta.content = "test-token";
     document.head.appendChild(meta);
 
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_project_health");
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/project_health/ai_helper_project_health");
 
     let submittedForm;
     const submitSpy = vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(function () {
@@ -699,7 +699,7 @@ describe("project/_health_report_show.html.erb extraction", () => {
     elements = [];
     delete window.AiHelperMarkdownParser;
     delete window.aiHelperProjectHealthInitialized;
-    await loadScript("assets/javascripts/ai_helper_markdown_parser");
+    await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
   });
 
   afterEach(() => {
@@ -736,7 +736,7 @@ describe("project/_health_report_show.html.erb extraction", () => {
   it("re-parses the stored Markdown into the result div on load", async () => {
     const { resultDiv } = addShowPage();
 
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_project_health");
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/project_health/ai_helper_project_health");
 
     expect(resultDiv.innerHTML).toBe('<div class="ai-helper-final-content"><strong>bold report</strong></div>');
   });
@@ -744,7 +744,7 @@ describe("project/_health_report_show.html.erb extraction", () => {
   it("submits the pre-rendered export form when the export link is clicked", async () => {
     const { exportLink, exportForm } = addShowPage();
 
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_project_health");
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/project_health/ai_helper_project_health");
 
     const submitSpy = vi.spyOn(exportForm, "submit").mockImplementation(() => {});
     exportLink.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
@@ -760,7 +760,7 @@ describe("project/_health_report_show.html.erb extraction", () => {
     resultDiv.id = "ai-helper-project-health-result";
     container.appendChild(resultDiv);
 
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_project_health");
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/project_health/ai_helper_project_health");
 
     expect(resultDiv.innerHTML).toBe("");
   });

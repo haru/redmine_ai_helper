@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadScript } from "./support/load_script.js";
+import { loadScript } from "../support/load_script.js";
 
 describe("AiHelperAssignmentSuggestion", () => {
   let container;
 
   beforeEach(async () => {
-    await loadScript("assets/javascripts/ai_helper_assignment_suggestion");
+    await loadScript("assets/javascripts/autocompletion/ai_helper_assignment_suggestion");
     container = document.createElement("div");
     document.body.appendChild(container);
   });

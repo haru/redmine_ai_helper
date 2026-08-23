@@ -67,8 +67,8 @@ export default [
     // declaring files themselves doesn't conflict with their own class
     // declaration (no-redeclare).
     files: [
-      "assets/javascripts/ai_helper_issue_autocompletion.js",
-      "assets/javascripts/ai_helper_wiki_autocompletion.js",
+      "assets/javascripts/autocompletion/ai_helper_issue_autocompletion.js",
+      "assets/javascripts/autocompletion/ai_helper_wiki_autocompletion.js",
     ],
     languageOptions: {
       globals: {
@@ -83,8 +83,8 @@ export default [
     // identifier from these consuming files. Scoped here for the same
     // no-redeclare reason as the block above.
     files: [
-      "assets/javascripts/ai_helper_wiki_summary.js",
-      "assets/javascripts/ai_helper_issue_summary.js",
+      "assets/javascripts/summary/ai_helper_wiki_summary.js",
+      "assets/javascripts/summary/ai_helper_issue_summary.js",
     ],
     languageOptions: {
       globals: {
@@ -99,7 +99,7 @@ export default [
     // (contract B: existing page-scoped global names, kept stable across the
     // refactor). Scoped here so linting the declaring files themselves
     // doesn't conflict with their own function declaration (no-redeclare).
-    files: ["assets/javascripts/ai_helper.js", "assets/javascripts/ai_helper_streaming.js"],
+    files: ["assets/javascripts/chat/ai_helper.js", "assets/javascripts/chat/ai_helper_streaming.js"],
     languageOptions: {
       globals: {
         getSummary: "readonly",
@@ -113,7 +113,7 @@ export default [
     // purely to stay under max-lines (see ADR-027) — see the comment at the
     // top of ai_helper_streaming.js/ai_helper_history.js. Scoped here for
     // the same no-redeclare reason as the blocks above.
-    files: ["assets/javascripts/ai_helper_streaming.js", "assets/javascripts/ai_helper_history.js"],
+    files: ["assets/javascripts/chat/ai_helper_streaming.js", "assets/javascripts/chat/ai_helper_history.js"],
     languageOptions: {
       globals: {
         AiHelper: "readonly",
@@ -125,7 +125,7 @@ export default [
     // in ai_helper_typo_checker.js and extended (static/prototype) from this
     // file, split out for the same max-lines reason as the block above —
     // see the comment at the top of ai_helper_typo_suggestion_overlay.js.
-    files: ["assets/javascripts/ai_helper_typo_suggestion_overlay.js"],
+    files: ["assets/javascripts/typo_checker/ai_helper_typo_suggestion_overlay.js"],
     languageOptions: {
       globals: {
         AiHelperTypoChecker: "readonly",
@@ -138,7 +138,7 @@ export default [
     // from this file, split out for the same max-lines reason as the blocks
     // above — see the comment at the top of
     // ai_helper_auto_completion_overlay.js.
-    files: ["assets/javascripts/ai_helper_auto_completion_overlay.js"],
+    files: ["assets/javascripts/autocompletion/ai_helper_auto_completion_overlay.js"],
     languageOptions: {
       globals: {
         AiHelperAutoCompletion: "readonly",
