@@ -47,7 +47,7 @@ function loadModelProfile(id) {
       modelTypeChanged();
     })
     .catch(function() {
-      descriptionDiv.innerHTML = 'error';
+      descriptionDiv.textContent = config.loadErrorMessage;
     });
 }
 

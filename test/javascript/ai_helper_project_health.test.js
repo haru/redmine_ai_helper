@@ -613,6 +613,7 @@ describe("project/_health_report_detail_pane.html.erb extraction", () => {
   beforeEach(async () => {
     elements = [];
     delete window.AiHelperMarkdownParser;
+    delete window.aiHelperProjectHealthInitialized;
     await loadScript("assets/javascripts/ai_helper_markdown_parser");
   });
 
@@ -697,6 +698,7 @@ describe("project/_health_report_show.html.erb extraction", () => {
   beforeEach(async () => {
     elements = [];
     delete window.AiHelperMarkdownParser;
+    delete window.aiHelperProjectHealthInitialized;
     await loadScript("assets/javascripts/ai_helper_markdown_parser");
   });
 

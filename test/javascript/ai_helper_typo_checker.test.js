@@ -1416,6 +1416,63 @@ describe("#ai-helper-wiki-typo-overlay container (no module-level auto-init)", (
     expect(textarea.classList.contains("ai-helper-textarea-positioned")).toBe(true);
   });
 
+  it("initFromConfig does not double-bind a click handler on a button already found by findExistingButton", () => {
+    const container = document.createElement("div");
+    container.id = "ai-helper-wiki-typo-overlay";
+    container.dataset.config = JSON.stringify({ endpoint: "/test", labels: {} });
+    document.body.appendChild(container);
+
+    const textarea = document.createElement("textarea");
+    textarea.id = "content_text";
+    document.body.appendChild(textarea);
+
+    // Other tests in this describe block leave a stale
+    // #ai-helper-typo-check-wiki-btn behind; remove it so
+    // document.getElementById resolves to this test's own button.
+    document.getElementById("ai-helper-typo-check-wiki-btn")?.remove();
+    const checkBtn = document.createElement("button");
+    checkBtn.id = "ai-helper-typo-check-wiki-btn";
+    document.body.appendChild(checkBtn);
+    const addEventListenerSpy = vi.spyOn(checkBtn, "addEventListener");
+
+    const checker = window.AiHelperTypoChecker.initFromConfig(container, "content_text", "ai-helper-typo-check-wiki-btn");
+
+    expect(checker.checkButton).toBe(checkBtn);
+    const clickBindings = addEventListenerSpy.mock.calls.filter(([type]) => type === "click");
+    expect(clickBindings).toHaveLength(1);
+
+    textarea.remove();
+    checkBtn.remove();
+  });
+
+  it("initFromConfig binds a click handler on a custom button that findExistingButton did not find", () => {
+    const container = document.createElement("div");
+    container.id = "ai-helper-wiki-typo-overlay";
+    container.dataset.config = JSON.stringify({ endpoint: "/test", labels: {} });
+    document.body.appendChild(container);
+
+    const textarea = document.createElement("textarea");
+    textarea.id = "content_text";
+    document.body.appendChild(textarea);
+
+    // No element with the id findExistingButton looks up for "content_text"
+    // ("ai-helper-typo-check-wiki-btn"), so checker.checkButton stays unset;
+    // this custom button is a different id passed explicitly.
+    const customButton = document.createElement("button");
+    customButton.id = "ai-helper-custom-typo-check-btn";
+    document.body.appendChild(customButton);
+    const checkTyposSpy = vi.spyOn(window.AiHelperTypoChecker.prototype, "checkTypos").mockResolvedValue();
+
+    window.AiHelperTypoChecker.initFromConfig(container, "content_text", "ai-helper-custom-typo-check-btn");
+    customButton.click();
+
+    expect(checkTyposSpy).toHaveBeenCalledTimes(1);
+
+    checkTyposSpy.mockRestore();
+    textarea.remove();
+    customButton.remove();
+  });
+
   it("initFromConfig returns null when container element does not exist", () => {
     const result = window.AiHelperTypoChecker.initFromConfig(null, "content_text");
     expect(result).toBeNull();

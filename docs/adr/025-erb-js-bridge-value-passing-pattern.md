@@ -15,17 +15,28 @@ Three pre-existing global contracts (page-scope globals defined in ERB, consumed
 
 Two patterns are used for the ERB↔JS boundary.
 
-### Pattern A: Element-scoped `data-*` attributes + single `init()` call (default for new modules)
+### Pattern A: Element-scoped `data-config` attribute + ID-based initialization (default for new modules)
 
-ERB attaches configuration to a container element via `data-*` attributes (individual attributes for 1-2 values, or a single `data-ai-helper-config` JSON attribute for complex config). ERB then makes exactly one call to an `init(element)` function. All DOM traversal, event registration, and logic lives in the `.js` file.
+ERB attaches configuration to a container element via a single `data-config` JSON attribute (individual `data-*` attributes are used instead for 1-2 simple values). The `.js` file looks up its container(s) by ID/selector and reads `dataset.config` itself; it does not receive the element as a function argument. Initialization is wired up one of two ways:
+
+- The `.js` file listens for `DOMContentLoaded` itself and looks up its container(s) internally (most modules — e.g. `ai_helper_issue_autocompletion.js`, `ai_helper_sub_issues.js`, `ai_helper_model_profile.js`).
+- ERB makes exactly one explicit call to a page-level init function with no arguments (e.g. `AiHelperChat.initSidebar()`, `AiHelperChat.initChatForm()`, `initAiHelperSettingsPage()`), for modules whose script tag is placed inline at a specific point in the page rather than loaded up front.
+
+All DOM traversal, event registration, and logic beyond reading `data-config` lives in the `.js` file.
 
 ```erb
-<div id="ai-helper-xxx" data-ai-helper-config='<%= { url: xxx_path(@project), label: t('...') }.to_json %>'>
+<div id="ai-helper-xxx" data-config='<%= { url: xxx_path(@project), label: t('...') }.to_json %>'>
   ...
 </div>
-<script>
-  AiHelperXxx.init(document.getElementById('ai-helper-xxx'));
-</script>
+```
+```js
+// ai_helper_xxx.js
+document.addEventListener('DOMContentLoaded', function() {
+  const container = document.getElementById('ai-helper-xxx');
+  if (!container) return;
+  const config = JSON.parse(container.dataset.config || '{}');
+  // ...
+});
 ```
 
 For elements that may appear multiple times on the same page (e.g., sub-issue rows), the element-scoped approach is mandatory — page-scope globals are prohibited for per-instance elements.
@@ -48,7 +59,7 @@ A handful of extracted modules still expose a `window.*` function purely so that
 |---|---|---|
 | `window.getSummary` | `ai_helper_issue_summary.js` | `ai_helper.js` (out of scope) |
 | `window.getWikiSummary` | `ai_helper_wiki_summary.js` | `ai_helper.js` (out of scope) |
-| `window.generateSummaryStream` | `ai_helper_issue_summary.js` | `issues/_bottom.html.erb`, and `issues/_summary.html.erb` (unmodified, out of scope for this refactor) |
+| `window.generateSummaryStream` | `ai_helper_issue_summary.js` | `issues/_summary.html.erb` (unmodified, out of scope for this refactor) |
 | `window.aiHelperSaveSummaryState` | `ai_helper_issue_summary.js` | `issues/_bottom.html.erb` |
 | `window.findSimilarIssues` | `ai_helper_issue_summary.js` | `issues/_bottom.html.erb` |
 | `window.aiHelperSaveReplyState` | `ai_helper_collapsible_fieldset.js` | `issues/_form.html.erb` |

@@ -3,14 +3,6 @@
  * Extracted from shared/_textarea_overlay.html.erb.
  */
 
-function removeExistingNotesCheckbox() {
-  const existingNotesCheckbox = document.getElementById('ai-helper-notes-checkbox-container');
-  if (existingNotesCheckbox) {
-    existingNotesCheckbox.remove();
-  }
-}
-removeExistingNotesCheckbox();
-
 /**
  * Move `container` to immediately follow `textarea` in the DOM and reveal it.
  * @param {HTMLElement} textarea
@@ -198,6 +190,7 @@ function initializeIssueCompletion() {
     window.aiHelperInstances.notesAutoCompletion = notesAutoCompletion;
   }
 
+  window.aiHelperAutoCompletionInitialized = true;
 }
 
 /**
@@ -235,8 +228,8 @@ function initializeAssignmentSuggestion() {
   suggestion.init();
 }
 
-setTimeout( function() {
+document.addEventListener('DOMContentLoaded', function() {
   initializeIssueCompletion();
   initializeIssueTypoChecker();
   initializeAssignmentSuggestion();
-}, 500); // Delay to ensure DOM is fully loaded
+});

@@ -84,7 +84,7 @@ function initializeWikiTextareaTypoChecker() {
   }
 }
 
-setTimeout(function() {
+document.addEventListener('DOMContentLoaded', function() {
   initializeWikiCompletion();
   initializeWikiTextareaTypoChecker();
-}, 500);
+});

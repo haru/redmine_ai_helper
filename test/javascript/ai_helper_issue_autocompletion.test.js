@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadScript } from "./support/load_script.js";
+import { loadScriptAndFireDOMContentLoaded } from "./support/dom_content_loaded.js";
 
 // --- T020: Characterization tests for shared/_textarea_overlay.html.erb extraction ---
 
 describe("initializeIssueCompletion (from shared/_textarea_overlay.html.erb)", () => {
   let container;
   let autoCompletionMock;
+  let cleanup;
 
   function createIssueDOM() {
     const form = document.createElement("div");
@@ -61,7 +63,6 @@ describe("initializeIssueCompletion (from shared/_textarea_overlay.html.erb)", (
   }
 
   beforeEach(() => {
-    vi.useFakeTimers();
     autoCompletionMock = vi.fn();
     vi.stubGlobal("AiHelperAutoCompletion", autoCompletionMock);
 
@@ -79,6 +80,8 @@ describe("initializeIssueCompletion (from shared/_textarea_overlay.html.erb)", (
   });
 
   afterEach(() => {
+    cleanup?.removeRegisteredListeners();
+    cleanup = undefined;
     vi.useRealTimers();
     document
       .querySelectorAll(
@@ -93,8 +96,7 @@ describe("initializeIssueCompletion (from shared/_textarea_overlay.html.erb)", (
   it("creates an AiHelperAutoCompletion for description textarea", async () => {
     autoCompletionMock.mockImplementation(function() { this.init = vi.fn(); });
     const dom = createIssueDOM();
-    await loadScript("assets/javascripts/ai_helper_issue_autocompletion");
-    await vi.advanceTimersByTimeAsync(600);
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_autocompletion");
 
     expect(autoCompletionMock).toHaveBeenCalled();
     const callArgs = autoCompletionMock.mock.calls[0];
@@ -112,8 +114,7 @@ describe("initializeIssueCompletion (from shared/_textarea_overlay.html.erb)", (
     const mockInstance = { init: vi.fn(), clearSuggestion: vi.fn() };
     autoCompletionMock.mockImplementation(function() { return mockInstance; });
     const dom = createIssueDOM();
-    await loadScript("assets/javascripts/ai_helper_issue_autocompletion");
-    await vi.advanceTimersByTimeAsync(600);
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_autocompletion");
 
     expect(window.aiHelperInstances.autoCompletion).toBe(mockInstance);
     dom.form.remove();
@@ -122,8 +123,7 @@ describe("initializeIssueCompletion (from shared/_textarea_overlay.html.erb)", (
   it("moves the description checkbox container below the textarea", async () => {
     autoCompletionMock.mockImplementation(function() { this.init = vi.fn(); });
     const dom = createIssueDOM();
-    await loadScript("assets/javascripts/ai_helper_issue_autocompletion");
-    await vi.advanceTimersByTimeAsync(600);
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_autocompletion");
 
     expect(dom.descContainer.style.display).toBe("block");
     dom.form.remove();
@@ -132,8 +132,7 @@ describe("initializeIssueCompletion (from shared/_textarea_overlay.html.erb)", (
   it("does not reinitialize if aiHelperAutoCompletionInitialized is true", async () => {
     window.aiHelperAutoCompletionInitialized = true;
     const dom = createIssueDOM();
-    await loadScript("assets/javascripts/ai_helper_issue_autocompletion");
-    await vi.advanceTimersByTimeAsync(600);
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_autocompletion");
 
     expect(autoCompletionMock).not.toHaveBeenCalled();
     dom.form.remove();
@@ -147,8 +146,7 @@ describe("initializeIssueCompletion (from shared/_textarea_overlay.html.erb)", (
       issueId: "5",
     });
     const dom = createIssueDOM();
-    await loadScript("assets/javascripts/ai_helper_issue_autocompletion");
-    await vi.advanceTimersByTimeAsync(600);
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_autocompletion");
 
     expect(autoCompletionMock).toHaveBeenCalledTimes(2);
     const notesCall = autoCompletionMock.mock.calls[1];
@@ -164,8 +162,7 @@ describe("initializeIssueCompletion (from shared/_textarea_overlay.html.erb)", (
     autoCompletionMock.mockImplementation(function() { this.init = vi.fn(); });
     container.dataset.config = createConfig({ isPersistedIssue: false });
     const dom = createIssueDOM();
-    await loadScript("assets/javascripts/ai_helper_issue_autocompletion");
-    await vi.advanceTimersByTimeAsync(600);
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_autocompletion");
 
     expect(autoCompletionMock).toHaveBeenCalledTimes(1);
     dom.form.remove();
@@ -180,8 +177,7 @@ describe("initializeIssueCompletion (from shared/_textarea_overlay.html.erb)", (
       issueId: "5",
     });
     const dom = createIssueDOM();
-    await loadScript("assets/javascripts/ai_helper_issue_autocompletion");
-    await vi.advanceTimersByTimeAsync(600);
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_autocompletion");
 
     expect(window.aiHelperInstances.notesAutoCompletion).toBe(mockInstance);
     dom.form.remove();
@@ -189,15 +185,13 @@ describe("initializeIssueCompletion (from shared/_textarea_overlay.html.erb)", (
 
   it("does nothing when container does not exist", async () => {
     container.remove();
-    await loadScript("assets/javascripts/ai_helper_issue_autocompletion");
-    await vi.advanceTimersByTimeAsync(600);
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_autocompletion");
 
     expect(autoCompletionMock).not.toHaveBeenCalled();
   });
 
   it("does nothing when description textarea does not exist and isPersistedIssue is false", async () => {
-    await loadScript("assets/javascripts/ai_helper_issue_autocompletion");
-    await vi.advanceTimersByTimeAsync(600);
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_autocompletion");
 
     expect(autoCompletionMock).not.toHaveBeenCalled();
   });
@@ -205,6 +199,7 @@ describe("initializeIssueCompletion (from shared/_textarea_overlay.html.erb)", (
 
 describe("initializeIssueTypoChecker (from shared/_textarea_overlay.html.erb)", () => {
   let container;
+  let cleanup;
 
   function createIssueTypoDOM() {
     const form = document.createElement("div");
@@ -265,7 +260,6 @@ describe("initializeIssueTypoChecker (from shared/_textarea_overlay.html.erb)", 
   }
 
   beforeEach(async () => {
-    vi.useFakeTimers();
     await loadScript("assets/javascripts/ai_helper_typo_checker");
 
     container = document.createElement("div");
@@ -290,7 +284,8 @@ describe("initializeIssueTypoChecker (from shared/_textarea_overlay.html.erb)", 
   });
 
   afterEach(() => {
-    vi.useRealTimers();
+    cleanup?.removeRegisteredListeners();
+    cleanup = undefined;
     document
       .querySelectorAll(
         "#ai-helper-issue-typo-overlay, #ai-helper-issue-textarea-overlay, #issue_description, #issue_notes, .ai-helper-typo-accept-btn-template, .ai-helper-typo-reject-btn-template, #ai-helper-typo-control-panel-description, #ai-helper-typo-control-panel-notes, meta[name=csrf-token]"
@@ -300,8 +295,7 @@ describe("initializeIssueTypoChecker (from shared/_textarea_overlay.html.erb)", 
 
   it("creates typo checkers for both description and notes textareas", async () => {
     const dom = createIssueTypoDOM();
-    await loadScript("assets/javascripts/ai_helper_issue_autocompletion");
-    await vi.advanceTimersByTimeAsync(600);
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_autocompletion");
 
     expect(dom.descTextarea.classList.contains("ai-helper-textarea-positioned")).toBe(true);
     expect(dom.notesTextarea.classList.contains("ai-helper-textarea-positioned")).toBe(true);
@@ -310,8 +304,7 @@ describe("initializeIssueTypoChecker (from shared/_textarea_overlay.html.erb)", 
 
   it("does nothing when container does not exist", async () => {
     container.remove();
-    await loadScript("assets/javascripts/ai_helper_issue_autocompletion");
-    await vi.advanceTimersByTimeAsync(600);
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_autocompletion");
 
     // No error thrown
   });
@@ -320,9 +313,9 @@ describe("initializeIssueTypoChecker (from shared/_textarea_overlay.html.erb)", 
 describe("initializeAssignmentSuggestion (from shared/_textarea_overlay.html.erb)", () => {
   let container;
   let assignmentMock;
+  let cleanup;
 
   beforeEach(() => {
-    vi.useFakeTimers();
     assignmentMock = vi.fn();
     vi.stubGlobal("AiHelperAssignmentSuggestion", assignmentMock);
 
@@ -356,7 +349,8 @@ describe("initializeAssignmentSuggestion (from shared/_textarea_overlay.html.erb
   });
 
   afterEach(() => {
-    vi.useRealTimers();
+    cleanup?.removeRegisteredListeners();
+    cleanup = undefined;
     document
       .querySelectorAll(
         "#ai-helper-issue-textarea-overlay, #issue_assigned_to_id"
@@ -367,8 +361,7 @@ describe("initializeAssignmentSuggestion (from shared/_textarea_overlay.html.erb
 
   it("creates an AiHelperAssignmentSuggestion when select and container exist", async () => {
     assignmentMock.mockImplementation(function() { this.init = vi.fn(); });
-    await loadScript("assets/javascripts/ai_helper_issue_autocompletion");
-    await vi.advanceTimersByTimeAsync(600);
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_autocompletion");
 
     expect(assignmentMock).toHaveBeenCalledTimes(1);
     const callArgs = assignmentMock.mock.calls[0][0];
@@ -378,16 +371,14 @@ describe("initializeAssignmentSuggestion (from shared/_textarea_overlay.html.erb
 
   it("does nothing when AiHelperAssignmentSuggestion is undefined", async () => {
     vi.unstubAllGlobals();
-    await loadScript("assets/javascripts/ai_helper_issue_autocompletion");
-    await vi.advanceTimersByTimeAsync(600);
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_autocompletion");
 
     // No error thrown
   });
 
   it("does nothing when assigned_to select does not exist", async () => {
     document.getElementById("issue_assigned_to_id").remove();
-    await loadScript("assets/javascripts/ai_helper_issue_autocompletion");
-    await vi.advanceTimersByTimeAsync(600);
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_autocompletion");
 
     expect(assignmentMock).not.toHaveBeenCalled();
   });
@@ -395,6 +386,7 @@ describe("initializeAssignmentSuggestion (from shared/_textarea_overlay.html.erb
 
 describe("Duplicate check (from shared/_textarea_overlay.html.erb)", () => {
   let container;
+  let cleanup;
 
   function createDuplicateCheckDOM() {
     const form = document.createElement("div");
@@ -437,7 +429,6 @@ describe("Duplicate check (from shared/_textarea_overlay.html.erb)", () => {
   }
 
   beforeEach(() => {
-    vi.useFakeTimers();
     const acMock = vi.fn();
     acMock.mockImplementation(function() { this.init = vi.fn(); });
     vi.stubGlobal("AiHelperAutoCompletion", acMock);
@@ -465,7 +456,8 @@ describe("Duplicate check (from shared/_textarea_overlay.html.erb)", () => {
   });
 
   afterEach(() => {
-    vi.useRealTimers();
+    cleanup?.removeRegisteredListeners();
+    cleanup = undefined;
     document
       .querySelectorAll(
         "#ai-helper-issue-textarea-overlay, #issue_description, #ai-helper-description-checkbox-container, #ai-helper-duplicate-check-container, #issue_subject, meta[name=csrf-token]"
@@ -480,8 +472,7 @@ describe("Duplicate check (from shared/_textarea_overlay.html.erb)", () => {
     const alertMock = vi.fn();
     vi.stubGlobal("alert", alertMock);
     const dom = createDuplicateCheckDOM();
-    await loadScript("assets/javascripts/ai_helper_issue_autocompletion");
-    await vi.advanceTimersByTimeAsync(600);
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_autocompletion");
 
     dom.dupBtn.click();
     expect(alertMock).toHaveBeenCalledWith("Please enter subject or description");
@@ -495,8 +486,7 @@ describe("Duplicate check (from shared/_textarea_overlay.html.erb)", () => {
       ok: true,
       text: () => Promise.resolve("<div>results</div>"),
     }));
-    await loadScript("assets/javascripts/ai_helper_issue_autocompletion");
-    await vi.advanceTimersByTimeAsync(600);
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_autocompletion");
 
     dom.dupBtn.click();
     expect(dom.dupLoading.style.display).toBe("flex");
@@ -514,8 +504,7 @@ describe("Duplicate check (from shared/_textarea_overlay.html.erb)", () => {
       text: () => Promise.resolve("<div>results</div>"),
     });
     vi.stubGlobal("fetch", fetchMock);
-    await loadScript("assets/javascripts/ai_helper_issue_autocompletion");
-    await vi.advanceTimersByTimeAsync(600);
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_autocompletion");
 
     dom.dupBtn.click();
     expect(fetchMock).toHaveBeenCalledWith(
@@ -538,8 +527,7 @@ describe("Duplicate check (from shared/_textarea_overlay.html.erb)", () => {
       ok: true,
       text: () => Promise.resolve("<div>duplicate results</div>"),
     }));
-    await loadScript("assets/javascripts/ai_helper_issue_autocompletion");
-    await vi.advanceTimersByTimeAsync(600);
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_autocompletion");
 
     dom.dupBtn.click();
     await vi.waitFor(() => {
@@ -552,8 +540,7 @@ describe("Duplicate check (from shared/_textarea_overlay.html.erb)", () => {
     const dom = createDuplicateCheckDOM();
     dom.descTextarea.value = "test";
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Network error")));
-    await loadScript("assets/javascripts/ai_helper_issue_autocompletion");
-    await vi.advanceTimersByTimeAsync(600);
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_autocompletion");
 
     dom.dupBtn.click();
     await vi.waitFor(() => {
@@ -570,8 +557,7 @@ describe("Duplicate check (from shared/_textarea_overlay.html.erb)", () => {
       ok: false,
       json: () => Promise.resolve({ error: "Custom error" }),
     }));
-    await loadScript("assets/javascripts/ai_helper_issue_autocompletion");
-    await vi.advanceTimersByTimeAsync(600);
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_autocompletion");
 
     dom.dupBtn.click();
     await vi.waitFor(() => {
@@ -587,8 +573,7 @@ describe("Duplicate check (from shared/_textarea_overlay.html.erb)", () => {
       ok: true,
       text: () => Promise.resolve("<div>ok</div>"),
     }));
-    await loadScript("assets/javascripts/ai_helper_issue_autocompletion");
-    await vi.advanceTimersByTimeAsync(600);
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/ai_helper_issue_autocompletion");
 
     dom.dupBtn.click();
     await vi.waitFor(() => {

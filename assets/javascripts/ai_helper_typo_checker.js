@@ -1077,9 +1077,12 @@ AiHelperTypoChecker.initFromConfig = function(container, textareaId, buttonId) {
   });
   checker.init();
 
+  // checker.init() already binds a click handler via findExistingButton()/
+  // attachEventListeners() when buttonId matches the internal textarea-to-button
+  // map, so only bind here for a custom button that init() did not find.
   if (buttonId) {
     const button = document.getElementById(buttonId);
-    if (button) {
+    if (button && button !== checker.checkButton) {
       button.addEventListener('click', () => {
         checker.checkTypos();
       });

@@ -130,8 +130,8 @@ describe("initAiHelperSettingsPage", () => {
     expect(reinjectedScripts).toHaveLength(1);
   });
 
-  it("shows 'error' in the description when the AJAX request fails", async () => {
-    const { modelProfileSelect, descriptionDiv } = addMarkup();
+  it("shows the localized load-error message in the description when the AJAX request fails", async () => {
+    const { modelProfileSelect, descriptionDiv } = addMarkup({ loadErrorMessage: "An error occurred" });
     const option = document.createElement("option");
     option.value = "42";
     modelProfileSelect.appendChild(option);
@@ -142,7 +142,7 @@ describe("initAiHelperSettingsPage", () => {
     window.initAiHelperSettingsPage();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(descriptionDiv.innerHTML).toBe("error");
+    expect(descriptionDiv.textContent).toBe("An error occurred");
   });
 
   it("clears the description when no profile is selected on init", async () => {

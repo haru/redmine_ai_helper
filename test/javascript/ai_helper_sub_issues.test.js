@@ -9,14 +9,22 @@ import { loadScriptAndFireDOMContentLoaded } from "./support/dom_content_loaded.
 describe("ai_helper_sub_issues (IIFE)", () => {
   let container;
   let fetchMock;
+  let registeredListeners;
+  let observerInstances;
 
   beforeEach(() => {
     container = document.createElement("div");
     container.id = "content";
     document.body.appendChild(container);
+    registeredListeners = [];
+    observerInstances = [];
   });
 
   afterEach(() => {
+    registeredListeners.forEach(([type, listener, options]) => {
+      document.removeEventListener(type, listener, options);
+    });
+    observerInstances.forEach((observer) => observer.disconnect());
     container.remove();
     vi.unstubAllGlobals();
     vi.useRealTimers();
@@ -60,7 +68,29 @@ describe("ai_helper_sub_issues (IIFE)", () => {
   }
 
   async function load() {
+    // ai_helper_sub_issues.js registers a document-level 'change' listener
+    // and a MutationObserver every time its top-level IIFE runs, and
+    // loadScript() re-runs that IIFE fresh on every call. Track both here so
+    // afterEach can tear them down and keep tests order-independent.
+    const originalAddEventListener = Document.prototype.addEventListener;
+    const addEventListenerSpy = vi
+      .spyOn(document, "addEventListener")
+      .mockImplementation(function(type, listener, options) {
+        registeredListeners.push([type, listener, options]);
+        return originalAddEventListener.call(document, type, listener, options);
+      });
+
+    const OriginalMutationObserver = globalThis.MutationObserver;
+    class TrackedMutationObserver extends OriginalMutationObserver {
+      constructor(...args) {
+        super(...args);
+        observerInstances.push(this);
+      }
+    }
+    vi.stubGlobal("MutationObserver", TrackedMutationObserver);
+
     await loadScript("assets/javascripts/ai_helper_sub_issues");
+    addEventListenerSpy.mockRestore();
     // Initial init runs on a 100ms setTimeout.
     await new Promise((resolve) => setTimeout(resolve, 150));
   }

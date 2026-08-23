@@ -421,8 +421,6 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
-} // End guard against multiple script loading
-
 // --- extracted from project/_health_report_detail_pane.html.erb and
 // project/_health_report_show.html.erb (near-duplicate Markdown re-parse +
 // export wiring, unified here) ---
@@ -483,3 +481,5 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 });
+
+} // End guard against multiple script loading

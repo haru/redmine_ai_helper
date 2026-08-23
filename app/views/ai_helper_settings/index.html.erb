@@ -7,6 +7,7 @@
 <h2><%= t(:label_ai_helper) %></h2>
 <div id="ai-helper-settings-index" data-config='<%= {
   modelProfilesPath: ai_helper_model_profiles_path,
+  loadErrorMessage: l(:ai_helper_error_occurred),
   compatibleType: RedmineAiHelper::LlmProvider::LLM_OPENAI_COMPATIBLE,
   azureType: RedmineAiHelper::LlmProvider::LLM_AZURE_OPENAI,
   userIdSupportedTypes: [
