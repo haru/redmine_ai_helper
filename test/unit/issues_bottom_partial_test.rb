@@ -93,7 +93,7 @@ class IssuesBottomPartialTest < ActionView::TestCase
 
     context "JavaScript bridge" do
       # getSelectedScope()/similar-issues scope handling was extracted to
-      # assets/javascripts/ai_helper_issue_summary.js (047-erb-js-refactoring);
+      # assets/javascripts/summary/ai_helper_issue_summary.js (047-erb-js-refactoring);
       # that behavior (appending the checked scope as a query param) is
       # characterized in test/javascript/ai_helper_issue_summary.test.js. This
       # view spec only checks the ERB->JS bridge contract: the fieldset's

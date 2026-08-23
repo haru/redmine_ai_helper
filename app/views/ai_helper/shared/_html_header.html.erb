@@ -5,28 +5,32 @@
 %>
 <% if RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: project) %>
     <%= stylesheet_link_tag('ai_helper.css', plugin: :redmine_ai_helper) %>
-    <%= javascript_include_tag('ai_helper.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('chat/ai_helper.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('chat/ai_helper_streaming.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('chat/ai_helper_history.js', plugin: :redmine_ai_helper) %>
     <script>
       // Update the existing instance with user ID for user-specific localStorage
       ai_helper.setUserId('<%= User.current.id %>');
     </script>
-    <%= javascript_include_tag('ai_helper_markdown_parser.js', plugin: :redmine_ai_helper) %>
-    <%= javascript_include_tag('ai_helper_auto_completion.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('shared/ai_helper_markdown_parser.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('autocompletion/ai_helper_auto_completion.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('autocompletion/ai_helper_auto_completion_overlay.js', plugin: :redmine_ai_helper) %>
     <%= stylesheet_link_tag('ai_helper_command_completion.css', plugin: :redmine_ai_helper) %>
-    <%= javascript_include_tag('ai_helper_command_completion.js', plugin: :redmine_ai_helper) %>
-    <%= javascript_include_tag('ai_helper_chat.js', plugin: :redmine_ai_helper) %>
-    <%= javascript_include_tag('ai_helper_wiki_autocompletion.js', plugin: :redmine_ai_helper) %>
-    <%= javascript_include_tag('ai_helper_issue_autocompletion.js', plugin: :redmine_ai_helper) %>
-    <%= javascript_include_tag('ai_helper_typo_checker.js', plugin: :redmine_ai_helper) %>
-    <%= javascript_include_tag('ai_helper_project_health.js', plugin: :redmine_ai_helper) %>
-    <%= javascript_include_tag('ai_helper_assignment_suggestion.js', plugin: :redmine_ai_helper) %>
-    <%= javascript_include_tag('ai_helper_master_detail.js', plugin: :redmine_ai_helper) %>
-    <%= javascript_include_tag('ai_helper_sub_issues.js', plugin: :redmine_ai_helper) %>
-    <%= javascript_include_tag('ai_helper_wiki_summary.js', plugin: :redmine_ai_helper) %>
-    <%= javascript_include_tag('ai_helper_issue_summary.js', plugin: :redmine_ai_helper) %>
-    <%= javascript_include_tag('ai_helper_collapsible_fieldset.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('chat/ai_helper_command_completion.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('chat/ai_helper_chat.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('autocompletion/ai_helper_wiki_autocompletion.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('autocompletion/ai_helper_issue_autocompletion.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('typo_checker/ai_helper_typo_checker.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('typo_checker/ai_helper_typo_suggestion_overlay.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('project_health/ai_helper_project_health.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('autocompletion/ai_helper_assignment_suggestion.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('project_health/ai_helper_master_detail.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('sub_issues/ai_helper_sub_issues.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('summary/ai_helper_wiki_summary.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('summary/ai_helper_issue_summary.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('shared/ai_helper_collapsible_fieldset.js', plugin: :redmine_ai_helper) %>
     <%= stylesheet_link_tag('ai_helper_stuff_todo.css', plugin: :redmine_ai_helper) %>
-    <%= javascript_include_tag('ai_helper_stuff_todo.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('stuff_todo/ai_helper_stuff_todo.js', plugin: :redmine_ai_helper) %>
     <meta name="ai-helper-stuff-todo-url" content="<%= ai_helper_stuff_todo_path(project) %>">
     <meta name="ai-helper-stuff-todo-loading" content="<%= t('ai_helper.stuff_todo.loading') %>">
     <meta name="ai-helper-stuff-todo-error" content="<%= t('ai_helper.stuff_todo.error') %>">

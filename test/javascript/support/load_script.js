@@ -6,7 +6,7 @@ import { vi } from "vitest";
  * registry first so the script re-runs from a clean state on every call,
  * even within the same test file.
  *
- * @param {string} relativePathFromRoot e.g. "assets/javascripts/ai_helper_markdown_parser"
+ * @param {string} relativePathFromRoot e.g. "assets/javascripts/shared/ai_helper_markdown_parser"
  *   (repository-root-relative, without the ".js" extension)
  */
 export async function loadScript(relativePathFromRoot) {
