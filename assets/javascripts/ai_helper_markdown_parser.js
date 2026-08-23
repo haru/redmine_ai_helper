@@ -96,7 +96,7 @@ if (typeof AiHelperMarkdownParser === "undefined") {
 
     linkifyIssueReferences(html) {
       const template = (typeof ai_helper_urls !== 'undefined') ? ai_helper_urls.issue_base : null;
-      if (!template) return html;
+      if (!template) {return html;}
 
       const masks = [];
       // Mask existing <a>, <pre>, and <code> blocks so their content is not re-linked
@@ -170,7 +170,7 @@ if (typeof AiHelperMarkdownParser === "undefined") {
 
     // Escape HTML special characters so raw HTML in the input renders as text.
     static escapeHtml(text) {
-      if (text == null) return "";
+      if (text == null) {return "";}
       return String(text)
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
@@ -181,7 +181,7 @@ if (typeof AiHelperMarkdownParser === "undefined") {
 
     // Validate URL protocol to prevent javascript: XSS
     static sanitizeUrl(url) {
-      if (!url) return null;
+      if (!url) {return null;}
       const trimmed = url.trim();
       // Allow safe protocols and relative URLs
       if (/^https?:\/\//i.test(trimmed) ||
@@ -231,9 +231,9 @@ if (typeof AiHelperMarkdownParser === "undefined") {
               .map(sep => sep.trim());
 
             alignments = separators.map(sep => {
-              if (sep.startsWith(":") && sep.endsWith(":")) return "center";
-              if (sep.endsWith(":")) return "right";
-              if (sep.startsWith(":")) return "left";
+              if (sep.startsWith(":") && sep.endsWith(":")) {return "center";}
+              if (sep.endsWith(":")) {return "right";}
+              if (sep.startsWith(":")) {return "left";}
               return "left";
             });
             // Skip the separator line
@@ -264,7 +264,7 @@ if (typeof AiHelperMarkdownParser === "undefined") {
     }
 
     convertTableToHtml(tableData, alignments) {
-      if (tableData.length === 0) return "";
+      if (tableData.length === 0) {return "";}
 
       const html = ['<table class="list">'];
 

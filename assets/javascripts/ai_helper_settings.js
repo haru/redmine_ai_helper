@@ -39,7 +39,7 @@ function loadModelProfile(id) {
 
   fetch(config.modelProfilesPath + '/' + id)
     .then(function(response) {
-      if (!response.ok) throw new Error('HTTP ' + response.status);
+      if (!response.ok) {throw new Error('HTTP ' + response.status);}
       return response.text();
     })
     .then(function(html) {
@@ -83,7 +83,7 @@ function setVectorSearchVisible() {
 function setVectorTargetProjectsVisible() {
   const registerAll = document.getElementById('ai_helper_setting_vector_register_all_projects');
   const container = document.getElementById('ai-helper-vector-target-projects');
-  if (!registerAll || !container) return;
+  if (!registerAll || !container) {return;}
   container.style.display = registerAll.checked ? 'none' : '';
 }
 
@@ -103,7 +103,7 @@ function setVectorModelProfileToggleVisible() {
     }
     if (!vectorSearchEnabled) {
       const settingsDiv = document.getElementById('ai-helper-vector-model-profile-settings');
-      if (settingsDiv) settingsDiv.style.display = 'none';
+      if (settingsDiv) {settingsDiv.style.display = 'none';}
     } else {
       setVectorModelProfileVisible();
     }
@@ -117,7 +117,7 @@ function setSendUserIdVisible() {
   const modelType = document.getElementById('ai_helper_model_type')?.textContent || '';
   const supported = modelType !== '' && config.userIdSupportedTypes.includes(modelType);
   const sendUserIdDiv = document.getElementById('ai-helper-send-user-id');
-  if (sendUserIdDiv) sendUserIdDiv.style.display = supported ? '' : 'none';
+  if (sendUserIdDiv) {sendUserIdDiv.style.display = supported ? '' : 'none';}
 }
 window.setSendUserIdVisible = setSendUserIdVisible;
 
@@ -126,8 +126,8 @@ function modelTypeChanged() {
   const modelType = document.getElementById('ai_helper_model_type')?.textContent || '';
   const dimensionDiv = document.getElementById('ai_helper_dimension');
   const embeddingUrlDiv = document.getElementById('ai_helper_embedding_url');
-  if (dimensionDiv) dimensionDiv.style.display = modelType === config.compatibleType ? '' : 'none';
-  if (embeddingUrlDiv) embeddingUrlDiv.style.display = modelType === config.azureType ? '' : 'none';
+  if (dimensionDiv) {dimensionDiv.style.display = modelType === config.compatibleType ? '' : 'none';}
+  if (embeddingUrlDiv) {embeddingUrlDiv.style.display = modelType === config.azureType ? '' : 'none';}
   setSendUserIdVisible();
 }
 window.modelTypeChanged = modelTypeChanged;

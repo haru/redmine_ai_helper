@@ -42,7 +42,7 @@ describe("ai_helper_stuff_todo", () => {
   function addMeta(name, content) {
     const meta = document.createElement("meta");
     meta.setAttribute("name", name);
-    if (content !== undefined) meta.setAttribute("content", content);
+    if (content !== undefined) {meta.setAttribute("content", content);}
     document.head.appendChild(meta);
     return meta;
   }

@@ -125,7 +125,7 @@ function getSelectedScope() {
 // checked similar issues, mirroring RedmineAiHelper::EffortEstimation.suggest.
 function recalculateSuggestedHours() {
   const block = document.getElementById('ai-helper-suggested-hours-block');
-  if (!block) return;
+  if (!block) {return;}
 
   const checkboxes = document.querySelectorAll('.ai-helper-effort-checkbox:checked');
   let weightedSum = 0;
@@ -137,7 +137,7 @@ function recalculateSuggestedHours() {
     // Checkboxes for similar issues without spent_hours data carry no
     // data-spent-hours attribute (parseFloat(undefined) is NaN); skip them
     // so they can't poison the weighted average with NaN.
-    if (!Number.isFinite(spentHours) || !Number.isFinite(score)) return;
+    if (!Number.isFinite(spentHours) || !Number.isFinite(score)) {return;}
     weightedSum += spentHours * score;
     totalWeight += score;
     includedCount += 1;
@@ -185,7 +185,7 @@ function toggleAllEffortCheckboxes(checked) {
 // unchecked, a mix of both -> indeterminate.
 function recalculateEffortSelectAllState() {
   const selectAll = document.getElementById('ai-helper-effort-select-all');
-  if (!selectAll) return;
+  if (!selectAll) {return;}
 
   const checkboxes = document.querySelectorAll('.ai-helper-effort-checkbox');
   const checkedCount = Array.from(checkboxes).filter(function(checkbox) { return checkbox.checked; }).length;
@@ -218,7 +218,7 @@ function applySuggestedHours() {
 // Function to move similar issues section to after relations
 function moveSimilarIssuesToRelations() {
   const similarIssuesSection = document.getElementById('ai-helper-similar-issues-section');
-  if (!similarIssuesSection) return;
+  if (!similarIssuesSection) {return;}
 
   // Look for relations section
   const relationsDiv = document.getElementById('relations');
@@ -230,7 +230,7 @@ function moveSimilarIssuesToRelations() {
 
 document.addEventListener('DOMContentLoaded', function() {
   const container = document.getElementById('ai-helper-summary-fields');
-  if (!container) return;
+  if (!container) {return;}
   const config = getIssueSummaryConfig();
 
   const summaryButtons = document.querySelectorAll('.ai-helper-summary-button');

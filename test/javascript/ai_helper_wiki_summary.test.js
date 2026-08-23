@@ -37,7 +37,7 @@ describe("ai_helper_wiki_summary", () => {
     vi.stubGlobal("AiHelperCollapsibleFieldset", {
       setExpanded(fieldsetId, flag) {
         const el = document.getElementById(fieldsetId);
-        if (!el) return;
+        if (!el) {return;}
         const legend = el.querySelector("legend");
         const isOpen = !el.classList.contains("collapsed");
         if (isOpen !== flag) {

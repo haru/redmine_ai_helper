@@ -12,7 +12,7 @@ function initializeWikiCompletion() {
   }
 
   const container = document.getElementById('ai-helper-wiki-textarea-overlay');
-  if (!container) return;
+  if (!container) {return;}
   const config = JSON.parse(container.dataset.config || '{}');
 
   const wikiTextarea = document.getElementById('content_text');

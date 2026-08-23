@@ -101,7 +101,7 @@ describe("AiHelperTypoChecker", () => {
       dom.parent.remove();
     }
     const meta = document.querySelector('meta[name="csrf-token"]');
-    if (meta) meta.remove();
+    if (meta) {meta.remove();}
     vi.unstubAllGlobals();
   });
 

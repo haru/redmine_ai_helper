@@ -49,7 +49,7 @@ describe("ai_helper_issue_summary", () => {
     vi.stubGlobal("AiHelperCollapsibleFieldset", {
       setExpanded(fieldsetId, flag) {
         const el = document.getElementById(fieldsetId);
-        if (!el) return;
+        if (!el) {return;}
         const legend = el.querySelector("legend");
         const isOpen = !el.classList.contains("collapsed");
         if (isOpen !== flag) {
@@ -216,8 +216,8 @@ describe("ai_helper_issue_summary", () => {
       checkbox.type = "checkbox";
       checkbox.className = "ai-helper-effort-checkbox";
       checkbox.checked = checked;
-      if (spentHours !== undefined) checkbox.dataset.spentHours = String(spentHours);
-      if (similarityScore !== undefined) checkbox.dataset.similarityScore = String(similarityScore);
+      if (spentHours !== undefined) {checkbox.dataset.spentHours = String(spentHours);}
+      if (similarityScore !== undefined) {checkbox.dataset.similarityScore = String(similarityScore);}
       area.appendChild(checkbox);
       return checkbox;
     }

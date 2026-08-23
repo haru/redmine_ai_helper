@@ -23,7 +23,7 @@ describe("ai_helper_chat_settings.js", () => {
   });
 
   afterEach(() => {
-    if (container) container.remove();
+    if (container) {container.remove();}
     container = undefined;
     vi.unstubAllGlobals();
   });
@@ -263,7 +263,7 @@ describe("ai_helper_chat_settings.js", () => {
     const dialog = document.createElement("dialog");
     dialog.id = `adapter-help-dialog-${channelType}`;
     dialog.className = "adapter-help-dialog";
-    if (open) dialog.setAttribute("open", "");
+    if (open) {dialog.setAttribute("open", "");}
 
     const header = document.createElement("div");
     header.className = "adapter-help-dialog-header";

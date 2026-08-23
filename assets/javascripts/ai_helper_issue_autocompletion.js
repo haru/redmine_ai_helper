@@ -36,7 +36,7 @@ function initializeIssueCompletion() {
   const notesTextarea = document.getElementById('issue_notes');
 
   const container = document.getElementById('ai-helper-issue-textarea-overlay');
-  if (!container) return;
+  if (!container) {return;}
   const config = JSON.parse(container.dataset.config || '{}');
 
   // Initialize autocompletion for description field
@@ -198,7 +198,7 @@ function initializeIssueCompletion() {
  */
 function initializeIssueTypoChecker() {
   const container = document.getElementById('ai-helper-issue-typo-overlay');
-  if (!container) return;
+  if (!container) {return;}
 
   window.AiHelperTypoChecker.initFromConfig(
     container, 'issue_description', 'ai-helper-typo-check-description-btn'
@@ -213,12 +213,12 @@ function initializeIssueTypoChecker() {
  */
 function initializeAssignmentSuggestion() {
   const container = document.getElementById('ai-helper-issue-textarea-overlay');
-  if (!container) return;
+  if (!container) {return;}
   const assignConfig = JSON.parse(container.dataset.assignmentConfig || '{}');
 
-  if (typeof AiHelperAssignmentSuggestion === 'undefined') return;
+  if (typeof AiHelperAssignmentSuggestion === 'undefined') {return;}
   const assignedToSelect = document.getElementById('issue_assigned_to_id');
-  if (!assignedToSelect) return;
+  if (!assignedToSelect) {return;}
 
   const suggestion = new AiHelperAssignmentSuggestion({
     endpoint: assignConfig.endpoint,

@@ -11,7 +11,7 @@ const AiHelperModelProfile = (() => {
    */
   function initShow() {
     const dialog = document.getElementById('copy-profile-dialog');
-    if (!dialog) return;
+    if (!dialog) {return;}
     const config = JSON.parse(dialog.dataset.config || '{}');
 
     const copyBtn = document.getElementById('copy-model-profile-btn');
@@ -83,7 +83,7 @@ const AiHelperModelProfile = (() => {
    */
   function initForm() {
     const configContainer = document.getElementById('ai-helper-model-profile-form');
-    if (!configContainer) return;
+    if (!configContainer) {return;}
     const config = JSON.parse(configContainer.dataset.config || '{}');
 
     const llmTypeSelect = document.getElementById('ai_helper_model_profile_llm_type');
@@ -101,7 +101,7 @@ const AiHelperModelProfile = (() => {
      * @param {boolean} visible
      */
     function setVisible(element, visible) {
-      if (element) element.style.display = visible ? 'block' : 'none';
+      if (element) {element.style.display = visible ? 'block' : 'none';}
     }
 
     /**
@@ -143,7 +143,7 @@ const AiHelperModelProfile = (() => {
     if (testConnectionBtn) {
       testConnectionBtn.addEventListener('click', function(event) {
         event.preventDefault();
-        if (testConnectionBtn.dataset.loading) return;
+        if (testConnectionBtn.dataset.loading) {return;}
         testConnectionBtn.dataset.loading = 'true';
         testConnectionBtn.disabled = true;
         testConnectionResult.textContent = '';

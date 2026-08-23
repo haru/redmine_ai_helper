@@ -31,6 +31,42 @@ export default [
       // used (e.g. a shared callback shape); the codebase already marks
       // those with a leading underscore.
       "no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+
+      // Naming convention: everything is camelCase except the handful of
+      // ERB<->JS bridge identifiers that intentionally mirror the Ruby/ERB
+      // side's snake_case naming (see the `globals` block above and
+      // AGENTS.md's ERB/JS separation guidelines).
+      camelcase: [
+        "error",
+        {
+          properties: "never",
+          allow: ["^ai_helper$", "^ai_helper_urls$", "^ai_helper_generate_reply$"],
+        },
+      ],
+
+      // Explicitness.
+      eqeqeq: ["error", "smart"],
+      curly: "error",
+      "no-implicit-coercion": "error",
+
+      // File/function size limits and complexity control.
+      //
+      // Ratchet, same policy as vitest.config.js's coverage threshold (see
+      // ADR-023): these start near the codebase's current worst offenders
+      // instead of an ideal target, so the rule doesn't fail CI outright on
+      // adoption, and are only ever tightened (never loosened) as files and
+      // functions get split up. See ADR-027 for the full rationale.
+      // Baseline measured 2026-08-23:
+      //   max-lines: 1092 (ai_helper_typo_checker.js) -> 1100
+      //   max-lines-per-function: 418 (ai_helper_project_health.js) -> 420
+      //   complexity: 30 (ai_helper_markdown_parser.js#processLists) -> 30
+      //   max-depth: 6 (ai_helper.js#parseSSELines) -> 6
+      //   max-params: 6 (ai_helper.js#parseSSELines) -> 6
+      "max-lines": ["error", { max: 1100, skipBlankLines: true, skipComments: true }],
+      "max-lines-per-function": ["error", { max: 420, skipBlankLines: true, skipComments: true }],
+      complexity: ["error", 30],
+      "max-depth": ["error", 6],
+      "max-params": ["error", 6],
     },
   },
   {
@@ -104,6 +140,24 @@ export default [
     },
     rules: {
       ...js.configs.recommended.rules,
+      camelcase: ["error", { properties: "never" }],
+      eqeqeq: ["error", "smart"],
+      curly: "error",
+      "no-implicit-coercion": "error",
+      // Ratchet, same policy and baseline-measurement approach as the
+      // assets/javascripts block above (see ADR-027). Baseline measured
+      // 2026-08-23: max-lines 1493 (ai_helper_typo_checker.test.js) -> 1500,
+      // complexity 12, max-depth 2, max-params 3 (all in helper functions,
+      // not in `it`/`describe` bodies).
+      //
+      // max-lines-per-function is intentionally NOT enforced here: Vitest
+      // files wrap their entire contents in one outer `describe()` callback
+      // by design (see AGENTS.md's testing conventions), so that callback's
+      // line count reflects the whole file, not a maintainability problem.
+      "max-lines": ["error", { max: 1500, skipBlankLines: true, skipComments: true }],
+      complexity: ["error", 12],
+      "max-depth": ["error", 2],
+      "max-params": ["error", 3],
     },
   },
   {

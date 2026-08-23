@@ -59,6 +59,19 @@ assert against whatever the file attaches to `window`. See
 [ADR-022](adr/022-javascript-test-tooling-for-classic-scripts.md) for the
 full rationale.
 
+## Lint rule ratchet
+
+Beyond `eslint:recommended` and basic correctness rules, `eslint.config.js`
+enforces naming consistency (`camelcase`), explicitness (`eqeqeq`, `curly`,
+`no-implicit-coercion`), file/function size limits (`max-lines`,
+`max-lines-per-function`), and complexity control (`complexity`, `max-depth`,
+`max-params`). The size and complexity thresholds started at the codebase's
+measured worst case rather than an ideal target, and are only ever lowered
+(never raised) as files and functions get split up — the same ratchet policy
+as the coverage threshold below. See
+[ADR-027](adr/027-eslint-quality-rule-ratchet.md) for the measured baseline
+and full rationale.
+
 ## Coverage threshold ratchet
 
 `vitest.config.js`'s `coverage.thresholds.lines` starts at the coverage

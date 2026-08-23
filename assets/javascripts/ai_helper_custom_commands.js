@@ -9,7 +9,7 @@ const AiHelperCustomCommands = (() => {
     const userScopeField = document.getElementById('user_scope_field');
     const userScopeSelect = document.getElementById('ai_helper_custom_command_user_scope');
 
-    if (!commandTypeField || !userScopeField) return;
+    if (!commandTypeField || !userScopeField) {return;}
 
     function updateVisibility() {
       const commandType = commandTypeField.value;

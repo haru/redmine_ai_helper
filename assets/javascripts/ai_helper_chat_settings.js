@@ -8,10 +8,10 @@ function setAdapterSettingsVisible(channelType) {
   // The bindings fieldset is only rendered once the adapter is configured,
   // so it may be absent — the settings div must still toggle without it.
   const bindingsFieldset = document.getElementById(`adapter-bindings-${channelType}`);
-  if (!checkbox || !settingsDiv) return;
+  if (!checkbox || !settingsDiv) {return;}
   const display = checkbox.checked ? "" : "none";
   settingsDiv.style.display = display;
-  if (bindingsFieldset) bindingsFieldset.style.display = display;
+  if (bindingsFieldset) {bindingsFieldset.style.display = display;}
 }
 
 function setupAdapterCheckboxListeners() {
@@ -39,12 +39,12 @@ function setupDatalistHandlers() {
     const hiddenInput = document.querySelector(
       `input[type=hidden][name="chat_adapter_settings\\[${channelType}\\]\\[redmine_user_id\\]"]`
     );
-    if (!hiddenInput) return;
+    if (!hiddenInput) {return;}
 
     function syncHiddenInput() {
       const enteredText = textInput.value.trim();
       const datalist = document.getElementById(listAttr);
-      if (!datalist) return;
+      if (!datalist) {return;}
 
       const matched = Array.from(datalist.querySelectorAll("option")).find(
         function (option) { return option.getAttribute("value") === enteredText; }
@@ -109,22 +109,22 @@ function setupHelpDialogListeners() {
       const dialog = document.getElementById(
         "adapter-help-dialog-" + channelType
       );
-      if (!dialog) return;
+      if (!dialog) {return;}
 
       const body = dialog.querySelector(".adapter-help-dialog-body");
       if (body && !body.innerHTML.trim()) {
         const url = this.getAttribute("href");
         fetch(url)
           .then(function (response) {
-            if (!response.ok) return null;
+            if (!response.ok) {return null;}
             return response.text();
           })
           .then(function (html) {
-            if (html) body.innerHTML = html;
+            if (html) {body.innerHTML = html;}
           });
       }
 
-      if (!dialog.open) dialog.show();
+      if (!dialog.open) {dialog.show();}
       positionHelpDialog(dialog, this);
     });
   });
@@ -132,7 +132,7 @@ function setupHelpDialogListeners() {
   document.querySelectorAll(".adapter-help-dialog-close").forEach(function (btn) {
     btn.addEventListener("click", function () {
       const dialog = this.closest("dialog");
-      if (dialog) dialog.close();
+      if (dialog) {dialog.close();}
     });
   });
 }
@@ -158,7 +158,7 @@ function positionHelpDialog(dialog, trigger) {
 function setupHelpDialogDragging() {
   document.querySelectorAll(".adapter-help-dialog").forEach(function (dialog) {
     const header = dialog.querySelector(".adapter-help-dialog-header");
-    if (!header) return;
+    if (!header) {return;}
 
     let dragging = false;
     let startX = 0;
@@ -167,7 +167,7 @@ function setupHelpDialogDragging() {
     let startTop = 0;
 
     function onMouseMove(e) {
-      if (!dragging) return;
+      if (!dragging) {return;}
       const dialogRect = dialog.getBoundingClientRect();
       const maxLeft = Math.max(window.innerWidth - dialogRect.width, 0);
       const maxTop = Math.max(window.innerHeight - dialogRect.height, 0);
@@ -184,7 +184,7 @@ function setupHelpDialogDragging() {
     }
 
     header.addEventListener("mousedown", function (e) {
-      if (e.target.closest(".adapter-help-dialog-close")) return;
+      if (e.target.closest(".adapter-help-dialog-close")) {return;}
       dragging = true;
       const rect = dialog.getBoundingClientRect();
       startX = e.clientX;

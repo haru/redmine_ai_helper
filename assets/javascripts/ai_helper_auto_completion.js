@@ -576,7 +576,7 @@ class AiHelperAutoCompletion {
 
   // Check if scrolling is needed and enable it when content exceeds height
   checkAndEnableScrolling() {
-    if (!this.overlay) return;
+    if (!this.overlay) {return;}
     
     const contentHeight = this.overlay.scrollHeight;
     const overlayHeight = this.overlay.clientHeight;
@@ -619,7 +619,7 @@ class AiHelperAutoCompletion {
 
   // Reset scrolling settings to default state
   resetScrolling() {
-    if (!this.overlay) return;
+    if (!this.overlay) {return;}
     
     this.overlay.style.overflowY = 'hidden';
     this.overlay.style.overflowX = 'hidden';
@@ -632,7 +632,7 @@ class AiHelperAutoCompletion {
 
   // Add event listeners for scrollable overlay mode
   addScrollableEventListeners() {
-    if (!this.overlay) return;
+    if (!this.overlay) {return;}
     
     // Store bound functions for later removal
     this.scrollableClickHandler = (e) => {
@@ -656,7 +656,7 @@ class AiHelperAutoCompletion {
 
   // Remove event listeners for scrollable overlay mode
   removeScrollableEventListeners() {
-    if (!this.overlay || !this.scrollableClickHandler) return;
+    if (!this.overlay || !this.scrollableClickHandler) {return;}
     
     this.overlay.removeEventListener('click', this.scrollableClickHandler);
     this.overlay.removeEventListener('keydown', this.scrollableKeydownHandler);

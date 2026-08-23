@@ -126,7 +126,7 @@ class AiHelperTypoChecker {
 
     // Function to update control panel position
     this.updateControlPanelPosition = () => {
-      if (!this.controlPanel) return;
+      if (!this.controlPanel) {return;}
       
       const rect = this.textarea.getBoundingClientRect();
       const parentRect = this.textarea.parentNode.getBoundingClientRect();
@@ -385,7 +385,7 @@ class AiHelperTypoChecker {
         let searchPos = 0;
         while (searchPos < text.length) {
           const foundPos = text.indexOf(suggestion.original, searchPos);
-          if (foundPos === -1) break;
+          if (foundPos === -1) {break;}
           allPositions.push(foundPos);
           searchPos = foundPos + 1;
         }
@@ -959,7 +959,7 @@ class AiHelperTypoChecker {
 
   // Check if scrolling is needed and enable it when content exceeds height
   checkAndEnableScrolling() {
-    if (!this.overlay) return;
+    if (!this.overlay) {return;}
     
     const contentHeight = this.overlay.scrollHeight;
     const overlayHeight = this.overlay.clientHeight;
@@ -1001,7 +1001,7 @@ class AiHelperTypoChecker {
 
   // Reset scrolling settings to default state
   resetScrolling() {
-    if (!this.overlay) return;
+    if (!this.overlay) {return;}
     
     this.overlay.style.overflowY = 'hidden';
     this.overlay.style.overflowX = 'hidden';
@@ -1014,7 +1014,7 @@ class AiHelperTypoChecker {
 
   // Add event listeners for scrollable overlay mode
   addScrollableEventListeners() {
-    if (!this.overlay) return;
+    if (!this.overlay) {return;}
     
     // Store bound functions for later removal
     this.scrollableClickHandler = (e) => {
@@ -1044,7 +1044,7 @@ class AiHelperTypoChecker {
 
   // Remove event listeners for scrollable overlay mode
   removeScrollableEventListeners() {
-    if (!this.overlay || !this.scrollableClickHandler) return;
+    if (!this.overlay || !this.scrollableClickHandler) {return;}
     
     this.overlay.removeEventListener('click', this.scrollableClickHandler);
     this.overlay.removeEventListener('keydown', this.scrollableKeydownHandler);
@@ -1066,9 +1066,9 @@ window.AiHelperTypoChecker = AiHelperTypoChecker;
  * @returns {AiHelperTypoChecker|null}
  */
 AiHelperTypoChecker.initFromConfig = function(container, textareaId, buttonId) {
-  if (!container) return null;
+  if (!container) {return null;}
   const textarea = document.getElementById(textareaId);
-  if (!textarea) return null;
+  if (!textarea) {return null;}
 
   const config = JSON.parse(container.dataset.config || '{}');
   const checker = new AiHelperTypoChecker(textarea, {

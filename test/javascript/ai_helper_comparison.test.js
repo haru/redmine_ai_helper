@@ -50,7 +50,7 @@ describe("ai_helper_comparison", () => {
   function addResultDiv({ analysisUrl = "/comparisons/1/analyze", omitAnalysisUrl = false } = {}) {
     const resultDiv = document.createElement("div");
     resultDiv.id = "ai-helper-comparison-analysis";
-    if (!omitAnalysisUrl) resultDiv.dataset.analysisUrl = analysisUrl;
+    if (!omitAnalysisUrl) {resultDiv.dataset.analysisUrl = analysisUrl;}
     container.appendChild(resultDiv);
     return resultDiv;
   }

@@ -138,7 +138,7 @@ describe("AiHelperAutoCompletion request lifecycle", () => {
   });
 
   afterEach(() => {
-    if (container) container.remove();
+    if (container) {container.remove();}
     container = undefined;
     vi.unstubAllGlobals();
   });

@@ -24,10 +24,10 @@ class AiHelperAssignmentSuggestion {
    */
   init() {
     const assignedToSelect = document.getElementById('issue_assigned_to_id');
-    if (!assignedToSelect) return;
+    if (!assignedToSelect) {return;}
 
     const parentP = assignedToSelect.closest('p');
-    if (!parentP) return;
+    if (!parentP) {return;}
 
     // Create the suggestion link
     this.link = document.createElement('a');
@@ -155,7 +155,7 @@ class AiHelperAssignmentSuggestion {
    * @param {string} html - HTML string from server
    */
   renderHtml(html) {
-    if (!this.panel) return;
+    if (!this.panel) {return;}
 
     this.panel.innerHTML = html;
 
@@ -184,7 +184,7 @@ class AiHelperAssignmentSuggestion {
    */
   selectUser(userId) {
     const assignedToSelect = document.getElementById('issue_assigned_to_id');
-    if (!assignedToSelect) return;
+    if (!assignedToSelect) {return;}
 
     // Set the select value
     assignedToSelect.value = userId;
@@ -210,7 +210,7 @@ class AiHelperAssignmentSuggestion {
    * @param {string} message - Error message to display
    */
   renderError(message) {
-    if (!this.panel) return;
+    if (!this.panel) {return;}
     this.panel.innerHTML = '<div class="ai-helper-suggest-assignee-error">' +
       this.escapeHtml(message) +
       '</div>' +

@@ -182,7 +182,7 @@ describe("AiHelper", () => {
       dom.container.remove();
     }
     const meta = document.querySelector('meta[name="csrf-token"]');
-    if (meta) meta.remove();
+    if (meta) {meta.remove();}
     delete window.ai_helper_urls;
     vi.unstubAllGlobals();
   });
@@ -1215,7 +1215,7 @@ describe("AiHelper", () => {
     }
 
     afterEach(() => {
-      if (documentClickListener) document.removeEventListener("click", documentClickListener);
+      if (documentClickListener) {document.removeEventListener("click", documentClickListener);}
       documentClickListener = undefined;
     });
 

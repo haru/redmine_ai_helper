@@ -4,10 +4,10 @@ if (!window.aiHelperComparisonInitialized) {
 
   document.addEventListener('DOMContentLoaded', function() {
     const resultDiv = document.getElementById('ai-helper-comparison-analysis');
-    if (!resultDiv) return;
+    if (!resultDiv) {return;}
 
     const analysisUrl = resultDiv.dataset.analysisUrl;
-    if (!analysisUrl) return;
+    if (!analysisUrl) {return;}
 
     let parser;
     try {

@@ -192,11 +192,11 @@ class AiHelper {
 
   // Attach delegated click/keydown handlers to the container once
   initializeInteractiveOptionsHandlers = function(container) {
-    if (this.interactiveOptionsHandlersInitialized) return;
+    if (this.interactiveOptionsHandlersInitialized) {return;}
 
     container.addEventListener('click', function(e) {
       const button = e.target.closest('.aihelper-option-btn');
-      if (!button || !container.contains(button)) return;
+      if (!button || !container.contains(button)) {return;}
 
       if (button.dataset.freeInput === 'true') {
         ai_helper.hideInteractiveOptions();
@@ -218,7 +218,7 @@ class AiHelper {
 
     container.addEventListener('keydown', function(e) {
       const button = e.target.closest('.aihelper-option-btn');
-      if (!button || !container.contains(button)) return;
+      if (!button || !container.contains(button)) {return;}
 
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
@@ -232,7 +232,7 @@ class AiHelper {
   // Render interactive option buttons for the given choices array
   renderInteractiveOptions = function(choices) {
     const container = document.getElementById('aihelper-interactive-options');
-    if (!container) return;
+    if (!container) {return;}
 
     if (!this.interactiveOptionsHandlersInitialized) {
       this.initializeInteractiveOptionsHandlers(container);
@@ -355,7 +355,7 @@ class AiHelper {
 
   reload_chat = function () {
     const chatArea = document.getElementById("aihelper-chat-conversation");
-    if (!chatArea) return;
+    if (!chatArea) {return;}
 
     // Hide interactive options when chat reloads (they are re-rendered fresh)
     ai_helper.hideInteractiveOptions();
@@ -381,7 +381,7 @@ class AiHelper {
 
   load_history() {
     const historyContainer = document.getElementById("aihelper-history");
-    if (!historyContainer) return;
+    if (!historyContainer) {return;}
 
     const xhr = new XMLHttpRequest();
     xhr.open("GET", ai_helper_urls.history, true);
@@ -509,7 +509,7 @@ class AiHelper {
   jump_to_history = function (event, url) {
     event.preventDefault();
     const chatArea = document.getElementById("aihelper-chat-conversation");
-    if (!chatArea) return;
+    if (!chatArea) {return;}
 
     const xhr = new XMLHttpRequest();
     xhr.open("GET", url, true);
@@ -566,15 +566,15 @@ class AiHelper {
     xhr.send();
   };
 
-  fold_chat = function (flag, disable_animation = false) {
+  fold_chat = function (flag, disableAnimation = false) {
     const chatArea = document.getElementById("aihelper-foldable-area");
-    const arrow_down = document.getElementById("aihelper-arrow-down");
-    const arrow_left = document.getElementById("aihelper-arrow-left");
+    const arrowDown = document.getElementById("aihelper-arrow-down");
+    const arrowLeft = document.getElementById("aihelper-arrow-left");
 
-    if (!chatArea || !arrow_down || !arrow_left) return;
+    if (!chatArea || !arrowDown || !arrowLeft) {return;}
 
     if (flag) {
-      if (disable_animation) {
+      if (disableAnimation) {
         chatArea.style.display = "none";
       } else {
         // Alternative for slideUp animation
@@ -592,10 +592,10 @@ class AiHelper {
           chatArea.style.transition = "";
         }, 310);
       }
-      arrow_down.style.display = "none";
-      arrow_left.style.display = "block";
+      arrowDown.style.display = "none";
+      arrowLeft.style.display = "block";
     } else {
-      if (disable_animation) {
+      if (disableAnimation) {
         chatArea.style.display = "block";
       } else {
         // Alternative for slideDown animation
@@ -613,8 +613,8 @@ class AiHelper {
           chatArea.style.transition = "";
         }, 310);
       }
-      arrow_down.style.display = "block";
-      arrow_left.style.display = "none";
+      arrowDown.style.display = "block";
+      arrowLeft.style.display = "none";
     }
     // Save the flag value to local storage
     localStorage.setItem(this.chat_fold_storage_key, flag);
@@ -644,10 +644,10 @@ class AiHelper {
 
   apply_generated_issue_reply = function () {
     const replyEl = document.getElementById("ai-helper-generated-reply-content");
-    if (!replyEl) return;
+    if (!replyEl) {return;}
     const replyContent = replyEl.textContent.trim();
     const replyInputArea = document.getElementById("issue_notes");
-    if (!replyInputArea) return;
+    if (!replyInputArea) {return;}
     // Set the reply content to the input area
     replyInputArea.value = replyContent;
   }

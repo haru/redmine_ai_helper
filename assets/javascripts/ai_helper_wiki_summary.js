@@ -13,7 +13,7 @@
  */
 function getWikiSummary(update) {
   const container = document.getElementById('ai-helper-wiki-summary-fields');
-  if (!container) return;
+  if (!container) {return;}
   const config = JSON.parse(container.dataset.config || '{}');
 
   let url = config.summaryUrl;
@@ -50,7 +50,7 @@ window.getWikiSummary = getWikiSummary;
 
 function generateWikiSummaryStream() {
   const container = document.getElementById('ai-helper-wiki-summary-fields');
-  if (!container) return;
+  if (!container) {return;}
   const config = JSON.parse(container.dataset.config || '{}');
   ai_helper.generateWikiSummaryStream(config.generateUrl, config.errorMessage);
 }
@@ -77,7 +77,7 @@ window.aiHelperSaveWikiSummaryState = aiHelperSaveWikiSummaryState;
 
 function initWikiSummary() {
   const container = document.getElementById('ai-helper-wiki-summary-fields');
-  if (!container) return;
+  if (!container) {return;}
   const config = JSON.parse(container.dataset.config || '{}');
 
   const summaryButtons = document.querySelectorAll('.ai-helper-wiki-summary-button');

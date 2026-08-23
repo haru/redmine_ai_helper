@@ -24,7 +24,7 @@ export async function loadScriptAndFireDOMContentLoaded(relativePathFromRoot) {
   const originalAddEventListener = Document.prototype.addEventListener;
   const spy = vi.spyOn(document, "addEventListener").mockImplementation(function (type, listener, options) {
     registered.push([type, listener, options]);
-    if (type === "DOMContentLoaded") return undefined;
+    if (type === "DOMContentLoaded") {return undefined;}
     return originalAddEventListener.call(document, type, listener, options);
   });
 
@@ -44,7 +44,7 @@ export async function loadScriptAndFireDOMContentLoaded(relativePathFromRoot) {
 
   function removeRegisteredListeners() {
     for (const [type, listener, options] of registered) {
-      if (type === "DOMContentLoaded") continue;
+      if (type === "DOMContentLoaded") {continue;}
       document.removeEventListener(type, listener, options);
     }
   }

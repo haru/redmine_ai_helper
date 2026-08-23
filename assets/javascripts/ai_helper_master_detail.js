@@ -343,10 +343,10 @@ document.addEventListener('DOMContentLoaded', function() {
 window.updateHealthReportHistory = function(callback) {
   // Reload health report history
   const historyContainer = document.getElementById('ai-helper-health-report-history-container');
-  if (!historyContainer) return;
+  if (!historyContainer) {return;}
 
   const match = window.location.pathname.match(/\/projects\/([^/]+)/);
-  if (!match) return;
+  if (!match) {return;}
   const projectId = match[1];
   const url = `/projects/${projectId}/ai_helper/health_reports`;
 
@@ -387,7 +387,7 @@ function updateComparisonButton() {
   const newRadio = document.querySelector('.new-radio:checked');
   const compareButton = document.getElementById('compare-reports-button');
 
-  if (!compareButton) return;
+  if (!compareButton) {return;}
 
   if (oldRadio && newRadio && oldRadio.value !== newRadio.value) {
     compareButton.disabled = false;

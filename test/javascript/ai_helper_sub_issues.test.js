@@ -52,7 +52,7 @@ describe("ai_helper_sub_issues (IIFE)", () => {
 
     const mountPoint = wrapInDiv ? document.createElement("div") : container;
     mountPoint.appendChild(select);
-    if (wrapInDiv) container.appendChild(mountPoint);
+    if (wrapInDiv) {container.appendChild(mountPoint);}
 
     const assigneeSelect = document.createElement("select");
     assigneeSelect.id = assigneeSelectId || `sub_issues_assigned_to_id_${rowIndex}`;

@@ -9,17 +9,17 @@
     const projectId = trackerSelect.dataset.projectId;
     const rowIndex = trackerSelect.dataset.rowIndex;
     
-    if (!trackerId || !projectId || !rowIndex) return;
+    if (!trackerId || !projectId || !rowIndex) {return;}
     
     const assigneeSelect = document.getElementById('sub_issues_assigned_to_id_' + rowIndex);
-    if (!assigneeSelect) return;
+    if (!assigneeSelect) {return;}
     
     const currentValue = assigneeSelect.value;
     const url = '/projects/' + projectId + '/ai_helper/assignable_users?tracker_id=' + trackerId;
     
     fetch(url)
       .then(function(response) {
-        if (!response.ok) throw new Error('HTTP ' + response.status);
+        if (!response.ok) {throw new Error('HTTP ' + response.status);}
         return response.json();
       })
       .then(function(users) {
@@ -42,7 +42,7 @@
   
   // Initialize all tracker selects
   function initializeAllTrackers() {
-    if (initialized) return;
+    if (initialized) {return;}
     
     const trackerSelects = document.querySelectorAll('.sub-issue-tracker-select');
     
@@ -72,7 +72,7 @@
       mainContent = document.body;
     }
     
-    if (!mainContent) return;
+    if (!mainContent) {return;}
     
     const observer = new MutationObserver(function(mutations) {
       mutations.forEach(function(mutation) {

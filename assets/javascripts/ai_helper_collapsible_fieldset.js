@@ -13,7 +13,7 @@ const AiHelperCollapsibleFieldset = (() => {
    */
   function setExpanded(fieldsetId, flag) {
     const fieldset = document.getElementById(fieldsetId);
-    if (!fieldset) return;
+    if (!fieldset) {return;}
     const legend = fieldset.querySelector('legend');
     const isOpen = !fieldset.classList.contains('collapsed');
     if (isOpen !== flag) {
@@ -77,7 +77,7 @@ window.ai_helper_generate_reply = ai_helper_generate_reply;
 
 document.addEventListener('DOMContentLoaded', function() {
   const container = document.getElementById('ai-helper-reply-fields');
-  if (!container) return;
+  if (!container) {return;}
   const config = JSON.parse(container.dataset.config || '{}');
 
   const state = localStorage.getItem('aiHelperReplyState_' + config.userId);

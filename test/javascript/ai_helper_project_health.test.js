@@ -66,7 +66,7 @@ describe("ai_helper_project_health", () => {
     if (withResult) {
       resultDiv = document.createElement("div");
       resultDiv.id = "ai-helper-project-health-result";
-      if (finalContent) resultDiv.classList.add("ai-helper-final-content");
+      if (finalContent) {resultDiv.classList.add("ai-helper-final-content");}
       contentDiv.appendChild(resultDiv);
     }
 
