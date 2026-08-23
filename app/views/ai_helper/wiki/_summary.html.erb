@@ -1,99 +1,16 @@
 <% if RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: @project, permission: { controller: :ai_helper, action: :wiki_summary }) and AiHelperSetting.find_or_create.model_profile and controller_name == 'wiki' and action_name == 'show' %>
 
 <% if @page&.id %>
-
-<%= javascript_tag do %>
-  function getWikiSummary(update) {
-    var url = "<%= url_for(controller: 'ai_helper', action: 'wiki_summary', id: @page.id)%>";
-    if (update == true) {
-      url += "?update=true";
-    }
-
-    const summaryArea = document.getElementById('ai-helper-wiki-summary-area');
-    if (summaryArea) {
-      summaryArea.innerHTML = '<div class="ai-helper-loader"></div>';
-    }
-
-    const xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    xhr.onload = function() {
-      if (xhr.status === 200) {
-        if (summaryArea) {
-          summaryArea.innerHTML = xhr.responseText;
-        }
-      } else {
-        if (summaryArea) {
-          summaryArea.innerHTML = '<div class="error"><%= j l(:ai_helper_error_occurred) %>: ' + xhr.statusText + '</div>';
-        }
-      }
-    };
-    xhr.onerror = function() {
-      if (summaryArea) {
-        summaryArea.innerHTML = '<div class="error"><%= j l(:ai_helper_error_occurred) %></div>';
-      }
-    };
-    xhr.send();
-  };
-
-  function generateWikiSummaryStream() {
-    ai_helper.generateWikiSummaryStream(
-      "<%= ai_helper_generate_wiki_summary_path(id: @page.id) %>",
-      '<%= j l(:ai_helper_error_occurred) %>'
-    );
-  }
-
-  document.addEventListener('DOMContentLoaded', function() {
-    const summaryButtons = document.querySelectorAll('.ai-helper-wiki-summary-button');
-    summaryButtons.forEach(function(button) {
-      button.addEventListener('click', function(e) {
-        e.preventDefault();
-        generateWikiSummaryStream();
-      });
-    });
-  });
-
-  // Function to toggle the open/closed state of the fieldset
-  // flag: true to expand, false to collapse
-  function aiHelperSetWikiSummayExpanded(flag) {
-    const fieldset = document.getElementById('ai-helper-wiki-summary-fields');
-    const legend = fieldset.querySelector('legend');
-    isOpen = !fieldset.classList.contains('collapsed');
-    if (isOpen !== flag) {
-      toggleFieldset(legend);
-    }
-  };
-
-  // Function to save the open/closed state of the fieldset
-  function aiHelperSaveWikiSummaryState() {
-    const fieldset = document.getElementById('ai-helper-wiki-summary-fields');
-    const isOpen = !fieldset.classList.contains('collapsed');
-    localStorage.setItem('aiHelperWikiSummaryState_<%= User.current.id %>', isOpen ? 'expanded' : 'collapsed');
-  };
-
-  // Move wiki summary to top of wiki content and set up state
-  document.addEventListener('DOMContentLoaded', function() {
-    const wikiSummaryFieldset = document.getElementById('ai-helper-wiki-summary-fields');
-    if (wikiSummaryFieldset) {
-      // Find the wiki content area
-      const wikiContent = document.querySelector('#content .wiki');
-      if (wikiContent) {
-        // Move the summary fieldset to the top of wiki content
-        wikiContent.parentNode.insertBefore(wikiSummaryFieldset, wikiContent);
-        wikiSummaryFieldset.style.display = 'block';
-      }
-    }
-
-    // Set up the saved state
-    const savedState = localStorage.getItem('aiHelperWikiSummaryState_<%= User.current.id %>');
-    if (savedState === 'expanded') {
-      aiHelperSetWikiSummayExpanded(true);
-    } else {
-      aiHelperSetWikiSummayExpanded(false);
-    }
-  });
-
-<% end %>
-<fieldset id="ai-helper-wiki-summary-fields" class="collapsible collapsed" style="display: none;">
+<%
+  summary = AiHelperSummaryCache.wiki_cache(wiki_page_id: @page.id)
+%>
+<fieldset id="ai-helper-wiki-summary-fields" class="collapsible collapsed" style="display: none;" data-config='<%= {
+  summaryUrl: url_for(controller: "ai_helper", action: "wiki_summary", id: @page.id),
+  generateUrl: ai_helper_generate_wiki_summary_path(id: @page.id),
+  errorMessage: l(:ai_helper_error_occurred),
+  userId: User.current.id,
+  hasSummary: summary.present?
+}.to_json %>'>
     <legend onclick="toggleFieldset(this);aiHelperSaveWikiSummaryState();" class="icon icon-collapsed">
     <%= sprite_icon("angle-right") %>
     <strong>
@@ -102,17 +19,8 @@
     </strong>
     </legend>
     <div class="ai-helper-wiki-summary" style="display: none;">
-      <%
-        summary = AiHelperSummaryCache.wiki_cache(wiki_page_id: @page.id)
-      %>
       <div id="ai-helper-wiki-summary-area">
-        <% if summary %>
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-              getWikiSummary();
-            });
-        </script>
-        <% else %>
+        <% unless summary %>
         <%= link_to l(:ai_helper_summary), '#', class: 'ai-helper-wiki-summary-button', id: 'ai-helper-wiki-summary-button' %>
         <% end %>
 

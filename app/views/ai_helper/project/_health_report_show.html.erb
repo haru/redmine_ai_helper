@@ -42,27 +42,4 @@
 
 <% content_for :header_tags do %>
   <%= stylesheet_link_tag 'ai_helper_rtl', plugin: 'redmine_ai_helper' if l(:direction) == 'rtl' %>
-  <%= javascript_tag do %>
-    document.addEventListener('DOMContentLoaded', function() {
-      var hiddenField = document.getElementById('ai-helper-health-report-content');
-      var resultDiv = document.getElementById('ai-helper-project-health-result');
-      if (!hiddenField || !resultDiv) { return; }
-      if (typeof AiHelperMarkdownParser === 'undefined') { return; }
-      var content = hiddenField.value;
-      if (!content) { return; }
-      var parser = new AiHelperMarkdownParser();
-      var formattedContent = parser.parse(content);
-      resultDiv.innerHTML = '<div class="ai-helper-final-content">' + formattedContent + '</div>';
-
-      // Handle Markdown export
-      var exportLink = document.getElementById('export-markdown-link');
-      var exportForm = document.getElementById('markdown-export-form');
-      if (exportLink && exportForm) {
-        exportLink.addEventListener('click', function(e) {
-          e.preventDefault();
-          exportForm.submit();
-        });
-      }
-    });
-  <% end %>
 <% end %>

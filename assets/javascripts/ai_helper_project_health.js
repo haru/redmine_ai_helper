@@ -421,4 +421,65 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
+// --- extracted from project/_health_report_detail_pane.html.erb and
+// project/_health_report_show.html.erb (near-duplicate Markdown re-parse +
+// export wiring, unified here) ---
+document.addEventListener('DOMContentLoaded', function() {
+  const hiddenField = document.getElementById('ai-helper-health-report-content');
+  const resultDiv = document.getElementById('ai-helper-project-health-result');
+  if (!hiddenField || !resultDiv) { return; }
+  if (typeof AiHelperMarkdownParser === 'undefined') { return; }
+  const content = hiddenField.value;
+  if (!content) { return; }
+  const parser = new AiHelperMarkdownParser();
+  const formattedContent = parser.parse(content);
+  resultDiv.innerHTML = '<div class="ai-helper-final-content">' + formattedContent + '</div>';
+
+  // detail_pane variant: build and submit a form dynamically.
+  const detailExportLink = document.getElementById('ai-helper-markdown-export-detail');
+  if (detailExportLink) {
+    detailExportLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      const markdownContent = hiddenField.value;
+      if (!markdownContent) { return; }
+
+      const detailPane = document.querySelector('.ai-helper-health-report-detail[data-config]');
+      const config = detailPane ? JSON.parse(detailPane.dataset.config || '{}') : {};
+
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = config.markdownExportUrl;
+
+      const contentField = document.createElement('input');
+      contentField.type = 'hidden';
+      contentField.name = 'health_report_content';
+      contentField.value = markdownContent;
+
+      const csrfToken = document.querySelector('meta[name="csrf-token"]');
+      if (csrfToken) {
+        const tokenField = document.createElement('input');
+        tokenField.type = 'hidden';
+        tokenField.name = 'authenticity_token';
+        tokenField.value = csrfToken.getAttribute('content');
+        form.appendChild(tokenField);
+      }
+
+      form.appendChild(contentField);
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
+    });
+  }
+
+  // show variant: submit the pre-rendered export form.
+  const showExportLink = document.getElementById('export-markdown-link');
+  const showExportForm = document.getElementById('markdown-export-form');
+  if (showExportLink && showExportForm) {
+    showExportLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      showExportForm.submit();
+    });
+  }
+});
+
 } // End guard against multiple script loading

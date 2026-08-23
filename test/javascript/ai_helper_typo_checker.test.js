@@ -1335,3 +1335,159 @@ describe("AiHelperTypoChecker", () => {
     });
   });
 });
+
+// --- T018: Characterization tests for the #ai-helper-wiki-typo-overlay container ---
+//
+// wiki/_textarea_overlay.html.erb renders the #ai-helper-wiki-typo-overlay
+// container with its own button-bound initFromConfig call from
+// ai_helper_wiki_autocompletion.js. A module-load-time `DOMContentLoaded`
+// auto-init here would create a second, unbound AiHelperTypoChecker instance
+// on every real wiki page (FR-008). So no such auto-init is defined; these
+// tests characterize that loading the script has no side effects on its own,
+// and that initFromConfig (the shared factory used by all real call sites)
+// behaves the same way regardless of which container id is passed in.
+describe("#ai-helper-wiki-typo-overlay container (no module-level auto-init)", () => {
+  beforeEach(async () => {
+    await loadScript("assets/javascripts/ai_helper_typo_checker");
+  });
+
+  afterEach(() => {
+    document
+      .querySelectorAll("#ai-helper-wiki-typo-overlay, #content_text, .ai-helper-typo-accept-btn-template, .ai-helper-typo-reject-btn-template, #ai-helper-typo-control-panel-wiki, meta[name=csrf-token]")
+      .forEach((el) => el.remove());
+    vi.unstubAllGlobals();
+  });
+
+  it("does not auto-instantiate a checker merely from loading the script and firing DOMContentLoaded", () => {
+    const container = document.createElement("div");
+    container.id = "ai-helper-wiki-typo-overlay";
+    container.dataset.config = JSON.stringify({
+      endpoint: "/projects/test/ai_helper/check_typos",
+      labels: {},
+    });
+    document.body.appendChild(container);
+
+    const parent = document.createElement("div");
+    parent.style.position = "relative";
+    const textarea = document.createElement("textarea");
+    textarea.id = "content_text";
+    parent.appendChild(textarea);
+    document.body.appendChild(parent);
+
+    document.dispatchEvent(new Event("DOMContentLoaded"));
+
+    expect(textarea.classList.contains("ai-helper-textarea-positioned")).toBe(false);
+  });
+
+  it("initFromConfig creates a bound AiHelperTypoChecker when explicitly invoked (used by real call sites)", () => {
+    const container = document.createElement("div");
+    container.id = "ai-helper-wiki-typo-overlay";
+    container.dataset.config = JSON.stringify({
+      endpoint: "/projects/test/ai_helper/check_typos",
+      labels: { checkButton: "Check", checking: "Checking...", noSuggestions: "No typos", errorOccurred: "Error", correctionTooltip: "Correction", acceptSuggestion: "Accept", dismissSuggestion: "Reject", applyFailed: "Failed", suggestionsTitle: "Suggestions", acceptAll: "Accept All", dismissAll: "Dismiss All" },
+    });
+    document.body.appendChild(container);
+
+    const parent = document.createElement("div");
+    parent.style.position = "relative";
+    const textarea = document.createElement("textarea");
+    textarea.id = "content_text";
+    parent.appendChild(textarea);
+
+    const controlPanel = document.createElement("div");
+    controlPanel.id = "ai-helper-typo-control-panel-wiki";
+    const applyAllBtn = document.createElement("button");
+    applyAllBtn.className = "ai-helper-typo-apply-all-btn";
+    controlPanel.appendChild(applyAllBtn);
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "ai-helper-typo-close-btn";
+    controlPanel.appendChild(closeBtn);
+    parent.appendChild(controlPanel);
+
+    const checkBtn = document.createElement("button");
+    checkBtn.id = "ai-helper-typo-check-wiki-btn";
+    checkBtn.innerHTML = "<svg></svg> Check";
+    parent.appendChild(checkBtn);
+    document.body.appendChild(parent);
+
+    const checker = window.AiHelperTypoChecker.initFromConfig(container, "content_text", "ai-helper-typo-check-wiki-btn");
+
+    expect(checker).toBeInstanceOf(window.AiHelperTypoChecker);
+    expect(textarea.classList.contains("ai-helper-textarea-positioned")).toBe(true);
+  });
+
+  it("initFromConfig does not double-bind a click handler on a button already found by findExistingButton", () => {
+    const container = document.createElement("div");
+    container.id = "ai-helper-wiki-typo-overlay";
+    container.dataset.config = JSON.stringify({ endpoint: "/test", labels: {} });
+    document.body.appendChild(container);
+
+    const textarea = document.createElement("textarea");
+    textarea.id = "content_text";
+    document.body.appendChild(textarea);
+
+    // Other tests in this describe block leave a stale
+    // #ai-helper-typo-check-wiki-btn behind; remove it so
+    // document.getElementById resolves to this test's own button.
+    document.getElementById("ai-helper-typo-check-wiki-btn")?.remove();
+    const checkBtn = document.createElement("button");
+    checkBtn.id = "ai-helper-typo-check-wiki-btn";
+    document.body.appendChild(checkBtn);
+    const addEventListenerSpy = vi.spyOn(checkBtn, "addEventListener");
+
+    const checker = window.AiHelperTypoChecker.initFromConfig(container, "content_text", "ai-helper-typo-check-wiki-btn");
+
+    expect(checker.checkButton).toBe(checkBtn);
+    const clickBindings = addEventListenerSpy.mock.calls.filter(([type]) => type === "click");
+    expect(clickBindings).toHaveLength(1);
+
+    textarea.remove();
+    checkBtn.remove();
+  });
+
+  it("initFromConfig binds a click handler on a custom button that findExistingButton did not find", () => {
+    const container = document.createElement("div");
+    container.id = "ai-helper-wiki-typo-overlay";
+    container.dataset.config = JSON.stringify({ endpoint: "/test", labels: {} });
+    document.body.appendChild(container);
+
+    const textarea = document.createElement("textarea");
+    textarea.id = "content_text";
+    document.body.appendChild(textarea);
+
+    // No element with the id findExistingButton looks up for "content_text"
+    // ("ai-helper-typo-check-wiki-btn"), so checker.checkButton stays unset;
+    // this custom button is a different id passed explicitly.
+    const customButton = document.createElement("button");
+    customButton.id = "ai-helper-custom-typo-check-btn";
+    document.body.appendChild(customButton);
+    const checkTyposSpy = vi.spyOn(window.AiHelperTypoChecker.prototype, "checkTypos").mockResolvedValue();
+
+    window.AiHelperTypoChecker.initFromConfig(container, "content_text", "ai-helper-custom-typo-check-btn");
+    customButton.click();
+
+    expect(checkTyposSpy).toHaveBeenCalledTimes(1);
+
+    checkTyposSpy.mockRestore();
+    textarea.remove();
+    customButton.remove();
+  });
+
+  it("initFromConfig returns null when container element does not exist", () => {
+    const result = window.AiHelperTypoChecker.initFromConfig(null, "content_text");
+    expect(result).toBeNull();
+  });
+
+  it("initFromConfig returns null when textarea does not exist", () => {
+    const container = document.createElement("div");
+    container.id = "ai-helper-wiki-typo-overlay";
+    container.dataset.config = JSON.stringify({ endpoint: "/test", labels: {} });
+    document.body.appendChild(container);
+
+    const result = window.AiHelperTypoChecker.initFromConfig(container, "content_text");
+
+    expect(result).toBeNull();
+    container.remove();
+  });
+});
+

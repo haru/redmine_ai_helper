@@ -111,3 +111,75 @@
     setTimeout(initializeAllTrackers, 100);
   }
 })();
+
+// --- extracted from issues/subissues/_index.html.erb ---
+
+/**
+ * Generate sub-issue drafts via the AI helper for the given issue.
+ * Exposed on `window` because the "generate draft" button's inline
+ * `onclick` calls it directly.
+ * @param {number} _issueId - unused; the endpoint URL is read from the
+ *   wrapper's data-config instead (baked in server-side per issue).
+ */
+function aiHelperGenerateSubIssues(_issueId) {
+  const wrapper = document.getElementById('ai-helper-subissues-index');
+  const config = wrapper ? JSON.parse(wrapper.dataset.config || '{}') : {};
+  const container = document.getElementById('ai-helper-generated-subissues');
+  container.innerHTML = '<div class="ai-helper-loader"></div>';
+
+  fetch(config.generateUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+    },
+    body: JSON.stringify({
+      instructions: document.getElementById('ai_helper_subissues_instructions').value
+    })
+  })
+    .then(function(response) { return response.text(); })
+    .then(function(html) {
+      container.innerHTML = html;
+    })
+    .catch(function(error) {
+      console.error('Error generating sub issues:', error);
+      container.innerHTML = '<p>Error generating sub issues. Please try again later.</p>';
+    });
+}
+window.aiHelperGenerateSubIssues = aiHelperGenerateSubIssues;
+
+// --- extracted from issues/subissues/_description_bottom.html.erb ---
+
+/**
+ * Toggle visibility of the sub-issue generator area.
+ * Exposed on `window` because the "generate sub-issues" link's inline
+ * `onclick` calls it directly.
+ */
+function showSubissuerGenerator() {
+  const generatorArea = document.getElementById('ai-helper-subissuer-generator-area');
+  if (generatorArea) {
+    generatorArea.style.display = generatorArea.style.display === 'none' ? 'block' : 'none';
+  }
+}
+window.showSubissuerGenerator = showSubissuerGenerator;
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Add span#ai-helper-subissuer-generator-menu as the first child of div#issue_tree > div.contextual
+  const contextualDiv = document.querySelector('#issue_tree > div.contextual');
+  if (contextualDiv) {
+    const menuSpan = document.getElementById('ai-helper-subissuer-generator-menu');
+    if (menuSpan) {
+      // Insert the menuSpan as the first child for i18n support
+      contextualDiv.insertBefore(menuSpan, contextualDiv.firstChild);
+    }
+  }
+
+  const issueTreeDiv = document.getElementById('issue_tree');
+  if (issueTreeDiv) {
+    const generatorArea = document.getElementById('ai-helper-subissuer-generator-area');
+    if (generatorArea) {
+      issueTreeDiv.appendChild(generatorArea);
+      generatorArea.style.display = 'none';
+    }
+  }
+});
