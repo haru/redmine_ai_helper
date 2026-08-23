@@ -346,65 +346,15 @@ Object.assign(AiHelperTypoChecker.prototype, {
     this.overlay.appendChild(overlayContent);
   },
 
+  // Delegates to acceptSuggestionBySuggestion using the suggestion object at
+  // this index, so the two entry points share one implementation.
   acceptSuggestion(index) {
     const suggestion = this.suggestions[index];
     if (!suggestion) {
       return;
     }
 
-    // Set processing flag to prevent input event from hiding overlay
-    this.isProcessingSuggestion = true;
-
-    const text = this.textarea.value;
-
-    // Verify the text matches what we expect at the position
-    const actualText = text.substring(suggestion.position, suggestion.position + suggestion.original.length);
-
-    // Validate that the text at the position matches what we expect
-    if (actualText !== suggestion.original) {
-      console.error('Text mismatch detected when applying suggestion!', {
-        expected: suggestion.original,
-        actual: actualText,
-        position: suggestion.position
-      });
-      // Try to find the correct position one more time
-      const correctPos = text.indexOf(suggestion.original);
-      if (correctPos !== -1 && correctPos !== suggestion.position) {
-        suggestion.position = correctPos;
-      } else {
-        alert(this.options.labels.applyFailed + ': ' + suggestion.original);
-        this.isProcessingSuggestion = false;
-        return;
-      }
-    }
-
-    // Use original.length for safety - it's always accurate
-    const newText = text.substring(0, suggestion.position) +
-                   suggestion.corrected +
-                   text.substring(suggestion.position + suggestion.original.length);
-
-    this.textarea.value = newText;
-
-    // Update positions of remaining suggestions
-    this.updateSuggestionsAfterEdit(suggestion.position, suggestion.original.length, suggestion.corrected.length);
-
-    // Remove this suggestion
-    this.suggestions.splice(index, 1);
-
-    if (this.suggestions.length === 0) {
-      this.hideOverlay();
-    } else {
-      // Rebuild overlay with remaining suggestions - don't call displayTypoOverlay again
-      this.buildOverlayContent();
-    }
-
-    // Trigger input event for any listeners
-    this.textarea.dispatchEvent(new Event('input', { bubbles: true }));
-
-    // Clear processing flag after a short delay
-    setTimeout(() => {
-      this.isProcessingSuggestion = false;
-    }, 100);
+    this.acceptSuggestionBySuggestion(suggestion);
   },
 
   acceptSuggestionBySuggestion(suggestion) {

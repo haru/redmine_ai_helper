@@ -133,6 +133,7 @@ describe("AiHelperAutoCompletion request lifecycle", () => {
 
   beforeEach(async () => {
     await loadScript("assets/javascripts/ai_helper_auto_completion");
+    await loadScript("assets/javascripts/ai_helper_auto_completion_overlay");
     fetchStub = installFetchStub();
     abortSpy = installAbortControllerSpy();
   });

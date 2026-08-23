@@ -2,6 +2,40 @@
 if (!window.aiHelperComparisonInitialized) {
   window.aiHelperComparisonInitialized = true;
 
+  // Append a hidden input with the given name/value to a form.
+  function appendHiddenInput(form, name, value) {
+    const field = document.createElement('input');
+    field.type = 'hidden';
+    field.name = name;
+    field.value = value;
+    form.appendChild(field);
+  }
+
+  // Submit the comparison content (PDF or Markdown export) via a generated form.
+  function handleComparisonExport(event) {
+    event.preventDefault();
+    const hiddenField = document.getElementById('ai-helper-comparison-content');
+    const oldReportIdField = document.getElementById('ai-helper-comparison-old-report-id');
+    const newReportIdField = document.getElementById('ai-helper-comparison-new-report-id');
+
+    if (!hiddenField || !hiddenField.value) {return;}
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = event.target.href;
+
+    appendHiddenInput(form, 'comparison_content', hiddenField.value);
+    appendHiddenInput(form, 'old_report_id', oldReportIdField ? oldReportIdField.value : '');
+    appendHiddenInput(form, 'new_report_id', newReportIdField ? newReportIdField.value : '');
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]');
+    appendHiddenInput(form, 'authenticity_token', csrfToken ? csrfToken.getAttribute('content') : '');
+
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+  }
+
   document.addEventListener('DOMContentLoaded', function() {
     const resultDiv = document.getElementById('ai-helper-comparison-analysis');
     if (!resultDiv) {return;}
@@ -112,102 +146,12 @@ if (!window.aiHelperComparisonInitialized) {
       }
     }
 
-    // Function to handle PDF export
-    function handlePdfExport(event) {
-      event.preventDefault();
-      const hiddenField = document.getElementById('ai-helper-comparison-content');
-      const oldReportIdField = document.getElementById('ai-helper-comparison-old-report-id');
-      const newReportIdField = document.getElementById('ai-helper-comparison-new-report-id');
-
-      if (hiddenField && hiddenField.value) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = event.target.href;
-
-        const contentField = document.createElement('input');
-        contentField.type = 'hidden';
-        contentField.name = 'comparison_content';
-        contentField.value = hiddenField.value;
-
-        const oldIdField = document.createElement('input');
-        oldIdField.type = 'hidden';
-        oldIdField.name = 'old_report_id';
-        oldIdField.value = oldReportIdField ? oldReportIdField.value : '';
-
-        const newIdField = document.createElement('input');
-        newIdField.type = 'hidden';
-        newIdField.name = 'new_report_id';
-        newIdField.value = newReportIdField ? newReportIdField.value : '';
-
-        const csrfField = document.createElement('input');
-        csrfField.type = 'hidden';
-        csrfField.name = 'authenticity_token';
-        const csrfToken = document.querySelector('meta[name="csrf-token"]');
-        if (csrfToken) {
-          csrfField.value = csrfToken.getAttribute('content');
-        }
-
-        form.appendChild(contentField);
-        form.appendChild(oldIdField);
-        form.appendChild(newIdField);
-        form.appendChild(csrfField);
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
-      }
-    }
-
-    // Function to handle Markdown export
-    function handleMarkdownExport(event) {
-      event.preventDefault();
-      const hiddenField = document.getElementById('ai-helper-comparison-content');
-      const oldReportIdField = document.getElementById('ai-helper-comparison-old-report-id');
-      const newReportIdField = document.getElementById('ai-helper-comparison-new-report-id');
-
-      if (hiddenField && hiddenField.value) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = event.target.href;
-
-        const contentField = document.createElement('input');
-        contentField.type = 'hidden';
-        contentField.name = 'comparison_content';
-        contentField.value = hiddenField.value;
-
-        const oldIdField = document.createElement('input');
-        oldIdField.type = 'hidden';
-        oldIdField.name = 'old_report_id';
-        oldIdField.value = oldReportIdField ? oldReportIdField.value : '';
-
-        const newIdField = document.createElement('input');
-        newIdField.type = 'hidden';
-        newIdField.name = 'new_report_id';
-        newIdField.value = newReportIdField ? newReportIdField.value : '';
-
-        const csrfField = document.createElement('input');
-        csrfField.type = 'hidden';
-        csrfField.name = 'authenticity_token';
-        const csrfToken = document.querySelector('meta[name="csrf-token"]');
-        if (csrfToken) {
-          csrfField.value = csrfToken.getAttribute('content');
-        }
-
-        form.appendChild(contentField);
-        form.appendChild(oldIdField);
-        form.appendChild(newIdField);
-        form.appendChild(csrfField);
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
-      }
-    }
-
     // Add event listeners for export links
     document.addEventListener('click', function(event) {
       if (event.target.id === 'ai-helper-comparison-pdf-export-link') {
-        handlePdfExport(event);
+        handleComparisonExport(event);
       } else if (event.target.id === 'ai-helper-comparison-markdown-export-link') {
-        handleMarkdownExport(event);
+        handleComparisonExport(event);
       }
     });
 

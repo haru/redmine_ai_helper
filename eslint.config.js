@@ -52,9 +52,9 @@ export default [
       // File/function size limits and complexity control. Ratchet policy:
       // only ever lowered, never raised, as files/functions get split up.
       // See ADR-027.
-      "max-lines": ["error", { max: 520, skipBlankLines: true, skipComments: true }],
-      "max-lines-per-function": ["error", { max: 320, skipBlankLines: true, skipComments: true }],
-      complexity: ["error", 30],
+      "max-lines": ["error", { max: 400, skipBlankLines: true, skipComments: true }],
+      "max-lines-per-function": ["error", { max: 130, skipBlankLines: true, skipComments: true }],
+      complexity: ["error", 14],
       "max-depth": ["error", 3],
       "max-params": ["error", 6],
     },
@@ -109,11 +109,11 @@ export default [
   },
   {
     // AiHelper is declared via `class AiHelper {...}` in ai_helper.js and
-    // extended (static/prototype) from this file, which is split out purely
-    // to stay under max-lines (see ADR-027) — see the comment at the top of
-    // ai_helper_streaming.js. Scoped here for the same no-redeclare reason
-    // as the blocks above.
-    files: ["assets/javascripts/ai_helper_streaming.js"],
+    // extended (static/prototype) from these files, which are split out
+    // purely to stay under max-lines (see ADR-027) — see the comment at the
+    // top of ai_helper_streaming.js/ai_helper_history.js. Scoped here for
+    // the same no-redeclare reason as the blocks above.
+    files: ["assets/javascripts/ai_helper_streaming.js", "assets/javascripts/ai_helper_history.js"],
     languageOptions: {
       globals: {
         AiHelper: "readonly",
@@ -129,6 +129,19 @@ export default [
     languageOptions: {
       globals: {
         AiHelperTypoChecker: "readonly",
+      },
+    },
+  },
+  {
+    // AiHelperAutoCompletion is declared via `class AiHelperAutoCompletion
+    // {...}` in ai_helper_auto_completion.js and extended (static/prototype)
+    // from this file, split out for the same max-lines reason as the blocks
+    // above — see the comment at the top of
+    // ai_helper_auto_completion_overlay.js.
+    files: ["assets/javascripts/ai_helper_auto_completion_overlay.js"],
+    languageOptions: {
+      globals: {
+        AiHelperAutoCompletion: "readonly",
       },
     },
   },
