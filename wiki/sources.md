@@ -30,3 +30,4 @@ Sources are immutable inputs — the wiki never edits them.
 | S023 | docs/adr/021-snapshot-teardown-belongs-to-clear-suggestion.md | file | 2026-08-21 | 2026-08-21 | completion-suppression-scope.md, inline-completion-request-flow.md, completion-request-timeout-policy.md, js-test-convention.md |
 | S024 | specs/046-js-quality-tooling (research.md + plan.md) | feature-artifact | 2026-08-22 | 2026-08-22 | js-quality-tooling.md, classic-script-testing-strategy.md, js-coverage-ratchet-policy.md, js-test-convention.md |
 | S025 | docs/adr/024-javascript-coverage-sent-to-codecov-informational-only.md | file | 2026-08-22 | 2026-08-22 | js-coverage-ratchet-policy.md |
+| S026 | specs/049-search-issues-optional-project (research.md + plan.md) | feature-artifact | 2026-08-24 | 2026-08-24 | search-issues-cross-project-scoping.md, tool-system.md |

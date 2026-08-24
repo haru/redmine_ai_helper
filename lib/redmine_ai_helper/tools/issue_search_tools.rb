@@ -8,8 +8,8 @@ module RedmineAiHelper
       # related-object sorting (e.g. assignee name) is out of scope.
       SUPPORTED_SORT_FIELDS = %w[id created_on updated_on due_date start_date done_ratio].freeze
 
-      define_function :search_issues, description: "Search issues based on the filter conditions and return matching issues. For search items with '_id', specify the ID instead of the name of the search target. If you do not know the ID, you need to call capable_issue_properties in advance to obtain the ID. Default limit is 50 issues. Only projects with the AI Helper module enabled can be searched." do
-        property :project_id, type: "integer", description: "The project ID of the project to search in. Only projects with the AI Helper module enabled can be searched.", required: true
+      define_function :search_issues, description: "Search issues based on the filter conditions and return matching issues. For search items with '_id', specify the ID instead of the name of the search target. If you do not know the ID, you need to call capable_issue_properties in advance to obtain the ID. Default limit is 50 issues. Only projects with the AI Helper module enabled can be searched. Omit project_id to search across all projects that have the AI Helper module enabled and are accessible to the current user." do
+        property :project_id, type: "integer", description: "The project ID of the project to search in. Only projects with the AI Helper module enabled can be searched. Omit this to search across all projects that have the AI Helper module enabled and are accessible to the current user.", required: false
         property :limit, type: "integer", description: "Maximum number of issues to return. Default is 50.", required: false
         property :fields, type: "array", description: "Search fields for the issue." do
           item type: "object", description: "Search field for the issue." do
@@ -80,7 +80,7 @@ module RedmineAiHelper
         end
       end
       # Search issues based on filter conditions and return matching issues
-      # @param project_id [Integer] The project ID of the project to search in. The project must have the ai_helper module enabled and be accessible to the current user.
+      # @param project_id [Integer, nil] The project ID of the project to search in. The project must have the ai_helper module enabled and be accessible to the current user. When omitted, searches across all projects that have the ai_helper module enabled and are accessible to the current user.
       # @param limit [Integer] Maximum number of issues to return. Default is 50.
       # @param fields [Array] Search fields for the issue.
       # @param date_fields [Array] Date search fields for the issue.
@@ -91,13 +91,9 @@ module RedmineAiHelper
       # @param custom_fields [Array] Custom field search filters.
       # @param sort [Hash] Sort order with :field (one of SUPPORTED_SORT_FIELDS) and optional :direction (asc/desc, default desc). Defaults to id descending when omitted.
       # @return [Hash] A hash containing issues array and total_count.
-      # @raise [RuntimeError] if project_id is missing, or the project is not accessible with the ai_helper module enabled.
-      # @raise [ActiveRecord::RecordNotFound] if no project matches project_id.
-      def search_issues(project_id:, limit: 50, fields: [], date_fields: [], time_fields: [], number_fields: [], text_fields: [], status_field: [], custom_fields: [], sort: nil)
-        # The LLM occasionally omits required parameters; without a project there is
-        # nothing to search, so fail instead of guessing a target.
-        raise "project_id is required" if project_id.nil?
-
+      # @raise [RuntimeError] if project_id is given but the project is not accessible with the ai_helper module enabled.
+      # @raise [ActiveRecord::RecordNotFound] if project_id is given but no project matches it.
+      def search_issues(project_id: nil, limit: 50, fields: [], date_fields: [], time_fields: [], number_fields: [], text_fields: [], status_field: [], custom_fields: [], sort: nil)
         fields = deep_symbolize_array(fields)
         date_fields = deep_symbolize_array(date_fields)
         time_fields = deep_symbolize_array(time_fields)
@@ -108,18 +104,23 @@ module RedmineAiHelper
         sort = normalize_sort_param(deep_symbolize_hash(sort))
 
         limit = [ limit.to_i, 1 ].max
-        project = Project.find(project_id)
-        # Guard both search paths at once: projects without the ai_helper module (or
-        # without access for the current user) must never expose their issues.
-        raise "ai_helper is not enabled for project: id = #{project_id}" unless accessible_project?(project)
+        project = nil
+        if project_id
+          project = Project.find(project_id)
+          # Guard both search paths at once: projects without the ai_helper module (or
+          # without access for the current user) must never expose their issues.
+          raise "ai_helper is not enabled for project: id = #{project_id}" unless accessible_project?(project)
+        end
 
         if fields.empty? && date_fields.empty? && time_fields.empty? && number_fields.empty? && text_fields.empty? && status_field.empty? && custom_fields.empty?
-          # No conditions: return open visible issues for the project (same as Redmine default)
+          # No conditions: return open visible issues for the project (same as Redmine default).
+          # Without a project, scope to all projects the current user may search via AI Helper.
+          scope = Issue.visible(User.current).open
+          scope = project ? scope.where(project_id: project.id) : scope.joins(:project).where(Project.allowed_to_condition(User.current, :view_ai_helper))
           order = sort ? { sort[:field] => sort[:direction] } : { id: :desc }
-          issues = Issue.visible(User.current).open.where(project_id: project_id)
-                        .includes(:status, :priority, :tracker, :assigned_to, :author, :custom_values)
+          issues = scope.includes(:status, :priority, :tracker, :assigned_to, :author, :custom_values)
                         .order(order).limit(limit)
-          total_count = Issue.visible(User.current).open.where(project_id: project_id).count
+          total_count = scope.count
           return { issues: format_issues(issues), total_count: total_count }
         end
 
@@ -127,9 +128,11 @@ module RedmineAiHelper
         raise(validate_errors.join("\n")) if validate_errors.length > 0
 
         params = { fields: [], operators: {}, values: {} }
-        params[:fields] << "project_id"
-        params[:operators]["project_id"] = "="
-        params[:values]["project_id"] = [ project_id.to_s ]
+        if project
+          params[:fields] << "project_id"
+          params[:operators]["project_id"] = "="
+          params[:values]["project_id"] = [ project_id.to_s ]
+        end
 
         fields.each do |field|
           params[:fields] << field[:field_name]
@@ -369,30 +372,30 @@ module RedmineAiHelper
         end
 
         # Execute the search and return issues
-        # @param project [Project] The project to search in
+        # @param project [Project, nil] The project to search in. When nil, searches across all projects accessible to the user via AI Helper.
         # @param user [User] The user to check visibility for
         # @param limit [Integer] Maximum number of issues to return
         # @return [Array<Issue>] Array of visible issues
         def execute(project, user: User.current, limit: 50)
           setup_query(project, user)
-          scope = @query.base_scope
+          scope = cross_project_scope(project, @query.base_scope, user)
           scope.includes(:status, :priority, :tracker, :assigned_to, :author, :custom_values)
                .reorder(@sort[:field] => @sort[:direction]).limit(limit).to_a
         end
 
         # Returns the total count of matching issues
-        # @param project [Project] The project to search in
+        # @param project [Project, nil] The project to search in. When nil, searches across all projects accessible to the user via AI Helper.
         # @param user [User] The user for visibility check
         # @return [Integer] Total count of matching issues
         def count(project, user: User.current)
           setup_query(project, user)
-          @query.issue_count
+          cross_project_scope(project, @query.base_scope, user).distinct.count(:id)
         end
 
         private
 
         # Setup query with project and filters
-        # @param project [Project] The project to search in
+        # @param project [Project, nil] The project to search in
         # @param user [User] The user for visibility check
         # @return [void]
         def setup_query(project, user)
@@ -403,6 +406,17 @@ module RedmineAiHelper
           apply_filters
           apply_custom_field_filters
           @query_setup_done = true
+        end
+
+        # Restrict the base scope to AI-Helper-accessible projects when no single project was given
+        # @param project [Project, nil] The project passed to execute/count
+        # @param scope [ActiveRecord::Relation] The query's base scope
+        # @param user [User] The user for visibility check
+        # @return [ActiveRecord::Relation] The (possibly restricted) scope
+        def cross_project_scope(project, scope, user)
+          return scope if project
+
+          scope.where(Project.allowed_to_condition(user, :view_ai_helper))
         end
       end
     end

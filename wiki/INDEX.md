@@ -16,6 +16,7 @@ page files, not here.
 - [Completion Suppression Scope](./pages/completion-suppression-scope.md) — ADR-019 and ADR-021: why no-change suppression lasts only while a suggestion is displayed, why `clearSuggestion` owns the teardown, and why accept must not write a snapshot.
 - [Testing Classic Scripts via Dynamic Import](./pages/classic-script-testing-strategy.md) — why tests load target files as side-effect-only dynamic imports, the 4 files needing a new `window.X` line, and the `ai_helper.js` `var`→`window.ai_helper` fix.
 - [JavaScript Coverage Ratchet Policy](./pages/js-coverage-ratchet-policy.md) — why the 90% lines threshold is a literal in `vitest.config.js`, raised only, and why it's separate from Ruby's 95%.
+- [search_issues Cross-Project Scoping](./pages/search-issues-cross-project-scoping.md) — why omitting `project_id` scopes to `Project.allowed_to_condition(user, :view_ai_helper)` instead of plain `Issue.visible`, and why the single-project path stays untouched.
 
 ## component
 - [Chat Channel Gateway Architecture](./pages/chat-channel-gateway-architecture.md) — core + adapters structure, capability declaration, and gateway operational model.
