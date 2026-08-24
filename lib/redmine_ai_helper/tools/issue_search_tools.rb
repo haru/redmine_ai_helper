@@ -116,7 +116,7 @@ module RedmineAiHelper
           # No conditions: return open visible issues for the project (same as Redmine default).
           # Without a project, scope to all projects the current user may search via AI Helper.
           scope = Issue.visible(User.current).open
-          scope = project ? scope.where(project_id: project.id) : scope.where(Project.allowed_to_condition(User.current, :view_ai_helper))
+          scope = project ? scope.where(project_id: project.id) : scope.joins(:project).where(Project.allowed_to_condition(User.current, :view_ai_helper))
           order = sort ? { sort[:field] => sort[:direction] } : { id: :desc }
           issues = scope.includes(:status, :priority, :tracker, :assigned_to, :author, :custom_values)
                         .order(order).limit(limit)
@@ -389,7 +389,7 @@ module RedmineAiHelper
         # @return [Integer] Total count of matching issues
         def count(project, user: User.current)
           setup_query(project, user)
-          cross_project_scope(project, @query.base_scope, user).count
+          cross_project_scope(project, @query.base_scope, user).distinct.count(:id)
         end
 
         private
