@@ -545,6 +545,7 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       assert_includes ids, matching1.id
       assert_includes ids, matching2.id
       assert_not_includes ids, non_matching.id
+      assert_operator result[:total_count], :>=, 2
     ensure
       matching1&.destroy
       matching2&.destroy
@@ -665,6 +666,7 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
 
       assert_includes ids, matching_issue.id
       assert_not_includes ids, non_matching_issue.id
+      assert_operator result[:total_count], :>=, 1
     ensure
       matching_issue&.destroy
       non_matching_issue&.destroy
