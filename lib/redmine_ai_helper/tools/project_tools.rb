@@ -16,8 +16,7 @@ module RedmineAiHelper
       # @param dummy [String] Dummy property to satisfy the tool definition requirement.
       # @return [Array<Hash>] An array of hashes containing project information.
       def list_projects(dummy: nil) # rubocop:disable Lint/UnusedMethodArgument
-        projects = Project.all
-        list = projects.select { |p| accessible_project? p }.map do |project|
+        list = accessible_projects.map do |project|
           {
             id: project.id,
             name: project.name,
@@ -145,7 +144,7 @@ module RedmineAiHelper
       define_function :list_project_activities, description: "List all activities of the project. It returns the activity ID, event_datetime, event_type, event_title, event_description, event_url, and user_id (the ID of the user who performed the activity, or null if unknown). Omit project_id to list activities across all projects that have the AI Helper module enabled and are accessible to the current user." do
         property :project_id, type: "integer", description: "The project ID of the activities to return. Omit this to list activities across all projects that have the AI Helper module enabled and are accessible to the current user.", required: false
         property :author_id, type: "integer", description: "The user ID of the author of the activity. If not specified, it will return all activities.", required: false
-        property :limit, type: "integer", description: "The maximum number of activities to return. If not specified, it will return all activities.", required: false
+        property :limit, type: "integer", description: "The maximum number of activities to return. Defaults to 100 when not specified.", required: false
         property :start_date, type: "string", description: "The start date of the activities to return.", required: false
         property :end_date, type: "string", description: "The end date of the activities to return. If not specified, it will return all activities.", required: false
       end
@@ -155,7 +154,7 @@ module RedmineAiHelper
       # user (see #accessible_project?).
       # @param project_id [Integer, nil] The project ID of the activities to return. Omit to list activities across all accessible AI-Helper-enabled projects.
       # @param author_id [Integer] The user ID of the author of the activity. If not specified, it will return all activities.
-      # @param limit [Integer] The maximum number of activities to return. If not specified, it will return all activities.
+      # @param limit [Integer] The maximum number of activities to return. Defaults to 100 when not specified.
       # @param start_date [DateTime] The start date of the activities to return.
       # @param end_date [DateTime] The end date of the activities to return. If not specified, it will return all activities.
       # @return [RedmineAiHelper::ToolResponse] A ToolResponse whose value contains :activities, an array of hashes
@@ -179,8 +178,8 @@ module RedmineAiHelper
         events = fetcher.events(start_date, end_date)
 
         unless project
-          accessible_project_ids = Project.all.select { |p| accessible_project? p }.map(&:id)
-          events = events.select { |event| accessible_project_ids.include?(event.project&.id) }
+          accessible_project_ids = accessible_projects.map(&:id).to_set
+          events = events.select { |event| accessible_project_ids.include?(event_project_id(event)) }
         end
 
         events = events.sort_by(&:event_datetime).reverse.first(limit)
@@ -198,6 +197,14 @@ module RedmineAiHelper
         end
         json = { activities: list }
         ToolResponse.create_success json # TODO: Should just return json?
+      end
+
+      # Project ID of an activity event, without loading the project association when the
+      # event itself already carries the foreign key.
+      # @param event [Object] An activity event returned by Redmine::Activity::Fetcher.
+      # @return [Integer, nil] The project ID, or nil if it cannot be determined.
+      def event_project_id(event)
+        event.respond_to?(:project_id) ? event.project_id : event.project&.id
       end
 
       # Calculate repository metrics for a project within a specified date range.

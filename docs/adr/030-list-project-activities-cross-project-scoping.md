@@ -16,11 +16,16 @@ That technique only works because `search_issues` queries a single `ActiveRecord
 When `project_id` is omitted, `list_project_activities` fetches events unscoped (`Fetcher.new(current_user, project: nil, author: author)`), then filters the resulting Ruby array in memory:
 
 ```ruby
-accessible_project_ids = Project.all.select { |p| accessible_project? p }.map(&:id)
-events = events.select { |event| accessible_project_ids.include?(event.project&.id) }
+accessible_project_ids = accessible_projects.map(&:id).to_set
+events = events.select { |event| accessible_project_ids.include?(event_project_id(event)) }
 ```
 
-This is the same pattern `list_projects` already uses (`Project.all.select { |p| accessible_project? p }`), reused rather than reimplemented. It runs after `fetcher.events` and before the existing `sort_by(&:event_datetime).reverse.first(limit)`, so `limit` is applied to the already-filtered set.
+This is the same pattern `list_projects` already used (`select { |p| accessible_project? p }`), reused rather than reimplemented — `accessible_project?` remains the single source of truth for the decision instead of being re-derived as SQL. It runs after `fetcher.events` and before the existing `sort_by(&:event_datetime).reverse.first(limit)`, so `limit` is applied to the already-filtered set.
+
+Two details keep the in-memory filter from scaling with instance size rather than with result size:
+
+- `accessible_projects` (`base_tools.rb`, shared with `list_projects`) narrows the candidate set with `Project.visible` in SQL and preloads `enabled_modules`, so the tool neither materializes every project on the instance nor issues one `enabled_modules` query per project inside `accessible_project?`.
+- `event_project_id(event)` reads `event.project_id` when the event model carries the foreign key (`Issue`, `News`, `Document`, …) and only falls back to `event.project&.id` for the models that do not (`Journal`, `Changeset`, `Message`, `WikiContentVersion`), avoiding a `project` association load per event.
 
 When `project_id` is given, the existing single-project path (`Fetcher.new(project: project, ...)`, `accessible_project?` guard) is left untouched.
 
@@ -28,7 +33,8 @@ When `project_id` is given, the existing single-project path (`Fetcher.new(proje
 
 - **Positive**: Cross-project activity listing cannot include activities from AI-Helper-disabled or inaccessible projects, matching the guarantee `accessible_project?` already provides for every single-project tool call.
 - **Positive**: No new judgment logic — the filter is the same `accessible_project?` check and `Array#select` pattern already used by `list_projects`.
-- **Negative**: `Project.all.select { |p| accessible_project? p }` evaluates every project in Ruby on every cross-project call (same cost `list_projects` already accepts), rather than a single SQL condition. This mirrors the "Alternatives Considered" tradeoff in ADR-029, but here it is the primary approach rather than the rejected alternative, because the SQL-`where` approach ADR-029 chose is not available: `Fetcher#events` returns a plain Ruby array of mixed model types with no shared relation to attach a `where` clause to.
+- **Negative**: the accessibility decision is still evaluated in Ruby, once per visible project, rather than as a single SQL condition. This mirrors the "Alternatives Considered" tradeoff in ADR-029, but here it is the primary approach rather than the rejected alternative, because the SQL-`where` approach ADR-029 chose is not available: `Fetcher#events` returns a plain Ruby array of mixed model types with no shared relation to attach a `where` clause to. `Project.visible` plus a preload bounds the cost to the projects the user can actually see, with a constant number of queries.
+- **Negative**: `Project.allowed_to_condition(User.current, :view_ai_helper)` was not used to replace `accessible_project?` outright, even though `search_issues` (ADR-029) uses exactly that condition. `:view_ai_helper` is not declared `read: true`, so `allowed_to_condition` restricts to `status = STATUS_ACTIVE`, while `accessible_project?` also admits closed (read-only but viewable) projects. Swapping in the SQL condition would silently drop closed projects' activities, so the two tools' scoping rules differ in that one respect.
 
 ## Alternatives Considered
 

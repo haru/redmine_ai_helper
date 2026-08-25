@@ -388,6 +388,47 @@ class ProjectToolsTest < ActiveSupport::TestCase
     assert_match(/omit/i, schema[:function][:parameters][:properties][:project_id][:description])
   end
 
+  def test_list_project_activities_limit_description_states_the_actual_default
+    schema = RedmineAiHelper::Tools::ProjectTools.function_schemas.to_openai_format.find do |f|
+      f[:function][:name].end_with?("__list_project_activities")
+    end
+    limit_description = schema[:function][:parameters][:properties][:limit][:description]
+
+    assert_match(/100/, limit_description)
+    assert_no_match(/all activities/i, limit_description)
+  end
+
+  def test_accessible_projects_excludes_inaccessible_projects
+    accessible_ids = @provider.accessible_projects.map(&:id)
+
+    assert_includes accessible_ids, 1 # ai_helper enabled and visible
+    assert_not_includes accessible_ids, 3 # ai_helper module not enabled
+  end
+
+  def test_event_project_id_prefers_the_foreign_key_over_the_association
+    project = Project.find(1)
+    issue = Issue.create!(
+      project: project, tracker: Tracker.find(1), subject: "Event Project Id Activity",
+      author: User.find(2), status: IssueStatus.first, priority: IssuePriority.first
+    )
+
+    assert_equal project.id, @provider.event_project_id(issue)
+  ensure
+    issue&.destroy
+  end
+
+  def test_event_project_id_falls_back_to_the_association
+    event = Struct.new(:project).new(Project.find(1))
+
+    assert_equal 1, @provider.event_project_id(event)
+  end
+
+  def test_event_project_id_is_nil_without_a_project
+    event = Struct.new(:project).new(nil)
+
+    assert_nil @provider.event_project_id(event)
+  end
+
   def test_list_projects_includes_required_fields
     response = @provider.list_projects()
 

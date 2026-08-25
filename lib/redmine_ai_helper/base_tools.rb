@@ -371,6 +371,15 @@ module RedmineAiHelper
       User.current.allowed_to?({ controller: :ai_helper, action: :chat_form }, project)
     end
 
+    # All projects accessible via AI Helper, for tools that need to work across projects.
+    # #accessible_project? stays the source of truth for the decision, but the candidate set
+    # is narrowed to Project.visible in SQL and enabled_modules is preloaded, so a large
+    # instance neither materializes every project nor issues one query per project.
+    # @return [Array<Project>] The accessible projects.
+    def accessible_projects
+      Project.visible.preload(:enabled_modules).select { |p| accessible_project? p }
+    end
+
     private
 
     def deep_symbolize_array(arr)
