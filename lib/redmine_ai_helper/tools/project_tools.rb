@@ -163,7 +163,7 @@ module RedmineAiHelper
       #   of the user who performed the activity, or nil if it cannot be determined).
       def list_project_activities(project_id: nil, author_id: nil, limit: nil, start_date: nil, end_date: nil)
         if project_id
-          project = Project.find(project_id)
+          project = Project.find_by(id: project_id)
           return ToolResponse.create_error "Project not found" unless project
           return ToolResponse.create_error "You don't have permission to view this project" unless accessible_project? project
         end
@@ -193,7 +193,7 @@ module RedmineAiHelper
             event_title: event.event_title,
             event_description: event.event_description,
             event_url: event.event_url,
-            user_id: event.event_author&.id
+            user_id: event.event_author.is_a?(User) ? event.event_author.id : nil
           }
         end
         json = { activities: list }

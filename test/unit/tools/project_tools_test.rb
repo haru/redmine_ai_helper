@@ -138,9 +138,10 @@ class ProjectToolsTest < ActiveSupport::TestCase
   end
 
   def test_list_project_activities_with_invalid_project_id
-    assert_raises(ActiveRecord::RecordNotFound) do
-      @provider.list_project_activities(project_id: 999)
-    end
+    response = @provider.list_project_activities(project_id: 999)
+
+    assert_equal "error", response.status
+    assert_match(/not found/i, response.error)
   end
 
   def test_list_project_activities_with_invalid_author_id
@@ -352,6 +353,29 @@ class ProjectToolsTest < ActiveSupport::TestCase
     assert_nil activity[:user_id]
   ensure
     document&.destroy
+  end
+
+  def test_list_project_activities_user_id_is_nil_for_changeset_with_unmapped_committer
+    repository = Repository.find(10) # belongs to project 1
+    changeset = Changeset.create!(
+      repository: repository,
+      revision: "unmapped-committer-#{Time.now.to_i}#{rand(10000)}",
+      committer: "Unmapped Committer <unmapped@example.com>",
+      committed_on: Time.current,
+      commit_date: Time.zone.today,
+      comments: "Changeset Without Mapped User Activity",
+      user: nil
+    )
+
+    response = @provider.list_project_activities(project_id: nil)
+
+    assert_equal "success", response.status
+    activity = response.value[:activities].find { |a| a[:event_title].to_s.include?("Changeset Without Mapped User Activity") }
+
+    assert_not_nil activity
+    assert_nil activity[:user_id]
+  ensure
+    changeset&.destroy
   end
 
   def test_list_project_activities_description_mentions_optional_project_id_and_user_id
