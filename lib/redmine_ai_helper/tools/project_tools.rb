@@ -142,25 +142,31 @@ module RedmineAiHelper
         json
       end
 
-      define_function :list_project_activities, description: "List all activities of the project. It returns the activity ID, event_datetime, event_type, event_title, event_description, and event_url." do
-        property :project_id, type: "integer", description: "The project ID of the activities to return.", required: true
+      define_function :list_project_activities, description: "List all activities of the project. It returns the activity ID, event_datetime, event_type, event_title, event_description, event_url, and user_id (the ID of the user who performed the activity, or null if unknown). Omit project_id to list activities across all projects that have the AI Helper module enabled and are accessible to the current user." do
+        property :project_id, type: "integer", description: "The project ID of the activities to return. Omit this to list activities across all projects that have the AI Helper module enabled and are accessible to the current user.", required: false
         property :author_id, type: "integer", description: "The user ID of the author of the activity. If not specified, it will return all activities.", required: false
         property :limit, type: "integer", description: "The maximum number of activities to return. If not specified, it will return all activities.", required: false
         property :start_date, type: "string", description: "The start date of the activities to return.", required: false
         property :end_date, type: "string", description: "The end date of the activities to return. If not specified, it will return all activities.", required: false
       end
 
-      # List all activities of the project.
-      # @param project_id [Integer] The project ID of the activities to return.
+      # List all activities of the project. When project_id is omitted, activities are aggregated
+      # across all projects that have the AI Helper module enabled and are accessible to the current
+      # user (see #accessible_project?).
+      # @param project_id [Integer, nil] The project ID of the activities to return. Omit to list activities across all accessible AI-Helper-enabled projects.
       # @param author_id [Integer] The user ID of the author of the activity. If not specified, it will return all activities.
       # @param limit [Integer] The maximum number of activities to return. If not specified, it will return all activities.
       # @param start_date [DateTime] The start date of the activities to return.
       # @param end_date [DateTime] The end date of the activities to return. If not specified, it will return all activities.
-      # @return [Array<Hash>] An array of hashes containing activity information.
-      def list_project_activities(project_id:, author_id: nil, limit: nil, start_date: nil, end_date: nil)
-        project = Project.find(project_id)
-        return ToolResponse.create_error "Project not found" unless project
-        return ToolResponse.create_error "You don't have permission to view this project" unless accessible_project? project
+      # @return [RedmineAiHelper::ToolResponse] A ToolResponse whose value contains :activities, an array of hashes
+      #   each with id, event_datetime, event_type, event_title, event_description, event_url, and user_id (the ID
+      #   of the user who performed the activity, or nil if it cannot be determined).
+      def list_project_activities(project_id: nil, author_id: nil, limit: nil, start_date: nil, end_date: nil)
+        if project_id
+          project = Project.find(project_id)
+          return ToolResponse.create_error "Project not found" unless project
+          return ToolResponse.create_error "You don't have permission to view this project" unless accessible_project? project
+        end
 
         author = author_id ? User.find(author_id) : nil
         limit ||= 100
@@ -168,15 +174,16 @@ module RedmineAiHelper
         end_date ||= 1.day.from_now
 
         current_user = User.current
-        fetcher = Redmine::Activity::Fetcher.new(
-          current_user,
-          project: project,
-          author: author
-        )
+        fetcher = Redmine::Activity::Fetcher.new(current_user, project: project, author: author)
         ai_helper_logger.debug "current_user: #{current_user}, project: #{project}, author: #{author}, start_date: #{start_date}, end_date: #{end_date}, limit: #{limit}"
-        events = fetcher.events(start_date, end_date).sort_by(&:event_datetime).reverse.first(limit)
-        # events = fetcher.events(start_date, end_date, limit).sort_by(&:event_datetime)
-        # events = fetcher.events(start_date)
+        events = fetcher.events(start_date, end_date)
+
+        unless project
+          accessible_project_ids = Project.all.select { |p| accessible_project? p }.map(&:id)
+          events = events.select { |event| accessible_project_ids.include?(event.project&.id) }
+        end
+
+        events = events.sort_by(&:event_datetime).reverse.first(limit)
         list = []
         events.each do |event|
           list << {
@@ -185,7 +192,8 @@ module RedmineAiHelper
             event_type: event.event_type,
             event_title: event.event_title,
             event_description: event.event_description,
-            event_url: event.event_url
+            event_url: event.event_url,
+            user_id: event.event_author&.id
           }
         end
         json = { activities: list }
