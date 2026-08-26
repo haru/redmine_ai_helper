@@ -2,6 +2,8 @@
 
 require "redmine_ai_helper/mcp/server"
 require "redmine_ai_helper/mcp/session_strategy"
+require "redmine_ai_helper/mcp/transport"
+require "redmine_ai_helper/logger"
 
 # Controller that exposes the MCP (Model Context Protocol) Streamable HTTP
 # endpoint at +/ai_helper/mcp+.
@@ -14,6 +16,8 @@ require "redmine_ai_helper/mcp/session_strategy"
 # +StreamableHTTPTransport+ in stateless mode, which handles JSON-RPC
 # framing, +initialize+, +tools/list+, and +tools/call+ methods.
 class AiHelperMcpController < ApplicationController
+  include RedmineAiHelper::Logger
+
   # Authentication is enforced by authenticate_mcp_request below using the
   # X-Redmine-API-Key request header. Because authentication is header-based
   # (not session-cookie-based) and no session state is mutated by this
@@ -65,11 +69,30 @@ class AiHelperMcpController < ApplicationController
     # this endpoint authenticates with a stateless X-Redmine-API-Key header rather
     # than ambient browser credentials, so the DNS rebinding threat model does not
     # apply, and the Host varies per Redmine deployment so no fixed allowlist fits.
-    transport = MCP::Server::Transports::StreamableHTTPTransport.new(
+    transport = RedmineAiHelper::Mcp::Transport.new(
       server, stateless: true, enable_json_response: true, dns_rebinding_protection: false
     )
 
     rack_status, rack_headers, body_parts = transport.call(rack_env)
+
+    # A body responding to +call+ (a Rack streaming Proc) can never be represented as a
+    # complete JSON-RPC response. Implicitly stringifying it via +Array(body_parts).join+
+    # would silently ship a broken "#<Proc:0x…>" body as a 200 (the exact bug this
+    # feature fixes for +subscriptions/listen+); instead this fails loudly with a
+    # logged error and a JSON-RPC internal-error response (FR-005, Constitution III).
+    if body_parts.respond_to?(:call)
+      offending_method = parsed_request && parsed_request["method"]
+      ai_helper_logger.error(
+        "MCP transport returned a non-enumerable (streaming) body for method #{offending_method.inspect}"
+      )
+      render status: :internal_server_error,
+             json: {
+               jsonrpc: "2.0",
+               id: parsed_request && parsed_request["id"],
+               error: { code: -32603, message: "Internal error" }
+             }
+      return
+    end
 
     rack_headers.each { |k, v| response.set_header(k, v) }
     render status: rack_status,

@@ -31,3 +31,5 @@ Sources are immutable inputs — the wiki never edits them.
 | S024 | specs/046-js-quality-tooling (research.md + plan.md) | feature-artifact | 2026-08-22 | 2026-08-22 | js-quality-tooling.md, classic-script-testing-strategy.md, js-coverage-ratchet-policy.md, js-test-convention.md |
 | S025 | docs/adr/024-javascript-coverage-sent-to-codecov-informational-only.md | file | 2026-08-22 | 2026-08-22 | js-coverage-ratchet-policy.md |
 | S026 | specs/049-search-issues-optional-project (research.md + plan.md) | feature-artifact | 2026-08-24 | 2026-08-24 | search-issues-cross-project-scoping.md, tool-system.md |
+| S027 | specs/051-mcp-reject-subscriptions-listen (spec.md + plan.md) | feature-artifact | 2026-08-26 | 2026-08-26 | mcp-integration.md |
+| S028 | docs/adr/031-mcp-endpoint-rejects-subscriptions-listen.md | file | 2026-08-26 | 2026-08-26 | mcp-integration.md |

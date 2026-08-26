@@ -65,6 +65,15 @@ the global `mcp_server_enabled` flag gates the entire endpoint (S002, S006).
   request re-authenticates by its API key (S007).
 - **Protocol methods** supported: `initialize`, `tools/list`, `tools/call`, and
   the `notifications/initialized` message (S007).
+- **Change notifications are not supported.** The endpoint does not implement
+  `subscriptions/listen` (SEP-2575) or advertise `listChanged`/`subscribe`
+  capabilities — `RedmineAiHelper::Mcp::Server.build` declares empty
+  capabilities for `tools`/`prompts`/`resources` (keeping only `logging`, which
+  is genuinely served), and a `RedmineAiHelper::Mcp::Transport` subclass rejects
+  a `subscriptions/listen` request with a JSON-RPC *Method not found* error
+  instead of opening an SSE stream. This closed a request storm caused by
+  well-behaved clients opening — and immediately losing — a subscription the
+  stateless endpoint could never fulfill (S027, S028).
 - **Auth gotcha**: every request needs the `X-Redmine-API-Key` header, validated
   per-request (via `SessionStrategy`) against the user account. No/invalid key →
   **HTTP 401**; MCP server disabled → **HTTP 403** (S002, S006, S007).
