@@ -12,7 +12,7 @@ module RedmineAiHelper
     #
     # @example
     #   server = Server.build
-    #   transport = MCP::Server::Transports::StreamableHTTPTransport.new(server, stateless: true)
+    #   transport = RedmineAiHelper::Mcp::Transport.new(server, stateless: true)
     class Server
       include RedmineAiHelper::Logger
       class << self

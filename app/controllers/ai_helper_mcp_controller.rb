@@ -81,14 +81,14 @@ class AiHelperMcpController < ApplicationController
     # feature fixes for +subscriptions/listen+); instead this fails loudly with a
     # logged error and a JSON-RPC internal-error response (FR-005, Constitution III).
     if body_parts.respond_to?(:call)
-      offending_method = parsed_request && parsed_request["method"]
+      offending_method = parsed_request&.[]("method")
       ai_helper_logger.error(
         "MCP transport returned a non-enumerable (streaming) body for method #{offending_method.inspect}"
       )
       render status: :internal_server_error,
              json: {
                jsonrpc: "2.0",
-               id: parsed_request && parsed_request["id"],
+               id: parsed_request&.[]("id"),
                error: { code: -32603, message: "Internal error" }
              }
       return
