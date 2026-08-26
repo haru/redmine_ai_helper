@@ -93,7 +93,7 @@ indexing, payload indexes, sync, and `ensure_indexes` (S010, S012).
 
 - [Vector Search Internals](./vector-search-internals.md) — the subsystem's
   components, hybrid content, and rake tasks.
-- [MCP Integration](./mcp-integration.md) — the Vector tool group
+- [MCP Server Endpoint](./mcp-server-endpoint.md) — the Vector tool group
   (`find_similar_issues`, `ask_with_filter`) requires this setup.
 - [Think Model](./think-model.md) — a related but *opposite* fallback policy.
 - [Plugin Overview](./plugin-overview.md)

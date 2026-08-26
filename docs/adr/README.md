@@ -82,3 +82,5 @@ Briefly describe alternatives that were rejected and why.
 | [027](./027-eslint-quality-rule-ratchet.md) | ESLint naming/explicitness/size/complexity rules start at a measured baseline and ratchet down | Accepted |
 | [028](./028-eslint-plugin-jsdoc-enforcement.md) | eslint-plugin-jsdoc enforces the existing JSDoc convention | Accepted |
 | [029](./029-search-issues-cross-project-scoping.md) | search_issues cross-project scoping | Accepted |
+| [030](./030-list-project-activities-cross-project-scoping.md) | list_project_activities cross-project scoping | Accepted |
+| [031](./031-mcp-endpoint-rejects-subscriptions-listen.md) | MCP endpoint rejects subscriptions/listen | Accepted |
