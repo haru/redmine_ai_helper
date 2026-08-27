@@ -1,4 +1,12 @@
+/**
+ * AI-powered typo/spelling check for a Redmine textarea: sends the text to
+ * the server, then overlays accept/reject suggestions inline over it.
+ */
 class AiHelperTypoChecker {
+  /**
+   * @param {HTMLTextAreaElement} textarea - The textarea to check.
+   * @param {object} [options] - Configuration (endpoint, labels, debounceDelay, minLength).
+   */
   constructor(textarea, options = {}) {
     this.textarea = textarea;
     this.options = {
@@ -19,6 +27,9 @@ class AiHelperTypoChecker {
     this.isCheckingTypos = false;
   }
 
+  /**
+   * Wire up the overlay, control panel, check button, and event listeners.
+   */
   init() {
     this.createOverlay();
     this.findControlPanel();
@@ -26,6 +37,10 @@ class AiHelperTypoChecker {
     this.attachEventListeners();
   }
 
+  /**
+   * Locate this textarea's suggestion control panel (apply-all/close
+   * buttons), move it under the textarea's parent, and bind its buttons.
+   */
   findControlPanel() {
     // Map textarea IDs to control panel IDs
     const textareaToControlPanelMap = {
@@ -75,6 +90,10 @@ class AiHelperTypoChecker {
     }
   }
 
+  /**
+   * Create the suggestion overlay, styled and positioned to sit exactly over
+   * the textarea, and keep it (and the control panel) synced to its position.
+   */
   createOverlay() {
     // Create overlay element with same position and size as textarea (same as autocomplete)
     this.overlay = document.createElement('div');
@@ -154,6 +173,9 @@ class AiHelperTypoChecker {
     this.textarea.classList.add('ai-helper-textarea-positioned');
   }
 
+  /**
+   * Locate this textarea's "check typos" button by its known ID mapping.
+   */
   findExistingButton() {
     // Map textarea IDs to button IDs
     const textareaToButtonMap = {
@@ -168,6 +190,10 @@ class AiHelperTypoChecker {
     }
   }
 
+  /**
+   * Bind the check button, and the input/keydown/click/focus/scroll
+   * listeners that dismiss the overlay or keep it in sync.
+   */
   attachEventListeners() {
     if (this.checkButton) {
       // Remove any existing event listeners to prevent duplicates
@@ -225,6 +251,11 @@ class AiHelperTypoChecker {
     });
   }
 
+  /**
+   * Disable and clear any active description/notes/wiki autocompletion
+   * instances while the typo overlay is shown, so the two features don't
+   * fight over the textarea.
+   */
   disableAutocompletion() {
     // Disable autocomplete functionality when typo overlay is active
     if (window.aiHelperInstances) {
@@ -244,6 +275,10 @@ class AiHelperTypoChecker {
     }
   }
 
+  /**
+   * Re-enable any autocompletion instance whose checkbox is still checked,
+   * once the typo overlay is hidden.
+   */
   enableAutocompletion() {
     // Re-enable autocomplete functionality when typo overlay is hidden
     if (window.aiHelperInstances) {
@@ -260,6 +295,10 @@ class AiHelperTypoChecker {
     }
   }
 
+  /**
+   * Send the textarea's current text to the check endpoint and display the
+   * returned suggestions, showing a "checking..." state on the button meanwhile.
+   */
   async checkTypos() {
     // Prevent duplicate execution
     if (this.isCheckingTypos) {
@@ -328,6 +367,11 @@ class AiHelperTypoChecker {
   // (displayTypoOverlay, buildOverlayContent, accept/reject*, hideOverlay,
   // showNoSuggestionsMessage, showErrorMessage, and their static helpers)
   // live in ai_helper_typo_suggestion_overlay.js — see the comment there.
+  /**
+   * Resolve the textarea's effective background color, falling back to the
+   * parent's, then to white, when it (or its parent) is transparent.
+   * @returns {string} A CSS color value.
+   */
   getTextareaBackgroundColor() {
     const computedStyle = window.getComputedStyle(this.textarea);
     let bgColor = computedStyle.backgroundColor;
@@ -347,16 +391,23 @@ class AiHelperTypoChecker {
     return bgColor;
   }
 
+  /**
+   * @returns {string} The page's CSRF token, or `''` if the meta tag is absent.
+   */
   getCSRFToken() {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
   }
 
-  // Helper method to check if overlay is visible using CSS classes
+  /**
+   * @returns {boolean} Whether the suggestion overlay is currently shown.
+   */
   isOverlayActive() {
     return this.overlay && this.overlay.classList.contains('ai-helper-typo-overlay-active');
   }
 
-  // Sync overlay scroll with textarea scroll
+  /**
+   * Sync the overlay's scroll position to the textarea's.
+   */
   syncScroll() {
     if (this.overlay && this.textarea) {
       this.overlay.scrollTop = this.textarea.scrollTop;
@@ -364,7 +415,10 @@ class AiHelperTypoChecker {
     }
   }
 
-  // Check if scrolling is needed and enable it when content exceeds height
+  /**
+   * Check if scrolling is needed and enable it when content exceeds height,
+   * otherwise restore the overlay's default (non-scrollable) styling.
+   */
   checkAndEnableScrolling() {
     if (!this.overlay) {return;}
     
@@ -406,7 +460,9 @@ class AiHelperTypoChecker {
     }
   }
 
-  // Reset scrolling settings to default state
+  /**
+   * Reset scrolling settings to default state.
+   */
   resetScrolling() {
     if (!this.overlay) {return;}
     
@@ -419,7 +475,11 @@ class AiHelperTypoChecker {
     this.removeScrollableEventListeners();
   }
 
-  // Add event listeners for scrollable overlay mode
+  /**
+   * Add event listeners for scrollable overlay mode, forwarding clicks/keys
+   * to the textarea except when they target the accept/reject buttons or
+   * scroll keys.
+   */
   addScrollableEventListeners() {
     if (!this.overlay) {return;}
     
@@ -449,7 +509,9 @@ class AiHelperTypoChecker {
     this.overlay.addEventListener('keydown', this.scrollableKeydownHandler);
   }
 
-  // Remove event listeners for scrollable overlay mode
+  /**
+   * Remove the event listeners added by `addScrollableEventListeners`.
+   */
   removeScrollableEventListeners() {
     if (!this.overlay || !this.scrollableClickHandler) {return;}
     
@@ -466,11 +528,10 @@ window.AiHelperTypoChecker = AiHelperTypoChecker;
 /**
  * Factory: create and init a typo checker from a container element's data-config.
  * Also binds a check button if its ID matches the textarea-to-button map.
- *
  * @param {HTMLElement} container - Element with data-config (JSON: {endpoint, labels})
  * @param {string} textareaId - ID of the target textarea
  * @param {string} [buttonId] - If provided, bind the button's click to checkTypos()
- * @returns {AiHelperTypoChecker|null}
+ * @returns {AiHelperTypoChecker|null} The created checker, or null if the container/textarea is missing.
  */
 AiHelperTypoChecker.initFromConfig = function(container, textareaId, buttonId) {
   if (!container) {return null;}

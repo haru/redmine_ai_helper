@@ -3,7 +3,11 @@
   
   let initialized = false;
   
-  // Load assignees for a specific tracker
+  /**
+   * Fetch and populate the assignable-users list for a sub-issue row's
+   * tracker select, preserving the currently selected value if still valid.
+   * @param {HTMLSelectElement} trackerSelect - The sub-issue's tracker select element.
+   */
   function loadAssignees(trackerSelect) {
     const trackerId = trackerSelect.value;
     const projectId = trackerSelect.dataset.projectId;
@@ -40,7 +44,10 @@
       });
   }
   
-  // Initialize all tracker selects
+  /**
+   * Load assignees for every sub-issue tracker select currently on the page,
+   * once.
+   */
   function initializeAllTrackers() {
     if (initialized) {return;}
     
@@ -64,7 +71,10 @@
     }
   });
   
-  // Setup MutationObserver to detect when sub-issues are loaded
+  /**
+   * Watch the page for the sub-issues list being loaded (it arrives via AJAX
+   * after this script runs) and initialize tracker selects once it appears.
+   */
   function setupObserver() {
     let mainContent = document.querySelector('#content');
 

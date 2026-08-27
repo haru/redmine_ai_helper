@@ -492,6 +492,8 @@ DELETE /ai_helper/mcp    — MCP spec required; not used in stateless mode
 
 The server uses the MCP Streamable HTTP transport in **stateless, JSON-response mode** (`stateless: true`, `enable_json_response: true`). All communication happens via POST with JSON-RPC — SSE streaming is not used.
 
+**Change notifications are not supported.** This server does not implement change-notification subscription streams (`subscriptions/listen`, SEP-2575) or the related `listChanged`/`subscribe` capabilities. Because the endpoint is stateless with no shared subscription registry, a `subscriptions/listen` request is answered with a JSON-RPC *Method not found* error rather than opening a stream. Clients should poll `tools/list`, `prompts/list`, or `resources/list` instead of subscribing to change notifications.
+
 **Enabling the endpoint:**
 
 1. Open the AI Helper settings page from the Administration menu.

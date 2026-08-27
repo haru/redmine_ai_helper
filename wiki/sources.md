@@ -30,3 +30,7 @@ Sources are immutable inputs — the wiki never edits them.
 | S023 | docs/adr/021-snapshot-teardown-belongs-to-clear-suggestion.md | file | 2026-08-21 | 2026-08-21 | completion-suppression-scope.md, inline-completion-request-flow.md, completion-request-timeout-policy.md, js-test-convention.md |
 | S024 | specs/046-js-quality-tooling (research.md + plan.md) | feature-artifact | 2026-08-22 | 2026-08-22 | js-quality-tooling.md, classic-script-testing-strategy.md, js-coverage-ratchet-policy.md, js-test-convention.md |
 | S025 | docs/adr/024-javascript-coverage-sent-to-codecov-informational-only.md | file | 2026-08-22 | 2026-08-22 | js-coverage-ratchet-policy.md |
+| S026 | specs/049-search-issues-optional-project (research.md + plan.md) | feature-artifact | 2026-08-24 | 2026-08-24 | search-issues-cross-project-scoping.md, tool-system.md |
+| S027 | specs/051-mcp-reject-subscriptions-listen (research.md + spec.md + plan.md) | feature-artifact | 2026-08-26 | 2026-08-26 | mcp-integration.md, mcp-server-endpoint.md, mcp-listen-rejection.md |
+| S028 | docs/adr/031-mcp-endpoint-rejects-subscriptions-listen.md | file | 2026-08-26 | 2026-08-26 | mcp-integration.md, mcp-server-endpoint.md, mcp-listen-rejection.md |
+| S029 | specs/051-mcp-reject-subscriptions-listen/review-summary.md | feature-artifact | 2026-08-26 | 2026-08-26 | mcp-listen-rejection.md |

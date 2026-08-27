@@ -1,8 +1,8 @@
 ---
 title: Completion Suppression Scope
 type: decision
-sources: [S021]
-updated: 2026-08-21
+sources: [S021, S023]
+updated: 2026-08-26
 ---
 
 # Completion Suppression Scope
@@ -28,7 +28,7 @@ compares against is **discarded on three paths** (S021):
 Path 3 was originally a separate `dismissSuggestion()` that only Esc and blur
 called, which left the checkbox and `onTextChange` paths clearing the suggestion
 while the snapshot survived. ADR-021 folded it into `clearSuggestion` — the one
-way a suggestion can leave the screen — so the rule holds by construction (S021).
+way a suggestion can leave the screen — so the rule holds by construction (S021, S023).
 
 ## Why suppression must not outlive the suggestion
 

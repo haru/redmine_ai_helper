@@ -1,8 +1,8 @@
 ---
 title: Completion Request Timeout Policy
 type: decision
-sources: [S021]
-updated: 2026-08-21
+sources: [S021, S023]
+updated: 2026-08-26
 ---
 
 # Completion Request Timeout Policy
@@ -61,7 +61,7 @@ exceptions keep the existing error-level log + `""` behaviour (S021).
 A timeout therefore reaches the browser as `200` with `{"suggestion": ""}` —
 indistinguishable from "the model had nothing to add". The client treats both the
 same way and frees the position for a later request, so a timeout never locks
-completion where it happened (ADR-021).
+completion where it happened (ADR-021, S023).
 
 ## Alternatives rejected
 

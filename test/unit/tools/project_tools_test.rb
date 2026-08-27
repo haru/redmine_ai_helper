@@ -138,9 +138,10 @@ class ProjectToolsTest < ActiveSupport::TestCase
   end
 
   def test_list_project_activities_with_invalid_project_id
-    assert_raises(ActiveRecord::RecordNotFound) do
-      @provider.list_project_activities(project_id: 999)
-    end
+    response = @provider.list_project_activities(project_id: 999)
+
+    assert_equal "error", response.status
+    assert_match(/not found/i, response.error)
   end
 
   def test_list_project_activities_with_invalid_author_id
@@ -149,6 +150,283 @@ class ProjectToolsTest < ActiveSupport::TestCase
     assert_raises(ActiveRecord::RecordNotFound) do
       @provider.list_project_activities(project_id: project.id, author_id: 999)
     end
+  end
+
+  def test_list_project_activities_without_project_id_spans_multiple_projects
+    project1 = Project.find(1)
+    project2 = Project.find(2)
+    EnabledModule.create!(project_id: project2.id, name: "ai_helper")
+
+    issue1 = Issue.create!(
+      project: project1, tracker: Tracker.find(1), subject: "Cross Project Activity 1",
+      author: User.find(1), status: IssueStatus.first, priority: IssuePriority.first
+    )
+    issue2 = Issue.create!(
+      project: project2, tracker: Tracker.find(1), subject: "Cross Project Activity 2",
+      author: User.find(1), status: IssueStatus.first, priority: IssuePriority.first
+    )
+
+    response = @provider.list_project_activities(project_id: nil)
+
+    assert_equal "success", response.status
+    titles = response.value[:activities].map { |a| a[:event_title] }
+    assert(titles.any? { |t| t.include?("Cross Project Activity 1") })
+    assert(titles.any? { |t| t.include?("Cross Project Activity 2") })
+
+    datetimes = response.value[:activities].map { |a| a[:event_datetime] }
+    assert_equal datetimes, datetimes.sort.reverse
+  ensure
+    issue1&.destroy
+    issue2&.destroy
+  end
+
+  def test_list_project_activities_without_project_id_applies_limit_after_project_filter
+    project1 = Project.find(1)
+    excluded_project = Project.find(3) # ai_helper module not enabled
+    tracker = Tracker.find(1)
+    excluded_project.trackers << tracker unless excluded_project.trackers.include?(tracker)
+
+    accessible_issue_a = Issue.create!(
+      project: project1, tracker: tracker, subject: "Limit Order Accessible A",
+      author: User.find(1), status: IssueStatus.first, priority: IssuePriority.first
+    )
+    accessible_issue_b = Issue.create!(
+      project: project1, tracker: tracker, subject: "Limit Order Accessible B",
+      author: User.find(1), status: IssueStatus.first, priority: IssuePriority.first
+    )
+    # Created after the accessible issues, so they would sort ahead of them by
+    # event_datetime if the project filter were (incorrectly) applied after the limit
+    # instead of before it.
+    excluded_issue_a = Issue.create!(
+      project: excluded_project, tracker: tracker, subject: "Limit Order Excluded A",
+      author: User.find(1), status: IssueStatus.first, priority: IssuePriority.first
+    )
+    excluded_issue_b = Issue.create!(
+      project: excluded_project, tracker: tracker, subject: "Limit Order Excluded B",
+      author: User.find(1), status: IssueStatus.first, priority: IssuePriority.first
+    )
+
+    response = @provider.list_project_activities(project_id: nil, limit: 2)
+
+    assert_equal "success", response.status
+    titles = response.value[:activities].map { |a| a[:event_title] }
+    assert_equal 2, titles.size
+    assert(titles.any? { |t| t.include?("Limit Order Accessible A") })
+    assert(titles.any? { |t| t.include?("Limit Order Accessible B") })
+  ensure
+    accessible_issue_a&.destroy
+    accessible_issue_b&.destroy
+    excluded_issue_a&.destroy
+    excluded_issue_b&.destroy
+  end
+
+  def test_list_project_activities_without_project_id_respects_author_id_filter
+    project1 = Project.find(1)
+    project2 = Project.find(2)
+    EnabledModule.create!(project_id: project2.id, name: "ai_helper")
+    author = User.find(2)
+    other_author = User.find(1)
+
+    matching_issue = Issue.create!(
+      project: project2, tracker: Tracker.find(1), subject: "Cross Project Author Match",
+      author: author, status: IssueStatus.first, priority: IssuePriority.first
+    )
+    other_issue = Issue.create!(
+      project: project1, tracker: Tracker.find(1), subject: "Cross Project Author Mismatch",
+      author: other_author, status: IssueStatus.first, priority: IssuePriority.first
+    )
+
+    response = @provider.list_project_activities(project_id: nil, author_id: author.id)
+
+    assert_equal "success", response.status
+    titles = response.value[:activities].map { |a| a[:event_title] }
+    assert(titles.any? { |t| t.include?("Cross Project Author Match") })
+    assert_not(titles.any? { |t| t.include?("Cross Project Author Mismatch") })
+  ensure
+    matching_issue&.destroy
+    other_issue&.destroy
+  end
+
+  def test_list_project_activities_without_project_id_excludes_projects_without_permission
+    previous_user = User.current
+    User.current = User.find(2) # jsmith, a member of project 1 but not of the private_project created below
+    Role.find(1).add_permission!(:view_ai_helper)
+
+    private_project = Project.create!(
+      name: "Private No Access #{Time.now.to_i}#{rand(10000)}",
+      identifier: "private-no-access-#{Time.now.to_i}#{rand(10000)}",
+      is_public: false
+    )
+    tracker = Tracker.find(1)
+    private_project.trackers << tracker unless private_project.trackers.include?(tracker)
+    EnabledModule.create!(project_id: private_project.id, name: "ai_helper")
+    hidden_issue = Issue.create!(
+      project: private_project, tracker: tracker, subject: "Hidden No Permission Activity",
+      author: User.find(1), status: IssueStatus.first, priority: IssuePriority.first
+    )
+
+    response = @provider.list_project_activities(project_id: nil)
+
+    assert_equal "success", response.status
+    titles = response.value[:activities].map { |a| a[:event_title] }
+    assert_not(titles.any? { |t| t.include?("Hidden No Permission Activity") })
+  ensure
+    User.current = previous_user
+    hidden_issue&.destroy
+    private_project&.destroy
+  end
+
+  def test_list_project_activities_without_project_id_excludes_ai_helper_disabled_project
+    project_without_ai_helper = Project.find(3) # eCookbook Subproject 1: ai_helper module not enabled
+    tracker = Tracker.find(1)
+    project_without_ai_helper.trackers << tracker unless project_without_ai_helper.trackers.include?(tracker)
+    issue = Issue.create!(
+      project: project_without_ai_helper, tracker: tracker, subject: "No AI Helper Module Activity",
+      author: User.find(1), status: IssueStatus.first, priority: IssuePriority.first
+    )
+
+    response = @provider.list_project_activities(project_id: nil)
+
+    assert_equal "success", response.status
+    titles = response.value[:activities].map { |a| a[:event_title] }
+    assert_not(titles.any? { |t| t.include?("No AI Helper Module Activity") })
+  ensure
+    issue&.destroy
+  end
+
+  def test_list_project_activities_without_project_id_and_no_accessible_projects_returns_empty
+    EnabledModule.where(project_id: 1, name: "ai_helper").destroy_all
+
+    response = @provider.list_project_activities(project_id: nil)
+
+    assert_equal "success", response.status
+    assert_equal [], response.value[:activities]
+  end
+
+  def test_list_project_activities_includes_user_id
+    project = Project.find(1)
+    issue = Issue.create!(
+      project: project, tracker: Tracker.find(1), subject: "User Id Field Activity",
+      author: User.find(2), status: IssueStatus.first, priority: IssuePriority.first
+    )
+
+    response = @provider.list_project_activities(project_id: project.id)
+
+    assert_equal "success", response.status
+    activity = response.value[:activities].find { |a| a[:event_title].to_s.include?("User Id Field Activity") }
+
+    assert_not_nil activity
+    assert_equal issue.author.id, activity[:user_id]
+  ensure
+    issue&.destroy
+  end
+
+  def test_list_project_activities_with_author_id_matches_user_id
+    project = Project.find(1)
+    author = User.find(2)
+    issue = Issue.create!(
+      project: project, tracker: Tracker.find(1), subject: "Author Filter Activity",
+      author: author, status: IssueStatus.first, priority: IssuePriority.first
+    )
+
+    response = @provider.list_project_activities(project_id: project.id, author_id: author.id)
+
+    assert_equal "success", response.status
+    activities = response.value[:activities]
+
+    assert(activities.any?)
+    assert(activities.all? { |a| a[:user_id] == author.id })
+  ensure
+    issue&.destroy
+  end
+
+  def test_list_project_activities_user_id_is_nil_when_author_unknown
+    project = Project.find(1)
+    document = Document.create!(project: project, title: "Doc Without Attachment Activity", category: DocumentCategory.first)
+
+    response = @provider.list_project_activities(project_id: nil)
+
+    assert_equal "success", response.status
+    activity = response.value[:activities].find { |a| a[:event_title].to_s.include?("Doc Without Attachment Activity") }
+
+    assert_not_nil activity
+    assert_nil activity[:user_id]
+  ensure
+    document&.destroy
+  end
+
+  def test_list_project_activities_user_id_is_nil_for_changeset_with_unmapped_committer
+    repository = Repository.find(10) # belongs to project 1
+    changeset = Changeset.create!(
+      repository: repository,
+      revision: "unmapped-committer-#{Time.now.to_i}#{rand(10000)}",
+      committer: "Unmapped Committer <unmapped@example.com>",
+      committed_on: Time.current,
+      commit_date: Time.zone.today,
+      comments: "Changeset Without Mapped User Activity",
+      user: nil
+    )
+
+    response = @provider.list_project_activities(project_id: nil)
+
+    assert_equal "success", response.status
+    activity = response.value[:activities].find { |a| a[:event_title].to_s.include?("Changeset Without Mapped User Activity") }
+
+    assert_not_nil activity
+    assert_nil activity[:user_id]
+  ensure
+    changeset&.destroy
+  end
+
+  def test_list_project_activities_description_mentions_optional_project_id_and_user_id
+    schema = RedmineAiHelper::Tools::ProjectTools.function_schemas.to_openai_format.find do |f|
+      f[:function][:name].end_with?("__list_project_activities")
+    end
+
+    assert_match(/omit/i, schema[:function][:description])
+    assert_match(/user_id/i, schema[:function][:description])
+    assert_match(/omit/i, schema[:function][:parameters][:properties][:project_id][:description])
+  end
+
+  def test_list_project_activities_limit_description_states_the_actual_default
+    schema = RedmineAiHelper::Tools::ProjectTools.function_schemas.to_openai_format.find do |f|
+      f[:function][:name].end_with?("__list_project_activities")
+    end
+    limit_description = schema[:function][:parameters][:properties][:limit][:description]
+
+    assert_match(/100/, limit_description)
+    assert_no_match(/all activities/i, limit_description)
+  end
+
+  def test_accessible_projects_excludes_inaccessible_projects
+    accessible_ids = @provider.accessible_projects.map(&:id)
+
+    assert_includes accessible_ids, 1 # ai_helper enabled and visible
+    assert_not_includes accessible_ids, 3 # ai_helper module not enabled
+  end
+
+  def test_event_project_id_prefers_the_foreign_key_over_the_association
+    project = Project.find(1)
+    issue = Issue.create!(
+      project: project, tracker: Tracker.find(1), subject: "Event Project Id Activity",
+      author: User.find(2), status: IssueStatus.first, priority: IssuePriority.first
+    )
+
+    assert_equal project.id, @provider.event_project_id(issue)
+  ensure
+    issue&.destroy
+  end
+
+  def test_event_project_id_falls_back_to_the_association
+    event = Struct.new(:project).new(Project.find(1))
+
+    assert_equal 1, @provider.event_project_id(event)
+  end
+
+  def test_event_project_id_is_nil_without_a_project
+    event = Struct.new(:project).new(nil)
+
+    assert_nil @provider.event_project_id(event)
   end
 
   def test_list_projects_includes_required_fields

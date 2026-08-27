@@ -97,8 +97,8 @@ const AiHelperModelProfile = (() => {
     }
 
     /**
-     * @param {HTMLElement|null} element
-     * @param {boolean} visible
+     * @param {HTMLElement|null} element - The element to show/hide, if it exists.
+     * @param {boolean} visible - Whether the element should be visible.
      */
     function setVisible(element, visible) {
       if (element) {element.style.display = visible ? 'block' : 'none';}

@@ -1,9 +1,24 @@
 import js from "@eslint/js";
+import jsdoc from "eslint-plugin-jsdoc";
 import globals from "globals";
+
+// This repo's lint rules are enforced as "error", not "warn" (see ADR-027:
+// warnings are routinely ignored, so a truthful baseline at "error" gives
+// the same regression signal without that risk). eslint-plugin-jsdoc's
+// recommended preset ships every rule at "warn"; promote them all to
+// "error" here rather than one-by-one, so a future plugin upgrade that adds
+// a rule to the preset inherits the same policy automatically.
+const jsdocRecommendedRules = Object.fromEntries(
+  Object.entries(jsdoc.configs["flat/recommended"].rules).map(([rule, severity]) => [
+    rule,
+    severity === "warn" ? "error" : severity,
+  ]),
+);
 
 export default [
   {
     files: ["assets/javascripts/**/*.js"],
+    plugins: { jsdoc },
     languageOptions: {
       sourceType: "script",
       globals: {
@@ -25,6 +40,30 @@ export default [
     },
     rules: {
       ...js.configs.recommended.rules,
+      ...jsdocRecommendedRules,
+      // AGENTS.md requires JSDoc on every class and non-trivial method; the
+      // recommended preset's default `require` only covers top-level
+      // `function` declarations, so widen it to classes, ES6 class methods,
+      // and the `foo = function () {}` class-field method style used
+      // throughout this codebase (see ai_helper.js). Deliberately narrower
+      // than `require: { FunctionExpression: true }`: that also flags every
+      // nested callback assigned to a property (e.g. `xhr.onload = function
+      // () {}`), which is implementation detail, not the "class/method" API
+      // surface AGENTS.md means to document. Targeting
+      // `PropertyDefinition > FunctionExpression` via `contexts` instead
+      // catches only a class-field method's own top-level assignment.
+      "jsdoc/require-jsdoc": [
+        "error",
+        {
+          require: {
+            ClassDeclaration: true,
+            ClassExpression: true,
+            FunctionDeclaration: true,
+            MethodDefinition: true,
+          },
+          contexts: ["PropertyDefinition > FunctionExpression", "PropertyDefinition > ArrowFunctionExpression"],
+        },
+      ],
       "no-var": "error",
       "prefer-const": "error",
       // Callback signatures sometimes need a positional parameter that isn't

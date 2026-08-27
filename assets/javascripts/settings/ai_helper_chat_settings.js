@@ -1,5 +1,10 @@
 "use strict";
 
+/**
+ * Show or hide an adapter's settings (and bindings, if rendered) based on
+ * whether its enabled checkbox is checked.
+ * @param {string} channelType - The adapter's channel type (e.g. "slack").
+ */
 function setAdapterSettingsVisible(channelType) {
   const checkbox = document.querySelector(
     `input[type=checkbox][data-adapter-type="${channelType}"]`
@@ -14,6 +19,10 @@ function setAdapterSettingsVisible(channelType) {
   if (bindingsFieldset) {bindingsFieldset.style.display = display;}
 }
 
+/**
+ * Wire each adapter's enabled checkbox to toggle its settings visibility.
+ * @returns {string[]} The channel types found, for the caller's initial sync.
+ */
 function setupAdapterCheckboxListeners() {
   const checkboxes = document.querySelectorAll(".adapter-enabled-checkbox");
   const adapterTypes = [];
@@ -29,6 +38,10 @@ function setupAdapterCheckboxListeners() {
   return adapterTypes;
 }
 
+/**
+ * Sync each adapter's user-lookup text input to its hidden `redmine_user_id`
+ * field by matching the typed text against the backing `<datalist>` options.
+ */
 function setupDatalistHandlers() {
   const textInputs = document.querySelectorAll(
     'input[list^="ai-helper-users-datalist-"]'
@@ -41,6 +54,10 @@ function setupDatalistHandlers() {
     );
     if (!hiddenInput) {return;}
 
+    /**
+     * Set the hidden field to the matched option's user ID, or clear it when
+     * the typed text doesn't match any datalist option.
+     */
     function syncHiddenInput() {
       const enteredText = textInput.value.trim();
       const datalist = document.getElementById(listAttr);
@@ -57,16 +74,22 @@ function setupDatalistHandlers() {
   });
 }
 
-// Each adapter's "add binding" fields share the same `name` attributes
-// (they all live inside the single settings <form>), so submitting one
-// adapter's fields would otherwise carry along every other adapter's
-// same-named fields. Disable every other adapter's fields right before
-// submission so only the clicked adapter's binding is submitted.
+/**
+ * Disable every other adapter's binding fields right before an adapter's
+ * "add binding" submit, so only the clicked adapter's fields are submitted.
+ * Each adapter's binding fields share the same `name` attributes (they all
+ * live inside the single settings `<form>`), so submitting one adapter's
+ * fields would otherwise carry along every other adapter's same-named fields.
+ */
 function setupBindingFormIsolation() {
   const bindingFieldsets = document.querySelectorAll(
     'fieldset[id^="adapter-bindings-"]'
   );
 
+  /**
+   * @param {HTMLFieldSetElement} fieldset - A `fieldset[id^="adapter-bindings-"]` element.
+   * @returns {NodeList} That fieldset's channel-binding input/select fields.
+   */
   function bindingFields(fieldset) {
     return fieldset.querySelectorAll(
       'input[name^="ai_helper_channel_binding"], select[name^="ai_helper_channel_binding"]'
@@ -101,6 +124,10 @@ document.addEventListener("DOMContentLoaded", function () {
   setupHelpDialogDragging();
 });
 
+/**
+ * Wire each adapter's help trigger link to open (lazily fetching its body on
+ * first open) and each dialog's close button to close it.
+ */
 function setupHelpDialogListeners() {
   document.querySelectorAll(".adapter-help-trigger").forEach(function (link) {
     link.addEventListener("click", function (e) {
@@ -137,6 +164,12 @@ function setupHelpDialogListeners() {
   });
 }
 
+/**
+ * Position a help dialog just below-right of its trigger link, clamped to
+ * stay within the viewport.
+ * @param {HTMLDialogElement} dialog - The help dialog to position.
+ * @param {HTMLElement} trigger - The link that opened the dialog.
+ */
 function positionHelpDialog(dialog, trigger) {
   const margin = 8;
   const linkRect = trigger.getBoundingClientRect();
@@ -155,6 +188,10 @@ function positionHelpDialog(dialog, trigger) {
   dialog.style.left = left + "px";
 }
 
+/**
+ * Make each help dialog draggable by its header, clamped to stay within the
+ * viewport.
+ */
 function setupHelpDialogDragging() {
   document.querySelectorAll(".adapter-help-dialog").forEach(function (dialog) {
     const header = dialog.querySelector(".adapter-help-dialog-header");
@@ -166,6 +203,10 @@ function setupHelpDialogDragging() {
     let startLeft = 0;
     let startTop = 0;
 
+    /**
+     * Move the dialog to follow the pointer while dragging, clamped to the viewport.
+     * @param {MouseEvent} e - The mousemove event.
+     */
     function onMouseMove(e) {
       if (!dragging) {return;}
       const dialogRect = dialog.getBoundingClientRect();
@@ -177,6 +218,9 @@ function setupHelpDialogDragging() {
       dialog.style.top = top + "px";
     }
 
+    /**
+     * End the drag and remove the document-level move/up listeners.
+     */
     function onMouseUp() {
       dragging = false;
       document.removeEventListener("mousemove", onMouseMove);

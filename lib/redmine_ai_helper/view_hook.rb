@@ -12,5 +12,6 @@ module RedmineAiHelper
     render_on :view_layouts_base_sidebar, partial: "ai_helper/wiki/summary"
     render_on :view_projects_show_right, partial: "ai_helper/project/health_report"
     render_on :view_layouts_base_body_bottom, partial: "ai_helper/wiki/textarea_overlay"
+    render_on :view_layouts_base_body_bottom, partial: "ai_helper/shared/stuff_todo_modal_wrapper"
   end
 end

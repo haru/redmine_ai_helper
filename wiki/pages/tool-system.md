@@ -1,8 +1,8 @@
 ---
 title: Tool System
 type: component
-sources: [S008, S016]
-updated: 2026-08-07
+sources: [S008, S016, S026]
+updated: 2026-08-24
 ---
 
 # Tool System
@@ -30,7 +30,12 @@ providers' functions it may call — a per-agent permission boundary (S008).
 ## Security & read-only
 
 - **Read checks**: read tools validate access with `issue.visible?` or
-  `accessible_project?` (S008).
+  `accessible_project?` (S008). A tool's project scope can also be made
+  *optional*: `IssueSearchTools#search_issues`'s `project_id` is
+  `required: false`, and when omitted it scopes to
+  `Project.allowed_to_condition(user, :view_ai_helper)` instead of a single
+  project's `accessible_project?` check — see
+  [search_issues Cross-Project Scoping](./search-issues-cross-project-scoping.md) (S026).
 - **Write checks**: write tools call `User.current.allowed_to?(:action, project)`
   (S008).
 - **Read-only mode**: because each mutating tool is tagged `write: true`, global
@@ -75,3 +80,4 @@ providers' functions it may call — a per-agent permission boundary (S008).
 - [Multi-Agent Architecture](./multi-agent-architecture.md) ·
   [MCP Integration](./mcp-integration.md) · [Vector Search](./vector-search.md)
 - [Agent Write-Capability Routing](./agent-write-capability-routing.md)
+- [search_issues Cross-Project Scoping](./search-issues-cross-project-scoping.md)
