@@ -11,6 +11,7 @@ page files, not here.
 ## decision
 - [Agent Write-Capability Routing](./pages/agent-write-capability-routing.md) — why `can_write?`/`requires_write` guard write steps at dispatch time instead of being exposed to the router, and how skipped steps and the final-answer prompt stay consistent with what actually ran.
 - [MCP subscriptions/listen Rejection](./pages/mcp-listen-rejection.md) — ADR-031: the root cause (a streaming Proc body stringified into a fake 200), the three-part fix, alternatives rejected, and the gem-version-coupling gotcha it leaves behind.
+- [MCP subscriptions/listen 1.4.0 Fix](./pages/mcp-listen-rejection-1-4-0-fix.md) — ADR-032: how `mcp` 1.4.0 turned `serves_subscriptions_listen?` into the rejection gate itself, silently reopening the id-less request-storm case, and why deleting the override (not adopting the gem's new `serve_subscriptions_listen: false`) fixes it.
 - [Inbound Chat Webhook Ingest](./pages/inbound-chat-webhook-ingest.md) — why webhook events land on a Rails endpoint in Redmine, hand off through a DB table, and are polled by `InboundAdapter#start` so the gateway core stays unchanged.
 - [Public URL Scope for Chat Adapters](./pages/public-url-scope.md) — ADR-017's amendment to ADR-006: "no public URL required" is an outbound-adapter property, not a whole-plugin invariant.
 - [Completion Request Timeout Policy](./pages/completion-request-timeout-policy.md) — ADR-018: why completion LLM calls override RubyLLM's 300 s / 3-retry defaults per context, the injection path, and the alternatives rejected.
