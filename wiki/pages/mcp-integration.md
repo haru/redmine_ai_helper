@@ -57,7 +57,7 @@ transparent (S006). See [Multi-Agent Architecture](./multi-agent-architecture.md
 
 - [MCP Server Endpoint](./mcp-server-endpoint.md) — exposing Redmine as an MCP
   server: auth, permissions, tool groups, and the `subscriptions/listen`
-  rejection (ADR-031).
+  rejection (ADR-031, ADR-032).
 - [Multi-Agent Architecture](./multi-agent-architecture.md) — where generated MCP
   agents plug in, and the read-only mode they respect.
 - [Plugin Overview](./plugin-overview.md)

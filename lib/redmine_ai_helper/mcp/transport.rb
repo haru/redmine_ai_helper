@@ -4,7 +4,7 @@ require "mcp"
 
 module RedmineAiHelper
   module Mcp
-    # Subclass of the `mcp` gem's Streamable HTTP transport (gem version 1.3.0,
+    # Subclass of the `mcp` gem's Streamable HTTP transport (gem version 1.4.0,
     # +MCP::Server::Transports::StreamableHTTPTransport+) whose sole purpose is to
     # declare, honestly and at the transport layer, that this endpoint does not serve
     # `subscriptions/listen` (SEP-2575 change-notification streaming).
@@ -17,36 +17,23 @@ module RedmineAiHelper
     # long-lived SSE stream, which invites well-behaved clients to open a subscription
     # that is silently closed — see +docs/adr/031-mcp-endpoint-rejects-subscriptions-listen.md+.
     #
-    # Two overrides answer this:
-    # - {#serves_subscriptions_listen?} (capability-declaration honesty)
-    # - `handle_subscriptions_listen` (transport-level rejection of the method)
+    # A single override answers this: `handle_subscriptions_listen` (transport-level
+    # rejection of the method). As of gem 1.4.0, +serves_subscriptions_listen?+ (base
+    # class, defaults to `true` via the `serve_subscriptions_listen:` constructor
+    # keyword) doubles as the gate that decides whether `handle_modern` calls
+    # `handle_subscriptions_listen` at all; this class does not override it, so the
+    # gate stays open and the rejection below is always reached.
     class Transport < MCP::Server::Transports::StreamableHTTPTransport
-      # Declares that this endpoint does not serve `subscriptions/listen` (SEP-2575).
-      #
-      # Overrides the gem's hardcoded `true` (mcp 1.3.0,
-      # `streamable_http_transport.rb:265`). Consumed by
-      # `MCP::Server#discover_capabilities` (`server.rb:1188`), which strips the
-      # `listChanged`/`subscribe` capability flags from the `server/discover` result
-      # when this is falsey. This is defence in depth alongside the explicit
-      # `capabilities:` passed by {RedmineAiHelper::Mcp::Server.build}: even if a future
-      # gem version reintroduces a default `listChanged` promise, `server/discover`
-      # stays honest.
-      #
-      # @return [Boolean] always `false`
-      def serves_subscriptions_listen?
-        false
-      end
-
       private
 
       # Rejects `subscriptions/listen` (SEP-2575) as an unknown method instead of opening
       # the gem's default SSE notification stream.
       #
       # Overrides the private +StreamableHTTPTransport#handle_subscriptions_listen+
-      # (mcp 1.3.0, `streamable_http_transport.rb:824`), which +handle_modern+ calls
-      # unconditionally for this method, *without* consulting
-      # {#serves_subscriptions_listen?} — so this override is required in addition to
-      # that one (see `specs/051-mcp-reject-subscriptions-listen/contracts/transport-internal.md`).
+      # (mcp 1.4.0, `streamable_http_transport.rb:840`), which +handle_modern+ calls
+      # for this method whenever +serves_subscriptions_listen?+ is truthy — the base
+      # class default, left un-overridden by this class (see
+      # `specs/052-fix-mcp14-subscriptions-listen/contracts/transport-internal.md`).
       #
       # Only `body[:id]` is read; `body[:params]` (including any `notifications` filter)
       # is never inspected, no entry is added to `@listen_subscriptions`, and no thread is
