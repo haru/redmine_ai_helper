@@ -34,3 +34,5 @@ Sources are immutable inputs — the wiki never edits them.
 | S027 | specs/051-mcp-reject-subscriptions-listen (research.md + spec.md + plan.md) | feature-artifact | 2026-08-26 | 2026-08-26 | mcp-integration.md, mcp-server-endpoint.md, mcp-listen-rejection.md |
 | S028 | docs/adr/031-mcp-endpoint-rejects-subscriptions-listen.md | file | 2026-08-26 | 2026-08-26 | mcp-integration.md, mcp-server-endpoint.md, mcp-listen-rejection.md |
 | S029 | specs/051-mcp-reject-subscriptions-listen/review-summary.md | feature-artifact | 2026-08-26 | 2026-08-26 | mcp-listen-rejection.md |
+| S030 | specs/052-fix-mcp14-subscriptions-listen (research.md + plan.md) | feature-artifact | 2026-08-28 | 2026-08-28 | mcp-listen-rejection.md, mcp-listen-rejection-1-4-0-fix.md, mcp-server-endpoint.md |
+| S031 | docs/adr/032-mcp14-restore-subscriptions-listen-rejection.md | file | 2026-08-28 | 2026-08-28 | mcp-listen-rejection.md, mcp-listen-rejection-1-4-0-fix.md, mcp-server-endpoint.md |

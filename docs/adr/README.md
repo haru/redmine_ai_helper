@@ -84,3 +84,4 @@ Briefly describe alternatives that were rejected and why.
 | [029](./029-search-issues-cross-project-scoping.md) | search_issues cross-project scoping | Accepted |
 | [030](./030-list-project-activities-cross-project-scoping.md) | list_project_activities cross-project scoping | Accepted |
 | [031](./031-mcp-endpoint-rejects-subscriptions-listen.md) | MCP endpoint rejects subscriptions/listen | Accepted |
+| [032](./032-mcp14-restore-subscriptions-listen-rejection.md) | Restore subscriptions/listen rejection under mcp 1.4.0 | Accepted |
