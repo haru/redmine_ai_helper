@@ -9,7 +9,7 @@ export default defineConfig({
       provider: "v8",
       include: ["assets/javascripts/**/*.js"],
       exclude: [],
-      reporter: ["text", "html", "lcov"],
+      reporter: ["text", "html", "lcov", "json-summary"],
       reportsDirectory: "coverage-js",
       // Ratchet: raised (never lowered) as each stage adds tests, rounded
       // down from the measured value for a safe margin. Target: 95.
