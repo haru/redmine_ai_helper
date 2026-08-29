@@ -8,44 +8,40 @@ module RedmineAiHelper
       # related-object sorting (e.g. assignee name) is out of scope.
       SUPPORTED_SORT_FIELDS = %w[id created_on updated_on due_date start_date done_ratio].freeze
 
+      # Shared item schema for field/operator/values-of-string search entries
+      # (used by fields, date_fields, time_fields).
+      STRING_VALUES_ITEM = proc do
+        property :field_name, type: "string", description: "The name of the field to search.", required: true
+        property :operator, type: "string", description: "The operator to use for the search.", required: true
+        property :values, type: "array", description: "The values to search for.", required: true do
+          item type: "string", description: "The value to search for."
+        end
+      end
+
+      # Shared item schema for field/operator/values-of-integer search entries
+      # (used by number_fields, status_field).
+      INTEGER_VALUES_ITEM = proc do
+        property :field_name, type: "string", description: "The name of the field to search.", required: true
+        property :operator, type: "string", description: "The operator to use for the search.", required: true
+        property :values, type: "array", description: "The values to search for.", required: true do
+          item type: "integer", description: "The value to search for."
+        end
+      end
+
       define_function :search_issues, description: "Search issues based on the filter conditions and return matching issues. For search items with '_id', specify the ID instead of the name of the search target. If you do not know the ID, you need to call capable_issue_properties in advance to obtain the ID. Default limit is 50 issues. Only projects with the AI Helper module enabled can be searched. Omit project_id to search across all projects that have the AI Helper module enabled and are accessible to the current user." do
         property :project_id, type: "integer", description: "The project ID of the project to search in. Only projects with the AI Helper module enabled can be searched. Omit this to search across all projects that have the AI Helper module enabled and are accessible to the current user.", required: false
         property :limit, type: "integer", description: "Maximum number of issues to return. Default is 50.", required: false
         property :fields, type: "array", description: "Search fields for the issue." do
-          item type: "object", description: "Search field for the issue." do
-            property :field_name, type: "string", description: "The name of the field to search.", required: true
-            property :operator, type: "string", description: "The operator to use for the search.", required: true
-            property :values, type: "array", description: "The values to search for.", required: true do
-              item type: "string", description: "The value to search for."
-            end
-          end
+          item type: "object", description: "Search field for the issue.", &STRING_VALUES_ITEM
         end
         property :date_fields, type: "array", description: "Search fields for the issue." do
-          item type: "object", description: "Search field for the issue." do
-            property :field_name, type: "string", description: "The name of the field to search.", required: true
-            property :operator, type: "string", description: "The operator to use for the search.", required: true
-            property :values, type: "array", description: "The values to search for.", required: true do
-              item type: "string", description: "The value to search for."
-            end
-          end
+          item type: "object", description: "Search field for the issue.", &STRING_VALUES_ITEM
         end
         property :time_fields, type: "array", description: "Search fields for the issue." do
-          item type: "object", description: "Search field for the issue." do
-            property :field_name, type: "string", description: "The name of the field to search.", required: true
-            property :operator, type: "string", description: "The operator to use for the search.", required: true
-            property :values, type: "array", description: "The values to search for.", required: true do
-              item type: "string", description: "The value to search for."
-            end
-          end
+          item type: "object", description: "Search field for the issue.", &STRING_VALUES_ITEM
         end
         property :number_fields, type: "array", description: "Search fields for the issue." do
-          item type: "object", description: "Search field for the issue." do
-            property :field_name, type: "string", description: "The name of the field to search.", required: true
-            property :operator, type: "string", description: "The operator to use for the search.", required: true
-            property :values, type: "array", description: "The values to search for.", required: true do
-              item type: "integer", description: "The value to search for."
-            end
-          end
+          item type: "object", description: "Search field for the issue.", &INTEGER_VALUES_ITEM
         end
         property :text_fields, type: "array", description: "Search fields for the issue." do
           item type: "object", description: "Search field for the issue." do
@@ -57,13 +53,7 @@ module RedmineAiHelper
           end
         end
         property :status_field, type: "array", description: "Search fields for the issue." do
-          item type: "object", description: "Search field for the issue." do
-            property :field_name, type: "string", description: "The name of the field to search.", required: true
-            property :operator, type: "string", description: "The operator to use for the search.", required: true
-            property :values, type: "array", description: "The values to search for.", required: true do
-              item type: "integer", description: "The value to search for."
-            end
-          end
+          item type: "object", description: "Search field for the issue.", &INTEGER_VALUES_ITEM
         end
         property :custom_fields, type: "array", description: "Search fields for the issue." do
           item type: "object", description: "Search field for the issue." do

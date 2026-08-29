@@ -92,7 +92,7 @@ export default [
       // only ever lowered, never raised, as files/functions get split up.
       // See ADR-027.
       "max-lines": ["error", { max: 400, skipBlankLines: true, skipComments: true }],
-      "max-lines-per-function": ["error", { max: 130, skipBlankLines: true, skipComments: true }],
+      "max-lines-per-function": ["error", { max: 90, skipBlankLines: true, skipComments: true }],
       complexity: ["error", 14],
       "max-depth": ["error", 3],
       "max-params": ["error", 6],
@@ -181,6 +181,36 @@ export default [
     languageOptions: {
       globals: {
         AiHelperAutoCompletion: "readonly",
+      },
+    },
+  },
+  {
+    // handleGenerateProjectHealthClick/handleProjectHealthExportClick are
+    // declared (as `/* exported */`) in ai_helper_project_health_actions.js
+    // and referenced here as bare identifiers, for the same max-lines
+    // split-file reason as the blocks above.
+    files: ["assets/javascripts/project_health/ai_helper_project_health.js"],
+    languageOptions: {
+      globals: {
+        handleGenerateProjectHealthClick: "readonly",
+        handleProjectHealthExportClick: "readonly",
+      },
+    },
+  },
+  {
+    // appendStreamingChunk/finalizeStreamingContent/removePdfExportButton/
+    // handlePdfExport/handleMarkdownExport are declared (as `/* exported */`)
+    // in ai_helper_project_health.js and referenced here as bare
+    // identifiers, for the same max-lines split-file reason as the blocks
+    // above.
+    files: ["assets/javascripts/project_health/ai_helper_project_health_actions.js"],
+    languageOptions: {
+      globals: {
+        appendStreamingChunk: "readonly",
+        finalizeStreamingContent: "readonly",
+        removePdfExportButton: "readonly",
+        handlePdfExport: "readonly",
+        handleMarkdownExport: "readonly",
       },
     },
   },
