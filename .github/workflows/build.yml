@@ -53,6 +53,19 @@ jobs:
       - name: RuboCop
         run: rubocop
 
+  size-report:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install cloc
+        run: sudo apt-get update && sudo apt-get install -y cloc
+      - name: Code size summary
+        continue-on-error: true
+        run: |
+          { echo "## 📊 Code size"; cloc --md app lib assets/javascripts; } >> "$GITHUB_STEP_SUMMARY"
+
   javascript:
     runs-on: ubuntu-latest
     permissions:
@@ -67,7 +80,18 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
-      - run: npm run test:coverage
+      - run: npm run test:coverage -- --reporter=default --reporter=json --outputFile=vitest-results.json
+      - name: JS test/coverage summary
+        if: always()
+        continue-on-error: true
+        run: |
+          {
+            echo "## 🧪 JavaScript test results"
+            jq -r '"- Test Files: \(.numTotalTestSuites) (failed: \(.numFailedTestSuites))\n- Tests: \(.numTotalTests) total (failed: \(.numFailedTests))"' vitest-results.json
+            echo ""
+            echo "## 📈 JavaScript coverage"
+            jq -r '.total | "- Lines: \(.lines.pct)%\n- Statements: \(.statements.pct)%\n- Functions: \(.functions.pct)%\n- Branches: \(.branches.pct)%"' coverage-js/coverage-summary.json
+          } >> "$GITHUB_STEP_SUMMARY"
       - uses: codecov/codecov-action@v7
         if: env.CODECOV_TOKEN != ''
         with:
@@ -149,6 +173,18 @@ jobs:
           fi
       - name: Clean
         run: bash -x ./.github/build-scripts/cleanup.sh
+      - name: Ruby test/coverage summary
+        if: matrix.ruby_version == '3.4' && matrix.redmine_version == '7.0-stable' && matrix.db == 'sqlite3'
+        continue-on-error: true
+        run: |
+          {
+            echo "## 🧪 Ruby test results (ruby 3.4 / redmine 7.0-stable / sqlite3)"
+            grep -E '^[0-9]+ runs, [0-9]+ assertions' ruby-test-output.log || echo "(summary line not found)"
+            echo ""
+            echo "## 📈 Ruby coverage"
+            line_rate=$(grep -oP '(?<=line-rate=")[^"]+' coverage/coverage.xml | head -1)
+            awk -v r="$line_rate" 'BEGIN { printf "- Lines: %.2f%%\n", r * 100 }'
+          } >> "$GITHUB_STEP_SUMMARY"
       - uses: codecov/codecov-action@v7
         if: env.CODECOV_TOKEN != ''
         with:
