@@ -12,6 +12,15 @@ class ProjectToolsTest < ActiveSupport::TestCase
     User.current = User.find(1)
   end
 
+  # Counts the number of (non-cached, non-schema) SQL queries executed inside the block.
+  # Used to assert that query count stays constant regardless of result size (no N+1).
+  def count_queries(&block)
+    count = 0
+    counter = proc { |*, payload| count += 1 unless payload[:cached] || payload[:name] == "SCHEMA" }
+    ActiveSupport::Notifications.subscribed(counter, "sql.active_record", &block)
+    count
+  end
+
   def test_list_projects
     enabled_module = EnabledModule.new
     enabled_module.project_id = 2
@@ -570,24 +579,27 @@ class ProjectToolsTest < ActiveSupport::TestCase
       Issue.where(subject: "Non Time Entry Hours Test")&.destroy_all
     end
 
-    should "not change event_title for time_entries activities" do
-      time_entry = TimeEntry.create!(
-        project: @project, user: @user, activity: TimeEntryActivity.first,
-        hours: 2.5, spent_on: Date.current, comments: "Title Preserve Test"
-      )
+    should "not scale query count with the number of distinct projects in results (protects ADR-033 batch load)" do
+      project2 = Project.find(2)
+      EnabledModule.find_or_create_by!(project_id: project2.id, name: "ai_helper")
+      role = Role.find(2)
+      role.add_permission!(:view_ai_helper) unless role.allowed_to?(:view_ai_helper)
 
-      response = @provider.list_project_activities(project_id: @project.id, event_types: [ "time_entries" ])
-      activities = response.value[:activities]
+      issue_a = Issue.create!(project: @project, tracker: Tracker.find(1), subject: "Batch Query Test A",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
 
-      if activities.any?
-        activity = activities.first
-        assert_match(/\d/, activity[:event_title].to_s,
-                     "event_title should contain a numeric hours string")
-      else
-        skip "No time_entries activities returned (time_entries may not be an active event type)"
-      end
+      count_with_one_project = count_queries { @provider.list_project_activities(event_types: [ "issues" ]) }
+
+      issue_b = Issue.create!(project: project2, tracker: Tracker.find(1), subject: "Batch Query Test B",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+
+      count_with_two_projects = count_queries { @provider.list_project_activities(event_types: [ "issues" ]) }
+
+      assert_equal count_with_one_project, count_with_two_projects,
+        "Adding an activity from a second distinct project must not add extra queries; got #{count_with_one_project} -> #{count_with_two_projects}"
     ensure
-      time_entry&.destroy
+      issue_a&.destroy
+      issue_b&.destroy
     end
   end
 
@@ -615,11 +627,18 @@ class ProjectToolsTest < ActiveSupport::TestCase
              "Expected only issues or news, got: #{activities.map { |a| a[:event_type] }.uniq.inspect}")
     end
 
-    should "return empty activities without error when event_types contains non-existent types" do
+    should "return an error when event_types contains an unknown value" do
       response = @provider.list_project_activities(project_id: @project.id, event_types: [ "nonexistent_type" ])
 
-      assert_equal "success", response.status
-      assert_equal [], response.value[:activities]
+      assert_equal "error", response.status
+      assert_match(/nonexistent_type/, response.error)
+    end
+
+    should "return an error naming only the unknown values when event_types mixes valid and invalid values" do
+      response = @provider.list_project_activities(project_id: @project.id, event_types: [ "issues", "nonexistent_type" ])
+
+      assert_equal "error", response.status
+      assert_match(/Unknown event_types: nonexistent_type\./, response.error)
     end
 
     should "return all activity types when event_types is omitted (non-regression)" do

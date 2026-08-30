@@ -161,6 +161,7 @@ module RedmineAiHelper
       # @param start_date [DateTime] The start date of the activities to return.
       # @param end_date [DateTime] The end date of the activities to return. If not specified, it will return all activities.
       # @param event_types [Array<String>, nil] Filter by event type. Multiple types are OR-combined. Omit for all types.
+      #   An error is returned if any value is not a valid event type (see Redmine::Activity.available_event_types).
       # @return [RedmineAiHelper::ToolResponse] A ToolResponse whose value contains :activities, an array of hashes
       #   each with id, event_datetime, event_type, event_title, event_description, event_url, user_id (the ID
       #   of the user who performed the activity, or nil if it cannot be determined), project ({id, name}),
@@ -179,7 +180,13 @@ module RedmineAiHelper
 
         current_user = User.current
         fetcher = Redmine::Activity::Fetcher.new(current_user, project: project, author: author)
-        fetcher.scope = event_types if event_types.present?
+        if event_types.present?
+          unknown_event_types = event_types - Redmine::Activity.available_event_types
+          if unknown_event_types.any?
+            return ToolResponse.create_error "Unknown event_types: #{unknown_event_types.join(', ')}. Valid values: #{Redmine::Activity.available_event_types.join(', ')}."
+          end
+          fetcher.scope = event_types
+        end
         ai_helper_logger.debug "current_user: #{current_user}, project: #{project}, author: #{author}, start_date: #{start_date}, end_date: #{end_date}, limit: #{limit}, event_types: #{event_types}"
         events = fetcher.events(start_date, end_date)
 

@@ -18,7 +18,7 @@ Collect project IDs from all events using the existing `event_project_id` helper
 **Positive**:
 - At most 1 additional SQL query for project data regardless of activity count.
 - Reuses the existing `event_project_id` helper which already optimizes ID extraction.
-- Consistent `{id, name}` format via shared `format_named_record` (moved to BaseTools in the same feature).
+- Consistent `{id, name}` format via `format_named_record`, also added to `BaseTools` in the same feature (`IssueJson#format_named_record` keeps its own copy since that module is included by non-`BaseTools` classes such as `IssueReadAgent`).
 
 **Negative**:
 - Slightly more code than `format_named_record(event.project)`.

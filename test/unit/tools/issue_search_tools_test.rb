@@ -755,6 +755,46 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       issue1&.destroy
       issue2&.destroy
     end
+
+    should "batch-load time_entries hours in a single query regardless of issue count (no N+1, ADR-034)" do
+      issue_a = Issue.create!(project: @project, tracker: @tracker, subject: "N+1 Regression A",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+      issue_b = Issue.create!(project: @project, tracker: @tracker, subject: "N+1 Regression B",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+      issue_c = Issue.create!(project: @project, tracker: @tracker, subject: "N+1 Regression C",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+
+      assert_queries_match(/time_entries/i, count: 1) do
+        @provider.search_issues(project_id: @project.id)
+      end
+    ensure
+      issue_a&.destroy
+      issue_b&.destroy
+      issue_c&.destroy
+    end
+
+    should "aggregate total_estimated_hours and total_spent_hours over descendants for a parent issue" do
+      parent = Issue.create!(project: @project, tracker: @tracker, subject: "Hours Parent",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first, estimated_hours: 2.0)
+      child1 = Issue.create!(project: @project, tracker: @tracker, subject: "Hours Child 1",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first, estimated_hours: 3.0, parent_issue_id: parent.id)
+      child2 = Issue.create!(project: @project, tracker: @tracker, subject: "Hours Child 2",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first, estimated_hours: 5.0, parent_issue_id: parent.id)
+      TimeEntry.create!(project: @project, issue: parent, user: @user, activity: TimeEntryActivity.first, hours: 1.0, spent_on: Date.current)
+      TimeEntry.create!(project: @project, issue: child1, user: @user, activity: TimeEntryActivity.first, hours: 4.0, spent_on: Date.current)
+
+      result = @provider.search_issues(project_id: @project.id)
+      parent_data = result[:issues].find { |i| i[:id] == parent.id }
+
+      assert_not_nil parent_data
+      assert_equal 10.0, parent_data[:total_estimated_hours].to_f
+      assert_equal 5.0, parent_data[:total_spent_hours].to_f
+      assert_equal 1.0, parent_data[:spent_hours].to_f
+    ensure
+      child1&.destroy
+      child2&.destroy
+      parent&.destroy
+    end
   end
 
   context "validate_search_params" do
