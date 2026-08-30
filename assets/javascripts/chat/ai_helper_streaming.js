@@ -196,6 +196,7 @@ Object.assign(AiHelper.prototype, {
         // Create apply button
         const applyButton = document.createElement('button');
         applyButton.type = 'button';
+        applyButton.className = 'ai-helper-reply-apply-btn';
         applyButton.textContent = applyButtonText;
         applyButton.onclick = function(e) {
           e.preventDefault();
