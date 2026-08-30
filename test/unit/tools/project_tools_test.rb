@@ -522,6 +522,122 @@ class ProjectToolsTest < ActiveSupport::TestCase
     assert_equal "You don't have permission to view this project", result.error
   end
 
+  context "list_project_activities project and hours fields" do
+    setup do
+      @project = Project.find(1)
+      @user = User.find(1)
+    end
+
+    should "include project with id and name in every activity" do
+      Issue.create!(
+        project: @project, tracker: Tracker.find(1), subject: "Project Field Test",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first
+      )
+
+      response = @provider.list_project_activities(project_id: @project.id)
+      activities = response.value[:activities]
+
+      assert(activities.all? { |a| a.key?(:project) && a[:project]&.key?(:id) && a[:project].key?(:name) },
+             "Every activity must include a project hash with id and name")
+    ensure
+      Issue.where(subject: "Project Field Test")&.destroy_all
+    end
+
+    should "include hours for time_entries activities and nil for others" do
+      time_entry = TimeEntry.create!(
+        project: @project, user: @user, activity: TimeEntryActivity.first,
+        hours: 3.5, spent_on: Date.current, comments: "Hours Field Test"
+      )
+
+      response = @provider.list_project_activities(project_id: @project.id, event_types: [ "time_entries" ])
+      te_activities = response.value[:activities]
+
+      assert(te_activities.any?, "Expected at least one time_entry activity")
+      assert(te_activities.all? { |a| a[:hours].is_a?(Numeric) && a[:hours] > 0 },
+             "time_entries activities must have a positive numeric hours value")
+
+      Issue.create!(
+        project: @project, tracker: Tracker.find(1), subject: "Non Time Entry Hours Test",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first
+      )
+      issue_response = @provider.list_project_activities(project_id: @project.id, event_types: [ "issues" ])
+      non_te = issue_response.value[:activities]
+
+      assert(non_te.all? { |a| a[:hours].nil? },
+             "Non-time_entries activities must have nil hours")
+    ensure
+      time_entry&.destroy
+      Issue.where(subject: "Non Time Entry Hours Test")&.destroy_all
+    end
+
+    should "not change event_title for time_entries activities" do
+      time_entry = TimeEntry.create!(
+        project: @project, user: @user, activity: TimeEntryActivity.first,
+        hours: 2.5, spent_on: Date.current, comments: "Title Preserve Test"
+      )
+
+      response = @provider.list_project_activities(project_id: @project.id, event_types: [ "time_entries" ])
+      activities = response.value[:activities]
+
+      if activities.any?
+        activity = activities.first
+        assert_match(/\d/, activity[:event_title].to_s,
+                     "event_title should contain a numeric hours string")
+      else
+        skip "No time_entries activities returned (time_entries may not be an active event type)"
+      end
+    ensure
+      time_entry&.destroy
+    end
+  end
+
+  context "list_project_activities event_types filter" do
+    setup do
+      @project = Project.find(1)
+      @user = User.find(1)
+    end
+
+    should "return only activities of the specified single event type" do
+      response = @provider.list_project_activities(project_id: @project.id, event_types: [ "issues" ])
+
+      assert_equal "success", response.status
+      activities = response.value[:activities]
+      assert(activities.all? { |a| a[:event_type].start_with?("issue") },
+             "Expected all activities to start with 'issue', got: #{activities.map { |a| a[:event_type] }.uniq.inspect}")
+    end
+
+    should "return activities matching any of the specified event types (OR condition)" do
+      response = @provider.list_project_activities(project_id: @project.id, event_types: [ "issues", "news" ])
+
+      assert_equal "success", response.status
+      activities = response.value[:activities]
+      assert(activities.all? { |a| a[:event_type].start_with?("issue") || a[:event_type] == "news" },
+             "Expected only issues or news, got: #{activities.map { |a| a[:event_type] }.uniq.inspect}")
+    end
+
+    should "return empty activities without error when event_types contains non-existent types" do
+      response = @provider.list_project_activities(project_id: @project.id, event_types: [ "nonexistent_type" ])
+
+      assert_equal "success", response.status
+      assert_equal [], response.value[:activities]
+    end
+
+    should "return all activity types when event_types is omitted (non-regression)" do
+      Issue.create!(
+        project: @project, tracker: Tracker.find(1), subject: "Event Types Omitted Test",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first
+      )
+
+      response = @provider.list_project_activities(project_id: @project.id)
+
+      assert_equal "success", response.status
+      activities = response.value[:activities]
+      assert(activities.any?, "Expected at least one activity when event_types is omitted")
+    ensure
+      Issue.where(subject: "Event Types Omitted Test")&.destroy_all
+    end
+  end
+
   def test_get_metrics
     project = Project.find(1)
 

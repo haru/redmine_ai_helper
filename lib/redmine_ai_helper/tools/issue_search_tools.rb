@@ -28,7 +28,7 @@ module RedmineAiHelper
         end
       end
 
-      define_function :search_issues, description: "Search issues based on the filter conditions and return matching issues. For search items with '_id', specify the ID instead of the name of the search target. If you do not know the ID, you need to call capable_issue_properties in advance to obtain the ID. Default limit is 50 issues. Only projects with the AI Helper module enabled can be searched. Omit project_id to search across all projects that have the AI Helper module enabled and are accessible to the current user." do
+      define_function :search_issues, description: "Search issues based on the filter conditions and return matching issues. Each issue includes project ({id, name}), estimated_hours, total_estimated_hours, spent_hours, and total_spent_hours. For search items with '_id', specify the ID instead of the name of the search target. If you do not know the ID, you need to call capable_issue_properties in advance to obtain the ID. Default limit is 50 issues. Only projects with the AI Helper module enabled can be searched. Omit project_id to search across all projects that have the AI Helper module enabled and are accessible to the current user." do
         property :project_id, type: "integer", description: "The project ID of the project to search in. Only projects with the AI Helper module enabled can be searched. Omit this to search across all projects that have the AI Helper module enabled and are accessible to the current user.", required: false
         property :limit, type: "integer", description: "Maximum number of issues to return. Default is 50.", required: false
         property :fields, type: "array", description: "Search fields for the issue." do
@@ -108,7 +108,7 @@ module RedmineAiHelper
           scope = Issue.visible(User.current).open
           scope = project ? scope.where(project_id: project.id) : scope.joins(:project).where(Project.allowed_to_condition(User.current, :view_ai_helper))
           order = sort ? { sort[:field] => sort[:direction] } : { id: :desc }
-          issues = scope.includes(:status, :priority, :tracker, :assigned_to, :author, :custom_values)
+          issues = scope.includes(:project, :status, :priority, :tracker, :assigned_to, :author, :custom_values)
                         .order(order).limit(limit)
           total_count = scope.count
           return { issues: format_issues(issues), total_count: total_count }
@@ -182,6 +182,7 @@ module RedmineAiHelper
             id: issue.id,
             subject: issue.subject,
             description: issue.description,
+            project: format_named_record(issue.project),
             status: { id: issue.status.id, name: issue.status.name },
             priority: { id: issue.priority.id, name: issue.priority.name },
             tracker: { id: issue.tracker.id, name: issue.tracker.name },
@@ -191,6 +192,10 @@ module RedmineAiHelper
             updated_on: issue.updated_on,
             due_date: issue.due_date,
             done_ratio: issue.done_ratio,
+            estimated_hours: issue.estimated_hours,
+            total_estimated_hours: issue.total_estimated_hours,
+            spent_hours: issue.spent_hours,
+            total_spent_hours: issue.total_spent_hours,
             custom_fields: format_custom_fields(issue)
           }
         end
@@ -369,7 +374,7 @@ module RedmineAiHelper
         def execute(project, user: User.current, limit: 50)
           setup_query(project, user)
           scope = cross_project_scope(project, @query.base_scope, user)
-          scope.includes(:status, :priority, :tracker, :assigned_to, :author, :custom_values)
+          scope.includes(:project, :status, :priority, :tracker, :assigned_to, :author, :custom_values)
                .reorder(@sort[:field] => @sort[:direction]).limit(limit).to_a
         end
 
