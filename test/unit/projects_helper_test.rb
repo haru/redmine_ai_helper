@@ -21,14 +21,14 @@ class ProjectsHelperTest < ActionView::TestCase
   end
 
   should "append the AI Helper icon to project board when the module is enabled" do
-    html = render_project_hierarchy([@project_with_module])
+    html = render_project_hierarchy([ @project_with_module ])
 
     assert_includes html, "icon-ai-helper-module"
     assert_includes html, "icon--ai-helper-robot"
   end
 
   should "not append the AI Helper icon to project board when the module is not enabled" do
-    html = render_project_hierarchy([@project_without_module])
+    html = render_project_hierarchy([ @project_without_module ])
 
     assert_no_match(/icon-ai-helper-module/, html)
     assert_no_match(/icon--ai-helper-robot/, html)
