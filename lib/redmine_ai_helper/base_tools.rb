@@ -390,6 +390,12 @@ module RedmineAiHelper
 
     private
 
+    def format_named_record(obj)
+      return nil unless obj
+
+      { id: obj.id, name: obj.name }
+    end
+
     def deep_symbolize_array(arr)
       arr.map do |item|
         next item unless item.is_a?(Hash)

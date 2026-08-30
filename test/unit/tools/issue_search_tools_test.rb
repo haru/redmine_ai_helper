@@ -674,6 +674,129 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
     end
   end
 
+  context "search_issues response includes project and hours fields" do
+    setup do
+      @project = Project.find(1)
+      @tracker = Tracker.find(1)
+      @user = User.find(2)
+      @previous_user = User.current
+      User.current = @user
+    end
+
+    teardown do
+      User.current = @previous_user
+    end
+
+    should "include project with id and name in each issue" do
+      result = @provider.search_issues(project_id: @project.id)
+
+      assert result[:issues].all? { |i| i.key?(:project) && i[:project][:id] && i[:project][:name] },
+             "Every issue must include a project hash with id and name"
+    end
+
+    should "include estimated_hours in each issue" do
+      result = @provider.search_issues(project_id: @project.id)
+
+      assert result[:issues].all? { |i| i.key?(:estimated_hours) },
+             "Every issue must include estimated_hours"
+    end
+
+    should "include total_estimated_hours, spent_hours, and total_spent_hours in each issue" do
+      result = @provider.search_issues(project_id: @project.id)
+
+      assert result[:issues].all? { |i| i.key?(:total_estimated_hours) },
+             "Every issue must include total_estimated_hours"
+      assert result[:issues].all? { |i| i.key?(:spent_hours) },
+             "Every issue must include spent_hours"
+      assert result[:issues].all? { |i| i.key?(:total_spent_hours) },
+             "Every issue must include total_spent_hours"
+    end
+
+    should "return nil or zero values for hours when issue has no time estimates or entries" do
+      issue = Issue.create!(
+        project: @project, tracker: @tracker, subject: "No Hours Issue",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first
+      )
+
+      result = @provider.search_issues(project_id: @project.id)
+      issue_data = result[:issues].find { |i| i[:id] == issue.id }
+
+      assert_not_nil issue_data
+      assert_nil issue_data[:estimated_hours]
+      assert_includes [ nil, 0, 0.0 ], issue_data[:total_estimated_hours]
+      assert_includes [ 0, 0.0 ], issue_data[:spent_hours]
+      assert_includes [ 0, 0.0 ], issue_data[:total_spent_hours]
+    ensure
+      issue&.destroy
+    end
+
+    should "return correct project for each issue when searching across multiple projects" do
+      project2 = Project.find(2)
+      EnabledModule.create!(project_id: project2.id, name: "ai_helper")
+      Role.find(2).add_permission!(:view_ai_helper)
+
+      issue1 = Issue.create!(project: @project, tracker: @tracker, subject: "Multi Project A",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+      issue2 = Issue.create!(project: project2, tracker: @tracker, subject: "Multi Project B",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+
+      result = @provider.search_issues(project_id: nil)
+      data_a = result[:issues].find { |i| i[:id] == issue1.id }
+      data_b = result[:issues].find { |i| i[:id] == issue2.id }
+
+      assert_not_nil data_a
+      assert_equal @project.id, data_a[:project][:id]
+      assert_equal @project.name, data_a[:project][:name]
+
+      assert_not_nil data_b
+      assert_equal project2.id, data_b[:project][:id]
+      assert_equal project2.name, data_b[:project][:name]
+    ensure
+      issue1&.destroy
+      issue2&.destroy
+    end
+
+    should "batch-load time_entries hours in a single query regardless of issue count (no N+1, ADR-034)" do
+      issue_a = Issue.create!(project: @project, tracker: @tracker, subject: "N+1 Regression A",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+      issue_b = Issue.create!(project: @project, tracker: @tracker, subject: "N+1 Regression B",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+      issue_c = Issue.create!(project: @project, tracker: @tracker, subject: "N+1 Regression C",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+
+      assert_queries_match(/time_entries/i, count: 1) do
+        @provider.search_issues(project_id: @project.id)
+      end
+    ensure
+      issue_a&.destroy
+      issue_b&.destroy
+      issue_c&.destroy
+    end
+
+    should "aggregate total_estimated_hours and total_spent_hours over descendants for a parent issue" do
+      parent = Issue.create!(project: @project, tracker: @tracker, subject: "Hours Parent",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first, estimated_hours: 2.0)
+      child1 = Issue.create!(project: @project, tracker: @tracker, subject: "Hours Child 1",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first, estimated_hours: 3.0, parent_issue_id: parent.id)
+      child2 = Issue.create!(project: @project, tracker: @tracker, subject: "Hours Child 2",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first, estimated_hours: 5.0, parent_issue_id: parent.id)
+      TimeEntry.create!(project: @project, issue: parent, user: @user, activity: TimeEntryActivity.first, hours: 1.0, spent_on: Date.current)
+      TimeEntry.create!(project: @project, issue: child1, user: @user, activity: TimeEntryActivity.first, hours: 4.0, spent_on: Date.current)
+
+      result = @provider.search_issues(project_id: @project.id)
+      parent_data = result[:issues].find { |i| i[:id] == parent.id }
+
+      assert_not_nil parent_data
+      assert_equal 10.0, parent_data[:total_estimated_hours].to_f
+      assert_equal 5.0, parent_data[:total_spent_hours].to_f
+      assert_equal 1.0, parent_data[:spent_hours].to_f
+    ensure
+      child1&.destroy
+      child2&.destroy
+      parent&.destroy
+    end
+  end
+
   context "validate_search_params" do
     # T003
     context "when fields is nil" do
