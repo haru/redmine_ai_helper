@@ -5,8 +5,8 @@
 
 /**
  * Move `container` to immediately follow `textarea` in the DOM and reveal it.
- * @param {HTMLElement} textarea
- * @param {HTMLElement} container
+ * @param {HTMLElement} textarea - The textarea to position after.
+ * @param {HTMLElement} container - The element to move.
  */
 function moveContainerAfterTextarea(textarea, container) {
   const parent = textarea.parentNode;
@@ -22,7 +22,7 @@ function moveContainerAfterTextarea(textarea, container) {
 /**
  * Initialize description-field auto-completion and move its checkbox
  * into place below the textarea.
- * @param {HTMLElement} descriptionTextarea
+ * @param {HTMLElement} descriptionTextarea - The issue description textarea.
  * @param {object} config Parsed overlay config (`dataset.config`).
  */
 function initializeDescriptionAutoCompletion(descriptionTextarea, config) {
@@ -64,7 +64,7 @@ function initializeDescriptionAutoCompletion(descriptionTextarea, config) {
  * Run the duplicate-check request for the current subject/description and
  * render the results (or an error) into the results container.
  * @param {object} config Parsed overlay config (`dataset.config`).
- * @param {HTMLElement} descriptionTextarea
+ * @param {HTMLElement} descriptionTextarea - The issue description textarea.
  */
 async function runDuplicateCheck(config, descriptionTextarea) {
   const subjectInput = document.getElementById('issue_subject');
@@ -121,8 +121,8 @@ async function runDuplicateCheck(config, descriptionTextarea) {
 /**
  * Place the duplicate-check container below the description checkbox and
  * wire up its trigger button.
- * @param {HTMLElement} duplicateCheckContainer
- * @param {HTMLElement} descriptionTextarea
+ * @param {HTMLElement} duplicateCheckContainer - The duplicate-check results/trigger container.
+ * @param {HTMLElement} descriptionTextarea - The issue description textarea.
  * @param {object} config Parsed overlay config (`dataset.config`).
  */
 function initializeDuplicateCheck(duplicateCheckContainer, descriptionTextarea, config) {
@@ -144,7 +144,7 @@ function initializeDuplicateCheck(duplicateCheckContainer, descriptionTextarea, 
 /**
  * Initialize notes-field auto-completion and move its checkbox into place
  * below the textarea. Only used for existing (persisted) issues.
- * @param {HTMLElement} notesTextarea
+ * @param {HTMLElement} notesTextarea - The issue notes textarea.
  * @param {object} config Parsed overlay config (`dataset.config`).
  */
 function initializeNotesAutoCompletion(notesTextarea, config) {

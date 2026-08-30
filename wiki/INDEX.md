@@ -10,12 +10,15 @@ page files, not here.
 
 ## decision
 - [Agent Write-Capability Routing](./pages/agent-write-capability-routing.md) — why `can_write?`/`requires_write` guard write steps at dispatch time instead of being exposed to the router, and how skipped steps and the final-answer prompt stay consistent with what actually ran.
+- [MCP subscriptions/listen Rejection](./pages/mcp-listen-rejection.md) — ADR-031: the root cause (a streaming Proc body stringified into a fake 200), the three-part fix, alternatives rejected, and the gem-version-coupling gotcha it leaves behind.
+- [MCP subscriptions/listen 1.4.0 Fix](./pages/mcp-listen-rejection-1-4-0-fix.md) — ADR-032: how `mcp` 1.4.0 turned `serves_subscriptions_listen?` into the rejection gate itself, silently reopening the id-less request-storm case, and why deleting the override (not adopting the gem's new `serve_subscriptions_listen: false`) fixes it.
 - [Inbound Chat Webhook Ingest](./pages/inbound-chat-webhook-ingest.md) — why webhook events land on a Rails endpoint in Redmine, hand off through a DB table, and are polled by `InboundAdapter#start` so the gateway core stays unchanged.
 - [Public URL Scope for Chat Adapters](./pages/public-url-scope.md) — ADR-017's amendment to ADR-006: "no public URL required" is an outbound-adapter property, not a whole-plugin invariant.
 - [Completion Request Timeout Policy](./pages/completion-request-timeout-policy.md) — ADR-018: why completion LLM calls override RubyLLM's 300 s / 3-retry defaults per context, the injection path, and the alternatives rejected.
 - [Completion Suppression Scope](./pages/completion-suppression-scope.md) — ADR-019 and ADR-021: why no-change suppression lasts only while a suggestion is displayed, why `clearSuggestion` owns the teardown, and why accept must not write a snapshot.
 - [Testing Classic Scripts via Dynamic Import](./pages/classic-script-testing-strategy.md) — why tests load target files as side-effect-only dynamic imports, the 4 files needing a new `window.X` line, and the `ai_helper.js` `var`→`window.ai_helper` fix.
 - [JavaScript Coverage Ratchet Policy](./pages/js-coverage-ratchet-policy.md) — why the 90% lines threshold is a literal in `vitest.config.js`, raised only, and why it's separate from Ruby's 95%.
+- [search_issues Cross-Project Scoping](./pages/search-issues-cross-project-scoping.md) — why omitting `project_id` scopes to `Project.allowed_to_condition(user, :view_ai_helper)` instead of plain `Issue.visible`, and why the single-project path stays untouched.
 
 ## component
 - [Chat Channel Gateway Architecture](./pages/chat-channel-gateway-architecture.md) — core + adapters structure, capability declaration, and gateway operational model.
@@ -25,7 +28,8 @@ page files, not here.
 - [AI Chat Sidebar](./pages/chat-sidebar.md) — the sidebar UI: view-hook injection, the `AiHelper` JS class, SSE handling, conversation models, and Markdown/XSS.
 - [Issue AI Features](./pages/issue-ai-features.md) — `IssueReadAgent` summarization/caching, reply drafts, sub-issues, assignee suggestion, duplicate check, and inline completion.
 - [Inline Completion Request Flow](./pages/inline-completion-request-flow.md) — AbortController cancellation, no-change suppression, debounce-timer clearing, and where the autocompletion settings are read and validated.
-- [MCP Integration](./pages/mcp-integration.md) — consuming external MCP servers (dynamic agent generation, read-only gotcha) and exposing Redmine as an MCP server.
+- [MCP Integration](./pages/mcp-integration.md) — consuming external MCP servers: dynamic agent generation and the read-only gotcha. See [MCP Server Endpoint](./pages/mcp-server-endpoint.md) for the other direction.
+- [MCP Server Endpoint](./pages/mcp-server-endpoint.md) — exposing Redmine as an MCP server: stateless mode, auth, permissions, tool groups, and the anonymous-endpoint pattern reused by inbound webhooks.
 - [Custom Commands](./pages/custom-commands.md) — reusable `/command` prompt shortcuts, scope precedence, template variables.
 - [Project Health Report](./pages/health-report.md) — `ProjectAgent` dual-pattern generation, `AiHelperHealthReport` storage, streamed comparison, export, and REST API.
 - [Think Model](./pages/think-model.md) — optional deep-reasoning model profile, its scope, validation, and no-fallback rules.

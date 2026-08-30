@@ -102,5 +102,5 @@ route helper (S018).
 - [Developing an Inbound Chat Adapter](./inbound-adapter-development.md) — how
   to implement the methods this contract calls.
 - [Chat Channel Gateway Architecture](./chat-channel-gateway-architecture.md)
-- [MCP Integration](./mcp-integration.md) — the other anonymous endpoint, whose
-  pattern this one follows.
+- [MCP Server Endpoint](./mcp-server-endpoint.md) — the other anonymous
+  endpoint, whose pattern this one follows.

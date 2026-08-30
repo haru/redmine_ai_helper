@@ -1,0 +1,11 @@
+<%#
+  Stuff Todo Modal Wrapper
+  Renders the stuff todo modal at the bottom of <body> (view_layouts_base_body_bottom),
+  independently guarding module/permission like the other hook partials.
+%>
+<%
+  project = @project || (@issue&.project) || (@wiki_page&.wiki&.project)
+%>
+<% if RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: project) %>
+  <%= render partial: 'ai_helper/shared/stuff_todo_modal', locals: { project: project } %>
+<% end %>

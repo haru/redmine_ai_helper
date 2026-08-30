@@ -4,7 +4,14 @@
 // Guard against multiple script loading
 if (typeof window.AiHelperMasterDetail === 'undefined') {
 
+/**
+ * Master-detail layout controller for the project health report history:
+ * report selection, AJAX detail loading/deletion, and export handlers.
+ */
 class AiHelperMasterDetail {
+  /**
+   * Initialize state and set up the layout if present on the page.
+   */
   constructor() {
     this.selectedReportId = null;
     this.masterPane = null;
@@ -13,6 +20,10 @@ class AiHelperMasterDetail {
     this.init();
   }
 
+  /**
+   * Locate the layout's panes and wire up event listeners, if the layout is
+   * present on this page.
+   */
   init() {
     if (!this.checkElements()) {
       return;
@@ -26,11 +37,18 @@ class AiHelperMasterDetail {
     this.initializeSelection();
   }
 
+  /**
+   * Check whether the master-detail layout is present on the current page.
+   * @returns {boolean} True if the layout element exists.
+   */
   checkElements() {
     const layout = document.querySelector('.ai-helper-master-detail-layout');
     return layout !== null;
   }
 
+  /**
+   * Bind click handlers for selecting a report row and deleting a report.
+   */
   attachEventListeners() {
     // Clickable cell events (ID and created_on columns)
     const clickableCells = document.querySelectorAll('.ai-helper-clickable-cell');
@@ -53,6 +71,10 @@ class AiHelperMasterDetail {
     });
   }
 
+  /**
+   * Restore `selectedReportId` from whichever row is already marked
+   * selected (server-rendered on page load).
+   */
   initializeSelection() {
     // Initialize with already selected report if any
     const selectedRow = document.querySelector('.ai-helper-report-row.selected');
@@ -61,6 +83,11 @@ class AiHelperMasterDetail {
     }
   }
 
+  /**
+   * Select a report row and render its detail from the row's own data
+   * attributes (no AJAX round-trip needed).
+   * @param {HTMLElement} row - The `.ai-helper-report-row` element clicked.
+   */
   selectReport(row) {
     const reportId = row.dataset.reportId;
     const reportContent = row.dataset.reportContent;
@@ -87,6 +114,11 @@ class AiHelperMasterDetail {
     this.renderReportDetail(data);
   }
 
+  /**
+   * Mark `row` as the selected report row and clear selection from the rest.
+   * @param {HTMLElement} row - The row to select.
+   * @param {string} reportId - The report's id, stored as the current selection.
+   */
   updateSelection(row, reportId) {
     // Remove selection from all rows
     document.querySelectorAll('.ai-helper-report-row').forEach(r => {
@@ -98,6 +130,10 @@ class AiHelperMasterDetail {
     this.selectedReportId = reportId;
   }
 
+  /**
+   * Fetch a report's detail JSON via AJAX and render it.
+   * @param {string} url - The report detail endpoint.
+   */
   loadReportDetail(url) {
     // Show loading state
     this.showLoading();
@@ -128,6 +164,11 @@ class AiHelperMasterDetail {
     xhr.send();
   }
 
+  /**
+   * Render a report's detail into the detail pane, fading out/in around the
+   * content swap.
+   * @param {object} data - Report fields: `id`, `health_report`, `created_at`, `user.name`, and optionally `formatted_html`.
+   */
   renderReportDetail(data) {
     // Fade out
     this.detailContainer.style.opacity = '0';
@@ -154,6 +195,12 @@ class AiHelperMasterDetail {
     }, 300);
   }
 
+  /**
+   * Build the detail pane's HTML for a report.
+   * @param {object} data - Report fields (see `renderReportDetail`).
+   * @param {string} formattedContent - The report body, already rendered from markdown to HTML.
+   * @returns {string} HTML for the detail pane.
+   */
   buildDetailHTML(data, formattedContent) {
     const createdAt = this.formatDateTime(data.created_at);
     const userName = this.escapeHtml(data.user.name);
@@ -193,10 +240,17 @@ class AiHelperMasterDetail {
     `;
   }
 
+  /**
+   * Show a loading spinner in the detail pane.
+   */
   showLoading() {
     this.detailContainer.innerHTML = '<div class="ai-helper-loader"></div>';
   }
 
+  /**
+   * Show an error message in the detail pane.
+   * @param {string} message - The error text to display.
+   */
   showError(message) {
     this.detailContainer.innerHTML = `
       <div class="ai-helper-error">
@@ -205,6 +259,11 @@ class AiHelperMasterDetail {
     `;
   }
 
+  /**
+   * Confirm and delete a report via AJAX, removing its row and selecting
+   * the next report if the deleted one was selected.
+   * @param {HTMLElement} link - The clicked delete (`.icon-del`) link.
+   */
   handleDelete(link) {
     const confirmMessage = link.dataset.confirm || this.getI18nText('text_are_you_sure', 'Are you sure?');
     if (!confirm(confirmMessage)) {
@@ -246,6 +305,9 @@ class AiHelperMasterDetail {
     xhr.send();
   }
 
+  /**
+   * Select the first remaining report row, or show the placeholder if none remain.
+   */
   selectNextReport() {
     const rows = document.querySelectorAll('.ai-helper-report-row');
     if (rows.length > 0) {
@@ -257,6 +319,9 @@ class AiHelperMasterDetail {
     }
   }
 
+  /**
+   * Show the "select a report" placeholder and clear the current selection.
+   */
   showPlaceholder() {
     const placeholderText = this.getI18nText('label_ai_helper_select_report_to_view',
                                              'Generate a report or select one from the history on the left');
@@ -268,6 +333,11 @@ class AiHelperMasterDetail {
     this.selectedReportId = null;
   }
 
+  /**
+   * Bind the detail pane's markdown export link (PDF export needs no
+   * handler; its href is already correct).
+   * @param {object} data - Report fields (see `renderReportDetail`).
+   */
   attachExportEvents(data) {
     const markdownExportLink = document.getElementById('ai-helper-markdown-export-detail');
 
@@ -281,6 +351,11 @@ class AiHelperMasterDetail {
     // PDF export link already has correct href, no additional handler needed
   }
 
+  /**
+   * Submit the report content to the markdown export endpoint via a
+   * dynamically-built form POST (triggers a file download).
+   * @param {string} content - The report's raw markdown content.
+   */
   exportMarkdown(content) {
     // Create form to submit markdown export
     const form = document.createElement('form');
@@ -305,28 +380,52 @@ class AiHelperMasterDetail {
   }
 
   // Utility methods
+  /**
+   * Format an ISO date string using the browser's locale.
+   * @param {string} dateString - An ISO 8601 date/time string.
+   * @returns {string} The locale-formatted date/time.
+   */
   formatDateTime(dateString) {
     const date = new Date(dateString);
     return date.toLocaleString();
   }
 
+  /**
+   * Escape HTML special characters to prevent XSS.
+   * @param {string} text - The raw text to escape.
+   * @returns {string} The HTML-escaped text.
+   */
   escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
   }
 
+  /**
+   * Extract the current project's identifier from the page URL.
+   * @returns {string} The project id/identifier, or `''` if not found.
+   */
   getProjectId() {
     // Extract project ID from URL
     const match = window.location.pathname.match(/\/projects\/([^/]+)/);
     return match ? match[1] : '';
   }
 
+  /**
+   * Build the markdown export endpoint URL for the current project.
+   * @returns {string} The markdown export URL.
+   */
   getMarkdownExportUrl() {
     const projectId = this.getProjectId();
     return `/projects/${projectId}/ai_helper/project_health_markdown`;
   }
 
+  /**
+   * Look up an internationalized string from its meta tag.
+   * @param {string} key - The i18n key (meta tag is `i18n-<key>`).
+   * @param {string} defaultText - Fallback text if the meta tag is absent.
+   * @returns {string} The localized text, or `defaultText` if unavailable.
+   */
   getI18nText(key, defaultText) {
     // Get internationalized text from meta tags if available
     const metaTag = document.querySelector(`meta[name="i18n-${key}"]`);
@@ -381,7 +480,9 @@ window.updateHealthReportHistory = function(callback) {
 // Store class in global scope
 window.AiHelperMasterDetail = AiHelperMasterDetail;
 
-// Enable comparison button only when two different reports are selected
+/**
+ * Enable the compare-reports button only when two different reports are selected.
+ */
 function updateComparisonButton() {
   const oldRadio = document.querySelector('.old-radio:checked');
   const newRadio = document.querySelector('.new-radio:checked');

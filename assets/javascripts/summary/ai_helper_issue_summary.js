@@ -5,6 +5,10 @@
  * Extracted from issues/_bottom.html.erb.
  */
 
+/**
+ * Read the issue summary panel's config JSON from its data attribute.
+ * @returns {object} Parsed config (`{}` if the panel isn't on the page).
+ */
 function getIssueSummaryConfig() {
   const container = document.getElementById('ai-helper-summary-fields');
   return container ? JSON.parse(container.dataset.config || '{}') : {};
@@ -14,7 +18,6 @@ function getIssueSummaryConfig() {
  * Fetch the (cached or freshly generated) issue summary and render it into
  * the summary area. Exposed on `window` because ai_helper.js calls it
  * directly after a summary-generation stream completes.
- *
  * @param {boolean} [update] - when true, requests a forced regeneration.
  */
 function getSummary(update) {
@@ -51,6 +54,9 @@ function getSummary(update) {
 }
 window.getSummary = getSummary;
 
+/**
+ * Trigger streaming (re)generation of the issue summary via ai_helper.js.
+ */
 function generateSummaryStream() {
   const config = getIssueSummaryConfig();
   ai_helper.generateSummaryStream(config.generateUrl, config.errorMessage);
@@ -115,14 +121,19 @@ function findSimilarIssues() {
 }
 window.findSimilarIssues = findSimilarIssues;
 
-// Get selected scope value from radio buttons
+/**
+ * Get the selected similar-issues search scope from the radio buttons.
+ * @returns {string} The selected scope value (defaults to `'with_subprojects'`).
+ */
 function getSelectedScope() {
   const selected = document.querySelector('input[name="ai_helper_scope"]:checked');
   return selected ? selected.value : 'with_subprojects';
 }
 
-// Recompute the suggested hours weighted average from the currently
-// checked similar issues, mirroring RedmineAiHelper::EffortEstimation.suggest.
+/**
+ * Recompute the suggested hours weighted average from the currently checked
+ * similar issues, mirroring RedmineAiHelper::EffortEstimation.suggest.
+ */
 function recalculateSuggestedHours() {
   const block = document.getElementById('ai-helper-suggested-hours-block');
   if (!block) {return;}
@@ -162,16 +173,21 @@ function recalculateSuggestedHours() {
   }
 }
 
-// Recompute both the suggested hours and the select-all checkbox state.
-// These two are always refreshed together whenever the checked set of
-// effort checkboxes may have changed.
+/**
+ * Recompute both the suggested hours and the select-all checkbox state.
+ * These two are always refreshed together whenever the checked set of
+ * effort checkboxes may have changed.
+ */
 function refreshEffortUI() {
   recalculateSuggestedHours();
   recalculateEffortSelectAllState();
 }
 
-// Set every row effort checkbox to match the header select-all checkbox,
-// then recompute the suggestion.
+/**
+ * Set every row effort checkbox to match the header select-all checkbox,
+ * then recompute the suggestion.
+ * @param {boolean} checked - The header select-all checkbox's new state.
+ */
 function toggleAllEffortCheckboxes(checked) {
   const checkboxes = document.querySelectorAll('.ai-helper-effort-checkbox');
   checkboxes.forEach(function(checkbox) {
@@ -180,9 +196,11 @@ function toggleAllEffortCheckboxes(checked) {
   refreshEffortUI();
 }
 
-// Recompute the header select-all checkbox's checked/indeterminate state
-// from the current row checkboxes: all checked -> checked, none checked ->
-// unchecked, a mix of both -> indeterminate.
+/**
+ * Recompute the header select-all checkbox's checked/indeterminate state
+ * from the current row checkboxes: all checked -> checked, none checked ->
+ * unchecked, a mix of both -> indeterminate.
+ */
 function recalculateEffortSelectAllState() {
   const selectAll = document.getElementById('ai-helper-effort-select-all');
   if (!selectAll) {return;}
@@ -202,10 +220,12 @@ function recalculateEffortSelectAllState() {
   }
 }
 
-// Write the currently suggested hours into the issue's Estimated time field.
-// That field lives inside the "#update" edit form, which Redmine keeps
-// collapsed (display:none) until the user opens it, so reveal and scroll to
-// it (via Redmine core's own showAndScrollTo helper) to make the change visible.
+/**
+ * Write the currently suggested hours into the issue's Estimated time field.
+ * That field lives inside the "#update" edit form, which Redmine keeps
+ * collapsed (display:none) until the user opens it, so reveal and scroll to
+ * it (via Redmine core's own showAndScrollTo helper) to make the change visible.
+ */
 function applySuggestedHours() {
   const valueSpan = document.getElementById('ai-helper-suggested-hours-value');
   const estimatedHoursField = document.getElementById('issue_estimated_hours');
@@ -215,7 +235,9 @@ function applySuggestedHours() {
   }
 }
 
-// Function to move similar issues section to after relations
+/**
+ * Move the similar-issues section to just after the relations section.
+ */
 function moveSimilarIssuesToRelations() {
   const similarIssuesSection = document.getElementById('ai-helper-similar-issues-section');
   if (!similarIssuesSection) {return;}

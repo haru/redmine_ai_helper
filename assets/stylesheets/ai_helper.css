@@ -905,6 +905,26 @@ body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-conte
   margin-right: 0;
 }
 
+.ai-helper-reply-apply-btn {
+  color: var(--oc-gray-9);
+  background-color: var(--oc-white);
+  border: 1px solid var(--oc-gray-4);
+  border-radius: 3px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1.2;
+  transition: background-color 100ms linear;
+}
+
+.ai-helper-reply-apply-btn:hover {
+  background-color: var(--oc-gray-2);
+}
+
+.ai-helper-reply-apply-btn:active {
+  background-color: var(--oc-gray-3);
+}
+
 /* Additional CSS classes for JavaScript-generated elements */
 
 /* Textarea and parent positioning */

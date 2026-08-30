@@ -4,6 +4,10 @@
  * Extracted from ai_helper_settings/index.html.erb.
  */
 
+/**
+ * Read the settings page's configuration JSON from its container element.
+ * @returns {object} Parsed config (model profile/vector-search options, labels, etc.), or `{}` if absent.
+ */
 function getAiHelperSettingsConfig() {
   const container = document.getElementById('ai-helper-settings-index');
   return container ? JSON.parse(container.dataset.config || '{}') : {};
@@ -15,8 +19,8 @@ function getAiHelperSettingsConfig() {
  * settings page can't rely on the shared `ai_helper` global's equivalent
  * helper, since `ai_helper.js` is only loaded on pages with a project (via
  * `_html_header.html.erb`) and this admin page has none.
- * @param {HTMLElement} element
- * @param {string} html
+ * @param {HTMLElement} element - The element to fill.
+ * @param {string} html - HTML string, server-rendered from ERB templates.
  */
 function setHtmlAndRunScripts(element, html) {
   element.innerHTML = html;
@@ -31,7 +35,7 @@ function setHtmlAndRunScripts(element, html) {
  * Load a model profile's detail view via AJAX into the description area.
  * Uses `setHtmlAndRunScripts` (not plain innerHTML) because the loaded
  * partial ends in a bridge `<script>` that must execute on each load.
- * @param {number|string} id
+ * @param {number|string} id - The model profile's ID.
  */
 function loadModelProfile(id) {
   const config = getAiHelperSettingsConfig();
@@ -51,6 +55,9 @@ function loadModelProfile(id) {
     });
 }
 
+/**
+ * Load the selected model profile's detail view, or clear it when none is selected.
+ */
 function setModelProfile() {
   const select = document.getElementById('ai_helper_setting_model_profile_id');
   const selectedId = select.value;
@@ -61,18 +68,28 @@ function setModelProfile() {
   }
 }
 
+/**
+ * Show or hide the "think model" settings section based on its checkbox.
+ */
 function setThinkModelVisible() {
   const thinkEnabled = document.getElementById('ai_helper_setting_use_think_model').checked;
   const settingsDiv = document.getElementById('ai-helper-think-model-settings');
   settingsDiv.style.display = thinkEnabled ? '' : 'none';
 }
 
+/**
+ * Show or hide the attachment-sending settings section based on its checkbox.
+ */
 function setAttachmentSettingsVisible() {
   const attachmentEnabled = document.getElementById('ai_helper_setting_attachment_send_enabled').checked;
   const settingsDiv = document.getElementById('ai-helper-attachment-settings');
   settingsDiv.style.display = attachmentEnabled ? '' : 'none';
 }
 
+/**
+ * Show or hide the vector-search settings section based on its checkbox,
+ * and sync the dependent vector-model-profile toggle's visibility.
+ */
 function setVectorSearchVisible() {
   const vectorSearchEnabled = document.getElementById('ai_helper_setting_vector_search_enabled').checked;
   const vectorSearchDiv = document.getElementById('ai-helper-vector-search');
@@ -80,6 +97,9 @@ function setVectorSearchVisible() {
   setVectorModelProfileToggleVisible();
 }
 
+/**
+ * Hide the target-projects picker when "register all projects" is checked.
+ */
 function setVectorTargetProjectsVisible() {
   const registerAll = document.getElementById('ai_helper_setting_vector_register_all_projects');
   const container = document.getElementById('ai-helper-vector-target-projects');
@@ -87,12 +107,19 @@ function setVectorTargetProjectsVisible() {
   container.style.display = registerAll.checked ? 'none' : '';
 }
 
+/**
+ * Show or hide the vector-search model profile settings based on its checkbox.
+ */
 function setVectorModelProfileVisible() {
   const enabled = document.getElementById('ai_helper_setting_use_vector_model_profile').checked;
   const settingsDiv = document.getElementById('ai-helper-vector-model-profile-settings');
   settingsDiv.style.display = enabled ? '' : 'none';
 }
 
+/**
+ * Show the "use a dedicated vector model profile" row only while vector
+ * search is enabled, and sync its dependent settings section.
+ */
 function setVectorModelProfileToggleVisible() {
   const vectorSearchEnabled = document.getElementById('ai_helper_setting_vector_search_enabled').checked;
   const toggleRow = document.getElementById('ai_helper_setting_use_vector_model_profile');
@@ -110,6 +137,10 @@ function setVectorModelProfileToggleVisible() {
   }
 }
 
+/**
+ * Show the "send user ID" row only when the currently loaded model type
+ * supports it.
+ */
 function setSendUserIdVisible() {
   const config = getAiHelperSettingsConfig();
   // ai_helper_model_type only exists once the model tab's profile detail is
@@ -121,6 +152,10 @@ function setSendUserIdVisible() {
 }
 window.setSendUserIdVisible = setSendUserIdVisible;
 
+/**
+ * Show/hide the model-type-specific fields (dimension, embedding URL) for
+ * the just-loaded model profile, and refresh the "send user ID" visibility.
+ */
 function modelTypeChanged() {
   const config = getAiHelperSettingsConfig();
   const modelType = document.getElementById('ai_helper_model_type')?.textContent || '';

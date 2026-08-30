@@ -2,7 +2,12 @@
 if (!window.aiHelperComparisonInitialized) {
   window.aiHelperComparisonInitialized = true;
 
-  // Append a hidden input with the given name/value to a form.
+  /**
+   * Append a hidden input with the given name/value to a form.
+   * @param {HTMLFormElement} form - The form to append the input to.
+   * @param {string} name - The input's `name` attribute.
+   * @param {string} value - The input's `value` attribute.
+   */
   function appendHiddenInput(form, name, value) {
     const field = document.createElement('input');
     field.type = 'hidden';
@@ -11,7 +16,10 @@ if (!window.aiHelperComparisonInitialized) {
     form.appendChild(field);
   }
 
-  // Submit the comparison content (PDF or Markdown export) via a generated form.
+  /**
+   * Submit the comparison content (PDF or Markdown export) via a generated form.
+   * @param {MouseEvent} event - The export link's click event.
+   */
   function handleComparisonExport(event) {
     event.preventDefault();
     const hiddenField = document.getElementById('ai-helper-comparison-content');
@@ -56,6 +64,10 @@ if (!window.aiHelperComparisonInitialized) {
 
     let currentEventSource = null;
 
+    /**
+     * Open an SSE connection to the analysis endpoint and stream the
+     * rendered comparison into the result panel, closing any prior stream.
+     */
     function startAnalysis() {
       if (currentEventSource) {
         currentEventSource.close();
@@ -138,7 +150,11 @@ if (!window.aiHelperComparisonInitialized) {
       };
     }
 
-    // Function to update hidden field with comparison content
+    /**
+     * Store the finished comparison content in the hidden field the export
+     * links read from.
+     * @param {string} content - The finished, un-rendered comparison markdown.
+     */
     function updateComparisonContent(content) {
       const hiddenField = document.getElementById('ai-helper-comparison-content');
       if (hiddenField) {

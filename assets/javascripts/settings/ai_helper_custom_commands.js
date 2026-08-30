@@ -4,6 +4,9 @@
  * Extracted from custom_commands/_form.html.erb.
  */
 const AiHelperCustomCommands = (() => {
+  /**
+   * Wire the user-scope field's visibility to the selected command type.
+   */
   function init() {
     const commandTypeField = document.getElementById('ai_helper_custom_command_command_type');
     const userScopeField = document.getElementById('user_scope_field');
@@ -11,6 +14,9 @@ const AiHelperCustomCommands = (() => {
 
     if (!commandTypeField || !userScopeField) {return;}
 
+    /**
+     * Show the user-scope field only when the command type is "user".
+     */
     function updateVisibility() {
       const commandType = commandTypeField.value;
       if (commandType === 'user') {

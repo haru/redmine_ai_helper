@@ -1,7 +1,16 @@
 // AI Helper Auto Completion for Redmine Textarea Fields
 // Provides GitHub Copilot-style inline completion for issue descriptions
 
+/**
+ * GitHub Copilot-style inline AI completion for a Redmine textarea (issue
+ * description/notes, wiki body). Debounces input, requests a suggestion from
+ * the server, and renders it as ghost text via an overlay element.
+ */
 class AiHelperAutoCompletion {
+  /**
+   * @param {HTMLTextAreaElement} textareaElement - The textarea to attach completion to.
+   * @param {object} [options] - Configuration; merged over the built-in defaults.
+   */
   constructor(textareaElement, options = {}) {
     this.textarea = textareaElement;
     this.overlay = null;
@@ -34,6 +43,9 @@ class AiHelperAutoCompletion {
     };
   }
 
+  /**
+   * Wire up the checkbox, overlay, event listeners, and saved on/off state.
+   */
   init() {
     this.createCheckbox();
     this.createOverlay();
@@ -41,6 +53,10 @@ class AiHelperAutoCompletion {
     this.loadSettings();
   }
 
+  /**
+   * Locate the ERB-rendered on/off checkbox and container for this field's
+   * context type, and save settings whenever it changes.
+   */
   createCheckbox() {
     // This method now expects the checkbox to be already created in ERB
     // Just find and reference the existing checkbox
@@ -65,6 +81,10 @@ class AiHelperAutoCompletion {
     }
   }
 
+  /**
+   * Create the ghost-text overlay, styled and positioned to sit exactly over
+   * the textarea, and keep it synced to the textarea's size/position.
+   */
   createOverlay() {
     // Create overlay element with same position and size as textarea
     this.overlay = document.createElement('div');
@@ -133,6 +153,9 @@ class AiHelperAutoCompletion {
     this.textarea.style.backgroundColor = 'transparent';
   }
 
+  /**
+   * Bind the textarea's input/keyboard/focus listeners that drive completion.
+   */
   attachEventListeners() {
     // Kept on the instance so destroy() can pass the identical references to
     // removeEventListener: a fresh wrapper would silently remove nothing.
@@ -161,6 +184,9 @@ class AiHelperAutoCompletion {
     this.textarea.addEventListener('keydown', this.boundOnManualTrigger);
   }
 
+  /**
+   * Restore the on/off checkbox state saved in local storage (defaults to off).
+   */
   loadSettings() {
     const saved = localStorage.getItem(this.storageKey);
     const enabled = saved ? JSON.parse(saved).enabled : false; // Default OFF
@@ -170,6 +196,9 @@ class AiHelperAutoCompletion {
     this.isEnabled = enabled;
   }
 
+  /**
+   * Persist the checkbox's current on/off state to local storage.
+   */
   saveSettings() {
     if (this.checkbox) {
       const settings = { enabled: this.checkbox.checked };
@@ -178,6 +207,10 @@ class AiHelperAutoCompletion {
     }
   }
 
+  /**
+   * Handle textarea input/keyup/click: clear the stale suggestion and
+   * (re)schedule a completion request for the new text/cursor state.
+   */
   onTextChange() {
     // keyup and click fire for things that change nothing — a modifier key
     // released, a click landing on the caret. The displayed suggestion still
@@ -196,6 +229,11 @@ class AiHelperAutoCompletion {
     this.scheduleCompletion();
   }
 
+  /**
+   * Accept the current suggestion on Tab, or dismiss it on Escape.
+   * @param {KeyboardEvent} e - The keydown event.
+   * @returns {boolean|undefined} `false` when Tab/Escape was handled, to suppress the default action.
+   */
   onKeyDown(e) {
     if (this.currentSuggestion) {
       if (e.key === 'Tab') {
@@ -210,6 +248,9 @@ class AiHelperAutoCompletion {
     }
   }
 
+  /**
+   * Reveal the overlay when the textarea gains focus.
+   */
   onFocus() {
     // Show overlay when focused
     if (this.overlay) {
@@ -217,6 +258,10 @@ class AiHelperAutoCompletion {
     }
   }
 
+  /**
+   * Hide the overlay and clear any suggestion shortly after the textarea
+   * loses focus (delayed so a click on the suggestion itself isn't missed).
+   */
   onBlur() {
     // Hide overlay when focus is lost (with small delay)
     setTimeout(() => {
@@ -227,6 +272,10 @@ class AiHelperAutoCompletion {
     }, 100);
   }
 
+  /**
+   * Debounce a completion request: cancel any pending one, then (if enabled
+   * and the text meets the minimum length) schedule a new one.
+   */
   scheduleCompletion() {
     // Drop any completion scheduled earlier: either it is superseded by this
     // call, or the conditions below no longer allow it to run
@@ -249,6 +298,10 @@ class AiHelperAutoCompletion {
     }, this.options.debounceDelay);
   }
 
+  /**
+   * Request a completion for the textarea's current text/cursor position,
+   * unless that exact state already has an answer in hand.
+   */
   requestSuggestion() {
     const text = this.textarea.value;
     const cursorPosition = this.textarea.selectionStart;
@@ -272,15 +325,23 @@ class AiHelperAutoCompletion {
     this.callCompletionAPI(text, cursorPosition, requestId);
   }
 
-  // Try to get project_identifier from the URL for new-issue forms
+  /**
+   * Try to get project_identifier from the URL for new-issue forms.
+   * @returns {string|null} The project identifier segment of the URL, or null if absent.
+   */
   getProjectIdentifierFromUrl() {
     const urlMatch = window.location.pathname.match(/\/projects\/([^/]+)/);
     return urlMatch ? urlMatch[1] : null;
   }
 
-  // Build the default completion request body, including project_id/
-  // project_identifier for new-issue forms. Split out of callCompletionAPI
-  // to keep it under ESLint's max-depth limit.
+  /**
+   * Build the default completion request body, including project_id/
+   * project_identifier for new-issue forms. Split out of callCompletionAPI
+   * to keep it under ESLint's max-depth limit.
+   * @param {string} text - The full textarea text.
+   * @param {number} cursorPosition - The cursor offset within `text`.
+   * @returns {object} The JSON-serializable request body.
+   */
   buildDefaultRequestBody(text, cursorPosition) {
     const requestBody = {
       text: text,
@@ -304,6 +365,13 @@ class AiHelperAutoCompletion {
     return requestBody;
   }
 
+  /**
+   * POST the completion request to the endpoint and, if the response still
+   * matches the current text/cursor state, display the suggestion.
+   * @param {string} text - The full textarea text at request time.
+   * @param {number} cursorPosition - The cursor offset within `text` at request time.
+   * @param {number} requestId - This request's sequence number, for staleness checks.
+   */
   callCompletionAPI(text, cursorPosition, requestId) {
     // Get CSRF token
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -388,17 +456,24 @@ class AiHelperAutoCompletion {
     });
   }
 
-  // Forget the given controller when it is still the current one, so that
-  // a non-null abortController always means a request is in flight
+  /**
+   * Forget the given controller when it is still the current one, so that
+   * a non-null abortController always means a request is in flight.
+   * @param {AbortController} controller - The controller from the settled request.
+   */
   releaseAbortController(controller) {
     if (this.abortController === controller) {
       this.abortController = null;
     }
   }
 
-  // Drop the recorded snapshot when it still describes the given request, so a
-  // newer request that has already overwritten it is left alone. null is used
-  // rather than '' / 0 so the snapshot can never match a real textarea state.
+  /**
+   * Drop the recorded snapshot when it still describes the given request, so a
+   * newer request that has already overwritten it is left alone. null is used
+   * rather than '' / 0 so the snapshot can never match a real textarea state.
+   * @param {string} text - The text of the request whose answer is settled.
+   * @param {number} cursorPosition - The cursor offset of that request.
+   */
   forgetRequestSnapshot(text, cursorPosition) {
     if (this.lastTextSnapshot === text && this.lastCursorPosition === cursorPosition) {
       this.lastTextSnapshot = null;
@@ -406,6 +481,17 @@ class AiHelperAutoCompletion {
     }
   }
 
+  /**
+   * Pure comparison behind the instance-level `isRequestStale`: true if a
+   * newer request has since started, or the text/cursor has since changed.
+   * @param {number} requestId - The sequence number of the request being checked.
+   * @param {number} currentRequestId - The instance's latest request sequence number.
+   * @param {string} originalText - The textarea text when the request was sent.
+   * @param {string} currentText - The textarea's text now.
+   * @param {number} originalCursor - The cursor offset when the request was sent.
+   * @param {number} currentCursor - The cursor offset now.
+   * @returns {boolean} True if the response should be discarded.
+   */
   static isRequestStale(requestId, currentRequestId, originalText, currentText, originalCursor, currentCursor) {
     if (requestId !== currentRequestId) {
       return true;
@@ -413,6 +499,14 @@ class AiHelperAutoCompletion {
     return (originalText !== currentText || originalCursor !== currentCursor);
   }
 
+  /**
+   * Check whether a completion response for `requestId` is still relevant to
+   * the textarea's current state.
+   * @param {number} requestId - The sequence number of the request being checked.
+   * @param {string} originalText - The textarea text when the request was sent.
+   * @param {number} originalCursor - The cursor offset when the request was sent.
+   * @returns {boolean} True if the response should be discarded.
+   */
   isRequestStale(requestId, originalText, originalCursor) {
     return AiHelperAutoCompletion.isRequestStale(
       requestId, this.currentRequestId, originalText,
@@ -420,6 +514,9 @@ class AiHelperAutoCompletion {
     );
   }
 
+  /**
+   * Cancel any scheduled or in-flight completion request without replacing it.
+   */
   cancelPendingRequest() {
     // Drop the completion that is merely scheduled. Nothing reschedules it on
     // the disable, blur and destroy paths, so without this a request still
@@ -444,6 +541,10 @@ class AiHelperAutoCompletion {
   // ai_helper_auto_completion_overlay.js alongside the overlay-rendering
   // concern they share.
 
+  /**
+   * Insert the current suggestion into the textarea at its target cursor
+   * position, then move the cursor to the end of the inserted text.
+   */
   acceptSuggestion() {
     if (!this.currentSuggestion) {
       return;
@@ -473,7 +574,10 @@ class AiHelperAutoCompletion {
     this.textarea.focus();
   }
 
-  // Cleanup method
+  /**
+   * Tear down this instance: remove listeners, cancel pending requests, and
+   * remove the overlay/checkbox DOM elements and textarea style overrides.
+   */
   destroy() {
     // Remove event listeners, using the same references attachEventListeners
     // registered — removeEventListener silently ignores anything else

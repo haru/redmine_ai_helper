@@ -12,11 +12,18 @@ module RedmineAiHelper
     #
     # @example
     #   server = Server.build
-    #   transport = MCP::Server::Transports::StreamableHTTPTransport.new(server, stateless: true)
+    #   transport = RedmineAiHelper::Mcp::Transport.new(server, stateless: true)
     class Server
       include RedmineAiHelper::Logger
       class << self
         # Builds and returns a configured MCP::Server with tools filtered for the given user.
+        #
+        # Capabilities are declared explicitly rather than left to the gem's defaults:
+        # `tools`, `prompts` and `resources` are advertised without `listChanged`
+        # (and `resources` without `subscribe`) because this plugin never emits
+        # change-notifications and the endpoint is stateless per request. `logging` is
+        # kept because `logging/setLevel` is genuinely served by the gem. See
+        # `specs/051-mcp-reject-subscriptions-listen/research.md` §1.
         #
         # @param user [User] authenticated user (defaults to User.current)
         # @return [MCP::Server] server instance with permitted tools registered
@@ -27,7 +34,8 @@ module RedmineAiHelper
             name: "redmine-ai-helper",
             version: plugin_version,
             instructions: "Redmine AI Helper MCP Server. All tools respect Redmine permissions.",
-            tools: mcp_tools
+            tools: mcp_tools,
+            capabilities: { tools: {}, prompts: {}, resources: {}, logging: {} }
           )
         end
 

@@ -49,14 +49,15 @@ class ProjectAgentTest < ActiveSupport::TestCase
         # Mock ProjectTools
         mock_tools = mock("ProjectTools")
         mock_tools.stubs(:get_metrics).returns({ issue_statistics: { total_issues: 5 } })
+        RedmineAiHelper::Tools::ProjectTools.stubs(:new).returns(mock_tools)
 
         # Mock calculate_repository_metrics calls for 1 week and 1 month
-        mock_tools.stubs(:calculate_repository_metrics).with(
+        mock_calculator = mock("ProjectMetricsCalculator")
+        mock_calculator.stubs(:calculate_repository_metrics).with(
           @project,
           has_entries(start_date: instance_of(Date), end_date: instance_of(Date))
         ).returns({ repository_available: true })
-
-        RedmineAiHelper::Tools::ProjectTools.stubs(:new).returns(mock_tools)
+        RedmineAiHelper::ProjectMetricsCalculator.stubs(:new).returns(mock_calculator)
 
         # Mock the chat method
         @agent.stubs(:think_chat).returns("test answer")

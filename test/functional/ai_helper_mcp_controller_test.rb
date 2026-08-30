@@ -325,6 +325,144 @@ class AiHelperMcpControllerTest < ActionController::TestCase
     end
   end
 
+  # ─── subscriptions/listen rejection (US1) ──────────────────────────────────
+
+  context "subscriptions/listen" do
+    setup { set_valid_auth_headers }
+
+    should "return 404 with JSON-RPC Method not found for a modern request (C-1.1-C-1.3)" do
+      post :handle_request,
+           body: modern_request_payload("subscriptions/listen", id: 42, params: { notifications: { "notifications/tools/list_changed" => true } }),
+           as: :json
+
+      assert_response :not_found
+      body = JSON.parse(@response.body)
+
+      assert_equal(-32601, body.dig("error", "code"))
+      assert_equal "Method not found", body.dig("error", "message")
+      assert_equal "subscriptions/listen", body.dig("error", "data")
+      assert_equal 42, body["id"]
+    end
+
+    should "respond as a one-shot JSON document with no streaming headers or Proc body (C-1.4-C-1.6)" do
+      post :handle_request,
+           body: modern_request_payload("subscriptions/listen", id: 42, params: { notifications: { "notifications/tools/list_changed" => true } }),
+           as: :json
+
+      assert_equal "application/json", @response.media_type
+      assert_not_equal "text/event-stream", @response.media_type
+      assert_nil @response.headers["cache-control"]
+      assert_nil @response.headers["connection"]
+      assert_nil @response.headers["x-accel-buffering"]
+      assert_no_match(/#<Proc/, @response.body)
+    end
+
+    should "ignore params.notifications filter value (C-1.7)" do
+      post :handle_request,
+           body: modern_request_payload("subscriptions/listen", id: 42, params: { notifications: { "notifications/resources/list_changed" => false } }),
+           as: :json
+
+      assert_response :not_found
+      body = JSON.parse(@response.body)
+
+      assert_equal(-32601, body.dig("error", "code"))
+    end
+
+    should "return 404 with null id when id is omitted (C-2)" do
+      post :handle_request,
+           body: modern_request_payload("subscriptions/listen", id: nil, params: { notifications: {} }),
+           as: :json
+
+      assert_response :not_found
+      body = JSON.parse(@response.body)
+
+      assert_equal(-32601, body.dig("error", "code"))
+      assert_nil body["id"]
+    end
+  end
+
+  context "subscriptions/listen auth precedence (C-6)" do
+    should "return 401 with a missing/invalid API key rather than 404" do
+      @request.headers["X-Redmine-API-Key"] = "definitely_invalid_key_xyz"
+      post :handle_request,
+           body: modern_request_payload("subscriptions/listen", id: 1, params: { notifications: {} }),
+           as: :json
+
+      assert_response :unauthorized
+    end
+
+    should "return 403 when MCP server is disabled rather than 404" do
+      @setting.update_column(:mcp_server_enabled, false)
+      set_valid_auth_headers
+      post :handle_request,
+           body: modern_request_payload("subscriptions/listen", id: 1, params: { notifications: {} }),
+           as: :json
+
+      assert_response :forbidden
+    end
+  end
+
+  # ─── capability declaration honesty (US2) ──────────────────────────────────
+
+  context "capability declaration" do
+    setup { set_valid_auth_headers }
+
+    should "advertise no listChanged/subscribe on the modern server/discover path (C-3)" do
+      post :handle_request, body: modern_request_payload("server/discover", id: 1), as: :json
+
+      assert_response :success
+      capabilities = JSON.parse(@response.body).dig("result", "capabilities")
+
+      assert_equal %w[tools prompts resources logging].sort, capabilities.keys.sort
+      capabilities.each_value do |cap|
+        assert_not cap.key?("listChanged"), "expected no listChanged in #{cap.inspect}"
+        assert_not cap.key?("subscribe"), "expected no subscribe in #{cap.inspect}"
+      end
+    end
+
+    should "advertise no listChanged/subscribe on the legacy initialize path (C-4)" do
+      post :handle_request, body: initialize_payload, as: :json
+
+      assert_response :success
+      body = JSON.parse(@response.body)
+      capabilities = body.dig("result", "capabilities")
+
+      assert_equal %w[tools prompts resources logging].sort, capabilities.keys.sort
+      capabilities.each_value do |cap|
+        assert_not cap.key?("listChanged"), "expected no listChanged in #{cap.inspect}"
+        assert_not cap.key?("subscribe"), "expected no subscribe in #{cap.inspect}"
+      end
+      assert_predicate body.dig("result", "protocolVersion"), :present?
+      assert_predicate body.dig("result", "serverInfo", "name"), :present?
+    end
+  end
+
+  # ─── streaming-body guard (US3) ────────────────────────────────────────────
+
+  context "streaming body guard" do
+    setup { set_valid_auth_headers }
+
+    should "return 500 with a JSON-RPC internal error and log the offending method, never stringifying a Proc (C-5)" do
+      streaming_body = proc { |stream| stream.write("unused") }
+      RedmineAiHelper::Mcp::Transport.any_instance
+        .stubs(:call)
+        .returns([ 200, { "content-type" => "text/event-stream" }, streaming_body ])
+      RedmineAiHelper::CustomLogger.instance.expects(:error).with(regexp_matches(/subscriptions\/listen/))
+
+      post :handle_request,
+           body: modern_request_payload("subscriptions/listen", id: 7, params: { notifications: {} }),
+           as: :json
+
+      assert_response :internal_server_error
+      body = JSON.parse(@response.body)
+
+      assert_equal 7, body["id"]
+      assert_equal(-32603, body.dig("error", "code"))
+      assert_equal "Internal error", body.dig("error", "message")
+      assert_no_match(/#<Proc/, @response.body)
+    end
+  end
+
   # ─── tools/call permission enforcement (T021) ──────────────────────────────
 
   context "tools/call permission enforcement" do
@@ -400,5 +538,29 @@ class AiHelperMcpControllerTest < ActionController::TestCase
       method: "tools/call",
       params: { name: tool_name, arguments: arguments }
     }.to_json
+  end
+
+  # Sets the modern SEP-2575 request headers and returns a JSON body for +method+ with
+  # +params+ merged with the required `_meta` envelope (protocol version + client
+  # capabilities). Without both the headers and the `_meta` envelope, the transport
+  # treats the request as legacy and never reaches the modern-path interception point
+  # (see specs/051-mcp-reject-subscriptions-listen/research.md §10).
+  def modern_request_payload(method, id: 1, params: {})
+    @request.headers["MCP-Protocol-Version"] = "2026-07-28"
+    @request.headers["Mcp-Method"] = method
+    @request.headers["Accept"] = "application/json, text/event-stream"
+
+    body = {
+      jsonrpc: "2.0",
+      method: method,
+      params: params.merge(
+        _meta: {
+          "io.modelcontextprotocol/protocolVersion" => "2026-07-28",
+          "io.modelcontextprotocol/clientCapabilities" => {}
+        }
+      )
+    }
+    body[:id] = id unless id.nil?
+    body.to_json
   end
 end
