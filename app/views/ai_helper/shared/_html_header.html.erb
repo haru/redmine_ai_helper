@@ -1,3 +1,4 @@
+<%= stylesheet_link_tag('ai_helper_global.css', plugin: :redmine_ai_helper) %>
 
 <%
   # Determine project from various sources
@@ -23,7 +24,6 @@
     <%= javascript_include_tag('typo_checker/ai_helper_typo_checker.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('typo_checker/ai_helper_typo_suggestion_overlay.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('project_health/ai_helper_project_health.js', plugin: :redmine_ai_helper) %>
-    <%= javascript_include_tag('project_health/ai_helper_project_health_actions.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('autocompletion/ai_helper_assignment_suggestion.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('project_health/ai_helper_master_detail.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('sub_issues/ai_helper_sub_issues.js', plugin: :redmine_ai_helper) %>
@@ -35,4 +35,5 @@
     <meta name="ai-helper-stuff-todo-url" content="<%= ai_helper_stuff_todo_path(project) %>">
     <meta name="ai-helper-stuff-todo-loading" content="<%= t('ai_helper.stuff_todo.loading') %>">
     <meta name="ai-helper-stuff-todo-error" content="<%= t('ai_helper.stuff_todo.error') %>">
+    <%= render partial: 'ai_helper/shared/stuff_todo_modal', locals: { project: project } %>
 <% end %>
