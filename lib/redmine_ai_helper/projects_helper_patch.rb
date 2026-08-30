@@ -6,30 +6,44 @@ module RedmineAiHelper
   # Adds the AI Helper status icon to the project board.
   module ProjectsHelperPatch
     def render_project_hierarchy(projects)
-      bookmarked_project_ids = User.current.bookmarked_project_ids
-      render_project_nested_lists(projects) do |project|
-        classes = project.css_classes.split
-        classes += %w(icon icon-user my-project) if User.current.member_of?(project)
-        classes += %w(icon icon-bookmarked-project) if bookmarked_project_ids.include?(project.id)
+      # Call the original render_project_hierarchy method to get the base HTML
+      html = render_project_hierarchy_without_ai_helper(projects)
 
-        s = link_to_project(project, {}, class: classes.uniq.join(' '))
-        s << tag.span(sprite_icon('user', l(:label_my_projects), icon_only: true), class: 'icon-only icon-user my-project') if User.current.member_of?(project)
-        s << tag.span(sprite_icon('bookmarked', l(:label_my_bookmarks), icon_only: true), class: 'icon-only icon-bookmarked-project') if bookmarked_project_ids.include?(project.id)
-        if project.module_enabled?(:ai_helper)
-          s << tag.span(
-            sprite_icon('ai-helper-robot', l(:label_ai_helper), icon_only: true, plugin: :redmine_ai_helper),
-            class: 'icon-only icon-ai-helper-module'
-          )
-        end
-        if project.description.present?
-          s << content_tag('div', textilizable(project, :short_description, :project => project), class: 'wiki description')
-        end
-        s
+      # Post-process the HTML to add AI Helper icons
+      add_ai_helper_icons_to_project_hierarchy(html, projects)
+    end
+
+    private
+
+    def add_ai_helper_icons_to_project_hierarchy(html, projects)
+      doc = Nokogiri::HTML::DocumentFragment.parse(html.to_s)
+
+      projects.each do |project|
+        next unless project.module_enabled?(:ai_helper)
+
+        # Find the link to the project in the rendered HTML
+        project_link = doc.search("a[href*='#{project_path(project)}']").first
+        next unless project_link
+
+        # Generate the icon HTML as a string
+        icon_html_string = tag.span(
+          sprite_icon("ai-helper-robot", l(:label_ai_helper), icon_only: true, plugin: :redmine_ai_helper),
+          class: "icon-only icon-ai-helper-module"
+        ).to_s
+
+        # Parse the icon HTML string into a Nokogiri element
+        icon_element = Nokogiri::HTML::DocumentFragment.parse(icon_html_string).first_element_child
+
+        # Insert the icon as the last child of the project link's parent
+        project_link.parent.add_child(icon_element)
       end
+
+      doc.to_s.html_safe # rubocop:disable Rails/OutputSafety
     end
   end
 end
 
 unless ProjectsHelper.ancestors.include?(RedmineAiHelper::ProjectsHelperPatch)
+  ProjectsHelper.alias_method :render_project_hierarchy_without_ai_helper, :render_project_hierarchy
   ProjectsHelper.prepend RedmineAiHelper::ProjectsHelperPatch
 end
