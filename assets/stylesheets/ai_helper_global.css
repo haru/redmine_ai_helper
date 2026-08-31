@@ -1,0 +1,13 @@
+/* AI Helper icon styles for default theme project index page */
+#projects-index ul.projects .icon-ai-helper-module svg {
+  margin-left: 4px;
+}
+
+#projects-index ul.projects div.root .icon-ai-helper-module svg {
+  stroke-width: 2;
+  margin-bottom: 10px;
+}
+
+table.projects td.name .icon-ai-helper-module svg {
+  margin-left: 4px;
+}
