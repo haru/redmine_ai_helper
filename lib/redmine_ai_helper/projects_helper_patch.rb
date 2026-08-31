@@ -29,8 +29,10 @@ module RedmineAiHelper
       projects.each do |project|
         next unless project.module_enabled?(:ai_helper)
 
-        # Find the link to the project in the rendered HTML
-        project_link = doc.search("a[href*='#{project_path(project)}']").first
+        # Find the link to the project in the rendered HTML. An exact match is required
+        # so that a project whose identifier is a prefix of another project's identifier
+        # (e.g. "sample" and "sample-2") is not confused with it.
+        project_link = doc.search("a[href='#{project_path(project)}']").first
         next unless project_link
 
         # Generate the icon HTML as a string
@@ -42,8 +44,15 @@ module RedmineAiHelper
         # Parse the icon HTML string into a Nokogiri element
         icon_element = Nokogiri::HTML::DocumentFragment.parse(icon_html_string).first_element_child
 
-        # Insert the icon as the last child of the project link's parent
-        project_link.parent.add_child(icon_element)
+        # Insert the icon right after the existing icons (my-project / bookmarked) and
+        # before the description, so its position does not depend on whether the
+        # project has a description.
+        description_element = project_link.parent.at_css("> div.wiki.description")
+        if description_element
+          description_element.add_previous_sibling(icon_element)
+        else
+          project_link.parent.add_child(icon_element)
+        end
       end
 
       doc.to_s.html_safe # rubocop:disable Rails/OutputSafety
