@@ -5,6 +5,12 @@ require_dependency "projects_queries_helper"
 module RedmineAiHelper
   # Adds the AI Helper status icon to the project list.
   module ProjectsQueriesHelperPatch
+    # Appends the AI Helper icon to the project name column when the
+    # project has the ai_helper module enabled.
+    # @param column [QueryColumn] The column being rendered
+    # @param item [Object] The row object being rendered
+    # @param value [Object] The raw value of the column
+    # @return [String] The rendered column value
     def column_value(column, item, value)
       return super unless item.is_a?(Project) && column.name == :name
 

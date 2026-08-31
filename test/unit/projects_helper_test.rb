@@ -2,6 +2,7 @@ require_relative "../test_helper"
 
 class ProjectsHelperTest < ActionView::TestCase
   include ProjectsHelper
+  include ERB::Util
 
   Column = Struct.new(:name)
 

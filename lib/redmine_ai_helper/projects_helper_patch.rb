@@ -5,6 +5,10 @@ require_dependency "projects_helper"
 module RedmineAiHelper
   # Adds the AI Helper status icon to the project board.
   module ProjectsHelperPatch
+    # Renders the project hierarchy and appends the AI Helper icon to
+    # every project that has the ai_helper module enabled.
+    # @param projects [Array<Project>] The projects to render
+    # @return [String] The rendered HTML with AI Helper icons added
     def render_project_hierarchy(projects)
       # Call the original render_project_hierarchy method to get the base HTML
       html = render_project_hierarchy_without_ai_helper(projects)
@@ -15,6 +19,10 @@ module RedmineAiHelper
 
     private
 
+    # Inserts the AI Helper icon into the rendered project hierarchy HTML.
+    # @param html [String] The HTML rendered by the original helper
+    # @param projects [Array<Project>] The projects contained in the HTML
+    # @return [String] The HTML with AI Helper icons added
     def add_ai_helper_icons_to_project_hierarchy(html, projects)
       doc = Nokogiri::HTML::DocumentFragment.parse(html.to_s)
 
