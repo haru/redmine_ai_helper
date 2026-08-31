@@ -43,7 +43,9 @@ class ProjectsHelperTest < ActionView::TestCase
     container = doc.at_css("a[href='#{project_path(@project_with_module)}']").parent
 
     ai_helper_index = container.children.index { |node| node["class"]&.include?("icon-ai-helper-module") }
-    description_node_index = container.children.index { |node| node.name == "div" && node["class"]&.include?("wiki") }
+    description_node_index = container.children.index do |node|
+      node.name == "div" && node.matches?("div.wiki.description")
+    end
 
     assert_not_nil ai_helper_index, "expected the AI Helper icon to be present"
     assert_not_nil description_node_index, "expected the description div to be present"
