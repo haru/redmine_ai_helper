@@ -1,0 +1,11 @@
+<%#
+  AI Helper legend item for the project list (projects#index).
+  Rendered hidden; ai_helper_project_legend.js moves it into the existing
+  legend <p> element (the one containing icon-bookmarked-project) when present.
+%>
+<% if controller_name == 'projects' && action_name == 'index' && User.current.logged? %>
+  <span id="ai-helper-index-legend-item" class="icon icon-only icon-ai-helper-module" hidden>
+    <%= sprite_icon('ai-helper-robot', l(:label_ai_helper), icon_only: true, plugin: :redmine_ai_helper) %>
+  </span>
+  <%= javascript_include_tag('project_legend/ai_helper_project_legend.js', plugin: :redmine_ai_helper) %>
+<% end %>
