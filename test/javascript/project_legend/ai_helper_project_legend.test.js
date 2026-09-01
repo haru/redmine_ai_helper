@@ -5,6 +5,7 @@ describe("ai_helper_project_legend", () => {
   let legendItem;
   let legendParagraph;
   let bookmarkIcon;
+  let contentDiv;
 
   function addLegendItem() {
     legendItem = document.createElement("span");
@@ -15,20 +16,26 @@ describe("ai_helper_project_legend", () => {
   }
 
   function addLegendParagraph() {
+    contentDiv = document.createElement("div");
+    contentDiv.id = "content";
+    
     legendParagraph = document.createElement("p");
     bookmarkIcon = document.createElement("span");
     bookmarkIcon.className = "icon icon-bookmarked-project";
     legendParagraph.appendChild(bookmarkIcon);
-    document.body.appendChild(legendParagraph);
+    contentDiv.appendChild(legendParagraph);
+    document.body.appendChild(contentDiv);
     return legendParagraph;
   }
 
   afterEach(() => {
     legendItem?.remove();
     legendParagraph?.remove();
+    contentDiv?.remove();
     legendItem = undefined;
     legendParagraph = undefined;
     bookmarkIcon = undefined;
+    contentDiv = undefined;
   });
 
   it("unhides the legend item and appends it to the legend paragraph when both exist", async () => {
