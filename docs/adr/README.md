@@ -67,3 +67,23 @@ Briefly describe alternatives that were rejected and why.
 | [012](./012-slack-only-scope-for-websocket-transport-fixes.md) | Scope the WebSocket transport fixes to the Slack adapter, leaving the same latent defects in Discord | Accepted (scope decision superseded by ADR-014) |
 | [013](./013-slack-receive-inactivity-liveness-detection.md) | Replace Slack's self-initiated ping/pong-count liveness check with receive-inactivity monitoring | Accepted |
 | [014](./014-shared-websocket-transport-in-base-adapter.md) | Move the shared WebSocket transport handling into `BaseAdapter` and apply it to Discord | Accepted |
+| [015](./015-agent-write-capability-routing.md) | Guard write-capable steps with an internal capability check that is never exposed to the router | Accepted |
+| [016](./016-issue-agent-read-write-rename.md) | Rename IssueAgent/IssueUpdateAgent to IssueReadAgent/IssueWriteAgent | Accepted |
+| [017](./017-inbound-chat-webhook-gateway.md) | Inbound chat webhook gateway (amends the scope of ADR-006) | Accepted |
+| [018](./018-completion-llm-requests-timeout-no-retry.md) | Inline completion LLM requests use a short timeout and no retries | Accepted |
+| [019](./019-completion-request-suppression-tied-to-displayed-suggestion.md) | Completion request suppression lasts only while the suggestion is displayed | Accepted (mechanism in decision 2 refined by ADR-021) |
+| [020](./020-plugin-logger-falls-back-to-rails-logger.md) | The plugin logger falls back to Rails.logger when it cannot be built | Accepted |
+| [021](./021-snapshot-teardown-belongs-to-clear-suggestion.md) | Snapshot teardown belongs to clearSuggestion, and no-op editor events are ignored | Accepted |
+| [022](./022-javascript-test-tooling-for-classic-scripts.md) | Vitest + jsdom for testing classic scripts via side-effect dynamic import | Accepted |
+| [023](./023-javascript-coverage-ratchet-policy.md) | JavaScript coverage ratchet from measured baseline to 90%, distinct from Ruby's 95% | Accepted (Codecov clause amended by ADR-024) |
+| [024](./024-javascript-coverage-sent-to-codecov-informational-only.md) | JavaScript coverage is uploaded to Codecov as an informational-only flag | Accepted |
+| [025](./025-erb-js-bridge-value-passing-pattern.md) | ERB-JS bridge value passing pattern (data-* attributes + init call) | Accepted |
+| [026](./026-shared-js-helper-extraction-threshold.md) | Shared JS helper extraction threshold (3+ occurrences or substantively identical) | Accepted |
+| [027](./027-eslint-quality-rule-ratchet.md) | ESLint naming/explicitness/size/complexity rules start at a measured baseline and ratchet down | Accepted |
+| [028](./028-eslint-plugin-jsdoc-enforcement.md) | eslint-plugin-jsdoc enforces the existing JSDoc convention | Accepted |
+| [029](./029-search-issues-cross-project-scoping.md) | search_issues cross-project scoping | Accepted |
+| [030](./030-list-project-activities-cross-project-scoping.md) | list_project_activities cross-project scoping | Accepted |
+| [031](./031-mcp-endpoint-rejects-subscriptions-listen.md) | MCP endpoint rejects subscriptions/listen | Accepted |
+| [032](./032-mcp14-restore-subscriptions-listen-rejection.md) | Restore subscriptions/listen rejection under mcp 1.4.0 | Accepted |
+| [033](./033-list-project-activities-project-batch-load.md) | Batch-load projects for list_project_activities response | Accepted |
+| [034](./034-search-issues-batch-hours.md) | Batch-load hours for search_issues response | Accepted |

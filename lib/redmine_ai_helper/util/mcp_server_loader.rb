@@ -194,6 +194,14 @@ module RedmineAiHelper
           # the entire agent rather than filtering individual tools (see ADR-005).
           define_method(:enabled?) { !AiHelperSetting.read_only_mode? }
 
+          # For the same reason, write capability cannot be derived from the tools:
+          # they carry no write_tool? metadata, so BaseAgent#can_write? does not apply.
+          # Report the agent as write-capable so LeaderAgent's guard never blocks a
+          # legitimate MCP write step — "cannot be classified" is not "cannot write".
+          # Read-only mode is already covered by enabled? above, which keeps the agent
+          # out of the agent list entirely (see ADR-015).
+          define_method(:can_write?) { true }
+
           define_method :available_tool_classes do
             return @cached_tool_classes if @cached_tool_classes
             @cached_tool_classes = RedmineAiHelper::Tools::McpTools.generate_tool_classes(

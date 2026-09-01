@@ -18,7 +18,10 @@ require "redmine_ai_helper/util/config_file"
 require "redmine_ai_helper/util/permission_checker"
 require "redmine_ai_helper/user_patch"
 require "redmine_ai_helper/project_patch"
+require "redmine_ai_helper/projects_helper_patch"
+require "redmine_ai_helper/projects_queries_helper_patch"
 require "redmine_ai_helper/chat_channel/base_adapter"
+require "redmine_ai_helper/chat_channel/inbound_adapter"
 require "redmine_ai_helper/chat_channel/gateway"
 Dir[File.join(File.dirname(__FILE__), "lib/redmine_ai_helper/chat_channel/adapters", "*_adapter.rb")].sort.each do |file|
   require file

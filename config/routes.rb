@@ -107,4 +107,7 @@ RedmineApp::Application.routes.draw do
   # MCP (Model Context Protocol) server endpoint
   match "ai_helper/mcp", to: "ai_helper_mcp#handle_request",
         via: [ :get, :post, :delete ], as: "ai_helper_mcp"
+
+  # Inbound chat webhook endpoint, shared by every inbound adapter
+  post "ai_helper/chat_webhook/:channel_type", to: "ai_helper_chat_webhook#receive", as: "ai_helper_chat_webhook"
 end

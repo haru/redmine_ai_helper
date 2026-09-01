@@ -21,9 +21,22 @@
           "speckit.git.remote",
           "speckit.git.initialize",
           "speckit.git.commit"
+        ],
+        "claude": [
+          "speckit.git.feature",
+          "speckit.git.validate",
+          "speckit.git.remote",
+          "speckit.git.initialize",
+          "speckit.git.commit"
         ]
       },
-      "registered_skills": [],
+      "registered_skills": [
+        "speckit-git-feature",
+        "speckit-git-validate",
+        "speckit-git-remote",
+        "speckit-git-initialize",
+        "speckit-git-commit"
+      ],
       "installed_at": "2026-04-11T07:36:40.347645+00:00"
     },
     "review": {
@@ -61,7 +74,15 @@
           "speckit.review.simplify"
         ]
       },
-      "registered_skills": [],
+      "registered_skills": [
+        "speckit-review-run",
+        "speckit-review-code",
+        "speckit-review-comments",
+        "speckit-review-tests",
+        "speckit-review-errors",
+        "speckit-review-types",
+        "speckit-review-simplify"
+      ],
       "installed_at": "2026-05-24T04:30:22.548432+00:00"
     },
     "agent-context": {
@@ -81,7 +102,9 @@
           "speckit.agent-context.update"
         ]
       },
-      "registered_skills": [],
+      "registered_skills": [
+        "speckit-agent-context-update"
+      ],
       "installed_at": "2026-06-06T06:27:54.323396+00:00"
     },
     "token-budget": {
@@ -110,7 +133,12 @@
           "speckit.token-budget.usage"
         ]
       },
-      "registered_skills": [],
+      "registered_skills": [
+        "speckit-token-budget-compact",
+        "speckit-token-budget-scope",
+        "speckit-token-budget-concise",
+        "speckit-token-budget-usage"
+      ],
       "installed_at": "2026-06-11T13:17:01.316200+00:00"
     },
     "branch-convention": {
@@ -136,7 +164,11 @@
           "speckit.branch-convention.rename"
         ]
       },
-      "registered_skills": [],
+      "registered_skills": [
+        "speckit-branch-convention-configure",
+        "speckit-branch-convention-validate",
+        "speckit-branch-convention-rename"
+      ],
       "installed_at": "2026-06-13T01:48:01.218718+00:00"
     },
     "wiki": {
@@ -154,7 +186,13 @@
           "speckit.wiki.status"
         ]
       },
-      "registered_skills": [],
+      "registered_skills": [
+        "speckit-wiki-init",
+        "speckit-wiki-ingest",
+        "speckit-wiki-query",
+        "speckit-wiki-lint",
+        "speckit-wiki-status"
+      ],
       "installed_at": "2026-08-01T04:04:06.283717+00:00"
     }
   }

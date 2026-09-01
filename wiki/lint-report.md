@@ -1,31 +1,27 @@
-# Wiki Lint Report — 2026-08-01
+# Wiki Lint Report — 2026-08-26
 
-Scope: full pass. 19 pages, 14 sources. Auto-fix mode: `index-and-links`.
+All 3 findings from the prior pass were fixed by hand (citation swaps, not
+lint auto-fixes — semantic findings are never auto-rewritten).
 
-## Results per check
+| # | Check | Severity | Page | Finding | Outcome |
+|---|-------|----------|------|---------|---------|
+| 1 | citations | semantic | inline-completion-request-flow.md | "`ai_helper_logger` falls back to `Rails.logger`" was cited only as `(ADR-020)`, missing source ID **S022**. | Fixed: citation is now `(ADR-020, S022)`; `S022` added to frontmatter `sources`. |
+| 2 | citations | semantic | completion-request-timeout-policy.md | "a timeout never locks completion where it happened" was cited only as `(ADR-021)`, missing source ID **S023**. | Fixed: citation is now `(ADR-021, S023)`; `S023` added to frontmatter `sources`. |
+| 3 | citations | semantic | completion-suppression-scope.md | "ADR-021 folded it into `clearSuggestion`…" was cited only `(S021)`, missing source ID **S023**. | Fixed: citation is now `(S021, S023)`; `S023` added to frontmatter `sources`. |
 
-| Check | Result |
-|-------|--------|
-| index-drift | ✅ clean — all 19 pages listed in `INDEX.md`; no index line points at a missing file |
-| links | ✅ clean — every `./*.md` relative link resolves; every `(Sxxx)` citation names a registered source (S001–S014) |
-| orphans | ✅ clean — every page has ≥1 inbound link (minimums: chat-sidebar, issue-ai-features, vector-search-internals — each reachable from a hub page) |
-| contradictions | ✅ clean — no unresolved `⚠ conflict:` markers. Cross-source claims checked in the high-overlap areas (Anthropic S002↔S004, read-only mode across tool-system/mcp/architecture/sidebar, `messages_for_openai`, `AiHelperMarkdownParser`, `think_chat`) are mutually consistent |
-| stale | ✅ clean — all pages `updated: 2026-08-01`; nothing past the 90-day threshold (2026-05-03); no source re-ingested after its page's last update |
-| citations | ⚠ 1 low-severity finding (repeat from prior report) |
+Note: the original report's row 3 misquoted line 11 of this page as an
+ADR-021 claim — it is actually about ADR-019 (a separate, still-uncited
+decision not covered by S022/S023 and out of scope for this fix). Only the
+genuine ADR-021/S023 gap on line 30 was corrected.
 
-## Findings
+## Checks with no findings
 
-| # | Check | Severity | Page | Finding | Suggested fix |
-|---|-------|----------|------|---------|---------------|
-| 1 | citations | low | mcp-integration.md:39 | The aside "the project also refers to these as `SubMcpAgent` classes" carries no source ID. It is an editorial reconciliation between S006 (which named the class `AiHelperMcpSlack`) and the project's CLAUDE.md, not a claim from any registered source. **Unchanged since the last lint.** | Reframe as a `> Provenance:` note (as on the architecture/tool/provider pages), or register the plugin's `CLAUDE.md` as a source and cite it. No auto-fix (semantic). |
+- **index-drift** — all 35 pages under `pages/` are listed in `INDEX.md`; no dangling index entries.
+- **links** — no relative links to missing pages across any page.
+- **orphans** — every page is linked from at least one other page.
+- **contradictions** — no unresolved `⚠ conflict` markers; spot-checked the highest-overlap source groups (S002, S016, S018, S021, S027/S028) for incompatible claims, none found.
+- **stale** — all pages `updated` within the last 26 days (well under the 90-day `stale_after_days` threshold); no page's cited source has a `Last ingested` date newer than the page's own `updated` date.
 
-## Fixes applied
+## Mechanical fixes applied
 
-None. `INDEX.md` and all link targets were already consistent — nothing mechanical to repair.
-
-## Note on source mix
-
-8 of 14 sources are DeepWiki (AI-generated); the rest are 5 specs + the README.
-Several DeepWiki-only claims have since gained spec/README corroboration
-(MCP, provider layer, vector rake tasks, health report, chat sidebar names). No
-action required — tracked here as a confidence signal, not a defect.
+None needed — `INDEX.md` already matched `pages/` exactly and no links were broken or renamed.

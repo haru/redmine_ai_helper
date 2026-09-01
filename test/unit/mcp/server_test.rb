@@ -38,6 +38,15 @@ class McpServerBuilderTest < ActiveSupport::TestCase
       assert server.tools.key?("list_projects"),
              "expected list_projects tool to be present"
     end
+
+    should "configure explicit capabilities with no listChanged/subscribe promises" do
+      server = RedmineAiHelper::Mcp::Server.build
+
+      assert_equal(
+        { tools: {}, prompts: {}, resources: {}, logging: {} },
+        server.capabilities
+      )
+    end
   end
 
   context "mcp_tool_allowed?" do

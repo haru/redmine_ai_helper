@@ -1,15 +1,19 @@
 ---
 title: Multi-Agent Architecture
 type: concept
-sources: [S005, S008, S009]
-updated: 2026-08-01
+sources: [S005, S008, S009, S016, S017]
+updated: 2026-08-07
 ---
 
 # Multi-Agent Architecture
 
 The plugin answers a chat request with a hierarchy of agents over RubyLLM: a
-`LeaderAgent` plans and routes, and specialized worker agents (IssueAgent,
-WikiAgent, …) do the domain work — all subclasses of `BaseAgent` (S005).
+`LeaderAgent` plans and routes, and specialized worker agents (IssueReadAgent,
+IssueWriteAgent, WikiAgent, …) do the domain work — all subclasses of
+`BaseAgent` (S005). `IssueReadAgent`/`IssueWriteAgent` were renamed from
+`IssueAgent`/`IssueUpdateAgent` so the read/write distinction reaches the
+router's `agent_name` field directly, not only its `backstory` prose (S017;
+see [Agent Write-Capability Routing](./agent-write-capability-routing.md)).
 
 > Provenance note: this page's structural claims come from the DeepWiki
 > auto-generated architecture doc (S005). Method *signatures* are described by
@@ -41,6 +45,11 @@ AiHelperController  →  RedmineAiHelper::Llm  →  LeaderAgent  →  worker age
   agents self-register with no manual dependency wiring (S005).
 - Conversation state (message history + state) lives in a **`ChatRoom`** context
   for the duration of a conversation (S005).
+- **Write-capable steps are guarded structurally, not by prompt convention**:
+  each planned step carries a `requires_write` flag, and `LeaderAgent` checks
+  it against the assigned agent's `can_write?` immediately before dispatch —
+  routing itself still relies on backstory wording, not this check. See
+  [Agent Write-Capability Routing](./agent-write-capability-routing.md) (S016).
 
 ## Tool system
 
@@ -74,3 +83,5 @@ proxy settings ([Nginx SSE Proxy](./nginx-sse-proxy.md)).
 - [Plugin Overview](./plugin-overview.md) · [MCP Integration](./mcp-integration.md)
 - [Chat Channel Gateway Architecture](./chat-channel-gateway-architecture.md) —
   an alternate entry point that reuses this same agent stack.
+- [Agent Write-Capability Routing](./agent-write-capability-routing.md) — the
+  `requires_write`/`can_write?` guard mentioned above.

@@ -1,0 +1,36 @@
+coverage:
+  status:
+    project:
+      default: false
+      ruby:
+        flags:
+          - ruby
+        informational: false
+      javascript:
+        flags:
+          - javascript
+        informational: true
+    patch:
+      default: false
+      ruby:
+        flags:
+          - ruby
+        informational: false
+      javascript:
+        flags:
+          - javascript
+        informational: true
+
+flags:
+  ruby:
+    paths:
+      - lib/
+      - app/
+    carryforward: false
+  javascript:
+    paths:
+      - assets/javascripts/
+    carryforward: false
+
+comment:
+  layout: "condensed_header, diff, flags, condensed_footer"

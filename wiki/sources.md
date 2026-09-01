@@ -20,3 +20,20 @@ Sources are immutable inputs — the wiki never edits them.
 | S013 | https://deepwiki.com/haru/redmine_ai_helper/3.1-ai-chat-sidebar | url | 2026-08-01 | 2026-08-01 | chat-sidebar.md, plugin-overview.md |
 | S014 | https://deepwiki.com/haru/redmine_ai_helper/3.2-issue-ai-features | url | 2026-08-01 | 2026-08-01 | issue-ai-features.md, plugin-overview.md |
 | S015 | docs/adr/009-discord-message-content-intent-required.md | file | 2026-08-01 | 2026-08-01 | discord-message-content-intent.md |
+| S016 | specs/043-issue-create-routing (research.md + plan.md) | feature-artifact | 2026-08-07 | 2026-08-07 | agent-write-capability-routing.md, multi-agent-architecture.md, tool-system.md, mcp-integration.md |
+| S017 | docs/adr/016-issue-agent-read-write-rename.md | file | 2026-08-07 | 2026-08-07 | agent-write-capability-routing.md, issue-ai-features.md, multi-agent-architecture.md |
+| S018 | specs/044-inbound-chat-webhook (research.md + plan.md) | feature-artifact | 2026-08-08 | 2026-08-08 | inbound-chat-webhook-ingest.md, inbound-webhook-endpoint.md, inbound-event-queue.md, chat-channel-gateway-architecture.md, mcp-integration.md |
+| S019 | docs/adr/017-inbound-chat-webhook-gateway.md | file | 2026-08-08 | 2026-08-08 | public-url-scope.md, chat-channel-gateway-architecture.md, inbound-chat-webhook-ingest.md, inbound-webhook-endpoint.md |
+| S020 | docs/inbound_chat_adapter_development.md | file | 2026-08-08 | 2026-08-08 | inbound-adapter-development.md, inbound-webhook-endpoint.md, inbound-event-queue.md |
+| S021 | specs/045-fix-autocompletion-request-pileup (research.md + plan.md) | feature-artifact | 2026-08-20 | 2026-08-20 | completion-request-timeout-policy.md, completion-suppression-scope.md, inline-completion-request-flow.md, js-test-convention.md, issue-ai-features.md, llm-provider-layer.md, base-agent-llm-calls.md |
+| S022 | docs/adr/020-plugin-logger-falls-back-to-rails-logger.md | file | 2026-08-21 | 2026-08-21 | inline-completion-request-flow.md |
+| S023 | docs/adr/021-snapshot-teardown-belongs-to-clear-suggestion.md | file | 2026-08-21 | 2026-08-21 | completion-suppression-scope.md, inline-completion-request-flow.md, completion-request-timeout-policy.md, js-test-convention.md |
+| S024 | specs/046-js-quality-tooling (research.md + plan.md) | feature-artifact | 2026-08-22 | 2026-08-22 | js-quality-tooling.md, classic-script-testing-strategy.md, js-coverage-ratchet-policy.md, js-test-convention.md |
+| S025 | docs/adr/024-javascript-coverage-sent-to-codecov-informational-only.md | file | 2026-08-22 | 2026-08-22 | js-coverage-ratchet-policy.md |
+| S026 | specs/049-search-issues-optional-project (research.md + plan.md) | feature-artifact | 2026-08-24 | 2026-08-24 | search-issues-cross-project-scoping.md, tool-system.md |
+| S027 | specs/051-mcp-reject-subscriptions-listen (research.md + spec.md + plan.md) | feature-artifact | 2026-08-26 | 2026-08-26 | mcp-integration.md, mcp-server-endpoint.md, mcp-listen-rejection.md |
+| S028 | docs/adr/031-mcp-endpoint-rejects-subscriptions-listen.md | file | 2026-08-26 | 2026-08-26 | mcp-integration.md, mcp-server-endpoint.md, mcp-listen-rejection.md |
+| S029 | specs/051-mcp-reject-subscriptions-listen/review-summary.md | feature-artifact | 2026-08-26 | 2026-08-26 | mcp-listen-rejection.md |
+| S030 | specs/052-fix-mcp14-subscriptions-listen (research.md + plan.md) | feature-artifact | 2026-08-28 | 2026-08-28 | mcp-listen-rejection.md, mcp-listen-rejection-1-4-0-fix.md, mcp-server-endpoint.md |
+| S031 | docs/adr/032-mcp14-restore-subscriptions-listen-rejection.md | file | 2026-08-28 | 2026-08-28 | mcp-listen-rejection.md, mcp-listen-rejection-1-4-0-fix.md, mcp-server-endpoint.md |
+| S032 | specs/056-wiki-parent-id (research.md + plan.md) | feature-artifact | 2026-09-01 | 2026-09-01 | wiki-tools.md, tool-system.md |

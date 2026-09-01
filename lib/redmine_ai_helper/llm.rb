@@ -55,7 +55,7 @@ module RedmineAiHelper
       AiHelperMessage.new(role: "assistant", content: answer, conversation: conversation)
     end
 
-    # Get the summary of the issue using IssueAgent with streaming support
+    # Get the summary of the issue using IssueReadAgent with streaming support
     # @param issue [Issue] The issue object
     # @param stream_proc [Proc] Optional callback proc for streaming content
     # return [String] The summary of the issue
@@ -63,7 +63,7 @@ module RedmineAiHelper
       begin
         prompt = "Please summarize the issue #{issue.id}."
         langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: prompt)
-        agent = RedmineAiHelper::Agents::IssueAgent.new(project: issue.project, langfuse: langfuse)
+        agent = RedmineAiHelper::Agents::IssueReadAgent.new(project: issue.project, langfuse: langfuse)
         langfuse.create_span(name: "user_request", input: prompt)
         answer = agent.issue_summary(issue: issue, stream_proc: stream_proc)
         raise I18n.t("ai_helper.error_empty_issue_summary") if answer.blank?
@@ -79,7 +79,7 @@ module RedmineAiHelper
       answer
     end
 
-    # Generate a reply to the issue using IssueAgent with streaming support
+    # Generate a reply to the issue using IssueReadAgent with streaming support
     # @param issue [Issue] The issue object
     # @param instructions [String] Instructions for generating the reply
     # @param stream_proc [Proc] Optional callback proc for streaming content
@@ -88,7 +88,7 @@ module RedmineAiHelper
       begin
         prompt = "Please generate a reply to the issue #{issue.id} with the instructions.\n\n#{instructions}"
         langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: prompt)
-        agent = RedmineAiHelper::Agents::IssueAgent.new(project: issue.project, langfuse: langfuse)
+        agent = RedmineAiHelper::Agents::IssueReadAgent.new(project: issue.project, langfuse: langfuse)
         langfuse.create_span(name: "user_request", input: prompt)
 
         answer = agent.generate_issue_reply(issue: issue, instructions: instructions, stream_proc: stream_proc)
@@ -104,7 +104,7 @@ module RedmineAiHelper
       answer
     end
 
-    # Generate sub issues using IssueAgent
+    # Generate sub issues using IssueReadAgent
     # @param issue [Issue] The issue object
     # @param instructions [String] Instructions for generating sub issues
     # return [Array<Issue>] The generated sub issues
@@ -112,7 +112,7 @@ module RedmineAiHelper
       begin
         prompt = "Please generate sub issues for the issue #{issue.id} with the instructions.\n\n#{instructions}"
         langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: prompt)
-        agent = RedmineAiHelper::Agents::IssueAgent.new(project: issue.project, langfuse: langfuse)
+        agent = RedmineAiHelper::Agents::IssueReadAgent.new(project: issue.project, langfuse: langfuse)
         langfuse.create_span(name: "user_request", input: prompt)
         sub_issues = agent.generate_sub_issues_draft(issue: issue, instructions: instructions)
         langfuse.finish_current_span(output: sub_issues.inspect)
@@ -125,13 +125,13 @@ module RedmineAiHelper
       sub_issues
     end
 
-    # Find similar issues using IssueAgent
+    # Find similar issues using IssueReadAgent
     # @param issue [Issue] The issue object to find similar issues for
     # @return [Array<Hash>] Array of similar issues with metadata
     def find_similar_issues(issue:, scope: "with_subprojects", project: nil)
       begin
         langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: "find similar issues for #{issue.id}")
-        agent = RedmineAiHelper::Agents::IssueAgent.new(project: issue.project, langfuse: langfuse)
+        agent = RedmineAiHelper::Agents::IssueReadAgent.new(project: issue.project, langfuse: langfuse)
         langfuse.create_span(name: "find_similar_issues", input: "issue_id: #{issue.id}, scope: #{scope}")
         results = agent.find_similar_issues(issue: issue, scope: scope, project: project || issue.project)
         langfuse.finish_current_span(output: results)
@@ -143,7 +143,7 @@ module RedmineAiHelper
       end
     end
 
-    # Find similar issues by content (subject and description) using IssueAgent
+    # Find similar issues by content (subject and description) using IssueReadAgent
     # This is used for duplicate checking when creating a new issue.
     # @param subject [String] The subject of the issue
     # @param description [String] The description of the issue
@@ -152,7 +152,7 @@ module RedmineAiHelper
     def find_similar_issues_by_content(subject:, description:, project:)
       begin
         langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: "find similar issues by content")
-        agent = RedmineAiHelper::Agents::IssueAgent.new(project: project, langfuse: langfuse)
+        agent = RedmineAiHelper::Agents::IssueReadAgent.new(project: project, langfuse: langfuse)
         langfuse.create_span(
           name: "find_similar_issues_by_content",
           input: "subject: #{subject[0..50]}"
@@ -237,6 +237,7 @@ module RedmineAiHelper
         langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: text)
         options = { langfuse: langfuse, project: project }
         agent = RedmineAiHelper::Agents::WikiAgent.new(options)
+        agent.llm_provider = LlmProvider.get_llm_provider(request_options: completion_request_options)
 
         langfuse.create_span(name: "wiki_completion", input: text)
 
@@ -273,7 +274,8 @@ module RedmineAiHelper
 
         langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: text)
         options = { langfuse: langfuse, project: project }
-        agent = RedmineAiHelper::Agents::IssueAgent.new(options)
+        agent = RedmineAiHelper::Agents::IssueReadAgent.new(options)
+        agent.llm_provider = LlmProvider.get_llm_provider(request_options: completion_request_options)
 
         langfuse.create_span(name: "text_completion", input: text)
 
@@ -382,7 +384,7 @@ module RedmineAiHelper
     def suggest_assignees_by_instructions(project:, assignable_users:, instructions:, subject:, description:, tracker_id: nil, category_id: nil)
       begin
         langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: "suggest assignees by instructions")
-        agent = RedmineAiHelper::Agents::IssueAgent.new(project: project, langfuse: langfuse)
+        agent = RedmineAiHelper::Agents::IssueReadAgent.new(project: project, langfuse: langfuse)
 
         langfuse.create_span(name: "suggest_assignees_by_instructions", input: subject)
 
@@ -404,7 +406,7 @@ module RedmineAiHelper
       end
     end
 
-    # Get stuff todo suggestions using IssueAgent with streaming support
+    # Get stuff todo suggestions using IssueReadAgent with streaming support
     # @param project [Project] The project object
     # @param stream_proc [Proc] Optional callback proc for streaming content
     # @return [String] The markdown-formatted stuff todo suggestions
@@ -412,7 +414,7 @@ module RedmineAiHelper
       begin
         prompt = "Please suggest what to do today."
         langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: prompt)
-        agent = RedmineAiHelper::Agents::IssueAgent.new(project: project, langfuse: langfuse)
+        agent = RedmineAiHelper::Agents::IssueReadAgent.new(project: project, langfuse: langfuse)
         langfuse.create_span(name: "user_request", input: prompt)
 
         answer = agent.suggest_stuff_todo(stream_proc: stream_proc)
@@ -426,6 +428,17 @@ module RedmineAiHelper
       end
       ai_helper_logger.info "answer: #{answer}"
       answer
+    end
+
+    private
+
+    # HTTP options for inline completion LLM requests.
+    # Completion is triggered while the user types, so it runs with a short
+    # timeout and no retries to keep a slow backend from occupying a worker.
+    # See docs/adr/018-completion-llm-requests-timeout-no-retry.md.
+    # @return [Hash] Options passed as BaseProvider#initialize's `request_options:`.
+    def completion_request_options
+      { request_timeout: RedmineAiHelper::Util::ConfigFile.autocompletion_settings[:timeout], max_retries: 0 }
     end
   end
 end

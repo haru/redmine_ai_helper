@@ -4,8 +4,8 @@ class PromptTemplatesIssueLinkTest < ActiveSupport::TestCase
   PROMPT_DIR = File.expand_path("../../../assets/prompt_templates", __FILE__)
 
   CHAT_REPLY_TEMPLATES = %w[
-    issue_agent/backstory.yml
-    issue_agent/backstory_ja.yml
+    issue_read_agent/backstory.yml
+    issue_read_agent/backstory_ja.yml
     leader_agent/system_prompt.yml
     leader_agent/system_prompt_ja.yml
     base_agent/system_prompt.yml
@@ -30,7 +30,7 @@ class PromptTemplatesIssueLinkTest < ActiveSupport::TestCase
 
   context "non-chat-reply templates are unchanged" do
     should "inline_completion template is not affected" do
-      content = File.read(File.join(PROMPT_DIR, "issue_agent/inline_completion.yml"))
+      content = File.read(File.join(PROMPT_DIR, "issue_read_agent/inline_completion.yml"))
       assert content.length > 0
     end
   end

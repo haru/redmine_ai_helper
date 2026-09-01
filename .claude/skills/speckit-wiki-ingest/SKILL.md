@@ -5,8 +5,12 @@ description: Ingest a source (feature artifacts, file, or URL) and update the re
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: wiki:commands/speckit.wiki.ingest.md
+  source: extension:wiki
+user-invocable: true
+disable-model-invocation: false
 ---
+
+# Wiki Ingest Skill
 
 # Ingest a Source into the Wiki
 

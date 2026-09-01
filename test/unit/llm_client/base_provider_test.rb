@@ -650,5 +650,58 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         azure_profile.destroy
       end
     end
+
+    context "request_options" do
+      should "apply request_timeout and max_retries to the context configuration" do
+        provider = FakeOpenAiProvider.new(request_options: { request_timeout: 30, max_retries: 0 })
+        provider.stubs(:ensure_model_registered!)
+
+        config = provider.context.config
+
+        assert_equal 30, config.request_timeout
+        assert_equal 0, config.max_retries
+      end
+
+      should "leave the context configuration untouched when request_options is omitted" do
+        provider = FakeOpenAiProvider.new
+        provider.stubs(:ensure_model_registered!)
+
+        config = provider.context.config
+
+        assert_equal RubyLLM.config.request_timeout, config.request_timeout
+        assert_equal RubyLLM.config.max_retries, config.max_retries
+      end
+
+      should "not leak the options into the RubyLLM global configuration" do
+        original_timeout = RubyLLM.config.request_timeout
+        original_retries = RubyLLM.config.max_retries
+
+        provider = FakeOpenAiProvider.new(request_options: { request_timeout: 7, max_retries: 0 })
+        provider.stubs(:ensure_model_registered!)
+        provider.context
+
+        assert_equal original_timeout, RubyLLM.config.request_timeout
+        assert_equal original_retries, RubyLLM.config.max_retries
+      end
+
+      should "not leak the options into other provider instances" do
+        completion_provider = FakeOpenAiProvider.new(request_options: { request_timeout: 7, max_retries: 0 })
+        completion_provider.stubs(:ensure_model_registered!)
+        completion_provider.context
+
+        other_provider = FakeOpenAiProvider.new
+        other_provider.stubs(:ensure_model_registered!)
+
+        assert_equal RubyLLM.config.request_timeout, other_provider.context.config.request_timeout
+        assert_equal RubyLLM.config.max_retries, other_provider.context.config.max_retries
+      end
+
+      should "memoize the context so the options are applied once per instance" do
+        provider = FakeOpenAiProvider.new(request_options: { request_timeout: 30, max_retries: 0 })
+        provider.stubs(:ensure_model_registered!)
+
+        assert_same provider.context, provider.context
+      end
+    end
   end
 end

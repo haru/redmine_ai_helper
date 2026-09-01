@@ -24,8 +24,8 @@ Controller (AiHelperController)
 - `LeaderAgent` coordinates multi-step tasks by routing to specialized agents
 
 **Key Agents:**
-- Domain-specific: `IssueAgent`, `RepositoryAgent`, `WikiAgent`, `ProjectAgent`, `BoardAgent`, `SystemAgent`, `UserAgent`, `VersionAgent`, `DocumentationAgent`
-- Issue updates: `IssueUpdateAgent`
+- Domain-specific: `IssueReadAgent`, `RepositoryAgent`, `WikiAgent`, `ProjectAgent`, `BoardAgent`, `SystemAgent`, `UserAgent`, `VersionAgent`, `DocumentationAgent`
+- Issue updates: `IssueWriteAgent`
 - Coordination: `LeaderAgent`
 - Dynamic MCP integration: `McpAgent` (generates `SubMcpAgent` classes per MCP server)
 

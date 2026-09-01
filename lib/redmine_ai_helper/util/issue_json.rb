@@ -23,6 +23,12 @@ module RedmineAiHelper
 
       private
 
+      def format_named_record(obj)
+        return nil unless obj
+
+        { id: obj.id, name: obj.name }
+      end
+
       def build_issue_scalar_fields(issue)
         {
           id: issue.id,
@@ -49,11 +55,6 @@ module RedmineAiHelper
         }
       end
 
-      def format_named_record(obj)
-        return nil unless obj
-
-        { id: obj.id, name: obj.name }
-      end
 
       def format_user_with_roles(user, project)
         return nil unless user

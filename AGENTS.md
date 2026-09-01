@@ -1,154 +1,222 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
-Core Rails plugin code lives under `app/`, following standard MVC groupings (`app/controllers`, `app/models`, `app/helpers`). Engine internals, agents, transports, and utilities are in `lib/redmine_ai_helper/`—key entry points include `BaseAgent`, `LeaderAgent`, and generated `SubMcpAgent` variants. Frontend assets reside in `assets/javascripts/` and `assets/stylesheets/`, while prompt templates are kept in `assets/prompt_templates/`. Tests follow Redmine's minitest layout: controller flows in `test/functional/`, business logic in `test/unit/`, and architectural plans live in `specs/` when present.
+## Project Overview
+Redmine AI Helper Plugin — a Ruby on Rails plugin that adds AI-powered chat to Redmine. Uses a multi-agent architecture backed by RubyLLM for LLM interactions.
 
 ## Build, Test, and Development Commands
-- `bundle install` — install plugin gems. Run from the Redmine root.
-- `bundle exec rake redmine:plugins:migrate RAILS_ENV=test` — prep the test DB (pair with `bundle exec rake redmine:plugins:ai_helper:setup_scm` for SCM fixtures).
-- `bundle exec rake redmine:plugins:test NAME=redmine_ai_helper` — execute unit and functional suites with coverage to `coverage/`.
-- `bundle exec ruby -I"lib:test" plugins/redmine_ai_helper/test/unit/base_agent_test.rb` — run a single test file.
-- `bundle exec rake redmine:plugins:test NAME=redmine_ai_helper TESTOPTS="--name=/test_name_pattern/"` — run tests matching a pattern.
-- `yard stats --list-undoc` — check YARD documentation coverage.
-- Vector maintenance (production only): `bundle exec rake redmine:plugins:ai_helper:vector:generate`, `:regist`, `:destroy`.
+All `bundle` commands run from the **Redmine root** (`/usr/local/redmine`), not the plugin directory.
 
-## Design Principles
+```bash
+# Install gems
+bundle install
 
-Follow **KISS** (Keep It Simple), **DRY** (Don't Repeat Yourself), and **YAGNI** (You Aren't Gonna Need It):
-- Write the simplest code that satisfies the requirement — no speculative abstractions
-- Extract shared logic only when duplication is proven (≥3 occurrences), not preemptively
-- Never add features, helpers, or error handling that aren't required by the current task
+# Prep test DB (run in order; setup_scm needs migrations applied first)
+bundle exec rake redmine:plugins:migrate RAILS_ENV=test
+bundle exec rake redmine:plugins:ai_helper:setup_scm
 
-## Documentation
+# Run full plugin test suite (outputs coverage to coverage/)
+bundle exec rake redmine:plugins:test NAME=redmine_ai_helper
 
-Technical documentation lives in `docs/`. Use file names to determine the topic before opening a file.
-- When adding a new doc, use a clear, descriptive English file name (e.g., `docs/vector_search_overview.md`)
-- **All docs/ content must be written in English**
-- MCP transport examples: [`docs/mcp_transport_configuration_examples.md`](docs/mcp_transport_configuration_examples.md)
+# Run a single test file
+bundle exec ruby -I"lib:test" plugins/redmine_ai_helper/test/unit/base_agent_test.rb
 
-### Architecture Decision Records (ADR)
+# Run tests matching a pattern
+bundle exec rake redmine:plugins:test NAME=redmine_ai_helper TESTOPTS="--name=/test_name_pattern/"
 
-ADRs live in `docs/adr/`. Write an ADR for every significant architectural decision.
-- **When to write**: new architectural pattern, key library choice, non-obvious trade-off, deliberate deviation from defaults
-- **When unsure**: ask the user before proceeding
-- **Format**: use the template in [`docs/adr/README.md`](docs/adr/README.md)
-- **Append-only**: never modify or delete past ADRs — add a new one to supersede
+# RuboCop (must use --ignore-parent-exclusion to avoid Redmine root's config)
+rubocop --ignore-parent-exclusion
 
-## Coding Style & Naming Conventions
+# Regression check (JS lint → JS tests+coverage → YARD 100% → RuboCop → full test suite)
+.devcontainer/regression-check.sh
 
-### Ruby
-- **Indentation**: Two spaces (not tabs)
-- **Naming**: snake_case for methods and variables, CamelCase for classes
-- **File header**: Always start with `# frozen_string_literal: true`
-- **Comments**: Write in English; use YARD-compatible format for public APIs (`@param`, `@return`)
-- **Imports**: Use `require` at file top, followed by relative requires
-- **Constants**: SCREAMING_SNAKE_CASE, freeze with `.freeze` for immutable values
-- **Error Handling**: NEVER implement fallback error handling—let errors surface immediately. Use `ai_helper_logger` for logging, never `Rails.logger`
-- **Logging**: Mixin `RedmineAiHelper::Logger` for `debug`, `info`, `warn`, `error` methods
-- **TDD**: Write tests BEFORE implementing features (red-green-refactor cycle)
-- **Error Handling Policy**: NEVER implement fallback error handling—fallbacks hide real problems. Let errors surface immediately for proper diagnosis. Use proper error logging, but never silently continue with fallback behavior.
+# YARD doc coverage
+yard stats --list-undoc
 
-### JavaScript
-- **Variables**: Use `const` and `let`, never `var`
-- **Style**: Vanilla JavaScript only, no jQuery
-- **Classes**: Use ES6 class syntax
-- **Comments**: Write in English
-- **DOM**: Target Redmine-provided DOM hooks; build HTML in ERB templates for security
+# Vector maintenance (production only)
+bundle exec rake redmine:plugins:ai_helper:vector:generate
+bundle exec rake redmine:plugins:ai_helper:vector:regist
+bundle exec rake redmine:plugins:ai_helper:vector:destroy
+```
 
-### CSS
-- **Styles**: Use Redmine's existing class definitions (e.g., `.box`)
-- **Colors/fonts**: Do NOT introduce custom colors or fonts—leverage Redmine's design system
+JavaScript commands run from the **plugin directory**
+(`plugins/redmine_ai_helper`), and require Node.js >= 22 (`npm ci` once to
+install):
 
-### Testing with Shoulda
+```bash
+npm run lint           # ESLint over assets/javascripts/ and test/javascript/
+npm run lint:fix       # Auto-fix what ESLint can fix
+npm test               # Vitest (jsdom, no browser/network)
+npm run test:coverage  # Vitest + coverage threshold gate
+```
+
+The coverage threshold (`vitest.config.js`'s `coverage.thresholds.lines`) is
+a ratchet: it only ever increases, tracked toward 90%. See
+[docs/javascript_quality_tooling.md](docs/javascript_quality_tooling.md) and
+[ADR-023](docs/adr/023-javascript-coverage-ratchet-policy.md).
+
+## Specification & Design Reference
+- **Design docs in `specs/` are AUTHORITATIVE and MANDATORY** — never deviate without explicit user approval
+- For existing feature specifications and architectural decisions, consult `wiki/INDEX.md`
+
+## Architecture Overview
+
+### Request Flow
+```
+Controller (AiHelperController)
+  → RedmineAiHelper::Llm          # Entry point from controllers, creates Langfuse trace
+    → LeaderAgent#perform_user_request  # Generates goal, steps, coordinates agents
+      → BaseAgent#chat             # Direct RubyLLM.chat (no tools)
+      → BaseAgent#assistant        # AssistantProvider → RubyLLM::Chat with tools
+        → LlmProvider.get_llm_provider  # Returns OpenAI/Anthropic/Gemini/Azure/Compatible
+          → Provider#create_chat   # Configures and returns RubyLLM::Chat instance
+```
+
+- **Agent registration**: All agents auto-register via `inherited` hook; inherit from `BaseAgent`
+- **Tool system**: `BaseTools` DSL (`define_function`/`property`) generates `RubyLLM::Tool` subclasses. `BaseAgent#available_tool_providers` returns the tool classes to use.
+- **Read-only mode**: `BaseTools.define_function` accepts `write: true`. Write tools are dropped when `AiHelperSetting.read_only_mode?`. External MCP sub-agents are disabled wholesale. See ADR-005 and ADR-015.
+- **LLM providers**: OpenAI, Anthropic, Gemini, Azure OpenAI, OpenAI-compatible (`lib/redmine_ai_helper/llm_client/`); each provider subclass implements `configure_ruby_llm` (sets API keys) and optionally overrides `create_chat`
+- **Streaming**: `AiHelper::Streaming` concern provides SSE streaming via `stream_llm_response`; agents accept a `stream_proc` callback for incremental content delivery
+- **Langfuse observability**: `LangfuseWrapper` manages traces and spans at the orchestration level (`Llm` class); `BaseAgent#setup_langfuse_callbacks` registers `on_end_message` callbacks on `RubyLLM::Chat` instances to create Langfuse generations with token usage
+- **Custom commands**: Users define reusable commands (global/project/user scoped) stored in `AiHelperCustomCommand`. `CustomCommandExpander` expands `/command_name input` syntax with template variables (`{input}`, `{user_name}`, `{project_name}`, `{datetime}`)
+- **Image/multi-modal attachments**: Images attached to Issues, Wiki pages, and Board messages are sent to LLMs for visual understanding. `IssueTools`/`WikiTools`/`BoardTools` use `AttachmentImageHelper` to collect image paths; images are provided to the LLM via `BaseAgent#chat(with:)` or dedicated image tool parameters — disk paths are never embedded in the textual prompt/JSON sent to the LLM. Image detection uses Redmine's `Attachment#image?` (bmp, gif, jpg, jpe, jpeg, png, webp)
+
+Key agents: `IssueReadAgent`, `IssueWriteAgent`, `RepositoryAgent`, `WikiAgent`, `ProjectAgent`, `BoardAgent`, `SystemAgent`, `UserAgent`, `VersionAgent`, `DocumentationAgent`, `FileAgent`, `LeaderAgent`, `McpAgent`
+
+### Tool System DSL Example
 ```ruby
-class SomeTest < ActiveSupport::TestCase
-  context "method_name" do
-    should "describe expected behavior" do
-      # test implementation
-    end
+class MyTools < RedmineAiHelper::BaseTools
+  define_function :do_something, description: "Does something" do
+    property :input, type: "string", description: "The input", required: true
+  end
+
+  def do_something(input:)
+    # implementation
   end
 end
 ```
-- Use `shoulda` (context/should blocks), not RSpec
-- Use `mocha` for mocking—but only when connecting to external servers
-- Place fixtures in `test/model_factory.rb`
-- Aim for ≥95% line coverage
+Agents expose tools by overriding `available_tool_providers` to return an array of `BaseTools` subclasses (e.g. `[MyTools]`). The base `available_tool_classes` method calls `available_tool_providers` and expands each provider via `.tool_classes`, returning a flat array of `RubyLLM::Tool` subclasses passed to `RubyLLM::Chat#with_tools`.
 
-### Test-Driven Development (TDD)
-Follow TDD: write tests BEFORE implementing features.
-- Red: Write a failing test first
-- Green: Write minimum code to make test pass
-- Refactor: Improve code while keeping tests green
-- Never write production code without a failing test
-- For bug fixes, write a test that reproduces the bug first
+## Data Models
+- `AiHelperConversation` / `AiHelperMessage` — Chat conversation storage
+- `AiHelperSummaryCache` — Cached summaries to avoid re-computation
+- `AiHelperSetting` / `AiHelperProjectSetting` — Global and project-level settings
+- `AiHelperModelProfile` — LLM provider configurations
+- `AiHelperVectorData` — Vector embeddings for issue/wiki similarity search (Qdrant)
+- `AiHelperCustomCommand` — User-defined reusable prompt commands
+
+## Key Components
+- `lib/redmine_ai_helper/llm.rb` — Entry point from controllers, wraps all agent calls with Langfuse traces
+- `lib/redmine_ai_helper/base_agent.rb` — Agent base class: `chat` (with `with:` for images), `assistant`, `perform_task`, `setup_langfuse_callbacks`
+- `lib/redmine_ai_helper/base_tools.rb` — Tool DSL: `define_function`/`property`/`item` → `RubyLLM::Tool` generation
+- `lib/redmine_ai_helper/assistant.rb` — Wraps `RubyLLM::Chat` with unified interface (`add_message`, `run`, `messages`)
+- `lib/redmine_ai_helper/assistant_provider.rb` — Factory: creates Assistant from LLM provider + instructions + tools
+- `lib/redmine_ai_helper/util/attachment_image_helper.rb` — Extracts image attachment disk paths from containers (Issue, WikiPage, Message)
+- `app/controllers/ai_helper_controller.rb` — Main controller with streaming support
+- `assets/prompt_templates/` — Internationalized YAML prompt templates (EN/JP)
+- `config/ai_helper/config.json` — MCP server configuration
+- `config/ai_helper/config.yml` — Langfuse configuration
+
+## Custom Agent Development
+1. Inherit from `RedmineAiHelper::BaseAgent` — automatic registration via `inherited` hook
+2. Create tools inheriting from `RedmineAiHelper::BaseTools`
+3. Override `available_tool_providers` to return an array of your `BaseTools` subclasses (e.g. `[YourTools]`)
+4. Override `backstory` to return the agent's system prompt context
+5. See `example/redmine_fortune/` for a complete example
+
+## Coding Conventions
+
+### Ruby
+- Follow Ruby on Rails conventions
+- `# frozen_string_literal: true` at file top
+- Double quotes for string literals (enforced by RuboCop)
+- Write comments in English
+- Logging: mixin `RedmineAiHelper::Logger`, use `ai_helper_logger` — **never** `Rails.logger`
+- Error handling: **NEVER implement fallback error handling**. Let errors surface immediately. No silent continues.
+
+### Testing
+- **TDD**: Write tests before implementing features
+- Framework: `shoulda` (context/should blocks) + `mocha` (mocking external servers only)
+- Test fixtures: `test/model_factory.rb` (FactoryBot)
+- Test structure: `test/unit/` (models, agents, tools), `test/unit/lib/` (lib classes), `test/functional/` (controllers), `test/integration/` (API)
 
 ### File Structure Patterns
 - Controllers: `app/controllers/ai_helper_*.rb`
 - Models: `app/models/ai_helper_*.rb`
 - Agents: `lib/redmine_ai_helper/agents/*_agent.rb`
 - Tools: `lib/redmine_ai_helper/tools/*_tools.rb`
-- Tests: `test/unit/` and `test/functional/`
 
-## Design Document Adherence
-**CRITICAL**: Design documents in `specs/` directory, when present, are AUTHORITATIVE and MANDATORY.
-- **NEVER deviate from design documents** without explicit user approval
-- Follow design documents exactly for architecture, file locations, method placement, APIs, and test locations
-- If you believe the design has issues, **ASK THE USER FIRST** before implementing differently
+### Frontend
+- HTML in ERB templates only — **never build HTML in JavaScript** (XSS prevention)
+- JavaScript: vanilla ES6 only (`const`/`let`, classes), no jQuery
+- Write comments in English
+- CSS: use Redmine's existing classes (`.box`), no custom colors/fonts
+- Icons: `sprite_icon` helper; i18n: `t()` / `l()`
 
-## Commit & Pull Request Guidelines
-- **NEVER commit or push without explicit user permission** — always ask first
-- **Commit messages**: Concise, imperative, English (e.g., "Add health report history actions")
-- **PR body**: Summarize change set, list commands/tests executed, reference related Redmine issues
-- **UI changes**: Include screenshots
-- **Configuration impacts**: Mention vector maintenance or configuration changes
-
-## Configuration & Agent Notes
+### Configuration
 - Global settings: `AiHelperSetting` model
 - Project settings: `AiHelperProjectSetting` model
 - Model profiles: `AiHelperModelProfile` for LLM configurations
-- MCP endpoints: `config/ai_helper/config.json` (drives dynamic agent generation for STDIO/HTTP/SSE)
-- Langfuse logging: `config/ai_helper/config.yml`
-- Prompt templates: Support English and Japanese locales
+- MCP endpoints: `config/ai_helper/config.json` (STDIO/HTTP/SSE)
+- Langfuse: `config/ai_helper/config.yml`
+- Prompt templates: `assets/prompt_templates/` (English and Japanese)
 
-## Agent & Tool Architecture
-- **Request Flow**: Controller → Llm class (creates Langfuse trace) → LeaderAgent → BaseAgent/BaseTools → RubyLLM
-- **Agent Registration**: All agents auto-register via `inherited` hook when loaded; inherit from `BaseAgent`
-- **Tool System**: Tools defined via DSL in `BaseTools` subclasses using `define_function`/`property` that generates `RubyLLM::Tool` subclasses
-- **Key Agents**: `IssueAgent`, `RepositoryAgent`, `WikiAgent`, `ProjectAgent`, `BoardAgent`, `SystemAgent`, `UserAgent`, `VersionAgent`, `DocumentationAgent`, `IssueUpdateAgent`, `LeaderAgent`, `McpAgent`
-- **LLM Providers**: OpenAI, Anthropic, Gemini, Azure OpenAI, OpenAI-compatible (in `lib/redmine_ai_helper/llm_client/`)
-- **Streaming Support**: `AiHelper::Streaming` concern provides SSE streaming via `stream_llm_response`. Agents accept a `stream_proc` callback for incremental content delivery
-- **Langfuse Integration**: `LangfuseWrapper` manages traces and spans at the orchestration level. `BaseAgent#setup_langfuse_callbacks` registers `on_end_message` callbacks on `RubyLLM::Chat` instances to create Langfuse generations with token usage
+## Git Workflow
+- **git-flow**: `develop` is integration branch, `main` is production — always branch from `develop`
+- Branch naming: `feature/NNN-description`, `bugfix/NNN-description`
+- Write commit messages in plain English
+- Do not include any information about Claude Code in commit messages
+- **NEVER commit or push without explicit user permission**
+- **NEVER run destructive git commands without an explicit user instruction** — this includes
+  `git clean`, `git reset --hard`, `git checkout .` / `git restore .`, `git stash drop|clear`,
+  `git branch -D`, `git rebase`, and force pushes. They discard work that git cannot recover,
+  including untracked files that are not in any commit.
+- To undo your own changes, delete or revert **only the specific files you touched**, named
+  explicitly. Never use a whole-tree sweep to "tidy up" — the working tree may hold untracked
+  files (local tooling directories, caches, scratch work) that belong to the user, not to you.
+- Before removing anything, inspect what will be removed (e.g. `git clean -nd`) and confirm with
+  the user.
 
-## Key Integration Points
-- **Hooks**: `init.rb` for registration, `lib/redmine_ai_helper/view_hook.rb` for UI integration
-- **Patches**: Extend Redmine core classes via `*_patch.rb` files
-- **Vector Search (Qdrant)**: `AiHelperVectorData` model, `lib/redmine_ai_helper/vector/`
-- **MCP**: Dynamic agent generation via `McpServerLoader` from `config/ai_helper/mcp_servers/`
-
-## Frontend Security
-- Build HTML structures in ERB templates (`*.html.erb`), NOT in JavaScript
-- This prevents XSS and injection vulnerabilities by leveraging Rails' automatic escaping
-- JavaScript should only manipulate existing DOM elements rendered by ERB
-- Use `sprite_icon` helper for icons, `t()` / `l()` for i18n text in templates
-
-## Error Handling Best Practices
-- **NEVER implement fallback error handling** — fallbacks hide real problems
-- Let errors surface immediately for proper diagnosis
-- Use `ai_helper_logger` for logging (mixin `RedmineAiHelper::Logger`)
-- Never use `Rails.logger` directly
-- Graceful degradation when AI services unavailable, but always log the error
-
-## Linting & Quality Tools
-- **Rubocop**: Run `rubocop` for Ruby style checking; config in `.rubocop.yml` if present
-- **Reek**: Code smell detection—identifies complex code structures
-- **Brakeman**: Security vulnerability scanning—run before deploying
-- **Yard**: Documentation coverage—ensure public APIs are documented
-- Configuration in `.qlty/qlty.toml` with plugins for actionlint, checkov, markdownlint, prettier, shellcheck, and trufflehog
+## Documentation & ADRs
+- Technical docs in `docs/`; ADRs in `docs/adr/`
+- All docs/ content in English
+- ADRs are **append-only** — add new ones to supersede; never modify or delete past ADRs
+- Format: use template in `docs/adr/README.md`
 
 ## Internationalization
-- All user-facing text must support i18n via `config/locales/*.yml`
-- Use `t()` helper for translations
-- Support English (en) and Japanese (ja) locales
+- All user-facing text via `config/locales/*.yml` using `t()` helper
+- Support English (en) and Japanese (ja)
+
+## Key Integration Points
+- **Hooks**: `init.rb` (registration), `lib/redmine_ai_helper/view_hook.rb` (UI)
+- **Patches**: `*_patch.rb` files extend Redmine core classes
+- **MCP servers**: `McpServerLoader` generates one `SubMcpAgent` per `config.json` entry
+- **MCP endpoint**: `lib/redmine_ai_helper/mcp/` exposes Redmine tools as stateless MCP server via `AiHelperMcpController`
+- **Chat gateway**: `lib/redmine_ai_helper/chat_channel/` — Slack/Discord bridge, runs as separate process (`bundle exec rake redmine:plugins:ai_helper:chat_channel:gateway`)
+- **Health reports**: `AiHelperHealthReport`; PDF export via `lib/redmine_ai_helper/export/pdf/`
+- **Multi-modal**: Images/PDFs/audio sent to LLM via `BaseAgent#chat(with:)` — disk paths never embedded in JSON/text prompts
+
+## Linting & Quality
+- **Rubocop**: after modifying any Ruby source file, always run `rubocop --ignore-parent-exclusion` and fix all offenses before finishing; config in `.rubocop.yml`. Use the `/rubocop` skill for the full fix workflow including auto-correction and test verification.
+- **Reek**: code smell detection
+- **Brakeman**: security scanning
+- **YARD**: doc coverage (must be 100%)
+- **qlty**: config in `.qlty/qlty.toml` (actionlint, checkov, markdownlint, prettier, shellcheck, trufflehog)
+
+<!-- SPECKIT START -->
+## Active Technologies
+- Ruby 3.x / Rails 7.2 + RubyLLM, ActiveRecord (Redmine ORM)
+- Testing: mocha (mocking), shoulda (assertions)
+- Connection test results are not persisted
+- Auto-fetch uses `RubyLLM::Providers::OpenAI / Anthropic / Gemini`; no DB changes (in-memory only)
+- Ruby 3.x / Rails 7.2 (Redmine 6.x plugin) + RubyLLM, ActiveRecord (Redmine ORM) (010-model-profile-copy)
+- Existing `ai_helper_model_profiles` table (no new migration required) (010-model-profile-copy)
+
+## Recent Changes
+- 007-vector-model-profile: Added vector model profile support; adds `use_vector_model_profile` and `vector_model_profile_id` columns to the existing `ai_helper_settings` table (MySQL/PostgreSQL)
+
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->
 
 <!-- BEGIN token-budget concise-mode -->
 

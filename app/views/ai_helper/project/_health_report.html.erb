@@ -91,7 +91,8 @@
 <meta name="ai-helper-project-health-created-label" content="<%= l(:field_created_on) %>" />
 
 <% content_for :header_tags do %>
-  <%= javascript_include_tag 'ai_helper_project_health', plugin: 'redmine_ai_helper' %>
+  <%= javascript_include_tag 'project_health/ai_helper_project_health', plugin: 'redmine_ai_helper' %>
+  <%= javascript_include_tag 'project_health/ai_helper_project_health_actions', plugin: 'redmine_ai_helper' %>
   <%= stylesheet_link_tag 'ai_helper_rtl', plugin: 'redmine_ai_helper' if l(:direction) == 'rtl' %>
 <% end %>
 

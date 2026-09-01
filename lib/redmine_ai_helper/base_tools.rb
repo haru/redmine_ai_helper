@@ -151,29 +151,9 @@ module RedmineAiHelper
       def item(name_or_type = nil, type: nil, description: "", required: false, enum: nil, &block)
         # Handle both `item type: "string"` and `item :name, type: "string"` patterns
         if name_or_type.is_a?(Symbol) && type
-          # Named item pattern: `item :key, type: "string", ...`
-          item_def = { name: name_or_type, type: type, description: description, required: required }
-          item_def[:enum] = enum if enum
-          if block_given? && (type == "object" || type == "array")
-            child_builder = ParameterBuilder.new
-            child_builder.instance_eval(&block)
-            item_def[:children] = child_builder.params if child_builder.params.any?
-            item_def[:items] = child_builder.items_definition if type == "array"
-            item_def[:items_parts] = child_builder.items_parts if child_builder.items_parts&.any?
-          end
-          @items_parts ||= []
-          @items_parts << item_def
+          add_named_item(name_or_type, type: type, description: description, required: required, enum: enum, &block)
         else
-          # Unnamed item pattern: `item type: "string"` or `item type: "object" do ... end`
-          actual_type = type || name_or_type.to_s
-          @items_definition = { type: actual_type, description: description }
-          @items_definition[:enum] = enum if enum
-          if block_given? && (actual_type == "object" || actual_type == "array")
-            child_builder = ParameterBuilder.new
-            child_builder.instance_eval(&block)
-            @items_definition[:children] = child_builder.params if child_builder.params.any?
-            @items_definition[:items_parts] = child_builder.items_parts if child_builder.items_parts&.any?
-          end
+          add_unnamed_item(name_or_type, type: type, description: description, enum: enum, &block)
         end
       end
 
@@ -244,6 +224,34 @@ module RedmineAiHelper
       end
 
       private
+
+      # Handle named item pattern: `item :key, type: "string", ...`
+      def add_named_item(name, type:, description:, required:, enum:, &block)
+        item_def = { name: name, type: type, description: description, required: required }
+        item_def[:enum] = enum if enum
+        if block_given? && (type == "object" || type == "array")
+          child_builder = ParameterBuilder.new
+          child_builder.instance_eval(&block)
+          item_def[:children] = child_builder.params if child_builder.params.any?
+          item_def[:items] = child_builder.items_definition if type == "array"
+          item_def[:items_parts] = child_builder.items_parts if child_builder.items_parts&.any?
+        end
+        @items_parts ||= []
+        @items_parts << item_def
+      end
+
+      # Handle unnamed item pattern: `item type: "string"` or `item type: "object" do ... end`
+      def add_unnamed_item(name_or_type, type:, description:, enum:, &block)
+        actual_type = type || name_or_type.to_s
+        @items_definition = { type: actual_type, description: description }
+        @items_definition[:enum] = enum if enum
+        if block_given? && (actual_type == "object" || actual_type == "array")
+          child_builder = ParameterBuilder.new
+          child_builder.instance_eval(&block)
+          @items_definition[:children] = child_builder.params if child_builder.params.any?
+          @items_definition[:items_parts] = child_builder.items_parts if child_builder.items_parts&.any?
+        end
+      end
 
       # Build JSON schema for a single property
       def build_property_schema(param)
@@ -371,7 +379,22 @@ module RedmineAiHelper
       User.current.allowed_to?({ controller: :ai_helper, action: :chat_form }, project)
     end
 
+    # All projects accessible via AI Helper, for tools that need to work across projects.
+    # #accessible_project? stays the source of truth for the decision, but the candidate set
+    # is narrowed to Project.visible in SQL and enabled_modules is preloaded, so a large
+    # instance neither materializes every project nor issues one query per project.
+    # @return [Array<Project>] The accessible projects.
+    def accessible_projects
+      Project.visible.preload(:enabled_modules).select { |p| accessible_project? p }
+    end
+
     private
+
+    def format_named_record(obj)
+      return nil unless obj
+
+      { id: obj.id, name: obj.name }
+    end
 
     def deep_symbolize_array(arr)
       arr.map do |item|

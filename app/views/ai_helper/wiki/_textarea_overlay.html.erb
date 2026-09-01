@@ -1,9 +1,46 @@
 <%
   project = @wiki&.project || @project
+  ac = RedmineAiHelper::Util::ConfigFile.autocompletion_settings
 %>
 
 
 <% if params[:controller] == 'wiki' && (params[:action] == 'edit' || params[:action] == 'show') && RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: project) && User.current.allowed_to?(:edit_wiki_pages, project) %>
+
+<div id="ai-helper-wiki-textarea-overlay" data-config='<%= {
+  endpoint: ai_helper_suggest_wiki_completion_path(project.identifier),
+  projectIdentifier: project.identifier,
+  userId: User.current.id,
+  isSectionEdit: @section.present?,
+  debounceDelay: ac[:debounce_delay] || 300,
+  minLength: ac[:wiki_min_length] || ac[:min_length] || 5,
+  suggestionColor: ac[:suggestion_color] || '#888888',
+  labels: {
+    commonToggleLabel: t('ai_helper.autocompletion.common_toggle_label'),
+    loading: t('ai_helper.autocompletion.loading'),
+    noSuggestions: t('ai_helper.autocompletion.no_suggestions'),
+    acceptSuggestion: t('ai_helper.autocompletion.accept_suggestion'),
+    dismiss: t('ai_helper.autocompletion.dismiss'),
+    enabledTooltip: t('ai_helper.autocompletion.enabled_tooltip'),
+    disabledTooltip: t('ai_helper.autocompletion.disabled_tooltip')
+  }
+}.to_json %>'></div>
+
+<div id="ai-helper-wiki-typo-overlay" data-config='<%= {
+  endpoint: ai_helper_check_typos_path(project),
+  labels: {
+    suggestionsTitle: t('ai_helper.typo_check.suggestions_title'),
+    noSuggestions: t('ai_helper.typo_check.no_suggestions'),
+    checkButton: t('ai_helper.typo_check.check_button'),
+    checking: t('ai_helper.typo_check.checking'),
+    acceptSuggestion: t('ai_helper.typo_check.accept_suggestion'),
+    dismissSuggestion: t('ai_helper.typo_check.dismiss_suggestion'),
+    acceptAll: t('ai_helper.typo_check.accept_all'),
+    dismissAll: t('ai_helper.typo_check.dismiss_all'),
+    errorOccurred: t('ai_helper.typo_check.error_occurred'),
+    correctionTooltip: t('ai_helper.typo_check.correction_tooltip'),
+    applyFailed: t('ai_helper.typo_check.apply_failed')
+  }
+}.to_json %>'></div>
 
 <div id="ai-helper-wiki-checkbox-container" class="ai-helper-autocompletion-controls" style="display: none;">
   <p style="display: flex; justify-content: space-between; align-items: center;">
@@ -33,128 +70,6 @@
   </button>
 </div>
 
-<script>
-function initializeWikiCompletion() {
-  if (window.aiHelperWikiCompletionInitialized) {
-    return;
-  }
-
-  const wikiTextarea = document.getElementById('content_text');
-
-  <%
-    config_path = Rails.root.join('plugins', 'redmine_ai_helper', 'config', 'ai_helper', 'config.yml')
-    autocompletion_config = {}
-    if File.exist?(config_path)
-      begin
-        config_data = YAML.load_file(config_path)
-        autocompletion_config = config_data['autocompletion'] || {}
-      rescue => e
-        autocompletion_config = {}
-      end
-    end
-  %>
-  const config = {
-    debounce_delay: <%= autocompletion_config['debounce_delay'] || 300 %>,
-    min_length: <%= autocompletion_config['wiki_min_length'] || 5 %>,
-    suggestion_color: '<%= autocompletion_config['suggestion_color'] || '#888888' %>'
-  };
-
-  if (wikiTextarea && typeof AiHelperAutoCompletion !== 'undefined') {
-    // Detect wiki page name from URL for proper endpoint
-    const pageMatch = window.location.pathname.match(/\/wiki\/([^\/]+)/);
-    let endpoint = '<%= ai_helper_suggest_wiki_completion_path(project.identifier) %>';
-    if (pageMatch) {
-      const pageName = pageMatch[1].replace(/\/edit.*$/, ''); // remove /edit suffix
-      endpoint = `/projects/<%= project.identifier %>/ai_helper/wiki/${pageName}/suggest_completion`;
-    }
-
-    const wikiAutoCompletion = new AiHelperAutoCompletion(wikiTextarea, {
-      contextType: 'wiki',
-      endpoint: endpoint,
-      userId: '<%= User.current.id %>',
-      debounceDelay: config.debounce_delay,
-      minLength: config.min_length,
-      suggestionColor: config.suggestion_color,
-      // Section edit detection from ERB
-      customRequestData: function(text, cursorPosition) {
-        return {
-          text: text,
-          cursor_position: cursorPosition,
-          context_type: 'wiki',
-          is_section_edit: <%= @section.present? ? 'true' : 'false' %>
-        };
-      },
-      labels: {
-        commonToggleLabel: '<%= t('ai_helper.autocompletion.common_toggle_label') %>',
-        loading: '<%= t('ai_helper.autocompletion.loading') %>',
-        noSuggestions: '<%= t('ai_helper.autocompletion.no_suggestions') %>',
-        acceptSuggestion: '<%= t('ai_helper.autocompletion.accept_suggestion') %>',
-        dismiss: '<%= t('ai_helper.autocompletion.dismiss') %>',
-        enabledTooltip: '<%= t('ai_helper.autocompletion.enabled_tooltip') %>',
-        disabledTooltip: '<%= t('ai_helper.autocompletion.disabled_tooltip') %>'
-      }
-    });
-
-    wikiAutoCompletion.init();
-
-    const wikiContainer = document.getElementById('ai-helper-wiki-checkbox-container');
-    if (wikiContainer && wikiTextarea) {
-      const parent = wikiTextarea.parentNode;
-      const nextSibling = wikiTextarea.nextSibling;
-      if (nextSibling) {
-        parent.insertBefore(wikiContainer, nextSibling);
-      } else {
-        parent.appendChild(wikiContainer);
-      }
-      wikiContainer.style.display = 'block';
-    }
-
-    if (!window.aiHelperInstances) {
-      window.aiHelperInstances = {};
-    }
-    window.aiHelperInstances.wikiAutoCompletion = wikiAutoCompletion;
-  }
-
-  window.aiHelperWikiCompletionInitialized = true;
-}
-
-// Initialize wiki typo checking with direct button binding
-function initializeWikiTypoChecker() {
-  const wikiTextarea = document.getElementById('content_text');
-  const wikiButton = document.getElementById('ai-helper-typo-check-wiki-btn');
-
-  if (wikiTextarea && wikiButton && typeof AiHelperTypoChecker !== 'undefined') {
-    const wikiTypoChecker = new AiHelperTypoChecker(wikiTextarea, {
-      endpoint: '<%= ai_helper_check_typos_path(project) %>',
-      labels: {
-        suggestionsTitle: '<%= t('ai_helper.typo_check.suggestions_title') %>',
-        noSuggestions: '<%= t('ai_helper.typo_check.no_suggestions') %>',
-        checkButton: '<%= t('ai_helper.typo_check.check_button') %>',
-        checking: '<%= t('ai_helper.typo_check.checking') %>',
-        acceptSuggestion: '<%= t('ai_helper.typo_check.accept_suggestion') %>',
-        dismissSuggestion: '<%= t('ai_helper.typo_check.dismiss_suggestion') %>',
-        acceptAll: '<%= t('ai_helper.typo_check.accept_all') %>',
-        dismissAll: '<%= t('ai_helper.typo_check.dismiss_all') %>',
-        errorOccurred: '<%= t('ai_helper.typo_check.error_occurred') %>',
-        correctionTooltip: '<%= t('ai_helper.typo_check.correction_tooltip') %>',
-        applyFailed: '<%= t('ai_helper.typo_check.apply_failed') %>'
-      }
-    });
-    wikiTypoChecker.init();
-
-    // Bind existing button directly
-    wikiButton.addEventListener('click', () => {
-      wikiTypoChecker.checkTypos();
-    });
-  }
-}
-
-setTimeout(function() {
-  initializeWikiCompletion();
-  initializeWikiTypoChecker();
-}, 500);
-
-</script>
 <% else %>
 <!-- AI Helper wiki auto-completion not available -->
 <% end %>

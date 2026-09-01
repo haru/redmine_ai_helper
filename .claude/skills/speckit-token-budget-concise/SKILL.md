@@ -7,8 +7,12 @@ description: Toggle a project-local concise-output directive that suppresses age
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: token-budget:commands/concise.md
+  source: extension:token-budget
+user-invocable: true
+disable-model-invocation: false
 ---
+
+# Token Budget Concise Skill
 
 # /speckit.token-budget.concise
 

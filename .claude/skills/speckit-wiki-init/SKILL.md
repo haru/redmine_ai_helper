@@ -5,8 +5,12 @@ description: Create the project wiki skeleton (schema, index, source registry) â
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: wiki:commands/speckit.wiki.init.md
+  source: extension:wiki
+user-invocable: true
+disable-model-invocation: false
 ---
+
+# Wiki Init Skill
 
 # Initialize LLM Wiki
 

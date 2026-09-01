@@ -1,4 +1,8 @@
 
+<div id="ai-helper-subissues-index" data-config='<%= {
+  generateUrl: ai_helper_subissue_gen_path(id: issue)
+}.to_json %>'>
+
 <%= l('ai_helper.generate_sub_issues.instructions') %>:
 <div>
 <%= text_area_tag "ai_helper_subissues_instructions", "", rows: 4, cols: 60, style: "width: 99%;" %>
@@ -11,30 +15,4 @@
 
 </div>
 
-<script>
-    function aiHelperGenerateSubIssues(issueId) {
-        const container = document.getElementById('ai-helper-generated-subissues');
-        container.innerHTML = '<div class="ai-helper-loader"></div>';
-
-        const url = "<%= ai_helper_subissue_gen_path(id: issue) %>"
-
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            },
-            body: JSON.stringify({
-                instructions: document.getElementById('ai_helper_subissues_instructions').value
-            })
-        })
-        .then(response => response.text())
-        .then(html => {
-            container.innerHTML = html;
-        })
-        .catch(error => {
-            console.error('Error generating sub issues:', error);
-            container.innerHTML = '<p>Error generating sub issues. Please try again later.</p>';
-        });
-    }
-</script>
+</div>

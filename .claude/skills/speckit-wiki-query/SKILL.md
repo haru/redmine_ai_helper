@@ -5,8 +5,12 @@ description: Answer a question from the wiki with page and source citations; fla
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: wiki:commands/speckit.wiki.query.md
+  source: extension:wiki
+user-invocable: true
+disable-model-invocation: false
 ---
+
+# Wiki Query Skill
 
 # Query the Wiki
 

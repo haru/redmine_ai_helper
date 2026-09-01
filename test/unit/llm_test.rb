@@ -67,7 +67,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
       should "generate reply for visible issue" do
         @issue.stubs(:visible?).returns(true)
-        RedmineAiHelper::Agents::IssueAgent.any_instance.stubs(:generate_issue_reply).returns("Generated reply")
+        RedmineAiHelper::Agents::IssueReadAgent.any_instance.stubs(:generate_issue_reply).returns("Generated reply")
         reply = @llm.generate_issue_reply(issue: @issue, instructions: "test instructions")
 
         assert_equal "Generated reply", reply
@@ -78,7 +78,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       setup do
         @issue = Issue.find(1)
         @llm = RedmineAiHelper::Llm.new(@params)
-        RedmineAiHelper::Agents::IssueAgent.stubs(:new).returns(DummyIssueAgent.new)
+        RedmineAiHelper::Agents::IssueReadAgent.stubs(:new).returns(DummyIssueReadAgent.new)
       end
 
       should "deny access for non-visible issue" do
@@ -90,7 +90,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
       should "generate sub issues for visible issue" do
         @issue.stubs(:visible?).returns(true)
-        RedmineAiHelper::Agents::IssueAgent.any_instance.stubs(:generate_sub_issues).returns([ Issue.new(subject: "Sub issue 1"), Issue.new(subject: "Sub issue 2") ])
+        RedmineAiHelper::Agents::IssueReadAgent.any_instance.stubs(:generate_sub_issues).returns([ Issue.new(subject: "Sub issue 1"), Issue.new(subject: "Sub issue 2") ])
         sub_issues = @llm.generate_sub_issues(issue: @issue, instructions: "test instructions")
 
         assert_equal 2, sub_issues.length
@@ -99,9 +99,9 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
       should "propagate the original exception when sub issue generation fails" do
         @issue.stubs(:visible?).returns(true)
-        failing_agent = DummyIssueAgent.new
+        failing_agent = DummyIssueReadAgent.new
         failing_agent.stubs(:generate_sub_issues_draft).raises(RuntimeError.new("agent failure"))
-        RedmineAiHelper::Agents::IssueAgent.stubs(:new).returns(failing_agent)
+        RedmineAiHelper::Agents::IssueReadAgent.stubs(:new).returns(failing_agent)
 
         error = assert_raises(RuntimeError) do
           @llm.generate_sub_issues(issue: @issue, instructions: "test instructions")
@@ -161,9 +161,9 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         @llm = RedmineAiHelper::Llm.new(@params)
       end
 
-      should "call IssueAgent with correct parameters" do
-        mock_agent = mock("IssueAgent")
-        RedmineAiHelper::Agents::IssueAgent.stubs(:new).returns(mock_agent)
+      should "call IssueReadAgent with correct parameters" do
+        mock_agent = mock("IssueReadAgent")
+        RedmineAiHelper::Agents::IssueReadAgent.stubs(:new).returns(mock_agent)
 
         expected_results = [ { id: 2, subject: "Similar issue", similarity_score: 85.0 } ]
         mock_agent.expects(:find_similar_issues_by_content)
@@ -180,8 +180,8 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       end
 
       should "return similar issues when found" do
-        mock_agent = mock("IssueAgent")
-        RedmineAiHelper::Agents::IssueAgent.stubs(:new).returns(mock_agent)
+        mock_agent = mock("IssueReadAgent")
+        RedmineAiHelper::Agents::IssueReadAgent.stubs(:new).returns(mock_agent)
 
         expected_results = [
           { id: 2, subject: "Similar issue 1", similarity_score: 85.0 },
@@ -200,8 +200,8 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       end
 
       should "handle errors gracefully" do
-        mock_agent = mock("IssueAgent")
-        RedmineAiHelper::Agents::IssueAgent.stubs(:new).returns(mock_agent)
+        mock_agent = mock("IssueReadAgent")
+        RedmineAiHelper::Agents::IssueReadAgent.stubs(:new).returns(mock_agent)
         mock_agent.stubs(:find_similar_issues_by_content)
                   .raises(StandardError.new("Vector search failed"))
 
@@ -368,13 +368,13 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       mock_langfuse.stubs(:flush)
       RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
 
-      # Mock IssueAgent
+      # Mock IssueReadAgent
       similar_issues_data = [
         { id: 2, subject: "Similar issue", similarity_score: 85.0 }
       ]
-      mock_agent = mock("issue_agent")
+      mock_agent = mock("issue_read_agent")
       mock_agent.stubs(:find_similar_issues).with(issue: @issue, scope: "with_subprojects", project: @issue.project).returns(similar_issues_data)
-      RedmineAiHelper::Agents::IssueAgent.stubs(:new).returns(mock_agent)
+      RedmineAiHelper::Agents::IssueReadAgent.stubs(:new).returns(mock_agent)
 
       result = @llm.find_similar_issues(issue: @issue)
 
@@ -382,8 +382,8 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
     end
 
     should "handle errors during similar issues search" do
-      # Mock IssueAgent to raise an error
-      RedmineAiHelper::Agents::IssueAgent.stubs(:new).raises(StandardError.new("Vector search failed"))
+      # Mock IssueReadAgent to raise an error
+      RedmineAiHelper::Agents::IssueReadAgent.stubs(:new).raises(StandardError.new("Vector search failed"))
 
       assert_raises(StandardError, "Vector search failed") do
         @llm.find_similar_issues(issue: @issue)
@@ -398,18 +398,18 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       mock_langfuse.expects(:flush)
       RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).with(input: "find similar issues for #{@issue.id}").returns(mock_langfuse)
 
-      # Mock IssueAgent
+      # Mock IssueReadAgent
       similar_issues_data = []
-      mock_agent = mock("issue_agent")
+      mock_agent = mock("issue_read_agent")
       mock_agent.stubs(:find_similar_issues).returns(similar_issues_data)
-      RedmineAiHelper::Agents::IssueAgent.stubs(:new).returns(mock_agent)
+      RedmineAiHelper::Agents::IssueReadAgent.stubs(:new).returns(mock_agent)
 
       result = @llm.find_similar_issues(issue: @issue)
 
       assert_equal similar_issues_data, result
     end
 
-    should "pass correct parameters to IssueAgent" do
+    should "pass correct parameters to IssueReadAgent" do
       # Mock langfuse
       mock_langfuse = mock("langfuse_wrapper")
       mock_langfuse.stubs(:create_span)
@@ -417,8 +417,8 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       mock_langfuse.stubs(:flush)
       RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
 
-      # Verify IssueAgent is created with correct project and langfuse
-      RedmineAiHelper::Agents::IssueAgent.expects(:new).with(
+      # Verify IssueReadAgent is created with correct project and langfuse
+      RedmineAiHelper::Agents::IssueReadAgent.expects(:new).with(
         project: @issue.project,
         langfuse: mock_langfuse
       ).returns(mock("agent").tap do |agent|
@@ -436,10 +436,10 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       mock_langfuse.stubs(:flush)
       RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
 
-      # Mock IssueAgent to raise an error
-      mock_agent = mock("issue_agent")
+      # Mock IssueReadAgent to raise an error
+      mock_agent = mock("issue_read_agent")
       mock_agent.stubs(:find_similar_issues).raises(StandardError.new("Test error"))
-      RedmineAiHelper::Agents::IssueAgent.stubs(:new).returns(mock_agent)
+      RedmineAiHelper::Agents::IssueReadAgent.stubs(:new).returns(mock_agent)
 
       # Expect error logging
       @llm.expects(:ai_helper_logger).returns(mock("logger").tap do |logger|
@@ -460,7 +460,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
     end
 
     should "generate text completion successfully" do
-      RedmineAiHelper::Agents::IssueAgent.any_instance.stubs(:generate_text_completion).returns("This is a completion.")
+      RedmineAiHelper::Agents::IssueReadAgent.any_instance.stubs(:generate_text_completion).returns("This is a completion.")
 
       result = @llm.generate_text_completion(
         text: "Login page has error",
@@ -474,7 +474,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
     end
 
     should "handle agent error gracefully" do
-      RedmineAiHelper::Agents::IssueAgent.any_instance.stubs(:generate_text_completion).raises(StandardError, "Agent error")
+      RedmineAiHelper::Agents::IssueReadAgent.any_instance.stubs(:generate_text_completion).raises(StandardError, "Agent error")
 
       result = @llm.generate_text_completion(
         text: "Login page has error",
@@ -488,9 +488,9 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
     end
 
     should "parse single suggestion correctly" do
-      # This functionality has been moved to IssueAgent#parse_completion_response
-      # Create an IssueAgent instance for testing
-      agent = RedmineAiHelper::Agents::IssueAgent.new
+      # This functionality has been moved to IssueReadAgent#parse_completion_response
+      # Create an IssueReadAgent instance for testing
+      agent = RedmineAiHelper::Agents::IssueReadAgent.new
 
       # Test with normal text
       result = agent.send(:parse_completion_response, "This is a suggestion.")
@@ -515,7 +515,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
     # Tests for refactored generate_text_completion method
     context "generate_text_completion (refactored)" do
-      should "delegate to IssueAgent properly" do
+      should "delegate to IssueReadAgent properly" do
         # Mock LangfuseWrapper
         mock_langfuse = mock("LangfuseWrapper")
         mock_langfuse.stubs(:create_span)
@@ -523,8 +523,9 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         mock_langfuse.stubs(:flush)
         RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
 
-        # Mock IssueAgent
-        mock_agent = mock("IssueAgent")
+        # Mock IssueReadAgent
+        mock_agent = mock("IssueReadAgent")
+        mock_agent.stubs(:llm_provider=)
         mock_agent.expects(:generate_text_completion).with(
           text: "Test text",
           cursor_position: 4,
@@ -533,7 +534,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
           issue: @issue
         ).returns("Completed text")
 
-        RedmineAiHelper::Agents::IssueAgent.expects(:new).returns(mock_agent)
+        RedmineAiHelper::Agents::IssueReadAgent.expects(:new).returns(mock_agent)
 
         result = @llm.generate_text_completion(
           text: "Test text",
@@ -554,11 +555,12 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         mock_langfuse.stubs(:flush)
         RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
 
-        # Mock IssueAgent to raise an error
-        mock_agent = mock("IssueAgent")
+        # Mock IssueReadAgent to raise an error
+        mock_agent = mock("IssueReadAgent")
+        mock_agent.stubs(:llm_provider=)
         mock_agent.expects(:generate_text_completion).raises(StandardError, "Agent failed")
 
-        RedmineAiHelper::Agents::IssueAgent.expects(:new).returns(mock_agent)
+        RedmineAiHelper::Agents::IssueReadAgent.expects(:new).returns(mock_agent)
 
         result = @llm.generate_text_completion(
           text: "Test text",
@@ -571,7 +573,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         assert_equal "", result
       end
 
-      should "pass correct options to IssueAgent" do
+      should "pass correct options to IssueReadAgent" do
         # Mock LangfuseWrapper
         mock_langfuse = mock("LangfuseWrapper")
         mock_langfuse.stubs(:create_span)
@@ -579,13 +581,14 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         mock_langfuse.stubs(:flush)
         RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
 
-        # Verify correct options are passed to IssueAgent
+        # Verify correct options are passed to IssueReadAgent
         expected_options = { langfuse: mock_langfuse, project: @project }
 
-        mock_agent = mock("IssueAgent")
+        mock_agent = mock("IssueReadAgent")
+        mock_agent.stubs(:llm_provider=)
         mock_agent.expects(:generate_text_completion).returns("Result")
 
-        RedmineAiHelper::Agents::IssueAgent.expects(:new).with(expected_options).returns(mock_agent)
+        RedmineAiHelper::Agents::IssueReadAgent.expects(:new).with(expected_options).returns(mock_agent)
 
         @llm.generate_text_completion(
           text: "Test text",
@@ -607,10 +610,11 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
         RedmineAiHelper::LangfuseUtil::LangfuseWrapper.expects(:new).with(input: test_text).returns(mock_langfuse)
 
-        # Mock IssueAgent
-        mock_agent = mock("IssueAgent")
+        # Mock IssueReadAgent
+        mock_agent = mock("IssueReadAgent")
+        mock_agent.stubs(:llm_provider=)
         mock_agent.stubs(:generate_text_completion).returns(test_output)
-        RedmineAiHelper::Agents::IssueAgent.stubs(:new).returns(mock_agent)
+        RedmineAiHelper::Agents::IssueReadAgent.stubs(:new).returns(mock_agent)
 
         result = @llm.generate_text_completion(
           text: test_text,
@@ -621,9 +625,67 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         assert_equal test_output, result
       end
     end
+
+    # Completion requests must run with a bounded timeout and no retries so a
+    # slow backend cannot occupy an application worker for minutes (ADR-018).
+    context "generate_text_completion request options" do
+      setup do
+        mock_langfuse = mock("LangfuseWrapper")
+        mock_langfuse.stubs(:create_span)
+        mock_langfuse.stubs(:finish_current_span)
+        mock_langfuse.stubs(:flush)
+        RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
+      end
+
+      should "build the request options from the configured autocompletion timeout" do
+        RedmineAiHelper::Util::ConfigFile.stubs(:autocompletion_settings).returns({ timeout: 12 })
+        completion_provider = mock("completion_provider")
+        RedmineAiHelper::LlmProvider.expects(:get_llm_provider)
+          .with(request_options: { request_timeout: 12, max_retries: 0 })
+          .returns(completion_provider)
+
+        mock_agent = mock("IssueReadAgent")
+        mock_agent.expects(:llm_provider=).with(completion_provider)
+        mock_agent.expects(:generate_text_completion).returns("Completed")
+        RedmineAiHelper::Agents::IssueReadAgent.expects(:new).returns(mock_agent)
+
+        result = @llm.generate_text_completion(
+          text: "Test text",
+          context_type: "description",
+          cursor_position: 4,
+          project: @project
+        )
+
+        assert_equal "Completed", result
+      end
+
+      should "use the default timeout when the configuration does not set one" do
+        # No stub on autocompletion_settings: the real validation has to be the
+        # thing that produces the default, or this test proves nothing.
+        File.stubs(:exist?).with(Rails.root.join("config/ai_helper/config.yml")).returns(false)
+        completion_provider = mock("completion_provider")
+        RedmineAiHelper::LlmProvider.expects(:get_llm_provider)
+          .with(request_options: {
+            request_timeout: RedmineAiHelper::Util::ConfigFile::AUTOCOMPLETION_DEFAULT_TIMEOUT,
+            max_retries: 0
+          })
+          .returns(completion_provider)
+
+        mock_agent = mock("IssueReadAgent")
+        mock_agent.expects(:llm_provider=).with(completion_provider)
+        mock_agent.expects(:generate_text_completion).returns("Completed")
+        RedmineAiHelper::Agents::IssueReadAgent.expects(:new).returns(mock_agent)
+
+        @llm.generate_text_completion(
+          text: "Test text",
+          context_type: "description",
+          project: @project
+        )
+      end
+    end
   end
 
-  class DummyIssueAgent
+  class DummyIssueReadAgent
     def generate_sub_issues_draft(args = {})
       return "Permission denied" unless args[:issue].visible?
       [

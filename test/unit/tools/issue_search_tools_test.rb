@@ -315,8 +315,8 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       end
     end
 
-    should "raise an error when project_id is not given" do
-      assert_raises(RuntimeError) do
+    should "not raise when project_id is omitted" do
+      assert_nothing_raised do
         @provider.search_issues(project_id: nil)
       end
     end
@@ -334,6 +334,16 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
 
       assert_match(/AI Helper module enabled/, schema[:function][:description])
       assert_match(/AI Helper module enabled/, schema[:function][:parameters][:properties][:project_id][:description])
+    end
+
+    # T015
+    should "state in the tool description that omitting project_id searches across accessible ai_helper enabled projects" do
+      schema = RedmineAiHelper::Tools::IssueSearchTools.function_schemas.to_openai_format.find do |f|
+        f[:function][:name].end_with?("__search_issues")
+      end
+
+      assert_match(/omit/i, schema[:function][:description])
+      assert_match(/omit/i, schema[:function][:parameters][:properties][:project_id][:description])
     end
   end
 
@@ -477,6 +487,313 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
 
       assert_match(/asc/i, error.message)
       assert_match(/desc/i, error.message)
+    end
+  end
+
+  context "search_issues cross-project (project_id omitted)" do
+    setup do
+      @project1 = Project.find(1)
+      @project2 = Project.find(2)
+      @tracker = Tracker.find(1)
+      @other_tracker = Tracker.find(2)
+      @user = User.find(2)
+      @previous_user = User.current
+      User.current = @user
+
+      # jsmith (user 2) holds role 1 on project 1 (view_ai_helper granted in top-level setup)
+      # and role 2 on project 2; grant the same permission there for a second accessible project.
+      EnabledModule.create!(project_id: 2, name: "ai_helper")
+      Role.find(2).add_permission!(:view_ai_helper)
+    end
+
+    teardown do
+      User.current = @previous_user
+    end
+
+    # T003
+    should "return issues from multiple ai_helper enabled projects when project_id is omitted" do
+      issue1 = Issue.create!(project: @project1, tracker: @tracker, subject: "Cross Project Issue 1",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+      issue2 = Issue.create!(project: @project2, tracker: @tracker, subject: "Cross Project Issue 2",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+
+      result = @provider.search_issues(project_id: nil)
+      ids = result[:issues].map { |i| i[:id] }
+
+      assert_includes ids, issue1.id
+      assert_includes ids, issue2.id
+    ensure
+      issue1&.destroy
+      issue2&.destroy
+    end
+
+    # T004
+    should "return only matching issues across multiple projects when a filter is applied and project_id is omitted" do
+      matching1 = Issue.create!(project: @project1, tracker: @tracker, subject: "Matching In Project 1",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+      matching2 = Issue.create!(project: @project2, tracker: @tracker, subject: "Matching In Project 2",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+      non_matching = Issue.create!(project: @project2, tracker: @other_tracker, subject: "Non Matching Tracker",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+
+      result = @provider.search_issues(
+        project_id: nil,
+        fields: [ { field_name: "tracker_id", operator: "=", values: [ @tracker.id.to_s ] } ]
+      )
+      ids = result[:issues].map { |i| i[:id] }
+
+      assert_includes ids, matching1.id
+      assert_includes ids, matching2.id
+      assert_not_includes ids, non_matching.id
+      assert_operator result[:total_count], :>=, 2
+    ensure
+      matching1&.destroy
+      matching2&.destroy
+      non_matching&.destroy
+    end
+
+    # T009
+    should "exclude issues from a project the user cannot view when project_id is omitted" do
+      private_tracker = Tracker.create!(name: "PrivateTracker#{Time.now.to_i}#{rand(10000)}", default_status: IssueStatus.first)
+      private_project = Project.create!(
+        name: "Cross Private Test",
+        identifier: "cross-private-test-#{Time.now.to_i}#{rand(10000)}",
+        is_public: false
+      )
+      private_project.trackers << private_tracker unless private_project.trackers.include?(private_tracker)
+      EnabledModule.create!(project_id: private_project.id, name: "ai_helper")
+
+      hidden_issue = Issue.create!(
+        project: private_project, tracker: private_tracker, subject: "Hidden From Cross Search",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first
+      )
+
+      result = @provider.search_issues(project_id: nil)
+      ids = result[:issues].map { |i| i[:id] }
+
+      assert_not_includes ids, hidden_issue.id
+    ensure
+      hidden_issue&.destroy
+      private_project&.destroy
+      private_tracker&.destroy
+    end
+
+    # T010
+    should "exclude issues from a viewable project whose ai_helper module is disabled when project_id is omitted" do
+      plain_tracker = Tracker.create!(name: "PlainTracker#{Time.now.to_i}#{rand(10000)}", default_status: IssueStatus.first)
+      plain_project = Project.create!(
+        name: "Cross No Module Test",
+        identifier: "cross-no-module-test-#{Time.now.to_i}#{rand(10000)}",
+        is_public: true
+      )
+      plain_project.trackers << plain_tracker unless plain_project.trackers.include?(plain_tracker)
+      # Deliberately do not enable the ai_helper module for this project.
+
+      excluded_issue = Issue.create!(
+        project: plain_project, tracker: plain_tracker, subject: "Excluded No Module Issue",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first
+      )
+
+      result = @provider.search_issues(project_id: nil)
+      ids = result[:issues].map { |i| i[:id] }
+
+      assert_not_includes ids, excluded_issue.id
+    ensure
+      excluded_issue&.destroy
+      plain_project&.destroy
+      plain_tracker&.destroy
+    end
+
+    # T011
+    should "return an empty result without error when no project is accessible via ai_helper" do
+      Role.find(1).remove_permission!(:view_ai_helper)
+      Role.find(2).remove_permission!(:view_ai_helper)
+
+      result = @provider.search_issues(project_id: nil)
+
+      assert_equal [], result[:issues]
+      assert_equal 0, result[:total_count]
+    end
+
+    # T013
+    should "apply sort and limit across multiple projects when project_id is omitted" do
+      now = Time.current
+      issue_old = Issue.create!(project: @project1, tracker: @tracker, subject: "Cross Sort Old",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+      issue_mid = Issue.create!(project: @project2, tracker: @tracker, subject: "Cross Sort Mid",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+      issue_new = Issue.create!(project: @project1, tracker: @tracker, subject: "Cross Sort New",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+      [ issue_old, issue_mid, issue_new ].each(&:reload)
+      issue_old.update_column(:created_on, now - 3.hours)
+      issue_mid.update_column(:created_on, now - 2.hours)
+      issue_new.update_column(:created_on, now - 1.hour)
+
+      result = @provider.search_issues(project_id: nil, sort: { field: "created_on", direction: "desc" }, limit: 2)
+      ids = result[:issues].map { |i| i[:id] }
+      our_ids = ids.select { |id| [ issue_old.id, issue_mid.id, issue_new.id ].include?(id) }
+
+      assert_equal [ issue_new.id, issue_mid.id ], our_ids
+      assert_operator result[:issues].length, :<=, 2
+    ensure
+      issue_old&.destroy
+      issue_mid&.destroy
+      issue_new&.destroy
+    end
+
+    # T014
+    should "apply a custom_fields filter across multiple projects, excluding issues whose tracker lacks that field" do
+      cf = CustomField.find(1) # "Database" custom field, associated only with tracker 1
+      tracker_without_cf = Tracker.create!(name: "NoCFTracker#{Time.now.to_i}#{rand(10000)}", default_status: IssueStatus.first)
+      @project2.trackers << tracker_without_cf unless @project2.trackers.include?(tracker_without_cf)
+
+      matching_issue = Issue.create!(
+        project: @project1, tracker: @tracker, subject: "Has Database CF",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first,
+        custom_field_values: { cf.id => "MySQL" }
+      )
+
+      non_matching_issue = Issue.create!(
+        project: @project2, tracker: tracker_without_cf, subject: "No Database CF",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first
+      )
+
+      result = @provider.search_issues(
+        project_id: nil,
+        custom_fields: [ { field_id: cf.id, operator: "=", values: [ "MySQL" ] } ]
+      )
+      ids = result[:issues].map { |i| i[:id] }
+
+      assert_includes ids, matching_issue.id
+      assert_not_includes ids, non_matching_issue.id
+      assert_operator result[:total_count], :>=, 1
+    ensure
+      matching_issue&.destroy
+      non_matching_issue&.destroy
+      tracker_without_cf&.destroy
+    end
+  end
+
+  context "search_issues response includes project and hours fields" do
+    setup do
+      @project = Project.find(1)
+      @tracker = Tracker.find(1)
+      @user = User.find(2)
+      @previous_user = User.current
+      User.current = @user
+    end
+
+    teardown do
+      User.current = @previous_user
+    end
+
+    should "include project with id and name in each issue" do
+      result = @provider.search_issues(project_id: @project.id)
+
+      assert result[:issues].all? { |i| i.key?(:project) && i[:project][:id] && i[:project][:name] },
+             "Every issue must include a project hash with id and name"
+    end
+
+    should "include estimated_hours in each issue" do
+      result = @provider.search_issues(project_id: @project.id)
+
+      assert result[:issues].all? { |i| i.key?(:estimated_hours) },
+             "Every issue must include estimated_hours"
+    end
+
+    should "include total_estimated_hours, spent_hours, and total_spent_hours in each issue" do
+      result = @provider.search_issues(project_id: @project.id)
+
+      assert result[:issues].all? { |i| i.key?(:total_estimated_hours) },
+             "Every issue must include total_estimated_hours"
+      assert result[:issues].all? { |i| i.key?(:spent_hours) },
+             "Every issue must include spent_hours"
+      assert result[:issues].all? { |i| i.key?(:total_spent_hours) },
+             "Every issue must include total_spent_hours"
+    end
+
+    should "return nil or zero values for hours when issue has no time estimates or entries" do
+      issue = Issue.create!(
+        project: @project, tracker: @tracker, subject: "No Hours Issue",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first
+      )
+
+      result = @provider.search_issues(project_id: @project.id)
+      issue_data = result[:issues].find { |i| i[:id] == issue.id }
+
+      assert_not_nil issue_data
+      assert_nil issue_data[:estimated_hours]
+      assert_includes [ nil, 0, 0.0 ], issue_data[:total_estimated_hours]
+      assert_includes [ 0, 0.0 ], issue_data[:spent_hours]
+      assert_includes [ 0, 0.0 ], issue_data[:total_spent_hours]
+    ensure
+      issue&.destroy
+    end
+
+    should "return correct project for each issue when searching across multiple projects" do
+      project2 = Project.find(2)
+      EnabledModule.create!(project_id: project2.id, name: "ai_helper")
+      Role.find(2).add_permission!(:view_ai_helper)
+
+      issue1 = Issue.create!(project: @project, tracker: @tracker, subject: "Multi Project A",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+      issue2 = Issue.create!(project: project2, tracker: @tracker, subject: "Multi Project B",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+
+      result = @provider.search_issues(project_id: nil)
+      data_a = result[:issues].find { |i| i[:id] == issue1.id }
+      data_b = result[:issues].find { |i| i[:id] == issue2.id }
+
+      assert_not_nil data_a
+      assert_equal @project.id, data_a[:project][:id]
+      assert_equal @project.name, data_a[:project][:name]
+
+      assert_not_nil data_b
+      assert_equal project2.id, data_b[:project][:id]
+      assert_equal project2.name, data_b[:project][:name]
+    ensure
+      issue1&.destroy
+      issue2&.destroy
+    end
+
+    should "batch-load time_entries hours in a single query regardless of issue count (no N+1, ADR-034)" do
+      issue_a = Issue.create!(project: @project, tracker: @tracker, subject: "N+1 Regression A",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+      issue_b = Issue.create!(project: @project, tracker: @tracker, subject: "N+1 Regression B",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+      issue_c = Issue.create!(project: @project, tracker: @tracker, subject: "N+1 Regression C",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+
+      assert_queries_match(/time_entries/i, count: 1) do
+        @provider.search_issues(project_id: @project.id)
+      end
+    ensure
+      issue_a&.destroy
+      issue_b&.destroy
+      issue_c&.destroy
+    end
+
+    should "aggregate total_estimated_hours and total_spent_hours over descendants for a parent issue" do
+      parent = Issue.create!(project: @project, tracker: @tracker, subject: "Hours Parent",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first, estimated_hours: 2.0)
+      child1 = Issue.create!(project: @project, tracker: @tracker, subject: "Hours Child 1",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first, estimated_hours: 3.0, parent_issue_id: parent.id)
+      child2 = Issue.create!(project: @project, tracker: @tracker, subject: "Hours Child 2",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first, estimated_hours: 5.0, parent_issue_id: parent.id)
+      TimeEntry.create!(project: @project, issue: parent, user: @user, activity: TimeEntryActivity.first, hours: 1.0, spent_on: Date.current)
+      TimeEntry.create!(project: @project, issue: child1, user: @user, activity: TimeEntryActivity.first, hours: 4.0, spent_on: Date.current)
+
+      result = @provider.search_issues(project_id: @project.id)
+      parent_data = result[:issues].find { |i| i[:id] == parent.id }
+
+      assert_not_nil parent_data
+      assert_equal 10.0, parent_data[:total_estimated_hours].to_f
+      assert_equal 5.0, parent_data[:total_spent_hours].to_f
+      assert_equal 1.0, parent_data[:spent_hours].to_f
+    ensure
+      child1&.destroy
+      child2&.destroy
+      parent&.destroy
     end
   end
 

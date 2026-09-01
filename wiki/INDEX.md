@@ -8,12 +8,28 @@ page files, not here.
 - [Plugin Overview](./pages/plugin-overview.md) — what the plugin does and the hub linking every topic page.
 - [Multi-Agent Architecture](./pages/multi-agent-architecture.md) — request flow, LeaderAgent planning, agent auto-registration, tool system, provider layer, and streaming.
 
+## decision
+- [Agent Write-Capability Routing](./pages/agent-write-capability-routing.md) — why `can_write?`/`requires_write` guard write steps at dispatch time instead of being exposed to the router, and how skipped steps and the final-answer prompt stay consistent with what actually ran.
+- [MCP subscriptions/listen Rejection](./pages/mcp-listen-rejection.md) — ADR-031: the root cause (a streaming Proc body stringified into a fake 200), the three-part fix, alternatives rejected, and the gem-version-coupling gotcha it leaves behind.
+- [MCP subscriptions/listen 1.4.0 Fix](./pages/mcp-listen-rejection-1-4-0-fix.md) — ADR-032: how `mcp` 1.4.0 turned `serves_subscriptions_listen?` into the rejection gate itself, silently reopening the id-less request-storm case, and why deleting the override (not adopting the gem's new `serve_subscriptions_listen: false`) fixes it.
+- [Inbound Chat Webhook Ingest](./pages/inbound-chat-webhook-ingest.md) — why webhook events land on a Rails endpoint in Redmine, hand off through a DB table, and are polled by `InboundAdapter#start` so the gateway core stays unchanged.
+- [Public URL Scope for Chat Adapters](./pages/public-url-scope.md) — ADR-017's amendment to ADR-006: "no public URL required" is an outbound-adapter property, not a whole-plugin invariant.
+- [Completion Request Timeout Policy](./pages/completion-request-timeout-policy.md) — ADR-018: why completion LLM calls override RubyLLM's 300 s / 3-retry defaults per context, the injection path, and the alternatives rejected.
+- [Completion Suppression Scope](./pages/completion-suppression-scope.md) — ADR-019 and ADR-021: why no-change suppression lasts only while a suggestion is displayed, why `clearSuggestion` owns the teardown, and why accept must not write a snapshot.
+- [Testing Classic Scripts via Dynamic Import](./pages/classic-script-testing-strategy.md) — why tests load target files as side-effect-only dynamic imports, the 4 files needing a new `window.X` line, and the `ai_helper.js` `var`→`window.ai_helper` fix.
+- [JavaScript Coverage Ratchet Policy](./pages/js-coverage-ratchet-policy.md) — why the 90% lines threshold is a literal in `vitest.config.js`, raised only, and why it's separate from Ruby's 95%.
+- [search_issues Cross-Project Scoping](./pages/search-issues-cross-project-scoping.md) — why omitting `project_id` scopes to `Project.allowed_to_condition(user, :view_ai_helper)` instead of plain `Issue.visible`, and why the single-project path stays untouched.
+
 ## component
 - [Chat Channel Gateway Architecture](./pages/chat-channel-gateway-architecture.md) — core + adapters structure, capability declaration, and gateway operational model.
+- [Inbound Webhook Endpoint](./pages/inbound-webhook-endpoint.md) — the anonymous `POST /ai_helper/chat_webhook/:channel_type` controller: skipped filters, raw-body signature verification, challenge responses, webhook URL display.
+- [Inbound Event Queue](./pages/inbound-event-queue.md) — the `ai_helper_inbound_events` table: atomic claiming, freshness expiry, retention purge, and reply metadata resolved by event id.
 - [Chat Context Import](./pages/chat-context-import.md) — how surrounding messages are imported, cursored, persisted as `context` role, and fed to the LLM.
 - [AI Chat Sidebar](./pages/chat-sidebar.md) — the sidebar UI: view-hook injection, the `AiHelper` JS class, SSE handling, conversation models, and Markdown/XSS.
-- [Issue AI Features](./pages/issue-ai-features.md) — `IssueAgent` summarization/caching, reply drafts, sub-issues, assignee suggestion, duplicate check, and inline completion.
-- [MCP Integration](./pages/mcp-integration.md) — consuming external MCP servers (dynamic agent generation, read-only gotcha) and exposing Redmine as an MCP server.
+- [Issue AI Features](./pages/issue-ai-features.md) — `IssueReadAgent` summarization/caching, reply drafts, sub-issues, assignee suggestion, duplicate check, and inline completion.
+- [Inline Completion Request Flow](./pages/inline-completion-request-flow.md) — AbortController cancellation, no-change suppression, debounce-timer clearing, and where the autocompletion settings are read and validated.
+- [MCP Integration](./pages/mcp-integration.md) — consuming external MCP servers: dynamic agent generation and the read-only gotcha. See [MCP Server Endpoint](./pages/mcp-server-endpoint.md) for the other direction.
+- [MCP Server Endpoint](./pages/mcp-server-endpoint.md) — exposing Redmine as an MCP server: stateless mode, auth, permissions, tool groups, and the anonymous-endpoint pattern reused by inbound webhooks.
 - [Custom Commands](./pages/custom-commands.md) — reusable `/command` prompt shortcuts, scope precedence, template variables.
 - [Project Health Report](./pages/health-report.md) — `ProjectAgent` dual-pattern generation, `AiHelperHealthReport` storage, streamed comparison, export, and REST API.
 - [Think Model](./pages/think-model.md) — optional deep-reasoning model profile, its scope, validation, and no-fallback rules.
@@ -21,6 +37,8 @@ page files, not here.
 - [Tool System](./pages/tool-system.md) — the `BaseTools` DSL, `write: true`/read-only filtering, per-tool permission checks, and the tool providers.
 - [LLM Provider Layer](./pages/llm-provider-layer.md) — the `LlmProvider` factory, resolution paths, provider subclasses/quirks, profile config, and structured output.
 - [Vector Search Internals](./pages/vector-search-internals.md) — Qdrant subsystem components, hybrid content/embeddings, payload indexes, rake tasks, staleness sync, and project-selection scope/gating.
+- [JavaScript Quality Tooling](./pages/js-quality-tooling.md) — ESLint 10 flat config + Vitest 4/jsdom + `@vitest/coverage-v8`, Node.js/npm setup, and regression-check/CI wiring.
+- [Wiki Tools](./pages/wiki-tools.md) — `WikiTools`/`WikiWriteTools`: the unified `{id:, title:}` parent format, `wiki_update_page`'s `parent_title` semantics and validation, and why cross-wiki parents and N+1 eager-loading were left alone.
 
 ## reference
 - [Chat History APIs](./pages/chat-history-apis.md) — Slack/Discord message-retrieval APIs, scopes, display-name resolution, exclusion rules.
@@ -30,3 +48,5 @@ page files, not here.
 
 ## howto
 - [Nginx SSE Proxy Settings](./pages/nginx-sse-proxy.md) — the five directives SSE streaming needs behind Nginx.
+- [Browser-Side JavaScript Tests](./pages/js-test-convention.md) — the ESLint+Vitest test runner (feature 046), the superseded self-contained `test/javascript/` convention, and how measurable browser behaviour is verified.
+- [Developing an Inbound Chat Adapter](./pages/inbound-adapter-development.md) — subclassing `InboundAdapter`: the methods to implement, settings and webhook URL, proxy rate limiting, and the reference-adapter test pattern.

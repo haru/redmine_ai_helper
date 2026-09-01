@@ -44,6 +44,7 @@
     - [Recreating the Index](#recreating-the-index)
 - [🛠️ Build your own Agent](#️-build-your-own-agent)
 - [🪄 Langfuse integration](#-langfuse-integration)
+- [🔒 Running Without External Communication](#-running-without-external-communication)
 - [⚠️ Important Notice](#️-important-notice)
 - [🤝 Contributing](#-contributing)
   - [How to Run Tests](#how-to-run-tests)
@@ -115,6 +116,36 @@ You can use the AI Helper Plugin to complete issue descriptions and wiki pages i
 You can accept completion suggestions by pressing the TAB key.
 
 ![Image](https://github.com/user-attachments/assets/d8e5da82-a5bb-46bf-836b-b548a32e2ab0)
+
+### Completion settings
+
+Inline completion works out of the box. To tune it, add an `autocompletion` section to
+`{REDMINE_ROOT}/config/ai_helper/config.yml`. The file, the section and every individual key
+are optional.
+
+```yaml
+autocompletion:
+  timeout: 30                 # seconds
+  debounce_delay: 500         # milliseconds
+  min_length: 5               # characters
+  wiki_min_length: 5          # characters, wiki pages only
+  suggestion_color: "#888888"
+```
+
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `timeout` | Number, 1–600 (seconds) | `30` | Time limit for the completion request to the LLM. A non-integer value is truncated toward zero before the range check, so `45.9` means 45 seconds. The request is not retried; on timeout the editor simply shows no suggestion. See [ADR-018](./docs/adr/018-completion-llm-requests-timeout-no-retry.md). |
+| `debounce_delay` | Number > 0 (milliseconds) | `500` for issues, `300` for wiki pages | How long typing must pause before a completion is requested. |
+| `min_length` | Integer ≥ 0 (characters) | `5` | Minimum body length before completions are requested. |
+| `wiki_min_length` | Integer ≥ 0 (characters) | falls back to `min_length` | Same as `min_length`, but for wiki pages only. Set it to give the wiki editor a threshold of its own. |
+| `suggestion_color` | `"#RGB"` or `"#RRGGBB"` | `"#888888"` | Colour of the inline suggestion text. Other formats are rejected. |
+
+Invalid values are ignored: the default is used instead and a warning naming the key, the
+value and the reason is written to the plugin log. Keys that are not listed above are ignored
+and reported the same way. A missing file falls back to the defaults, so an absent
+configuration never prevents the edit screen from loading. A file that exists but cannot be
+parsed as YAML is a different matter: the plugin reads it while Redmine boots, so a syntax
+error there stops the whole instance from starting. Check the plugin log after editing it.
 
 ## Typo Checking and Correction Suggestions
 
@@ -461,6 +492,8 @@ DELETE /ai_helper/mcp    — MCP spec required; not used in stateless mode
 
 The server uses the MCP Streamable HTTP transport in **stateless, JSON-response mode** (`stateless: true`, `enable_json_response: true`). All communication happens via POST with JSON-RPC — SSE streaming is not used.
 
+**Change notifications are not supported.** This server does not implement change-notification subscription streams (`subscriptions/listen`, SEP-2575) or the related `listChanged`/`subscribe` capabilities. Because the endpoint is stateless with no shared subscription registry, a `subscriptions/listen` request is answered with a JSON-RPC *Method not found* error rather than opening a stream. Clients should poll `tools/list`, `prompts/list`, or `resources/list` instead of subscribing to change notifications.
+
 **Enabling the endpoint:**
 
 1. Open the AI Helper settings page from the Administration menu.
@@ -582,6 +615,16 @@ langfuse:
   secret_key: "sk-lf-************"
   endpoint: https://us.cloud.langfuse.com # Change this to match your environment
 ```
+
+# 🔒 Running Without External Communication
+
+If you do not want the AI Helper to send anything outside your network, configure it as follows:
+
+- **LLM**: Use a locally hosted model, such as Ollama, through the OpenAI Compatible provider.
+- **Vector search**: Use a locally hosted Qdrant, together with a local embedding model.
+- **Langfuse**: Use a self-hosted Langfuse instance, or leave Langfuse unconfigured.
+- **MCP servers**: Use only MCP servers that do not communicate externally.
+- **Chat Channel Gateway**: Do not use it. It connects to Slack or Discord.
 
 # ⚠️ Important Notice
 

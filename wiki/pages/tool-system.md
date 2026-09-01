@@ -1,8 +1,8 @@
 ---
 title: Tool System
 type: component
-sources: [S008]
-updated: 2026-08-01
+sources: [S008, S016, S026, S032]
+updated: 2026-09-01
 ---
 
 # Tool System
@@ -30,7 +30,12 @@ providers' functions it may call — a per-agent permission boundary (S008).
 ## Security & read-only
 
 - **Read checks**: read tools validate access with `issue.visible?` or
-  `accessible_project?` (S008).
+  `accessible_project?` (S008). A tool's project scope can also be made
+  *optional*: `IssueSearchTools#search_issues`'s `project_id` is
+  `required: false`, and when omitted it scopes to
+  `Project.allowed_to_condition(user, :view_ai_helper)` instead of a single
+  project's `accessible_project?` check — see
+  [search_issues Cross-Project Scoping](./search-issues-cross-project-scoping.md) (S026).
 - **Write checks**: write tools call `User.current.allowed_to?(:action, project)`
   (S008).
 - **Read-only mode**: because each mutating tool is tagged `write: true`, global
@@ -40,6 +45,11 @@ providers' functions it may call — a per-agent permission boundary (S008).
   disabled wholesale.
 - **Atomic writes**: `IssueUpdateTools` wraps changes in `Issue.transaction` so
   relations and custom fields persist consistently (S008).
+- **`write_tool?` reused for step-level routing safety**: `BaseAgent#can_write?`
+  (`available_tool_classes.any?(&:write_tool?)`) reuses this same flag to guard
+  which agent a write-requiring plan step may be dispatched to — an internal
+  check, never exposed to the LLM. See
+  [Agent Write-Capability Routing](./agent-write-capability-routing.md) (S016).
 - **`validate_only`**: a parameter that runs schema validation without
   persisting — an LLM pre-check before an actual write (S008).
 - **VectorTools dual filtering**: results are filtered first by Qdrant metadata,
@@ -53,7 +63,7 @@ providers' functions it may call — a per-agent permission boundary (S008).
 | `IssueTools`, `IssueSearchTools` | Issue read/search; filter operators like `=`, `>=`, `><t+` |
 | `IssueUpdateTools` | Create/update issues (atomic, `parent_issue_id` hierarchy) |
 | `ProjectTools`, `VersionTools` | Metadata; `accessible_project?` checks |
-| `WikiTools`, `WikiWriteTools` | Wiki read / write |
+| `WikiTools`, `WikiWriteTools` | Wiki read / write — see [Wiki Tools](./wiki-tools.md) |
 | `VectorTools` | Semantic search over Qdrant |
 | `FileTools` | Document analysis via prompt templates |
 | `ImageTools` | Image-attachment handling |
@@ -69,3 +79,6 @@ providers' functions it may call — a per-agent permission boundary (S008).
 
 - [Multi-Agent Architecture](./multi-agent-architecture.md) ·
   [MCP Integration](./mcp-integration.md) · [Vector Search](./vector-search.md)
+- [Agent Write-Capability Routing](./agent-write-capability-routing.md)
+- [search_issues Cross-Project Scoping](./search-issues-cross-project-scoping.md)
+- [Wiki Tools](./wiki-tools.md)
