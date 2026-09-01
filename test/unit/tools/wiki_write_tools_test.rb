@@ -34,6 +34,7 @@ class WikiWriteToolsTest < ActiveSupport::TestCase
 
       assert_not_nil page.parent
       assert_equal "CookBook_documentation", page.parent.title
+      assert_equal({ id: page.parent.id, title: "CookBook_documentation" }, result[:parent])
     end
 
     should "raise error when permission denied (no :edit_wiki_pages)" do
@@ -184,6 +185,129 @@ class WikiWriteToolsTest < ActiveSupport::TestCase
       assert_raises(RuntimeError, "title is required") do
         @provider.wiki_update_page(project_id: 1, title: nil, content: "content")
       end
+    end
+
+    should "set parent to an existing page when parent_title is given" do
+      result = @provider.wiki_update_page(project_id: 1, title: "Another_page", parent_title: "CookBook_documentation")
+      page = WikiPage.find(result[:id])
+
+      assert_equal "CookBook_documentation", page.parent.title
+      assert_equal({ id: page.parent.id, title: "CookBook_documentation" }, result[:parent])
+    end
+
+    should "clear the parent (make top-level) when parent_title is an empty string" do
+      wiki = Wiki.find_by(project_id: 1)
+      page = wiki.find_page("Child_1")
+      assert_not_nil page.parent
+
+      result = @provider.wiki_update_page(project_id: 1, title: "Child_1", parent_title: "")
+      page.reload
+
+      assert_nil page.parent
+      assert_nil result[:parent]
+    end
+
+    should "leave the parent unchanged when parent_title is omitted" do
+      wiki = Wiki.find_by(project_id: 1)
+      page = wiki.find_page("Child_1")
+      original_parent_id = page.parent_id
+
+      result = @provider.wiki_update_page(project_id: 1, title: "Child_1", content: "updated content")
+      page.reload
+
+      assert_equal original_parent_id, page.parent_id
+      assert_equal({ id: original_parent_id, title: "Another_page" }, result[:parent])
+    end
+
+    should "raise error and leave parent unchanged when parent_title is not found" do
+      wiki = Wiki.find_by(project_id: 1)
+      page = wiki.find_page("Another_page")
+      original_parent_id = page.parent_id
+
+      error = assert_raises(RuntimeError) do
+        @provider.wiki_update_page(project_id: 1, title: "Another_page", parent_title: "NonExistentParent")
+      end
+      assert_equal "Parent page not found: title = NonExistentParent", error.message
+      page.reload
+      assert_nil original_parent_id
+      assert_nil page.parent_id
+    end
+
+    should "raise error and leave parent unchanged when parent_title is a self-reference" do
+      wiki = Wiki.find_by(project_id: 1)
+      page = wiki.find_page("Child_1")
+      original_parent_id = page.parent_id
+
+      error = assert_raises(RuntimeError) do
+        @provider.wiki_update_page(project_id: 1, title: "Child_1", parent_title: "Child_1")
+      end
+      assert_equal "Cannot set parent page: circular reference detected (title = Child_1)", error.message
+      page.reload
+      assert_equal original_parent_id, page.parent_id
+    end
+
+    should "raise error and leave parent unchanged when parent_title is a descendant page" do
+      wiki = Wiki.find_by(project_id: 1)
+      page = wiki.find_page("Child_1")
+      original_parent_id = page.parent_id
+
+      error = assert_raises(RuntimeError) do
+        @provider.wiki_update_page(project_id: 1, title: "Child_1", parent_title: "Child_1_1")
+      end
+      assert_equal "Cannot set parent page: circular reference detected (title = Child_1_1)", error.message
+      page.reload
+      assert_equal original_parent_id, page.parent_id
+    end
+
+    should "raise error when permission denied (no :edit_wiki_pages) and leave parent unchanged" do
+      wiki = Wiki.find_by(project_id: 1)
+      page = wiki.find_page("Another_page")
+      original_parent_id = page.parent_id
+
+      role = Role.find(1) # Manager
+      role.permissions = (role.permissions + [ :view_ai_helper ]).reject { |p| p == :edit_wiki_pages }
+      role.save!
+      User.current = User.find(2) # Jsmith has Manager role in project 1
+
+      assert_raises(RuntimeError, "Permission denied") do
+        @provider.wiki_update_page(project_id: 1, title: "Another_page", parent_title: "CookBook_documentation")
+      end
+      page.reload
+      assert_nil original_parent_id
+      assert_nil page.parent_id
+    end
+
+    should "apply both parent_title and new_title in one call" do
+      result = @provider.wiki_update_page(
+        project_id: 1,
+        title: "Another_page",
+        new_title: "RenamedPage3",
+        parent_title: "CookBook_documentation"
+      )
+      page = WikiPage.find(result[:id])
+
+      assert_equal "RenamedPage3", page.title
+      assert_equal "CookBook_documentation", page.parent.title
+      assert_equal "RenamedPage3", result[:title]
+      assert_equal({ id: page.parent.id, title: "CookBook_documentation" }, result[:parent])
+    end
+
+    should "roll back content changes when parent_title update fails" do
+      wiki = Wiki.find_by(project_id: 1)
+      page = wiki.find_page("Another_page")
+      original_text = page.content.text
+
+      assert_raises(RuntimeError) do
+        @provider.wiki_update_page(
+          project_id: 1,
+          title: "Another_page",
+          content: "should not persist",
+          parent_title: "NonExistentParent"
+        )
+      end
+
+      page.reload
+      assert_equal original_text, page.content.text
     end
   end
 

@@ -6,7 +6,8 @@ module RedmineAiHelper
       include RedmineAiHelper::Util::AttachmentFileHelper
       # Generates a JSON representation of a wiki page.
       # @param page [WikiPage] The wiki page to be represented in JSON.
-      # @return [Hash] A hash representing the wiki page in JSON format.
+      # @return [Hash] A hash representing the wiki page in JSON format. The `:parent` key is
+      #   `{ id:, title: }` when the page has a parent, or `nil` for a top-level page.
       def generate_wiki_data(page)
         {
           id: page.id,
@@ -25,7 +26,7 @@ module RedmineAiHelper
               title: child.title
             }
           end,
-          parent: page.parent ? { title: page.parent.title } : nil,
+          parent: page.parent ? { id: page.parent.id, title: page.parent.title } : nil,
           attachments: page.attachments.map do |attachment|
             {
               id: attachment.id,
