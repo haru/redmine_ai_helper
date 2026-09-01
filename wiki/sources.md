@@ -36,3 +36,4 @@ Sources are immutable inputs — the wiki never edits them.
 | S029 | specs/051-mcp-reject-subscriptions-listen/review-summary.md | feature-artifact | 2026-08-26 | 2026-08-26 | mcp-listen-rejection.md |
 | S030 | specs/052-fix-mcp14-subscriptions-listen (research.md + plan.md) | feature-artifact | 2026-08-28 | 2026-08-28 | mcp-listen-rejection.md, mcp-listen-rejection-1-4-0-fix.md, mcp-server-endpoint.md |
 | S031 | docs/adr/032-mcp14-restore-subscriptions-listen-rejection.md | file | 2026-08-28 | 2026-08-28 | mcp-listen-rejection.md, mcp-listen-rejection-1-4-0-fix.md, mcp-server-endpoint.md |
+| S032 | specs/056-wiki-parent-id (research.md + plan.md) | feature-artifact | 2026-09-01 | 2026-09-01 | wiki-tools.md, tool-system.md |
