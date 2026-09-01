@@ -40,7 +40,7 @@ module RedmineAiHelper
       def list_wiki_pages(project_id:)
         wiki = Wiki.find_by(project_id: project_id)
         raise("Wiki not found: project_id = #{project_id}") if !wiki || !wiki.visible?
-        pages = wiki.pages.filter(&:visible?)
+        pages = wiki.pages.includes(:parent, content: :author).filter(&:visible?)
         json = pages.map do |page|
           {
             id: page.id,
