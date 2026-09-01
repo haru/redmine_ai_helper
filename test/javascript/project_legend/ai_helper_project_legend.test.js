@@ -18,7 +18,7 @@ describe("ai_helper_project_legend", () => {
   function addLegendParagraph() {
     contentDiv = document.createElement("div");
     contentDiv.id = "content";
-    
+
     legendParagraph = document.createElement("p");
     bookmarkIcon = document.createElement("span");
     bookmarkIcon.className = "icon icon-bookmarked-project";
