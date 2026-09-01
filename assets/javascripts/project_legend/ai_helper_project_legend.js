@@ -10,7 +10,8 @@ document.addEventListener('DOMContentLoaded', function() {
   const legendItem = document.getElementById('ai-helper-index-legend-item');
   if (!legendItem) {return;}
 
-  const bookmarkIcon = document.querySelector('.icon-bookmarked-project');
+  const bookmarkIcons = document.querySelectorAll('#content .icon-bookmarked-project');
+  const bookmarkIcon = bookmarkIcons[bookmarkIcons.length - 1];
   if (!bookmarkIcon) {return;}
 
   const legend = bookmarkIcon.parentElement;
