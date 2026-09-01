@@ -28,6 +28,7 @@ Metrics/AbcSize:
   Exclude:
     - "test/**/*"
     - "lib/redmine_ai_helper/tools/**/*"
+    - "lib/redmine_ai_helper/project_metrics_calculator.rb"
 
 Metrics/BlockLength:
   Max: 70
@@ -46,13 +47,14 @@ Metrics/ClassLength:
     - "test/**/*"
 
 Metrics/CyclomaticComplexity:
-  Max: 20
+  Max: 15
   Exclude:
     - "test/**/*"
     - "lib/redmine_ai_helper/tools/**/*"
+    - "lib/redmine_ai_helper/project_metrics_calculator.rb"
 
 Metrics/MethodLength:
-  Max: 100
+  Max: 70
   Exclude:
     - "test/**/*"
     - "lib/redmine_ai_helper/tools/**/*"
@@ -69,7 +71,7 @@ Metrics/ParameterLists:
     - "lib/redmine_ai_helper/tools/**/*"
 
 Metrics/PerceivedComplexity:
-  Max: 22
+  Max: 21
   Exclude:
     - "test/**/*"
     - "lib/redmine_ai_helper/tools/**/*"

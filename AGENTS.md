@@ -166,6 +166,15 @@ Agents expose tools by overriding `available_tool_providers` to return an array 
 - Write commit messages in plain English
 - Do not include any information about Claude Code in commit messages
 - **NEVER commit or push without explicit user permission**
+- **NEVER run destructive git commands without an explicit user instruction** — this includes
+  `git clean`, `git reset --hard`, `git checkout .` / `git restore .`, `git stash drop|clear`,
+  `git branch -D`, `git rebase`, and force pushes. They discard work that git cannot recover,
+  including untracked files that are not in any commit.
+- To undo your own changes, delete or revert **only the specific files you touched**, named
+  explicitly. Never use a whole-tree sweep to "tidy up" — the working tree may hold untracked
+  files (local tooling directories, caches, scratch work) that belong to the user, not to you.
+- Before removing anything, inspect what will be removed (e.g. `git clean -nd`) and confirm with
+  the user.
 
 ## Documentation & ADRs
 - Technical docs in `docs/`; ADRs in `docs/adr/`

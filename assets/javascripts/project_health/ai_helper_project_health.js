@@ -332,24 +332,13 @@ if (!window.aiHelperProjectHealthInitialized) {
     }
   }
 
-document.addEventListener('DOMContentLoaded', function() {
-
-  // Set flag to indicate main script is loaded
-  window.aiHelperProjectHealthLoaded = true;
-
-  // Wait for AiHelperMarkdownParser to be available
-  let parser;
-  try {
-    if (typeof AiHelperMarkdownParser !== 'undefined') {
-      parser = new AiHelperMarkdownParser();
-    } else {
-      return;
-    }
-  } catch {
-    return;
-  }
-
-  // Check if report already exists and ensure proper initialization
+/**
+ * If a health report is already rendered in the DOM (e.g. after a page
+ * reload), ensure its "has-report" styling, Markdown formatting, and PDF
+ * export button are all in place.
+ * @param {AiHelperMarkdownParser} parser - The Markdown parser instance.
+ */
+function initializeExistingReportDisplay(parser) {
   const resultDiv = document.getElementById('ai-helper-project-health-result');
   const contentDiv = document.querySelector('.ai-helper-project-health-content');
 
@@ -370,8 +359,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     addPdfExportButton();
   }
+}
 
-  // Set up MutationObserver to watch for DOM changes and re-initialize as needed
+/**
+ * Watch the project health container for DOM replacement (e.g. after
+ * updateHealthReportHistory swaps content in) and re-apply the "has-report"
+ * class and PDF export button whenever a report re-appears.
+ */
+function setupHealthReportObserver() {
   const observer = new MutationObserver(function(mutations) {
     mutations.forEach(function(mutation) {
       if (mutation.type === 'childList') {
@@ -399,115 +394,48 @@ document.addEventListener('DOMContentLoaded', function() {
   if (healthContainer) {
     observer.observe(healthContainer, { childList: true, subtree: true });
   }
+}
 
-  let currentEventSource = null; // Keep track of current EventSource
+// Make functions used by ai_helper_project_health_actions.js (split out to
+// keep this file under the max-lines ESLint limit; see ADR-027) globally
+// available.
+window.appendStreamingChunk = appendStreamingChunk;
+window.finalizeStreamingContent = finalizeStreamingContent;
+window.removePdfExportButton = removePdfExportButton;
+window.handlePdfExport = handlePdfExport;
+window.handleMarkdownExport = handleMarkdownExport;
+
+// handleGenerateProjectHealthClick and handleProjectHealthExportClick are
+// defined in ai_helper_project_health_actions.js.
+
+document.addEventListener('DOMContentLoaded', function() {
+
+  // Set flag to indicate main script is loaded
+  window.aiHelperProjectHealthLoaded = true;
+
+  // Wait for AiHelperMarkdownParser to be available
+  let parser;
+  try {
+    if (typeof AiHelperMarkdownParser !== 'undefined') {
+      parser = new AiHelperMarkdownParser();
+    } else {
+      return;
+    }
+  } catch {
+    return;
+  }
+
+  initializeExistingReportDisplay(parser);
+  setupHealthReportObserver();
 
   // Use event delegation so the handler survives DOM replacement
   // (e.g. after updateHealthReportHistory replaces the history container)
   document.addEventListener('click', function(e) {
-    const generateLink = e.target.closest('#ai-helper-generate-project-health-link');
-    if (!generateLink) {
-      return;
-    }
-    e.preventDefault();
-
-    // Close any existing EventSource to prevent conflicts
-    if (currentEventSource) {
-      currentEventSource.close();
-      currentEventSource = null;
-    }
-
-    // Get the result div that should already exist in the scrollable container
-    const resultDiv = document.getElementById('ai-helper-project-health-result');
-
-    // If no result div exists, something is wrong with the DOM structure
-    if (!resultDiv) {
-      console.error('No result div found for report generation. Please check the page structure.');
-      alert('Error: Cannot find report display area. Please refresh the page.');
-      return;
-    }
-
-    // Hide placeholder if it exists
-    const placeholder = document.querySelector('.ai-helper-detail-placeholder');
-    if (placeholder) {
-      placeholder.style.display = 'none';
-    }
-
-    // Show the report detail container if it's hidden
-    const reportDetail = document.querySelector('.ai-helper-health-report-detail');
-    if (reportDetail && reportDetail.style.display === 'none') {
-      reportDetail.style.display = 'block';
-    }
-
-    // Show loading state and add has-report class
-    const contentContainer = resultDiv.closest('.ai-helper-project-health-content');
-    resultDiv.innerHTML = '<div class="ai-helper-loader"></div>';
-    if (contentContainer) {
-      contentContainer.classList.add('has-report');
-    }
-    if (resultDiv.parentElement) {
-      resultDiv.parentElement.classList.add('has-report');
-    }
-
-    // Remove existing PDF button during generation
-    removePdfExportButton();
-
-    const url = generateLink.href;
-
-    // Create EventSource for streaming
-    currentEventSource = new EventSource(url);
-    const eventSource = currentEventSource;
-    let content = '';
-
-    eventSource.onmessage = function(event) {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
-          content += data.choices[0].delta.content;
-          if (resultDiv) {
-            appendStreamingChunk(resultDiv, parser, content);
-          }
-        }
-
-        if (data.choices && data.choices[0] && data.choices[0].finish_reason === 'stop') {
-          eventSource.close();
-          currentEventSource = null;
-          if (resultDiv) {
-            finalizeStreamingContent(resultDiv, parser, content);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to parse project health streaming event data:', error, event.data);
-      }
-    };
-
-    eventSource.onerror = function() {
-      eventSource.close();
-      currentEventSource = null;
-      if (resultDiv) {
-        const errorMessage = document.querySelector('meta[name="error-message"]');
-        const errorText = errorMessage ? errorMessage.getAttribute('content') : 'Error';
-        resultDiv.innerHTML = '<div class="ai-helper-error">' + errorText + '</div>';
-
-        // Ensure content container is visible even on error
-        const contentContainer = resultDiv.closest('.ai-helper-project-health-content');
-        if (contentContainer) {
-          contentContainer.style.display = 'block';
-        }
-      }
-      // Remove PDF button if it exists on error
-      removePdfExportButton();
-    };
+    handleGenerateProjectHealthClick(e, parser);
   });
 
   // Add event listeners to export links
-  document.addEventListener('click', function(event) {
-    if (event.target.id === 'ai-helper-pdf-export-link' || event.target.id === 'ai-helper-pdf-export-link-dynamic') {
-      handlePdfExport(event);
-    } else if (event.target.id === 'ai-helper-markdown-export-link' || event.target.id === 'ai-helper-markdown-export-link-dynamic') {
-      handleMarkdownExport(event);
-    }
-  });
+  document.addEventListener('click', handleProjectHealthExportClick);
 });
 
 // --- extracted from project/_health_report_detail_pane.html.erb and

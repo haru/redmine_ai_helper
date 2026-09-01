@@ -8,44 +8,40 @@ module RedmineAiHelper
       # related-object sorting (e.g. assignee name) is out of scope.
       SUPPORTED_SORT_FIELDS = %w[id created_on updated_on due_date start_date done_ratio].freeze
 
-      define_function :search_issues, description: "Search issues based on the filter conditions and return matching issues. For search items with '_id', specify the ID instead of the name of the search target. If you do not know the ID, you need to call capable_issue_properties in advance to obtain the ID. Default limit is 50 issues. Only projects with the AI Helper module enabled can be searched. Omit project_id to search across all projects that have the AI Helper module enabled and are accessible to the current user." do
+      # Shared item schema for field/operator/values-of-string search entries
+      # (used by fields, date_fields, time_fields).
+      STRING_VALUES_ITEM = proc do
+        property :field_name, type: "string", description: "The name of the field to search.", required: true
+        property :operator, type: "string", description: "The operator to use for the search.", required: true
+        property :values, type: "array", description: "The values to search for.", required: true do
+          item type: "string", description: "The value to search for."
+        end
+      end
+
+      # Shared item schema for field/operator/values-of-integer search entries
+      # (used by number_fields, status_field).
+      INTEGER_VALUES_ITEM = proc do
+        property :field_name, type: "string", description: "The name of the field to search.", required: true
+        property :operator, type: "string", description: "The operator to use for the search.", required: true
+        property :values, type: "array", description: "The values to search for.", required: true do
+          item type: "integer", description: "The value to search for."
+        end
+      end
+
+      define_function :search_issues, description: "Search issues based on the filter conditions and return matching issues. Each issue includes project ({id, name}), estimated_hours, total_estimated_hours, spent_hours, and total_spent_hours. For search items with '_id', specify the ID instead of the name of the search target. If you do not know the ID, you need to call capable_issue_properties in advance to obtain the ID. Default limit is 50 issues. Only projects with the AI Helper module enabled can be searched. Omit project_id to search across all projects that have the AI Helper module enabled and are accessible to the current user." do
         property :project_id, type: "integer", description: "The project ID of the project to search in. Only projects with the AI Helper module enabled can be searched. Omit this to search across all projects that have the AI Helper module enabled and are accessible to the current user.", required: false
         property :limit, type: "integer", description: "Maximum number of issues to return. Default is 50.", required: false
         property :fields, type: "array", description: "Search fields for the issue." do
-          item type: "object", description: "Search field for the issue." do
-            property :field_name, type: "string", description: "The name of the field to search.", required: true
-            property :operator, type: "string", description: "The operator to use for the search.", required: true
-            property :values, type: "array", description: "The values to search for.", required: true do
-              item type: "string", description: "The value to search for."
-            end
-          end
+          item type: "object", description: "Search field for the issue.", &STRING_VALUES_ITEM
         end
         property :date_fields, type: "array", description: "Search fields for the issue." do
-          item type: "object", description: "Search field for the issue." do
-            property :field_name, type: "string", description: "The name of the field to search.", required: true
-            property :operator, type: "string", description: "The operator to use for the search.", required: true
-            property :values, type: "array", description: "The values to search for.", required: true do
-              item type: "string", description: "The value to search for."
-            end
-          end
+          item type: "object", description: "Search field for the issue.", &STRING_VALUES_ITEM
         end
         property :time_fields, type: "array", description: "Search fields for the issue." do
-          item type: "object", description: "Search field for the issue." do
-            property :field_name, type: "string", description: "The name of the field to search.", required: true
-            property :operator, type: "string", description: "The operator to use for the search.", required: true
-            property :values, type: "array", description: "The values to search for.", required: true do
-              item type: "string", description: "The value to search for."
-            end
-          end
+          item type: "object", description: "Search field for the issue.", &STRING_VALUES_ITEM
         end
         property :number_fields, type: "array", description: "Search fields for the issue." do
-          item type: "object", description: "Search field for the issue." do
-            property :field_name, type: "string", description: "The name of the field to search.", required: true
-            property :operator, type: "string", description: "The operator to use for the search.", required: true
-            property :values, type: "array", description: "The values to search for.", required: true do
-              item type: "integer", description: "The value to search for."
-            end
-          end
+          item type: "object", description: "Search field for the issue.", &INTEGER_VALUES_ITEM
         end
         property :text_fields, type: "array", description: "Search fields for the issue." do
           item type: "object", description: "Search field for the issue." do
@@ -57,13 +53,7 @@ module RedmineAiHelper
           end
         end
         property :status_field, type: "array", description: "Search fields for the issue." do
-          item type: "object", description: "Search field for the issue." do
-            property :field_name, type: "string", description: "The name of the field to search.", required: true
-            property :operator, type: "string", description: "The operator to use for the search.", required: true
-            property :values, type: "array", description: "The values to search for.", required: true do
-              item type: "integer", description: "The value to search for."
-            end
-          end
+          item type: "object", description: "Search field for the issue.", &INTEGER_VALUES_ITEM
         end
         property :custom_fields, type: "array", description: "Search fields for the issue." do
           item type: "object", description: "Search field for the issue." do
@@ -118,7 +108,7 @@ module RedmineAiHelper
           scope = Issue.visible(User.current).open
           scope = project ? scope.where(project_id: project.id) : scope.joins(:project).where(Project.allowed_to_condition(User.current, :view_ai_helper))
           order = sort ? { sort[:field] => sort[:direction] } : { id: :desc }
-          issues = scope.includes(:status, :priority, :tracker, :assigned_to, :author, :custom_values)
+          issues = scope.includes(:project, :status, :priority, :tracker, :assigned_to, :author, :custom_values)
                         .order(order).limit(limit)
           total_count = scope.count
           return { issues: format_issues(issues), total_count: total_count }
@@ -187,23 +177,81 @@ module RedmineAiHelper
       # @param issues [Array<Issue>] Array of Issue objects
       # @return [Array<Hash>] Formatted issue hashes
       def format_issues(issues)
+        issues = issues.to_a
+        hours_by_issue_id = batch_load_issue_hours(issues)
+
         issues.map do |issue|
+          hours = hours_by_issue_id[issue.id]
           {
             id: issue.id,
             subject: issue.subject,
             description: issue.description,
-            status: { id: issue.status.id, name: issue.status.name },
-            priority: { id: issue.priority.id, name: issue.priority.name },
-            tracker: { id: issue.tracker.id, name: issue.tracker.name },
-            assigned_to: issue.assigned_to ? { id: issue.assigned_to.id, name: issue.assigned_to.name } : nil,
-            author: { id: issue.author.id, name: issue.author.name },
+            project: format_named_record(issue.project),
+            status: format_named_record(issue.status),
+            priority: format_named_record(issue.priority),
+            tracker: format_named_record(issue.tracker),
+            assigned_to: format_named_record(issue.assigned_to),
+            author: format_named_record(issue.author),
             created_on: issue.created_on,
             updated_on: issue.updated_on,
             due_date: issue.due_date,
             done_ratio: issue.done_ratio,
+            estimated_hours: issue.estimated_hours,
+            total_estimated_hours: hours[:total_estimated_hours],
+            spent_hours: hours[:spent_hours],
+            total_spent_hours: hours[:total_spent_hours],
             custom_fields: format_custom_fields(issue)
           }
         end
+      end
+
+      # Batch-loads spent/estimated hours for a collection of issues in a constant number of
+      # queries, instead of the N (or more, for issues with children) queries that calling
+      # Issue#spent_hours / #total_spent_hours / #total_estimated_hours once per issue would
+      # trigger. See ADR-034.
+      # @param issues [Array<Issue>] Issues to compute hours for (lft/rgt/root_id must be loaded,
+      #   which they are by default since Issue does not restrict its columns via `.select`).
+      # @return [Hash{Integer => Hash}] issue.id => { spent_hours:, total_spent_hours:, total_estimated_hours: }
+      def batch_load_issue_hours(issues)
+        return {} if issues.empty?
+
+        own_spent_hours = TimeEntry.where(issue_id: issues.map(&:id)).group(:issue_id).sum(:hours)
+        leaf_issues, non_leaf_issues = issues.partition(&:leaf?)
+
+        result = {}
+        leaf_issues.each do |issue|
+          spent = own_spent_hours[issue.id] || 0.0
+          result[issue.id] = {
+            spent_hours: spent,
+            total_spent_hours: spent,
+            total_estimated_hours: issue.estimated_hours
+          }
+        end
+
+        if non_leaf_issues.any?
+          root_ids = non_leaf_issues.map(&:root_id).uniq
+          # Mirrors Issue#total_spent_hours: self_and_descendants, no visibility filter.
+          subtree_ids_and_bounds = Issue.where(root_id: root_ids).pluck(:id, :root_id, :lft, :rgt)
+          subtree_spent_hours = TimeEntry.where(issue_id: subtree_ids_and_bounds.map(&:first)).group(:issue_id).sum(:hours)
+          # Mirrors Issue#total_estimated_hours: self_and_descendants.visible.
+          visible_subtree = Issue.visible(User.current).where(root_id: root_ids).pluck(:id, :root_id, :lft, :rgt, :estimated_hours)
+
+          non_leaf_issues.each do |issue|
+            descendant_ids = subtree_ids_and_bounds.select { |_id, root_id, lft, rgt| root_id == issue.root_id && lft >= issue.lft && rgt <= issue.rgt }.map(&:first)
+            total_spent = descendant_ids.sum { |id| subtree_spent_hours[id] || 0.0 }
+
+            visible_descendants = visible_subtree.select { |_id, root_id, lft, rgt, _hours| root_id == issue.root_id && lft >= issue.lft && rgt <= issue.rgt }
+            total_estimated = visible_descendants.sum { |_id, _root_id, _lft, _rgt, hours| hours || 0 }
+
+            result[issue.id] = {
+              spent_hours: own_spent_hours[issue.id] || 0.0,
+              total_spent_hours: total_spent.to_f,
+              total_estimated_hours: total_estimated
+            }
+          end
+        end
+
+        result
       end
 
       # Format custom field values for an issue
@@ -379,7 +427,7 @@ module RedmineAiHelper
         def execute(project, user: User.current, limit: 50)
           setup_query(project, user)
           scope = cross_project_scope(project, @query.base_scope, user)
-          scope.includes(:status, :priority, :tracker, :assigned_to, :author, :custom_values)
+          scope.includes(:project, :status, :priority, :tracker, :assigned_to, :author, :custom_values)
                .reorder(@sort[:field] => @sort[:direction]).limit(limit).to_a
         end
 

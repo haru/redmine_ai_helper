@@ -209,90 +209,7 @@ Object.assign(AiHelperTypoChecker.prototype, {
         overlayContent.appendChild(beforeSpan);
       }
 
-      // Add the typo with strikethrough
-      const typoSpan = document.createElement('span');
-      typoSpan.className = 'ai-helper-typo-original';
-      typoSpan.textContent = suggestion.original;
-      typoSpan.classList.add('ai-helper-typo-span');
-
-      // Add tooltip functionality for showing correction reasons
-      // Always show tooltip - with reasons if available, or basic info otherwise
-
-      // Handle both original reason field and grouped reasons array
-      const reasonsArray = suggestion.reasons || (suggestion.reason && suggestion.reason.trim() ? [suggestion.reason] : []);
-      const hasReasons = reasonsArray && reasonsArray.length > 0;
-
-      // Create custom tooltip element
-      const tooltip = document.createElement('div');
-      tooltip.className = 'ai-helper-tooltip';
-
-      if (hasReasons && reasonsArray.length > 1) {
-        // Multiple reasons - show as bullet list
-        tooltip.innerHTML = '• ' + reasonsArray.map(reason =>
-          reason.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        ).join('<br>• ');
-      } else if (hasReasons) {
-        // Single reason - show as plain text
-        tooltip.textContent = reasonsArray[0];
-      } else {
-        // No reasons - show basic correction info
-        tooltip.innerHTML = `${this.options.labels.correctionTooltip}:<br><strong>"${suggestion.original.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"</strong><br>↓<br><strong>"${suggestion.corrected.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"</strong>`;
-      }
-
-      // Tooltip styling is now handled by CSS classes
-
-      // Add arrow pointing upward (since tooltip is now below)
-      const arrow = document.createElement('div');
-      arrow.className = 'ai-helper-tooltip-arrow';
-      tooltip.appendChild(arrow);
-
-      typoSpan.appendChild(tooltip);
-
-      // Add hover event listeners for showing/hiding tooltip
-      typoSpan.addEventListener('mouseenter', () => {
-        // Calculate tooltip position relative to the element
-        const spanRect = typoSpan.getBoundingClientRect();
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-
-        // Position tooltip below the span
-        tooltip.style.top = (spanRect.bottom + 5) + 'px';
-
-        // Center horizontally, but adjust if it would go off-screen
-        let leftPos = spanRect.left + (spanRect.width / 2);
-        const tooltipWidth = 300; // Max width of tooltip
-
-        if (leftPos - tooltipWidth/2 < 10) {
-          // Too far left, align to left edge
-          leftPos = 10 + tooltipWidth/2;
-        } else if (leftPos + tooltipWidth/2 > viewportWidth - 10) {
-          // Too far right, align to right edge
-          leftPos = viewportWidth - 10 - tooltipWidth/2;
-        }
-
-        tooltip.style.left = leftPos + 'px';
-        tooltip.style.transform = 'translateX(-50%)';
-
-        // Check if tooltip would go below viewport
-        const estimatedTooltipHeight = 60; // Rough estimate
-        if (spanRect.bottom + estimatedTooltipHeight > viewportHeight - 20) {
-          // Show above instead
-          tooltip.style.top = (spanRect.top - estimatedTooltipHeight - 5) + 'px';
-          // Change arrow direction
-          arrow.classList.add('ai-helper-tooltip-arrow-up');
-        } else {
-          // Show below (default)
-          // Default arrow direction (down) is handled by CSS class
-        }
-
-        tooltip.classList.add('ai-helper-tooltip-visible');
-      });
-
-      typoSpan.addEventListener('mouseleave', () => {
-        tooltip.classList.remove('ai-helper-tooltip-visible');
-      });
-
-      overlayContent.appendChild(typoSpan);
+      overlayContent.appendChild(this.buildTypoSpan(suggestion));
 
       // Add the correction
       const correctionSpan = document.createElement('span');
@@ -301,39 +218,7 @@ Object.assign(AiHelperTypoChecker.prototype, {
       correctionSpan.classList.add('ai-helper-correction-span');
       overlayContent.appendChild(correctionSpan);
 
-      // Add accept/reject buttons
-      const buttonsContainer = document.createElement('span');
-      buttonsContainer.className = 'ai-helper-typo-buttons';
-      buttonsContainer.classList.add('ai-helper-buttons-container');
-
-      // Clone the accept button from ERB template
-      const acceptBtnTemplate = document.querySelector('.ai-helper-typo-accept-btn-template');
-      const acceptBtn = acceptBtnTemplate.cloneNode(true);
-      acceptBtn.className = 'ai-helper-typo-accept-btn'; // Change class name
-      acceptBtn.title = this.options.labels.acceptSuggestion || 'Accept';
-      // Button styling handled by CSS classes
-      // Use a closure to capture the suggestion object itself instead of index
-      acceptBtn.addEventListener('click', (e) => {
-        e.preventDefault(); // Prevent any form submission
-        e.stopPropagation(); // Stop event bubbling
-        this.acceptSuggestionBySuggestion(suggestion);
-      });
-
-      // Clone the reject button from ERB template
-      const rejectBtnTemplate = document.querySelector('.ai-helper-typo-reject-btn-template');
-      const rejectBtn = rejectBtnTemplate.cloneNode(true);
-      rejectBtn.className = 'ai-helper-typo-reject-btn'; // Change class name
-      rejectBtn.title = this.options.labels.dismissSuggestion || 'Reject';
-      // Button styling handled by CSS classes
-      rejectBtn.addEventListener('click', (e) => {
-        e.preventDefault(); // Prevent any form submission
-        e.stopPropagation(); // Stop event bubbling
-        this.rejectSuggestionBySuggestion(suggestion);
-      });
-
-      buttonsContainer.appendChild(acceptBtn);
-      buttonsContainer.appendChild(rejectBtn);
-      overlayContent.appendChild(buttonsContainer);
+      overlayContent.appendChild(this.buildSuggestionButtons(suggestion));
 
       // Always use original.length for consistent position calculation
       currentPosition = suggestion.position + suggestion.original.length;
@@ -349,6 +234,132 @@ Object.assign(AiHelperTypoChecker.prototype, {
     }
 
     this.overlay.appendChild(overlayContent);
+  },
+
+  // Builds the tooltip element showing correction reasons (or basic
+  // before/after info when no reasons are available) for a typo span.
+  buildTypoTooltip(suggestion) {
+    // Handle both original reason field and grouped reasons array
+    const reasonsArray = suggestion.reasons || (suggestion.reason && suggestion.reason.trim() ? [suggestion.reason] : []);
+    const hasReasons = reasonsArray && reasonsArray.length > 0;
+
+    const tooltip = document.createElement('div');
+    tooltip.className = 'ai-helper-tooltip';
+
+    if (hasReasons && reasonsArray.length > 1) {
+      // Multiple reasons - show as bullet list
+      tooltip.innerHTML = '• ' + reasonsArray.map(reason =>
+        reason.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      ).join('<br>• ');
+    } else if (hasReasons) {
+      // Single reason - show as plain text
+      tooltip.textContent = reasonsArray[0];
+    } else {
+      // No reasons - show basic correction info
+      tooltip.innerHTML = `${this.options.labels.correctionTooltip}:<br><strong>"${suggestion.original.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"</strong><br>↓<br><strong>"${suggestion.corrected.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"</strong>`;
+    }
+
+    // Add arrow pointing upward (since tooltip is now below)
+    const arrow = document.createElement('div');
+    arrow.className = 'ai-helper-tooltip-arrow';
+    tooltip.appendChild(arrow);
+
+    return tooltip;
+  },
+
+  // Positions `tooltip` relative to `spanRect`, flipping above the span
+  // (and reversing the arrow) when there isn't room to show it below.
+  positionTypoTooltip(tooltip, arrow, spanRect) {
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // Position tooltip below the span
+    tooltip.style.top = (spanRect.bottom + 5) + 'px';
+
+    // Center horizontally, but adjust if it would go off-screen
+    let leftPos = spanRect.left + (spanRect.width / 2);
+    const tooltipWidth = 300; // Max width of tooltip
+
+    if (leftPos - tooltipWidth/2 < 10) {
+      // Too far left, align to left edge
+      leftPos = 10 + tooltipWidth/2;
+    } else if (leftPos + tooltipWidth/2 > viewportWidth - 10) {
+      // Too far right, align to right edge
+      leftPos = viewportWidth - 10 - tooltipWidth/2;
+    }
+
+    tooltip.style.left = leftPos + 'px';
+    tooltip.style.transform = 'translateX(-50%)';
+
+    // Check if tooltip would go below viewport
+    const estimatedTooltipHeight = 60; // Rough estimate
+    if (spanRect.bottom + estimatedTooltipHeight > viewportHeight - 20) {
+      // Show above instead, with arrow direction reversed
+      tooltip.style.top = (spanRect.top - estimatedTooltipHeight - 5) + 'px';
+      arrow.classList.add('ai-helper-tooltip-arrow-up');
+    }
+
+    tooltip.classList.add('ai-helper-tooltip-visible');
+  },
+
+  // Builds the strikethrough typo span, including its hover tooltip with
+  // correction reasons.
+  buildTypoSpan(suggestion) {
+    const typoSpan = document.createElement('span');
+    typoSpan.className = 'ai-helper-typo-original';
+    typoSpan.textContent = suggestion.original;
+    typoSpan.classList.add('ai-helper-typo-span');
+
+    const tooltip = this.buildTypoTooltip(suggestion);
+    const arrow = tooltip.querySelector('.ai-helper-tooltip-arrow');
+    typoSpan.appendChild(tooltip);
+
+    // Add hover event listeners for showing/hiding tooltip
+    typoSpan.addEventListener('mouseenter', () => {
+      const spanRect = typoSpan.getBoundingClientRect();
+      this.positionTypoTooltip(tooltip, arrow, spanRect);
+    });
+
+    typoSpan.addEventListener('mouseleave', () => {
+      tooltip.classList.remove('ai-helper-tooltip-visible');
+    });
+
+    return typoSpan;
+  },
+
+  // Builds the accept/reject button pair (cloned from the ERB templates)
+  // for a suggestion.
+  buildSuggestionButtons(suggestion) {
+    const buttonsContainer = document.createElement('span');
+    buttonsContainer.className = 'ai-helper-typo-buttons';
+    buttonsContainer.classList.add('ai-helper-buttons-container');
+
+    // Clone the accept button from ERB template
+    const acceptBtnTemplate = document.querySelector('.ai-helper-typo-accept-btn-template');
+    const acceptBtn = acceptBtnTemplate.cloneNode(true);
+    acceptBtn.className = 'ai-helper-typo-accept-btn'; // Change class name
+    acceptBtn.title = this.options.labels.acceptSuggestion || 'Accept';
+    // Use a closure to capture the suggestion object itself instead of index
+    acceptBtn.addEventListener('click', (e) => {
+      e.preventDefault(); // Prevent any form submission
+      e.stopPropagation(); // Stop event bubbling
+      this.acceptSuggestionBySuggestion(suggestion);
+    });
+
+    // Clone the reject button from ERB template
+    const rejectBtnTemplate = document.querySelector('.ai-helper-typo-reject-btn-template');
+    const rejectBtn = rejectBtnTemplate.cloneNode(true);
+    rejectBtn.className = 'ai-helper-typo-reject-btn'; // Change class name
+    rejectBtn.title = this.options.labels.dismissSuggestion || 'Reject';
+    rejectBtn.addEventListener('click', (e) => {
+      e.preventDefault(); // Prevent any form submission
+      e.stopPropagation(); // Stop event bubbling
+      this.rejectSuggestionBySuggestion(suggestion);
+    });
+
+    buttonsContainer.appendChild(acceptBtn);
+    buttonsContainer.appendChild(rejectBtn);
+    return buttonsContainer;
   },
 
   // Delegates to acceptSuggestionBySuggestion using the suggestion object at

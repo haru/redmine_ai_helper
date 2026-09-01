@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../base_agent"
+require "redmine_ai_helper/project_metrics_calculator"
 
 module RedmineAiHelper
   module Agents
@@ -114,21 +115,22 @@ module RedmineAiHelper
           info
         end
 
-        append_repository_metrics(project, project_tools, metrics_list)
+        append_repository_metrics(project, metrics_list)
         [ metrics_list, analysis_instructions, analysis_focus, focus_guidance, report_sections ]
       end
 
-      def append_repository_metrics(project, project_tools, metrics_list)
+      def append_repository_metrics(project, metrics_list)
         one_week_ago = 1.week.ago.strftime("%Y-%m-%d")
         one_month_ago = 1.month.ago.strftime("%Y-%m-%d")
         today = Date.current.strftime("%Y-%m-%d")
+        metrics_calculator = RedmineAiHelper::ProjectMetricsCalculator.new
 
-        week_metrics = project_tools.calculate_repository_metrics(project, start_date: Date.parse(one_week_ago), end_date: Date.parse(today))
+        week_metrics = metrics_calculator.calculate_repository_metrics(project, start_date: Date.parse(one_week_ago), end_date: Date.parse(today))
         if week_metrics[:repository_available]
           metrics_list << { period_name: "Repository Activity (Last 1 Week)", period_description: "Repository activity analysis for the last 1 week", start_date: one_week_ago, end_date: today, metrics: { repository_metrics: week_metrics } }
         end
 
-        month_metrics = project_tools.calculate_repository_metrics(project, start_date: Date.parse(one_month_ago), end_date: Date.parse(today))
+        month_metrics = metrics_calculator.calculate_repository_metrics(project, start_date: Date.parse(one_month_ago), end_date: Date.parse(today))
         if month_metrics[:repository_available]
           metrics_list << { period_name: "Repository Activity (Last 1 Month)", period_description: "Repository activity analysis for the last 1 month", start_date: one_month_ago, end_date: today, metrics: { repository_metrics: month_metrics } }
         end

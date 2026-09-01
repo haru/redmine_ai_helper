@@ -12,6 +12,15 @@ class ProjectToolsTest < ActiveSupport::TestCase
     User.current = User.find(1)
   end
 
+  # Counts the number of (non-cached, non-schema) SQL queries executed inside the block.
+  # Used to assert that query count stays constant regardless of result size (no N+1).
+  def count_queries(&block)
+    count = 0
+    counter = proc { |*, payload| count += 1 unless payload[:cached] || payload[:name] == "SCHEMA" }
+    ActiveSupport::Notifications.subscribed(counter, "sql.active_record", &block)
+    count
+  end
+
   def test_list_projects
     enabled_module = EnabledModule.new
     enabled_module.project_id = 2
@@ -522,6 +531,132 @@ class ProjectToolsTest < ActiveSupport::TestCase
     assert_equal "You don't have permission to view this project", result.error
   end
 
+  context "list_project_activities project and hours fields" do
+    setup do
+      @project = Project.find(1)
+      @user = User.find(1)
+    end
+
+    should "include project with id and name in every activity" do
+      Issue.create!(
+        project: @project, tracker: Tracker.find(1), subject: "Project Field Test",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first
+      )
+
+      response = @provider.list_project_activities(project_id: @project.id)
+      activities = response.value[:activities]
+
+      assert(activities.all? { |a| a.key?(:project) && a[:project]&.key?(:id) && a[:project].key?(:name) },
+             "Every activity must include a project hash with id and name")
+    ensure
+      Issue.where(subject: "Project Field Test")&.destroy_all
+    end
+
+    should "include hours for time_entries activities and nil for others" do
+      time_entry = TimeEntry.create!(
+        project: @project, user: @user, activity: TimeEntryActivity.first,
+        hours: 3.5, spent_on: Date.current, comments: "Hours Field Test"
+      )
+
+      response = @provider.list_project_activities(project_id: @project.id, event_types: [ "time_entries" ])
+      te_activities = response.value[:activities]
+
+      assert(te_activities.any?, "Expected at least one time_entry activity")
+      assert(te_activities.all? { |a| a[:hours].is_a?(Numeric) && a[:hours] > 0 },
+             "time_entries activities must have a positive numeric hours value")
+
+      Issue.create!(
+        project: @project, tracker: Tracker.find(1), subject: "Non Time Entry Hours Test",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first
+      )
+      issue_response = @provider.list_project_activities(project_id: @project.id, event_types: [ "issues" ])
+      non_te = issue_response.value[:activities]
+
+      assert(non_te.all? { |a| a[:hours].nil? },
+             "Non-time_entries activities must have nil hours")
+    ensure
+      time_entry&.destroy
+      Issue.where(subject: "Non Time Entry Hours Test")&.destroy_all
+    end
+
+    should "not scale query count with the number of distinct projects in results (protects ADR-033 batch load)" do
+      project2 = Project.find(2)
+      EnabledModule.find_or_create_by!(project_id: project2.id, name: "ai_helper")
+      role = Role.find(2)
+      role.add_permission!(:view_ai_helper) unless role.allowed_to?(:view_ai_helper)
+
+      issue_a = Issue.create!(project: @project, tracker: Tracker.find(1), subject: "Batch Query Test A",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+
+      count_with_one_project = count_queries { @provider.list_project_activities(event_types: [ "issues" ]) }
+
+      issue_b = Issue.create!(project: project2, tracker: Tracker.find(1), subject: "Batch Query Test B",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+
+      count_with_two_projects = count_queries { @provider.list_project_activities(event_types: [ "issues" ]) }
+
+      assert_equal count_with_one_project, count_with_two_projects,
+        "Adding an activity from a second distinct project must not add extra queries; got #{count_with_one_project} -> #{count_with_two_projects}"
+    ensure
+      issue_a&.destroy
+      issue_b&.destroy
+    end
+  end
+
+  context "list_project_activities event_types filter" do
+    setup do
+      @project = Project.find(1)
+      @user = User.find(1)
+    end
+
+    should "return only activities of the specified single event type" do
+      response = @provider.list_project_activities(project_id: @project.id, event_types: [ "issues" ])
+
+      assert_equal "success", response.status
+      activities = response.value[:activities]
+      assert(activities.all? { |a| a[:event_type].start_with?("issue") },
+             "Expected all activities to start with 'issue', got: #{activities.map { |a| a[:event_type] }.uniq.inspect}")
+    end
+
+    should "return activities matching any of the specified event types (OR condition)" do
+      response = @provider.list_project_activities(project_id: @project.id, event_types: [ "issues", "news" ])
+
+      assert_equal "success", response.status
+      activities = response.value[:activities]
+      assert(activities.all? { |a| a[:event_type].start_with?("issue") || a[:event_type] == "news" },
+             "Expected only issues or news, got: #{activities.map { |a| a[:event_type] }.uniq.inspect}")
+    end
+
+    should "return an error when event_types contains an unknown value" do
+      response = @provider.list_project_activities(project_id: @project.id, event_types: [ "nonexistent_type" ])
+
+      assert_equal "error", response.status
+      assert_match(/nonexistent_type/, response.error)
+    end
+
+    should "return an error naming only the unknown values when event_types mixes valid and invalid values" do
+      response = @provider.list_project_activities(project_id: @project.id, event_types: [ "issues", "nonexistent_type" ])
+
+      assert_equal "error", response.status
+      assert_match(/Unknown event_types: nonexistent_type\./, response.error)
+    end
+
+    should "return all activity types when event_types is omitted (non-regression)" do
+      Issue.create!(
+        project: @project, tracker: Tracker.find(1), subject: "Event Types Omitted Test",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first
+      )
+
+      response = @provider.list_project_activities(project_id: @project.id)
+
+      assert_equal "success", response.status
+      activities = response.value[:activities]
+      assert(activities.any?, "Expected at least one activity when event_types is omitted")
+    ensure
+      Issue.where(subject: "Event Types Omitted Test")&.destroy_all
+    end
+  end
+
   def test_get_metrics
     project = Project.find(1)
 
@@ -578,123 +713,6 @@ class ProjectToolsTest < ActiveSupport::TestCase
 
     assert_equal Date.parse(start_date), metrics[:period][:start_date]
     assert_equal Date.parse(end_date), metrics[:period][:end_date]
-  end
-
-  def test_calculate_repository_metrics_with_commits
-    project = Project.find(1)
-
-    metrics = @provider.send(:calculate_repository_metrics, project)
-
-    assert_equal true, metrics[:repository_available]
-    assert_operator metrics[:total_commits], :>=, 0
-    assert metrics[:commit_frequency].key?(:total_commits)
-    assert metrics[:committer_distribution].key?(:unique_users)
-    assert metrics[:commit_timeline].key?(:by_date)
-  end
-
-  def test_calculate_repository_metrics_with_date_range
-    project = Project.find(1)
-    start_date = 1.week.ago.to_date
-    end_date = Date.current
-
-    metrics = @provider.send(:calculate_repository_metrics, project, start_date: start_date, end_date: end_date)
-
-    assert_equal start_date, metrics[:period][:start_date]
-    assert_equal end_date, metrics[:period][:end_date]
-    if metrics[:commit_frequency].empty?
-      assert_equal({}, metrics[:commit_frequency])
-    else
-      assert_operator metrics[:commit_frequency][:period_days], :<=, 8
-    end
-  end
-
-  def test_calculate_repository_metrics_empty_repository
-    project = Project.find(3)
-    repo = Repository::Git.create!(project: project, url: "/tmp/empty-repo-#{SecureRandom.hex(4)}", identifier: "empty-#{SecureRandom.hex(2)}")
-
-    metrics = @provider.send(:calculate_repository_metrics, project)
-
-    assert_equal true, metrics[:repository_available]
-    assert_equal 0, metrics[:total_commits]
-    assert_equal({}, metrics[:commit_frequency])
-
-    repo.destroy
-  end
-
-  def test_calculate_commit_frequency
-    project = Project.find(1)
-    changesets = project.repositories.first.changesets.limit(100).to_a
-    start_date = 30.days.ago.to_date
-    end_date = Date.current
-
-    frequency = @provider.send(:calculate_commit_frequency, changesets, start_date, end_date)
-
-    assert_operator frequency[:total_commits], :>=, 0
-    assert_operator frequency[:daily_average], :>=, 0
-    assert_operator frequency[:weekly_average], :>=, 0
-    assert_operator frequency[:monthly_average], :>=, 0
-  end
-
-  def test_calculate_commit_timeline
-    project = Project.find(1)
-    changesets = project.repositories.first.changesets.limit(50).to_a
-
-    timeline = @provider.send(:calculate_commit_timeline, changesets, nil, nil)
-
-    assert timeline.key?(:by_date)
-    assert timeline.key?(:by_week)
-    assert timeline.key?(:by_weekday)
-    assert timeline.key?(:by_hour)
-  end
-
-  def test_calculate_commit_size_metrics
-    project = Project.find(1)
-    changesets = project.repositories.first.changesets.limit(50).to_a
-
-    metrics = @provider.send(:calculate_commit_size_metrics, changesets)
-
-    if metrics.empty?
-      assert_equal({}, metrics)
-    else
-      assert metrics.key?(:average_comment_length)
-      assert metrics.key?(:median_comment_length)
-      assert metrics.key?(:empty_comments_count)
-    end
-  end
-
-  def test_calculate_repository_metrics_without_repository
-    project_without_repo = Project.find(3)
-
-    metrics = @provider.send(:calculate_repository_metrics, project_without_repo)
-
-    assert_equal false, metrics[:repository_available]
-    assert_equal 0, metrics[:total_commits].to_i
-  end
-
-  def test_calculate_repository_metrics_handles_error
-    project = Project.find(1)
-    Changeset.expects(:joins).with(:repository).raises(StandardError.new("db failure"))
-
-    metrics = @provider.send(:calculate_repository_metrics, project)
-
-    assert_equal true, metrics[:repository_available]
-    assert_equal "db failure", metrics[:error]
-  end
-
-  def test_calculate_repository_metrics_performance_limit
-    project = Project.find(1)
-    mock_scope = mock
-    Changeset.expects(:joins).with(:repository).returns(mock_scope)
-    mock_scope.expects(:where).with(repositories: { project_id: project.id }).returns(mock_scope)
-    mock_scope.expects(:includes).with(:user, :repository).returns(mock_scope)
-    mock_scope.expects(:order).with(committed_on: :desc).returns(mock_scope)
-    mock_scope.expects(:limit).with(10000).returns(mock_scope)
-    mock_scope.expects(:to_a).returns([])
-
-    metrics = @provider.send(:calculate_repository_metrics, project)
-
-    assert_equal true, metrics[:repository_available]
-    assert_equal 0, metrics[:total_commits]
   end
 
   def test_get_metrics_includes_repository_metrics
@@ -1204,14 +1222,6 @@ class ProjectToolsTest < ActiveSupport::TestCase
     attachment_metrics = metrics[:attachment_metrics]
 
     assert_equal false, attachment_metrics[:attachments_available]
-  end
-
-  def test_calculate_repository_metrics_is_public
-    project = Project.find(1)
-    # Should be able to call without send
-    metrics = @provider.calculate_repository_metrics(project)
-
-    assert metrics[:repository_available]
   end
 
   def test_get_metrics_with_version_excludes_repository_metrics

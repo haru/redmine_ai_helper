@@ -98,7 +98,31 @@ module RedmineAiHelper
         ai_helper_logger.debug "agent_list: #{agent_list.list_agents}"
         agent_list_string = JSON.pretty_generate(agent_list.list_agents.reject { |a| a[:agent_name] == "leader_agent" })
         prompt = load_prompt("leader_agent/generate_steps")
-        json_schema = {
+        json_schema = generate_steps_json_schema
+
+        prompt_text = prompt.format(
+          goal: goal,
+          agent_list: agent_list_string,
+          format_instructions: format_instructions_for(json_schema),
+          json_examples: generate_steps_json_examples,
+          lang: I18n.locale.to_s
+        )
+
+        ai_helper_logger.debug "prompt_text: #{prompt_text}"
+
+        newmessages = messages.dup
+        newmessages << { role: "user", content: prompt_text }
+        langfuse.create_span(name: "steps_generation", input: prompt_text)
+        fixed_json = structured_chat(newmessages, json_schema: json_schema)
+        langfuse.finish_current_span(output: fixed_json)
+        fixed_json
+      end
+
+      private
+
+      # JSON schema for the generate_steps structured output.
+      def generate_steps_json_schema
+        {
           type: "object",
           properties: {
             steps: {
@@ -133,8 +157,11 @@ module RedmineAiHelper
             }
           }
         }
+      end
 
-        json_examples = <<~EOS
+      # Example JSON payloads embedded in the generate_steps prompt.
+      def generate_steps_json_examples
+        <<~EOS
 
           ----
 
@@ -190,26 +217,7 @@ module RedmineAiHelper
           }
           ```
         EOS
-
-        prompt_text = prompt.format(
-          goal: goal,
-          agent_list: agent_list_string,
-          format_instructions: format_instructions_for(json_schema),
-          json_examples: json_examples,
-          lang: I18n.locale.to_s
-        )
-
-        ai_helper_logger.debug "prompt_text: #{prompt_text}"
-
-        newmessages = messages.dup
-        newmessages << { role: "user", content: prompt_text }
-        langfuse.create_span(name: "steps_generation", input: prompt_text)
-        fixed_json = structured_chat(newmessages, json_schema: json_schema)
-        langfuse.finish_current_span(output: fixed_json)
-        fixed_json
       end
-
-      private
 
       def execute_chat_room_steps(goal, steps, callback)
         chat_room = RedmineAiHelper::ChatRoom.new(goal)

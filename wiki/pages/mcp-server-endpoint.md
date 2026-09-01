@@ -1,8 +1,8 @@
 ---
 title: MCP Server Endpoint
 type: component
-sources: [S002, S006, S007, S018, S028]
-updated: 2026-08-26
+sources: [S002, S006, S007, S018, S028, S030, S031]
+updated: 2026-08-28
 ---
 
 # MCP Server Endpoint
@@ -29,7 +29,10 @@ the global `mcp_server_enabled` flag gates the entire endpoint (S002, S006).
   [`subscriptions/listen` rejection](./mcp-listen-rejection.md) (S002, S006, S007).
 - **Change notifications are not supported.** See
   [MCP subscriptions/listen Rejection](./mcp-listen-rejection.md) (ADR-031) for
-  why, and the gem-version-coupling gotcha it left behind (S027, S028, S029).
+  why, and the gem-version-coupling gotcha it left behind — which materialized
+  once already, fixed in
+  [MCP subscriptions/listen 1.4.0 Fix](./mcp-listen-rejection-1-4-0-fix.md)
+  (ADR-032) (S027, S028, S029, S030, S031).
 - **Permissions**: **all** tools are exposed by default; access is governed
   entirely by Redmine's existing permission system, checked at **each tool
   execution** against `User.current` (`view_ai_helper`, project membership, etc.)
@@ -58,6 +61,8 @@ File (`analyze_content_files`), and Vector (`find_similar_issues`,
 
 - [MCP subscriptions/listen Rejection](./mcp-listen-rejection.md) — ADR-031:
   why change notifications are rejected, and the gem-coupling gotcha.
+- [MCP subscriptions/listen 1.4.0 Fix](./mcp-listen-rejection-1-4-0-fix.md) —
+  ADR-032: the `mcp` 1.4.0 regression that gotcha predicted, and the fix.
 - [MCP Integration](./mcp-integration.md) — the consuming-external-servers half
   and the plugin's overall two-capability split.
 - [Inbound Webhook Endpoint](./inbound-webhook-endpoint.md) — reuses this
