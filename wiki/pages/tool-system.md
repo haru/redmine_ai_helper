@@ -1,8 +1,8 @@
 ---
 title: Tool System
 type: component
-sources: [S008, S016, S026]
-updated: 2026-08-24
+sources: [S008, S016, S026, S032]
+updated: 2026-09-01
 ---
 
 # Tool System
@@ -63,7 +63,7 @@ providers' functions it may call — a per-agent permission boundary (S008).
 | `IssueTools`, `IssueSearchTools` | Issue read/search; filter operators like `=`, `>=`, `><t+` |
 | `IssueUpdateTools` | Create/update issues (atomic, `parent_issue_id` hierarchy) |
 | `ProjectTools`, `VersionTools` | Metadata; `accessible_project?` checks |
-| `WikiTools`, `WikiWriteTools` | Wiki read / write |
+| `WikiTools`, `WikiWriteTools` | Wiki read / write — see [Wiki Tools](./wiki-tools.md) |
 | `VectorTools` | Semantic search over Qdrant |
 | `FileTools` | Document analysis via prompt templates |
 | `ImageTools` | Image-attachment handling |
@@ -81,3 +81,4 @@ providers' functions it may call — a per-agent permission boundary (S008).
   [MCP Integration](./mcp-integration.md) · [Vector Search](./vector-search.md)
 - [Agent Write-Capability Routing](./agent-write-capability-routing.md)
 - [search_issues Cross-Project Scoping](./search-issues-cross-project-scoping.md)
+- [Wiki Tools](./wiki-tools.md)
