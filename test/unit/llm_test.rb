@@ -41,7 +41,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
       should "treat a blank agent response as an error and stream it" do
         @issue.stubs(:visible?).returns(true)
-        RedmineAiHelper::Agents::IssueAgent.any_instance.stubs(:issue_summary).returns("")
+        RedmineAiHelper::Agents::IssueReadAgent.any_instance.stubs(:issue_summary).returns("")
         streamed = []
         stream_proc = ->(content) { streamed << content }
 

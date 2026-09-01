@@ -102,7 +102,7 @@ class RedmineAiHelper::Agents::IssueReadAgentTest < ActiveSupport::TestCase
         issue: instance_of(String),
         issue_summary_instructions: "Summary instructions for the issue."
       ).returns("Summarize this issue with instructions.")
-      @agent.stubs(:load_prompt).with("issue_agent/summary").returns(mock_prompt)
+      @agent.stubs(:load_prompt).with("issue_read_agent/summary").returns(mock_prompt)
 
       @agent.stubs(:chat).returns("This is a summary of the issue.")
 
