@@ -69,6 +69,7 @@ en:
         label: "Imported from the chat channel"
     notice_sub_issues_added: "Sub-issues have been added"
     error_invalid_assignee: "Invalid assignee for '%{subject}' - user is not authorized for this tracker"
+    error_empty_issue_summary: "The AI model returned an empty summary. This can happen if the model runs out of tokens while reasoning; consider increasing max_tokens in the model profile."
     chat:
       planning: "Creating execution plan..."
       generating_final_response: "Generating final response..."
@@ -301,6 +302,7 @@ en:
         subtask_instructions: "Instructions for subtask generation"
         health_report_instructions: "Instructions for health report generation"
         assignment_suggestion_instructions: "Assignment Suggestion Instructions"
+        issue_summary_instructions: "Instructions for issue summary generation"
       ai_helper_custom_command:
         name: "Command Name"
         command_type: "Command Type"

@@ -119,6 +119,7 @@ pt-BR:
       leader_agent:
         generate_final_response: "Aqui estão os resultados da execução de cada etapa do plano, em ordem: %{execution_results} Use esses resultados apenas para julgar quais etapas foram bem-sucedidas e quais falharam; eles não contêm o conteúdo da resposta. Extraia esse conteúdo das respostas dos agentes na conversa acima e escreva a resposta final para o usuário. Não descreva uma etapa cujo status seja `error` como concluída ou bem-sucedida. Inclua o ID da tarefa somente se ela tiver sido realmente criada ou atualizada; caso contrário, não mencione nenhum ID nem afirme que algo foi criado ou atualizado. Não mencione detalhes internos de implementação, como qual agente foi designado para uma etapa. Se sua resposta incluir uma pergunta com escolhas discretas, lembre-se de adicionar o bloco <!--AIHELPER_OPTIONS:{...}--> ao final."
     error_invalid_assignee: Responsável inválido para '%{subject}' - o usuário não está autorizado para este rastreador
+    error_empty_issue_summary: O modelo de IA retornou um resumo vazio. Isso pode acontecer se o modelo ficar sem tokens durante o raciocínio; considere aumentar o max_tokens no perfil do modelo.
     health_report_comparison:
       compare_button: Comparar relatórios
       comparison_column: Comparação
@@ -215,6 +216,7 @@ pt-BR:
         subtask_instructions: Instruções para geração de subtarefas
         health_report_instructions: Instruções para geração de relatório de saúde
         assignment_suggestion_instructions: Instruções para sugestão de responsável
+        issue_summary_instructions: Instruções para geração do resumo da tarefa
       ai_helper_custom_command:
         name: Nome do comando
         command_type: Tipo de comando

@@ -22,6 +22,7 @@ class AiHelperProjectSettingsControllerTest < ActionController::TestCase
                        setting: {
                          issue_draft_instructions: "New instructions",
                          subtask_instructions: "New subtask",
+                         issue_summary_instructions: "New summary instructions",
                          lock_version: @settings.lock_version
                        }
                      }
@@ -32,6 +33,7 @@ class AiHelperProjectSettingsControllerTest < ActionController::TestCase
 
       assert_equal "New instructions", @settings.issue_draft_instructions
       assert_equal "New subtask", @settings.subtask_instructions
+      assert_equal "New summary instructions", @settings.issue_summary_instructions
     end
   end
 

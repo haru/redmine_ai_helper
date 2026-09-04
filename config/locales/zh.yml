@@ -28,6 +28,7 @@ zh:
   ai_helper:
     notice_sub_issues_added: "已添加子问题"
     error_invalid_assignee: "'%{subject}' 的负责人无效 - 用户无权处理此跟踪器"
+    error_empty_issue_summary: "AI 模型返回了空摘要。这可能是模型在推理过程中用完了 token 导致的；请考虑增加模型配置文件中的 max_tokens。"
     chat:
       planning: "正在创建执行计划..."
       generating_final_response: "正在生成最终回复..."
@@ -213,6 +214,7 @@ zh:
         subtask_instructions: "子任务生成说明"
         health_report_instructions: "健康报告生成说明"
         assignment_suggestion_instructions: "负责人建议说明"
+        issue_summary_instructions: "工单摘要生成说明"
       ai_helper_custom_command:
         name: "命令名称"
         command_type: "命令类型"

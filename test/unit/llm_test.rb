@@ -38,6 +38,18 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
         assert_equal "Permission denied", summary
       end
+
+      should "treat a blank agent response as an error and stream it" do
+        @issue.stubs(:visible?).returns(true)
+        RedmineAiHelper::Agents::IssueReadAgent.any_instance.stubs(:issue_summary).returns("")
+        streamed = []
+        stream_proc = ->(content) { streamed << content }
+
+        summary = @llm.issue_summary(issue: @issue, stream_proc: stream_proc)
+
+        assert_equal I18n.t("ai_helper.error_empty_issue_summary"), summary
+        assert_equal [ summary ], streamed
+      end
     end
 
     context "generate_issue_reply" do

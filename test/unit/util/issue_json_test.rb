@@ -121,6 +121,46 @@ class RedmineAiHelper::Util::IssueJsonTest < ActiveSupport::TestCase
       assert_nil issue_data[:parent]
     end
 
+    should "include the author's roles within the issue's project" do
+      role = Role.create!(name: "Ai Helper Test Author Role", permissions: [])
+      member = Member.find_or_initialize_by(project_id: @issue.project_id, user_id: @issue.author_id)
+      member.role_ids = (member.role_ids + [ role.id ]).uniq
+      member.save!
+
+      issue_data = @test_class.generate_issue_data(@issue)
+
+      assert_includes issue_data[:author][:roles], role.name
+    end
+
+    should "include the assigned user's roles within the issue's project" do
+      role = Role.create!(name: "Ai Helper Test Assignee Role", permissions: [])
+      member = Member.find_or_initialize_by(project_id: @issue.project_id, user_id: @issue.assigned_to_id)
+      member.role_ids = (member.role_ids + [ role.id ]).uniq
+      member.save!
+
+      issue_data = @test_class.generate_issue_data(@issue)
+
+      assert_includes issue_data[:assigned_to][:roles], role.name
+    end
+
+    should "include a journal user's roles within the issue's project" do
+      User.current = User.find(1)
+      EnabledModule.find_or_create_by!(project_id: @issue.project_id, name: "issue_tracking")
+      role = Role.create!(name: "Ai Helper Test Journal Role", permissions: [])
+      journal_user = User.find(3)
+      member = Member.find_or_initialize_by(project_id: @issue.project_id, user_id: journal_user.id)
+      member.role_ids = (member.role_ids + [ role.id ]).uniq
+      member.save!
+      journal = Journal.create!(journalized: @issue, user: journal_user, notes: "Test note for role check")
+      @issue.reload
+
+      issue_data = @test_class.generate_issue_data(@issue)
+      journal_data = issue_data[:journals].find { |j| j[:id] == journal.id }
+
+      assert_not_nil journal_data
+      assert_includes journal_data[:user][:roles], role.name
+    end
+
     should "include other_issue_id and other_issue_subject in relations" do
       target_issue = Issue.find(3)
       IssueRelation.create!(issue_from_id: @issue.id, issue_to_id: target_issue.id, relation_type: "relates")

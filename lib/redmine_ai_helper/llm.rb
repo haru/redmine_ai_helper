@@ -66,6 +66,8 @@ module RedmineAiHelper
         agent = RedmineAiHelper::Agents::IssueReadAgent.new(project: issue.project, langfuse: langfuse)
         langfuse.create_span(name: "user_request", input: prompt)
         answer = agent.issue_summary(issue: issue, stream_proc: stream_proc)
+        raise I18n.t("ai_helper.error_empty_issue_summary") if answer.blank?
+
         langfuse.finish_current_span(output: answer)
         langfuse.flush(output: answer)
       rescue => e
