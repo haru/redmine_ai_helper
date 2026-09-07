@@ -1,27 +1,18 @@
-# Wiki Lint Report — 2026-08-26
+# Wiki Lint Report — 2026-09-07
 
-All 3 findings from the prior pass were fixed by hand (citation swaps, not
-lint auto-fixes — semantic findings are never auto-rewritten).
-
-| # | Check | Severity | Page | Finding | Outcome |
-|---|-------|----------|------|---------|---------|
-| 1 | citations | semantic | inline-completion-request-flow.md | "`ai_helper_logger` falls back to `Rails.logger`" was cited only as `(ADR-020)`, missing source ID **S022**. | Fixed: citation is now `(ADR-020, S022)`; `S022` added to frontmatter `sources`. |
-| 2 | citations | semantic | completion-request-timeout-policy.md | "a timeout never locks completion where it happened" was cited only as `(ADR-021)`, missing source ID **S023**. | Fixed: citation is now `(ADR-021, S023)`; `S023` added to frontmatter `sources`. |
-| 3 | citations | semantic | completion-suppression-scope.md | "ADR-021 folded it into `clearSuggestion`…" was cited only `(S021)`, missing source ID **S023**. | Fixed: citation is now `(S021, S023)`; `S023` added to frontmatter `sources`. |
-
-Note: the original report's row 3 misquoted line 11 of this page as an
-ADR-021 claim — it is actually about ADR-019 (a separate, still-uncited
-decision not covered by S022/S023 and out of scope for this fix). Only the
-genuine ADR-021/S023 gap on line 30 was corrected.
+| # | Check | Severity | Page | Finding | Suggested fix |
+|---|-------|----------|------|---------|---------------|
+| 1 | contradictions | semantic | vector-search-internals.md | "Registration scope & project selection" (S033) says the "Register all projects" / per-project-selection behavior "operates over that widened base set" once `all_projects_scope` is ON, but the very next bullet (S012, unedited) states unconditionally that "OFF reveals a multi-select of **module-enabled projects only**" — no qualifier for the widened case. Cross-checking [all-projects-scope-effects.md](./pages/all-projects-scope-effects.md), which says the settings controller adds a separate `@vector_candidate_projects` for the vector tab (implying the candidate pool *does* widen), the S012 bullet block reads as stale relative to the S033 addition above it. | Clarify whether the OFF-state multi-select candidate list includes module-disabled projects when `all_projects_scope` is ON; if so, add an S033-cited qualifier to the bullet instead of leaving the S012 wording unconditional. |
+| 2 | citations | semantic | mcp-listen-rejection.md | The "mcp 1.4.0 update" blockquote (lines 15–19) asserts a synthesized claim ("part 2 of the fix... was later deleted to fix a regression...") with no source-ID citation — only "(ADR-032)", a document reference, not an `S0xx` id. Frontmatter `sources: [S027, S028, S029]` also omits S030/S031, even though `sources.md` lists this page as touched by both. | Add `(S030, S031)` to the blockquote's claim; add `S030, S031` to the page's frontmatter `sources` list. |
 
 ## Checks with no findings
 
-- **index-drift** — all 35 pages under `pages/` are listed in `INDEX.md`; no dangling index entries.
-- **links** — no relative links to missing pages across any page.
+- **index-drift** — all 38 pages under `pages/` are listed in `INDEX.md`; the one duplicate-looking `mcp-server-endpoint.md` match is a legitimate inline cross-reference inside the `mcp-integration.md` index bullet, not a stray index line.
+- **links** — no relative links (page-to-page or the two `../../docs/adr/*.md` references) point to a missing file.
 - **orphans** — every page is linked from at least one other page.
-- **contradictions** — no unresolved `⚠ conflict` markers; spot-checked the highest-overlap source groups (S002, S016, S018, S021, S027/S028) for incompatible claims, none found.
-- **stale** — all pages `updated` within the last 26 days (well under the 90-day `stale_after_days` threshold); no page's cited source has a `Last ingested` date newer than the page's own `updated` date.
+- **citations (unknown ids)** — every `S0xx` citation used across `pages/*.md` resolves to a row in `sources.md`; no unknown source IDs.
+- **stale** — all pages' `updated` dates are within 37 days (well under the 90-day `stale_after_days` threshold); for every page, the max `Last ingested` date among its cited sources is on or before the page's own `updated` date — no page trails a re-ingested source, aside from finding #2 above (a missing citation, not a date-staleness case).
 
 ## Mechanical fixes applied
 
-None needed — `INDEX.md` already matched `pages/` exactly and no links were broken or renamed.
+None needed — `INDEX.md` already matches `pages/` exactly and no links were broken or renamed.

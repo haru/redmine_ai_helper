@@ -1,8 +1,8 @@
 ---
 title: Tool System
 type: component
-sources: [S008, S016, S026, S032]
-updated: 2026-09-01
+sources: [S008, S016, S026, S032, S033]
+updated: 2026-09-07
 ---
 
 # Tool System
@@ -36,6 +36,13 @@ providers' functions it may call — a per-agent permission boundary (S008).
   `Project.allowed_to_condition(user, :view_ai_helper)` instead of a single
   project's `accessible_project?` check — see
   [search_issues Cross-Project Scoping](./search-issues-cross-project-scoping.md) (S026).
+- **Data-access scope is centralized**: `accessible_project?` and the
+  cross-project SQL condition above both delegate to
+  `RedmineAiHelper::Util::PermissionChecker#data_accessible?` /
+  `#data_access_condition`, which fold in the optional **all-projects
+  data-access scope** admin setting — module-disabled projects can be
+  included via standard Redmine permissions when an admin opts in. See [All-Projects
+  Data-Access Scope](./all-projects-data-access-scope.md) (S033).
 - **Write checks**: write tools call `User.current.allowed_to?(:action, project)`
   (S008).
 - **Read-only mode**: because each mutating tool is tagged `write: true`, global
@@ -82,3 +89,4 @@ providers' functions it may call — a per-agent permission boundary (S008).
 - [Agent Write-Capability Routing](./agent-write-capability-routing.md)
 - [search_issues Cross-Project Scoping](./search-issues-cross-project-scoping.md)
 - [Wiki Tools](./wiki-tools.md)
+- [All-Projects Data-Access Scope](./all-projects-data-access-scope.md)

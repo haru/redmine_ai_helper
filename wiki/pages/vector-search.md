@@ -1,8 +1,8 @@
 ---
 title: Vector Search
 type: reference
-sources: [S002, S004, S008, S010, S012]
-updated: 2026-08-01
+sources: [S002, S004, S008, S010, S012, S033]
+updated: 2026-09-07
 ---
 
 # Vector Search
@@ -85,7 +85,12 @@ carrying meaningful attachments (S002).
 
 By default **every** module-enabled project is indexed; a "Register all
 projects" toggle lets an admin pick specific projects instead, which also gates
-where vector-dependent search works (S012). See
+where vector-dependent search works (S012). An admin can also widen the base
+set itself to **all** projects (module-enabled or not) via the [all-projects
+data-access scope](./all-projects-data-access-scope.md) setting — the
+"Register all projects" / selection behavior then applies on top of that
+wider set. See [All-Projects Scope: Effects &
+Alternatives](./all-projects-scope-effects.md) for that mechanism (S033). See
 [Vector Search Internals](./vector-search-internals.md) for that selection model,
 indexing, payload indexes, sync, and `ensure_indexes` (S010, S012).
 

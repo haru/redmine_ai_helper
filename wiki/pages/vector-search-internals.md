@@ -1,8 +1,8 @@
 ---
 title: Vector Search Internals
 type: component
-sources: [S010, S012]
-updated: 2026-08-01
+sources: [S010, S012, S033]
+updated: 2026-09-07
 ---
 
 # Vector Search Internals
@@ -46,6 +46,16 @@ Indexing is limited to projects with the `ai_helper` module enabled (feature
 `AiHelperSetting#vector_target_projects_relation` (ADR-003) / the
 `AiHelperVectorTargetProject` model — preventing data proliferation on
 multi-tenant instances (S010).
+
+**Base scope can widen to all projects**: the module-enabled base set above
+is `AiHelperSetting#vector_scope_projects` (renamed from
+`#ai_helper_module_projects`), which returns `Project.all` instead when the
+admin turns on the [all-projects data-access
+scope](./all-projects-data-access-scope.md) setting — the same setting also
+applied to `#vector_target?`'s guard. The "Register all projects" /
+per-project-selection behavior below then operates over that widened base
+set. See [All-Projects Scope: Effects &
+Alternatives](./all-projects-scope-effects.md) for the details (S033).
 
 A **"Register all projects" checkbox** (default **ON**; an unset legacy value
 counts as ON) controls this (S012):
@@ -94,3 +104,5 @@ bulk operations are batched to respect API limits (S010).
 
 - [Vector Search](./vector-search.md) — setup and the access-control filtering.
 - [Tool System](./tool-system.md) · [LLM Provider Layer](./llm-provider-layer.md)
+- [All-Projects Scope: Effects & Alternatives](./all-projects-scope-effects.md) —
+  the setting that widens the base project scope here.
