@@ -30,6 +30,13 @@
     "vscode-erb-beautify.useBundler": true,
     "github.copilot.nextEditSuggestions.enabled": false,
     "rubyLsp.formatter": "auto",
+    // No Ruby version manager is installed in the container (system ruby at
+    // /usr/local/bin/ruby), so leaving this on "auto" makes the extension probe
+    // rvm/rbenv/mise/rv/asdf through `bash -i -c ...` on every activation. Those
+    // probes all fail, get retried, and pile up into a CPU storm.
+    "rubyLsp.rubyVersionManager": {
+      "identifier": "none"
+    },
     "chat.tools.terminal.autoApprove": {
       "bundle": true
     }
