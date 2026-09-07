@@ -381,15 +381,14 @@ module RedmineAiHelper
     end
 
     # All projects accessible via AI Helper, for tools that need to work across projects.
-    # #accessible_project? stays the source of truth for the decision, but the candidate set
-    # is narrowed to Project.visible in SQL and enabled_modules is preloaded, so a large
-    # instance neither materializes every project nor issues one query per project. The
-    # all_projects_scope flag is read once and reused for every project, avoiding an
-    # N+1 read of the settings row (see contracts/data-access-scope.md).
+    # Delegates to PermissionChecker.accessible_projects, which owns both the decision
+    # (data_accessible?, the single source of truth shared by every tool/agent, see
+    # specs/057-all-projects-scope/contracts/data-access-scope.md) and the N+1 avoidance:
+    # the candidate set is narrowed to Project.visible in SQL, enabled_modules is preloaded,
+    # and the all_projects_scope flag is read once for every project.
     # @return [Array<Project>] The accessible projects.
     def accessible_projects
-      flag = AiHelperSetting.all_projects_scope?
-      Project.visible.preload(:enabled_modules).select { |p| RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: p, all_projects_scope: flag) }
+      RedmineAiHelper::Util::PermissionChecker.accessible_projects(Project.visible)
     end
 
     private

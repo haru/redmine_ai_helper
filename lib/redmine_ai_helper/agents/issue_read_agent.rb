@@ -397,11 +397,9 @@ module RedmineAiHelper
       # @return [ActiveRecord::Relation] Issues from other projects
       def fetch_todo_issues_from_other_projects
         # Get all visible projects except current project
-        flag = AiHelperSetting.all_projects_scope?
-        eligible_projects = Project.visible
-          .where.not(id: @project.id)
-          .preload(:enabled_modules)
-          .select { |proj| RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: proj, all_projects_scope: flag) }
+        eligible_projects = RedmineAiHelper::Util::PermissionChecker.accessible_projects(
+          Project.visible.where.not(id: @project.id)
+        )
 
         return Issue.none if eligible_projects.empty?
 

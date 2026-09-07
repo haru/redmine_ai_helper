@@ -28,8 +28,8 @@ module RedmineAiHelper
         end
       end
 
-      define_function :search_issues, description: "Search issues based on the filter conditions and return matching issues. Each issue includes project ({id, name}), estimated_hours, total_estimated_hours, spent_hours, and total_spent_hours. For search items with '_id', specify the ID instead of the name of the search target. If you do not know the ID, you need to call capable_issue_properties in advance to obtain the ID. Default limit is 50 issues. Only projects with the AI Helper module enabled can be searched. Omit project_id to search across all projects that have the AI Helper module enabled and are accessible to the current user." do
-        property :project_id, type: "integer", description: "The project ID of the project to search in. Only projects with the AI Helper module enabled can be searched. Omit this to search across all projects that have the AI Helper module enabled and are accessible to the current user.", required: false
+      define_function :search_issues, description: "Search issues based on the filter conditions and return matching issues. Each issue includes project ({id, name}), estimated_hours, total_estimated_hours, spent_hours, and total_spent_hours. For search items with '_id', specify the ID instead of the name of the search target. If you do not know the ID, you need to call capable_issue_properties in advance to obtain the ID. Default limit is 50 issues. Only projects whose data is accessible via AI Helper to the current user can be searched (when the all_projects_scope setting is off, this means projects with the AI Helper module enabled). Omit project_id to search across all AI-Helper-accessible projects." do
+        property :project_id, type: "integer", description: "The project ID of the project to search in. Only projects whose data is accessible via AI Helper to the current user can be searched. Omit this to search across all AI-Helper-accessible projects.", required: false
         property :limit, type: "integer", description: "Maximum number of issues to return. Default is 50.", required: false
         property :fields, type: "array", description: "Search fields for the issue." do
           item type: "object", description: "Search field for the issue.", &STRING_VALUES_ITEM
@@ -70,7 +70,7 @@ module RedmineAiHelper
         end
       end
       # Search issues based on filter conditions and return matching issues
-      # @param project_id [Integer, nil] The project ID of the project to search in. The project must have the ai_helper module enabled and be accessible to the current user. When omitted, searches across all projects that have the ai_helper module enabled and are accessible to the current user.
+      # @param project_id [Integer, nil] The project ID of the project to search in. The project's data must be accessible to the current user (see PermissionChecker.data_accessible? and the ADR-036 decision table). When omitted, searches across all projects whose data is accessible to the current user (see PermissionChecker.data_access_condition).
       # @param limit [Integer] Maximum number of issues to return. Default is 50.
       # @param fields [Array] Search fields for the issue.
       # @param date_fields [Array] Date search fields for the issue.
@@ -81,7 +81,7 @@ module RedmineAiHelper
       # @param custom_fields [Array] Custom field search filters.
       # @param sort [Hash] Sort order with :field (one of SUPPORTED_SORT_FIELDS) and optional :direction (asc/desc, default desc). Defaults to id descending when omitted.
       # @return [Hash] A hash containing issues array and total_count.
-      # @raise [RuntimeError] if project_id is given but the project is not accessible with the ai_helper module enabled.
+      # @raise [RuntimeError] if project_id is given but the project's data is not accessible to the current user.
       # @raise [ActiveRecord::RecordNotFound] if project_id is given but no project matches it.
       def search_issues(project_id: nil, limit: 50, fields: [], date_fields: [], time_fields: [], number_fields: [], text_fields: [], status_field: [], custom_fields: [], sort: nil)
         fields = deep_symbolize_array(fields)
@@ -97,9 +97,12 @@ module RedmineAiHelper
         project = nil
         if project_id
           project = Project.find(project_id)
-          # Guard both search paths at once: projects without the ai_helper module (or
-          # without access for the current user) must never expose their issues.
-          raise "ai_helper is not enabled for project: id = #{project_id}" unless accessible_project?(project)
+          # Guard both search paths at once. Whether a project's data is reachable is
+          # decided by PermissionChecker.data_accessible? (ADR-036 decision table):
+          # module-enabled projects always require :view_ai_helper; module-disabled
+          # projects are reachable only when the all_projects_scope setting is on.
+          # Data-type visibility (e.g. Issue.visible) is enforced inside every path below.
+          raise "Project is not accessible: id = #{project_id}" unless accessible_project?(project)
         end
 
         if fields.empty? && date_fields.empty? && time_fields.empty? && number_fields.empty? && text_fields.empty? && status_field.empty? && custom_fields.empty?

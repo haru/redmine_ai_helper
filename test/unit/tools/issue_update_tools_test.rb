@@ -234,7 +234,7 @@ class IssueUpdateToolsTest < ActiveSupport::TestCase
             project: @module_disabled_project, tracker: @tracker, subject: "US2 Update Target",
             author: User.find(1), status: IssueStatus.first, priority: IssuePriority.first
           )
-          @no_edit_role = Role.create!(name: "US2 No Edit Role", permissions: [ :view_issues ])
+          @no_edit_role = Role.create!(name: "US2 No Edit Role", permissions: [ :view_project, :view_issues ])
           Member.create!(user: User.find(2), project: @module_disabled_project, roles: [ @no_edit_role ])
           @previous_user = User.current
           User.current = User.find(2)
@@ -251,6 +251,15 @@ class IssueUpdateToolsTest < ActiveSupport::TestCase
             @provider.update_issue(issue_id: @issue.id, subject: "Should not apply")
           end
           assert_equal "US2 Update Target", Issue.find(@issue.id).subject
+        end
+
+        should "update the issue when the user holds edit permission" do
+          @no_edit_role.permissions = [ :view_project, :view_issues, :edit_issues ]
+          @no_edit_role.save!
+
+          @provider.update_issue(issue_id: @issue.id, subject: "Updated via all projects scope")
+
+          assert_equal "Updated via all projects scope", Issue.find(@issue.id).subject
         end
       end
 

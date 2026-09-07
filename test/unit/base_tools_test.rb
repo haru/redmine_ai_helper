@@ -328,13 +328,18 @@ class BaseToolsTest < ActiveSupport::TestCase
     end
 
     context "accessible_project?" do
-      should "return false for invisible project" do
-        tools = @simple_tool_class.new
-        project = mock("Project")
-        project.stubs(:id).returns(1)
-        project.stubs(:visible?).returns(false)
+      fixtures :projects, :enabled_modules, :users, :roles, :members, :member_roles
 
-        assert_not tools.accessible_project?(project)
+      should "return false for a private project the current user is not a member of" do
+        tools = @simple_tool_class.new
+        previous_user = User.current
+        User.current = User.find(2) # jsmith
+        private_project = Project.create!(name: "Tools Private #{Time.now.to_i}#{rand(10000)}", identifier: "tools-private-#{Time.now.to_i}#{rand(10000)}", is_public: false)
+
+        assert_not tools.accessible_project?(private_project)
+      ensure
+        User.current = previous_user
+        private_project&.destroy
       end
     end
 
@@ -375,6 +380,30 @@ class BaseToolsTest < ActiveSupport::TestCase
         AiHelperSetting.stubs(:all_projects_scope?).returns(true)
 
         assert_includes @tools.accessible_projects.map(&:id), @module_disabled_project.id
+      end
+
+      should "exclude a private non-member project from accessible_projects even when all_projects_scope is ON" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+        previous_user = User.current
+        User.current = User.find(2) # jsmith
+        private_project = Project.create!(name: "Tools Private 2 #{Time.now.to_i}#{rand(10000)}", identifier: "tools-private-2-#{Time.now.to_i}#{rand(10000)}", is_public: false)
+
+        assert_not_includes @tools.accessible_projects.map(&:id), private_project.id
+      ensure
+        User.current = previous_user
+        private_project&.destroy
+      end
+
+      should "return false for a private non-member project from accessible_project? even when all_projects_scope is ON" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+        previous_user = User.current
+        User.current = User.find(2) # jsmith
+        private_project = Project.create!(name: "Tools Private 3 #{Time.now.to_i}#{rand(10000)}", identifier: "tools-private-3-#{Time.now.to_i}#{rand(10000)}", is_public: false)
+
+        assert_not @tools.accessible_project?(private_project)
+      ensure
+        User.current = previous_user
+        private_project&.destroy
       end
     end
 

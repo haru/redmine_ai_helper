@@ -32,7 +32,7 @@ module RedmineAiHelper
 
         project = Project.find_by(id: project_id)
         raise "Project not found. id = #{project_id}" unless project
-        raise "ai_helper is not enabled for project: id = #{project_id}" unless accessible_project?(project)
+        raise "Project is not accessible: id = #{project_id}" unless accessible_project?(project)
 
         wiki = Wiki.find_by(project_id: project_id)
         raise "Wiki not found: project_id = #{project_id}" unless wiki
@@ -86,7 +86,7 @@ module RedmineAiHelper
 
         project = Project.find_by(id: project_id)
         raise "Project not found. id = #{project_id}" unless project
-        raise "ai_helper is not enabled for project: id = #{project_id}" unless accessible_project?(project)
+        raise "Project is not accessible: id = #{project_id}" unless accessible_project?(project)
 
         wiki = Wiki.find_by(project_id: project_id)
         raise "Wiki not found: project_id = #{project_id}" unless wiki
@@ -145,7 +145,7 @@ module RedmineAiHelper
 
         project = Project.find_by(id: project_id)
         raise "Project not found. id = #{project_id}" unless project
-        raise "ai_helper is not enabled for project: id = #{project_id}" unless accessible_project?(project)
+        raise "Project is not accessible: id = #{project_id}" unless accessible_project?(project)
 
         wiki = Wiki.find_by(project_id: project_id)
         raise "Wiki not found: project_id = #{project_id}" unless wiki

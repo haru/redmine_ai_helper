@@ -33,19 +33,43 @@ module RedmineAiHelper
         all_projects_scope
       end
 
+      # Filter the given projects relation down to the projects whose data is accessible
+      # to the user. Shared by every caller that narrows a candidate project set
+      # (BaseTools#accessible_projects, IssueReadAgent#fetch_todo_issues_from_other_projects,
+      # VectorTools#collect_permitted_project_ids). enabled_modules is preloaded so a large
+      # instance does not issue one module query per project, and the all_projects_scope
+      # flag is read once by default, avoiding an N+1 read of the settings row
+      # (see contracts/data-access-scope.md in specs/057-all-projects-scope).
+      # @param relation [ActiveRecord::Relation] Candidate projects (e.g. Project.visible)
+      # @param user [User] The user to check permissions for (default User.current)
+      # @param all_projects_scope [Boolean] Whether the all-projects data-access scope
+      #   setting is enabled. Callers that already read the flag should pass it here to
+      #   avoid re-reading the settings row.
+      # @return [Array<Project>] The accessible projects
+      def self.accessible_projects(relation, user: User.current, all_projects_scope: AiHelperSetting.all_projects_scope?)
+        relation.preload(:enabled_modules).select { |project| data_accessible?(project: project, user: user, all_projects_scope: all_projects_scope) }
+      end
+
       # SQL condition (for the `projects` table) selecting projects whose data is accessible
-      # to the given user, for use in cross-project queries. The caller's relation must already
-      # apply data-type visibility (e.g. Issue.visible(user)), which covers project visibility
-      # and state; this condition only decides the ai_helper module / all_projects_scope part.
+      # to the given user, for use in cross-project queries. The condition is self-contained:
+      # it ANDs Project.visible_condition(user) (project visibility and status) with the
+      # ai_helper module / all_projects_scope part, so no caller omission can widen the
+      # result. A caller whose relation already applies data-type visibility (e.g.
+      # Issue.visible(user)) simply ANDs the same constraints twice, which is harmless.
       # @param user [User] The user to check permissions for (default User.current)
       # @param all_projects_scope [Boolean] Whether the all-projects data-access scope
       #   setting is enabled (default AiHelperSetting.all_projects_scope?)
       # @return [String] SQL condition string safe to pass to `where`
       def self.data_access_condition(user = User.current, all_projects_scope: AiHelperSetting.all_projects_scope?)
-        condition = Project.allowed_to_condition(user, :view_ai_helper)
-        return condition unless all_projects_scope
-        "((#{condition}) OR NOT EXISTS (SELECT 1 FROM #{EnabledModule.table_name} em" \
-          " WHERE em.project_id = #{Project.table_name}.id AND em.name = 'ai_helper'))"
+        scoped =
+          if all_projects_scope
+            condition = Project.allowed_to_condition(user, :view_ai_helper)
+            "((#{condition}) OR NOT EXISTS (SELECT 1 FROM #{EnabledModule.table_name} em" \
+              " WHERE em.project_id = #{Project.table_name}.id AND em.name = 'ai_helper'))"
+          else
+            Project.allowed_to_condition(user, :view_ai_helper)
+          end
+        "(#{Project.visible_condition(user)}) AND (#{scoped})"
       end
     end
   end
