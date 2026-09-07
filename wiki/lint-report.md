@@ -1,9 +1,12 @@
 # Wiki Lint Report — 2026-09-07
 
-| # | Check | Severity | Page | Finding | Suggested fix |
-|---|-------|----------|------|---------|---------------|
-| 1 | contradictions | semantic | vector-search-internals.md | "Registration scope & project selection" (S033) says the "Register all projects" / per-project-selection behavior "operates over that widened base set" once `all_projects_scope` is ON, but the very next bullet (S012, unedited) states unconditionally that "OFF reveals a multi-select of **module-enabled projects only**" — no qualifier for the widened case. Cross-checking [all-projects-scope-effects.md](./pages/all-projects-scope-effects.md), which says the settings controller adds a separate `@vector_candidate_projects` for the vector tab (implying the candidate pool *does* widen), the S012 bullet block reads as stale relative to the S033 addition above it. | Clarify whether the OFF-state multi-select candidate list includes module-disabled projects when `all_projects_scope` is ON; if so, add an S033-cited qualifier to the bullet instead of leaving the S012 wording unconditional. |
-| 2 | citations | semantic | mcp-listen-rejection.md | The "mcp 1.4.0 update" blockquote (lines 15–19) asserts a synthesized claim ("part 2 of the fix... was later deleted to fix a regression...") with no source-ID citation — only "(ADR-032)", a document reference, not an `S0xx` id. Frontmatter `sources: [S027, S028, S029]` also omits S030/S031, even though `sources.md` lists this page as touched by both. | Add `(S030, S031)` to the blockquote's claim; add `S030, S031` to the page's frontmatter `sources` list. |
+Both findings from this pass were resolved by hand after reading source (not
+lint auto-fixes — semantic findings are never auto-rewritten by lint itself).
+
+| # | Check | Severity | Page | Finding | Outcome |
+|---|-------|----------|------|---------|---------|
+| 1 | contradictions | semantic | vector-search-internals.md | "Registration scope & project selection" (S033) said the multi-select "operates over" the widened base set, but the very next bullet (S012, unedited) said unconditionally that OFF "reveals a multi-select of module-enabled projects only." Read `app/controllers/ai_helper_settings_controller.rb:103` (`@vector_candidate_projects = @setting.vector_scope_projects.order(:name)`) and `app/models/ai_helper_setting.rb#vector_scope_projects` — confirmed the candidate list *does* widen to all non-archived projects when `all_projects_scope` is ON (also confirmed by `test/functional/ai_helper_settings_controller_test.rb:285-307`). Also caught along the way: the page claimed `vector_scope_projects` "returns `Project.all`" when ON — the code excludes archived projects. | Fixed: rewrote the "ON"/"OFF" bullets to name `@vector_candidate_projects` and condition the module-enabled-only claim on `all_projects_scope` being OFF (S033); corrected "`Project.all`" to "non-archived projects." |
+| 2 | citations | semantic | mcp-listen-rejection.md | The "mcp 1.4.0 update" blockquote asserted a claim with no `S0xx` citation (only "(ADR-032)"); frontmatter `sources` omitted S030/S031 despite `sources.md` listing this page as touched by both. | Fixed: blockquote citation is now "(ADR-032, S030, S031)"; `S030, S031` added to frontmatter `sources`; `updated` bumped to 2026-09-07. |
 
 ## Checks with no findings
 
@@ -11,7 +14,7 @@
 - **links** — no relative links (page-to-page or the two `../../docs/adr/*.md` references) point to a missing file.
 - **orphans** — every page is linked from at least one other page.
 - **citations (unknown ids)** — every `S0xx` citation used across `pages/*.md` resolves to a row in `sources.md`; no unknown source IDs.
-- **stale** — all pages' `updated` dates are within 37 days (well under the 90-day `stale_after_days` threshold); for every page, the max `Last ingested` date among its cited sources is on or before the page's own `updated` date — no page trails a re-ingested source, aside from finding #2 above (a missing citation, not a date-staleness case).
+- **stale** — all pages' `updated` dates are within 37 days (well under the 90-day `stale_after_days` threshold); for every page, the max `Last ingested` date among its cited sources is on or before the page's own `updated` date.
 
 ## Mechanical fixes applied
 

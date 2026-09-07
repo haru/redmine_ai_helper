@@ -49,21 +49,27 @@ multi-tenant instances (S010).
 
 **Base scope can widen to all projects**: the module-enabled base set above
 is `AiHelperSetting#vector_scope_projects` (renamed from
-`#ai_helper_module_projects`), which returns `Project.all` instead when the
-admin turns on the [all-projects data-access
-scope](./all-projects-data-access-scope.md) setting — the same setting also
-applied to `#vector_target?`'s guard. The "Register all projects" /
-per-project-selection behavior below then operates over that widened base
-set. See [All-Projects Scope: Effects &
+`#ai_helper_module_projects`), which returns all **non-archived** projects
+instead (archived projects stay excluded either way) when the admin turns on
+the [all-projects data-access scope](./all-projects-data-access-scope.md)
+setting — the same setting also applied to `#vector_target?`'s guard. The
+"Register all projects" / per-project-selection behavior below then operates
+over that widened base set. See [All-Projects Scope: Effects &
 Alternatives](./all-projects-scope-effects.md) for the details (S033).
 
 A **"Register all projects" checkbox** (default **ON**; an unset legacy value
 counts as ON) controls this (S012):
 
-- **ON** registers every module-enabled project — unchanged legacy behavior.
-- **OFF** reveals a multi-select of **module-enabled projects only**; the
-  effective target is always **selection ∩ module-enabled**, so a
-  selected-but-module-disabled project is excluded (S012).
+- **ON** registers every vector-scope project — unchanged legacy behavior
+  when `all_projects_scope` is OFF (module-enabled projects only); also
+  covers module-disabled projects once `all_projects_scope` is ON (S033).
+- **OFF** reveals a multi-select built from `@vector_candidate_projects`
+  (`AiHelperSetting#vector_scope_projects`,
+  `app/controllers/ai_helper_settings_controller.rb`) — module-enabled
+  projects only by default (S012), or every non-archived project once
+  `all_projects_scope` is ON (S033); the effective target is always
+  **selection ∩ vector-scope**, so a selected-but-out-of-scope project is
+  excluded (S012, S033).
 - The flag and the selected list persist **independently**: turning the flag
   back ON keeps the selection so it can be restored when toggled OFF again (S012).
 - Selection is **per project** — selecting a parent does *not* pull in its
