@@ -414,6 +414,26 @@ class ProjectToolsTest < ActiveSupport::TestCase
     assert_not_includes accessible_ids, 3 # ai_helper module not enabled
   end
 
+  context "list_projects with all_projects_scope" do
+    setup do
+      EnabledModule.where(project_id: 3, name: "ai_helper").destroy_all
+    end
+
+    should "exclude module-disabled projects when all_projects_scope is OFF" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+
+      ids = @provider.list_projects.map { |p| p[:id] }
+      assert_not_includes ids, 3
+    end
+
+    should "include module-disabled but visible projects when all_projects_scope is ON" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+
+      ids = @provider.list_projects.map { |p| p[:id] }
+      assert_includes ids, 3
+    end
+  end
+
   def test_event_project_id_prefers_the_foreign_key_over_the_association
     project = Project.find(1)
     issue = Issue.create!(

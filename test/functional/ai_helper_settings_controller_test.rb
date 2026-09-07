@@ -271,6 +271,43 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert_equal true, @ai_helper_setting.vector_register_all_projects
       assert_equal [ @target_project.id ], @ai_helper_setting.vector_target_project_ids
     end
+
+    context "with all_projects_scope ON (FR-017, FR-011)" do
+      setup do
+        @module_disabled_project = Project.create!(name: "Vector Module Disabled", identifier: "vector-module-disabled")
+        @ai_helper_setting.update_column(:all_projects_scope, true)
+      end
+
+      teardown do
+        @module_disabled_project.destroy if @module_disabled_project&.persisted?
+      end
+
+      should "include module-disabled projects in vector_candidate_projects" do
+        get :index
+
+        assert_response :success
+        assert_not_nil assigns(:vector_candidate_projects)
+        assert_includes assigns(:vector_candidate_projects), @module_disabled_project
+      end
+
+      should "not include module-disabled projects in ai_helper_projects (channels tab stays module-gated)" do
+        get :index
+
+        assert_response :success
+        assert_not_includes assigns(:ai_helper_projects), @module_disabled_project
+      end
+    end
+
+    should "not include module-disabled projects in vector_candidate_projects when all_projects_scope is OFF" do
+      module_disabled_project = Project.create!(name: "Vector Module Disabled Off", identifier: "vector-module-disabled-off")
+
+      get :index
+
+      assert_response :success
+      assert_not_includes assigns(:vector_candidate_projects), module_disabled_project
+    ensure
+      module_disabled_project&.destroy if module_disabled_project&.persisted?
+    end
   end
 
   context "send_user_id_enabled setting" do
@@ -326,6 +363,47 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
       assert_response :success
       assert_select "input[type=checkbox][name='ai_helper_setting[read_only_mode]']"
+    end
+  end
+
+  context "all_projects_scope setting" do
+    should "render unchecked on initial index display (FR-002, User Story 4-1)" do
+      get :index
+
+      assert_response :success
+      assert_select "input[type=checkbox][name='ai_helper_setting[all_projects_scope]']" do |elements|
+        assert_nil elements.first["checked"]
+      end
+    end
+
+    should "save all_projects_scope true and keep it on redisplay (User Story 4-2)" do
+      post :update, params: { ai_helper_setting: { all_projects_scope: "1" } }
+
+      assert_redirected_to action: :index
+      @ai_helper_setting.reload
+      assert_equal true, @ai_helper_setting.all_projects_scope
+
+      get :index
+      assert_select "input[type=checkbox][name='ai_helper_setting[all_projects_scope]'][checked]"
+    end
+
+    should "save all_projects_scope false and keep it on redisplay (User Story 4-3)" do
+      @ai_helper_setting.update_column(:all_projects_scope, true)
+      post :update, params: { ai_helper_setting: { all_projects_scope: "0" } }
+
+      assert_redirected_to action: :index
+      @ai_helper_setting.reload
+      assert_equal false, @ai_helper_setting.all_projects_scope
+
+      get :index
+      assert_select "input[type=checkbox][name='ai_helper_setting[all_projects_scope]'][checked]", false
+    end
+
+    should "render all_projects_scope checkbox on index" do
+      get :index
+
+      assert_response :success
+      assert_select "input[type=checkbox][name='ai_helper_setting[all_projects_scope]']"
     end
   end
 

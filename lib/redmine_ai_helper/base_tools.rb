@@ -370,22 +370,26 @@ module RedmineAiHelper
       end
     end
 
-    # Check if the specified project is accessible
+    # Check if the specified project is accessible for data access (read/update)
+    # by the current user. Delegates to PermissionChecker.data_accessible?, the
+    # single source of truth shared by every tool/agent (see
+    # specs/057-all-projects-scope/contracts/data-access-scope.md).
     # @param project [Project] The project
     # @return [Boolean] true if accessible, false otherwise
     def accessible_project?(project)
-      return false unless project.visible?
-      return false unless project.module_enabled?(:ai_helper)
-      User.current.allowed_to?({ controller: :ai_helper, action: :chat_form }, project)
+      RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: project)
     end
 
     # All projects accessible via AI Helper, for tools that need to work across projects.
     # #accessible_project? stays the source of truth for the decision, but the candidate set
     # is narrowed to Project.visible in SQL and enabled_modules is preloaded, so a large
-    # instance neither materializes every project nor issues one query per project.
+    # instance neither materializes every project nor issues one query per project. The
+    # all_projects_scope flag is read once and reused for every project, avoiding an
+    # N+1 read of the settings row (see contracts/data-access-scope.md).
     # @return [Array<Project>] The accessible projects.
     def accessible_projects
-      Project.visible.preload(:enabled_modules).select { |p| accessible_project? p }
+      flag = AiHelperSetting.all_projects_scope?
+      Project.visible.preload(:enabled_modules).select { |p| RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: p, all_projects_scope: flag) }
     end
 
     private

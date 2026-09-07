@@ -23,6 +23,7 @@ class AiHelperSetting < ApplicationRecord
     "mcp_server_enabled",
     "send_user_id_enabled",
     "read_only_mode",
+    "all_projects_scope",
     "vector_register_all_projects", "vector_target_project_ids"
 
   validates :attachment_max_size_mb,
@@ -71,6 +72,14 @@ class AiHelperSetting < ApplicationRecord
       setting.read_only_mode
     end
 
+    # Returns whether all-projects data-access scope is enabled (FR-004).
+    # When true, projects without the ai_helper module enabled are also within the
+    # data-access scope, subject to standard Redmine permissions.
+    # @return [Boolean]
+    def all_projects_scope?
+      setting.all_projects_scope
+    end
+
     # Returns whether vector search is effectively enabled for the given project.
     # Vector-dependent features (similar-issue search, wiki vector tools,
     # assignment suggestion) use this for per-project gating (FR-012).
@@ -114,30 +123,32 @@ class AiHelperSetting < ApplicationRecord
     model_profile.max_tokens
   end
 
-  # Base scope of projects eligible for vector registration: those with the
-  # ai_helper module enabled (see ADR-002).
-  # @return [ActiveRecord::Relation] ai_helper-module-enabled projects
-  def ai_helper_module_projects
+  # Base scope of projects eligible for vector registration: all projects when
+  # all_projects_scope is enabled (FR-016), otherwise those with the ai_helper
+  # module enabled (see ADR-002).
+  # @return [ActiveRecord::Relation] projects within the vector registration scope
+  def vector_scope_projects
+    return Project.all if all_projects_scope?
     Project.joins(:enabled_modules).where(enabled_modules: { name: "ai_helper" })
   end
 
   # The effective set of projects whose issues/wiki are registered in the
   # vector database. Single source of truth shared by the registration rake
   # task and the deletion check (FR-005/FR-008/FR-009/FR-015).
-  # @return [ActiveRecord::Relation] selection ∩ ai_helper-module projects when
-  #   register_all is OFF; all ai_helper-module projects when ON.
+  # @return [ActiveRecord::Relation] selection ∩ vector-scope projects when
+  #   register_all is OFF; all vector-scope projects when ON.
   def vector_target_projects_relation
-    base = ai_helper_module_projects
+    base = vector_scope_projects
     return base if vector_register_all_projects?
     base.where(id: vector_target_project_ids)
   end
 
-  # Whether the given project is within the vector registration scope (FR-009).
+  # Whether the given project is within the vector registration scope (FR-009/FR-016).
   # @param project [Project, nil] The project to check
   # @return [Boolean]
   def vector_target?(project)
     return false unless project
-    return false unless project.module_enabled?(:ai_helper)
+    return false unless all_projects_scope? || project.module_enabled?(:ai_helper)
     return true if vector_register_all_projects?
     vector_target_project_ids.include?(project.id)
   end

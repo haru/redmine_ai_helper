@@ -100,6 +100,7 @@ class AiHelperSettingsController < ApplicationController
     @setting = AiHelperSetting.find_or_create
     @model_profiles = AiHelperModelProfile.order(:name)
     @ai_helper_projects = Project.joins(:enabled_modules).where(enabled_modules: { name: "ai_helper" }).order(:name)
+    @vector_candidate_projects = @setting.vector_scope_projects.order(:name)
     @channel_bindings_by_type = AiHelperChannelBinding.includes(:project)
                                                       .order(:channel_type, :channel_id)
                                                       .group_by(&:channel_type)

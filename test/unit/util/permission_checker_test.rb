@@ -70,4 +70,125 @@ class RedmineAiHelper::Util::PermissionCheckerTest < ActiveSupport::TestCase
       assert RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: @project, permission: permission)
     end
   end
+
+  context "PermissionChecker.data_accessible?" do
+    setup do
+      @project = Project.find(1)
+      @user = User.find(2)
+      @previous_user = User.current
+    end
+
+    teardown do
+      User.current = @previous_user
+    end
+
+    should "return false when project is nil" do
+      assert_equal false, RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: nil, user: @user, all_projects_scope: true)
+    end
+
+    should "return false when project is not visible to the user, module enabled" do
+      @project.stubs(:module_enabled?).with(:ai_helper).returns(true)
+      @project.stubs(:visible?).with(@user).returns(false)
+
+      assert_equal false, RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: @project, user: @user, all_projects_scope: true)
+    end
+
+    should "return false when project is not visible to the user, module disabled, all_projects_scope ON" do
+      @project.stubs(:module_enabled?).with(:ai_helper).returns(false)
+      @project.stubs(:visible?).with(@user).returns(false)
+
+      assert_equal false, RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: @project, user: @user, all_projects_scope: true)
+    end
+
+    should "return true when module enabled, visible, and user has view_ai_helper permission" do
+      @project.stubs(:module_enabled?).with(:ai_helper).returns(true)
+      @project.stubs(:visible?).with(@user).returns(true)
+      @user.stubs(:allowed_to?).with(:view_ai_helper, @project).returns(true)
+
+      assert_equal true, RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: @project, user: @user, all_projects_scope: false)
+      assert_equal true, RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: @project, user: @user, all_projects_scope: true)
+    end
+
+    should "return false when module enabled, visible, but user lacks view_ai_helper permission (all_projects_scope does not widen module-enabled projects)" do
+      @project.stubs(:module_enabled?).with(:ai_helper).returns(true)
+      @project.stubs(:visible?).with(@user).returns(true)
+      @user.stubs(:allowed_to?).with(:view_ai_helper, @project).returns(false)
+
+      assert_equal false, RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: @project, user: @user, all_projects_scope: false)
+      assert_equal false, RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: @project, user: @user, all_projects_scope: true)
+    end
+
+    should "return false when module disabled and all_projects_scope OFF, even if visible" do
+      @project.stubs(:module_enabled?).with(:ai_helper).returns(false)
+      @project.stubs(:visible?).with(@user).returns(true)
+
+      assert_equal false, RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: @project, user: @user, all_projects_scope: false)
+    end
+
+    should "return true when module disabled, visible, and all_projects_scope ON, without checking view_ai_helper" do
+      @project.stubs(:module_enabled?).with(:ai_helper).returns(false)
+      @project.stubs(:visible?).with(@user).returns(true)
+      @user.expects(:allowed_to?).with(:view_ai_helper, @project).never
+
+      assert_equal true, RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: @project, user: @user, all_projects_scope: true)
+    end
+
+    should "default all_projects_scope to AiHelperSetting.all_projects_scope?" do
+      @project.stubs(:module_enabled?).with(:ai_helper).returns(false)
+      @project.stubs(:visible?).with(@user).returns(true)
+      AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+
+      assert_equal true, RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: @project, user: @user)
+    end
+
+    should "default user to User.current" do
+      User.current = @user
+      @project.stubs(:module_enabled?).with(:ai_helper).returns(true)
+      @project.stubs(:visible?).with(@user).returns(true)
+      @user.stubs(:allowed_to?).with(:view_ai_helper, @project).returns(true)
+
+      assert_equal true, RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: @project, all_projects_scope: false)
+    end
+  end
+
+  context "PermissionChecker.data_access_condition" do
+    setup do
+      @user = User.find(2)
+      @previous_user = User.current
+    end
+
+    teardown do
+      User.current = @previous_user
+    end
+
+    should "return Project.allowed_to_condition unchanged when all_projects_scope is OFF" do
+      expected = Project.allowed_to_condition(@user, :view_ai_helper)
+
+      assert_equal expected, RedmineAiHelper::Util::PermissionChecker.data_access_condition(@user, all_projects_scope: false)
+    end
+
+    should "OR in a NOT EXISTS enabled_modules clause when all_projects_scope is ON" do
+      base = Project.allowed_to_condition(@user, :view_ai_helper)
+      result = RedmineAiHelper::Util::PermissionChecker.data_access_condition(@user, all_projects_scope: true)
+
+      assert_includes result, base
+      assert_match(/NOT EXISTS/, result)
+      assert_match(/enabled_modules/, result)
+      assert_match(/name = 'ai_helper'/, result)
+    end
+
+    should "default all_projects_scope to AiHelperSetting.all_projects_scope?" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+      result = RedmineAiHelper::Util::PermissionChecker.data_access_condition(@user)
+
+      assert_match(/NOT EXISTS/, result)
+    end
+
+    should "default user to User.current" do
+      User.current = @user
+      expected = Project.allowed_to_condition(@user, :view_ai_helper)
+
+      assert_equal expected, RedmineAiHelper::Util::PermissionChecker.data_access_condition(all_projects_scope: false)
+    end
+  end
 end

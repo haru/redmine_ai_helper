@@ -106,7 +106,7 @@ module RedmineAiHelper
           # No conditions: return open visible issues for the project (same as Redmine default).
           # Without a project, scope to all projects the current user may search via AI Helper.
           scope = Issue.visible(User.current).open
-          scope = project ? scope.where(project_id: project.id) : scope.joins(:project).where(Project.allowed_to_condition(User.current, :view_ai_helper))
+          scope = project ? scope.where(project_id: project.id) : scope.joins(:project).where(RedmineAiHelper::Util::PermissionChecker.data_access_condition(User.current))
           order = sort ? { sort[:field] => sort[:direction] } : { id: :desc }
           issues = scope.includes(:project, :status, :priority, :tracker, :assigned_to, :author, :custom_values)
                         .order(order).limit(limit)
@@ -464,7 +464,7 @@ module RedmineAiHelper
         def cross_project_scope(project, scope, user)
           return scope if project
 
-          scope.where(Project.allowed_to_condition(user, :view_ai_helper))
+          scope.where(RedmineAiHelper::Util::PermissionChecker.data_access_condition(user))
         end
       end
     end

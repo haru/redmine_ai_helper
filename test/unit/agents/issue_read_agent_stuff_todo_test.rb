@@ -332,5 +332,44 @@ class RedmineAiHelper::Agents::IssueReadAgentStuffTodoTest < ActiveSupport::Test
 
       assert_not_includes issues.map(&:id), other_issue.id
     end
+
+    context "with all_projects_scope" do
+      setup do
+        @other_project = Project.create!(name: "Other Project Scope Test", identifier: "other-project-scope-test")
+        # Do NOT enable ai_helper module: module-disabled but visible (public).
+        Member.create!(user: @user, project: @other_project, roles: [ Role.find(1) ])
+        @other_issue = Issue.create!(
+          project: @other_project,
+          tracker_id: 1,
+          subject: "Other project scope issue",
+          author_id: 1,
+          assigned_to_id: @user.id,
+          status_id: 1,
+          priority_id: 5,
+          due_date: Time.zone.today
+        )
+      end
+
+      teardown do
+        @other_issue&.destroy
+        @other_project&.destroy
+      end
+
+      should "not collect todos from a module-disabled, visible project when all_projects_scope is OFF" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+
+        issues = @agent.send(:fetch_todo_issues_from_other_projects)
+
+        assert_not_includes issues.map(&:id), @other_issue.id
+      end
+
+      should "collect todos from a module-disabled, visible project when all_projects_scope is ON" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+
+        issues = @agent.send(:fetch_todo_issues_from_other_projects)
+
+        assert_includes issues.map(&:id), @other_issue.id
+      end
+    end
   end
 end

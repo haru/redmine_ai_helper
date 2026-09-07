@@ -194,6 +194,15 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       assert_equal error_text(:module_disabled), @adapter.sent_messages.first[:text]
     end
 
+    should "still reply with guidance when the ai_helper module is disabled even if all_projects_scope is ON (FR-011)" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+      @project.disable_module!("ai_helper")
+      message = incoming
+      @handler.handle(message)
+
+      assert_equal error_text(:module_disabled), @adapter.sent_messages.first[:text]
+    end
+
     should "run the LLM as the service account and post the answer to the thread" do
       observed_user = nil
       RedmineAiHelper::Llm.any_instance.stubs(:chat).with do |conversation, proc, option|

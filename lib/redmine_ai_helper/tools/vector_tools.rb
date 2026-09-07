@@ -73,7 +73,7 @@ module RedmineAiHelper
               wiki = WikiPage.find_by(id: id)
               next unless wiki
               next unless wiki.visible?
-              next unless User.current.allowed_to?(:view_ai_helper, wiki.project)
+              next unless RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: wiki.project)
               wikis << generate_wiki_data(wiki)
             }
             ai_helper_logger.debug("Filtered wikis: #{wikis}")
@@ -85,7 +85,7 @@ module RedmineAiHelper
               issue = Issue.find_by(id: id)
               next unless issue
               next unless issue.visible?
-              next unless User.current.allowed_to?(:view_ai_helper, issue.project)
+              next unless RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: issue.project)
               issues << generate_issue_data(issue)
             }
             ai_helper_logger.debug("Filtered issues: #{issues}")
@@ -154,7 +154,7 @@ module RedmineAiHelper
             result_issue = Issue.find_by(id: result_issue_id)
             next unless result_issue
             next unless result_issue.visible?
-            next unless User.current.allowed_to?(:view_ai_helper, result_issue.project)
+            next unless RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: result_issue.project)
 
             begin
               # Generate issue data using the same method as ask_with_filter
@@ -211,7 +211,7 @@ module RedmineAiHelper
             result_issue = Issue.find_by(id: result_issue_id)
             next unless result_issue
             next unless result_issue.visible?
-            next unless User.current.allowed_to?(:view_ai_helper, result_issue.project)
+            next unless RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: result_issue.project)
 
             begin
               issue_data = generate_issue_data(result_issue)
@@ -347,8 +347,9 @@ module RedmineAiHelper
                           raise ArgumentError, "Invalid scope: #{scope}"
         end
 
-        Project.where(id: candidate_ids).select { |p|
-          User.current.allowed_to?(:view_ai_helper, p)
+        flag = AiHelperSetting.all_projects_scope?
+        Project.where(id: candidate_ids).preload(:enabled_modules).select { |p|
+          RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: p, all_projects_scope: flag)
         }.map(&:id)
       end
 

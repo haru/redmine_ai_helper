@@ -223,6 +223,37 @@ class IssueUpdateToolsTest < ActiveSupport::TestCase
         assert(issue.relations.any? { |r| (r.issue_from_id == issue.id && r.issue_to_id == target.id) || (r.issue_from_id == target.id && r.issue_to_id == issue.id) })
       end
 
+      context "with all_projects_scope ON, module-disabled project (US2)" do
+        setup do
+          AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+          @module_disabled_project = Project.create!(name: "Update Scope Test", identifier: "update-scope-test")
+          EnabledModule.where(project_id: @module_disabled_project.id, name: "ai_helper").destroy_all
+          @tracker = Tracker.find(1)
+          @module_disabled_project.trackers << @tracker unless @module_disabled_project.trackers.include?(@tracker)
+          @issue = Issue.create!(
+            project: @module_disabled_project, tracker: @tracker, subject: "US2 Update Target",
+            author: User.find(1), status: IssueStatus.first, priority: IssuePriority.first
+          )
+          @no_edit_role = Role.create!(name: "US2 No Edit Role", permissions: [ :view_issues ])
+          Member.create!(user: User.find(2), project: @module_disabled_project, roles: [ @no_edit_role ])
+          @previous_user = User.current
+          User.current = User.find(2)
+        end
+
+        teardown do
+          User.current = @previous_user
+          @issue&.destroy
+          @module_disabled_project&.destroy
+        end
+
+        should "not update the issue when the user lacks edit permission" do
+          assert_raises(RuntimeError, "Permission denied") do
+            @provider.update_issue(issue_id: @issue.id, subject: "Should not apply")
+          end
+          assert_equal "US2 Update Target", Issue.find(@issue.id).subject
+        end
+      end
+
       should "update issue when custom_fields contains nil field_id" do
         original_subject = Issue.find(1).subject
         @provider.update_issue(issue_id: 1, subject: original_subject, custom_fields: [ { field_id: nil, value: "x" } ])

@@ -331,9 +331,50 @@ class BaseToolsTest < ActiveSupport::TestCase
       should "return false for invisible project" do
         tools = @simple_tool_class.new
         project = mock("Project")
+        project.stubs(:id).returns(1)
         project.stubs(:visible?).returns(false)
 
         assert_not tools.accessible_project?(project)
+      end
+    end
+
+    context "accessible_project? and accessible_projects with all_projects_scope" do
+      fixtures :projects, :enabled_modules, :users, :roles, :members, :member_roles
+
+      setup do
+        @tools = @simple_tool_class.new
+        @module_disabled_project = Project.find(3)
+        EnabledModule.where(project_id: @module_disabled_project.id, name: "ai_helper").destroy_all
+        @previous_user = User.current
+        User.current = User.find(1)
+      end
+
+      teardown do
+        User.current = @previous_user
+      end
+
+      should "return false for a module-disabled but visible project when all_projects_scope is OFF" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+
+        assert_not @tools.accessible_project?(@module_disabled_project)
+      end
+
+      should "return true for a module-disabled but visible project when all_projects_scope is ON" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+
+        assert @tools.accessible_project?(@module_disabled_project)
+      end
+
+      should "exclude module-disabled projects from accessible_projects when all_projects_scope is OFF" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+
+        assert_not_includes @tools.accessible_projects.map(&:id), @module_disabled_project.id
+      end
+
+      should "include module-disabled but visible projects in accessible_projects when all_projects_scope is ON" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+
+        assert_includes @tools.accessible_projects.map(&:id), @module_disabled_project.id
       end
     end
 
