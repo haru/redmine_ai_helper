@@ -5,9 +5,13 @@ commit-msg:
   jobs:
     - name: strip-claude-attribution
       run: |
-        perl -0777 -i -pe '
-          s/^Co-Authored-By:.*Claude.*\n//gim;
-          s/^Claude-Session:.*\n//gim;
-          s/^.*Generated with.*Claude Code.*\n//gim;
-          s/\n*\z/\n/;
-        ' {1}
+        ruby -e '
+          file = ARGV[0]
+          msg = File.binread(file)
+          [
+            /^Co-Authored-By:.*Claude.*\n?/i,
+            /^Claude-Session:.*\n?/i,
+            /^.*Generated with.*Claude Code.*\n?/i,
+          ].each { |re| msg = msg.gsub(re, "") }
+          File.binwrite(file, msg.sub(/\n*\z/, "\n"))
+        ' "{1}"
