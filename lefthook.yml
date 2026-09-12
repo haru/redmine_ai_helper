@@ -1,0 +1,17 @@
+# Lefthook configuration
+# https://lefthook.dev/configuration/
+
+commit-msg:
+  jobs:
+    - name: strip-claude-attribution
+      run: |
+        ruby -e '
+          file = ARGV[0]
+          msg = File.binread(file)
+          [
+            /^Co-Authored-By:.*Claude.*\n?/i,
+            /^Claude-Session:.*\n?/i,
+            /^.*Generated with.*Claude Code.*\n?/i,
+          ].each { |re| msg = msg.gsub(re, "") }
+          File.binwrite(file, msg.sub(/\n*\z/, "\n"))
+        ' "{1}"
