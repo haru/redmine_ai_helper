@@ -1,0 +1,13 @@
+# Lefthook configuration
+# https://lefthook.dev/configuration/
+
+commit-msg:
+  jobs:
+    - name: strip-claude-attribution
+      run: |
+        perl -0777 -i -pe '
+          s/^Co-Authored-By:.*Claude.*\n//gim;
+          s/^Claude-Session:.*\n//gim;
+          s/^.*Generated with.*Claude Code.*\n//gim;
+          s/\n*\z/\n/;
+        ' {1}

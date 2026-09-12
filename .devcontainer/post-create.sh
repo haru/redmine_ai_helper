@@ -42,6 +42,8 @@ nvm() {
 EOS
 fi
 
+lefthook install
+
 
 rm -rf .ruby-lsp
 ln -s /dev/null .ruby-lsp
