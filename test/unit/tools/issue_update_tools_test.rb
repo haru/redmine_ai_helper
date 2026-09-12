@@ -1,11 +1,48 @@
 require File.expand_path("../../../test_helper", __FILE__)
 
 class IssueUpdateToolsTest < ActiveSupport::TestCase
-  fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :issue_relations
+  fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :issue_relations,
+           :enabled_modules, :roles, :members, :member_roles
 
   def setup
     @provider = RedmineAiHelper::Tools::IssueUpdateTools.new
     User.current = User.find(1)
+    # The issue write tools require the ai_helper module on the target project
+    # (project 1) in addition to Redmine's own add_issues/edit_issues permissions.
+    EnabledModule.create!(project_id: 1, name: "ai_helper")
+  end
+
+  context "project scope" do
+    setup do
+      EnabledModule.where(project_id: 1, name: "ai_helper").destroy_all
+      Project.find(1).reload
+    end
+
+    should "refuse to create an issue in a module-disabled project when all_projects_scope is OFF" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+
+      assert_raises(RuntimeError) do
+        @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "scope denied", description: "test description")
+      end
+    end
+
+    should "refuse to update an issue in a module-disabled project when all_projects_scope is OFF" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+      original_subject = Issue.find(1).subject
+
+      assert_raises(RuntimeError) do
+        @provider.update_issue(issue_id: 1, subject: "scope denied")
+      end
+      assert_equal original_subject, Issue.find(1).subject
+    end
+
+    should "create an issue in a module-disabled project when all_projects_scope is ON" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+
+      response = @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "scope allowed", description: "test description")
+
+      assert_predicate response[:id], :present?
+    end
   end
 
   context "IssueUpdateTools" do

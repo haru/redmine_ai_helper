@@ -23,6 +23,9 @@ module RedmineAiHelper
         Issue.where(id: issue_ids).find_each do |issue|
           # Check if the issue is visible to the current user
           next unless issue.visible?
+          # Check if AI Helper may access the issue's project's data
+          # (ai_helper module enabled, or all_projects_scope is on)
+          next unless accessible_project?(issue.project)
 
           issues << generate_issue_data(issue)
         end
@@ -55,6 +58,7 @@ module RedmineAiHelper
         end
 
         raise("Project not found.") unless project
+        raise("Project is not accessible: id = #{project.id}") unless accessible_project?(project)
 
         properties = {
           trackers: project.trackers.map do |tracker|
