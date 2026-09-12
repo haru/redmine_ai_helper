@@ -65,7 +65,7 @@ module RedmineAiHelper
           inherit_members: project.inherit_members,
           created_on: project.created_on,
           updated_on: project.updated_on,
-          subprojects: project.children.select { |p| accessible_project? p }.map do |child|
+          subprojects: RedmineAiHelper::Util::PermissionChecker.accessible_projects(project.children).map do |child|
             {
               id: child.id,
               name: child.name,
@@ -92,9 +92,11 @@ module RedmineAiHelper
         projects = Project.where(id: project_ids)
         return ToolResponse.create_error "No projects found" if projects.empty?
 
-        list = projects.filter { |p| accessible_project? p }.map do |project|
-          return ToolResponse.create_error "You don't have permission to view this project" unless accessible_project? project
+        # Read the flag once for the whole loop: the accessible_project? default
+        # would re-read the settings row per project.
+        flag = AiHelperSetting.all_projects_scope?
 
+        list = projects.filter { |p| accessible_project?(p, all_projects_scope: flag) }.map do |project|
           members = project.members.map do |member|
             {
               user_id: member.user_id,
@@ -142,8 +144,8 @@ module RedmineAiHelper
         json
       end
 
-      define_function :list_project_activities, description: "List all activities of the project. It returns the activity ID, event_datetime, event_type, event_title, event_description, event_url, user_id (the ID of the user who performed the activity, or null if unknown), project ({id, name}), and hours (numeric, only for time_entries activities). Use event_types to filter by event type (e.g. [\"issues\", \"time_entries\"]); multiple types are combined with OR. Omit project_id to list activities across all projects that have the AI Helper module enabled and are accessible to the current user." do
-        property :project_id, type: "integer", description: "The project ID of the activities to return. Omit this to list activities across all projects that have the AI Helper module enabled and are accessible to the current user.", required: false
+      define_function :list_project_activities, description: "List all activities of the project. It returns the activity ID, event_datetime, event_type, event_title, event_description, event_url, user_id (the ID of the user who performed the activity, or null if unknown), project ({id, name}), and hours (numeric, only for time_entries activities). Use event_types to filter by event type (e.g. [\"issues\", \"time_entries\"]); multiple types are combined with OR. Omit project_id to list activities across all projects whose data is accessible via AI Helper to the current user (when the all_projects_scope setting is off, this means projects with the AI Helper module enabled)." do
+        property :project_id, type: "integer", description: "The project ID of the activities to return. Omit this to list activities across all projects whose data is accessible via AI Helper to the current user.", required: false
         property :author_id, type: "integer", description: "The user ID of the author of the activity. If not specified, it will return all activities.", required: false
         property :limit, type: "integer", description: "The maximum number of activities to return. Defaults to 100 when not specified.", required: false
         property :start_date, type: "string", description: "The start date of the activities to return.", required: false
@@ -154,9 +156,11 @@ module RedmineAiHelper
       end
 
       # List all activities of the project. When project_id is omitted, activities are aggregated
-      # across all projects that have the AI Helper module enabled and are accessible to the current
-      # user (see #accessible_project?).
-      # @param project_id [Integer, nil] The project ID of the activities to return. Omit to list activities across all accessible AI-Helper-enabled projects.
+      # across all projects whose data is accessible via AI Helper to the current user
+      # (see PermissionChecker.data_accessible?, ADR-036 decision table: module-enabled
+      # projects always require :view_ai_helper; module-disabled projects are reachable
+      # only when the all_projects_scope setting is on).
+      # @param project_id [Integer, nil] The project ID of the activities to return. Omit to list activities across all accessible projects.
       # @param author_id [Integer] The user ID of the author of the activity. If not specified, it will return all activities.
       # @param limit [Integer] The maximum number of activities to return. Defaults to 100 when not specified.
       # @param start_date [DateTime] The start date of the activities to return.

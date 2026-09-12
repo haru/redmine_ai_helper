@@ -1,27 +1,18 @@
-# Wiki Lint Report — 2026-08-26
+# Wiki Lint Report — 2026-09-12
 
-All 3 findings from the prior pass were fixed by hand (citation swaps, not
-lint auto-fixes — semantic findings are never auto-rewritten).
+All 4 findings from the prior pass were fixed (semantic fixes applied by hand —
+semantic findings are never auto-rewritten).
 
 | # | Check | Severity | Page | Finding | Outcome |
 |---|-------|----------|------|---------|---------|
-| 1 | citations | semantic | inline-completion-request-flow.md | "`ai_helper_logger` falls back to `Rails.logger`" was cited only as `(ADR-020)`, missing source ID **S022**. | Fixed: citation is now `(ADR-020, S022)`; `S022` added to frontmatter `sources`. |
-| 2 | citations | semantic | completion-request-timeout-policy.md | "a timeout never locks completion where it happened" was cited only as `(ADR-021)`, missing source ID **S023**. | Fixed: citation is now `(ADR-021, S023)`; `S023` added to frontmatter `sources`. |
-| 3 | citations | semantic | completion-suppression-scope.md | "ADR-021 folded it into `clearSuggestion`…" was cited only `(S021)`, missing source ID **S023**. | Fixed: citation is now `(S021, S023)`; `S023` added to frontmatter `sources`. |
-
-Note: the original report's row 3 misquoted line 11 of this page as an
-ADR-021 claim — it is actually about ADR-019 (a separate, still-uncited
-decision not covered by S022/S023 and out of scope for this fix). Only the
-genuine ADR-021/S023 gap on line 30 was corrected.
+| 1 | contradictions | semantic | all-projects-data-access-scope.md | The section "`data_access_condition` callers must already scope visibility" stated "The SQL condition alone does not check row visibility", contradicting ADR-036 ("deliberately self-contained: it always ANDs `Project.visible_condition(user)` with the module/scope part") and the current `permission_checker.rb:63-73`. | Fixed: section rewritten to say the condition is self-contained and that callers applying `Issue.visible(user)` simply AND the constraint twice (harmless). |
+| 2 | stale | semantic | all-projects-data-access-scope.md | The `data_access_condition` code block omitted the `"(#{Project.visible_condition(user)}) AND (...)"` wrapper that the shipped method has, so the quoted code no longer matched the source. | Fixed: snippet replaced with the current implementation, including the visibility wrapper. |
+| 3 | stale | semantic | all-projects-scope-effects.md | "Recorded as ADR-036 (planned; not yet merged as of this ingest)" — ADR-036 is merged and Accepted, and its scope is now amended by ADR-037. | Fixed: now references ADR-036 as Accepted, amended by ADR-037. |
+| 4 | stale | semantic | INDEX.md | The hook for All-Projects Data-Access Scope still said the methods "centralize 8 duplicated module-gated checks"; after S034 every data-reaching tool consults them, not just those eight sites. | Fixed: hook reworded to describe the whole-tool-surface enforcement (the original 8 sites noted as history). |
 
 ## Checks with no findings
 
-- **index-drift** — all 35 pages under `pages/` are listed in `INDEX.md`; no dangling index entries.
-- **links** — no relative links to missing pages across any page.
+- **index-drift** — all 39 pages under `pages/` are listed in `INDEX.md`; no dangling index entries.
+- **links** — no relative links to missing pages across any page; all cited source IDs are known.
 - **orphans** — every page is linked from at least one other page.
-- **contradictions** — no unresolved `⚠ conflict` markers; spot-checked the highest-overlap source groups (S002, S016, S018, S021, S027/S028) for incompatible claims, none found.
-- **stale** — all pages `updated` within the last 26 days (well under the 90-day `stale_after_days` threshold); no page's cited source has a `Last ingested` date newer than the page's own `updated` date.
-
-## Mechanical fixes applied
-
-None needed — `INDEX.md` already matched `pages/` exactly and no links were broken or renamed.
+- **citations** — all claims added in the S034 pass carry a source ID.

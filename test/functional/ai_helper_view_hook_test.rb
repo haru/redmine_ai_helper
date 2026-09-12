@@ -97,6 +97,19 @@ class AiHelperViewHookTest < ActionController::TestCase
     assert_nil doc.at_css("#ai-helper-stuff-todo-modal")
     assert_nil doc.at_css('meta[name="ai-helper-stuff-todo-url"]')
   end
+
+  test "no stuff todo elements are rendered when ai_helper module is disabled even if all_projects_scope is ON (FR-007/FR-008)" do
+    AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+    EnabledModule.where(project_id: @project.id, name: "ai_helper").destroy_all
+
+    get :show, params: { id: @issue.id }
+    assert_response :success
+
+    doc = Nokogiri::HTML(@response.body)
+    assert_nil doc.at_css("#ai-helper-stuff-todo-overlay")
+    assert_nil doc.at_css("#ai-helper-stuff-todo-modal")
+    assert_nil doc.at_css('meta[name="ai-helper-stuff-todo-url"]')
+  end
 end
 
 # Verifies the body_bottom stuff todo modal partial guards safely when there

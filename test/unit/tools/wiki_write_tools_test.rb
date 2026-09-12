@@ -363,6 +363,86 @@ class WikiWriteToolsTest < ActiveSupport::TestCase
     end
   end
 
+  context "write access with all_projects_scope ON and ai_helper module disabled" do
+    setup do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+      EnabledModule.where(project_id: 1, name: "ai_helper").destroy_all
+      Role.find(1).add_permission!(:view_wiki_pages)
+      User.current = User.find(2) # jsmith: Manager (role 1) on project 1
+    end
+
+    should "deny wiki_delete_page when the user lacks :delete_wiki_pages and keep the page" do
+      role = Role.find(1)
+      role.permissions = role.permissions.reject { |p| p == :delete_wiki_pages }
+      role.save!
+
+      assert_raises(RuntimeError, "Permission denied") do
+        @provider.wiki_delete_page(project_id: 1, title: "Another_page")
+      end
+
+      assert_not_nil WikiPage.find_by(title: "Another_page"), "the page must survive the denied delete"
+    end
+
+    should "deny wiki_update_page when the user lacks :edit_wiki_pages and keep the content" do
+      role = Role.find(1)
+      role.permissions = role.permissions.reject { |p| p == :edit_wiki_pages }
+      role.save!
+      page = WikiPage.find_by(title: "Another_page")
+      original_text = page.content.text
+
+      assert_raises(RuntimeError, "Permission denied") do
+        @provider.wiki_update_page(project_id: 1, title: "Another_page", content: "must not persist")
+      end
+
+      page.reload
+      assert_equal original_text, page.content.text, "the content must survive the denied update"
+    end
+
+    should "deny wiki_add_page when the user lacks :edit_wiki_pages and create no page" do
+      role = Role.find(1)
+      role.permissions = role.permissions.reject { |p| p == :edit_wiki_pages }
+      role.save!
+
+      assert_raises(RuntimeError, "Permission denied") do
+        @provider.wiki_add_page(project_id: 1, title: "DeniedAddPage", content: "content")
+      end
+
+      assert_nil WikiPage.find_by(title: "DeniedAddPage"), "no page must be created by the denied add"
+    end
+
+    should "allow wiki_delete_page when the user holds :delete_wiki_pages" do
+      role = Role.find(1)
+      role.permissions = (role.permissions + [ :delete_wiki_pages ])
+      role.save!
+
+      result = @provider.wiki_delete_page(project_id: 1, title: "Another_page")
+
+      assert_equal true, result[:deleted]
+      assert_nil WikiPage.find_by(title: "Another_page")
+    end
+
+    should "allow wiki_update_page when the user holds :edit_wiki_pages" do
+      role = Role.find(1)
+      role.permissions = (role.permissions + [ :edit_wiki_pages ])
+      role.save!
+
+      result = @provider.wiki_update_page(project_id: 1, title: "Another_page", content: "Updated via all projects scope")
+
+      assert_equal "Updated via all projects scope", result[:text]
+    end
+
+    should "allow wiki_add_page when the user holds :edit_wiki_pages" do
+      role = Role.find(1)
+      role.permissions = (role.permissions + [ :edit_wiki_pages ])
+      role.save!
+
+      result = @provider.wiki_add_page(project_id: 1, title: "ScopeAddPage", content: "created")
+
+      assert_equal "ScopeAddPage", result[:title]
+      assert_not_nil WikiPage.find_by(title: "ScopeAddPage")
+    end
+  end
+
   context "write_tool?" do
     should "mark wiki_add_page as a write tool" do
       tool_class = RedmineAiHelper::Tools::WikiWriteTools.tool_classes.find { |tc| tc.name.end_with?("::WikiAddPage") }

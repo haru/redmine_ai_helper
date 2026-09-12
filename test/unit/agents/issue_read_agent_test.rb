@@ -9,8 +9,17 @@ class RedmineAiHelper::Agents::IssueReadAgentTest < ActiveSupport::TestCase
       @project = Project.find(1)
       @user = User.find(1)
       @issue = Issue.find(1)
+      # The backstory reads the project's issue properties, which requires the
+      # ai_helper module on that project.
+      @project.enable_module!(:ai_helper)
+      @previous_user = User.current
+      User.current = @user
       @langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: "Test input for Langfuse")
       @agent = RedmineAiHelper::Agents::IssueReadAgent.new(project: @project, langfuse: @langfuse)
+    end
+
+    teardown do
+      User.current = @previous_user
     end
 
     should "generate backstory including issue properties" do

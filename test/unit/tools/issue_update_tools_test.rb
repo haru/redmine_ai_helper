@@ -1,11 +1,48 @@
 require File.expand_path("../../../test_helper", __FILE__)
 
 class IssueUpdateToolsTest < ActiveSupport::TestCase
-  fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :issue_relations
+  fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :issue_relations,
+           :enabled_modules, :roles, :members, :member_roles
 
   def setup
     @provider = RedmineAiHelper::Tools::IssueUpdateTools.new
     User.current = User.find(1)
+    # The issue write tools require the ai_helper module on the target project
+    # (project 1) in addition to Redmine's own add_issues/edit_issues permissions.
+    EnabledModule.create!(project_id: 1, name: "ai_helper")
+  end
+
+  context "project scope" do
+    setup do
+      EnabledModule.where(project_id: 1, name: "ai_helper").destroy_all
+      Project.find(1).reload
+    end
+
+    should "refuse to create an issue in a module-disabled project when all_projects_scope is OFF" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+
+      assert_raises(RuntimeError) do
+        @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "scope denied", description: "test description")
+      end
+    end
+
+    should "refuse to update an issue in a module-disabled project when all_projects_scope is OFF" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+      original_subject = Issue.find(1).subject
+
+      assert_raises(RuntimeError) do
+        @provider.update_issue(issue_id: 1, subject: "scope denied")
+      end
+      assert_equal original_subject, Issue.find(1).subject
+    end
+
+    should "create an issue in a module-disabled project when all_projects_scope is ON" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+
+      response = @provider.create_new_issue(project_id: 1, tracker_id: 1, status_id: 1, subject: "scope allowed", description: "test description")
+
+      assert_predicate response[:id], :present?
+    end
   end
 
   context "IssueUpdateTools" do
@@ -221,6 +258,46 @@ class IssueUpdateToolsTest < ActiveSupport::TestCase
         @provider.update_issue(issue_id: issue.id, relations_to_add: [ { "issue_id" => target.id, "relation_type" => "relates" } ])
 
         assert(issue.relations.any? { |r| (r.issue_from_id == issue.id && r.issue_to_id == target.id) || (r.issue_from_id == target.id && r.issue_to_id == issue.id) })
+      end
+
+      context "with all_projects_scope ON, module-disabled project (US2)" do
+        setup do
+          AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+          @module_disabled_project = Project.create!(name: "Update Scope Test", identifier: "update-scope-test")
+          EnabledModule.where(project_id: @module_disabled_project.id, name: "ai_helper").destroy_all
+          @tracker = Tracker.find(1)
+          @module_disabled_project.trackers << @tracker unless @module_disabled_project.trackers.include?(@tracker)
+          @issue = Issue.create!(
+            project: @module_disabled_project, tracker: @tracker, subject: "US2 Update Target",
+            author: User.find(1), status: IssueStatus.first, priority: IssuePriority.first
+          )
+          @no_edit_role = Role.create!(name: "US2 No Edit Role", permissions: [ :view_project, :view_issues ])
+          Member.create!(user: User.find(2), project: @module_disabled_project, roles: [ @no_edit_role ])
+          @previous_user = User.current
+          User.current = User.find(2)
+        end
+
+        teardown do
+          User.current = @previous_user
+          @issue&.destroy
+          @module_disabled_project&.destroy
+        end
+
+        should "not update the issue when the user lacks edit permission" do
+          assert_raises(RuntimeError, "Permission denied") do
+            @provider.update_issue(issue_id: @issue.id, subject: "Should not apply")
+          end
+          assert_equal "US2 Update Target", Issue.find(@issue.id).subject
+        end
+
+        should "update the issue when the user holds edit permission" do
+          @no_edit_role.permissions = [ :view_project, :view_issues, :edit_issues ]
+          @no_edit_role.save!
+
+          @provider.update_issue(issue_id: @issue.id, subject: "Updated via all projects scope")
+
+          assert_equal "Updated via all projects scope", Issue.find(@issue.id).subject
+        end
       end
 
       should "update issue when custom_fields contains nil field_id" do

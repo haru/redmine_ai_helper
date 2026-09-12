@@ -59,6 +59,9 @@ module RedmineAiHelper
 
         begin
           filter_json = {}
+          # Read the flag once for the whole result loop (see permission_checker.rb):
+          # the keyword-argument default would re-read the settings row per record.
+          flag = AiHelperSetting.all_projects_scope?
           filter_json[:must] = create_filter(filter[:must]) if filter[:must]
           filter_json[:should] = create_filter(filter[:should]) if filter[:should]
           filter_json[:must_not] = create_filter(filter[:must_not]) if filter[:must_not]
@@ -73,7 +76,7 @@ module RedmineAiHelper
               wiki = WikiPage.find_by(id: id)
               next unless wiki
               next unless wiki.visible?
-              next unless User.current.allowed_to?(:view_ai_helper, wiki.project)
+              next unless RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: wiki.project, all_projects_scope: flag)
               wikis << generate_wiki_data(wiki)
             }
             ai_helper_logger.debug("Filtered wikis: #{wikis}")
@@ -85,7 +88,7 @@ module RedmineAiHelper
               issue = Issue.find_by(id: id)
               next unless issue
               next unless issue.visible?
-              next unless User.current.allowed_to?(:view_ai_helper, issue.project)
+              next unless RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: issue.project, all_projects_scope: flag)
               issues << generate_issue_data(issue)
             }
             ai_helper_logger.debug("Filtered issues: #{issues}")
@@ -95,7 +98,7 @@ module RedmineAiHelper
         rescue => e
           ai_helper_logger.error("Error: #{e.message}")
           ai_helper_logger.error("Backtrace: #{e.backtrace.join("\n")}")
-          raise("Error: #{e.message}")
+          raise e
         end
       end
 
@@ -115,9 +118,18 @@ module RedmineAiHelper
         begin
           ai_helper_logger.debug("Finding similar issues for issue_id: #{issue_id}, k: #{k}, scope: #{scope}")
 
+          # Read the flag once for the source check and the whole result loop below
+          # (see permission_checker.rb): the keyword-argument default would re-read
+          # the settings row per record.
+          flag = AiHelperSetting.all_projects_scope?
+
           issue = Issue.find_by(id: issue_id)
           raise("Issue not found with ID: #{issue_id}") unless issue
           raise("Permission denied") unless issue.visible?
+          # The source issue's subject and description become the embedding query, so it
+          # must pass the data-access scope as well, not only Issue#visible?. Checked
+          # before build_hybrid_query so nothing out of scope is sent to the provider.
+          raise("Permission denied") unless RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: issue.project, all_projects_scope: flag)
 
           # Use vector database for similarity search
           ai_helper_logger.debug("Initializing vector database for issue target")
@@ -154,7 +166,7 @@ module RedmineAiHelper
             result_issue = Issue.find_by(id: result_issue_id)
             next unless result_issue
             next unless result_issue.visible?
-            next unless User.current.allowed_to?(:view_ai_helper, result_issue.project)
+            next unless RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: result_issue.project, all_projects_scope: flag)
 
             begin
               # Generate issue data using the same method as ask_with_filter
@@ -176,7 +188,7 @@ module RedmineAiHelper
           ai_helper_logger.error("Error in find_similar_issues: #{e.message}")
           ai_helper_logger.error("Error class: #{e.class}")
           ai_helper_logger.error("Backtrace: #{e.backtrace.join("\n")}")
-          raise("Error: #{e.message}")
+          raise e
         end
       end
 
@@ -204,6 +216,10 @@ module RedmineAiHelper
 
           results ||= []
 
+          # Read the flag once for the whole result loop (see permission_checker.rb):
+          # the keyword-argument default would re-read the settings row per record.
+          flag = AiHelperSetting.all_projects_scope?
+
           similar_issues = []
           results.each do |result|
             result_issue_id = result["payload"]["issue_id"]
@@ -211,7 +227,7 @@ module RedmineAiHelper
             result_issue = Issue.find_by(id: result_issue_id)
             next unless result_issue
             next unless result_issue.visible?
-            next unless User.current.allowed_to?(:view_ai_helper, result_issue.project)
+            next unless RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: result_issue.project, all_projects_scope: flag)
 
             begin
               issue_data = generate_issue_data(result_issue)
@@ -227,7 +243,7 @@ module RedmineAiHelper
           similar_issues
         rescue => e
           ai_helper_logger.error("Error in find_similar_issues_by_content: #{e.message}")
-          raise("Error: #{e.message}")
+          raise e
         end
       end
 
@@ -336,20 +352,26 @@ module RedmineAiHelper
       end
 
       def collect_permitted_project_ids(scope, project)
+        # Under the all-projects scope the vector DB also holds closed projects
+        # (AiHelperSetting::VECTOR_SCOPE_PROJECT_STATUSES), so the candidate set
+        # must include them; the legacy scope keeps the active-only candidates.
+        statuses = if AiHelperSetting.all_projects_scope?
+                     AiHelperSetting::VECTOR_SCOPE_PROJECT_STATUSES
+        else
+                     [ Project::STATUS_ACTIVE ]
+        end
         candidate_ids = case scope
         when "current"
                           [ project.id ]
         when "with_subprojects"
-                          [ project.id ] + project.descendants.active.pluck(:id)
+                          [ project.id ] + project.descendants.where(status: statuses).pluck(:id)
         when "all"
-                          Project.active.pluck(:id)
+                          Project.where(status: statuses).pluck(:id)
         else
                           raise ArgumentError, "Invalid scope: #{scope}"
         end
 
-        Project.where(id: candidate_ids).select { |p|
-          User.current.allowed_to?(:view_ai_helper, p)
-        }.map(&:id)
+        RedmineAiHelper::Util::PermissionChecker.accessible_projects(Project.where(id: candidate_ids)).map(&:id)
       end
 
       def build_scope_filter(scope, project)

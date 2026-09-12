@@ -295,4 +295,143 @@ class AiHelperSettingTest < ActiveSupport::TestCase
       assert_equal true, AiHelperSetting.read_only_mode?
     end
   end
+
+  # ─── vector scope and all_projects_scope ───────────────────────
+
+  context "vector_scope_projects with all_projects_scope" do
+    fixtures :projects, :enabled_modules
+
+    should "limit to ai_helper module-enabled projects when all_projects_scope is OFF" do
+      @setting.update_column(:all_projects_scope, false)
+      project = Project.find(3)
+      project.enable_module!(:ai_helper)
+
+      ids = @setting.vector_scope_projects.map(&:id)
+
+      assert_includes ids, project.id
+      assert_not_includes ids, Project.find(4).id # module-disabled project
+    end
+
+    should "include module-disabled projects when all_projects_scope is ON (FR-016)" do
+      @setting.update_column(:all_projects_scope, true)
+
+      ids = @setting.vector_scope_projects.map(&:id)
+
+      assert_includes ids, Project.find(3).id
+      assert_includes ids, Project.find(4).id
+    end
+
+    should "exclude archived projects when all_projects_scope is ON" do
+      @setting.update_column(:all_projects_scope, true)
+      project = Project.find(3)
+      project.update_column(:status, Project::STATUS_ARCHIVED)
+
+      assert_not_includes @setting.vector_scope_projects.map(&:id), project.id
+    ensure
+      project.update_column(:status, Project::STATUS_ACTIVE)
+    end
+
+    should "keep closed projects in scope when all_projects_scope is ON" do
+      @setting.update_column(:all_projects_scope, true)
+      project = Project.find(3)
+      project.update_column(:status, Project::STATUS_CLOSED)
+
+      assert_includes @setting.vector_scope_projects.map(&:id), project.id
+    ensure
+      project.update_column(:status, Project::STATUS_ACTIVE)
+    end
+
+    should "exclude projects scheduled for deletion when all_projects_scope is ON" do
+      @setting.update_column(:all_projects_scope, true)
+      project = Project.find(3)
+      project.update_column(:status, Project::STATUS_SCHEDULED_FOR_DELETION)
+
+      assert_not_includes @setting.vector_scope_projects.map(&:id), project.id
+    ensure
+      project.update_column(:status, Project::STATUS_ACTIVE)
+    end
+  end
+
+  context "vector_target? project status" do
+    fixtures :projects, :enabled_modules
+
+    should "reject a project scheduled for deletion when all_projects_scope is ON" do
+      @setting.update_column(:all_projects_scope, true)
+      @setting.update_column(:vector_register_all_projects, true)
+      project = Project.find(3)
+      project.update_column(:status, Project::STATUS_SCHEDULED_FOR_DELETION)
+
+      assert_equal false, @setting.vector_target?(project)
+    ensure
+      project.update_column(:status, Project::STATUS_ACTIVE)
+    end
+
+    should "accept an active project when all_projects_scope is ON" do
+      @setting.update_column(:all_projects_scope, true)
+      @setting.update_column(:vector_register_all_projects, true)
+
+      assert_equal true, @setting.vector_target?(Project.find(3))
+    end
+
+    should "agree with vector_target_projects_relation when all_projects_scope is ON" do
+      @setting.update_column(:all_projects_scope, true)
+      @setting.update_column(:vector_register_all_projects, true)
+      project = Project.find(3)
+      project.update_column(:status, Project::STATUS_ARCHIVED)
+
+      assert_not_includes @setting.vector_target_projects_relation.map(&:id), project.id
+      assert_equal false, @setting.vector_target?(project)
+    ensure
+      project.update_column(:status, Project::STATUS_ACTIVE)
+    end
+
+    should "accept an archived module-enabled project when all_projects_scope is OFF (legacy scope)" do
+      @setting.update_column(:all_projects_scope, false)
+      @setting.update_column(:vector_register_all_projects, true)
+      project = Project.find(3)
+      project.enable_module!(:ai_helper)
+      project.update_column(:status, Project::STATUS_ARCHIVED)
+
+      assert_equal true, @setting.vector_target?(project)
+    ensure
+      project.update_column(:status, Project::STATUS_ACTIVE)
+    end
+
+    should "agree with vector_target_projects_relation when all_projects_scope is OFF (legacy scope)" do
+      @setting.update_column(:all_projects_scope, false)
+      @setting.update_column(:vector_register_all_projects, true)
+      project = Project.find(3)
+      project.enable_module!(:ai_helper)
+      project.update_column(:status, Project::STATUS_ARCHIVED)
+
+      # The legacy relation (ADR-002) has no status filter, so an archived
+      # module-enabled project stays registered; the per-project predicate
+      # must say the same, or registration and vector_search_enabled_for?
+      # disagree.
+      assert_includes @setting.vector_target_projects_relation.map(&:id), project.id
+      assert_equal true, @setting.vector_target?(project)
+    ensure
+      project.update_column(:status, Project::STATUS_ACTIVE)
+    end
+  end
+
+  context "vector_search_enabled_for? with all_projects_scope" do
+    fixtures :projects, :enabled_modules
+
+    should "return true for a module-disabled project when all_projects_scope and register_all are ON" do
+      @setting.update!(vector_search_enabled: true, vector_search_uri: "http://qdrant.example:6333")
+      @setting.update_column(:all_projects_scope, true)
+      @setting.update_column(:vector_register_all_projects, true)
+
+      assert_equal true, AiHelperSetting.vector_search_enabled_for?(Project.find(3))
+    end
+
+    should "return false for a module-disabled project when all_projects_scope is OFF" do
+      @setting.update!(vector_search_enabled: true, vector_search_uri: "http://qdrant.example:6333")
+      @setting.update_column(:all_projects_scope, false)
+      @setting.update_column(:vector_register_all_projects, true)
+
+      assert_equal false, AiHelperSetting.vector_search_enabled_for?(Project.find(3))
+    end
+  end
 end

@@ -1,13 +1,24 @@
 require File.expand_path("../../../test_helper", __FILE__)
 
 class BoardToolsTest < ActiveSupport::TestCase
-  fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :boards, :messages
+  fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :boards, :messages,
+           :enabled_modules, :roles, :members, :member_roles
 
   def setup
     @provider = RedmineAiHelper::Tools::BoardTools.new
     @project = Project.find(1)
     @board = @project.boards.first
     @message = @board.messages.first
+    # The board tools require the ai_helper module and the view_ai_helper permission
+    # on the board's project (project 1, via jsmith's role 1).
+    @previous_user = User.current
+    User.current = User.find(2)
+    EnabledModule.create!(project_id: @project.id, name: "ai_helper")
+    Role.find(1).add_permission!(:view_ai_helper)
+  end
+
+  def teardown
+    User.current = @previous_user
   end
 
   def test_list_boards_success
@@ -120,5 +131,75 @@ class BoardToolsTest < ActiveSupport::TestCase
       assert_instance_of Hash, response
       assert_equal @message.id, response[:id]
     end
+  end
+
+  def test_list_boards_denied_when_module_disabled_and_scope_off
+    disable_ai_helper_module
+    AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+
+    assert_raises(RuntimeError) do
+      @provider.list_boards(project_id: @project.id)
+    end
+  end
+
+  def test_board_info_denied_when_module_disabled_and_scope_off
+    disable_ai_helper_module
+    AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+
+    assert_raises(RuntimeError) do
+      @provider.board_info(board_id: @board.id)
+    end
+  end
+
+  def test_read_message_denied_when_module_disabled_and_scope_off
+    disable_ai_helper_module
+    AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+
+    assert_raises(RuntimeError) do
+      @provider.read_message(message_id: @message.id)
+    end
+  end
+
+  def test_generate_board_url_denied_when_module_disabled_and_scope_off
+    disable_ai_helper_module
+    AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+
+    assert_raises(RuntimeError) do
+      @provider.generate_board_url(board_id: @board.id)
+    end
+  end
+
+  def test_generate_message_url_denied_when_module_disabled_and_scope_off
+    disable_ai_helper_module
+    AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+
+    assert_raises(RuntimeError) do
+      @provider.generate_message_url(message_id: @message.id)
+    end
+  end
+
+  def test_board_info_allowed_when_module_disabled_and_scope_on
+    disable_ai_helper_module
+    AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+
+    response = @provider.board_info(board_id: @board.id)
+
+    assert_equal @board.id, response[:id]
+  end
+
+  def test_board_info_denied_for_board_invisible_to_the_user
+    User.current = User.anonymous
+    @project.update!(is_public: false)
+
+    assert_raises(RuntimeError) do
+      @provider.board_info(board_id: @board.id)
+    end
+  end
+
+  private
+
+  def disable_ai_helper_module
+    EnabledModule.where(project_id: @project.id, name: "ai_helper").destroy_all
+    @project.reload
   end
 end

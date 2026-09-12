@@ -20,6 +20,7 @@ module RedmineAiHelper
       def read_wiki_page(project_id:, title:)
         wiki = Wiki.find_by(project_id: project_id)
         raise("Wiki not found: project_id = #{project_id}") if !wiki || !wiki.visible?
+        raise("Project is not accessible: id = #{project_id}") unless accessible_project?(wiki.project)
 
         pages = wiki.pages
         ai_helper_logger.debug("Wiki pages: #{pages.inspect}")
@@ -40,6 +41,7 @@ module RedmineAiHelper
       def list_wiki_pages(project_id:)
         wiki = Wiki.find_by(project_id: project_id)
         raise("Wiki not found: project_id = #{project_id}") if !wiki || !wiki.visible?
+        raise("Project is not accessible: id = #{project_id}") unless accessible_project?(wiki.project)
         pages = wiki.pages.includes(:parent, content: :author).filter(&:visible?)
         json = pages.map do |page|
           {
@@ -68,6 +70,7 @@ module RedmineAiHelper
       def generate_url_for_wiki_page(project_id:, title:)
         wiki = Wiki.find_by(project_id: project_id)
         raise("Wiki not found: project_id = #{project_id}") if !wiki || !wiki.visible?
+        raise("Project is not accessible: id = #{project_id}") unless accessible_project?(wiki.project)
         page = wiki.pages.find_by(title: title)
         raise("Page not found: title = #{title}") if !page || !page.visible?
         url = "#{project_wiki_page_path(wiki.project, page.title)}"

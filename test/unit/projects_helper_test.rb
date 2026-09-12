@@ -35,6 +35,23 @@ class ProjectsHelperTest < ActionView::TestCase
     assert_no_match(/icon--ai-helper-robot/, html)
   end
 
+  should "not append the AI Helper icon to a module-disabled project even when all_projects_scope is ON (FR-009)" do
+    AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+
+    html = render_project_hierarchy([ @project_without_module ])
+
+    assert_no_match(/icon-ai-helper-module/, html)
+    assert_no_match(/icon--ai-helper-robot/, html)
+  end
+
+  should "still append the AI Helper icon to a module-enabled project when all_projects_scope is ON" do
+    AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+
+    html = render_project_hierarchy([ @project_with_module ])
+
+    assert_includes html, "icon-ai-helper-module"
+  end
+
   should "place the AI Helper icon right after the existing icons and before the description" do
     @project_with_module.update!(description: "This is a description")
 

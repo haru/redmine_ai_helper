@@ -81,6 +81,55 @@ class RedmineAiHelper::Vector::WikiVectorDbTest < ActiveSupport::TestCase
       end
     end
 
+    context "in_scope_object_ids with all_projects_scope" do
+      setup do
+        @page = WikiPage.find(1)
+        @project = @page.wiki.project
+        @project.enabled_modules.where(name: "ai_helper").destroy_all
+        @setting = AiHelperSetting.setting
+        @orig_register_all = @setting.vector_register_all_projects
+        @orig_target_project_ids = @setting.vector_target_project_ids
+        @orig_all_projects_scope = @setting.all_projects_scope
+        @setting.update_column(:vector_register_all_projects, true)
+      end
+
+      teardown do
+        @setting.update!(
+          vector_register_all_projects: @orig_register_all,
+          vector_target_project_ids: @orig_target_project_ids,
+          all_projects_scope: @orig_all_projects_scope
+        )
+      end
+
+      should "register module-disabled projects while all_projects_scope is ON and drop them after turning it OFF (cleanup path)" do
+        module_disabled_page = WikiPage.find(3) # Start_page of module-disabled project 2
+
+        @setting.update_column(:all_projects_scope, true)
+        assert_includes @vector_db.in_scope_object_ids, module_disabled_page.id
+
+        @setting.update_column(:all_projects_scope, false)
+        assert_not_includes @vector_db.in_scope_object_ids, module_disabled_page.id
+      end
+
+      should "keep module-enabled projects in scope after turning all_projects_scope OFF" do
+        @project.enabled_modules.create!(name: "ai_helper")
+        @setting.update_column(:all_projects_scope, true)
+        assert_includes @vector_db.in_scope_object_ids, @page.id
+
+        @setting.update_column(:all_projects_scope, false)
+        assert_includes @vector_db.in_scope_object_ids, @page.id
+      end
+
+      should "exclude archived projects from the scope while all_projects_scope is ON" do
+        @setting.update_column(:all_projects_scope, true)
+        @project.update_column(:status, Project::STATUS_ARCHIVED)
+
+        assert_not_includes @vector_db.in_scope_object_ids, @page.id
+      ensure
+        @project.update_column(:status, Project::STATUS_ACTIVE)
+      end
+    end
+
     context "payload_index_declarations" do
       should "return the 3-entry declaration list in stable order" do
         expected = [

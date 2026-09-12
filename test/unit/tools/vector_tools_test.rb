@@ -10,6 +10,7 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
       @mock_logger = mock("logger")
       @setting = mock("AiHelperSetting")
       @setting.stubs(:vector_search_enabled).returns(true)
+      @setting.stubs(:all_projects_scope).returns(false)
       AiHelperSetting.stubs(:find_or_create).returns(@setting)
       @vector_tools.stubs(:ai_helper_logger).returns(@mock_logger)
       @mock_logger.stubs(:debug)
@@ -61,12 +62,14 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
       assert_equal wiki.title, result.first[:title]
     end
 
-    should "log and raise error if exception occurs" do
+    should "log and re-raise the original exception without converting its class" do
       @vector_tools.stubs(:vector_db).with(target: "issue").raises(StandardError.new("db error"))
       @mock_logger.expects(:error).at_least_once
-      assert_raises(RuntimeError, "Error: db error") do
+      error = assert_raises(StandardError) do
         @vector_tools.ask_with_filter(query: "foo", k: 10, filter: {}, target: "issue")
       end
+
+      assert_equal "db error", error.message
     end
 
     context "ask_with_filter permission check" do
@@ -389,8 +392,9 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
       end
 
       should "filter out issues from projects without ai_helper module" do
-        # Create issue in project without ai_helper module
-        other_issue = Issue.find(2)
+        # Issue 4 lives in project 2, a different project from the source issue's:
+        # disabling the module here must not disable it for the source issue.
+        other_issue = Issue.find(4)
         other_issue.project.disable_module!(:ai_helper)
 
         mock_results = [
@@ -410,7 +414,7 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
       end
 
       should "filter out similar issues from projects where user lacks view_ai_helper permission" do
-        other_issue = Issue.find(2)
+        other_issue = Issue.find(4) # project 2, not the source issue's project
         other_issue.project.enable_module!(:ai_helper)
         User.current.stubs(:allowed_to?).returns(true)
         User.current.stubs(:allowed_to?).with(:view_ai_helper, other_issue.project).returns(false)
@@ -629,49 +633,233 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
       end
     end
 
-    context "#collect_permitted_project_ids" do
+    context "ask_with_filter permission check with all_projects_scope" do
+      setup do
+        User.current = User.find(2)
+      end
+
+      should "exclude issues from a module-disabled, visible project when all_projects_scope is OFF" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+        issue = Issue.find(1)
+        issue.project.disable_module!(:ai_helper)
+        @vector_tools.stubs(:vector_db).with(target: "issue").returns(@mock_db)
+        @mock_db.expects(:ask_with_filter).returns([ { "issue_id" => issue.id } ])
+
+        result = @vector_tools.ask_with_filter(query: "foo", k: 10, filter: {}, target: "issue")
+
+        assert_equal 0, result.length
+      end
+
+      should "include issues from a module-disabled, visible project when all_projects_scope is ON" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+        issue = Issue.find(1)
+        issue.project.disable_module!(:ai_helper)
+        @vector_tools.stubs(:vector_db).with(target: "issue").returns(@mock_db)
+        @mock_db.expects(:ask_with_filter).returns([ { "issue_id" => issue.id } ])
+
+        result = @vector_tools.ask_with_filter(query: "foo", k: 10, filter: {}, target: "issue")
+
+        assert_equal 1, result.length
+      end
+
+      should "exclude wiki pages from a module-disabled, visible project when all_projects_scope is OFF" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+        wiki = WikiPage.find(1)
+        wiki.project.disable_module!(:ai_helper)
+        @vector_tools.stubs(:vector_db).with(target: "wiki").returns(@mock_db)
+        @mock_db.expects(:ask_with_filter).returns([ { "wiki_id" => wiki.id } ])
+
+        result = @vector_tools.ask_with_filter(query: "foo", k: 10, filter: {}, target: "wiki")
+
+        assert_equal 0, result.length
+      end
+
+      should "include wiki pages from a module-disabled, visible project when all_projects_scope is ON" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+        wiki = WikiPage.find(1)
+        wiki.project.disable_module!(:ai_helper)
+        @vector_tools.stubs(:vector_db).with(target: "wiki").returns(@mock_db)
+        @mock_db.expects(:ask_with_filter).returns([ { "wiki_id" => wiki.id } ])
+
+        result = @vector_tools.ask_with_filter(query: "foo", k: 10, filter: {}, target: "wiki")
+
+        assert_equal 1, result.length
+      end
+
+      should "exclude issues from a private project the user is not a member of when all_projects_scope is ON" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+        private_project = Project.create!(name: "Vector Private 3 #{Time.now.to_i}#{rand(10000)}", identifier: "vector-private-3-#{Time.now.to_i}#{rand(10000)}", is_public: false)
+        tracker = Issue.find(1).tracker
+        private_project.trackers << tracker unless private_project.trackers.include?(tracker)
+        private_issue = Issue.create!(
+          project: private_project, tracker: tracker, subject: "Private Non Member Vector Issue",
+          author: User.find(1), status: IssueStatus.first, priority: IssuePriority.first
+        )
+        @vector_tools.stubs(:vector_db).with(target: "issue").returns(@mock_db)
+        @mock_db.expects(:ask_with_filter).returns([ { "issue_id" => private_issue.id } ])
+
+        result = @vector_tools.ask_with_filter(query: "foo", k: 10, filter: {}, target: "issue")
+
+        assert_equal 0, result.length
+      ensure
+        private_issue&.destroy
+        private_project&.destroy
+      end
+    end
+
+    context "#find_similar_issues permission check with all_projects_scope" do
+      setup do
+        @issue = Issue.find(1)
+        @issue.project.enable_module!(:ai_helper)
+        User.current = User.find(1)
+        @mock_db = mock("vector_db")
+        @vector_tools.stubs(:vector_db).with(target: "issue").returns(@mock_db)
+        @mock_db.stubs(:client).returns(true)
+        @mock_logger.stubs(:warn)
+
+        @mock_analyzer = mock("issue_content_analyzer")
+        @mock_analyzer.stubs(:analyze).returns({ summary: "Test summary", keywords: [ "keyword1" ] })
+        RedmineAiHelper::Vector::IssueContentAnalyzer.stubs(:new).returns(@mock_analyzer)
+      end
+
+      should "exclude similar issues from a module-disabled, visible project when all_projects_scope is OFF" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+        other_issue = Issue.find(4) # project 2, not the source issue's project
+        other_issue.project.disable_module!(:ai_helper)
+        @mock_db.expects(:similarity_search).returns([ { "payload" => { "issue_id" => other_issue.id }, "score" => 0.85 } ])
+
+        result = @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
+
+        assert_equal 0, result.length
+      end
+
+      should "include similar issues from a module-disabled, visible project when all_projects_scope is ON" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+        other_issue = Issue.find(4) # project 2, not the source issue's project
+        other_issue.project.disable_module!(:ai_helper)
+        @mock_db.expects(:similarity_search).returns([ { "payload" => { "issue_id" => other_issue.id }, "score" => 0.85 } ])
+
+        result = @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
+
+        assert_equal 1, result.length
+      end
+
+      # The source issue's own text becomes the embedding query, so it must be gated
+      # by the data-access scope too, not only by Issue#visible?.
+      should "reject a source issue from a module-disabled project when all_projects_scope is OFF" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+        @issue.project.disable_module!(:ai_helper)
+        @mock_db.expects(:similarity_search).never
+
+        assert_raises(RuntimeError) do
+          @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
+        end
+      end
+
+      should "not build an embedding query for a source issue outside the data-access scope" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+        @issue.project.disable_module!(:ai_helper)
+        @vector_tools.expects(:build_hybrid_query).never
+
+        assert_raises(RuntimeError) do
+          @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
+        end
+      end
+
+      should "accept a source issue from a module-disabled, visible project when all_projects_scope is ON" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+        @issue.project.disable_module!(:ai_helper)
+        @mock_db.expects(:similarity_search).returns([])
+
+        result = @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
+
+        assert_equal [], result
+      end
+    end
+
+    context "#find_similar_issues_by_content permission check with all_projects_scope" do
       setup do
         @project = Project.find(1)
         @project.enable_module!(:ai_helper)
         User.current = User.find(1)
+        @mock_db = mock("vector_db")
+        @vector_tools.stubs(:vector_db).with(target: "issue").returns(@mock_db)
+        @mock_db.stubs(:client).returns(true)
+        @mock_logger.stubs(:warn)
+        @vector_tools.instance_variable_set(:@project, @project)
+      end
+
+      should "exclude issues by content from a module-disabled, visible project when all_projects_scope is OFF" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+        other_issue = Issue.find(2)
+        other_issue.project.disable_module!(:ai_helper)
+        @mock_db.expects(:similarity_search).returns([ { "payload" => { "issue_id" => other_issue.id }, "score" => 0.85 } ])
+
+        result = @vector_tools.find_similar_issues_by_content(subject: "Test", description: "Test", k: 10)
+
+        assert_equal 0, result.length
+      end
+
+      should "include issues by content from a module-disabled, visible project when all_projects_scope is ON" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+        other_issue = Issue.find(2)
+        other_issue.project.disable_module!(:ai_helper)
+        @mock_db.expects(:similarity_search).returns([ { "payload" => { "issue_id" => other_issue.id }, "score" => 0.85 } ])
+
+        result = @vector_tools.find_similar_issues_by_content(subject: "Test", description: "Test", k: 10)
+
+        assert_equal 1, result.length
+      end
+    end
+
+    context "#collect_permitted_project_ids" do
+      setup do
+        @project = Project.find(1)
+        @project.enable_module!(:ai_helper)
+        @user = User.find(2) # jsmith: member of project 1 (role 1) and project 2 (role 2)
+        @previous_user = User.current
+        User.current = @user
+        Role.find(1).add_permission!(:view_ai_helper)
+        Role.find(2).add_permission!(:view_ai_helper)
+      end
+
+      teardown do
+        User.current = @previous_user
       end
 
       should "return only current project id for scope current" do
-        User.current.stubs(:allowed_to?).with(:view_ai_helper, @project).returns(true)
         result = @vector_tools.send(:collect_permitted_project_ids, "current", @project)
 
         assert_equal [ @project.id ], result
       end
 
-      should "return empty array when user lacks permission for scope current" do
-        User.current.stubs(:allowed_to?).returns(false)
+      should "return empty array when the project is not accessible for scope current" do
+        Role.find(1).remove_permission!(:view_ai_helper)
         result = @vector_tools.send(:collect_permitted_project_ids, "current", @project)
 
         assert_equal [], result
       end
 
-      should "return project and subproject ids for scope with_subprojects" do
-        # Enable ai_helper for subprojects and stub permissions
-        subproject_ids = @project.descendants.active.pluck(:id)
-        all_project_ids = [ @project.id ] + subproject_ids
-        all_project_ids.each do |pid|
+      should "return accessible project and subproject ids for scope with_subprojects" do
+        # Public subprojects 3 and 4: add jsmith memberships (role 1 holds view_ai_helper)
+        # so the module-enabled projects pass both visibility and permission checks.
+        [ 3, 4 ].each do |pid|
           Project.find(pid).enable_module!(:ai_helper)
+          Member.create!(user: @user, project: Project.find(pid), roles: [ Role.find(1) ])
         end
-        User.current.stubs(:allowed_to?).returns(true)
 
         result = @vector_tools.send(:collect_permitted_project_ids, "with_subprojects", @project)
 
         assert_includes result, @project.id
-        subproject_ids.each do |sid|
-          assert_includes result, sid
-        end
+        assert_includes result, Project.find(3).id
+        assert_includes result, Project.find(4).id
       end
 
-      should "exclude subprojects where user lacks permission" do
+      should "exclude subprojects where the member role lacks view_ai_helper" do
         subproject = Project.find(3)
         subproject.enable_module!(:ai_helper)
-        User.current.stubs(:allowed_to?).returns(true)
-        User.current.stubs(:allowed_to?).with(:view_ai_helper, subproject).returns(false)
+        no_ai_helper_role = Role.create!(name: "Vector No AI Helper", permissions: [ :view_project, :view_issues ])
+        Member.create!(user: @user, project: subproject, roles: [ no_ai_helper_role ])
 
         result = @vector_tools.send(:collect_permitted_project_ids, "with_subprojects", @project)
 
@@ -679,26 +867,76 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         assert_not_includes result, subproject.id
       end
 
-      should "return all active project ids with permission for scope all" do
-        Project.active.each { |p| p.enable_module!(:ai_helper) }
-        User.current.stubs(:allowed_to?).returns(true)
+      should "exclude private projects the user is not a member of from scope all even when all_projects_scope is ON" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+        private_project = Project.create!(name: "Vector Private #{Time.now.to_i}#{rand(10000)}", identifier: "vector-private-#{Time.now.to_i}#{rand(10000)}", is_public: false)
 
         result = @vector_tools.send(:collect_permitted_project_ids, "all", @project)
 
-        Project.active.each do |p|
-          assert_includes result, p.id
-        end
+        assert_includes result, @project.id
+        assert_includes result, Project.find(3).id
+        assert_not_includes result, private_project.id
+      ensure
+        private_project&.destroy
       end
 
-      should "exclude projects without permission for scope all" do
-        excluded_project = Project.find(2)
-        Project.active.each { |p| p.enable_module!(:ai_helper) }
-        User.current.stubs(:allowed_to?).returns(true)
-        User.current.stubs(:allowed_to?).with(:view_ai_helper, excluded_project).returns(false)
+      should "include module-disabled visible projects for scope all when all_projects_scope is ON" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+        Project.find(3).disable_module!(:ai_helper)
 
         result = @vector_tools.send(:collect_permitted_project_ids, "all", @project)
 
-        assert_not_includes result, excluded_project.id
+        assert_includes result, Project.find(3).id
+      end
+
+      should "exclude module-disabled projects for scope all when all_projects_scope is OFF" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+        Project.find(3).disable_module!(:ai_helper)
+
+        result = @vector_tools.send(:collect_permitted_project_ids, "all", @project)
+
+        assert_not_includes result, Project.find(3).id
+      end
+
+      should "include closed projects for scope all when all_projects_scope is ON" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+        closed = Project.find(3)
+        closed.update_column(:status, Project::STATUS_CLOSED)
+
+        # Closed projects are registered in the vector DB when all_projects_scope
+        # is ON (VECTOR_SCOPE_PROJECT_STATUSES), so the scope candidate set must
+        # include them too.
+        result = @vector_tools.send(:collect_permitted_project_ids, "all", @project)
+
+        assert_includes result, closed.id
+      ensure
+        closed&.update_column(:status, Project::STATUS_ACTIVE)
+      end
+
+      should "include closed subprojects for scope with_subprojects when all_projects_scope is ON" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+        subproject = Project.find(3)
+        subproject.update_column(:status, Project::STATUS_CLOSED)
+
+        result = @vector_tools.send(:collect_permitted_project_ids, "with_subprojects", @project)
+
+        assert_includes result, subproject.id
+      ensure
+        subproject&.update_column(:status, Project::STATUS_ACTIVE)
+      end
+
+      should "exclude closed projects for scope all when all_projects_scope is OFF" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+        closed = Project.find(3)
+        closed.enable_module!(:ai_helper)
+        closed.update_column(:status, Project::STATUS_CLOSED)
+
+        # Legacy scope keeps the active-only candidate set (unchanged behavior).
+        result = @vector_tools.send(:collect_permitted_project_ids, "all", @project)
+
+        assert_not_includes result, closed.id
+      ensure
+        closed&.update_column(:status, Project::STATUS_ACTIVE)
       end
 
       should "raise ArgumentError for invalid scope" do
@@ -712,11 +950,17 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
       setup do
         @project = Project.find(1)
         @project.enable_module!(:ai_helper)
-        User.current = User.find(1)
+        @user = User.find(2) # jsmith
+        @previous_user = User.current
+        User.current = @user
+        Role.find(1).add_permission!(:view_ai_helper)
+      end
+
+      teardown do
+        User.current = @previous_user
       end
 
       should "return must filter with single project id for scope current" do
-        User.current.stubs(:allowed_to?).with(:view_ai_helper, @project).returns(true)
         result = @vector_tools.send(:build_scope_filter, "current", @project)
         expected = {
           must: [
@@ -727,68 +971,51 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         assert_equal expected, result
       end
 
-      should "return nil when no permitted projects for scope current" do
-        User.current.stubs(:allowed_to?).returns(false)
+      should "return nil when the project is not permitted for scope current" do
+        Role.find(1).remove_permission!(:view_ai_helper)
         result = @vector_tools.send(:build_scope_filter, "current", @project)
 
         assert_nil result
       end
 
-      should "return should filter with multiple project ids for scope with_subprojects" do
-        subproject_ids = @project.descendants.active.pluck(:id)
-        all_ids = [ @project.id ] + subproject_ids
-        all_ids.each { |pid| Project.find(pid).enable_module!(:ai_helper) }
-        User.current.stubs(:allowed_to?).returns(true)
+      should "return should filter with accessible subproject ids for scope with_subprojects" do
+        [ 3, 4 ].each do |pid|
+          Project.find(pid).enable_module!(:ai_helper)
+          Member.create!(user: @user, project: Project.find(pid), roles: [ Role.find(1) ])
+        end
 
         result = @vector_tools.send(:build_scope_filter, "with_subprojects", @project)
 
         assert result.key?(:should)
         result_ids = result[:should].map { |f| f[:match][:value] }
 
-        all_ids.each { |id| assert_includes result_ids, id }
+        [ @project.id, 3, 4 ].each { |id| assert_includes result_ids, id }
       end
 
-      should "return must filter when with_subprojects has no subprojects with permission" do
-        # Only current project has permission
-        User.current.stubs(:allowed_to?).returns(false)
-        User.current.stubs(:allowed_to?).with(:view_ai_helper, @project).returns(true)
-
-        result = @vector_tools.send(:build_scope_filter, "with_subprojects", @project)
-        expected = {
-          must: [
-            { key: "project_id", match: { value: @project.id } }
-          ]
-        }
-
-        assert_equal expected, result
-      end
-
-      should "return should filter for scope all with multiple permitted projects" do
-        Project.active.each { |p| p.enable_module!(:ai_helper) }
-        User.current.stubs(:allowed_to?).returns(true)
+      should "exclude private non-member projects from scope all even when all_projects_scope is ON" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+        Project.find(3).enable_module!(:ai_helper)
+        Member.create!(user: @user, project: Project.find(3), roles: [ Role.find(1) ])
+        private_project = Project.create!(name: "Vector Private 2 #{Time.now.to_i}#{rand(10000)}", identifier: "vector-private-2-#{Time.now.to_i}#{rand(10000)}", is_public: false)
 
         result = @vector_tools.send(:build_scope_filter, "all", @project)
 
         assert result.key?(:should)
         result_ids = result[:should].map { |f| f[:match][:value] }
 
-        Project.active.each { |p| assert_includes result_ids, p.id }
+        assert_includes result_ids, Project.find(3).id
+        assert_not_includes result_ids, private_project.id
+      ensure
+        private_project&.destroy
       end
 
-      should "return must filter for scope all when only one project permitted" do
-        permitted_project = Project.find(1)
-        permitted_project.enable_module!(:ai_helper)
-        User.current.stubs(:allowed_to?).returns(false)
-        User.current.stubs(:allowed_to?).with(:view_ai_helper, permitted_project).returns(true)
+      should "return nil for scope all when no project is permitted" do
+        Role.find(1).remove_permission!(:view_ai_helper)
+        Role.find(2).remove_permission!(:view_ai_helper)
 
         result = @vector_tools.send(:build_scope_filter, "all", @project)
-        expected = {
-          must: [
-            { key: "project_id", match: { value: permitted_project.id } }
-          ]
-        }
 
-        assert_equal expected, result
+        assert_nil result
       end
 
       should "raise ArgumentError for invalid scope" do

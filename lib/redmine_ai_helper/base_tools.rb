@@ -370,22 +370,29 @@ module RedmineAiHelper
       end
     end
 
-    # Check if the specified project is accessible
+    # Check if the specified project is accessible for data access (read/update)
+    # by the current user. Delegates to PermissionChecker.data_accessible?, the
+    # single source of truth shared by every tool/agent (see
+    # specs/057-all-projects-scope/contracts/data-access-scope.md).
     # @param project [Project] The project
+    # @param all_projects_scope [Boolean] Whether the all-projects data-access scope
+    #   setting is enabled. Callers checking many projects in a loop should read
+    #   AiHelperSetting.all_projects_scope? once and pass it here; the default
+    #   re-reads the settings row on every call.
     # @return [Boolean] true if accessible, false otherwise
-    def accessible_project?(project)
-      return false unless project.visible?
-      return false unless project.module_enabled?(:ai_helper)
-      User.current.allowed_to?({ controller: :ai_helper, action: :chat_form }, project)
+    def accessible_project?(project, all_projects_scope: AiHelperSetting.all_projects_scope?)
+      RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: project, all_projects_scope: all_projects_scope)
     end
 
     # All projects accessible via AI Helper, for tools that need to work across projects.
-    # #accessible_project? stays the source of truth for the decision, but the candidate set
-    # is narrowed to Project.visible in SQL and enabled_modules is preloaded, so a large
-    # instance neither materializes every project nor issues one query per project.
+    # Delegates to PermissionChecker.accessible_projects, which owns both the decision
+    # (data_accessible?, the single source of truth shared by every tool/agent, see
+    # specs/057-all-projects-scope/contracts/data-access-scope.md) and the N+1 avoidance:
+    # the candidate set is narrowed to Project.visible in SQL, enabled_modules is preloaded,
+    # and the all_projects_scope flag is read once for every project.
     # @return [Array<Project>] The accessible projects.
     def accessible_projects
-      Project.visible.preload(:enabled_modules).select { |p| accessible_project? p }
+      RedmineAiHelper::Util::PermissionChecker.accessible_projects(Project.visible)
     end
 
     private

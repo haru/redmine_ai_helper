@@ -1,7 +1,8 @@
 require File.expand_path("../../../test_helper", __FILE__)
 
 class FileToolsTest < ActiveSupport::TestCase
-  fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :boards, :messages, :wikis, :wiki_pages, :wiki_contents
+  fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :boards, :messages, :wikis, :wiki_pages, :wiki_contents,
+           :enabled_modules, :roles, :members, :member_roles
 
   def setup
     @provider = RedmineAiHelper::Tools::FileTools.new
@@ -21,6 +22,66 @@ class FileToolsTest < ActiveSupport::TestCase
     @mock_llm_provider = mock("llm_provider")
     @mock_llm_provider.stubs(:create_chat).returns(@mock_chat)
     RedmineAiHelper::LlmProvider.stubs(:get_llm_provider).returns(@mock_llm_provider)
+
+    # analyze_content_files requires the ai_helper module and the view_ai_helper
+    # permission on the content's project (project 1, via jsmith's role 1).
+    @previous_user = User.current
+    User.current = User.find(2)
+    EnabledModule.create!(project_id: @project.id, name: "ai_helper")
+    Role.find(1).add_permission!(:view_ai_helper)
+  end
+
+  def teardown
+    User.current = @previous_user
+  end
+
+  context "analyze_content_files project scope" do
+    setup do
+      @file_path = File.join(Dir.tmpdir, "test_file_tools_scope.png")
+      File.write(@file_path, "fake png content")
+      EnabledModule.where(project_id: @project.id, name: "ai_helper").destroy_all
+      @project.reload
+    end
+
+    teardown do
+      FileUtils.rm_f(@file_path)
+    end
+
+    should "deny an issue in a module-disabled project when all_projects_scope is OFF" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+      @provider.stubs(:supported_attachment_paths).with(@issue).returns([ @file_path ])
+
+      assert_raises(RuntimeError) do
+        @provider.analyze_content_files(content_type: "issue", content_id: @issue.id)
+      end
+    end
+
+    should "deny a wiki page in a module-disabled project when all_projects_scope is OFF" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+      @provider.stubs(:supported_attachment_paths).with(@wiki_page).returns([ @file_path ])
+
+      assert_raises(RuntimeError) do
+        @provider.analyze_content_files(content_type: "wiki_page", content_id: @wiki_page.id)
+      end
+    end
+
+    should "deny a message in a module-disabled project when all_projects_scope is OFF" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+      @provider.stubs(:supported_attachment_paths).with(@message).returns([ @file_path ])
+
+      assert_raises(RuntimeError) do
+        @provider.analyze_content_files(content_type: "message", content_id: @message.id)
+      end
+    end
+
+    should "allow an issue in a module-disabled project when all_projects_scope is ON" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+      @provider.stubs(:supported_attachment_paths).with(@issue).returns([ @file_path ])
+
+      result = @provider.analyze_content_files(content_type: "issue", content_id: @issue.id)
+
+      assert_kind_of String, result
+    end
   end
 
   context "analyze_content_files" do

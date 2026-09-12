@@ -15,6 +15,7 @@ module RedmineAiHelper
       def repository_info(repository_id:)
         repository = Repository.find_by(id: repository_id)
         raise("Repository not found.") if repository.nil?
+        authorize_repository!(repository, :browse_repository)
         json = {
           id: repository.id,
           type: repository.scm_name,
@@ -40,6 +41,7 @@ module RedmineAiHelper
       def get_revision_info(repository_id:, revision:)
         repository = Repository.find_by(id: repository_id)
         raise("Repository not found: repository_id = #{repository_id}") if repository.nil?
+        authorize_repository!(repository, :view_changesets)
         changeset = repository.find_changeset_by_name(revision)
         raise("Revision not found: revision = #{revision}") if changeset.nil?
         user = changeset.user
@@ -73,6 +75,7 @@ module RedmineAiHelper
       def get_file_info(repository_id:, path:, revision: "main")
         repository = Repository.find_by(id: repository_id)
         raise("Repository not found.") if repository.nil?
+        authorize_repository!(repository, :browse_repository)
         entry = repository.entry(path, revision)
         raise("File not found: path = #{path}, revision = #{revision}") if entry.nil?
         changeset = repository.find_changeset_by_name(revision)
@@ -115,6 +118,7 @@ module RedmineAiHelper
       def read_file(repository_id:, path:, revision: "main")
         repository = Repository.find_by(id: repository_id)
         raise("Repository not found.") if repository.nil?
+        authorize_repository!(repository, :browse_repository)
 
         entry = repository.entry(path, revision)
         raise("File not found: path = #{path}, revision = #{revision}") if entry.nil?
@@ -147,6 +151,7 @@ module RedmineAiHelper
       def read_diff(repository_id:, path: nil, revision:, revision_to: nil)
         repository = Repository.find(repository_id)
         raise("Repository not found.") if repository.nil?
+        authorize_repository!(repository, :browse_repository)
 
         changeset = repository.find_changeset_by_name(revision)
         raise("Revision not found: revision = #{revision}") if changeset.nil?
@@ -173,6 +178,18 @@ module RedmineAiHelper
         }
 
         json
+      end
+
+      private
+
+      # Authorize access to a repository's data for the current user.
+      # @param repository [Repository] The repository being accessed
+      # @param permission [Symbol] Redmine's own repository permission for this kind of
+      #   access: :browse_repository for file/diff access, :view_changesets for revisions.
+      def authorize_repository!(repository, permission)
+        project = repository.project
+        raise("Permission denied") unless accessible_project?(project)
+        raise("Permission denied") unless User.current.allowed_to?(permission, project)
       end
     end
   end

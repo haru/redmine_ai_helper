@@ -36,6 +36,7 @@ module RedmineAiHelper
           "content_id=#{content_id}, question=#{question.inspect}"
         )
         container = resolve_container(content_type, content_id)
+        raise("Project is not accessible: id = #{container.project&.id}") unless accessible_project?(container.project)
         ai_helper_logger.debug("resolved container: #{container.class.name}##{container.id}")
         file_paths = supported_attachment_paths(container)
         ai_helper_logger.debug(

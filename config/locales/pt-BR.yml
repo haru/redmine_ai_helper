@@ -210,6 +210,8 @@ pt-BR:
         vector_model_profile_description: 'Use um perfil de modelo separado para operações de busca vetorial (credenciais de API e análise de conteúdo). Observação: o nome do modelo de embedding continua sendo controlado pela configuração de Modelo de embedding acima.'
         read_only_mode: "Read-only mode"
         read_only_mode_description: "When enabled, the AI Helper chat cannot create, update, or delete any data (issues, wiki pages, comments, etc.). External MCP server integration is also disabled."
+        all_projects_scope: "Target all projects"
+        all_projects_scope_description: "When enabled, projects without the AI Helper module also become targets for reading and updating data from the chat, chat gateways, and the MCP server, and are eligible for vector registration. AI Helper UI elements are still shown only in projects with the module enabled, and Redmine permissions of the requesting user always apply."
       ai_helper_project_setting:
         issue_draft_instructions: Instruções para geração de comentários de tarefas
         subtask_instructions: Instruções para geração de subtarefas
