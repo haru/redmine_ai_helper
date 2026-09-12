@@ -15,6 +15,7 @@ module RedmineAiHelper
       def list_versions(project_id:)
         project = Project.find_by(id: project_id)
         raise("Project not found") if project.nil? or !project.visible?
+        raise("Project is not accessible: id = #{project_id}") unless accessible_project?(project)
         versions = project.versions.filter(&:visible?)
         version_list = versions.map do |version|
           {
@@ -47,6 +48,7 @@ module RedmineAiHelper
         version_ids.each do |version_id|
           version = Version.find_by(id: version_id)
           raise("Version not found: version_id: #{version_id}") if version.nil? or !version.visible?
+          raise("Project is not accessible: id = #{version.project_id}") unless accessible_project?(version.project)
           version_hash = {
             id: version.id,
             project_id: version.project_id,

@@ -1,13 +1,59 @@
 require File.expand_path("../../../test_helper", __FILE__)
 
 class WikiToolsTest < ActiveSupport::TestCase
-  fixtures :projects, :wikis, :wiki_pages, :users, :enabled_modules
+  fixtures :projects, :wikis, :wiki_pages, :users, :enabled_modules, :roles, :members, :member_roles
 
   def setup
     @provider = RedmineAiHelper::Tools::WikiTools.new
     @project = Project.find(1)
     @wiki = @project.wiki
     @page = @wiki.pages.first
+    # The wiki tools require the ai_helper module and the view_ai_helper permission
+    # on the wiki's project (project 1, via jsmith's role 1).
+    @previous_user = User.current
+    User.current = User.find(2)
+    EnabledModule.create!(project_id: @project.id, name: "ai_helper")
+    Role.find(1).add_permission!(:view_ai_helper)
+  end
+
+  def teardown
+    User.current = @previous_user
+  end
+
+  def test_read_wiki_page_denied_when_module_disabled_and_scope_off
+    disable_ai_helper_module
+    AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+
+    assert_raises(RuntimeError) do
+      @provider.read_wiki_page(project_id: @project.id, title: @page.title)
+    end
+  end
+
+  def test_list_wiki_pages_denied_when_module_disabled_and_scope_off
+    disable_ai_helper_module
+    AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+
+    assert_raises(RuntimeError) do
+      @provider.list_wiki_pages(project_id: @project.id)
+    end
+  end
+
+  def test_generate_url_for_wiki_page_denied_when_module_disabled_and_scope_off
+    disable_ai_helper_module
+    AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+
+    assert_raises(RuntimeError) do
+      @provider.generate_url_for_wiki_page(project_id: @project.id, title: @page.title)
+    end
+  end
+
+  def test_read_wiki_page_allowed_when_module_disabled_and_scope_on
+    disable_ai_helper_module
+    AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+
+    response = @provider.read_wiki_page(project_id: @project.id, title: @page.title)
+
+    assert_equal @page.title, response[:title]
   end
 
   def test_read_wiki_page_success
@@ -61,16 +107,6 @@ class WikiToolsTest < ActiveSupport::TestCase
     assert_nil element[:parent]
   end
 
-  def test_list_wiki_pages_raises_when_ai_helper_disabled_unchanged
-    # ai_helper module disabled state does not affect list_wiki_pages, which only
-    # checks wiki visibility; this asserts current wiki-not-found behavior is unchanged.
-    EnabledModule.where(project_id: 3, name: "ai_helper").delete_all
-
-    assert_raises(RuntimeError, "Wiki not found: project_id = 3") do
-      @provider.list_wiki_pages(project_id: 3)
-    end
-  end
-
   def test_generate_url_for_wiki_page
     response = @provider.generate_url_for_wiki_page(project_id: @project.id, title: @page.title)
     expected_url = "/projects/#{@project.identifier}/wiki/#{@page.title}"
@@ -85,5 +121,12 @@ class WikiToolsTest < ActiveSupport::TestCase
       assert_instance_of Hash, response
       assert_equal @page.title, response[:title]
     end
+  end
+
+  private
+
+  def disable_ai_helper_module
+    EnabledModule.where(project_id: @project.id, name: "ai_helper").destroy_all
+    @project.reload
   end
 end
