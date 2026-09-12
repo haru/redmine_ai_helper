@@ -151,14 +151,20 @@ class AiHelperSetting < ApplicationRecord
   end
 
   # Whether the given project is within the vector registration scope (FR-009/FR-016).
+  # Mirrors #vector_scope_projects branch by branch, so the per-project check and
+  # the relation used by the rake task cannot disagree:
+  # - all_projects_scope ON: status gate applies (FR-016)
+  # - OFF (legacy, ADR-002): module-enabled projects of any status, no status filter
   # @param project [Project, nil] The project to check
   # @return [Boolean]
   def vector_target?(project)
     return false unless project
-    # Same status gate as vector_scope_projects, so the per-project check and the
-    # relation used by the rake task cannot disagree.
-    return false unless VECTOR_SCOPE_PROJECT_STATUSES.include?(project.status)
-    return false unless all_projects_scope? || project.module_enabled?(:ai_helper)
+    in_scope = if all_projects_scope?
+                 VECTOR_SCOPE_PROJECT_STATUSES.include?(project.status)
+    else
+                 project.module_enabled?(:ai_helper)
+    end
+    return false unless in_scope
     return true if vector_register_all_projects?
     vector_target_project_ids.include?(project.id)
   end

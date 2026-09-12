@@ -9,7 +9,7 @@ page files, not here.
 - [Multi-Agent Architecture](./pages/multi-agent-architecture.md) — request flow, LeaderAgent planning, agent auto-registration, tool system, provider layer, and streaming.
 
 ## decision
-- [All-Projects Data-Access Scope](./pages/all-projects-data-access-scope.md) — the `all_projects_scope` admin setting and the `PermissionChecker.data_accessible?`/`data_access_condition` methods that centralize 8 duplicated module-gated checks, with the intentional module-enabled/disabled asymmetry.
+- [All-Projects Data-Access Scope](./pages/all-projects-data-access-scope.md) — the `all_projects_scope` admin setting and the `PermissionChecker.data_accessible?`/`data_access_condition` methods that enforce the data-access decision across every data-reaching tool (originally 8 duplicated module-gated checks), with the intentional module-enabled/disabled asymmetry.
 - [All-Projects Scope: Effects & Alternatives](./pages/all-projects-scope-effects.md) — the vector-registration scope change, what stays module-gated (UI, gateway entry, read-only mode), and rejected alternatives.
 - [Agent Write-Capability Routing](./pages/agent-write-capability-routing.md) — why `can_write?`/`requires_write` guard write steps at dispatch time instead of being exposed to the router, and how skipped steps and the final-answer prompt stay consistent with what actually ran.
 - [MCP subscriptions/listen Rejection](./pages/mcp-listen-rejection.md) — ADR-031: the root cause (a streaming Proc body stringified into a fake 200), the three-part fix, alternatives rejected, and the gem-version-coupling gotcha it leaves behind.

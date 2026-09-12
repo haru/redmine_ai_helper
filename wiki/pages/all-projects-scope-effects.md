@@ -75,7 +75,10 @@ scope for this feature (S033).
   requirement that toggling the setting take effect immediately, no restart
   needed; out of scope (YAGNI) (S033).
 
-Recorded as ADR-036 (planned; not yet merged as of this ingest) (S033).
+Recorded as [ADR-036](../../docs/adr/036-all-projects-data-access-scope.md)
+(Accepted); its scope is amended by
+[ADR-037](../../docs/adr/037-data-access-scope-applies-to-every-tool.md),
+which extends the data-access decision to every data-reaching tool (S033/S034).
 
 ## Related
 

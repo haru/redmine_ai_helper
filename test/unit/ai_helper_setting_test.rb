@@ -372,6 +372,47 @@ class AiHelperSettingTest < ActiveSupport::TestCase
 
       assert_equal true, @setting.vector_target?(Project.find(3))
     end
+
+    should "agree with vector_target_projects_relation when all_projects_scope is ON" do
+      @setting.update_column(:all_projects_scope, true)
+      @setting.update_column(:vector_register_all_projects, true)
+      project = Project.find(3)
+      project.update_column(:status, Project::STATUS_ARCHIVED)
+
+      assert_not_includes @setting.vector_target_projects_relation.map(&:id), project.id
+      assert_equal false, @setting.vector_target?(project)
+    ensure
+      project.update_column(:status, Project::STATUS_ACTIVE)
+    end
+
+    should "accept an archived module-enabled project when all_projects_scope is OFF (legacy scope)" do
+      @setting.update_column(:all_projects_scope, false)
+      @setting.update_column(:vector_register_all_projects, true)
+      project = Project.find(3)
+      project.enable_module!(:ai_helper)
+      project.update_column(:status, Project::STATUS_ARCHIVED)
+
+      assert_equal true, @setting.vector_target?(project)
+    ensure
+      project.update_column(:status, Project::STATUS_ACTIVE)
+    end
+
+    should "agree with vector_target_projects_relation when all_projects_scope is OFF (legacy scope)" do
+      @setting.update_column(:all_projects_scope, false)
+      @setting.update_column(:vector_register_all_projects, true)
+      project = Project.find(3)
+      project.enable_module!(:ai_helper)
+      project.update_column(:status, Project::STATUS_ARCHIVED)
+
+      # The legacy relation (ADR-002) has no status filter, so an archived
+      # module-enabled project stays registered; the per-project predicate
+      # must say the same, or registration and vector_search_enabled_for?
+      # disagree.
+      assert_includes @setting.vector_target_projects_relation.map(&:id), project.id
+      assert_equal true, @setting.vector_target?(project)
+    ensure
+      project.update_column(:status, Project::STATUS_ACTIVE)
+    end
   end
 
   context "vector_search_enabled_for? with all_projects_scope" do

@@ -352,13 +352,21 @@ module RedmineAiHelper
       end
 
       def collect_permitted_project_ids(scope, project)
+        # Under the all-projects scope the vector DB also holds closed projects
+        # (AiHelperSetting::VECTOR_SCOPE_PROJECT_STATUSES), so the candidate set
+        # must include them; the legacy scope keeps the active-only candidates.
+        statuses = if AiHelperSetting.all_projects_scope?
+                     AiHelperSetting::VECTOR_SCOPE_PROJECT_STATUSES
+        else
+                     [ Project::STATUS_ACTIVE ]
+        end
         candidate_ids = case scope
         when "current"
                           [ project.id ]
         when "with_subprojects"
-                          [ project.id ] + project.descendants.active.pluck(:id)
+                          [ project.id ] + project.descendants.where(status: statuses).pluck(:id)
         when "all"
-                          Project.active.pluck(:id)
+                          Project.where(status: statuses).pluck(:id)
         else
                           raise ArgumentError, "Invalid scope: #{scope}"
         end

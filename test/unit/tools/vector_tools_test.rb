@@ -898,6 +898,47 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
         assert_not_includes result, Project.find(3).id
       end
 
+      should "include closed projects for scope all when all_projects_scope is ON" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+        closed = Project.find(3)
+        closed.update_column(:status, Project::STATUS_CLOSED)
+
+        # Closed projects are registered in the vector DB when all_projects_scope
+        # is ON (VECTOR_SCOPE_PROJECT_STATUSES), so the scope candidate set must
+        # include them too.
+        result = @vector_tools.send(:collect_permitted_project_ids, "all", @project)
+
+        assert_includes result, closed.id
+      ensure
+        closed&.update_column(:status, Project::STATUS_ACTIVE)
+      end
+
+      should "include closed subprojects for scope with_subprojects when all_projects_scope is ON" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+        subproject = Project.find(3)
+        subproject.update_column(:status, Project::STATUS_CLOSED)
+
+        result = @vector_tools.send(:collect_permitted_project_ids, "with_subprojects", @project)
+
+        assert_includes result, subproject.id
+      ensure
+        subproject&.update_column(:status, Project::STATUS_ACTIVE)
+      end
+
+      should "exclude closed projects for scope all when all_projects_scope is OFF" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+        closed = Project.find(3)
+        closed.enable_module!(:ai_helper)
+        closed.update_column(:status, Project::STATUS_CLOSED)
+
+        # Legacy scope keeps the active-only candidate set (unchanged behavior).
+        result = @vector_tools.send(:collect_permitted_project_ids, "all", @project)
+
+        assert_not_includes result, closed.id
+      ensure
+        closed&.update_column(:status, Project::STATUS_ACTIVE)
+      end
+
       should "raise ArgumentError for invalid scope" do
         assert_raises(ArgumentError) do
           @vector_tools.send(:collect_permitted_project_ids, "invalid", @project)

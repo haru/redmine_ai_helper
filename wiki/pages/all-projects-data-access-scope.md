@@ -38,14 +38,18 @@ def self.data_accessible?(project:, user: User.current,
   all_projects_scope
 end
 
-# SQL condition — cross-project search. Caller's relation must already
-# scope data-type visibility (e.g. Issue.visible).
+# SQL condition — cross-project search. Self-contained: visibility ANDed internally.
 def self.data_access_condition(user = User.current,
                                 all_projects_scope: AiHelperSetting.all_projects_scope?)
-  condition = Project.allowed_to_condition(user, :view_ai_helper)
-  return condition unless all_projects_scope
-  "((#{condition}) OR NOT EXISTS (SELECT 1 FROM #{EnabledModule.table_name} em" \
-    " WHERE em.project_id = #{Project.table_name}.id AND em.name = 'ai_helper'))"
+  scoped =
+    if all_projects_scope
+      condition = Project.allowed_to_condition(user, :view_ai_helper)
+      "((#{condition}) OR NOT EXISTS (SELECT 1 FROM #{EnabledModule.table_name} em" \
+        " WHERE em.project_id = #{Project.table_name}.id AND em.name = 'ai_helper'))"
+    else
+      Project.allowed_to_condition(user, :view_ai_helper)
+    end
+  "(#{Project.visible_condition(user)}) AND (#{scoped})"
 end
 ```
 
@@ -89,13 +93,14 @@ keyword, so the settings row isn't re-queried per project — preserving the
 constant-query-count property [ADR-030](../../docs/adr/030-list-project-activities-cross-project-scoping.md)
 established for similar loops (S033).
 
-### `data_access_condition` callers must already scope visibility
+### `data_access_condition` is self-contained
 
-The SQL condition alone does not check row visibility — both current callers
-build on `Issue.visible(user)` (itself
-`Project.allowed_to_condition(user, :view_issues)`), which already handles
-project state/visibility; `data_accessible?`'s willingness to include closed
-projects is consistent with that (S033).
+The SQL condition already ANDs `Project.visible_condition(user)` internally
+(project visibility and status), so a caller cannot accidentally widen the
+result by forgetting a visibility filter. Current callers build on
+`Issue.visible(user)` as well, which simply ANDs the same constraints twice —
+harmless, and `data_accessible?`'s willingness to include closed projects is
+consistent with that (S033).
 
 This page continues in [All-Projects Scope: Effects &
 Alternatives](./all-projects-scope-effects.md), which covers the vector
