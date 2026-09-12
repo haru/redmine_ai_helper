@@ -297,7 +297,7 @@ ja:
         read_only_mode: "読み取り専用モード"
         read_only_mode_description: "有効にすると、AI Helper のチャットからはチケット・Wiki ページ・コメントなどのデータを作成・更新・削除できなくなります。外部 MCP サーバー連携も無効化されます。"
         all_projects_scope: "全プロジェクトを対象にする"
-        all_projects_scope_description: "有効にすると、AI Helper モジュールが有効でないプロジェクトも、チャット・チャットゲートウェイ・MCP サーバーからのデータの参照・更新の対象となり、ベクトル登録の対象にも含まれます。AI Helper の画面要素は従来どおりモジュールが有効なプロジェクトにのみ表示され、依頼したユーザーの Redmine 上の権限は引き続き適用されます。"
+        all_projects_scope_description: "有効にすると、AI Helper モジュールが有効でないプロジェクトのデータも参照・更新の対象となり、LLMにデータが送信されます。無効の場合にはAI Helperモジュールが有効でないプロジェクトのデータは参照・更新の対象になりません。"
       ai_helper_project_setting:
         issue_draft_instructions: "チケットのコメントを生成する際の指示"
         subtask_instructions: "子チケットを生成する際の指示"
