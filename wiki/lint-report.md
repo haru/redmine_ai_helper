@@ -1,21 +1,12 @@
-# Wiki Lint Report — 2026-09-07
+# Wiki Lint Report — 2026-09-12
 
-Both findings from this pass were resolved by hand after reading source (not
-lint auto-fixes — semantic findings are never auto-rewritten by lint itself).
-
-| # | Check | Severity | Page | Finding | Outcome |
-|---|-------|----------|------|---------|---------|
-| 1 | contradictions | semantic | vector-search-internals.md | "Registration scope & project selection" (S033) said the multi-select "operates over" the widened base set, but the very next bullet (S012, unedited) said unconditionally that OFF "reveals a multi-select of module-enabled projects only." Read `app/controllers/ai_helper_settings_controller.rb:103` (`@vector_candidate_projects = @setting.vector_scope_projects.order(:name)`) and `app/models/ai_helper_setting.rb#vector_scope_projects` — confirmed the candidate list *does* widen to all non-archived projects when `all_projects_scope` is ON (also confirmed by `test/functional/ai_helper_settings_controller_test.rb:285-307`). Also caught along the way: the page claimed `vector_scope_projects` "returns `Project.all`" when ON — the code excludes archived projects. | Fixed: rewrote the "ON"/"OFF" bullets to name `@vector_candidate_projects` and condition the module-enabled-only claim on `all_projects_scope` being OFF (S033); corrected "`Project.all`" to "non-archived projects." |
-| 2 | citations | semantic | mcp-listen-rejection.md | The "mcp 1.4.0 update" blockquote asserted a claim with no `S0xx` citation (only "(ADR-032)"); frontmatter `sources` omitted S030/S031 despite `sources.md` listing this page as touched by both. | Fixed: blockquote citation is now "(ADR-032, S030, S031)"; `S030, S031` added to frontmatter `sources`; `updated` bumped to 2026-09-07. |
-
-## Checks with no findings
-
-- **index-drift** — all 38 pages under `pages/` are listed in `INDEX.md`; the one duplicate-looking `mcp-server-endpoint.md` match is a legitimate inline cross-reference inside the `mcp-integration.md` index bullet, not a stray index line.
-- **links** — no relative links (page-to-page or the two `../../docs/adr/*.md` references) point to a missing file.
-- **orphans** — every page is linked from at least one other page.
-- **citations (unknown ids)** — every `S0xx` citation used across `pages/*.md` resolves to a row in `sources.md`; no unknown source IDs.
-- **stale** — all pages' `updated` dates are within 37 days (well under the 90-day `stale_after_days` threshold); for every page, the max `Last ingested` date among its cited sources is on or before the page's own `updated` date.
-
-## Mechanical fixes applied
-
-None needed — `INDEX.md` already matches `pages/` exactly and no links were broken or renamed.
+| # | Check | Severity | Page | Finding | Suggested fix |
+|---|-------|----------|------|---------|---------------|
+| 1 | contradictions | semantic | all-projects-data-access-scope.md | The section "`data_access_condition` callers must already scope visibility" states "The SQL condition alone does not check row visibility", contradicting ADR-036 ("deliberately self-contained: it always ANDs `Project.visible_condition(user)` with the module/scope part") and the current `permission_checker.rb:63-73`. Pre-existing; not introduced by the S034 ingest. | Rewrite the section to say the condition is self-contained, and that callers applying `Issue.visible(user)` simply AND the constraint twice (harmless). |
+| 2 | stale | semantic | all-projects-data-access-scope.md | The `data_access_condition` code block (lines 43-49) omits the `"(#{Project.visible_condition(user)}) AND (...)"` wrapper that the shipped method has, so the quoted code no longer matches the source. Pre-existing. | Replace the snippet with the current implementation. |
+| 3 | stale | semantic | all-projects-scope-effects.md | "Recorded as ADR-036 (planned; not yet merged as of this ingest)" — ADR-036 is merged and Accepted, and its scope is now amended by ADR-037. Pre-existing. | Replace with a reference to ADR-036 as Accepted, amended by ADR-037. |
+| 4 | stale | semantic | INDEX.md | The hook for All-Projects Data-Access Scope still says the methods "centralize 8 duplicated module-gated checks"; after S034 every data-reaching tool consults them, not just those eight sites. | Reword the hook to describe the whole-tool-surface enforcement. |
+| 5 | index-drift | mechanical | — | No findings (39 pages, 39 indexed). | — |
+| 6 | links | mechanical | — | No findings (no broken relative links, no unknown source IDs). | — |
+| 7 | orphans | structural | — | No findings (every page has at least one inbound page link). | — |
+| 8 | citations | semantic | — | No findings: all claims added in the S034 pass carry a source ID. | — |

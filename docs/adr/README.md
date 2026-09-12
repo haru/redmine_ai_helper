@@ -87,4 +87,5 @@ Briefly describe alternatives that were rejected and why.
 | [032](./032-mcp14-restore-subscriptions-listen-rejection.md) | Restore subscriptions/listen rejection under mcp 1.4.0 | Accepted |
 | [033](./033-list-project-activities-project-batch-load.md) | Batch-load projects for list_project_activities response | Accepted |
 | [034](./034-search-issues-batch-hours.md) | Batch-load hours for search_issues response | Accepted |
-| [036](./036-all-projects-data-access-scope.md) | All-projects data-access scope decouples data access from the ai_helper module | Accepted |
+| [036](./036-all-projects-data-access-scope.md) | All-projects data-access scope decouples data access from the ai_helper module | Accepted (scope amended by ADR-037) |
+| [037](./037-data-access-scope-applies-to-every-tool.md) | The data-access scope applies to every tool, and repository tools gain Redmine's own permission checks | Accepted |

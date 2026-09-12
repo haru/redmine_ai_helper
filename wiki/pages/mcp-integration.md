@@ -1,8 +1,8 @@
 ---
 title: MCP Integration
 type: component
-sources: [S002, S006, S016, S033]
-updated: 2026-09-07
+sources: [S002, S006, S016, S033, S034]
+updated: 2026-09-12
 ---
 
 # MCP Integration
@@ -61,6 +61,13 @@ data-access scope](./all-projects-data-access-scope.md) admin setting needed
 **no separate change** on the MCP side — `PermissionChecker.data_accessible?`
 / `data_access_condition` are shared, so an opted-in instance widens MCP tool
 results the same way it widens chat results (S033).
+
+The inverse is also true, and was the cost of a tool that skipped the check:
+the server exposes every `BaseTools` subclass filtered only by the `admin` and
+`vector_db_enabled` requirements (`MCP::Server#mcp_tool_allowed?`), so a tool
+missing its own access check is reachable by any authenticated user. This is
+how `RepositoryTools`, which checked nothing at all, exposed private projects'
+file contents and diffs until ADR-037 (S034).
 
 ## Related
 

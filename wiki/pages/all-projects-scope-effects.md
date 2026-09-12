@@ -1,8 +1,8 @@
 ---
 title: "All-Projects Scope: Effects & Alternatives"
 type: decision
-sources: [S033]
-updated: 2026-09-07
+sources: [S033, S034]
+updated: 2026-09-12
 ---
 
 # All-Projects Scope: Effects & Alternatives
@@ -36,10 +36,16 @@ scope for this feature (S033).
   module-enabled check is unchanged; a channel bound to a module-disabled
   project still gets the "module not enabled" reply regardless of this
   setting (S033).
-- **Tools with no module gate already** (`issue_tools.rb`, `wiki_tools.rb`,
+- ~~**Tools with no module gate already** (`issue_tools.rb`, `wiki_tools.rb`,
   `board_tools.rb`, `version_tools.rb`, `repository_tools.rb`,
   `file_tools.rb`) — these already check only Redmine's standard `visible?`;
-  no new gate is added to them (YAGNI) (S033).
+  no new gate is added to them (YAGNI) (S033).~~ **Withdrawn.** Checking only
+  Redmine's `visible?` is precisely what let AI Helper summarize an issue from
+  a module-disabled project with the setting OFF, and the premise was false
+  for `repository_tools.rb`, which checked nothing at all. All six now call
+  `accessible_project?`, and the repository tools additionally enforce
+  Redmine's own `:browse_repository` / `:view_changesets`. See
+  [Tool System](./tool-system.md) and ADR-037 (S034).
 - **Read-only mode interaction** — needs no new code: mutating tools are
   already excluded by the existing `write: true` filter (see [Tool
   System](./tool-system.md)) independently of project scope, so the two

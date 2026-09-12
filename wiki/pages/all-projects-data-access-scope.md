@@ -1,8 +1,8 @@
 ---
 title: All-Projects Data-Access Scope
 type: decision
-sources: [S033]
-updated: 2026-09-07
+sources: [S033, S034]
+updated: 2026-09-12
 ---
 
 # All-Projects Data-Access Scope
@@ -52,6 +52,13 @@ end
 All eight sites, plus [`search_issues`'s cross-project
 path](./search-issues-cross-project-scoping.md), now delegate to these two
 methods (S033).
+
+Every remaining data-reaching tool was added to that set afterwards — the
+issue, wiki, board, version, file, repository and issue-write tools, which
+this feature had originally left checking only Redmine's own `visible?`. See
+[All-Projects Scope: Effects & Alternatives](./all-projects-scope-effects.md)
+for what that omission caused and
+[Tool System](./tool-system.md) for the per-tool checks (S034).
 
 ### Resulting judgment table
 

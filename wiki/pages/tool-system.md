@@ -1,8 +1,8 @@
 ---
 title: Tool System
 type: component
-sources: [S008, S016, S026, S032, S033]
-updated: 2026-09-07
+sources: [S008, S016, S026, S032, S033, S034]
+updated: 2026-09-12
 ---
 
 # Tool System
@@ -29,8 +29,10 @@ providers' functions it may call — a per-agent permission boundary (S008).
 
 ## Security & read-only
 
-- **Read checks**: read tools validate access with `issue.visible?` or
-  `accessible_project?` (S008). A tool's project scope can also be made
+- **Read checks**: read tools validate access with Redmine's own visibility
+  (`issue.visible?`, `board.visible?`, …) **and** `accessible_project?` — both,
+  never one instead of the other, since Redmine's `visible?` says nothing about
+  whether the project opted into AI Helper (S008, S034). A tool's project scope can also be made
   *optional*: `IssueSearchTools#search_issues`'s `project_id` is
   `required: false`, and when omitted it scopes to
   `Project.allowed_to_condition(user, :view_ai_helper)` instead of a single
@@ -43,8 +45,13 @@ providers' functions it may call — a per-agent permission boundary (S008).
   data-access scope** admin setting — module-disabled projects can be
   included via standard Redmine permissions when an admin opts in. See [All-Projects
   Data-Access Scope](./all-projects-data-access-scope.md) (S033).
-- **Write checks**: write tools call `User.current.allowed_to?(:action, project)`
-  (S008).
+- **Write checks**: write tools call `accessible_project?` first, then
+  `User.current.allowed_to?(:action, project)` — a project outside the
+  data-access scope must not be written to either (S008, S034).
+- **Repository tools**: `RepositoryTools` enforces Redmine's own repository
+  permissions the way Redmine maps them — `:browse_repository` for repository
+  info, file info, file contents and diffs, `:view_changesets` for revision
+  info — on top of `accessible_project?` (S034).
 - **Read-only mode**: because each mutating tool is tagged `write: true`, global
   read-only mode can filter those individual tools out (S008). This is why
   *internal* tools can be selectively disabled, whereas external
