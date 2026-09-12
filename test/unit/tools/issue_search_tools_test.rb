@@ -742,6 +742,82 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
     end
   end
 
+  context "search_issues single-project search with subprojects" do
+    setup do
+      # Projects 3 and 4 are public subprojects of project 1. Only project 1 has the
+      # ai_helper module enabled (see the outer setup), so a filtered search scoped to
+      # project 1 must not reach into them while all_projects_scope is OFF, even though
+      # IssueQuery expands the project filter to descendants.
+      @project1 = Project.find(1)
+      @subproject = Project.find(3)
+      @tracker = Tracker.find(1)
+      @subproject.trackers << @tracker unless @subproject.trackers.include?(@tracker)
+      @user = User.find(2)
+      @previous_user = User.current
+      User.current = @user
+      @sub_issue = Issue.create!(project: @subproject, tracker: @tracker, subject: "Subproject Scope Issue",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+    end
+
+    teardown do
+      User.current = @previous_user
+      @sub_issue&.destroy
+    end
+
+    should "exclude module-disabled subproject issues from a filtered single-project search when all_projects_scope is OFF" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+
+      with_settings display_subprojects_issues: "1" do
+        result = @provider.search_issues(project_id: @project1.id,
+          fields: [ { field_name: "tracker_id", operator: "=", values: [ @tracker.id.to_s ] } ])
+        ids = result[:issues].map { |i| i[:id] }
+
+        assert_not_includes ids, @sub_issue.id
+      end
+    end
+
+    should "not count module-disabled subproject issues in a filtered single-project search when all_projects_scope is OFF" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+
+      with_settings display_subprojects_issues: "1" do
+        result = @provider.search_issues(project_id: @project1.id,
+          fields: [ { field_name: "tracker_id", operator: "=", values: [ @tracker.id.to_s ] } ])
+
+        # The limit (50) is far above the fixture set, so the count and the list must agree.
+        assert_equal result[:issues].size, result[:total_count],
+          "total_count must follow the same data-access scope as the issue list"
+        assert_not_includes result[:issues].map { |i| i[:id] }, @sub_issue.id
+      end
+    end
+
+    should "include subproject issues in a filtered single-project search when all_projects_scope is ON" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+
+      with_settings display_subprojects_issues: "1" do
+        result = @provider.search_issues(project_id: @project1.id,
+          fields: [ { field_name: "tracker_id", operator: "=", values: [ @tracker.id.to_s ] } ])
+        ids = result[:issues].map { |i| i[:id] }
+
+        assert_includes ids, @sub_issue.id
+      end
+    end
+
+    should "still return the searched project's own issues when all_projects_scope is OFF" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+      own_issue = Issue.create!(project: @project1, tracker: @tracker, subject: "Own Project Issue",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+
+      with_settings display_subprojects_issues: "1" do
+        result = @provider.search_issues(project_id: @project1.id,
+          fields: [ { field_name: "tracker_id", operator: "=", values: [ @tracker.id.to_s ] } ])
+
+        assert_includes result[:issues].map { |i| i[:id] }, own_issue.id
+      end
+    ensure
+      own_issue&.destroy
+    end
+  end
+
   context "search_issues cross-project regression guard against invisible projects" do
     setup do
       @private_project = Project.create!(

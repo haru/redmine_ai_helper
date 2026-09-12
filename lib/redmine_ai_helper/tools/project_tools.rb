@@ -92,9 +92,11 @@ module RedmineAiHelper
         projects = Project.where(id: project_ids)
         return ToolResponse.create_error "No projects found" if projects.empty?
 
-        list = projects.filter { |p| accessible_project? p }.map do |project|
-          return ToolResponse.create_error "You don't have permission to view this project" unless accessible_project? project
+        # Read the flag once for the whole loop: the accessible_project? default
+        # would re-read the settings row per project.
+        flag = AiHelperSetting.all_projects_scope?
 
+        list = projects.filter { |p| accessible_project?(p, all_projects_scope: flag) }.map do |project|
           members = project.members.map do |member|
             {
               user_id: member.user_id,

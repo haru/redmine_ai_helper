@@ -15,10 +15,13 @@ rejected (S033).
 ## Vector registration scope (FR-016/FR-017)
 
 `AiHelperSetting#ai_helper_module_projects` is renamed to
-`#vector_scope_projects`: returns `Project.all` when `all_projects_scope` is
-ON, or the previous module-enabled-projects scope when OFF.
-`#vector_target?`'s guard becomes `all_projects_scope ||
-project.module_enabled?(:ai_helper)`. See [Vector Search
+`#vector_scope_projects`: when `all_projects_scope` is ON it returns every
+project in a registerable status (`VECTOR_SCOPE_PROJECT_STATUSES` — active and
+closed; **archived and scheduled-for-deletion projects are excluded**, because
+`Project.visible_condition` denies them at query time so their embeddings could
+never be retrieved), or the previous module-enabled-projects scope when OFF.
+`#vector_target?` applies the same status gate and its module guard becomes
+`all_projects_scope || project.module_enabled?(:ai_helper)`. See [Vector Search
 Internals](./vector-search-internals.md) (S033).
 
 The admin settings controller adds a separate `@vector_candidate_projects`

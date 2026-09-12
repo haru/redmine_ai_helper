@@ -70,6 +70,10 @@ class AiHelperSettingsController < ApplicationController
       else
           "channels"
       end
+      # find_setting derived this from the persisted flag, before safe_attributes=.
+      # Recompute it so the re-rendered vector tab matches the all_projects_scope
+      # the general tab is about to show.
+      @vector_candidate_projects = @setting.vector_scope_projects.order(:name)
       render action: :index
     end
   end

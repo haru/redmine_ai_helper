@@ -375,9 +375,13 @@ module RedmineAiHelper
     # single source of truth shared by every tool/agent (see
     # specs/057-all-projects-scope/contracts/data-access-scope.md).
     # @param project [Project] The project
+    # @param all_projects_scope [Boolean] Whether the all-projects data-access scope
+    #   setting is enabled. Callers checking many projects in a loop should read
+    #   AiHelperSetting.all_projects_scope? once and pass it here; the default
+    #   re-reads the settings row on every call.
     # @return [Boolean] true if accessible, false otherwise
-    def accessible_project?(project)
-      RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: project)
+    def accessible_project?(project, all_projects_scope: AiHelperSetting.all_projects_scope?)
+      RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: project, all_projects_scope: all_projects_scope)
     end
 
     # All projects accessible via AI Helper, for tools that need to work across projects.

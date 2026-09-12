@@ -125,6 +125,14 @@ class ProjectToolsTest < ActiveSupport::TestCase
     assert(response[:projects].all? { |p| p.key?(:members) })
   end
 
+  def test_project_members_reads_all_projects_scope_setting_once
+    AiHelperSetting.expects(:all_projects_scope?).at_most_once.returns(true)
+
+    response = @provider.project_members(project_ids: [ 1, 2 ])
+
+    assert_equal 2, response[:projects].size
+  end
+
   def test_project_members_with_invalid_project_id
     response = @provider.project_members(project_ids: [ 999 ])
 

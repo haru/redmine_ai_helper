@@ -97,10 +97,13 @@ module RedmineAiHelper
         project = nil
         if project_id
           project = Project.find(project_id)
-          # Guard both search paths at once. Whether a project's data is reachable is
-          # decided by PermissionChecker.data_accessible? (ADR-036 decision table):
-          # module-enabled projects always require :view_ai_helper; module-disabled
-          # projects are reachable only when the all_projects_scope setting is on.
+          # Reject the requested project up front, with a clear message. Whether a
+          # project's data is reachable is decided by PermissionChecker.data_accessible?
+          # (ADR-036 decision table): module-enabled projects always require
+          # :view_ai_helper; module-disabled projects are reachable only when the
+          # all_projects_scope setting is on. This guard covers the project named here
+          # only -- the filtered path may still reach subprojects, so that path applies
+          # the same scope in SQL (see IssueQueryBuilder#data_accessible_scope).
           # Data-type visibility (e.g. Issue.visible) is enforced inside every path below.
           raise "Project is not accessible: id = #{project_id}" unless accessible_project?(project)
         end
@@ -429,7 +432,7 @@ module RedmineAiHelper
         # @return [Array<Issue>] Array of visible issues
         def execute(project, user: User.current, limit: 50)
           setup_query(project, user)
-          scope = cross_project_scope(project, @query.base_scope, user)
+          scope = data_accessible_scope(@query.base_scope, user)
           scope.includes(:project, :status, :priority, :tracker, :assigned_to, :author, :custom_values)
                .reorder(@sort[:field] => @sort[:direction]).limit(limit).to_a
         end
@@ -440,7 +443,7 @@ module RedmineAiHelper
         # @return [Integer] Total count of matching issues
         def count(project, user: User.current)
           setup_query(project, user)
-          cross_project_scope(project, @query.base_scope, user).distinct.count(:id)
+          data_accessible_scope(@query.base_scope, user).distinct.count(:id)
         end
 
         private
@@ -459,14 +462,15 @@ module RedmineAiHelper
           @query_setup_done = true
         end
 
-        # Restrict the base scope to AI-Helper-accessible projects when no single project was given
-        # @param project [Project, nil] The project passed to execute/count
+        # Restrict the base scope to AI-Helper-accessible projects.
+        # Applied unconditionally, including when a single project was given: IssueQuery
+        # expands a project filter to its descendants while Setting.display_subprojects_issues?
+        # is on (the Redmine default), so gating only on the project passed to search_issues
+        # would hand back issues from subprojects that never opted into AI Helper.
         # @param scope [ActiveRecord::Relation] The query's base scope
         # @param user [User] The user for visibility check
-        # @return [ActiveRecord::Relation] The (possibly restricted) scope
-        def cross_project_scope(project, scope, user)
-          return scope if project
-
+        # @return [ActiveRecord::Relation] The restricted scope
+        def data_accessible_scope(scope, user)
           scope.where(RedmineAiHelper::Util::PermissionChecker.data_access_condition(user))
         end
       end

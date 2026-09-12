@@ -123,15 +123,21 @@ class AiHelperSetting < ApplicationRecord
     model_profile.max_tokens
   end
 
-    # Base scope of projects eligible for vector registration: all non-archived
-    # projects when all_projects_scope is enabled (FR-016; archived projects are
-    # out of scope per spec), otherwise those with the ai_helper module enabled
-    # (see ADR-002). Closed projects stay included: they remain readable in Redmine.
-    # @return [ActiveRecord::Relation] projects within the vector registration scope
-    def vector_scope_projects
-      return Project.where.not(status: Project::STATUS_ARCHIVED) if all_projects_scope?
-      Project.joins(:enabled_modules).where(enabled_modules: { name: "ai_helper" })
-    end
+  # Project statuses eligible for vector registration when all_projects_scope is on.
+  # Archived projects are out of scope per spec (FR-016) and projects queued for
+  # deletion (STATUS_SCHEDULED_FOR_DELETION) are excluded too: Project.visible_condition
+  # denies them at query time, so embedding their content could never be retrieved.
+  # Closed projects stay included: they remain readable in Redmine.
+  VECTOR_SCOPE_PROJECT_STATUSES = [ Project::STATUS_ACTIVE, Project::STATUS_CLOSED ].freeze
+
+  # Base scope of projects eligible for vector registration: every project in a
+  # registerable status when all_projects_scope is enabled (FR-016), otherwise those
+  # with the ai_helper module enabled (see ADR-002).
+  # @return [ActiveRecord::Relation] projects within the vector registration scope
+  def vector_scope_projects
+    return Project.where(status: VECTOR_SCOPE_PROJECT_STATUSES) if all_projects_scope?
+    Project.joins(:enabled_modules).where(enabled_modules: { name: "ai_helper" })
+  end
 
   # The effective set of projects whose issues/wiki are registered in the
   # vector database. Single source of truth shared by the registration rake
@@ -149,7 +155,9 @@ class AiHelperSetting < ApplicationRecord
   # @return [Boolean]
   def vector_target?(project)
     return false unless project
-    return false if project.archived?
+    # Same status gate as vector_scope_projects, so the per-project check and the
+    # relation used by the rake task cannot disagree.
+    return false unless VECTOR_SCOPE_PROJECT_STATUSES.include?(project.status)
     return false unless all_projects_scope? || project.module_enabled?(:ai_helper)
     return true if vector_register_all_projects?
     vector_target_project_ids.include?(project.id)

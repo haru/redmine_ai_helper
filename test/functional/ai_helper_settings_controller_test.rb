@@ -298,6 +298,23 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       end
     end
 
+    should "recompute vector_candidate_projects from the submitted all_projects_scope when the save fails" do
+      module_disabled_project = Project.create!(name: "Vector Candidate Rerender", identifier: "vector-candidate-rerender")
+      @ai_helper_setting.update_column(:all_projects_scope, false)
+
+      # vector_search_uri is required while vector search is enabled, so the save fails
+      # and the page is re-rendered with the submitted (unsaved) all_projects_scope.
+      post :update, params: { ai_helper_setting: {
+        all_projects_scope: "1", vector_search_enabled: "1", vector_search_uri: ""
+      } }
+
+      assert_response :success
+      assert_includes assigns(:vector_candidate_projects), module_disabled_project,
+        "the re-rendered vector tab must match the all_projects_scope shown on the general tab"
+    ensure
+      module_disabled_project&.destroy if module_disabled_project&.persisted?
+    end
+
     should "not include module-disabled projects in vector_candidate_projects when all_projects_scope is OFF" do
       module_disabled_project = Project.create!(name: "Vector Module Disabled Off", identifier: "vector-module-disabled-off")
 

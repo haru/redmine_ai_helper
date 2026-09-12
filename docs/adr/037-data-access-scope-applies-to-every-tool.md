@@ -25,6 +25,10 @@ S033 is withdrawn. Every tool that reaches project-scoped data enforces `Permiss
 | `VersionTools` (both) | raise unless the project is accessible |
 | `FileTools#analyze_content_files` | raise unless the resolved container's project is accessible |
 | `RepositoryTools` (all five) | raise unless the repository's project is accessible **and** the user holds Redmine's own repository permission |
+| `VectorTools#find_similar_issues` | raise unless the **source** issue's project is accessible, before its subject and description are built into the embedding query |
+| `IssueSearchTools#search_issues` | AND `data_access_condition` into the query scope unconditionally, not only on the cross-project path |
+
+Two of these rows are about data leaving the instance rather than reaching the caller. `VectorTools#find_similar_issues` previously gated only the *result* issues; the source issue was checked with `visible?` alone, so an issue from a project outside the scope still had its text sent to the embedding provider. And `IssueSearchTools#search_issues` applied the scope only when no `project_id` was given: with one given, `IssueQuery` expands the filter to descendants while `Setting.display_subprojects_issues?` is on (the Redmine default), so subprojects that never opted in were searched. Both are the same rule as the rest of the table — the scope is a property of the data, not of the entry point.
 
 `RepositoryTools` maps Redmine's repository permissions the way Redmine itself maps them (`Redmine::Preparation`): `:browse_repository` for `repository_info`, `get_file_info`, `read_file` and `read_diff` (Redmine's `browse`/`entry`/`raw`/`diff` actions), `:view_changesets` for `get_revision_info` (Redmine's `revision` action). This part is an independent defect fix: it holds regardless of `all_projects_scope`, and would be required even if this plugin had no scope setting of its own.
 

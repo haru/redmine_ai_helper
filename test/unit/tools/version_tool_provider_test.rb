@@ -45,6 +45,16 @@ class VersionToolsTest < ActiveSupport::TestCase
     end
   end
 
+  def test_version_info_reads_all_projects_scope_setting_once
+    AiHelperSetting.expects(:all_projects_scope?).at_most_once.returns(true)
+    version_ids = @project.versions.limit(3).pluck(:id)
+    assert_operator version_ids.size, :>, 1
+
+    response = @provider.version_info(version_ids: version_ids)
+
+    assert_equal version_ids.size, response.size
+  end
+
   def test_list_versions_denied_when_module_disabled_and_scope_off
     disable_ai_helper_module
     AiHelperSetting.stubs(:all_projects_scope?).returns(false)

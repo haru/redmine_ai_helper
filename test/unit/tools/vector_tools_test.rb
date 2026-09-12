@@ -392,8 +392,9 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
       end
 
       should "filter out issues from projects without ai_helper module" do
-        # Create issue in project without ai_helper module
-        other_issue = Issue.find(2)
+        # Issue 4 lives in project 2, a different project from the source issue's:
+        # disabling the module here must not disable it for the source issue.
+        other_issue = Issue.find(4)
         other_issue.project.disable_module!(:ai_helper)
 
         mock_results = [
@@ -413,7 +414,7 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
       end
 
       should "filter out similar issues from projects where user lacks view_ai_helper permission" do
-        other_issue = Issue.find(2)
+        other_issue = Issue.find(4) # project 2, not the source issue's project
         other_issue.project.enable_module!(:ai_helper)
         User.current.stubs(:allowed_to?).returns(true)
         User.current.stubs(:allowed_to?).with(:view_ai_helper, other_issue.project).returns(false)
@@ -723,7 +724,7 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
 
       should "exclude similar issues from a module-disabled, visible project when all_projects_scope is OFF" do
         AiHelperSetting.stubs(:all_projects_scope?).returns(false)
-        other_issue = Issue.find(2)
+        other_issue = Issue.find(4) # project 2, not the source issue's project
         other_issue.project.disable_module!(:ai_helper)
         @mock_db.expects(:similarity_search).returns([ { "payload" => { "issue_id" => other_issue.id }, "score" => 0.85 } ])
 
@@ -734,13 +735,45 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
 
       should "include similar issues from a module-disabled, visible project when all_projects_scope is ON" do
         AiHelperSetting.stubs(:all_projects_scope?).returns(true)
-        other_issue = Issue.find(2)
+        other_issue = Issue.find(4) # project 2, not the source issue's project
         other_issue.project.disable_module!(:ai_helper)
         @mock_db.expects(:similarity_search).returns([ { "payload" => { "issue_id" => other_issue.id }, "score" => 0.85 } ])
 
         result = @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
 
         assert_equal 1, result.length
+      end
+
+      # The source issue's own text becomes the embedding query, so it must be gated
+      # by the data-access scope too, not only by Issue#visible?.
+      should "reject a source issue from a module-disabled project when all_projects_scope is OFF" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+        @issue.project.disable_module!(:ai_helper)
+        @mock_db.expects(:similarity_search).never
+
+        assert_raises(RuntimeError) do
+          @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
+        end
+      end
+
+      should "not build an embedding query for a source issue outside the data-access scope" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+        @issue.project.disable_module!(:ai_helper)
+        @vector_tools.expects(:build_hybrid_query).never
+
+        assert_raises(RuntimeError) do
+          @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
+        end
+      end
+
+      should "accept a source issue from a module-disabled, visible project when all_projects_scope is ON" do
+        AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+        @issue.project.disable_module!(:ai_helper)
+        @mock_db.expects(:similarity_search).returns([])
+
+        result = @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
+
+        assert_equal [], result
       end
     end
 

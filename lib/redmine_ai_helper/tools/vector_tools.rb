@@ -118,9 +118,18 @@ module RedmineAiHelper
         begin
           ai_helper_logger.debug("Finding similar issues for issue_id: #{issue_id}, k: #{k}, scope: #{scope}")
 
+          # Read the flag once for the source check and the whole result loop below
+          # (see permission_checker.rb): the keyword-argument default would re-read
+          # the settings row per record.
+          flag = AiHelperSetting.all_projects_scope?
+
           issue = Issue.find_by(id: issue_id)
           raise("Issue not found with ID: #{issue_id}") unless issue
           raise("Permission denied") unless issue.visible?
+          # The source issue's subject and description become the embedding query, so it
+          # must pass the data-access scope as well, not only Issue#visible?. Checked
+          # before build_hybrid_query so nothing out of scope is sent to the provider.
+          raise("Permission denied") unless RedmineAiHelper::Util::PermissionChecker.data_accessible?(project: issue.project, all_projects_scope: flag)
 
           # Use vector database for similarity search
           ai_helper_logger.debug("Initializing vector database for issue target")
@@ -144,10 +153,6 @@ module RedmineAiHelper
 
           # Handle case where results is nil or empty
           results = [] if results.nil?
-
-          # Read the flag once for the whole result loop (see permission_checker.rb):
-          # the keyword-argument default would re-read the settings row per record.
-          flag = AiHelperSetting.all_projects_scope?
 
           # Filter out current issue and check permissions for each result
           similar_issues = []

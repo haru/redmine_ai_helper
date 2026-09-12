@@ -340,6 +340,38 @@ class AiHelperSettingTest < ActiveSupport::TestCase
     ensure
       project.update_column(:status, Project::STATUS_ACTIVE)
     end
+
+    should "exclude projects scheduled for deletion when all_projects_scope is ON" do
+      @setting.update_column(:all_projects_scope, true)
+      project = Project.find(3)
+      project.update_column(:status, Project::STATUS_SCHEDULED_FOR_DELETION)
+
+      assert_not_includes @setting.vector_scope_projects.map(&:id), project.id
+    ensure
+      project.update_column(:status, Project::STATUS_ACTIVE)
+    end
+  end
+
+  context "vector_target? project status" do
+    fixtures :projects, :enabled_modules
+
+    should "reject a project scheduled for deletion when all_projects_scope is ON" do
+      @setting.update_column(:all_projects_scope, true)
+      @setting.update_column(:vector_register_all_projects, true)
+      project = Project.find(3)
+      project.update_column(:status, Project::STATUS_SCHEDULED_FOR_DELETION)
+
+      assert_equal false, @setting.vector_target?(project)
+    ensure
+      project.update_column(:status, Project::STATUS_ACTIVE)
+    end
+
+    should "accept an active project when all_projects_scope is ON" do
+      @setting.update_column(:all_projects_scope, true)
+      @setting.update_column(:vector_register_all_projects, true)
+
+      assert_equal true, @setting.vector_target?(Project.find(3))
+    end
   end
 
   context "vector_search_enabled_for? with all_projects_scope" do

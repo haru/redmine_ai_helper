@@ -93,6 +93,14 @@ class IssueToolsTest < ActiveSupport::TestCase
         assert_includes ids, accessible_issue.id
         assert_not_includes ids, @issue.id
       end
+
+      should "read the all_projects_scope setting once regardless of how many issues are read" do
+        AiHelperSetting.expects(:all_projects_scope?).at_most_once.returns(true)
+
+        response = @provider.read_issues(issue_ids: [ 1, 2, 3 ])
+
+        assert_operator response[:issues].size, :>, 1
+      end
     end
 
     context "capable_issue_properties" do
