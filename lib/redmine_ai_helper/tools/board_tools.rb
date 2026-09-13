@@ -18,6 +18,7 @@ module RedmineAiHelper
       def list_boards(project_id:)
         project = Project.find_by(id: project_id)
         raise("Project not found") if project.nil?
+        raise("Project is not accessible: id = #{project_id}") unless accessible_project?(project)
         boards = project.boards.filter { |b| b.visible? }
         board_list = []
         boards.each do |board|
@@ -42,7 +43,8 @@ module RedmineAiHelper
       # @return [Hash] A hash containing board information.
       def board_info(board_id:)
         board = Board.find_by(id: board_id)
-        raise("Board not found") if board.nil?
+        raise("Board not found") if board.nil? || !board.visible?
+        raise("Project is not accessible: id = #{board.project_id}") unless accessible_project?(board.project)
         board_hash = {
           id: board.id,
           project_id: board.project_id,
@@ -75,6 +77,7 @@ module RedmineAiHelper
       def read_message(message_id:)
         message = Message.find_by(id: message_id)
         raise("Message not found") if message.nil? || !message.visible?
+        raise("Project is not accessible: id = #{message.project&.id}") unless accessible_project?(message.project)
         message_hash = {
           id: message.id,
           board_id: message.board_id,
@@ -125,6 +128,7 @@ module RedmineAiHelper
         raise("Board ID not provided") unless board_id
         board = Board.find_by(id: board_id)
         raise("Board not found") if board.nil? || !board.visible?
+        raise("Project is not accessible: id = #{board.project_id}") unless accessible_project?(board.project)
         url = "#{project_board_path(board.project, board)}"
 
         { url: url }
@@ -141,6 +145,7 @@ module RedmineAiHelper
         raise("Message ID not provided") unless message_id
         message = Message.find_by(id: message_id)
         raise("Message not found") if message.nil? || !message.visible?
+        raise("Project is not accessible: id = #{message.project&.id}") unless accessible_project?(message.project)
         url = "#{board_message_path(message.board, message)}"
 
         { url: url }

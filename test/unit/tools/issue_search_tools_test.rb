@@ -303,7 +303,7 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
           @provider.search_issues(project_id: @project.id)
         end
 
-        assert_equal "ai_helper is not enabled for project: id = #{@project.id}", error.message
+        assert_equal "Project is not accessible: id = #{@project.id}", error.message
       end
     end
 
@@ -327,17 +327,17 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       end
     end
 
-    should "state in the tool description that only ai_helper enabled projects are searchable" do
+    should "state in the tool description that only accessible projects are searchable" do
       schema = RedmineAiHelper::Tools::IssueSearchTools.function_schemas.to_openai_format.find do |f|
         f[:function][:name].end_with?("__search_issues")
       end
 
-      assert_match(/AI Helper module enabled/, schema[:function][:description])
-      assert_match(/AI Helper module enabled/, schema[:function][:parameters][:properties][:project_id][:description])
+      assert_match(/accessible via AI Helper/, schema[:function][:description])
+      assert_match(/accessible via AI Helper/, schema[:function][:parameters][:properties][:project_id][:description])
     end
 
     # T015
-    should "state in the tool description that omitting project_id searches across accessible ai_helper enabled projects" do
+    should "state in the tool description that omitting project_id searches across accessible projects" do
       schema = RedmineAiHelper::Tools::IssueSearchTools.function_schemas.to_openai_format.find do |f|
         f[:function][:name].end_with?("__search_issues")
       end
@@ -671,6 +671,217 @@ class IssueSearchToolsTest < ActiveSupport::TestCase
       matching_issue&.destroy
       non_matching_issue&.destroy
       tracker_without_cf&.destroy
+    end
+  end
+
+  context "search_issues cross-project with all_projects_scope" do
+    setup do
+      @project1 = Project.find(1)
+      @plain_project = Project.find(3) # ai_helper module not enabled, public
+      @tracker = Tracker.find(1)
+      @plain_project.trackers << @tracker unless @plain_project.trackers.include?(@tracker)
+      @user = User.find(2)
+      @previous_user = User.current
+      User.current = @user
+    end
+
+    teardown do
+      User.current = @previous_user
+    end
+
+    should "exclude module-disabled project issues from unconditional cross-project search when all_projects_scope is OFF" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+      issue = Issue.create!(project: @plain_project, tracker: @tracker, subject: "Scope Off No Condition",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+
+      result = @provider.search_issues(project_id: nil)
+      ids = result[:issues].map { |i| i[:id] }
+
+      assert_not_includes ids, issue.id
+    ensure
+      issue&.destroy
+    end
+
+    should "include module-disabled, visible project issues in unconditional cross-project search when all_projects_scope is ON" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+      issue = Issue.create!(project: @plain_project, tracker: @tracker, subject: "Scope On No Condition",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+
+      result = @provider.search_issues(project_id: nil)
+      ids = result[:issues].map { |i| i[:id] }
+
+      assert_includes ids, issue.id
+    ensure
+      issue&.destroy
+    end
+
+    should "exclude module-disabled project issues from filtered cross-project search when all_projects_scope is OFF" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+      issue = Issue.create!(project: @plain_project, tracker: @tracker, subject: "Scope Off With Filter",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+
+      result = @provider.search_issues(project_id: nil, fields: [ { field_name: "tracker_id", operator: "=", values: [ @tracker.id.to_s ] } ])
+      ids = result[:issues].map { |i| i[:id] }
+
+      assert_not_includes ids, issue.id
+    ensure
+      issue&.destroy
+    end
+
+    should "include module-disabled, visible project issues in filtered cross-project search when all_projects_scope is ON" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+      issue = Issue.create!(project: @plain_project, tracker: @tracker, subject: "Scope On With Filter",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+
+      result = @provider.search_issues(project_id: nil, fields: [ { field_name: "tracker_id", operator: "=", values: [ @tracker.id.to_s ] } ])
+      ids = result[:issues].map { |i| i[:id] }
+
+      assert_includes ids, issue.id
+    ensure
+      issue&.destroy
+    end
+  end
+
+  context "search_issues single-project search with subprojects" do
+    setup do
+      # Projects 3 and 4 are public subprojects of project 1. Only project 1 has the
+      # ai_helper module enabled (see the outer setup), so a filtered search scoped to
+      # project 1 must not reach into them while all_projects_scope is OFF, even though
+      # IssueQuery expands the project filter to descendants.
+      @project1 = Project.find(1)
+      @subproject = Project.find(3)
+      @tracker = Tracker.find(1)
+      @subproject.trackers << @tracker unless @subproject.trackers.include?(@tracker)
+      @user = User.find(2)
+      @previous_user = User.current
+      User.current = @user
+      @sub_issue = Issue.create!(project: @subproject, tracker: @tracker, subject: "Subproject Scope Issue",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+    end
+
+    teardown do
+      User.current = @previous_user
+      @sub_issue&.destroy
+    end
+
+    should "exclude module-disabled subproject issues from a filtered single-project search when all_projects_scope is OFF" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+
+      with_settings display_subprojects_issues: "1" do
+        result = @provider.search_issues(project_id: @project1.id,
+          fields: [ { field_name: "tracker_id", operator: "=", values: [ @tracker.id.to_s ] } ])
+        ids = result[:issues].map { |i| i[:id] }
+
+        assert_not_includes ids, @sub_issue.id
+      end
+    end
+
+    should "not count module-disabled subproject issues in a filtered single-project search when all_projects_scope is OFF" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+
+      with_settings display_subprojects_issues: "1" do
+        result = @provider.search_issues(project_id: @project1.id,
+          fields: [ { field_name: "tracker_id", operator: "=", values: [ @tracker.id.to_s ] } ])
+
+        # The limit (50) is far above the fixture set, so the count and the list must agree.
+        assert_equal result[:issues].size, result[:total_count],
+          "total_count must follow the same data-access scope as the issue list"
+        assert_not_includes result[:issues].map { |i| i[:id] }, @sub_issue.id
+      end
+    end
+
+    should "include subproject issues in a filtered single-project search when all_projects_scope is ON" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+
+      with_settings display_subprojects_issues: "1" do
+        result = @provider.search_issues(project_id: @project1.id,
+          fields: [ { field_name: "tracker_id", operator: "=", values: [ @tracker.id.to_s ] } ])
+        ids = result[:issues].map { |i| i[:id] }
+
+        assert_includes ids, @sub_issue.id
+      end
+    end
+
+    should "still return the searched project's own issues when all_projects_scope is OFF" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+      own_issue = Issue.create!(project: @project1, tracker: @tracker, subject: "Own Project Issue",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+
+      with_settings display_subprojects_issues: "1" do
+        result = @provider.search_issues(project_id: @project1.id,
+          fields: [ { field_name: "tracker_id", operator: "=", values: [ @tracker.id.to_s ] } ])
+
+        assert_includes result[:issues].map { |i| i[:id] }, own_issue.id
+      end
+    ensure
+      own_issue&.destroy
+    end
+  end
+
+  context "search_issues cross-project regression guard against invisible projects" do
+    setup do
+      @private_project = Project.create!(
+        name: "Search Guard Private #{Time.now.to_i}#{rand(10000)}",
+        identifier: "search-guard-private-#{Time.now.to_i}#{rand(10000)}",
+        is_public: false
+      )
+      @tracker = Tracker.find(1)
+      @private_project.trackers << @tracker unless @private_project.trackers.include?(@tracker)
+      @user = User.find(2)
+      @previous_user = User.current
+      User.current = @user
+      Role.find(1).add_permission!(:view_ai_helper)
+      Project.find(1).enable_module!(:ai_helper)
+      @private_issue = Issue.create!(project: @private_project, tracker: @tracker, subject: "Private Non Member Issue",
+        author: User.find(1), status: IssueStatus.first, priority: IssuePriority.first)
+      @visible_issue = Issue.create!(project: Project.find(1), tracker: @tracker, subject: "Member Issue",
+        author: @user, status: IssueStatus.first, priority: IssuePriority.first)
+    end
+
+    teardown do
+      User.current = @previous_user
+      @private_issue&.destroy
+      @private_project&.destroy
+    end
+
+    should "exclude private non-member project issues from unconditional search when all_projects_scope is ON" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+
+      result = @provider.search_issues(project_id: nil)
+      ids = result[:issues].map { |i| i[:id] }
+
+      assert_includes ids, @visible_issue.id, "the accessible project's issue must stay reachable"
+      assert_not_includes ids, @private_issue.id
+    end
+
+    should "exclude private non-member project issues from filtered search when all_projects_scope is ON" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+
+      result = @provider.search_issues(project_id: nil, fields: [ { field_name: "tracker_id", operator: "=", values: [ @tracker.id.to_s ] } ])
+      ids = result[:issues].map { |i| i[:id] }
+
+      assert_includes ids, @visible_issue.id
+      assert_not_includes ids, @private_issue.id
+    end
+
+    should "exclude private non-member project issues when all_projects_scope is OFF" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+
+      result = @provider.search_issues(project_id: nil)
+      ids = result[:issues].map { |i| i[:id] }
+
+      assert_not_includes ids, @private_issue.id
+    end
+
+    should "exclude a module-enabled project whose role lacks view_ai_helper from cross-project search even when all_projects_scope is ON" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+      Role.find(1).remove_permission!(:view_ai_helper)
+
+      result = @provider.search_issues(project_id: nil)
+      ids = result[:issues].map { |i| i[:id] }
+
+      assert_not_includes ids, @visible_issue.id
+      assert_not_includes ids, @private_issue.id
     end
   end
 

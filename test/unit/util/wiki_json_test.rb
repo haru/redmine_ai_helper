@@ -80,6 +80,21 @@ class RedmineAiHelper::Util::WikiJsonTest < ActiveSupport::TestCase
           "Attachment data must not contain disk_path for security reasons"
       end
     end
+
+    should "return parent as { id:, title: } when the page has a parent" do
+      child_page = @wiki.pages.find_by(title: "Page_with_an_inline_image")
+
+      wiki_data = @test_class.generate_wiki_data(child_page)
+
+      assert_equal({ id: child_page.parent.id, title: child_page.parent.title }, wiki_data[:parent])
+    end
+
+    should "return parent as nil when the page has no parent" do
+      wiki_data = @test_class.generate_wiki_data(@page)
+
+      assert_nil @page.parent
+      assert_nil wiki_data[:parent]
+    end
   end
 
   class TestClass < RedmineAiHelper::BaseTools

@@ -1,8 +1,8 @@
 ---
 title: search_issues Cross-Project Scoping
 type: decision
-sources: [S026]
-updated: 2026-08-24
+sources: [S026, S033]
+updated: 2026-09-07
 ---
 
 # search_issues Cross-Project Scoping
@@ -60,6 +60,13 @@ end
 
 Recorded as [ADR-029](../../docs/adr/029-search-issues-cross-project-scoping.md).
 
+**Update**: both the no-filter and filter-path `.where` clauses now come from
+`RedmineAiHelper::Util::PermissionChecker.data_access_condition`, which wraps
+this same `Project.allowed_to_condition(user, :view_ai_helper)` expression
+unchanged by default, and only widens it — via an admin opt-in setting — to
+also include projects with the `ai_helper` module disabled. See [All-Projects
+Data-Access Scope](./all-projects-data-access-scope.md) (S033).
+
 ## Rejected alternatives
 
 - **`Project.all.select { |p| accessible_project?(p) }.map(&:id)`** (the
@@ -78,3 +85,5 @@ Recorded as [ADR-029](../../docs/adr/029-search-issues-cross-project-scoping.md)
 
 - [Tool System](./tool-system.md) — `accessible_project?`, the DSL's
   `required:` flag, and where this tool provider sits.
+- [All-Projects Data-Access Scope](./all-projects-data-access-scope.md) — the
+  setting and centralized methods that now generate this condition.

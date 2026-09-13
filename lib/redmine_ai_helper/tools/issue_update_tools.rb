@@ -45,6 +45,7 @@ module RedmineAiHelper
         relations = deep_symbolize_array(relations)
         project = Project.find_by(id: project_id)
         raise("Project not found. id = #{project_id}") unless project
+        raise("Project is not accessible: id = #{project_id}") unless accessible_project?(project)
         raise("Permission denied") unless User.current.allowed_to?(:add_issues, project)
 
         issue = Issue.new
@@ -146,6 +147,7 @@ module RedmineAiHelper
         relations_to_remove = deep_symbolize_array(relations_to_remove)
         issue = Issue.find_by(id: issue_id)
         raise("Issue not found. id = #{issue_id}") unless issue
+        raise("Project is not accessible: id = #{issue.project_id}") unless accessible_project?(issue.project)
         raise("Permission denied") unless issue.editable?(User.current)
 
         if comment_to_add

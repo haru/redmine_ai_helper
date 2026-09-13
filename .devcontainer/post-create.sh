@@ -13,6 +13,37 @@ fi
 
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> $HOME/.bashrc
 
+# The base image's .bashrc sources nvm.sh and runs `nvm use` on every shell
+# start. `nvm use` rescans the whole PATH with a regex, which is slow, and tools
+# that probe the environment with `bash -i -c ...` spawn dozens of shells at
+# once -- enough to pin every core in the VM. Load nvm lazily instead.
+if ! grep -q 'nvm-lazy-load' $HOME/.bashrc; then
+    sed -i \
+        -e 's|^\( *\)\. "$NVM_DIR/nvm.sh"|\1: # nvm-lazy-load|' \
+        -e 's|^\( *\)nvm use --silent default.*|\1: # nvm-lazy-load|' \
+        -e 's|^\( *\)\. "$NVM_DIR/bash_completion"|\1: # nvm-lazy-load|' \
+        $HOME/.bashrc
+    cat >> $HOME/.bashrc <<'EOS'
+
+# nvm-lazy-load: put the installed Node on PATH by glob, and defer sourcing
+# nvm.sh until `nvm` is actually invoked.
+for __d in "$NVM_DIR"/versions/node/*/bin; do
+    [ -d "$__d" ] && __nvm_bin="$__d"
+done
+[ -n "$__nvm_bin" ] && export PATH="$__nvm_bin:$PATH"
+unset __d __nvm_bin
+
+nvm() {
+    unset -f nvm
+    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+    [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
+    nvm "$@"
+}
+EOS
+fi
+
+lefthook install
+
 
 rm -rf .ruby-lsp
 ln -s /dev/null .ruby-lsp

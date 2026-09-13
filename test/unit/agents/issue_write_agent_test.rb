@@ -8,8 +8,17 @@ class RedmineAiHelper::Agents::IssueWriteAgentTest < ActiveSupport::TestCase
     setup do
       @project = Project.find(1)
       @user = User.find(1)
+      # The backstory reads the project's issue properties, which requires the
+      # ai_helper module on that project.
+      @project.enable_module!(:ai_helper)
+      @previous_user = User.current
+      User.current = @user
       @langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: "Test input for Langfuse")
       @agent = RedmineAiHelper::Agents::IssueWriteAgent.new(project: @project, langfuse: @langfuse)
+    end
+
+    teardown do
+      User.current = @previous_user
     end
 
     should "declare itself as the sole agent that actually creates and updates issues (US1)" do

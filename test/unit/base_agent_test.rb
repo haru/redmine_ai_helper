@@ -85,6 +85,16 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       assert tool_classes.any? { |klass| klass.write_tool? }, "write tools must be included"
       assert tool_classes.any? { |klass| !klass.write_tool? }, "read-only tools must be included"
     end
+
+    should "exclude write tool classes when read_only_mode is true even if all_projects_scope is also true (FR-012)" do
+      AiHelperSetting.stubs(:read_only_mode?).returns(true)
+      AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+
+      tool_classes = @mixed_agent.available_tool_classes
+
+      assert tool_classes.none? { |klass| klass.write_tool? }, "write tools must be excluded regardless of all_projects_scope"
+      assert tool_classes.any? { |klass| !klass.write_tool? }, "read-only tools must remain"
+    end
   end
 
   context "system_prompt with read_only_mode" do

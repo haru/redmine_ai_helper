@@ -13,11 +13,11 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/coverage-v8": "^5.0.0",
     "eslint": "^10.9.0",
     "eslint-plugin-jsdoc": "^64.2.1",
     "globals": "^17.11.0",
     "jsdom": "^30.0.1",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.0"
   }
 }

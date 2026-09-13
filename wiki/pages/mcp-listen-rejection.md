@@ -1,8 +1,8 @@
 ---
 title: MCP subscriptions/listen Rejection
 type: decision
-sources: [S027, S028, S029]
-updated: 2026-08-28
+sources: [S027, S028, S029, S030, S031]
+updated: 2026-09-07
 ---
 
 # MCP `subscriptions/listen` Rejection (ADR-031)
@@ -16,7 +16,7 @@ does not implement `subscriptions/listen` (SEP-2575) or advertise
 > `serves_subscriptions_listen?` override) was later deleted to fix a
 > regression introduced by the `mcp` gem's 1.3.0→1.4.0 upgrade. See
 > [MCP subscriptions/listen 1.4.0 Fix](./mcp-listen-rejection-1-4-0-fix.md)
-> (ADR-032).
+> (ADR-032, S030, S031).
 
 **Root cause it fixed**: `Server.build` used to pass no explicit
 `capabilities:`, so the `mcp` gem's defaults advertised `listChanged: true`

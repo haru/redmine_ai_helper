@@ -20,9 +20,15 @@ module RedmineAiHelper
       def read_issues(issue_ids:)
         raise("Issue ID array is required.") if issue_ids.empty?
         issues = []
+        # Read the flag once for the whole loop: the accessible_project? default
+        # would re-read the settings row per issue.
+        flag = AiHelperSetting.all_projects_scope?
         Issue.where(id: issue_ids).find_each do |issue|
           # Check if the issue is visible to the current user
           next unless issue.visible?
+          # Check if AI Helper may access the issue's project's data
+          # (ai_helper module enabled, or all_projects_scope is on)
+          next unless accessible_project?(issue.project, all_projects_scope: flag)
 
           issues << generate_issue_data(issue)
         end
@@ -55,6 +61,7 @@ module RedmineAiHelper
         end
 
         raise("Project not found.") unless project
+        raise("Project is not accessible: id = #{project.id}") unless accessible_project?(project)
 
         properties = {
           trackers: project.trackers.map do |tracker|

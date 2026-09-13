@@ -23,6 +23,22 @@ class AiHelperSettingTest < ActiveSupport::TestCase
     AiHelperSetting.destroy_all
   end
 
+  context "all_projects_scope" do
+    should "default to false" do
+      assert_equal false, @setting.all_projects_scope
+    end
+
+    should "expose the setting via AiHelperSetting.all_projects_scope?" do
+      @setting.update!(all_projects_scope: true)
+      assert_equal true, AiHelperSetting.all_projects_scope?
+    end
+
+    should "return false from AiHelperSetting.all_projects_scope? when off" do
+      @setting.update!(all_projects_scope: false)
+      assert_equal false, AiHelperSetting.all_projects_scope?
+    end
+  end
+
   context "think model" do
     setup do
       @think_profile = AiHelperModelProfile.create!(
@@ -184,6 +200,39 @@ class AiHelperSettingTest < ActiveSupport::TestCase
         @setting.update!(vector_search_enabled: true, vector_register_all_projects: false, vector_target_project_ids: [])
         AiHelperSetting.stubs(:setting).returns(@setting)
         assert_equal false, AiHelperSetting.vector_search_enabled_for?(@project_a)
+      end
+    end
+
+    context "vector_target_projects_relation with all_projects_scope (SC-007)" do
+      should "return only ai_helper-module projects when all_projects_scope OFF and register_all ON" do
+        @setting.update!(all_projects_scope: false, vector_register_all_projects: true)
+        ids = @setting.vector_target_projects_relation.pluck(:id)
+        assert_includes ids, @project_a.id
+        assert_not_includes ids, @project_c.id
+      end
+
+      should "return selection intersected with ai_helper-module projects when all_projects_scope OFF and register_all OFF" do
+        @setting.update!(all_projects_scope: false, vector_register_all_projects: false, vector_target_project_ids: [ @project_a.id, @project_c.id ])
+        ids = @setting.vector_target_projects_relation.pluck(:id)
+        assert_equal [ @project_a.id ], ids
+      end
+
+      should "return all projects when all_projects_scope ON and register_all ON" do
+        @setting.update!(all_projects_scope: true, vector_register_all_projects: true)
+        ids = @setting.vector_target_projects_relation.pluck(:id)
+        assert_includes ids, @project_a.id
+        assert_includes ids, @project_c.id
+      end
+
+      should "return selection regardless of module state when all_projects_scope ON and register_all OFF" do
+        @setting.update!(all_projects_scope: true, vector_register_all_projects: false, vector_target_project_ids: [ @project_c.id ])
+        ids = @setting.vector_target_projects_relation.pluck(:id)
+        assert_equal [ @project_c.id ], ids
+      end
+
+      should "return true from vector_target? for a module-disabled project when all_projects_scope and register_all are ON" do
+        @setting.update!(all_projects_scope: true, vector_register_all_projects: true)
+        assert_equal true, @setting.vector_target?(@project_c)
       end
     end
 

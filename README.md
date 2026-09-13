@@ -32,6 +32,7 @@
   - [Think Model Settings](#think-model-settings)
   - [Role and Permission Settings](#role-and-permission-settings)
   - [Project-specific Settings](#project-specific-settings)
+  - [Data Access Policy](#data-access-policy)
 - [⚙️ Advanced Configuration](#️-advanced-configuration)
   - [Nginx Reverse Proxy Settings](#nginx-reverse-proxy-settings)
   - [MCP Server Settings](#mcp-server-settings)
@@ -350,6 +351,14 @@ You can optionally configure a separate model profile for tasks that require dee
 2. Go to the "Modules" tab
 3. Enable "AI Helper" by checking the box
 4. Click "Save" to apply the changes
+
+## Data Access Policy
+
+AI Helper never reads or writes more than the requesting user's own Redmine permissions allow, regardless of how it is invoked (chat, chat gateway, or the MCP server). The following rules define which project data it can reach:
+
+- **Never beyond Redmine permissions**: AI Helper only reads or updates data the requesting user themselves can view or edit in Redmine. It cannot bypass Redmine's access control.
+- **Module-enabled projects only, by default**: Even if the user has Redmine permission for a project, AI Helper does not access that project's data unless the AI Helper module is enabled there. If you have a project whose content must never be sent to the LLM, simply leave the AI Helper module disabled for it — that project is excluded automatically.
+- **Optional cross-project access**: Administrators can enable **"Target all projects"** on the general tab of the AI Helper settings page. Once enabled, AI Helper can also read and update data in projects where the AI Helper module is disabled, as long as the requesting user has the necessary Redmine permissions there. This is useful for instances where sending all project data to the LLM is acceptable and cross-project questions (e.g., "list overdue issues across all projects") are desired. This setting is off by default; enabling it does not change which projects show the AI Helper chat form or other UI — that continues to depend solely on the module setting.
 
 # ⚙️ Advanced Configuration
 

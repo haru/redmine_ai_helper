@@ -18,6 +18,11 @@
     <span class="description"><%= t("activerecord.attributes.ai_helper_setting.read_only_mode_description") %></span>
   </p>
   <hr>
+  <p>
+    <%= f.check_box :all_projects_scope %>
+    <span class="description"><%= t("activerecord.attributes.ai_helper_setting.all_projects_scope_description") %></span>
+  </p>
+  <hr>
   <div id="ai-helper-send-user-id">
     <p>
       <%= f.check_box :send_user_id_enabled %>

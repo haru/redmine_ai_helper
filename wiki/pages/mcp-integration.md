@@ -1,8 +1,8 @@
 ---
 title: MCP Integration
 type: component
-sources: [S002, S006, S016]
-updated: 2026-08-26
+sources: [S002, S006, S016, S033, S034]
+updated: 2026-09-12
 ---
 
 # MCP Integration
@@ -53,6 +53,22 @@ transparent (S006). See [Multi-Agent Architecture](./multi-agent-architecture.md
 > agent above. See
 > [Agent Write-Capability Routing](./agent-write-capability-routing.md) (S016).
 
+## Data-access scope is inherited automatically
+
+Both directions of MCP integration ultimately call the same `BaseTools`
+subclasses as chat-driven requests. Because of this, the [all-projects
+data-access scope](./all-projects-data-access-scope.md) admin setting needed
+**no separate change** on the MCP side — `PermissionChecker.data_accessible?`
+/ `data_access_condition` are shared, so an opted-in instance widens MCP tool
+results the same way it widens chat results (S033).
+
+The inverse is also true, and was the cost of a tool that skipped the check:
+the server exposes every `BaseTools` subclass filtered only by the `admin` and
+`vector_db_enabled` requirements (`MCP::Server#mcp_tool_allowed?`), so a tool
+missing its own access check is reachable by any authenticated user. This is
+how `RepositoryTools`, which checked nothing at all, exposed private projects'
+file contents and diffs until ADR-037 (S034).
+
 ## Related
 
 - [MCP Server Endpoint](./mcp-server-endpoint.md) — exposing Redmine as an MCP
@@ -63,3 +79,7 @@ transparent (S006). See [Multi-Agent Architecture](./multi-agent-architecture.md
 - [Plugin Overview](./plugin-overview.md)
 - [Agent Write-Capability Routing](./agent-write-capability-routing.md) —
   why these agents override `can_write?` instead of using the default.
+- [All-Projects Data-Access Scope](./all-projects-data-access-scope.md) —
+  the shared judgment both MCP directions rely on.
+- [All-Projects Scope: Effects & Alternatives](./all-projects-scope-effects.md) —
+  confirms the MCP endpoint needed no separate change.

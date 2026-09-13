@@ -20,6 +20,7 @@ module RedmineAiHelper
       def read_wiki_page(project_id:, title:)
         wiki = Wiki.find_by(project_id: project_id)
         raise("Wiki not found: project_id = #{project_id}") if !wiki || !wiki.visible?
+        raise("Project is not accessible: id = #{project_id}") unless accessible_project?(wiki.project)
 
         pages = wiki.pages
         ai_helper_logger.debug("Wiki pages: #{pages.inspect}")
@@ -30,7 +31,7 @@ module RedmineAiHelper
         wiki_data
       end
 
-      define_function :list_wiki_pages, description: "List all wiki pages in the project. It includes the title, author, created_on, and updated_on." do
+      define_function :list_wiki_pages, description: "List all wiki pages in the project. It includes the id, title, author, created_on, updated_on, and parent (id and title, or null if top-level)." do
         property :project_id, type: "integer", description: "The project ID of the wiki pages to list.", required: true
       end
       # List all wiki pages in the project.
@@ -40,16 +41,19 @@ module RedmineAiHelper
       def list_wiki_pages(project_id:)
         wiki = Wiki.find_by(project_id: project_id)
         raise("Wiki not found: project_id = #{project_id}") if !wiki || !wiki.visible?
-        pages = wiki.pages.filter(&:visible?)
+        raise("Project is not accessible: id = #{project_id}") unless accessible_project?(wiki.project)
+        pages = wiki.pages.includes(:parent, content: :author).filter(&:visible?)
         json = pages.map do |page|
           {
+            id: page.id,
             title: page.title,
             author: {
               id: page.content.author.id,
               name: page.content.author.name
             },
             created_on: page.created_on,
-            updated_on: page.updated_on
+            updated_on: page.updated_on,
+            parent: page.parent ? { id: page.parent.id, title: page.parent.title } : nil
           }
         end
         json
@@ -66,6 +70,7 @@ module RedmineAiHelper
       def generate_url_for_wiki_page(project_id:, title:)
         wiki = Wiki.find_by(project_id: project_id)
         raise("Wiki not found: project_id = #{project_id}") if !wiki || !wiki.visible?
+        raise("Project is not accessible: id = #{project_id}") unless accessible_project?(wiki.project)
         page = wiki.pages.find_by(title: title)
         raise("Page not found: title = #{title}") if !page || !page.visible?
         url = "#{project_wiki_page_path(wiki.project, page.title)}"

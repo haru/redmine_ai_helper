@@ -125,6 +125,14 @@ class ProjectToolsTest < ActiveSupport::TestCase
     assert(response[:projects].all? { |p| p.key?(:members) })
   end
 
+  def test_project_members_reads_all_projects_scope_setting_once
+    AiHelperSetting.expects(:all_projects_scope?).at_most_once.returns(true)
+
+    response = @provider.project_members(project_ids: [ 1, 2 ])
+
+    assert_equal 2, response[:projects].size
+  end
+
   def test_project_members_with_invalid_project_id
     response = @provider.project_members(project_ids: [ 999 ])
 
@@ -412,6 +420,26 @@ class ProjectToolsTest < ActiveSupport::TestCase
 
     assert_includes accessible_ids, 1 # ai_helper enabled and visible
     assert_not_includes accessible_ids, 3 # ai_helper module not enabled
+  end
+
+  context "list_projects with all_projects_scope" do
+    setup do
+      EnabledModule.where(project_id: 3, name: "ai_helper").destroy_all
+    end
+
+    should "exclude module-disabled projects when all_projects_scope is OFF" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+
+      ids = @provider.list_projects.map { |p| p[:id] }
+      assert_not_includes ids, 3
+    end
+
+    should "include module-disabled but visible projects when all_projects_scope is ON" do
+      AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+
+      ids = @provider.list_projects.map { |p| p[:id] }
+      assert_includes ids, 3
+    end
   end
 
   def test_event_project_id_prefers_the_foreign_key_over_the_association

@@ -20,7 +20,16 @@ class AgentsTest < ActiveSupport::TestCase
 
   context "IssueReadAgent" do
     setup do
+      # The backstory reads the project's issue properties, which requires the
+      # ai_helper module on that project.
+      Project.find(1).enable_module!(:ai_helper)
+      @previous_user = User.current
+      User.current = User.find(1)
       @agent = RedmineAiHelper::Agents::IssueReadAgent.new({ project: Project.find(1) })
+    end
+
+    teardown do
+      User.current = @previous_user
     end
 
     should "return correct tool providers" do
@@ -52,7 +61,16 @@ class AgentsTest < ActiveSupport::TestCase
 
   context "IssueWriteAgent" do
     setup do
+      # The backstory reads the project's issue properties, which requires the
+      # ai_helper module on that project.
+      Project.find(1).enable_module!(:ai_helper)
+      @previous_user = User.current
+      User.current = User.find(1)
       @agent = RedmineAiHelper::Agents::IssueWriteAgent.new({ project: Project.find(1) })
+    end
+
+    teardown do
+      User.current = @previous_user
     end
 
     should "return correct tool providers" do

@@ -287,6 +287,8 @@ tr:
         send_user_id_enabled_description: "Etkinleştirildiğinde, dahili Redmine kullanıcı ID'si LLM sağlayıcısına gönderilir. Bu, alt sistemlerde (ör. LiteLLM) kullanıcı bazlı istatistik takibine olanak tanır. Etkinleştirmeden önce gizlilik etkilerini göz önünde bulundurun."
         read_only_mode: "Salt okunur mod"
         read_only_mode_description: "Etkinleştirildiğinde, AI Asistan sohbeti herhangi bir veri (işler, wiki sayfaları, yorumlar vb.) oluşturamaz, güncelleyemez veya silemez. Harici MCP sunucusu entegrasyonu da devre dışı bırakılır."
+        all_projects_scope: "Target all projects"
+        all_projects_scope_description: "When enabled, projects without the AI Helper module also become targets for reading and updating data from the chat, chat gateways, and the MCP server, and are eligible for vector registration. AI Helper UI elements are still shown only in projects with the module enabled, and Redmine permissions of the requesting user always apply."
       ai_helper_project_setting:
         issue_draft_instructions: "İş yorumu oluşturma talimatları"
         subtask_instructions: "Alt görev oluşturma talimatları"
