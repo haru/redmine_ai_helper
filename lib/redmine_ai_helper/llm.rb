@@ -56,23 +56,21 @@ module RedmineAiHelper
     end
 
     # Get the summary of the issue using IssueReadAgent with streaming support
+    # Errors are never swallowed here: the caller must be able to tell a failed
+    # summary from a successful one so that a failure message is not persisted
+    # as cached summary content.
     # @param issue [Issue] The issue object
     # @param stream_proc [Proc] Optional callback proc for streaming content
-    # return [String] The summary of the issue
+    # @raise [StandardError] if summary generation fails
+    # @return [String] The summary of the issue
     def issue_summary(issue:, stream_proc: nil)
-      begin
-        prompt = "Please summarize the issue #{issue.id}."
-        langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: prompt)
-        agent = RedmineAiHelper::Agents::IssueReadAgent.new(project: issue.project, langfuse: langfuse)
-        langfuse.create_span(name: "user_request", input: prompt)
-        answer = agent.issue_summary(issue: issue, stream_proc: stream_proc)
-        langfuse.finish_current_span(output: answer)
-        langfuse.flush(output: answer)
-      rescue => e
-        ai_helper_logger.error "error: #{e.full_message}"
-        answer = e.message
-        stream_proc.call(answer) if stream_proc
-      end
+      prompt = "Please summarize the issue #{issue.id}."
+      langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: prompt)
+      agent = RedmineAiHelper::Agents::IssueReadAgent.new(project: issue.project, langfuse: langfuse)
+      langfuse.create_span(name: "user_request", input: prompt)
+      answer = agent.issue_summary(issue: issue, stream_proc: stream_proc)
+      langfuse.finish_current_span(output: answer)
+      langfuse.flush(output: answer)
       ai_helper_logger.info "answer: #{answer}"
       answer
     end

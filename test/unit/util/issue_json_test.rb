@@ -2,7 +2,7 @@ require File.expand_path("../../../test_helper", __FILE__)
 require "redmine_ai_helper/util/issue_json"
 
 class RedmineAiHelper::Util::IssueJsonTest < ActiveSupport::TestCase
-  fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :attachments, :changesets, :journals, :journal_details, :changes, :issue_relations
+  fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :attachments, :changesets, :journals, :journal_details, :changes, :issue_relations, :members, :member_roles, :roles, :groups_users
 
   context "generate_issue_data" do
     setup do
@@ -165,9 +165,134 @@ class RedmineAiHelper::Util::IssueJsonTest < ActiveSupport::TestCase
     end
   end
 
+  context "generate_issue_data_with_roles" do
+    setup do
+      @issue = Issue.find(1)
+      @test_class = TestClass.new
+    end
+
+    should "include all role names of a multi-role user, deduplicated and sorted ascending" do
+      MemberRole.create!(member: Member.find(1), role: Role.find(2))
+
+      data = @test_class.generate_issue_data_with_roles(@issue)
+
+      assert_equal %w[Developer Manager], data[:author][:roles]
+    end
+
+    should "deduplicate roles shared by direct and group-inherited membership" do
+      # The issue author joins a group whose project membership carries the
+      # Developer role; Redmine materialises the inherited role as an extra
+      # MemberRole row on the author's own membership, next to the direct rows.
+      group = Group.find(10)
+      group.user_ids += [ User.find(2).id ]
+      Member.create!(user_id: group.id, project_id: @issue.project_id, role_ids: [ 2 ])
+
+      data = @test_class.generate_issue_data_with_roles(@issue)
+
+      assert_equal %w[Developer Manager], data[:author][:roles]
+    end
+
+    should "include roles inherited through group membership" do
+      Member.create!(user_id: 10, project_id: @issue.project_id, role_ids: [ 3 ])
+      Journal.create!(journalized: @issue, user: User.find(8), notes: "note from group member")
+
+      data = @test_class.generate_issue_data_with_roles(@issue)
+      journal_user = data[:journals].find { |j| j[:user] && j[:user][:id] == 8 }
+
+      assert_equal %w[Reporter], journal_user[:user][:roles]
+    end
+
+    should "return empty roles for a non-member user" do
+      Journal.create!(journalized: @issue, user: User.find(9), notes: "note from non member")
+
+      data = @test_class.generate_issue_data_with_roles(@issue)
+      journal_user = data[:journals].find { |j| j[:user] && j[:user][:id] == 9 }
+
+      assert_equal [], journal_user[:user][:roles]
+      assert_not_includes journal_user[:user][:roles], "Non member"
+    end
+
+    should "return empty roles for an anonymous user" do
+      Journal.create!(journalized: @issue, user: User.find(6), notes: "note from anonymous")
+
+      data = @test_class.generate_issue_data_with_roles(@issue)
+      journal_user = data[:journals].find { |j| j[:user] && j[:user][:id] == 6 }
+
+      assert_equal [], journal_user[:user][:roles]
+      assert_not_includes journal_user[:user][:roles], "Anonymous"
+    end
+
+    should "keep assigned_to nil without a roles key when the assignee is removed" do
+      @issue.update!(assigned_to_id: 2)
+      @issue.update!(assigned_to_id: nil)
+
+      data = @test_class.generate_issue_data_with_roles(@issue)
+
+      assert_nil data[:assigned_to]
+    end
+
+    should "return the roles of a Group assigned to the issue in the same shape as a User" do
+      Member.create!(user_id: 10, project_id: @issue.project_id, role_ids: [ 3 ])
+      @issue.assigned_to = Group.find(10)
+
+      data = @test_class.generate_issue_data_with_roles(@issue)
+
+      assert_equal({ id: 10, name: "A Team", roles: %w[Reporter] }, data[:assigned_to])
+    end
+
+    should "return empty roles for a non-member Group assignee without raising" do
+      @issue.assigned_to = Group.find(11)
+
+      data = assert_nothing_raised do
+        @test_class.generate_issue_data_with_roles(@issue)
+      end
+
+      assert_equal({ id: 11, name: "B Team", roles: [] }, data[:assigned_to])
+    end
+
+    should "not raise when the assignee is removed" do
+      @issue.update!(assigned_to_id: 2)
+      @issue.update!(assigned_to_id: nil)
+
+      assert_nothing_raised do
+        @test_class.generate_issue_data_with_roles(@issue)
+      end
+    end
+  end
+
+  context "generate_issue_data roles isolation" do
+    setup do
+      @issue = Issue.find(1)
+      @issue.assigned_to = User.find(2)
+      @test_class = TestClass.new
+    end
+
+    should "never include roles in the shared generate_issue_data output" do
+      Member.create!(user_id: 10, project_id: @issue.project_id, role_ids: [ 3 ])
+      Journal.create!(journalized: @issue, user: User.find(9), notes: "note from non member")
+      Journal.create!(journalized: @issue, user: User.find(2), notes: "note from member")
+
+      json = JSON.generate(@test_class.generate_issue_data(@issue))
+
+      assert_not_includes json, "roles"
+    end
+  end
+
+  context "WithRoles module boundary" do
+    should "not expose role enrichment to classes that include only IssueJson" do
+      plain_class = Class.new { include RedmineAiHelper::Util::IssueJson }
+      enrichable_class = Class.new { include RedmineAiHelper::Util::IssueJson::WithRoles }
+
+      assert_not plain_class.method_defined?(:generate_issue_data_with_roles),
+        "generate_issue_data_with_roles must not be reachable without explicitly including WithRoles"
+      assert enrichable_class.method_defined?(:generate_issue_data_with_roles)
+    end
+  end
+
   class TestClass < RedmineAiHelper::BaseTools
     # This class is used to test the IssueJson module
     # It includes the IssueJson module to access its methods
     include RedmineAiHelper::Util::IssueJson
+    include RedmineAiHelper::Util::IssueJson::WithRoles
   end
 end
