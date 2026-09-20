@@ -61,7 +61,7 @@ module RedmineAiHelper
     # as cached summary content.
     # @param issue [Issue] The issue object
     # @param stream_proc [Proc] Optional callback proc for streaming content
-    # @raise [StandardError] if summary generation fails
+    # @raise [StandardError] if summary generation fails, or if the agent returns a blank response
     # @return [String] The summary of the issue
     def issue_summary(issue:, stream_proc: nil)
       prompt = "Please summarize the issue #{issue.id}."
@@ -69,6 +69,7 @@ module RedmineAiHelper
       agent = RedmineAiHelper::Agents::IssueReadAgent.new(project: issue.project, langfuse: langfuse)
       langfuse.create_span(name: "user_request", input: prompt)
       answer = agent.issue_summary(issue: issue, stream_proc: stream_proc)
+      raise I18n.t("ai_helper.error_empty_issue_summary") if answer.blank?
       langfuse.finish_current_span(output: answer)
       langfuse.flush(output: answer)
       ai_helper_logger.info "answer: #{answer}"
