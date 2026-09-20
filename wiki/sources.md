@@ -39,3 +39,4 @@ Sources are immutable inputs — the wiki never edits them.
 | S032 | specs/056-wiki-parent-id (research.md + plan.md) | feature-artifact | 2026-09-01 | 2026-09-01 | wiki-tools.md, tool-system.md |
 | S033 | specs/057-all-projects-scope (research.md + plan.md) | feature-artifact | 2026-09-07 | 2026-09-07 | all-projects-data-access-scope.md, all-projects-scope-effects.md, tool-system.md, search-issues-cross-project-scoping.md, vector-search-internals.md, vector-search.md, mcp-integration.md, plugin-overview.md |
 | S034 | docs/adr/037-data-access-scope-applies-to-every-tool.md | file | 2026-09-12 | 2026-09-12 | all-projects-data-access-scope.md, all-projects-scope-effects.md, tool-system.md, mcp-integration.md |
+| S035 | specs/058-issue-summary-instructions (research.md + plan.md) | feature-artifact | 2026-09-20 | 2026-09-20 | issue-summary-instructions-role-gating.md, issue-summary-instructions-prompt-template.md, issue-ai-features.md |
