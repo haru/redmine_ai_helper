@@ -1,17 +1,18 @@
 require_relative "../../../test_helper"
 require "redmine_ai_helper/llm"
 
-class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
+class RedmineAiHelper::LlmIssueSummaryTest < ActiveSupport::TestCase
   fixtures :projects, :users, :issues, :issue_statuses, :trackers, :enumerations
 
   context "#issue_summary" do
     setup do
+      @previous_user = User.current
       @issue = Issue.find(1)
       User.current = User.find(1)
     end
 
     teardown do
-      User.current = User.find(1)
+      User.current = @previous_user
     end
 
     should "return the agent's answer on success" do

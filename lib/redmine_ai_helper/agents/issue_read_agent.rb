@@ -404,7 +404,7 @@ module RedmineAiHelper
       # @param instructions [String] The trusted project-level summary instructions.
       # @return [String] The instructions safe to embed between the delimiter tags.
       def sanitize_summary_instructions(instructions)
-        instructions.gsub(%r{</?project_instructions>}i, "")
+        instructions.gsub(%r{</?\s*project_instructions\b[^>]*/?>}i, "")
       end
 
       # Fetch todo issues based on options
