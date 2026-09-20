@@ -38,6 +38,16 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
         assert_equal "Permission denied", summary
       end
+
+      should "raise an error when the agent returns an empty summary" do
+        RedmineAiHelper::Agents::IssueReadAgent.any_instance.stubs(:issue_summary).returns("")
+
+        error = assert_raises(RuntimeError) do
+          @llm.issue_summary(issue: @issue)
+        end
+
+        assert_equal I18n.t("ai_helper.error_empty_issue_summary"), error.message
+      end
     end
 
     context "generate_issue_reply" do
