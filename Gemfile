@@ -1,7 +1,7 @@
 source "https://rubygems.org"
 
 gem "mcp", "~> 1.6.0"
-gem "ruby_llm", "~> 1.16.0"
+gem "ruby_llm", "~> 2.0.0"
 gem "ruby_llm-mcp", "~> 1.0.0"
 
 gem "langfuse", "~> 0.1.1"
