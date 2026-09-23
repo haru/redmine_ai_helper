@@ -1,8 +1,8 @@
 ---
 title: MCP Server Endpoint
 type: component
-sources: [S002, S006, S007, S018, S028, S030, S031]
-updated: 2026-08-28
+sources: [S002, S006, S007, S018, S028, S030, S031, S036]
+updated: 2026-09-23
 ---
 
 # MCP Server Endpoint
@@ -56,6 +56,11 @@ clients never see a tool (S006).
 Tool groups exposed: Issue, Project, Wiki, Repository, Board, User, Version,
 File (`analyze_content_files`), and Vector (`find_similar_issues`,
 `ask_with_filter` — requires [Vector Search](./vector-search.md) setup) (S002).
+Admin-only `SystemTools` functions, including the [log file access
+tools](./log-file-access-tools.md), are hidden from non-admin clients by
+`requires admin: true` and re-checked at call time in `tool_adapter.rb`; the log
+tools additionally refuse to run unless the "Allow log access" setting is on
+(S036).
 
 ## Related
 

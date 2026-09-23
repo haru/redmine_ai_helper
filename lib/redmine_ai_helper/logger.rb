@@ -87,20 +87,39 @@ module RedmineAiHelper
   class CustomLogger
     include Singleton
 
-    def initialize
-      log_file_path = Rails.root.join("log/ai_helper.log")
+    # Returns the file the AI Helper logger writes to under the given configuration.
+    # @param config [Hash] The return value of RedmineAiHelper::Util::ConfigFile.load_config
+    # @return [Pathname, nil] The log file, or nil when config.yml has no logger
+    #   section and the plugin writes into Rails.logger
+    def self.log_file_path(config)
+      logger = config[:logger]
+      return nil unless logger
+      return Rails.root.join("log", logger[:file]) if logger[:file]
 
+      Rails.root.join("log/ai_helper.log")
+    end
+
+    # The file this logger writes to, or nil when it writes into Rails.logger.
+    # It is decided once, when the logger is built, so an edit to config.yml
+    # takes effect only after Redmine restarts; the log functions of
+    # SystemTools read this value so that they follow the running logger.
+    # @return [Pathname, nil]
+    attr_reader :log_file_path
+
+    # Builds the logger from config/ai_helper/config.yml: a daily-rotated file
+    # logger when config.yml has a logger section, Rails.logger otherwise.
+    def initialize
       config = RedmineAiHelper::Util::ConfigFile.load_config
 
-      logger = config[:logger]
-      unless logger
+      @log_file_path = self.class.log_file_path(config)
+      unless @log_file_path
         @logger = Rails.logger
         return
       end
+      logger = config[:logger]
       log_level = "info"
       log_level = logger[:level] if logger[:level]
-      log_file_path = Rails.root.join("log", logger[:file]) if logger[:file]
-      @logger = ::Logger.new(log_file_path, "daily")
+      @logger = ::Logger.new(@log_file_path, "daily")
       @logger.formatter = proc do |severity, datetime, _progname, msg|
         "[#{datetime}] #{severity} -- #{msg}\n"
       end

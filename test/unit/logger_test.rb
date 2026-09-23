@@ -277,4 +277,37 @@ class LoggerTest < ActiveSupport::TestCase
     mock_internal_logger.expects(:level=).with(::Logger::INFO).once
     test_logger.set_log_level("unknown")
   end
+
+  def test_log_file_path_is_nil_without_logger_section
+    assert_nil RedmineAiHelper::CustomLogger.log_file_path({})
+  end
+
+  def test_log_file_path_uses_the_configured_file
+    assert_equal Rails.root.join("log/custom.log"),
+                 RedmineAiHelper::CustomLogger.log_file_path({ logger: { file: "custom.log" } })
+  end
+
+  def test_log_file_path_defaults_to_ai_helper_log
+    assert_equal Rails.root.join("log/ai_helper.log"),
+                 RedmineAiHelper::CustomLogger.log_file_path({ logger: { level: "info" } })
+  end
+
+  def test_instance_log_file_path_is_fixed_when_the_logger_is_built
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, "ai.log")
+      RedmineAiHelper::Util::ConfigFile.stubs(:load_config).returns({ logger: { file: path } })
+      logger = RedmineAiHelper::CustomLogger.send(:new)
+      RedmineAiHelper::Util::ConfigFile.stubs(:load_config).returns({ logger: { file: File.join(dir, "edited.log") } })
+
+      assert_equal Pathname.new(path), logger.log_file_path
+    ensure
+      logger&.instance_variable_get(:@logger)&.close
+    end
+  end
+
+  def test_instance_log_file_path_is_nil_when_writing_into_rails_logger
+    RedmineAiHelper::Util::ConfigFile.stubs(:load_config).returns({})
+
+    assert_nil RedmineAiHelper::CustomLogger.send(:new).log_file_path
+  end
 end

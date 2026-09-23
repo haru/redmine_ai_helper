@@ -299,6 +299,8 @@ en:
         read_only_mode_description: "When enabled, the AI Helper chat cannot create, update, or delete any data (issues, wiki pages, comments, etc.). External MCP server integration is also disabled."
         all_projects_scope: "Target all projects"
         all_projects_scope_description: "When enabled, data from projects without the AI Helper module also becomes a target for reading and updating, and is sent to the LLM. When disabled, data from projects without the AI Helper module is not a target for reading or updating."
+        log_access_enabled: "Allow log file access"
+        log_access_enabled_description: "When enabled, administrators can read the Redmine application log and the AI Helper log from the chat and the MCP server. The log contents are sent to the configured LLM provider, or to the MCP client when read through the MCP server. Log files may contain personal or sensitive information, so enable this only when needed."
       ai_helper_project_setting:
         issue_draft_instructions: "Instructions for issue comment generation"
         subtask_instructions: "Instructions for subtask generation"

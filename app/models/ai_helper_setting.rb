@@ -24,6 +24,7 @@ class AiHelperSetting < ApplicationRecord
     "send_user_id_enabled",
     "read_only_mode",
     "all_projects_scope",
+    "log_access_enabled",
     "vector_register_all_projects", "vector_target_project_ids"
 
   validates :attachment_max_size_mb,
@@ -78,6 +79,13 @@ class AiHelperSetting < ApplicationRecord
     # @return [Boolean]
     def all_projects_scope?
       setting.all_projects_scope
+    end
+
+    # Returns whether administrators may read the Redmine and AI Helper log files
+    # through the SystemTools log functions (FR-002a).
+    # @return [Boolean]
+    def log_access_enabled?
+      setting.log_access_enabled
     end
 
     # Returns whether vector search is effectively enabled for the given project.
