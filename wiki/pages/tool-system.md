@@ -1,8 +1,8 @@
 ---
 title: Tool System
 type: component
-sources: [S008, S016, S026, S032, S033, S034]
-updated: 2026-09-12
+sources: [S008, S016, S026, S032, S033, S034, S036]
+updated: 2026-09-23
 ---
 
 # Tool System
@@ -81,7 +81,7 @@ providers' functions it may call — a per-agent permission boundary (S008).
 | `VectorTools` | Semantic search over Qdrant |
 | `FileTools` | Document analysis via prompt templates |
 | `ImageTools` | Image-attachment handling |
-| `UserTools`, `SystemTools`, `BoardTools`, `RepositoryTools` | Users, env info, forums, SCM |
+| `UserTools`, `SystemTools`, `BoardTools`, `RepositoryTools` | Users, env info + admin [log access](./log-file-access-tools.md) (S036), forums, SCM |
 
 ## Gotchas
 

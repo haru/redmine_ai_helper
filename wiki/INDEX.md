@@ -23,6 +23,7 @@ page files, not here.
 - [search_issues Cross-Project Scoping](./pages/search-issues-cross-project-scoping.md) — why omitting `project_id` scopes to `Project.allowed_to_condition(user, :view_ai_helper)` instead of plain `Issue.visible`, and why the single-project path stays untouched.
 - [Issue Summary Instructions & Role Gating](./pages/issue-summary-instructions-role-gating.md) — the one-query `Member`-based role resolution for users and groups, and why role enrichment is gated on the project's `issue_summary_instructions` being present.
 - [Issue Summary Instructions: Prompt Template & Settings](./pages/issue-summary-instructions-prompt-template.md) — the zero-prompt-diff template split, the setting's name vs. the wiki-summary feature, and why no cache invalidation is needed.
+- [Log File Location Resolution](./pages/log-file-location-resolution.md) — ADR-039: finding the Redmine log from the runtime `Rails.logger` (BroadcastLogger → private `@logdev` → `LogDevice#filename`), sharing `CustomLogger.log_file_path` for the AI Helper log, and never reading a substitute file.
 
 ## component
 - [Chat Channel Gateway Architecture](./pages/chat-channel-gateway-architecture.md) — core + adapters structure, capability declaration, and gateway operational model.
@@ -43,6 +44,8 @@ page files, not here.
 - [Vector Search Internals](./pages/vector-search-internals.md) — Qdrant subsystem components, hybrid content/embeddings, payload indexes, rake tasks, staleness sync, and project-selection scope/gating.
 - [JavaScript Quality Tooling](./pages/js-quality-tooling.md) — ESLint 10 flat config + Vitest 4/jsdom + `@vitest/coverage-v8`, Node.js/npm setup, and regression-check/CI wiring.
 - [Wiki Tools](./pages/wiki-tools.md) — `WikiTools`/`WikiWriteTools`: the unified `{id:, title:}` parent format, `wiki_update_page`'s `parent_title` semantics and validation, and why cross-wiki parents and N+1 eager-loading were left alone.
+- [Log File Access Tools](./pages/log-file-access-tools.md) — `SystemTools`' admin-only `get_log_file_info`/`read_log_tail`/`search_log`: admin → setting → input gating, the `log_access_enabled` setting, limits, path hiding, and `SystemAgent` prompt guidance.
+- [Log File Reader](./pages/log-file-reader.md) — `LogFileReader`: backward chunked tail and search, the 500 MB scan cap, literal matching, and when line numbers count from the start vs. only from the end.
 
 ## reference
 - [Chat History APIs](./pages/chat-history-apis.md) — Slack/Discord message-retrieval APIs, scopes, display-name resolution, exclusion rules.

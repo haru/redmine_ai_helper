@@ -1,8 +1,8 @@
 ---
 title: Inline Completion Request Flow
 type: component
-sources: [S021, S022]
-updated: 2026-08-26
+sources: [S021, S022, S036]
+updated: 2026-09-23
 ---
 
 # Inline Completion Request Flow
@@ -101,7 +101,9 @@ error still stops the instance from booting, because `init.rb` builds
 `CustomLogger` at boot and that reads the same file through `load_config`
 (S021). Reporting the problem cannot depend on the plugin logger for the same
 reason, which is why `ai_helper_logger` falls back to `Rails.logger`
-(ADR-020, S022).
+(ADR-020, S022). `CustomLogger`'s path rule now lives in
+`CustomLogger.log_file_path(config)`, shared with the [log file
+locator](./log-file-location-resolution.md) (S036).
 
 ## Related
 
