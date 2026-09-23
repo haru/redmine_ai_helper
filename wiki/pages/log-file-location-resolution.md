@@ -56,8 +56,10 @@ can read a file that exists but is not being written, which the spec forbids
 ## AI Helper log: share the logger's own rule
 
 **Decision**: extract the path rule from `CustomLogger#initialize` into
-`CustomLogger.log_file_path(config)`, called by both the logger and the locator,
-so the two can never drift apart (S036):
+`CustomLogger.log_file_path(config)`. The logger applies it once at boot and
+keeps the result in `CustomLogger#log_file_path`, which the locator reads, so
+the tools follow the file the running logger writes even if `config.yml` is
+edited without a restart (S036):
 
 | `config/ai_helper/config.yml` | Log file |
 |---|---|
@@ -69,10 +71,14 @@ so the two can never drift apart (S036):
 file to `…YYYYMMDD` and reopens the same path, so the current file is always the
 path above; rotated files are out of scope (S036).
 
-**Rejected**: inspecting `CustomLogger.instance` at runtime — with no `logger`
-section it returns `Rails.logger`, indistinguishable from the Redmine log;
-reading `log/ai_helper.log` when the section is absent — that file may be a
-stale leftover (S036).
+A `config.yml` that could not be read at boot leaves no logger instance; the
+locator then reports the log as unavailable without the path of `config.yml`.
+
+**Rejected**: inspecting the `::Logger` wrapped by `CustomLogger.instance` — with
+no `logger` section it is `Rails.logger`, indistinguishable from the Redmine log;
+re-reading `config.yml` on every call — after an edit without a restart it names
+a file the logger does not write; reading `log/ai_helper.log` when the section is
+absent — that file may be a stale leftover (S036).
 
 ## Related
 

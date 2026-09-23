@@ -417,6 +417,19 @@ class RedmineAiHelper::Util::LogFileReaderTest < ActiveSupport::TestCase
       end
     end
 
+    should "keep a blank line that forms a block of its own at a chunk boundary" do
+      path = write_log("HIT one\nAAAA\n\nBBBB\nHIT two\n")
+      expected = run_search(path, "HIT", context_lines: 3)
+      assert_equal [ "AAAA", "", "BBBB" ], contents(expected[:matches].first[:after])
+      assert_equal [ "AAAA", "", "BBBB" ], contents(expected[:matches].last[:before])
+      assert_equal [ 1, 5 ], match_lines(expected, :line_number)
+
+      [ 1, 3, 5, 8 ].each do |chunk|
+        result = run_search(path, "HIT", context_lines: 3, search_chunk_bytes: chunk)
+        assert_equal expected, result, "chunk size #{chunk}"
+      end
+    end
+
     should "replace invalid UTF-8 and truncate long lines in matches and context" do
       long_match = "KEY #{"a" * 2_100}"
       long_after = "z" * 2_500

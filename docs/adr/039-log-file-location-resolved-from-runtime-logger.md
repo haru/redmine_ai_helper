@@ -28,7 +28,7 @@ Rails 8.1 always wraps the resulting logger in `ActiveSupport::BroadcastLogger`.
 - Every way of changing the log destination listed above is detected correctly, because the decision is based on where the logger writes rather than on configuration that may be overridden.
 - `@logdev` is not a public API of the logger gem. A future logger or Rails release could rename it. `test/unit/util/log_file_locator_test.rb` builds real `ActiveSupport::Logger` instances over files, `StringIO`, `$stdout` and `$stderr`, so such a change is detected by the test suite.
 - If the internals change without the tests being run, the locator finds no file and reports the log as unavailable. It never reads a wrong file.
-- The AI Helper log is resolved differently (from `config/ai_helper/config.yml` through `CustomLogger.log_file_path`), because without a `logger` section it writes into `Rails.logger` and would be indistinguishable from the Redmine log.
+- The AI Helper log is resolved differently: `CustomLogger` records the file it chose from `config/ai_helper/config.yml` at boot (`CustomLogger#log_file_path`, `nil` when it writes into `Rails.logger`), and the locator reads that value. Inspecting the wrapped logger would not work, because without a `logger` section it is `Rails.logger` and indistinguishable from the Redmine log; re-reading `config.yml` would not work either, because an edit without a restart would name a file the running logger does not write.
 
 ## Alternatives Considered
 

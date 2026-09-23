@@ -217,6 +217,9 @@ module RedmineAiHelper
         # @param text [String] Valid UTF-8 lines joined by "\n", in file order
         # @return [Boolean] true when the scan can stop
         def process(text)
+          # A block holding a single empty line, which String#split would drop.
+          return process_line(text) if text.empty?
+
           if @waiting.empty? && !@pattern.match?(text)
             skip_block(text)
             return false

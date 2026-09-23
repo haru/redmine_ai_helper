@@ -388,7 +388,7 @@ class SystemToolsTest < ActiveSupport::TestCase
       @log_dir = Dir.mktmpdir
       @ai_log_path = File.join(@log_dir, "ai_helper.log")
       File.write(@ai_log_path, "[info] started\n[error] RubyLLM::Error timeout\n")
-      RedmineAiHelper::CustomLogger.stubs(:log_file_path).returns(Pathname.new(@ai_log_path))
+      RedmineAiHelper::CustomLogger.instance.stubs(:log_file_path).returns(Pathname.new(@ai_log_path))
       AiHelperSetting.setting.update!(log_access_enabled: true)
       User.current = User.find(1)
     end
@@ -415,8 +415,7 @@ class SystemToolsTest < ActiveSupport::TestCase
     end
 
     should "report the ai_helper log as unavailable without a logger section" do
-      RedmineAiHelper::CustomLogger.unstub(:log_file_path)
-      RedmineAiHelper::Util::ConfigFile.stubs(:load_config).returns({})
+      RedmineAiHelper::CustomLogger.instance.stubs(:log_file_path).returns(nil)
 
       error = assert_raises(RuntimeError) { @provider.read_log_tail(log_type: "ai_helper") }
       assert_match(/\AThe ai_helper log is not available: /, error.message)
@@ -432,7 +431,7 @@ class SystemToolsTest < ActiveSupport::TestCase
       use_redmine_log("redmine line\n")
       @ai_log_path = File.join(@log_dir, "ai_helper.log")
       File.write(@ai_log_path, "ai line\n")
-      RedmineAiHelper::CustomLogger.stubs(:log_file_path).returns(Pathname.new(@ai_log_path))
+      RedmineAiHelper::CustomLogger.instance.stubs(:log_file_path).returns(Pathname.new(@ai_log_path))
       AiHelperSetting.setting.update!(log_access_enabled: true)
       User.current = User.find(1)
       @original_stdout_env = ENV.fetch("RAILS_LOG_TO_STDOUT", nil)
@@ -476,8 +475,7 @@ class SystemToolsTest < ActiveSupport::TestCase
     end
 
     should "report the ai_helper log as unavailable without a logger section" do
-      RedmineAiHelper::CustomLogger.unstub(:log_file_path)
-      RedmineAiHelper::Util::ConfigFile.stubs(:load_config).returns({})
+      RedmineAiHelper::CustomLogger.instance.stubs(:log_file_path).returns(nil)
 
       redmine, ai_helper = @provider.get_log_file_info[:log_files]
       assert_equal true, redmine[:available]
@@ -486,9 +484,8 @@ class SystemToolsTest < ActiveSupport::TestCase
     end
 
     should "report the ai_helper log as unavailable when config.yml is broken and still describe the redmine log" do
-      RedmineAiHelper::CustomLogger.unstub(:log_file_path)
       config_path = Rails.root.join("config/ai_helper/config.yml").to_s
-      RedmineAiHelper::Util::ConfigFile.stubs(:load_config).raises(Psych::SyntaxError.new(config_path, 1, 1, 0, "bad", "context"))
+      RedmineAiHelper::CustomLogger.stubs(:instance).raises(Psych::SyntaxError.new(config_path, 1, 1, 0, "bad", "context"))
 
       result = @provider.get_log_file_info
       redmine, ai_helper = result[:log_files]

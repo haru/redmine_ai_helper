@@ -33,6 +33,11 @@ class RedmineAiHelper::Util::LogFileLocatorTest < ActiveSupport::TestCase
     ActiveSupport::BroadcastLogger.new(*loggers)
   end
 
+  # Makes the running AI Helper logger write to the given file (nil: into Rails.logger).
+  def run_ai_helper_logger_with(path)
+    RedmineAiHelper::CustomLogger.instance.stubs(:log_file_path).returns(path)
+  end
+
   context "constants" do
     should "list the supported log types" do
       assert_equal %w[redmine ai_helper], Locator::LOG_TYPES
@@ -123,29 +128,31 @@ class RedmineAiHelper::Util::LogFileLocatorTest < ActiveSupport::TestCase
   end
 
   context "ai_helper" do
-    should "resolve the file configured in config.yml" do
-      RedmineAiHelper::Util::ConfigFile.stubs(:load_config).returns({ logger: { file: "custom_ai.log" } })
+    should "resolve the file written by the running logger" do
+      run_ai_helper_logger_with(Rails.root.join("log/custom_ai.log"))
 
       assert_equal Rails.root.join("log/custom_ai.log").to_s, Locator.resolve("ai_helper")
     end
 
-    should "resolve the default file when the logger section has no file" do
-      RedmineAiHelper::Util::ConfigFile.stubs(:load_config).returns({ logger: { level: "debug" } })
+    should "keep resolving the running logger's file after config.yml is edited" do
+      run_ai_helper_logger_with(Rails.root.join("log/ai_helper.log"))
+      RedmineAiHelper::Util::ConfigFile.stubs(:load_config).returns({ logger: { file: "edited.log" } })
 
       assert_equal Rails.root.join("log/ai_helper.log").to_s, Locator.resolve("ai_helper")
     end
 
-    should "be unavailable without a logger section" do
-      RedmineAiHelper::Util::ConfigFile.stubs(:load_config).returns({})
+    should "be unavailable when the running logger writes into Rails.logger" do
+      run_ai_helper_logger_with(nil)
+      RedmineAiHelper::Util::ConfigFile.stubs(:load_config).returns({ logger: { file: "edited.log" } })
 
       error = assert_raises(Locator::UnavailableError) { Locator.resolve("ai_helper") }
-      assert_includes error.message, "config/ai_helper/config.yml has no logger section"
+      assert_includes error.message, "config/ai_helper/config.yml had no logger section when Redmine started"
       assert_not_includes error.message, Rails.root.to_s
     end
 
     should "be unavailable without leaking the path when config.yml cannot be parsed" do
       error_with_path = Psych::SyntaxError.new(Rails.root.join("config/ai_helper/config.yml").to_s, 1, 1, 0, "bad", "context")
-      RedmineAiHelper::Util::ConfigFile.stubs(:load_config).raises(error_with_path)
+      RedmineAiHelper::CustomLogger.stubs(:instance).raises(error_with_path)
 
       error = assert_raises(Locator::UnavailableError) { Locator.resolve("ai_helper") }
       assert_includes error.message, "could not be read"
@@ -153,13 +160,13 @@ class RedmineAiHelper::Util::LogFileLocatorTest < ActiveSupport::TestCase
     end
 
     should "be unavailable when config.yml is empty" do
-      RedmineAiHelper::Util::ConfigFile.stubs(:load_config).raises(NoMethodError, "undefined method 'deep_symbolize_keys' for false")
+      RedmineAiHelper::CustomLogger.stubs(:instance).raises(NoMethodError, "undefined method 'deep_symbolize_keys' for false")
 
       assert_raises(Locator::UnavailableError) { Locator.resolve("ai_helper") }
     end
 
     should "be unavailable when the logger section is not a mapping" do
-      RedmineAiHelper::Util::ConfigFile.stubs(:load_config).returns({ logger: "debug" })
+      RedmineAiHelper::CustomLogger.stubs(:instance).raises(TypeError, "no implicit conversion of Symbol into Integer")
 
       error = assert_raises(Locator::UnavailableError) { Locator.resolve("ai_helper") }
       assert_includes error.message, "logger section is invalid"
@@ -167,7 +174,7 @@ class RedmineAiHelper::Util::LogFileLocatorTest < ActiveSupport::TestCase
 
     should "be resolved even when the redmine log is unavailable" do
       Rails.logger = broadcast(ActiveSupport::Logger.new(StringIO.new))
-      RedmineAiHelper::Util::ConfigFile.stubs(:load_config).returns({ logger: {} })
+      run_ai_helper_logger_with(Rails.root.join("log/ai_helper.log"))
 
       assert_equal Rails.root.join("log/ai_helper.log").to_s, Locator.resolve("ai_helper")
     end

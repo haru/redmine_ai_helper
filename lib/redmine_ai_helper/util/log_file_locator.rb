@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "redmine_ai_helper/logger"
-require "redmine_ai_helper/util/config_file"
 
 module RedmineAiHelper
   module Util
@@ -39,27 +38,26 @@ module RedmineAiHelper
 
         private
 
-        # Finds the file written by the AI Helper logger, using the same rule as
-        # RedmineAiHelper::CustomLogger. A config.yml that cannot be read or
-        # parsed is reported without its path; the details go to the server log.
+        # Finds the file written by the running AI Helper logger. The file is
+        # taken from the logger rather than from config.yml, because config.yml
+        # may have been edited since the logger was built at boot. A logger that
+        # cannot be built is reported without the path of config.yml; the details
+        # go to the server log.
         # @return [String] Path of the AI Helper log
         def resolve_ai_helper
           path = ai_helper_log_path
-          raise UnavailableError, "AI Helper writes its log into the Redmine application log because config/ai_helper/config.yml has no logger section." unless path
+          raise UnavailableError, "AI Helper writes its log into the Redmine application log because config/ai_helper/config.yml had no logger section when Redmine started." unless path
 
           reject_non_regular_file(path.to_s, "AI Helper")
         end
 
-        # @return [Pathname, nil] The AI Helper log file, or nil without a logger section
-        # @raise [UnavailableError] If config.yml cannot be read or its logger section is invalid
+        # @return [Pathname, nil] The AI Helper log file, or nil when the logger writes into Rails.logger
+        # @raise [UnavailableError] If the logger cannot be built because config.yml
+        #   cannot be read or its logger section is invalid
         def ai_helper_log_path
-          config = RedmineAiHelper::Util::ConfigFile.load_config
-          raise TypeError, "config.yml is not a mapping" unless config.is_a?(Hash)
-          raise TypeError, "logger section is not a mapping" unless config[:logger].nil? || config[:logger].is_a?(Hash)
-
-          RedmineAiHelper::CustomLogger.log_file_path(config)
+          RedmineAiHelper::CustomLogger.instance.log_file_path
         rescue Psych::Exception, SystemCallError, NoMethodError, TypeError => e
-          ai_helper_logger.warn("[#{name}] cannot read the AI Helper log location from config.yml: #{e.class}: #{e.message}")
+          ai_helper_logger.warn("[#{name}] cannot build the AI Helper logger from config.yml: #{e.class}: #{e.message}")
           raise UnavailableError, "config/ai_helper/config.yml could not be read, or its logger section is invalid."
         end
 

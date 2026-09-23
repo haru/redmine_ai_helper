@@ -102,7 +102,8 @@ error still stops the instance from booting, because `init.rb` builds
 (S021). Reporting the problem cannot depend on the plugin logger for the same
 reason, which is why `ai_helper_logger` falls back to `Rails.logger`
 (ADR-020, S022). `CustomLogger`'s path rule now lives in
-`CustomLogger.log_file_path(config)`, shared with the [log file
+`CustomLogger.log_file_path(config)`; the path chosen at boot is exposed as
+`CustomLogger#log_file_path` for the [log file
 locator](./log-file-location-resolution.md) (S036).
 
 ## Related
