@@ -277,4 +277,18 @@ class LoggerTest < ActiveSupport::TestCase
     mock_internal_logger.expects(:level=).with(::Logger::INFO).once
     test_logger.set_log_level("unknown")
   end
+
+  def test_log_file_path_is_nil_without_logger_section
+    assert_nil RedmineAiHelper::CustomLogger.log_file_path({})
+  end
+
+  def test_log_file_path_uses_the_configured_file
+    assert_equal Rails.root.join("log/custom.log"),
+                 RedmineAiHelper::CustomLogger.log_file_path({ logger: { file: "custom.log" } })
+  end
+
+  def test_log_file_path_defaults_to_ai_helper_log
+    assert_equal Rails.root.join("log/ai_helper.log"),
+                 RedmineAiHelper::CustomLogger.log_file_path({ logger: { level: "info" } })
+  end
 end

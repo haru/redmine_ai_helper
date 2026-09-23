@@ -289,6 +289,8 @@ tr:
         read_only_mode_description: "Etkinleştirildiğinde, AI Asistan sohbeti herhangi bir veri (işler, wiki sayfaları, yorumlar vb.) oluşturamaz, güncelleyemez veya silemez. Harici MCP sunucusu entegrasyonu da devre dışı bırakılır."
         all_projects_scope: "Target all projects"
         all_projects_scope_description: "When enabled, projects without the AI Helper module also become targets for reading and updating data from the chat, chat gateways, and the MCP server, and are eligible for vector registration. AI Helper UI elements are still shown only in projects with the module enabled, and Redmine permissions of the requesting user always apply."
+        log_access_enabled: "Allow log file access"
+        log_access_enabled_description: "When enabled, administrators can read the Redmine application log and the AI Helper log from the chat and the MCP server. The log contents are sent to the configured LLM provider, or to the MCP client when read through the MCP server. Log files may contain personal or sensitive information, so enable this only when needed."
       ai_helper_project_setting:
         issue_draft_instructions: "İş yorumu oluşturma talimatları"
         subtask_instructions: "Alt görev oluşturma talimatları"

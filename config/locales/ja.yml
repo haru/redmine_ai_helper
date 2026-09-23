@@ -299,6 +299,8 @@ ja:
         read_only_mode_description: "有効にすると、AI Helper のチャットからはチケット・Wiki ページ・コメントなどのデータを作成・更新・削除できなくなります。外部 MCP サーバー連携も無効化されます。"
         all_projects_scope: "全プロジェクトを対象にする"
         all_projects_scope_description: "有効にすると、AI Helper モジュールが有効でないプロジェクトのデータも参照・更新の対象となり、LLMにデータが送信されます。無効の場合にはAI Helperモジュールが有効でないプロジェクトのデータは参照・更新の対象になりません。"
+        log_access_enabled: "ログ参照を許可する"
+        log_access_enabled_description: "有効にすると、管理者がチャットやMCPサーバーからRedmine本体のログとAI Helperのログを参照できるようになり、ログの内容が設定済みのLLMプロバイダー（MCPサーバー経由の場合はMCPクライアント）へ送信されます。ログには個人情報や機密情報が含まれる場合があるため、必要なときだけ有効にしてください。"
       ai_helper_project_setting:
         issue_draft_instructions: "チケットのコメントを生成する際の指示"
         subtask_instructions: "子チケットを生成する際の指示"

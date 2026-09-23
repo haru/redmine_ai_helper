@@ -91,3 +91,4 @@ Briefly describe alternatives that were rejected and why.
 | [036](./036-all-projects-data-access-scope.md) | All-projects data-access scope decouples data access from the ai_helper module | Accepted (scope amended by ADR-037) |
 | [037](./037-data-access-scope-applies-to-every-tool.md) | The data-access scope applies to every tool, and repository tools gain Redmine's own permission checks | Accepted |
 | [038](./038-issue-summary-role-enrichment-gated-on-project-instructions.md) | Issue-summary role enrichment is gated on project instructions and resolved through memberships only | Accepted |
+| [039](./039-log-file-location-resolved-from-runtime-logger.md) | The Redmine log file is resolved from the running Rails.logger | Accepted |
