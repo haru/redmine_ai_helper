@@ -12,8 +12,8 @@
 		"source=${localEnv:HOME}/.local/share/opencode,target=/workspaces/.local/share/opencode,type=bind,consistency=cached",
 		"source=${localEnv:HOME}/.local/state/opencode,target=/workspaces/.local/state/opencode,type=bind,consistency=cached"
 	],
-	// Bind mounts fail if the host directory is missing, so create them on the host first.
-	"initializeCommand": "mkdir -p \"${localEnv:HOME}/.config/opencode\" \"${localEnv:HOME}/.local/share/opencode\" \"${localEnv:HOME}/.local/state/opencode\"",
+	// Bind mounts fail if the host path is missing, so create them on the host first.
+	"initializeCommand": "mkdir -p \"${localEnv:HOME}/.claude\" \"${localEnv:HOME}/.config/opencode\" \"${localEnv:HOME}/.local/share/opencode\" \"${localEnv:HOME}/.local/state/opencode\" && touch \"${localEnv:HOME}/.claude.json\"",
 	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
 	// ↓↓↓ このマウント設定がポイント！ ↓↓↓
 	// Set *default* container specific settings.json values on container create.
