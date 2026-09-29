@@ -79,11 +79,14 @@ is updated.
 
 ## Alternatives Considered
 
-- **Change the production check to `<=`**: rejected. Timestamps are stored at
-  one-second precision, so an issue updated in the same second as its vector
-  registration would be skipped permanently and its vector entry would go
-  stale. The test would pass, but this would hide a real regression risk to
-  work around a test-only condition.
+- **Change the production check to `<=`**: rejected. Timestamp precision
+  depends on the database. Redmine's `issues.updated_on` has no explicit
+  precision, so MySQL stores it at one-second precision, while PostgreSQL and
+  SQLite keep fractional seconds. On MySQL, an issue updated in the same
+  second as its vector registration would be skipped permanently and its
+  vector entry would go stale. The test would pass, but this would hide a real
+  regression risk on a supported database to work around a test-only
+  condition.
 - **Re-run CI and treat the failure as a flake**: rejected. The failure is
   deterministic under the frozen clock, so re-running cannot fix it.
 - **Undo core's freeze in the plugin's `test_helper.rb` (for example by calling
