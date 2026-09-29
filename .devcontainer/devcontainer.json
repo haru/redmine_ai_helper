@@ -5,9 +5,12 @@
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "app",
 	"mounts": [
-		"source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind"
+		"source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind",
+		"source=${localEnv:HOME}/.claude,target=/workspaces/.claude,type=bind,consistency=cached",
+		"source=${localEnv:HOME}/.claude.json,target=/workspaces/.claude.json,type=bind,consistency=cached"
 	],
 	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+	// ↓↓↓ このマウント設定がポイント！ ↓↓↓
 	// Set *default* container specific settings.json values on container create.
 	// Add the IDs of extensions you want installed when the container is created.
 	"extensions": [
@@ -29,7 +32,8 @@
 		"GitHub.copilot",
 		"Shunqian.prettier-plus",
 		"Gruntfuggly.todo-tree",
-		"zoma.vscode-auto-open-workspace"
+		"zoma.vscode-auto-open-workspace",
+		"Anthropic.claude-code"
 	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [3000, 5432],

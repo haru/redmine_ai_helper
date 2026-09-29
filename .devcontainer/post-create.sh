@@ -10,7 +10,7 @@ if [ ! -f ~/.bashrc ]; then
     tar xfz /.home.tgz
     cd $BASEDIR
 fi
-
+git config --global --add safe.directory /usr/local/redmine/plugins/redmine_ai_helper
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> $HOME/.bashrc
 
 # The base image's .bashrc sources nvm.sh and runs `nvm use` on every shell
