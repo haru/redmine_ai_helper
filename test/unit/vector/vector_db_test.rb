@@ -80,6 +80,10 @@ class RedmineAiHelper::Vector::VectorDbTest < ActiveSupport::TestCase
           issue.save!
 
           @issue_vector_db.add_datas(datas: [ issue ])
+          # Redmine freezes time during tests, so issue.updated_on and
+          # vector_data.updated_at would be identical. Make the vector data
+          # explicitly newer so the up-to-date check is deterministic.
+          AiHelperVectorData.update_all(updated_at: 1.minute.from_now)
 
           client_mock = mock("client")
           client_mock.expects(:add_texts).never
