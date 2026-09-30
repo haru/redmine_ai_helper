@@ -32,13 +32,11 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
       # FR-005: tests in this file cover the explicit-temperature path.
       # A recreated setting profile now starts with a nil temperature
       # (the column default was removed), so pin a value when needed.
-      @original_temperature = @original_profile.temperature
-      @original_profile.update_columns(temperature: 0.5) if @original_temperature.nil?
-      @original_profile.reload
+      # The test transaction rollback restores the original value.
+      @original_profile.update_columns(temperature: 0.5) if @original_profile.temperature.nil?
     end
 
     teardown do
-      @original_profile.temperature = @original_temperature
       @setting.model_profile = @original_profile
       @setting.save!
     end
@@ -114,10 +112,9 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
             name: "Nil Temp Profile",
             llm_model: "claude-sonnet-5-5",
             access_key: "key",
-            temperature: 0.5,
+            temperature: nil,
             llm_type: "Anthropic"
           )
-          @nil_temp_profile.update_column(:temperature, nil)
           @nil_provider = RedmineAiHelper::LlmClient::BaseProvider.new(model_profile: @nil_temp_profile)
         end
 

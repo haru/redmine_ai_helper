@@ -78,11 +78,14 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
       get :new
 
       assert_response :success
-      tag = response.body[/#{Regexp.escape('<input')}[^>]*name="ai_helper_model_profile\[temperature\]"[^>]*>/]
-
-      assert_not_nil tag, "Temperature input should be rendered"
-      assert_no_match(/required/, tag, "Temperature field must not be required (FR-006)")
-      assert_no_match(/value="[^"]+"/, tag, "Temperature field must start empty (FR-011)")
+      assert_select "input[name=?]", "ai_helper_model_profile[temperature]", 1
+      # FR-006: the field must not be required. Redmine's labelled form builder
+      # marks required fields with a span.required in the label, not an input
+      # attribute; llm_model is the positive control for that marker.
+      assert_select "label[for=ai_helper_model_profile_llm_model] span.required", 1
+      assert_select "label[for=ai_helper_model_profile_temperature] span.required", 0
+      # FR-011: the field must start empty
+      assert_select "input[name=?][value]:not([value=''])", "ai_helper_model_profile[temperature]", 0
     end
 
     should "show model profile without temperature" do
@@ -92,10 +95,11 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
 
       assert_response :success
       label = AiHelperModelProfile.human_attribute_name(:temperature)
-      paragraph = response.body[%r{<p>\s*<label[^>]*>#{Regexp.escape(label)}</label>(.*?)</p>}m]
+      paragraph = css_select("p").find { |p| p.at_css("label")&.text == label }
 
       assert_not_nil paragraph, "Temperature section should be rendered"
-      assert_match(%r{</label>\s*</p>}m, paragraph, "Temperature value should be blank (FR-007)")
+      # FR-007: the value is blank, so the paragraph contains only the label
+      assert_equal label, paragraph.text.strip
     end
 
     should "copy model profile without temperature keeps the copy unset" do
