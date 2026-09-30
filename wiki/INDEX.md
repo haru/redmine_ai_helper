@@ -24,6 +24,7 @@ page files, not here.
 - [Issue Summary Instructions & Role Gating](./pages/issue-summary-instructions-role-gating.md) — the one-query `Member`-based role resolution for users and groups, and why role enrichment is gated on the project's `issue_summary_instructions` being present.
 - [Issue Summary Instructions: Prompt Template & Settings](./pages/issue-summary-instructions-prompt-template.md) — the zero-prompt-diff template split, the setting's name vs. the wiki-summary feature, and why no cache invalidation is needed.
 - [Log File Location Resolution](./pages/log-file-location-resolution.md) — ADR-039: finding the Redmine log from the runtime `Rails.logger` (BroadcastLogger → private `@logdev` → `LogDevice#filename`), sharing `CustomLogger.log_file_path` for the AI Helper log, and never reading a substitute file.
+- [Model Profile Temperature Is Optional](./pages/model-profile-optional-temperature.md) — ADR-042: blank temperature sends none (providers already skip nil), the validation/migration/connection-test changes, GPT-5 auto-correction kept, and alternatives rejected.
 
 ## component
 - [Chat Channel Gateway Architecture](./pages/chat-channel-gateway-architecture.md) — core + adapters structure, capability declaration, and gateway operational model.
