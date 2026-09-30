@@ -542,19 +542,55 @@ describe("AiHelperTypoChecker", () => {
     });
   });
 
+  describe("overlay stacking (DOM order instead of z-index)", () => {
+    beforeEach(() => {
+      // In production the panel is rendered by ERB outside the editor parent,
+      // so start it on body and let findControlPanel() move it into place
+      document.body.appendChild(dom.controlPanel);
+      checker = createChecker(textarea);
+      checker.init();
+    });
+
+    it("createOverlay places the overlay after the textarea with no z-index", () => {
+      const children = Array.from(dom.parent.children);
+      expect(children.indexOf(textarea)).toBeLessThan(children.indexOf(checker.overlay));
+      expect(checker.overlay.style.zIndex).toBe("");
+    });
+
+    it("updateControlPanelPosition keeps the panel last with no z-index", () => {
+      checker.updateControlPanelPosition();
+
+      const children = Array.from(dom.parent.children);
+      expect(children[children.length - 1]).toBe(checker.controlPanel);
+      expect(checker.controlPanel.style.zIndex).toBe("");
+    });
+
+    it("scrolling state changes never set a z-index or reorder the DOM", () => {
+      const orderBefore = Array.from(dom.parent.children).map((el) => el.id || el.tagName);
+
+      Object.defineProperty(checker.overlay, "scrollHeight", { value: 500, configurable: true });
+      Object.defineProperty(checker.overlay, "clientHeight", { value: 50, configurable: true });
+      checker.checkAndEnableScrolling();
+      expect(checker.overlay.style.zIndex).toBe("");
+      checker.resetScrolling();
+      expect(checker.overlay.style.zIndex).toBe("");
+
+      const orderAfter = Array.from(dom.parent.children).map((el) => el.id || el.tagName);
+      expect(orderAfter).toEqual(orderBefore);
+    });
+  });
+
   describe("resetScrolling", () => {
     it("resets overlay scrolling to defaults", () => {
       checker = createChecker(textarea);
       checker.init();
       checker.overlay.style.overflowY = "auto";
-      checker.overlay.style.zIndex = "20";
       checker.overlay.style.borderColor = "red";
       checker.overlay.classList.add("ai-helper-scrollable-overlay");
 
       checker.resetScrolling();
 
       expect(checker.overlay.style.overflowY).toBe("hidden");
-      expect(checker.overlay.style.zIndex).toBe("15");
       expect(checker.overlay.style.borderColor).toBe("transparent");
       expect(
         checker.overlay.classList.contains("ai-helper-scrollable-overlay")
@@ -565,6 +601,20 @@ describe("AiHelperTypoChecker", () => {
       checker = createChecker(textarea);
       checker.overlay = null;
       expect(() => checker.resetScrolling()).not.toThrow();
+    });
+
+    it("drops the scrollable overflow class once content fits again", () => {
+      checker = createChecker(textarea);
+      checker.init();
+
+      Object.defineProperty(checker.overlay, "scrollHeight", { value: 500, configurable: true });
+      Object.defineProperty(checker.overlay, "clientHeight", { value: 50, configurable: true });
+      checker.checkAndEnableScrolling();
+      expect(checker.overlay.classList.contains("ai-helper-typo-overlay-scrollable")).toBe(true);
+
+      Object.defineProperty(checker.overlay, "scrollHeight", { value: 30, configurable: true });
+      checker.checkAndEnableScrolling();
+      expect(checker.overlay.classList.contains("ai-helper-typo-overlay-scrollable")).toBe(false);
     });
   });
 

@@ -424,6 +424,35 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
     end
   end
 
+  context "log_access_enabled setting" do
+    should "render the log_access_enabled checkbox unchecked on index" do
+      get :index
+
+      assert_response :success
+      assert_select "input[type=checkbox][name='ai_helper_setting[log_access_enabled]']" do |elements|
+        assert_nil elements.first["checked"]
+      end
+    end
+
+    should "save log_access_enabled true and keep it on redisplay" do
+      post :update, params: { ai_helper_setting: { log_access_enabled: "1" } }
+
+      assert_redirected_to action: :index
+      assert_equal true, AiHelperSetting.log_access_enabled?
+
+      get :index
+      assert_select "input[type=checkbox][name='ai_helper_setting[log_access_enabled]'][checked]"
+    end
+
+    should "save log_access_enabled false" do
+      @ai_helper_setting.update_column(:log_access_enabled, true)
+      post :update, params: { ai_helper_setting: { log_access_enabled: "0" } }
+
+      assert_redirected_to action: :index
+      assert_equal false, AiHelperSetting.log_access_enabled?
+    end
+  end
+
   context "tabbed settings layout" do
     should "render 3 tab links with general selected by default" do
       get :index

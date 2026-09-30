@@ -6,7 +6,7 @@ description: Toggle a project-local concise-output directive that suppresses age
   / etc.) inside a clearly marked block, so it is reversible and reviewable.
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
-  author: github-spec-kit
+  author: Tinesoft
   source: extension:token-budget
 user-invocable: true
 disable-model-invocation: false

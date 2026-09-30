@@ -287,6 +287,17 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
       end
+
+      should "stream the error and not cache it when summary generation fails" do
+        RedmineAiHelper::Llm.any_instance.stubs(:issue_summary).raises(StandardError, "prompt template missing")
+        AiHelperSummaryCache.stubs(:issue_cache).with(issue_id: @issue.id).returns(nil)
+        AiHelperSummaryCache.expects(:update_issue_cache).never
+
+        post :generate_issue_summary, params: { id: @issue.id }
+
+        assert_response :success
+        assert_match(/Error generating issue summary: prompt template missing/, @response.body)
+      end
     end
 
     context "#generate_issue_reply" do

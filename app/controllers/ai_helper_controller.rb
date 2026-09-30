@@ -111,9 +111,17 @@ class AiHelperController < ApplicationController
         stream_proc.call(content)
       end
 
-      content = llm.issue_summary(issue: @issue, stream_proc: cache_proc)
-      # Update cache with final content
-      AiHelperSummaryCache.update_issue_cache(issue_id: @issue.id, content: content)
+      begin
+        content = llm.issue_summary(issue: @issue, stream_proc: cache_proc)
+        # Update cache with final content
+        AiHelperSummaryCache.update_issue_cache(issue_id: @issue.id, content: content)
+      rescue => e
+        # Surface the failure to the user, but never persist the error message
+        # as cached summary content.
+        ai_helper_logger.error "Generate issue summary error: #{e.message}"
+        ai_helper_logger.error e.backtrace.join("\n")
+        stream_proc.call("Error generating issue summary: #{e.message}")
+      end
     end
   end
 

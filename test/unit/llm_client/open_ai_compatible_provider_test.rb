@@ -12,7 +12,8 @@ class RedmineAiHelper::LlmClient::OpenAiCompatibleProviderTest < ActiveSupport::
         llm_type: "OpenAICompatible",
         llm_model: "my-custom-model",
         access_key: "test_compatible_key",
-        base_uri: "https://api.custom-llm.com/v1"
+        base_uri: "https://api.custom-llm.com/v1",
+        temperature: 0.5
       )
       @setting.model_profile = @compatible_profile
       @setting.save!
@@ -113,6 +114,30 @@ class RedmineAiHelper::LlmClient::OpenAiCompatibleProviderTest < ActiveSupport::
 
       assert_equal true, context.config.openai_use_system_role,
         "openai_use_system_role should be true for OpenAI-compatible providers to avoid sending 'developer' role"
+    end
+
+    context "with nil temperature" do
+      setup do
+        @compatible_profile.update_column(:temperature, nil)
+      end
+
+      should "not call with_temperature when temperature is nil (FR-003)" do
+        assert_nil @provider.temperature
+
+        mock_context = mock("RubyLLM::Context")
+        mock_chat = mock("RubyLLM::Chat")
+        mock_chat.expects(:with_temperature).never
+        mock_context.expects(:chat).with(
+          model: @compatible_profile.llm_model,
+          provider: :openai,
+          assume_model_exists: true
+        ).returns(mock_chat)
+        @provider.expects(:build_context).returns(mock_context)
+
+        chat = @provider.create_chat
+
+        assert_equal mock_chat, chat
+      end
     end
 
     context "apply_user_identifier" do

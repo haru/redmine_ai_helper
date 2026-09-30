@@ -3,7 +3,7 @@ name: speckit-branch-convention-configure
 description: Set up branch and folder naming rules for the current project
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
-  author: github-spec-kit
+  author: Quratulain-bilal
   source: extension:branch-convention
 user-invocable: true
 disable-model-invocation: false

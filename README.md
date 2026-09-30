@@ -332,7 +332,7 @@ When vector search is enabled, attachment contents are also incorporated into th
    - Name: Enter a name for the model profile
    - Access Key: Enter the API key for the AI service
    - Model name: Specify the AI model name (e.g., gpt-4.1-mini)
-   - Temperature: Set the temperature for the AI model (e.g., 0.7)
+   - Temperature: Optionally set the temperature for the AI model (e.g., 0.7). Leave it blank to omit the parameter and use the AI service's default (required for models that reject temperature).
 3. Select the model profile you created from the dropdown menu and save the settings.
 
 

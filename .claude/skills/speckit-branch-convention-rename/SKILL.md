@@ -4,7 +4,7 @@ description: Rename non-compliant branches and spec folders to match the configu
   convention
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
-  author: github-spec-kit
+  author: Quratulain-bilal
   source: extension:branch-convention
 user-invocable: true
 disable-model-invocation: false

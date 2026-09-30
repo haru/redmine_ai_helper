@@ -122,6 +122,16 @@ class McpServerBuilderTest < ActiveSupport::TestCase
       assert server.tools.key?("search_issues"), "expected read tools to remain when read_only_mode is enabled"
     end
 
+    should "keep the log functions in the built server when read_only_mode is enabled" do
+      @setting.update_column(:read_only_mode, true)
+
+      server = RedmineAiHelper::Mcp::Server.build(user: @admin_user)
+
+      log_tool_names.each do |tool_name|
+        assert server.tools.key?(tool_name), "expected #{tool_name} to remain when read_only_mode is enabled"
+      end
+    end
+
     should "include write tools in the built server when read_only_mode is disabled" do
       @setting.update_column(:read_only_mode, false)
 
@@ -153,7 +163,31 @@ class McpServerBuilderTest < ActiveSupport::TestCase
     end
   end
 
+  context "log functions" do
+    should "not expose the log functions to a non-administrator" do
+      server = RedmineAiHelper::Mcp::Server.build(user: @non_admin_user)
+
+      log_tool_names.each do |tool_name|
+        assert_not server.tools.key?(tool_name), "expected #{tool_name} to be hidden from non-administrators"
+        assert_not RedmineAiHelper::Mcp::Server.tool_call_permitted?(tool_name, user: @non_admin_user)
+      end
+    end
+
+    should "expose the log functions to an administrator" do
+      server = RedmineAiHelper::Mcp::Server.build(user: @admin_user)
+
+      log_tool_names.each do |tool_name|
+        assert server.tools.key?(tool_name), "expected #{tool_name} to be available to administrators"
+        assert RedmineAiHelper::Mcp::Server.tool_call_permitted?(tool_name, user: @admin_user)
+      end
+    end
+  end
+
   private
+
+  def log_tool_names
+    %w[get_log_file_info read_log_tail search_log]
+  end
 
   def write_tool_names
     %w[create_new_issue update_issue wiki_add_page wiki_update_page wiki_delete_page]

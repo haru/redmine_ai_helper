@@ -126,7 +126,6 @@ class AiHelperTypoChecker {
     // Position overlay to match textarea exactly (same as autocomplete)
     this.overlay.style.position = 'absolute';
     this.overlay.style.pointerEvents = 'auto'; // Enable interactions for buttons
-    this.overlay.style.zIndex = '15'; // Above textarea but below autocomplete
     this.overlay.style.overflowY = 'hidden';
     this.overlay.style.overflowX = 'hidden';
     this.overlay.style.whiteSpace = 'pre-wrap';
@@ -154,7 +153,6 @@ class AiHelperTypoChecker {
       this.controlPanel.style.position = 'absolute';
       this.controlPanel.style.top = (rect.bottom - parentRect.top - 40) + 'px'; // 40px from bottom
       this.controlPanel.style.right = '10px'; // 10px from right edge of parent
-      this.controlPanel.style.zIndex = '25'; // Above overlay
     };
 
     // Ensure parent has relative positioning for overlay (same as autocomplete)
@@ -163,13 +161,15 @@ class AiHelperTypoChecker {
       parent.classList.add('ai-helper-textarea-parent-relative');
     }
 
-    // Insert overlay after textarea (same as autocomplete)
+    // Insert overlay after the textarea so it paints on top of it (DOM
+    // order, ADR-041)
     parent.insertBefore(this.overlay, this.textarea.nextSibling);
 
     // Set initial position
     this.updateOverlayPosition();
 
-    // Ensure textarea is above overlay and can receive input (same as autocomplete)
+    // Make the textarea positioned (z-index auto) so the DOM-order layering
+    // applies
     this.textarea.classList.add('ai-helper-textarea-positioned');
   }
 
@@ -428,35 +428,23 @@ class AiHelperTypoChecker {
     if (contentHeight > overlayHeight) {
       // Content exceeds height, enable scrolling
       this.overlay.classList.add('ai-helper-typo-overlay-scrollable');
-      
+
       // Enable pointer events to allow scrolling interaction
       this.overlay.style.pointerEvents = 'auto';
-      
-      // Move overlay above textarea to capture mouse events
-      this.overlay.style.zIndex = '20';
-      
-      // Show textarea border on overlay since it's now on top
+
+      // Show the textarea border on the overlay, which always paints above
+      // the textarea (DOM order)
       const computedStyle = window.getComputedStyle(this.textarea);
       this.overlay.style.borderColor = computedStyle.borderColor;
-      
+
       // Add scrollable class for visual styling
       this.overlay.classList.add('ai-helper-scrollable-overlay');
-      
+
       // Add event listeners to forward events to textarea when needed
       this.addScrollableEventListeners();
     } else {
       // Content fits within height, use default behavior
-      this.overlay.style.overflowY = 'hidden';
-      this.overlay.style.overflowX = 'hidden';
-      
-      // Restore original pointer events and z-index settings
-      this.overlay.style.pointerEvents = 'auto';
-      this.overlay.style.zIndex = '15';
-      this.overlay.style.borderColor = 'transparent';
-      this.overlay.classList.remove('ai-helper-scrollable-overlay');
-      
-      // Remove scrollable event listeners
-      this.removeScrollableEventListeners();
+      this.resetScrolling();
     }
   }
 
@@ -465,13 +453,12 @@ class AiHelperTypoChecker {
    */
   resetScrolling() {
     if (!this.overlay) {return;}
-    
+
     this.overlay.style.overflowY = 'hidden';
     this.overlay.style.overflowX = 'hidden';
     this.overlay.style.pointerEvents = 'auto';
-    this.overlay.style.zIndex = '15';
     this.overlay.style.borderColor = 'transparent';
-    this.overlay.classList.remove('ai-helper-scrollable-overlay');
+    this.overlay.classList.remove('ai-helper-scrollable-overlay', 'ai-helper-typo-overlay-scrollable');
     this.removeScrollableEventListeners();
   }
 

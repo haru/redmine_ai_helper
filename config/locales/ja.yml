@@ -69,6 +69,7 @@ ja:
         label: "チャットチャンネルから取り込んだ発言"
     notice_sub_issues_added: "子チケットが追加されました"
     error_invalid_assignee: "'%{subject}' の担当者が無効です。このトラッカーに対する権限がありません"
+    error_empty_issue_summary: "AIモデルが空の要約を返しました。推論中にトークンを使い切った場合に発生することがあります。モデルプロファイルの max_tokens を増やすことを検討してください。"
     chat:
       planning: "実行計画を作成中..."
       generating_final_response: "最終回答を作成しています..."
@@ -298,11 +299,14 @@ ja:
         read_only_mode_description: "有効にすると、AI Helper のチャットからはチケット・Wiki ページ・コメントなどのデータを作成・更新・削除できなくなります。外部 MCP サーバー連携も無効化されます。"
         all_projects_scope: "全プロジェクトを対象にする"
         all_projects_scope_description: "有効にすると、AI Helper モジュールが有効でないプロジェクトのデータも参照・更新の対象となり、LLMにデータが送信されます。無効の場合にはAI Helperモジュールが有効でないプロジェクトのデータは参照・更新の対象になりません。"
+        log_access_enabled: "ログ参照を許可する"
+        log_access_enabled_description: "有効にすると、管理者がチャットやMCPサーバーからRedmine本体のログとAI Helperのログを参照できるようになり、ログの内容が設定済みのLLMプロバイダー（MCPサーバー経由の場合はMCPクライアント）へ送信されます。ログには個人情報や機密情報が含まれる場合があるため、必要なときだけ有効にしてください。"
       ai_helper_project_setting:
         issue_draft_instructions: "チケットのコメントを生成する際の指示"
         subtask_instructions: "子チケットを生成する際の指示"
         health_report_instructions: "健全性レポートを生成する際の指示"
         assignment_suggestion_instructions: "担当者提案をする際の指示"
+        issue_summary_instructions: "チケットの要約を生成する際の指示"
       ai_helper_custom_command:
         name: "コマンド名"
         command_type: "コマンドタイプ"

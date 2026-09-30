@@ -1,8 +1,8 @@
 ---
 title: Plugin Overview
 type: concept
-sources: [S002, S003, S005, S013, S014, S033]
-updated: 2026-09-07
+sources: [S002, S003, S005, S013, S014, S033, S036]
+updated: 2026-09-23
 ---
 
 # Plugin Overview
@@ -30,6 +30,9 @@ over RubyLLM (S002, S005). This page is the hub linking the wiki's topic pages.
   servers and expose Redmine itself as one (S002).
 - **[Vector Search](./vector-search.md)** via Qdrant — powers similar-issue and
   duplicate-issue detection (S002).
+- **[Log File Access](./log-file-access-tools.md)** — administrators can tail
+  and search the Redmine and AI Helper logs from chat or MCP, once the
+  "Allow log access" setting (default off) is enabled (S036).
 
 ## Configuration essentials
 

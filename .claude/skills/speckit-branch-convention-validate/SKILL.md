@@ -4,7 +4,7 @@ description: Check all feature branches and spec folders against the configured 
   convention
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
-  author: github-spec-kit
+  author: Quratulain-bilal
   source: extension:branch-convention
 user-invocable: true
 disable-model-invocation: false

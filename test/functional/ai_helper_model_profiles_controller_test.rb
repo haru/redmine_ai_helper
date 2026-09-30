@@ -55,6 +55,66 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
     assert_equal "Updated Profile", @model_profile.name
   end
 
+  context "with optional temperature" do
+    should "create model profile with blank temperature" do
+      assert_difference("AiHelperModelProfile.count", 1) do
+        post :create, params: { ai_helper_model_profile: { name: "Blank Temp Profile", access_key: "key", llm_type: "OpenAI", llm_model: "model", temperature: "" } }
+      end
+
+      profile = AiHelperModelProfile.find_by(name: "Blank Temp Profile")
+
+      assert_not_nil profile
+      assert_nil profile.temperature
+    end
+
+    should "update model profile to blank temperature" do
+      patch :update, params: { id: @model_profile.id, ai_helper_model_profile: { temperature: "" } }
+
+      assert_redirected_to ai_helper_setting_path(tab: "model")
+      assert_nil @model_profile.reload.temperature
+    end
+
+    should "render new form with empty temperature field without required attribute" do
+      get :new
+
+      assert_response :success
+      assert_select "input[name=?]", "ai_helper_model_profile[temperature]", 1
+      # FR-006: the field must not be required. Redmine's labelled form builder
+      # marks required fields with a span.required in the label, not an input
+      # attribute; llm_model is the positive control for that marker.
+      assert_select "label[for=ai_helper_model_profile_llm_model] span.required", 1
+      assert_select "label[for=ai_helper_model_profile_temperature] span.required", 0
+      # FR-011: the field must start empty
+      assert_select "input[name=?][value]:not([value=''])", "ai_helper_model_profile[temperature]", 0
+    end
+
+    should "show model profile without temperature" do
+      @model_profile.update_column(:temperature, nil)
+
+      get :show, params: { id: @model_profile.id }
+
+      assert_response :success
+      label = AiHelperModelProfile.human_attribute_name(:temperature)
+      paragraph = css_select("p").find { |p| p.at_css("label")&.text == label }
+
+      assert_not_nil paragraph, "Temperature section should be rendered"
+      # FR-007: the value is blank, so the paragraph contains only the label
+      assert_equal label, paragraph.text.strip
+    end
+
+    should "copy model profile without temperature keeps the copy unset" do
+      @model_profile.update_column(:temperature, nil)
+
+      post :copy, params: { id: @model_profile.id, name: "Copied Blank Temp" }
+
+      assert_response :success
+      copied = AiHelperModelProfile.find_by(name: "Copied Blank Temp")
+
+      assert_not_nil copied
+      assert_nil copied.temperature
+    end
+  end
+
   should "not update model profile with invalid attributes" do
     patch :update, params: { id: @model_profile.id, ai_helper_model_profile: { name: "" } }
 
@@ -143,6 +203,64 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
     json = JSON.parse(response.body)
 
     assert_equal true, json["success"]
+  end
+
+  context "test_connection with optional temperature" do
+    should "not fill in temperature when it is blank (FR-004)" do
+      submitted_profile = nil
+      provider_mock = mock("provider")
+      chat_mock = mock("chat")
+      chat_mock.expects(:with_temperature).never
+      chat_mock.expects(:ask).with("hi").returns(mock("message"))
+      provider_mock.expects(:create_chat).returns(chat_mock)
+      RedmineAiHelper::LlmProvider.expects(:provider_for_profile).with do |profile|
+        submitted_profile = profile
+        true
+      end.returns(provider_mock)
+
+      post :test_connection, params: {
+        ai_helper_model_profile: {
+          llm_type: "OpenAI",
+          llm_model: "gpt-3.5-turbo",
+          access_key: "real_key",
+          temperature: ""
+        }
+      }
+
+      assert_response :success
+      json = JSON.parse(response.body)
+
+      assert_equal true, json["success"]
+      assert_not_nil submitted_profile
+      assert_nil submitted_profile.temperature
+    end
+
+    should "use the submitted temperature when it is present" do
+      submitted_profile = nil
+      provider_mock = mock("provider")
+      chat_mock = mock("chat")
+      chat_mock.expects(:ask).with("hi").returns(mock("message"))
+      provider_mock.expects(:create_chat).returns(chat_mock)
+      RedmineAiHelper::LlmProvider.expects(:provider_for_profile).with do |profile|
+        submitted_profile = profile
+        true
+      end.returns(provider_mock)
+
+      post :test_connection, params: {
+        ai_helper_model_profile: {
+          llm_type: "OpenAI",
+          llm_model: "gpt-3.5-turbo",
+          access_key: "real_key",
+          temperature: "0.7"
+        }
+      }
+
+      assert_response :success
+      json = JSON.parse(response.body)
+
+      assert_equal true, json["success"]
+      assert_in_delta(0.7, submitted_profile.temperature)
+    end
   end
 
   # T006: LLM raises exception returns { success: false, error: "..." }

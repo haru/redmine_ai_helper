@@ -39,6 +39,27 @@ class AiHelperSettingTest < ActiveSupport::TestCase
     end
   end
 
+  context "log_access_enabled" do
+    should "default to false" do
+      assert_equal false, @setting.log_access_enabled
+    end
+
+    should "expose the setting via AiHelperSetting.log_access_enabled? when on" do
+      @setting.update!(log_access_enabled: true)
+      assert_equal true, AiHelperSetting.log_access_enabled?
+    end
+
+    should "return false from AiHelperSetting.log_access_enabled? when off" do
+      @setting.update!(log_access_enabled: false)
+      assert_equal false, AiHelperSetting.log_access_enabled?
+    end
+
+    should "be assignable through safe_attributes=" do
+      @setting.safe_attributes = { "log_access_enabled" => "1" }
+      assert_equal true, @setting.log_access_enabled
+    end
+  end
+
   context "think model" do
     setup do
       @think_profile = AiHelperModelProfile.create!(

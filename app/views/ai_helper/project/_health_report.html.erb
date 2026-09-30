@@ -90,9 +90,10 @@
 <meta name="ai-helper-project-health-metadata-url" content="<%= ai_helper_project_health_metadata_path(project) %>" />
 <meta name="ai-helper-project-health-created-label" content="<%= l(:field_created_on) %>" />
 
+<% # ai_helper_project_health(_actions).js are already loaded globally by
+   # ai_helper/shared/_html_header.html.erb (view_layouts_base_html_head hook);
+   # including them again here would double-declare their top-level bindings. %>
 <% content_for :header_tags do %>
-  <%= javascript_include_tag 'project_health/ai_helper_project_health', plugin: 'redmine_ai_helper' %>
-  <%= javascript_include_tag 'project_health/ai_helper_project_health_actions', plugin: 'redmine_ai_helper' %>
   <%= stylesheet_link_tag 'ai_helper_rtl', plugin: 'redmine_ai_helper' if l(:direction) == 'rtl' %>
 <% end %>
 

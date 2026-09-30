@@ -1,8 +1,8 @@
 ---
 title: Issue AI Features
 type: component
-sources: [S014, S017, S021]
-updated: 2026-08-20
+sources: [S014, S017, S021, S035]
+updated: 2026-09-20
 ---
 
 # Issue AI Features
@@ -24,6 +24,16 @@ plus attachments (text, images, PDFs) as file paths — to `chat` (S014; see
 before any LLM call (S014). The prompt enforces a strict format (overall summary,
 bullets, a TODOs section) and a **prompt-injection defense**: the model is told
 to *ignore meta-instructions embedded in the issue data* (S014).
+
+A project-level `issue_summary_instructions` setting (same family as
+`issue_draft_instructions` below) steers this summary, and when set, the
+issue JSON is additionally enriched with the role names of the author,
+assignee, and commenters, resolved via one `Member` bulk query so both users
+and groups work — see
+[Issue Summary Instructions & Role Gating](./issue-summary-instructions-role-gating.md)
+for the role resolution and gating rule, and
+[Issue Summary Instructions: Prompt Template & Settings](./issue-summary-instructions-prompt-template.md)
+for the zero-prompt-diff mechanism (S035).
 
 ## Reply drafts
 
@@ -73,4 +83,6 @@ block unrelated actions such as saving the issue (S021). See
 - [Multi-Agent Architecture](./multi-agent-architecture.md) ·
   [Think Model](./think-model.md) · [Vector Search](./vector-search.md) ·
   [Tool System](./tool-system.md) · [Plugin Overview](./plugin-overview.md) ·
-  [Inline Completion Request Flow](./inline-completion-request-flow.md)
+  [Inline Completion Request Flow](./inline-completion-request-flow.md) ·
+  [Issue Summary Instructions & Role Gating](./issue-summary-instructions-role-gating.md) ·
+  [Issue Summary Instructions: Prompt Template & Settings](./issue-summary-instructions-prompt-template.md)

@@ -4,7 +4,7 @@ description: 'Health-check the wiki: contradictions, orphan pages, stale claims,
   links, index drift'
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
-  author: github-spec-kit
+  author: formin
   source: extension:wiki
 user-invocable: true
 disable-model-invocation: false
