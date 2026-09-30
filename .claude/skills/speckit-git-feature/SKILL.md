@@ -3,7 +3,7 @@ name: speckit-git-feature
 description: Create a feature branch with sequential or timestamp numbering
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
-  author: github-spec-kit
+  author: spec-kit-core
   source: extension:git
 user-invocable: true
 disable-model-invocation: false

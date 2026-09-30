@@ -4,7 +4,7 @@ description: Create the project wiki skeleton (schema, index, source registry) â
   three-layer LLM Wiki structure
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
-  author: github-spec-kit
+  author: formin
   source: extension:wiki
 user-invocable: true
 disable-model-invocation: false

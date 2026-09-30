@@ -8,7 +8,7 @@ description: 'Build a focused reading manifest for the next workflow step. Names
   '
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
-  author: github-spec-kit
+  author: Tinesoft
   source: extension:token-budget
 user-invocable: true
 disable-model-invocation: false

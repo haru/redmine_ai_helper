@@ -7,7 +7,7 @@ description: 'Show token usage for every SDD artifact in the active feature, the
   '
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
-  author: github-spec-kit
+  author: Tinesoft
   source: extension:token-budget
 user-invocable: true
 disable-model-invocation: false

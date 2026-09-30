@@ -8,7 +8,7 @@ description: 'Compact one or more Spec-Driven Development artifacts in place to 
   '
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
-  author: github-spec-kit
+  author: Tinesoft
   source: extension:token-budget
 user-invocable: true
 disable-model-invocation: false
