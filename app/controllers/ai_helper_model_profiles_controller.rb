@@ -72,8 +72,6 @@ class AiHelperModelProfilesController < ApplicationController
       end
     end
 
-    temp_profile.temperature ||= 1.0
-
     unless temp_profile.llm_type.present? && temp_profile.llm_model.present? &&
            (temp_profile.access_key.present? || !temp_profile.access_key_required?) &&
            (temp_profile.base_uri.present? || !temp_profile.base_uri_required?)

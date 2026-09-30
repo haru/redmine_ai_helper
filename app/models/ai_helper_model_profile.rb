@@ -10,7 +10,7 @@ class AiHelperModelProfile < ApplicationRecord
   validates :base_uri, presence: true, if: :base_uri_required?
   validates :base_uri, format: { with: URI::DEFAULT_PARSER.make_regexp(%w[http https]), message: l("ai_helper.model_profiles.messages.must_be_valid_url") }, if: :base_uri_required?
   validates :http_proxy, format: { with: URI::DEFAULT_PARSER.make_regexp(%w[http https]), message: l("ai_helper.model_profiles.messages.must_be_valid_url") }, allow_blank: true
-  validates :temperature, presence: true, numericality: { greater_than_or_equal_to: 0.0 }
+  validates :temperature, numericality: { greater_than_or_equal_to: 0.0 }, allow_nil: true
 
   safe_attributes "name", "llm_type", "access_key", "organization_id", "base_uri", "http_proxy", "version", "llm_model", "temperature", "max_tokens"
 

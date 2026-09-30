@@ -29,9 +29,16 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
       @provider = RedmineAiHelper::LlmClient::BaseProvider.new
       @setting = AiHelperSetting.find_or_create
       @original_profile = @setting.model_profile
+      # FR-005: tests in this file cover the explicit-temperature path.
+      # A recreated setting profile now starts with a nil temperature
+      # (the column default was removed), so pin a value when needed.
+      @original_temperature = @original_profile.temperature
+      @original_profile.update_columns(temperature: 0.5) if @original_temperature.nil?
+      @original_profile.reload
     end
 
     teardown do
+      @original_profile.temperature = @original_temperature
       @setting.model_profile = @original_profile
       @setting.save!
     end
@@ -101,6 +108,38 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
     end
 
     context "create_chat" do
+      context "with a nil temperature profile" do
+        setup do
+          @nil_temp_profile = AiHelperModelProfile.create!(
+            name: "Nil Temp Profile",
+            llm_model: "claude-sonnet-5-5",
+            access_key: "key",
+            temperature: 0.5,
+            llm_type: "Anthropic"
+          )
+          @nil_temp_profile.update_column(:temperature, nil)
+          @nil_provider = RedmineAiHelper::LlmClient::BaseProvider.new(model_profile: @nil_temp_profile)
+        end
+
+        teardown do
+          @nil_temp_profile.destroy
+        end
+
+        should "not call with_temperature when profile temperature is nil (FR-003)" do
+          assert_nil @nil_provider.temperature
+
+          mock_context = mock("RubyLLM::Context")
+          mock_chat = mock("RubyLLM::Chat")
+          mock_chat.expects(:with_temperature).never
+          mock_context.expects(:chat).with(model: @nil_temp_profile.llm_model).returns(mock_chat)
+          @nil_provider.expects(:build_context).returns(mock_context)
+
+          chat = @nil_provider.create_chat
+
+          assert_equal mock_chat, chat
+        end
+      end
+
       should "return a RubyLLM::Chat instance with instructions" do
         mock_context = mock("RubyLLM::Context")
         mock_chat = mock("RubyLLM::Chat")

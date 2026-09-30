@@ -7,9 +7,17 @@ class RedmineAiHelper::LlmClient::OpenAiProviderTest < ActiveSupport::TestCase
       @provider = RedmineAiHelper::LlmClient::OpenAiProvider.new
       @setting = AiHelperSetting.find_or_create
       @original_profile = @setting.model_profile
+      # FR-005: the "create chat via base class" test covers the
+      # explicit-temperature path. A recreated setting profile now starts
+      # with a nil temperature (the column default was removed), so pin a
+      # value when needed.
+      @original_temperature = @original_profile.temperature
+      @original_profile.update_columns(temperature: 0.5) if @original_temperature.nil?
+      @original_profile.reload
     end
 
     teardown do
+      @original_profile.temperature = @original_temperature
       @setting.model_profile = @original_profile
       @setting.save!
     end
