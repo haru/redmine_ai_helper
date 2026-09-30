@@ -139,17 +139,18 @@ class AiHelperAutoCompletion {
       parent.style.position = 'relative';
     }
 
-    // Insert overlay before the textarea: with no z-index involved anywhere,
-    // paint order follows DOM order, so the textarea stays on top of the
-    // overlay while positioned elements appended to <body> (jsToolBar menus)
-    // stay on top of both
+    // Insert overlay before the textarea. Editor elements carry no z-index
+    // (ADR-041), so these positioned siblings paint in DOM order: the
+    // textarea paints over the overlay, and positioned popups appended later
+    // to <body> (jsToolBar menus) paint over both. checkAndEnableScrolling()
+    // moves the overlay after the textarea while in scrollable mode.
     parent.insertBefore(this.overlay, this.textarea);
 
     // Set initial position
     this.updateOverlayPosition();
 
-    // Keep the textarea positioned so it paints after the overlay and can
-    // receive input
+    // Position the textarea (z-index auto) so it joins the positioned layer
+    // and, being later in DOM order, paints over the overlay
     this.textarea.style.position = 'relative';
     // Keep background transparent to show overlay suggestions
     this.textarea.style.backgroundColor = 'transparent';

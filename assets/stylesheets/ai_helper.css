@@ -723,7 +723,6 @@ body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-conte
   bottom: 0;
   pointer-events: auto;
   /* Enable interactions for buttons (different from autocomplete) */
-  /* Higher than autocomplete overlay */
   font-family: inherit;
   font-size: inherit;
   line-height: inherit;
@@ -865,7 +864,8 @@ body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-conte
   border-radius: 4px;
   padding: 8px 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  /* Above overlay to remain visible during scrolling */
+  /* Stays above the typo overlay via DOM order: the panel is appended last
+     in the editor parent (ADR-041) */
   display: none;
   gap: 8px;
 }

@@ -43,6 +43,29 @@ function createCompletion(textarea, options = {}) {
   return completion;
 }
 
+/**
+ * Helper: Show a suggestion taller than the overlay so checkAndEnableScrolling
+ * takes the scrollable branch (jsdom does no layout, so heights are stubbed).
+ */
+function makeOverflowing(dom, completion) {
+  dom.textarea.style.height = "50px";
+  dom.textarea.value = "hello";
+  dom.textarea.setSelectionRange(5, 5);
+  completion.displayInlineSuggestion("\n".repeat(20), 5);
+
+  Object.defineProperty(completion.overlay, "scrollHeight", { value: 500, configurable: true });
+  Object.defineProperty(completion.overlay, "clientHeight", { value: 50, configurable: true });
+}
+
+/**
+ * Helper: Record child list changes of a node; read them with takeRecords().
+ */
+function observeChildList(node) {
+  const observer = new MutationObserver(() => {});
+  observer.observe(node, { childList: true });
+  return observer;
+}
+
 describe("AiHelperAutoCompletion overlay", () => {
   let container;
 
@@ -181,14 +204,7 @@ describe("AiHelperAutoCompletion overlay", () => {
       const dom = createTextareaDOM();
       container = dom.container;
       const completion = createCompletion(dom.textarea);
-
-      dom.textarea.style.height = "50px";
-      dom.textarea.value = "hello";
-      dom.textarea.setSelectionRange(5, 5);
-      completion.displayInlineSuggestion("\n".repeat(20), 5);
-
-      Object.defineProperty(completion.overlay, "scrollHeight", { value: 500, configurable: true });
-      Object.defineProperty(completion.overlay, "clientHeight", { value: 50, configurable: true });
+      makeOverflowing(dom, completion);
 
       completion.checkAndEnableScrolling();
 
@@ -202,35 +218,52 @@ describe("AiHelperAutoCompletion overlay", () => {
       const dom = createTextareaDOM();
       container = dom.container;
       const completion = createCompletion(dom.textarea);
-
-      dom.textarea.style.height = "50px";
-      dom.textarea.value = "hello";
-      dom.textarea.setSelectionRange(5, 5);
-      completion.displayInlineSuggestion("\n".repeat(20), 5);
-
-      Object.defineProperty(completion.overlay, "scrollHeight", { value: 500, configurable: true });
-      Object.defineProperty(completion.overlay, "clientHeight", { value: 50, configurable: true });
+      makeOverflowing(dom, completion);
 
       dom.textarea.scrollTop = 12;
       dom.textarea.scrollLeft = 3;
       completion.checkAndEnableScrolling();
 
+      // jsdom does not reset scrollTop on a DOM move, so this only proves a
+      // sync runs after the move, not that the browser's reset is undone
       expect(completion.overlay.scrollTop).toBe(12);
       expect(completion.overlay.scrollLeft).toBe(3);
+    });
+
+    it("does not move the overlay again when already in scrollable mode", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+      makeOverflowing(dom, completion);
+      completion.checkAndEnableScrolling();
+
+      const observer = observeChildList(dom.container);
+      completion.checkAndEnableScrolling();
+
+      expect(observer.takeRecords()).toHaveLength(0);
+      observer.disconnect();
+    });
+
+    it("moves the overlay back before the textarea when content fits again", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+      makeOverflowing(dom, completion);
+      completion.checkAndEnableScrolling();
+
+      Object.defineProperty(completion.overlay, "scrollHeight", { value: 30, configurable: true });
+      completion.checkAndEnableScrolling();
+
+      expect(dom.textarea.previousSibling).toBe(completion.overlay);
+      expect(completion.overlay.style.pointerEvents).toBe("none");
+      expect(completion.overlay.classList.contains("ai-helper-scrollable-overlay")).toBe(false);
     });
 
     it("never sets an inline z-index in any state", () => {
       const dom = createTextareaDOM();
       container = dom.container;
       const completion = createCompletion(dom.textarea);
-
-      dom.textarea.style.height = "50px";
-      dom.textarea.value = "hello";
-      dom.textarea.setSelectionRange(5, 5);
-      completion.displayInlineSuggestion("\n".repeat(20), 5);
-
-      Object.defineProperty(completion.overlay, "scrollHeight", { value: 500, configurable: true });
-      Object.defineProperty(completion.overlay, "clientHeight", { value: 50, configurable: true });
+      makeOverflowing(dom, completion);
 
       completion.checkAndEnableScrolling();
       expect(completion.overlay.style.zIndex).toBe("");
@@ -238,6 +271,54 @@ describe("AiHelperAutoCompletion overlay", () => {
       Object.defineProperty(completion.overlay, "scrollHeight", { value: 30, configurable: true });
       completion.checkAndEnableScrolling();
       expect(completion.overlay.style.zIndex).toBe("");
+    });
+
+    it("keeps a sibling inserted right after the textarea (typo overlay) above the completion overlay", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+
+      // Same insertion the typo checker uses for its overlay
+      const typoOverlay = document.createElement("div");
+      dom.container.insertBefore(typoOverlay, dom.textarea.nextSibling);
+
+      makeOverflowing(dom, completion);
+      completion.checkAndEnableScrolling();
+
+      const children = Array.from(dom.container.children);
+      expect(children.indexOf(dom.textarea)).toBe(0);
+      expect(children.indexOf(completion.overlay)).toBe(1);
+      expect(children.indexOf(typoOverlay)).toBe(2);
+    });
+
+    it("does not throw when the textarea has been detached", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+      makeOverflowing(dom, completion);
+      dom.textarea.remove();
+
+      expect(() => completion.checkAndEnableScrolling()).not.toThrow();
+      Object.defineProperty(completion.overlay, "scrollHeight", { value: 30, configurable: true });
+      expect(() => completion.checkAndEnableScrolling()).not.toThrow();
+    });
+
+    it("does not re-insert the overlay after destroy()", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+      makeOverflowing(dom, completion);
+
+      const overlay = completion.overlay;
+      completion.destroy();
+      // Simulates the setTimeout(0) from displayInlineSuggestion firing late
+      completion.checkAndEnableScrolling();
+      expect(overlay.isConnected).toBe(false);
+
+      // Same for the non-scrollable branch
+      Object.defineProperty(overlay, "scrollHeight", { value: 30, configurable: true });
+      completion.checkAndEnableScrolling();
+      expect(overlay.isConnected).toBe(false);
     });
   });
 
@@ -335,7 +416,7 @@ describe("AiHelperAutoCompletion overlay", () => {
       expect(completion.overlay.scrollTop).toBe(7);
     });
 
-    it("does not call insertBefore when the overlay is already in place", () => {
+    it("does not move the overlay when it is already in place", () => {
       const dom = createTextareaDOM();
       container = dom.container;
       const completion = createCompletion(dom.textarea);
@@ -344,11 +425,12 @@ describe("AiHelperAutoCompletion overlay", () => {
       dom.textarea.setSelectionRange(5, 5);
       completion.displayInlineSuggestion(" world", 5);
 
-      const insertBeforeSpy = vi.spyOn(dom.container, "insertBefore");
+      const observer = observeChildList(dom.container);
       completion.resetScrolling();
 
-      expect(insertBeforeSpy).not.toHaveBeenCalled();
+      expect(observer.takeRecords()).toHaveLength(0);
       expect(dom.textarea.previousSibling).toBe(completion.overlay);
+      observer.disconnect();
     });
   });
 });

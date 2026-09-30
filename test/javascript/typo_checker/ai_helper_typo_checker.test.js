@@ -602,6 +602,20 @@ describe("AiHelperTypoChecker", () => {
       checker.overlay = null;
       expect(() => checker.resetScrolling()).not.toThrow();
     });
+
+    it("drops the scrollable overflow class once content fits again", () => {
+      checker = createChecker(textarea);
+      checker.init();
+
+      Object.defineProperty(checker.overlay, "scrollHeight", { value: 500, configurable: true });
+      Object.defineProperty(checker.overlay, "clientHeight", { value: 50, configurable: true });
+      checker.checkAndEnableScrolling();
+      expect(checker.overlay.classList.contains("ai-helper-typo-overlay-scrollable")).toBe(true);
+
+      Object.defineProperty(checker.overlay, "scrollHeight", { value: 30, configurable: true });
+      checker.checkAndEnableScrolling();
+      expect(checker.overlay.classList.contains("ai-helper-typo-overlay-scrollable")).toBe(false);
+    });
   });
 
   describe("addScrollableEventListeners / removeScrollableEventListeners", () => {

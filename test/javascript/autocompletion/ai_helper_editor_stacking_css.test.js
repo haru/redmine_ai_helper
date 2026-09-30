@@ -2,70 +2,89 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+// Classes of the editor elements that must stay at z-index: auto (ADR-041).
+// Matched as class-name prefixes, so variants such as
+// .ai-helper-typo-overlay-active are covered too.
+const EDITOR_CLASSES = [
+  "ai-helper-textarea-overlay",
+  "ai-helper-textarea-positioned",
+  "ai-helper-scrollable-overlay",
+  "ai-helper-typo-overlay",
+  "ai-helper-typo-control-panel",
+  "ai-helper-control-panel-positioned",
+];
+
 /**
- * Reads the plugin stylesheet from disk.
- * @returns {string} the full CSS source
+ * Reads the plugin stylesheet from disk, with comments stripped.
+ * @returns {string} the CSS source without comments
  */
 function readCss() {
   // Vitest runs with the plugin root as the working directory
-  return readFileSync(resolve(process.cwd(), "assets/stylesheets/ai_helper.css"), "utf8");
+  const css = readFileSync(resolve(process.cwd(), "assets/stylesheets/ai_helper.css"), "utf8");
+  return css.replace(/\/\*[\s\S]*?\*\//g, "");
 }
 
 /**
- * Escapes a string for literal use inside a RegExp.
- * @param {string} text the text to escape
- * @returns {string} the escaped text
+ * Splits the stylesheet into its innermost rules, including rules nested in
+ * @media blocks. This is a lightweight scan, not a CSS parser: jsdom cannot
+ * compute cascade or paint order, so the stacking contract is checked at the
+ * source level instead (see ADR-041).
+ * @returns {{selectors: string[], body: string}[]} each rule's selector list
+ *   and declaration block
  */
-function escapeRegExp(text) {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-/**
- * Returns the declaration block of the first rule whose selector matches.
- * jsdom cannot compute cascade or paint order, so the stacking contract is
- * verified at the source level instead (see ADR-041).
- * @param {string} selector e.g. ".ai-helper-textarea-overlay"
- * @returns {string} the rule body between "{" and the next "}"
- */
-function getRuleBody(selector) {
+function getRules() {
   const css = readCss();
-  const match = new RegExp(escapeRegExp(selector) + "\\s*\\{").exec(css);
-  expect(match, `selector ${selector} not found in ai_helper.css`).not.toBeNull();
-  const start = match.index + match[0].length;
-  const end = css.indexOf("}", start);
-  return css.slice(start, end);
+  const rules = [];
+  const re = /([^{}]+)\{([^{}]*)\}/g;
+  let match;
+  while ((match = re.exec(css)) !== null) {
+    const selectors = match[1].split(",").map((s) => s.trim()).filter(Boolean);
+    rules.push({ selectors, body: match[2] });
+  }
+  return rules;
+}
+
+/**
+ * Returns the subject (rightmost compound) of a selector, the element the
+ * rule actually styles.
+ * @param {string} selector e.g. ".ai-helper-typo-overlay .ai-helper-tooltip"
+ * @returns {string} e.g. ".ai-helper-tooltip"
+ */
+function subjectOf(selector) {
+  const compounds = selector.split(/[\s>+~]+/).filter(Boolean);
+  return compounds[compounds.length - 1];
+}
+
+/**
+ * Tells whether a selector styles one of the editor elements.
+ * @param {string} selector a single selector (no commas)
+ * @returns {boolean} true when its subject carries an editor class
+ */
+function targetsEditorElement(selector) {
+  const subject = subjectOf(selector);
+  return EDITOR_CLASSES.some((cls) => subject.includes(`.${cls}`));
 }
 
 describe("editor stacking CSS contract", () => {
-  describe("tooltips keep their z-index (exempt from the contract)", () => {
-    it(".ai-helper-tooltip keeps z-index 10001", () => {
-      expect(getRuleBody(".ai-helper-tooltip")).toMatch(/z-index:\s*10001/);
-    });
+  it(".ai-helper-tooltip keeps z-index 10001 (exempt from the contract)", () => {
+    const tooltipRule = getRules().find((rule) => rule.selectors.includes(".ai-helper-tooltip"));
 
-    it(".ai-helper-typo-tooltip keeps z-index 10001", () => {
-      expect(getRuleBody(".ai-helper-typo-tooltip")).toMatch(/z-index:\s*10001/);
-    });
+    expect(tooltipRule, ".ai-helper-tooltip rule not found in ai_helper.css").toBeDefined();
+    expect(tooltipRule.body).toMatch(/z-index:\s*10001/);
   });
 
-  describe("completion overlay rules carry no z-index", () => {
-    it(".ai-helper-textarea-overlay has no z-index", () => {
-      expect(getRuleBody(".ai-helper-textarea-overlay")).not.toMatch(/z-index/);
-    });
-
-    it(".ai-helper-textarea-positioned has no z-index", () => {
-      expect(getRuleBody(".ai-helper-textarea-positioned")).not.toMatch(/z-index/);
-    });
+  it.each(EDITOR_CLASSES)("finds at least one rule for .%s", (cls) => {
+    // Guards against the contract below passing vacuously after a rename
+    const found = getRules().some((rule) => rule.selectors.some((s) => s.includes(`.${cls}`)));
+    expect(found).toBe(true);
   });
 
-  describe("typo checker rules carry no z-index", () => {
-    it.each([
-      ".ai-helper-typo-overlay",
-      ".ai-helper-typo-overlay-active",
-      ".ai-helper-typo-overlay-scrollable",
-      ".ai-helper-typo-control-panel",
-      ".ai-helper-control-panel-positioned",
-    ])("%s has no z-index", (selector) => {
-      expect(getRuleBody(selector)).not.toMatch(/z-index/);
-    });
+  it("no rule styling an editor element sets a z-index", () => {
+    const offenders = getRules()
+      .filter((rule) => rule.selectors.some(targetsEditorElement))
+      .filter((rule) => /z-index/.test(rule.body))
+      .map((rule) => rule.selectors.join(", "));
+
+    expect(offenders).toEqual([]);
   });
 });

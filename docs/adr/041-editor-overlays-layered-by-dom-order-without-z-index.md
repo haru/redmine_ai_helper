@@ -34,6 +34,12 @@ not be reached (issue #464).
    | Completion, normal | completion overlay → textarea → typo overlay → control panel (last) |
    | Completion, scrollable | textarea → completion overlay → typo overlay → control panel (last) |
 
+   The table assumes the typo overlay is created while the completion
+   overlay is in its normal state, which is the case at page load. If the
+   typo overlay were created during scrollable mode it would land between
+   the textarea and the completion overlay until the completion overlay
+   next returns to its normal state.
+
    The completion overlay is inserted immediately **before** the textarea on
    creation, and moved immediately **after** it only while the scrollable
    suggestion mode is active. The typo overlay keeps its existing position
@@ -41,18 +47,22 @@ not be reached (issue #464).
    existing place at the end of the editor parent.
 3. When the completion overlay is moved in the DOM, its scroll position
    resets to 0, so `syncScroll()` runs right after every move, and a move is
-   skipped when the overlay already sits in the required position.
-4. The typo tooltips (`.ai-helper-tooltip`, `.ai-helper-typo-tooltip`) are an
-   explicit exception and keep `z-index: 10001`.
+   skipped when the overlay already sits in the required position. A
+   detached overlay (after `destroy()`) is never moved back into the page.
+4. The typo tooltip (`.ai-helper-tooltip`) is an explicit exception and
+   keeps `z-index: 10001`. (The `.ai-helper-typo-tooltip` rule also keeps
+   its `z-index: 10001` but is not used by any script.)
 
 ## Consequences
 
-- Elements appended to `<body>` by Redmine core or other plugins (toolbar
-  menus and any other popup) paint above the editor area, because the editor
-  elements no longer carry a positive `z-index` page-wide.
-- The tooltips keep working page-wide too: since no new stacking context is
-  introduced around the editor, their `z-index: 10001` still compares
-  against the whole page as before.
+- Positioned elements appended to `<body>` by Redmine core or other plugins
+  (toolbar menus and any other popup) paint above the editor area, because
+  the editor elements no longer carry a positive `z-index` page-wide.
+- The tooltip now competes page-wide with its `z-index: 10001`. It lives
+  inside the typo overlay, which previously had `z-index: 15`/`20` and so
+  formed its own stacking context that confined the tooltip. Removing the
+  overlay's `z-index` removed that context, and no new one is introduced
+  around the editor.
 - The completion overlay's scrollable mode relies on DOM reordering plus
   `pointer-events` instead of `zIndex` switching; `syncScroll()` right after
   a move keeps the suggestion aligned with the body text.
@@ -78,7 +88,10 @@ not be reached (issue #464).
 - **Keep the completion overlay after the textarea at all times and raise
   the textarea in front when needed**: rejected. With `z-index` off the
   table there is no way for an earlier positioned sibling to paint on top of
-  a later one, so the overlay has to move in the DOM.
-- **Keep the overlay after the textarea permanently and only toggle
+  a later one, so the overlay has to move in the DOM. Leaving the overlay on
+  top instead is not an option either: while a suggestion is shown it has an
+  opaque background, which would hide the textarea's caret and selection.
+- **Keep the overlay before the textarea permanently and only toggle
   `pointer-events`**: rejected. In scrollable mode the overlay must receive
-  wheel and scrollbar input, which requires it to be on top.
+  wheel and scrollbar input, which requires it to paint on top of the
+  textarea.

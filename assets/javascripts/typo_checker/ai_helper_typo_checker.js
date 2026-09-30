@@ -161,13 +161,15 @@ class AiHelperTypoChecker {
       parent.classList.add('ai-helper-textarea-parent-relative');
     }
 
-    // Insert overlay after textarea (same as autocomplete)
+    // Insert overlay after the textarea so it paints on top of it (DOM
+    // order, ADR-041)
     parent.insertBefore(this.overlay, this.textarea.nextSibling);
 
     // Set initial position
     this.updateOverlayPosition();
 
-    // Ensure textarea is above overlay and can receive input (same as autocomplete)
+    // Make the textarea positioned (z-index auto) so the DOM-order layering
+    // applies
     this.textarea.classList.add('ai-helper-textarea-positioned');
   }
 
@@ -430,7 +432,8 @@ class AiHelperTypoChecker {
       // Enable pointer events to allow scrolling interaction
       this.overlay.style.pointerEvents = 'auto';
 
-      // Show textarea border on overlay since it's now on top
+      // Show the textarea border on the overlay, which always paints above
+      // the textarea (DOM order)
       const computedStyle = window.getComputedStyle(this.textarea);
       this.overlay.style.borderColor = computedStyle.borderColor;
 
@@ -441,16 +444,7 @@ class AiHelperTypoChecker {
       this.addScrollableEventListeners();
     } else {
       // Content fits within height, use default behavior
-      this.overlay.style.overflowY = 'hidden';
-      this.overlay.style.overflowX = 'hidden';
-
-      // Restore original pointer events
-      this.overlay.style.pointerEvents = 'auto';
-      this.overlay.style.borderColor = 'transparent';
-      this.overlay.classList.remove('ai-helper-scrollable-overlay');
-
-      // Remove scrollable event listeners
-      this.removeScrollableEventListeners();
+      this.resetScrolling();
     }
   }
 
@@ -464,7 +458,7 @@ class AiHelperTypoChecker {
     this.overlay.style.overflowX = 'hidden';
     this.overlay.style.pointerEvents = 'auto';
     this.overlay.style.borderColor = 'transparent';
-    this.overlay.classList.remove('ai-helper-scrollable-overlay');
+    this.overlay.classList.remove('ai-helper-scrollable-overlay', 'ai-helper-typo-overlay-scrollable');
     this.removeScrollableEventListeners();
   }
 
