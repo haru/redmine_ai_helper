@@ -11,7 +11,8 @@ class RedmineAiHelper::LlmClient::GeminiProviderTest < ActiveSupport::TestCase
         name: "Test Gemini Profile",
         llm_type: "Gemini",
         llm_model: "gemini-2.0-flash",
-        access_key: "test_gemini_key"
+        access_key: "test_gemini_key",
+        temperature: 0.5
       )
       @setting.model_profile = @gemini_profile
       @setting.save!

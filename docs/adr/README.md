@@ -94,3 +94,4 @@ Briefly describe alternatives that were rejected and why.
 | [039](./039-log-file-location-resolved-from-runtime-logger.md) | The Redmine log file is resolved from the running Rails.logger | Accepted |
 | [040](./040-tests-must-not-assume-time-advances.md) | Tests must not assume time advances under Redmine's frozen test clock | Accepted |
 | [041](./041-editor-overlays-layered-by-dom-order-without-z-index.md) | Editor overlays are layered by DOM order, without z-index | Accepted |
+| [042](./042-model-profile-temperature-is-optional.md) | Model profile temperature is optional; unset means the request omits it | Accepted |

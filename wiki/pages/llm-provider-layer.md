@@ -1,8 +1,8 @@
 ---
 title: LLM Provider Layer
 type: component
-sources: [S009, S021]
-updated: 2026-08-20
+sources: [S009, S021, S037]
+updated: 2026-09-30
 ---
 
 # LLM Provider Layer
@@ -41,6 +41,9 @@ All inherit `RedmineAiHelper::LlmClient::BaseProvider` (S009):
 - `context` returns a memoized `RubyLLM::Context` (after ensuring registration) (S009).
 - `create_chat` builds a `RubyLLM::Chat`, applying instructions, tools,
   temperature, and any structured-output schema from the profile (S009).
+  Temperature is applied only when set (`with_temperature(temperature) if
+  temperature`), so a blank profile temperature sends none — see
+  [Model Profile Temperature Is Optional](./model-profile-optional-temperature.md) (S037).
 - `embed` generates embeddings; `supports_structured_output?` reports native
   JSON-schema support (S009).
 - **Per-call HTTP options**: `initialize` accepts an optional `request_options:`
@@ -82,4 +85,5 @@ injected into the prompt instead of calling the native API.
 - [Multi-Agent Architecture](./multi-agent-architecture.md) ·
   [BaseAgent LLM Calls](./base-agent-llm-calls.md) ·
   [Think Model](./think-model.md) · [Vector Search](./vector-search.md) ·
-  [Completion Request Timeout Policy](./completion-request-timeout-policy.md)
+  [Completion Request Timeout Policy](./completion-request-timeout-policy.md) ·
+  [Model Profile Temperature Is Optional](./model-profile-optional-temperature.md)

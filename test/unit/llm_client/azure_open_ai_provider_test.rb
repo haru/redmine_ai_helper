@@ -12,7 +12,8 @@ class RedmineAiHelper::LlmClient::AzureOpenAiProviderTest < ActiveSupport::TestC
         llm_type: "AzureOpenAi",
         llm_model: "gpt-4o",
         access_key: "test_azure_key",
-        base_uri: "https://myresource.openai.azure.com/openai/deployments/gpt-4o"
+        base_uri: "https://myresource.openai.azure.com/openai/deployments/gpt-4o",
+        temperature: 0.5
       )
       @setting.model_profile = @azure_profile
       @setting.save!
@@ -96,6 +97,30 @@ class RedmineAiHelper::LlmClient::AzureOpenAiProviderTest < ActiveSupport::TestC
       @provider.expects(:build_context).returns(mock_context)
 
       @provider.create_chat(tools: [ tool_class ])
+    end
+
+    context "with nil temperature" do
+      setup do
+        @azure_profile.update_column(:temperature, nil)
+      end
+
+      should "not call with_temperature when temperature is nil (FR-003)" do
+        assert_nil @provider.temperature
+
+        mock_context = mock("RubyLLM::Context")
+        mock_chat = mock("RubyLLM::Chat")
+        mock_chat.expects(:with_temperature).never
+        mock_context.expects(:chat).with(
+          model: @azure_profile.llm_model,
+          provider: :openai,
+          assume_model_exists: true
+        ).returns(mock_chat)
+        @provider.expects(:build_context).returns(mock_context)
+
+        chat = @provider.create_chat
+
+        assert_equal mock_chat, chat
+      end
     end
 
     context "apply_user_identifier" do

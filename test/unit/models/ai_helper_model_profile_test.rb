@@ -33,11 +33,64 @@ class AiHelperModelProfileTest < ActiveSupport::TestCase
     assert_predicate profile.errors[:name], :present?
   end
 
-  def test_should_require_temperature
+  # Temperature is optional (Issue #465): nil passes validation (FR-001)
+  def test_should_allow_blank_temperature
     profile = AiHelperModelProfile.new(@valid_attributes.merge(temperature: nil))
 
-    assert_not profile.valid?, "Profile without temperature should not be valid"
-    assert_predicate profile.errors[:temperature], :present?, "Temperature error should be present: #{profile.errors.full_messages}"
+    assert profile.valid?, "Profile without temperature should be valid: #{profile.errors.full_messages}"
+  end
+
+  # Empty string and whitespace-only input are saved as nil (FR-009)
+  def test_should_save_blank_temperature_strings_as_nil
+    [ "", "  " ].each_with_index do |input, index|
+      profile = AiHelperModelProfile.create!(@valid_attributes.merge(
+        name: "Test Blank Temp #{index}",
+        temperature: input
+      ))
+
+      assert_nil profile.reload.temperature, "Input #{input.inspect} should be saved as nil"
+    end
+  end
+
+  # 0 is a valid value and is distinct from nil (Edge Case)
+  def test_should_save_zero_temperature_as_zero
+    profile = AiHelperModelProfile.create!(@valid_attributes.merge(name: "Test Zero Temp", temperature: "0"))
+
+    assert_in_delta(0.0, profile.reload.temperature)
+    assert_not_nil profile.temperature
+  end
+
+  # New profiles start without a temperature (FR-011)
+  def test_new_profile_has_nil_temperature_by_default
+    assert_nil AiHelperModelProfile.new.temperature
+  end
+
+  # GPT-5 series models are fixed to 1.0 even when temperature is unset (FR-010)
+  def test_should_set_temperature_to_1_for_gpt5_model_with_nil_temperature
+    test_cases = [
+      "gpt-5",
+      "gpt-5-turbo",
+      "GPT-5-MINI"
+    ]
+
+    test_cases.each_with_index do |model_name, index|
+      profile = AiHelperModelProfile.new(@valid_attributes.merge(
+        name: "Test GPT5 Nil Temp #{index}",
+        llm_model: model_name,
+        temperature: nil
+      ))
+
+      assert profile.save, "Profile should save: #{profile.errors.full_messages}"
+      assert_in_delta(1.0, profile.temperature, 0.001, "Temperature not set to 1.0 for model: #{model_name}")
+    end
+  end
+
+  # Non-numeric temperature is rejected (FR-002)
+  def test_should_reject_non_numeric_temperature
+    profile = AiHelperModelProfile.new(@valid_attributes.merge(temperature: "abc"))
+
+    assert_not profile.valid?
+    assert_predicate profile.errors[:temperature], :present?
   end
 
   def test_should_validate_temperature_numericality
