@@ -928,6 +928,37 @@ describe("AiHelperAutoCompletion request lifecycle", () => {
     });
   });
 
+  describe("createOverlay stacking (DOM order instead of z-index)", () => {
+    it("inserts the overlay immediately before the textarea", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+
+      expect(completion.overlay).not.toBeNull();
+      expect(dom.textarea.previousSibling).toBe(completion.overlay);
+      expect(completion.overlay.nextSibling).toBe(dom.textarea);
+    });
+
+    it("leaves inline z-index unset on textarea and overlay", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+
+      expect(dom.textarea.style.zIndex).toBe("");
+      expect(completion.overlay.style.zIndex).toBe("");
+    });
+
+    it("does not set a z-index on the textarea when destroyed", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+
+      completion.destroy();
+
+      expect(dom.textarea.style.zIndex).toBe("");
+    });
+  });
+
   describe("onFocus / onBlur", () => {
     it("shows overlay on focus", () => {
       const dom = createTextareaDOM();
