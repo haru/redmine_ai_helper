@@ -117,7 +117,6 @@ class AiHelperAutoCompletion {
     // Position overlay to match textarea exactly
     this.overlay.style.position = 'absolute';
     this.overlay.style.pointerEvents = 'none';
-    this.overlay.style.zIndex = '5'; // Below textarea but above background
     this.overlay.style.overflowY = 'hidden';
     this.overlay.style.overflowX = 'hidden';
     this.overlay.style.whiteSpace = 'pre-wrap';
@@ -140,15 +139,18 @@ class AiHelperAutoCompletion {
       parent.style.position = 'relative';
     }
 
-    // Insert overlay after textarea
-    parent.insertBefore(this.overlay, this.textarea.nextSibling);
+    // Insert overlay before the textarea: with no z-index involved anywhere,
+    // paint order follows DOM order, so the textarea stays on top of the
+    // overlay while positioned elements appended to <body> (jsToolBar menus)
+    // stay on top of both
+    parent.insertBefore(this.overlay, this.textarea);
 
     // Set initial position
     this.updateOverlayPosition();
 
-    // Ensure textarea is above overlay and can receive input
+    // Keep the textarea positioned so it paints after the overlay and can
+    // receive input
     this.textarea.style.position = 'relative';
-    this.textarea.style.zIndex = '10'; // Higher z-index to ensure textarea is on top
     // Keep background transparent to show overlay suggestions
     this.textarea.style.backgroundColor = 'transparent';
   }
@@ -604,7 +606,6 @@ class AiHelperAutoCompletion {
     // Reset textarea styles
     this.textarea.style.backgroundColor = '';
     this.textarea.style.position = '';
-    this.textarea.style.zIndex = '';
   }
 }
 

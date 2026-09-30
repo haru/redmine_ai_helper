@@ -129,6 +129,20 @@ Object.assign(AiHelperAutoCompletion.prototype, {
     }
   },
 
+  // Move the overlay relative to the textarea so paint order follows DOM
+  // order (no z-index anywhere). Moving resets the overlay's scroll position,
+  // so the caller must re-sync right after; done here to keep that invariant
+  // in one place.
+  placeOverlayRelative() {
+    const parent = this.textarea.parentNode;
+    if (!parent) {return;}
+
+    if (this.overlay.previousSibling !== this.textarea) {
+      parent.insertBefore(this.overlay, this.textarea.nextSibling);
+      this.syncScroll();
+    }
+  },
+
   // Check if scrolling is needed and enable it when content exceeds height
   checkAndEnableScrolling() {
     if (!this.overlay) {return;}
@@ -144,8 +158,9 @@ Object.assign(AiHelperAutoCompletion.prototype, {
       // Enable pointer events to allow scrolling interaction
       this.overlay.style.pointerEvents = 'auto';
 
-      // Move overlay above textarea to capture mouse events
-      this.overlay.style.zIndex = '10';
+      // Move the overlay after the textarea so it paints on top and captures
+      // mouse events
+      this.placeOverlayRelative();
 
       // Show textarea border on overlay since it's now on top
       const computedStyle = window.getComputedStyle(this.textarea);
@@ -161,14 +176,27 @@ Object.assign(AiHelperAutoCompletion.prototype, {
       this.overlay.style.overflowY = 'hidden';
       this.overlay.style.overflowX = 'hidden';
 
-      // Restore original pointer events and z-index settings
+      // Restore original pointer events and place the overlay back before the
+      // textarea so the textarea paints on top
       this.overlay.style.pointerEvents = 'none';
-      this.overlay.style.zIndex = '5';
       this.overlay.style.borderColor = 'transparent';
       this.overlay.classList.remove('ai-helper-scrollable-overlay');
+      this.placeOverlayBefore();
 
       // Remove scrollable event listeners
       this.removeScrollableEventListeners();
+    }
+  },
+
+  // Put the overlay back before the textarea (normal state), without moving
+  // it when it is already in place
+  placeOverlayBefore() {
+    const parent = this.textarea.parentNode;
+    if (!parent) {return;}
+
+    if (this.overlay.nextSibling !== this.textarea) {
+      parent.insertBefore(this.overlay, this.textarea);
+      this.syncScroll();
     }
   },
 
@@ -179,9 +207,9 @@ Object.assign(AiHelperAutoCompletion.prototype, {
     this.overlay.style.overflowY = 'hidden';
     this.overlay.style.overflowX = 'hidden';
     this.overlay.style.pointerEvents = 'none';
-    this.overlay.style.zIndex = '5';
     this.overlay.style.borderColor = 'transparent';
     this.overlay.classList.remove('ai-helper-scrollable-overlay');
+    this.placeOverlayBefore();
     this.removeScrollableEventListeners();
   },
 

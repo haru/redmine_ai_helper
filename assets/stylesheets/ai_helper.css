@@ -618,7 +618,6 @@ body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-conte
   right: 0;
   bottom: 0;
   pointer-events: none;
-  z-index: 5;
   font-family: inherit;
   font-size: inherit;
   line-height: inherit;
@@ -724,7 +723,6 @@ body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-conte
   bottom: 0;
   pointer-events: auto;
   /* Enable interactions for buttons (different from autocomplete) */
-  z-index: 15;
   /* Higher than autocomplete overlay */
   font-family: inherit;
   font-size: inherit;
@@ -867,7 +865,6 @@ body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-conte
   border-radius: 4px;
   padding: 8px 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  z-index: 25;
   /* Above overlay to remain visible during scrolling */
   display: none;
   gap: 8px;
@@ -934,14 +931,12 @@ body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-conte
 
 .ai-helper-textarea-positioned {
   position: relative !important;
-  z-index: 10 !important;
   background-color: transparent !important;
 }
 
 /* Overlay states */
 .ai-helper-typo-overlay-active {
   display: block !important;
-  z-index: 15 !important;
   overflow-y: hidden !important;
   overflow-x: hidden !important;
   pointer-events: auto !important;
@@ -951,14 +946,12 @@ body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-conte
 .ai-helper-typo-overlay-scrollable {
   overflow-y: auto !important;
   overflow-x: hidden !important;
-  z-index: 20 !important;
   border-color: inherit !important;
 }
 
 /* Control panel positioning */
 .ai-helper-control-panel-positioned {
   position: absolute !important;
-  z-index: 25 !important;
   display: block !important;
 }
 

@@ -177,7 +177,7 @@ describe("AiHelperAutoCompletion overlay", () => {
   });
 
   describe("checkAndEnableScrolling", () => {
-    it("enables scrollable mode when content exceeds height", () => {
+    it("enables scrollable mode and moves the overlay after the textarea", () => {
       const dom = createTextareaDOM();
       container = dom.container;
       const completion = createCompletion(dom.textarea);
@@ -193,8 +193,51 @@ describe("AiHelperAutoCompletion overlay", () => {
       completion.checkAndEnableScrolling();
 
       expect(completion.overlay.style.overflowY).toBe("auto");
-      expect(completion.overlay.style.zIndex).toBe("10");
       expect(completion.overlay.classList.contains("ai-helper-scrollable-overlay")).toBe(true);
+      expect(dom.textarea.nextSibling).toBe(completion.overlay);
+      expect(dom.container.children[0]).toBe(dom.textarea);
+    });
+
+    it("syncs the overlay scroll position right after moving it", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+
+      dom.textarea.style.height = "50px";
+      dom.textarea.value = "hello";
+      dom.textarea.setSelectionRange(5, 5);
+      completion.displayInlineSuggestion("\n".repeat(20), 5);
+
+      Object.defineProperty(completion.overlay, "scrollHeight", { value: 500, configurable: true });
+      Object.defineProperty(completion.overlay, "clientHeight", { value: 50, configurable: true });
+
+      dom.textarea.scrollTop = 12;
+      dom.textarea.scrollLeft = 3;
+      completion.checkAndEnableScrolling();
+
+      expect(completion.overlay.scrollTop).toBe(12);
+      expect(completion.overlay.scrollLeft).toBe(3);
+    });
+
+    it("never sets an inline z-index in any state", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+
+      dom.textarea.style.height = "50px";
+      dom.textarea.value = "hello";
+      dom.textarea.setSelectionRange(5, 5);
+      completion.displayInlineSuggestion("\n".repeat(20), 5);
+
+      Object.defineProperty(completion.overlay, "scrollHeight", { value: 500, configurable: true });
+      Object.defineProperty(completion.overlay, "clientHeight", { value: 50, configurable: true });
+
+      completion.checkAndEnableScrolling();
+      expect(completion.overlay.style.zIndex).toBe("");
+
+      Object.defineProperty(completion.overlay, "scrollHeight", { value: 30, configurable: true });
+      completion.checkAndEnableScrolling();
+      expect(completion.overlay.style.zIndex).toBe("");
     });
   });
 
@@ -255,7 +298,7 @@ describe("AiHelperAutoCompletion overlay", () => {
   });
 
   describe("resetScrolling", () => {
-    it("resets all scrolling styles", () => {
+    it("resets scrolling styles and moves the overlay back before the textarea", () => {
       const dom = createTextareaDOM();
       container = dom.container;
       const completion = createCompletion(dom.textarea);
@@ -265,14 +308,47 @@ describe("AiHelperAutoCompletion overlay", () => {
       completion.displayInlineSuggestion(" world", 5);
 
       completion.overlay.style.overflowY = "auto";
-      completion.overlay.style.zIndex = "10";
       completion.overlay.classList.add("ai-helper-scrollable-overlay");
+      dom.textarea.parentNode.insertBefore(completion.overlay, dom.textarea.nextSibling);
 
       completion.resetScrolling();
 
       expect(completion.overlay.style.overflowY).toBe("hidden");
-      expect(completion.overlay.style.zIndex).toBe("5");
       expect(completion.overlay.classList.contains("ai-helper-scrollable-overlay")).toBe(false);
+      expect(dom.textarea.previousSibling).toBe(completion.overlay);
+      expect(completion.overlay.style.zIndex).toBe("");
+    });
+
+    it("syncs the overlay scroll position when moving it back", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+
+      dom.textarea.value = "hello";
+      dom.textarea.setSelectionRange(5, 5);
+      completion.displayInlineSuggestion(" world", 5);
+
+      dom.textarea.parentNode.insertBefore(completion.overlay, dom.textarea.nextSibling);
+      dom.textarea.scrollTop = 7;
+      completion.resetScrolling();
+
+      expect(completion.overlay.scrollTop).toBe(7);
+    });
+
+    it("does not call insertBefore when the overlay is already in place", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+
+      dom.textarea.value = "hello";
+      dom.textarea.setSelectionRange(5, 5);
+      completion.displayInlineSuggestion(" world", 5);
+
+      const insertBeforeSpy = vi.spyOn(dom.container, "insertBefore");
+      completion.resetScrolling();
+
+      expect(insertBeforeSpy).not.toHaveBeenCalled();
+      expect(dom.textarea.previousSibling).toBe(completion.overlay);
     });
   });
 });
