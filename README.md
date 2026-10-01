@@ -71,6 +71,7 @@ The Redmine AI Helper Plugin adds AI chat functionality to Redmine, enhancing pr
   - Custom commands for reusable prompt shortcuts
 - Provides a project health report
 - Supports multi-modal file analysis (images, PDFs, text, code, audio attachments)
+  - Text attachments that are not UTF-8 are converted using Redmine's "Attachments and repositories encodings" setting (Administration > Settings > Repositories). Add the encoding your files use (e.g. `cp932` for Windows Japanese files containing characters such as ①) to that setting; files that cannot be converted are reported to the AI as unreadable.
 - Supports multiple AI models and services
 - MCP server integration
 - Vector search using Qdrant

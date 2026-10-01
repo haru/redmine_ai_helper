@@ -117,6 +117,17 @@ class FileToolsTest < ActiveSupport::TestCase
         File.delete(pdf_path) if pdf_path && File.exist?(pdf_path)
       end
 
+      should "analyze converted and placeholder attachments returned by the helper" do
+        converted = RubyLLM::Attachment.new(StringIO.new("日本語"), filename: "a.txt")
+        placeholder = RubyLLM::Attachment.new(StringIO.new("notice"), filename: "b.txt")
+        @provider.stubs(:supported_attachment_paths).with(@issue).returns([ @file_path, converted, placeholder ])
+        @mock_chat.expects(:ask).with(anything, has_entry(with: [ @file_path, converted, placeholder ])).returns(@mock_response)
+
+        result = @provider.analyze_content_files(content_type: "issue", content_id: @issue.id)
+
+        assert_equal "This file contains a report with key findings.", result
+      end
+
       should "pass question to LLM when provided" do
         @provider.stubs(:supported_attachment_paths).with(@issue).returns([ @file_path ])
 

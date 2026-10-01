@@ -166,7 +166,8 @@ module RedmineAiHelper
     # @param messages [Array<Hash>] The messages to be sent.
     # @param _option [Hash] Reserved for future use; currently ignored.
     # @param callback [Proc] A callback function to be called with each chunk of the response.
-    # @param with [Array<String>, nil] Image file paths to attach to the request.
+    # @param with [Array<String, RubyLLM::Attachment>, nil] File paths or attachments
+    #   to attach to the request.
     # @return [String] The response from the LLM.
     def chat(messages, _option = {}, callback = nil, with: nil)
       chat_instance = @llm_provider.create_chat(instructions: system_prompt)
@@ -181,7 +182,8 @@ module RedmineAiHelper
     # @param messages [Array<Hash>] The messages to be sent.
     # @param _option [Hash] Reserved for future use; currently ignored.
     # @param callback [Proc] A callback function to be called with each chunk of the response.
-    # @param with [Array<String>, nil] Image file paths to attach to the request.
+    # @param with [Array<String, RubyLLM::Attachment>, nil] File paths or attachments
+    #   to attach to the request.
     # @return [String] The response from the LLM.
     def think_chat(messages, _option = {}, callback = nil, with: nil)
       provider = think_llm_provider || @llm_provider
@@ -200,7 +202,8 @@ module RedmineAiHelper
     #
     # @param messages [Array<Hash>] The messages to be sent.
     # @param json_schema [Hash] The JSON schema the response must satisfy.
-    # @param with [Array<String>, nil] Image file paths to attach to the request.
+    # @param with [Array<String, RubyLLM::Attachment>, nil] File paths or attachments
+    #   to attach to the request.
     # @return [Hash, Array] The schema-conforming parsed response.
     # @raise [JSON::ParserError] If the response cannot be parsed.
     # @raise [RedmineAiHelper::Util::StructuredOutputHelper::SchemaViolationError]
@@ -279,7 +282,8 @@ module RedmineAiHelper
     # @param messages [Array<Hash>] The messages to send. All but the last are
     #   added as history; the last is sent via ask.
     # @param callback [Proc, nil] Optional streaming callback.
-    # @param with [Array<String>, nil] Image file paths to attach to the request.
+    # @param with [Array<String, RubyLLM::Attachment>, nil] File paths or attachments
+    #   to attach to the request.
     # @return [String, Hash, Array] The assembled answer when streaming; the raw
     #   response content when not streaming, which is a Hash/Array instead of a
     #   String when native structured output (with_schema) is in effect.
