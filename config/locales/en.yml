@@ -20,6 +20,7 @@ en:
   ai_helper_scope_with_subprojects: "Include subprojects"
   ai_helper_scope_all_projects: "All projects"
   ai_helper_text_summary_generated_time: "Generated at %{time}"
+  ai_helper_summary_generation_failed: "Failed to generate summary"
   ai_helper_error_occurred: "An error occurred"
   permission_view_ai_helper: "View AI Helper"
   permission_settings_ai_helper: "Project Settings"

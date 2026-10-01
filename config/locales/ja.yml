@@ -20,6 +20,7 @@ ja:
   ai_helper_scope_with_subprojects: "サブプロジェクトを含める"
   ai_helper_scope_all_projects: "全プロジェクト"
   ai_helper_text_summary_generated_time: "%{time} に生成"
+  ai_helper_summary_generation_failed: "要約の生成に失敗しました"
   ai_helper_error_occurred: "エラーが発生しました"
   permission_view_ai_helper: "AIヘルパーの表示"
   permission_settings_ai_helper: "プロジェクトの設定"
