@@ -164,12 +164,14 @@ class ProjectHealthPartialTest < ActionView::TestCase
       assert_select html, "p.ai-helper-health-report-edited-notice", 0
     end
 
-    should "render the edited notice before the view for an edited report" do
+    should "render the edited notice in the meta block before the view for an edited report" do
       @report.update_content("Edited body", @editor)
       html = render(partial: "ai_helper/project/health_report_body", locals: { health_report: @report.reload })
 
       doc = Nokogiri::HTML::DocumentFragment.parse(html)
-      assert_select doc, "p.warning.ai-helper-health-report-edited-notice strong", text: l("ai_helper.health_report_edit.edited")
+      assert_select doc, "p.warning.ai-helper-health-report-edited-notice", 0
+      assert_select doc, ".ai-helper-health-report-meta p.ai-helper-health-report-edited-notice strong",
+                    text: "#{l("ai_helper.health_report_edit.edited")}:"
       assert_select doc, "p.ai-helper-health-report-edited-notice a[href=?]", "/users/#{@editor.id}"
       assert_includes html, format_time(@report.last_edited_on)
       assert_operator html.index("ai-helper-health-report-edited-notice"), :<, html.index("ai-helper-health-report-view")

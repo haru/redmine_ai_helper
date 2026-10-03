@@ -14,9 +14,8 @@
       <strong><%= l(:field_author) %>:</strong>
       <%= link_to_user health_report.user %>
     </p>
+    <%= render "ai_helper/project/health_report_edit_status", health_report: health_report %>
   </div>
-
-  <%= render "ai_helper/project/health_report_edit_status", health_report: health_report %>
 
   <% if health_report.editable? %>
     <div class="contextual">

@@ -11,6 +11,28 @@
     return node.closest('.ai-helper-health-report-body');
   };
 
+  // Make the jsToolBar preview look and fit like the rendered report.
+  const adaptPreview = function (toolbar) {
+    // Use the report's own content styles instead of Redmine's generic wiki styles
+    if (toolbar.preview) {
+      toolbar.preview.classList.replace('wiki', 'ai-helper-final-content');
+    }
+    // jsToolBar only sets the preview's min-height, so a long report overflows the
+    // fixed-height detail pane; cap it at the textarea height so it scrolls instead.
+    const showPreview = toolbar.showPreview;
+    if (typeof showPreview !== 'function') {
+      return;
+    }
+    toolbar.showPreview = function (event) {
+      // Read before showPreview hides the textarea (clientHeight becomes 0)
+      const height = this.textarea.clientHeight;
+      showPreview.call(this, event);
+      if (height > 0) {
+        this.preview.style.maxHeight = height + 'px';
+      }
+    };
+  };
+
   // Show the edit form, building the Markdown toolbar on first use.
   const startEdit = function (link) {
     const body = bodyOf(link);
@@ -24,6 +46,7 @@
       toolbar.setHelpLink(textarea.dataset.helpUrl);
       toolbar.setPreviewUrl(textarea.dataset.previewUrl);
       toolbar.draw();
+      adaptPreview(toolbar);
       form.dataset.toolbarReady = 'true';
     }
     textarea.focus();

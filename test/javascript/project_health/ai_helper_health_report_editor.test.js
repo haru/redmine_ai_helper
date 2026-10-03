@@ -89,6 +89,36 @@ describe("ai_helper_health_report_editor", () => {
     expect(window.jsToolBar).toHaveBeenCalledTimes(1);
   });
 
+  it("styles the preview like the report and caps its height at the textarea height", () => {
+    const preview = document.createElement("div");
+    preview.className = "wiki wiki-preview hidden";
+    const toolbar = {
+      setHelpLink: vi.fn(),
+      setPreviewUrl: vi.fn(),
+      draw: vi.fn(),
+      textarea: { clientHeight: 300 },
+      preview,
+      showPreview: vi.fn(function () {
+        // jsToolBar hides the textarea while showing the preview
+        this.textarea.clientHeight = 0;
+        this.preview.setAttribute("style", "min-height: 300px;");
+      })
+    };
+    const originalShowPreview = toolbar.showPreview;
+    window.jsToolBar = vi.fn(function () { return toolbar; });
+    wrapper = buildBody();
+
+    click(wrapper.querySelector(".ai-helper-health-report-edit-link"));
+    expect(preview.className).toBe("ai-helper-final-content wiki-preview hidden");
+
+    const event = { target: document.createElement("a") };
+    toolbar.showPreview(event);
+
+    expect(originalShowPreview).toHaveBeenCalledWith(event);
+    expect(preview.style.minHeight).toBe("300px");
+    expect(preview.style.maxHeight).toBe("300px");
+  });
+
   it("works without jsToolBar", () => {
     wrapper = buildBody();
     click(wrapper.querySelector(".ai-helper-health-report-edit-link"));
