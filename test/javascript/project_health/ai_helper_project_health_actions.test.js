@@ -20,12 +20,31 @@ FakeEventSource.instances = [];
 describe("ai_helper_project_health_actions", () => {
   let container;
   let cleanup;
+  let frameCallbacks;
+
+  function flushAnimationFrames() {
+    const callbacks = Array.from(frameCallbacks.values());
+    frameCallbacks.clear();
+    callbacks.forEach((callback) => callback(0));
+  }
+
+  function sendChunk(source, text) {
+    source.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: text } }] }) });
+  }
 
   beforeEach(async () => {
     container = document.createElement("div");
     document.body.appendChild(container);
     FakeEventSource.instances = [];
     vi.stubGlobal("EventSource", FakeEventSource);
+    frameCallbacks = new Map();
+    let nextFrameId = 1;
+    vi.stubGlobal("requestAnimationFrame", (callback) => {
+      const id = nextFrameId++;
+      frameCallbacks.set(id, callback);
+      return id;
+    });
+    vi.stubGlobal("cancelAnimationFrame", (id) => frameCallbacks.delete(id));
     delete window.aiHelperProjectHealthInitialized;
     delete window.aiHelperProjectHealthLoaded;
     delete window.AiHelperMarkdownParser;
@@ -171,11 +190,12 @@ describe("ai_helper_project_health_actions", () => {
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       const source = FakeEventSource.instances[0];
 
-      source.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: "Report: " } }] }) });
+      sendChunk(source, "Report: ");
+      flushAnimationFrames();
       expect(resultDiv.innerHTML).toContain("Report:");
       expect(resultDiv.innerHTML).toContain("ai-helper-cursor");
 
-      source.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: "good" } }] }) });
+      sendChunk(source, "good");
       source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
 
       expect(source.closed).toBe(true);
@@ -185,6 +205,80 @@ describe("ai_helper_project_health_actions", () => {
 
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(fetchMock).toHaveBeenCalled();
+    });
+
+    it("coalesces chunks that arrive within one animation frame into a single render", async () => {
+      const { resultDiv } = addHealthContainer();
+      const link = addGenerateLink();
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const source = FakeEventSource.instances[0];
+      const renderSpy = vi.spyOn(window, "appendStreamingChunk");
+
+      sendChunk(source, "one ");
+      sendChunk(source, "two ");
+      sendChunk(source, "three");
+
+      expect(renderSpy).not.toHaveBeenCalled();
+      expect(resultDiv.innerHTML).toContain("ai-helper-loader");
+      expect(frameCallbacks.size).toBe(1);
+
+      flushAnimationFrames();
+
+      expect(renderSpy).toHaveBeenCalledTimes(1);
+      expect(renderSpy.mock.calls[0][2]).toBe("one two three");
+      expect(resultDiv.innerHTML).toContain("one two three");
+
+      sendChunk(source, " four");
+      flushAnimationFrames();
+
+      expect(renderSpy).toHaveBeenCalledTimes(2);
+      expect(renderSpy.mock.calls[1][2]).toBe("one two three four");
+      renderSpy.mockRestore();
+    });
+
+    it("cancels a pending streaming render when the stream finishes", async () => {
+      const { resultDiv } = addHealthContainer();
+      const link = addGenerateLink();
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const source = FakeEventSource.instances[0];
+
+      sendChunk(source, "final text");
+      source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+
+      expect(frameCallbacks.size).toBe(0);
+      expect(resultDiv.innerHTML).toContain("ai-helper-final-content");
+      expect(resultDiv.innerHTML).toContain("final text");
+      expect(resultDiv.innerHTML).not.toContain("ai-helper-cursor");
+    });
+
+    it("drops a pending render from a stream replaced by a newer generation", async () => {
+      const { resultDiv } = addHealthContainer();
+      const link = addGenerateLink();
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      sendChunk(FakeEventSource.instances[0], "stale text");
+
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      flushAnimationFrames();
+
+      expect(resultDiv.innerHTML).toContain("ai-helper-loader");
+      expect(resultDiv.innerHTML).not.toContain("stale text");
+    });
+
+    it("cancels a pending streaming render when the stream errors", async () => {
+      const { resultDiv } = addHealthContainer();
+      const link = addGenerateLink();
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const source = FakeEventSource.instances[0];
+
+      sendChunk(source, "partial");
+      source.onerror();
+
+      expect(frameCallbacks.size).toBe(0);
+      expect(resultDiv.innerHTML).toContain("ai-helper-error");
     });
 
     it("creates the hidden report-content field when it does not already exist", async () => {
