@@ -14,6 +14,8 @@ class AiHelperMasterDetail {
    */
   constructor() {
     this.selectedReportId = null;
+    // Incremented per detail request so slower, superseded responses are dropped
+    this.detailRequestId = 0;
     this.masterPane = null;
     this.detailPane = null;
     this.detailContainer = null;
@@ -119,11 +121,16 @@ class AiHelperMasterDetail {
 
   /**
    * Fetch a report's detail pane HTML (server-rendered partial) via AJAX.
+   * A response (or error) is ignored once a newer detail request has started,
+   * so a slow earlier request cannot overwrite the currently selected report.
    * @param {string} url - The report detail endpoint.
    * @returns {Promise<void>} Resolves when the detail pane has been rendered,
-   *   or the error message has been shown.
+   *   the error message has been shown, or the response was discarded as stale.
    */
   loadReportDetail(url) {
+    const requestId = ++this.detailRequestId;
+    const isStale = () => requestId !== this.detailRequestId;
+
     // Show loading state
     this.showLoading();
 
@@ -140,9 +147,15 @@ class AiHelperMasterDetail {
         return response.text();
       })
       .then(html => {
+        if (isStale()) {
+          return;
+        }
         this.renderReportDetail(html);
       })
       .catch(error => {
+        if (isStale()) {
+          return;
+        }
         console.error('Failed to load report detail:', error);
         // fetch() rejects with a TypeError on network failures
         const message = error instanceof TypeError
@@ -158,10 +171,16 @@ class AiHelperMasterDetail {
    * @param {string} html - The detail pane HTML from the server.
    */
   renderReportDetail(html) {
+    const requestId = this.detailRequestId;
+
     // Fade out
     this.detailContainer.style.opacity = '0';
 
     setTimeout(() => {
+      // Another report was selected during the fade; its request owns the pane now
+      if (requestId !== this.detailRequestId) {
+        return;
+      }
       this.detailContainer.innerHTML = html;
 
       // Fade in

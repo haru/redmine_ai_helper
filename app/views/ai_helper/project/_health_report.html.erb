@@ -25,6 +25,10 @@
         Rails.cache.write(cache_key, health_report, expires_in: 1.hour)
       end
     end
+
+    # The shown body is the stored record (not a freshly streamed, unsaved one):
+    # exports must then come from the record so the edited notice is attached.
+    persisted_report = latest_report_record if latest_report_record && health_report.is_a?(String) && health_report == latest_report_record.health_report
 %>
 
 
@@ -48,8 +52,8 @@
     </p>
   <% end %>
 
-  <% if latest_report_record && health_report.is_a?(String) && health_report == latest_report_record.health_report %>
-    <%= render "ai_helper/project/health_report_edit_status", health_report: latest_report_record %>
+  <% if persisted_report %>
+    <%= render "ai_helper/project/health_report_edit_status", health_report: persisted_report %>
   <% end %>
 
   <div class="ai-helper-project-health-content<% if health_report && !health_report.is_a?(Hash) %> has-report<% end %>">
@@ -76,12 +80,19 @@
   <% if health_report && !health_report.is_a?(Hash) %>
     <p class="other-formats">
       <%= l(:label_export_to) %>
-      <span><%= link_to 'Markdown', ai_helper_project_health_markdown_path(project),
-                        class: "text",
-                        id: "ai-helper-markdown-export-link" %></span>
-      <span><%= link_to 'PDF', ai_helper_project_health_pdf_path(project),
-                        class: "pdf",
-                        id: "ai-helper-pdf-export-link" %></span>
+      <% if persisted_report %>
+        <span><%= link_to 'Markdown', ai_helper_health_report_markdown_path(project, report_id: persisted_report.id),
+                          class: "text" %></span>
+        <span><%= link_to 'PDF', ai_helper_health_report_show_path(project, report_id: persisted_report.id, format: :pdf),
+                          class: "pdf" %></span>
+      <% else %>
+        <span><%= link_to 'Markdown', ai_helper_project_health_markdown_path(project),
+                          class: "text",
+                          id: "ai-helper-markdown-export-link" %></span>
+        <span><%= link_to 'PDF', ai_helper_project_health_pdf_path(project),
+                          class: "pdf",
+                          id: "ai-helper-pdf-export-link" %></span>
+      <% end %>
     </p>
   <% end %>
 </div>

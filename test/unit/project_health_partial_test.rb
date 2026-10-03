@@ -41,6 +41,30 @@ class ProjectHealthPartialTest < ActionView::TestCase
     assert_includes html, 'meta name="ai-helper-project-health-created-label"'
   end
 
+  should "export a stored report on the overview from the record-based endpoints" do
+    report = AiHelperHealthReport.create!(project: @project, user: @user, health_report: "Stored body")
+
+    html = render(partial: "ai_helper/project/health_report", locals: { project: @project })
+
+    assert_select Nokogiri::HTML::DocumentFragment.parse(html), "p.other-formats" do
+      assert_select "a.text[href=?]", ai_helper_health_report_markdown_path(@project, report_id: report.id)
+      assert_select "a.pdf[href=?]", ai_helper_health_report_show_path(@project, report_id: report.id, format: :pdf)
+      assert_select "a#ai-helper-markdown-export-link, a#ai-helper-pdf-export-link", 0
+    end
+  end
+
+  should "export an unsaved cached report on the overview through the body-posting endpoints" do
+    # The test environment uses :null_store, so stub the overview's cache read
+    Rails.cache.stubs(:read).with("project_health_#{@project.id}___").returns("Streamed body")
+
+    html = render(partial: "ai_helper/project/health_report", locals: { project: @project })
+
+    assert_select Nokogiri::HTML::DocumentFragment.parse(html), "p.other-formats" do
+      assert_select "a#ai-helper-markdown-export-link[href=?]", ai_helper_project_health_markdown_path(@project)
+      assert_select "a#ai-helper-pdf-export-link[href=?]", ai_helper_project_health_pdf_path(@project)
+    end
+  end
+
   context "detail pane and standalone page shared body partial" do
     setup do
       @report = AiHelperHealthReport.create!(
@@ -270,7 +294,8 @@ class ProjectHealthPartialTest < ActionView::TestCase
     html = Nokogiri::HTML::DocumentFragment.parse(html)
     assert_select html, "div.ai-helper-health-report-body[data-update-url]", 1
     assert_select html, "div.contextual a.icon.icon-edit.ai-helper-health-report-edit-link", 1
-    assert_select html, "form.ai-helper-health-report-edit-form[hidden]", 1
+    assert_select html, "form.ai-helper-health-report-edit-form[hidden][data-save-failed-message=?]",
+                  l("ai_helper.health_report_edit.save_failed")
     assert_select html, "form div#errorExplanation.ai-helper-health-report-edit-errors[hidden]", 1
     assert_select html, %(form input[type="hidden"][name="health_report[lock_version]"]), 1
     assert_select html, %(textarea.wiki-edit#health_report_health_report_#{report.id}[name="health_report[health_report]"][data-preview-url][data-help-url]), text: /Current body/

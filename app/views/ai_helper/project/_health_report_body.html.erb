@@ -44,7 +44,8 @@
   <% if health_report.editable? %>
     <%= form_tag(ai_helper_health_report_update_path(@project, report_id: health_report.id), method: :patch,
                  class: "ai-helper-health-report-edit-form", hidden: true,
-                 data: { conflict_hint: l("ai_helper.health_report_edit.conflict_hint") }) do %>
+                 data: { conflict_hint: l("ai_helper.health_report_edit.conflict_hint"),
+                         save_failed_message: l("ai_helper.health_report_edit.save_failed") }) do %>
       <div id="errorExplanation" class="ai-helper-health-report-edit-errors" hidden></div>
       <%= hidden_field_tag "health_report[lock_version]", health_report.lock_version, id: nil %>
       <%= text_area_tag "health_report[health_report]", health_report.health_report,

@@ -13,7 +13,7 @@ function buildBody({ edited = false } = {}) {
         ${edited ? '<div class="ai-helper-health-report-original" hidden>orig</div>' : ""}
       </div>
       ${edited ? '<a href="#" class="ai-helper-health-report-show-original">orig</a><a href="#" class="ai-helper-health-report-show-current" hidden>cur</a>' : ""}
-      <form class="ai-helper-health-report-edit-form" hidden>
+      <form class="ai-helper-health-report-edit-form" data-save-failed-message="Save failed" hidden>
         <div class="ai-helper-health-report-edit-errors" hidden></div>
         <textarea data-help-url="/help" data-preview-url="/preview">body</textarea>
         <input type="submit" value="Save">
@@ -180,22 +180,77 @@ describe("ai_helper_health_report_editor", () => {
     expect(wrapper.contains(form)).toBe(true);
   });
 
-  it("shows an error list when the response has no errors array", async () => {
-    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({ ok: false, json: () => Promise.resolve({}) })));
+  it("shows the localized save-failure message when the response has no errors array", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({ ok: false, status: 422, json: () => Promise.resolve({}) })));
     wrapper = buildBody();
     wrapper.querySelector("form").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
     await flush();
 
-    expect(wrapper.querySelector(".ai-helper-health-report-edit-errors").hidden).toBe(false);
+    const box = wrapper.querySelector(".ai-helper-health-report-edit-errors");
+    expect(box.hidden).toBe(false);
+    expect(box.textContent).toBe("Save failed");
   });
 
-  it("shows the network error message when fetch rejects", async () => {
+  it("shows the localized save-failure message when the response is not JSON", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({
+      ok: false,
+      status: 500,
+      json: () => Promise.reject(new SyntaxError("Unexpected token '<'")),
+    })));
+    wrapper = buildBody();
+    wrapper.querySelector("form").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    await flush();
+
+    expect(wrapper.querySelector(".ai-helper-health-report-edit-errors").textContent).toBe("Save failed");
+  });
+
+  it("treats a successful response without the rendered HTML as a failure", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) })));
+    wrapper = buildBody();
+    const form = wrapper.querySelector("form");
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    await flush();
+
+    expect(wrapper.contains(form)).toBe(true);
+    expect(wrapper.querySelector(".ai-helper-health-report-edit-errors").textContent).toBe("Save failed");
+  });
+
+  it("appends the conflict hint on 409", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({
+      ok: false,
+      status: 409,
+      json: () => Promise.resolve({ errors: ["Conflict"] }),
+    })));
+    wrapper = buildBody();
+    wrapper.querySelector("form").dataset.conflictHint = "Reload";
+    wrapper.querySelector("form").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    await flush();
+
+    const items = [...wrapper.querySelectorAll(".ai-helper-health-report-edit-errors li")].map((li) => li.textContent);
+    expect(items).toEqual(["Conflict", "Reload"]);
+  });
+
+  it("logs the error and shows the localized message when fetch rejects", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("offline"))));
     wrapper = buildBody();
     wrapper.querySelector("form").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
     await flush();
 
-    expect(wrapper.querySelector(".ai-helper-health-report-edit-errors").textContent).toBe("offline");
+    expect(wrapper.querySelector(".ai-helper-health-report-edit-errors").textContent).toBe("Save failed");
+    expect(consoleError).toHaveBeenCalled();
+  });
+
+  it("falls back to an English message when the form has no localized one", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("offline"))));
+    wrapper = buildBody();
+    delete wrapper.querySelector("form").dataset.saveFailedMessage;
+    wrapper.querySelector("form").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    await flush();
+
+    expect(wrapper.querySelector(".ai-helper-health-report-edit-errors").textContent).toMatch(/Failed to save/);
   });
 
   it("ignores unrelated clicks and submits", () => {

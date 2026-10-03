@@ -193,6 +193,86 @@ describe("AiHelperMasterDetail", () => {
     });
   });
 
+  describe("concurrent detail requests", () => {
+    function deferredFetch() {
+      const pending = {};
+      const fetchMock = vi.fn((url) => new Promise((resolve, reject) => {
+        pending[url] = { resolve, reject };
+      }));
+      const respond = (url, html) => pending[url].resolve({ ok: true, status: 200, text: () => Promise.resolve(html) });
+      return { fetchMock, pending, respond };
+    }
+
+    it("ignores an earlier response that arrives after a newer selection", async () => {
+      vi.useFakeTimers();
+      addLayout();
+      const { fetchMock, respond } = deferredFetch();
+      vi.stubGlobal("fetch", fetchMock);
+      const { cell: cell1 } = addReportRow({ reportId: "1", detailUrl: "/r/1" });
+      const { cell: cell2 } = addReportRow({ reportId: "2", detailUrl: "/r/2" });
+      const AiHelperMasterDetail = await loadClass();
+      new AiHelperMasterDetail();
+      const detailContainer = document.getElementById("ai-helper-health-report-detail-container");
+
+      cell1.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      cell2.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      respond("/r/2", "<p>report 2</p>");
+      await vi.advanceTimersByTimeAsync(310);
+      respond("/r/1", "<p>report 1</p>");
+      await vi.advanceTimersByTimeAsync(310);
+
+      expect(detailContainer.innerHTML).toContain("report 2");
+      expect(detailContainer.innerHTML).not.toContain("report 1");
+    });
+
+    it("does not swap in an earlier response whose fade is still running", async () => {
+      vi.useFakeTimers();
+      addLayout();
+      const { fetchMock, respond } = deferredFetch();
+      vi.stubGlobal("fetch", fetchMock);
+      const { cell: cell1 } = addReportRow({ reportId: "1", detailUrl: "/r/1" });
+      const { cell: cell2 } = addReportRow({ reportId: "2", detailUrl: "/r/2" });
+      const AiHelperMasterDetail = await loadClass();
+      new AiHelperMasterDetail();
+      const detailContainer = document.getElementById("ai-helper-health-report-detail-container");
+
+      cell1.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      respond("/r/1", "<p>report 1</p>");
+      await vi.advanceTimersByTimeAsync(100);
+      cell2.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      await vi.advanceTimersByTimeAsync(300);
+
+      expect(detailContainer.innerHTML).not.toContain("report 1");
+      expect(detailContainer.innerHTML).toContain("ai-helper-loader");
+
+      respond("/r/2", "<p>report 2</p>");
+      await vi.advanceTimersByTimeAsync(310);
+      expect(detailContainer.innerHTML).toContain("report 2");
+    });
+
+    it("ignores an error from a superseded request", async () => {
+      vi.useFakeTimers();
+      addLayout();
+      const { fetchMock, pending, respond } = deferredFetch();
+      vi.stubGlobal("fetch", fetchMock);
+      const { cell: cell1 } = addReportRow({ reportId: "1", detailUrl: "/r/1" });
+      const { cell: cell2 } = addReportRow({ reportId: "2", detailUrl: "/r/2" });
+      const AiHelperMasterDetail = await loadClass();
+      new AiHelperMasterDetail();
+      const detailContainer = document.getElementById("ai-helper-health-report-detail-container");
+
+      cell1.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      cell2.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      respond("/r/2", "<p>report 2</p>");
+      await vi.advanceTimersByTimeAsync(310);
+      pending["/r/1"].reject(new TypeError("network down"));
+      await vi.advanceTimersByTimeAsync(10);
+
+      expect(detailContainer.innerHTML).toContain("report 2");
+      expect(detailContainer.innerHTML).not.toContain("Network error occurred");
+    });
+  });
+
   describe("showLoading / showError", () => {
     it("renders a loader and an escaped error message", async () => {
       addLayout();

@@ -90,6 +90,11 @@
     box.hidden = false;
   };
 
+  // Localized fallback for failures the server did not explain (non-JSON body, network error).
+  const saveFailedMessage = function (form) {
+    return form.dataset.saveFailedMessage || 'Failed to save the report. Your text is kept in the editor; please try again.';
+  };
+
   // Submit the edit via fetch and swap in the re-rendered report on success.
   const submitEdit = function (form) {
     const body = bodyOf(form);
@@ -102,11 +107,14 @@
         'Accept': 'application/json'
       }
     }).then(function (response) {
-      return response.json().then(function (json) {
+      // Error pages (403, 500, proxies) may not be JSON; treat them as unexplained failures
+      return response.json().catch(function () {
+        return {};
+      }).then(function (json) {
         return { ok: response.ok, status: response.status, json: json };
       });
     }).then(function (result) {
-      if (result.ok) {
+      if (result.ok && typeof result.json.html === 'string') {
         const reportId = body.dataset.reportId;
         body.outerHTML = result.json.html;
         if (result.json.edited) {
@@ -118,11 +126,13 @@
       } else {
         // A 409 means the stored lock_version is stale; every retry would conflict again,
         // so keep the typed text visible and ask the user to reload.
-        const errors = result.json.errors || [];
+        const serverErrors = result.json.errors || [];
+        const errors = serverErrors.length > 0 ? serverErrors : [saveFailedMessage(form)];
         showErrors(form, result.status === 409 ? errors.concat([form.dataset.conflictHint || 'Reload the page to get the latest version; your text is kept in the editor.']) : errors);
       }
     }).catch(function (error) {
-      showErrors(form, [error.message]);
+      console.error('Failed to save health report:', error);
+      showErrors(form, [saveFailedMessage(form)]);
     });
   };
 
