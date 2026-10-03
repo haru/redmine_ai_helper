@@ -1170,6 +1170,20 @@ body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-conte
   stroke: #f8f8f8 !important;
 }
 
+/* Edited marker sits outside the date's flow so dates stay aligned in the centered column */
+.ai-helper-health-report-created-on {
+  position: relative;
+}
+
+.ai-helper-health-report-edited-marker {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 4px;
+  line-height: 0;
+}
+
 /* Clickable cell styling */
 .ai-helper-clickable-cell {
   cursor: pointer;

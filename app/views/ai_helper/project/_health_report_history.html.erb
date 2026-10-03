@@ -80,8 +80,7 @@
               </td>
 
               <td class="created_on ai-helper-clickable-cell">
-                <%= format_time(report.created_at) %>
-                <span class="ai-helper-health-report-edited-marker"<%= ' hidden'.html_safe unless report.edited? %>><%= sprite_icon("edit", l("ai_helper.health_report_edit.edited")) %></span>
+                <span class="ai-helper-health-report-created-on"><%= format_time(report.created_at) %><span class="ai-helper-health-report-edited-marker" title="<%= l("ai_helper.health_report_edit.edited") %>"<%= ' hidden'.html_safe unless report.edited? %>><%= sprite_icon("edit", l("ai_helper.health_report_edit.edited"), icon_only: true) %></span></span>
               </td>
               <td class="author">
                 <%= link_to_user report.user %>

@@ -204,6 +204,8 @@ class ProjectHealthPartialTest < ActionView::TestCase
 
         assert_select doc, "span.ai-helper-health-report-edited-marker", 1
         assert_select doc, "span.ai-helper-health-report-edited-marker[hidden]", 0
+        assert_select doc, "td.created_on span.ai-helper-health-report-created-on span.ai-helper-health-report-edited-marker[title=?]",
+                      l("ai_helper.health_report_edit.edited")
       end
     end
 
