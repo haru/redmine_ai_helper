@@ -1,8 +1,8 @@
 ---
 title: Project Health Report
 type: component
-sources: [S002, S003, S011]
-updated: 2026-08-01
+sources: [S002, S003, S011, S038]
+updated: 2026-10-03
 ---
 
 # Project Health Report
@@ -42,6 +42,11 @@ Markdown, the project and triggering user, and structured metrics as JSON (via
 visibility, and a `deletable?` check gates deletion (S011). You can review past
 reports to track progress (S002).
 
+Stored reports are **editable** by holders of `:edit_ai_helper_health_reports`;
+the table also keeps the original body, last editor/time and `lock_version`,
+and edited reports are marked everywhere — see
+[Health Report Editing](./health-report-editing.md) (S038).
+
 ## Comparison
 
 Select two historical reports (radio buttons) to trigger
@@ -55,11 +60,21 @@ incremental UI updates as tokens arrive (S011).
   (ITCPDF); **Markdown** raw downloads via the controller (S002, S011).
 - `AiHelperDashboardController` handles report display, history pagination, PDF
   endpoints, and Markdown export (S011).
-- Markdown is parsed **client-side** by `AiHelperMarkdownParser`, so rendering is
-  consistent regardless of Redmine's text-formatting setting (S011). Export
-  buttons are injected by `ai_helper_project_health.js`; the master-detail view
-  (`AiHelperMasterDetail`) loads detail from data attributes to minimize requests
-  (S011).
+- Saved reports are rendered **server-side** with `md_to_html`, so Markdown
+  displays correctly regardless of Redmine's text-formatting setting; before
+  feature 064 they went through format-dependent `textilizable` and broke on
+  Textile setups — see
+  [Health Report Markdown Rendering](./health-report-markdown-rendering.md)
+  (S038). Historically, S011 described client-side parsing by
+  `AiHelperMarkdownParser` for this view; that no longer applies to saved
+  reports (S011, S038).
+- Export buttons are injected by `ai_helper_project_health.js` (S011). The
+  master-detail view (`AiHelperMasterDetail`) originally built detail from row
+  data attributes (S011); since 064 it fetches a server-rendered detail pane by
+  XHR instead (S038).
+- Saved reports get a record-based Markdown export
+  (`.../health_reports/:report_id/markdown`) and an edited notice in PDF; the
+  body-POST exports remain only for unsaved streamed reports (S038).
 
 ## REST API
 
@@ -77,4 +92,6 @@ Generate reports programmatically — e.g. on a cron schedule (S002).
 
 - [Multi-Agent Architecture](./multi-agent-architecture.md) ·
   [Tool System](./tool-system.md) · [Think Model](./think-model.md) ·
-  [Plugin Overview](./plugin-overview.md)
+  [Plugin Overview](./plugin-overview.md) ·
+  [Health Report Editing](./health-report-editing.md) ·
+  [Health Report Markdown Rendering](./health-report-markdown-rendering.md)

@@ -1,7 +1,7 @@
 ---
 title: MCP Server Endpoint
 type: component
-sources: [S002, S006, S007, S018, S028, S030, S031, S036]
+sources: [S002, S006, S007, S018, S027, S028, S029, S030, S031, S036]
 updated: 2026-09-23
 ---
 
