@@ -69,10 +69,11 @@ Redmine::Plugin.register :redmine_ai_helper do
                    :api_create_health_report, :suggest_assignees, :stuff_todo,
                    :assignable_users_for_tracker
                  ],
-                 ai_helper_dashboard: [
-                   :index, :health_report_history, :health_report_show, :compare_health_reports, :comparison_pdf, :comparison_markdown
-                 ]
-               }
+                  ai_helper_dashboard: [
+                    :index, :health_report_history, :health_report_show, :compare_health_reports, :comparison_pdf, :comparison_markdown,
+                    :health_report_markdown
+                  ]
+                }
     permission :settings_ai_helper,
                {
                  ai_helper_project_settings: [ :show, :update ]
@@ -80,6 +81,10 @@ Redmine::Plugin.register :redmine_ai_helper do
     permission :delete_ai_helper_health_reports,
                {
                  ai_helper_dashboard: [ :health_report_destroy ]
+               }, require: :member
+    permission :edit_ai_helper_health_reports,
+               {
+                 ai_helper_dashboard: [ :health_report_update, :health_report_preview ]
                }, require: :member
   end
 

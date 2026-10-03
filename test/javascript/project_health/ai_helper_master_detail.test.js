@@ -73,18 +73,14 @@ describe("AiHelperMasterDetail", () => {
 
   function addReportRow({
     reportId = "1",
-    reportContent = "# Hello",
-    createdAt = "2026-01-01T00:00:00Z",
-    userName = "Alice",
+    detailUrl = "/projects/1/ai_helper/health_reports/1",
     selected = false,
     parent,
   } = {}) {
     const row = document.createElement("tr");
     row.className = "ai-helper-report-row" + (selected ? " selected" : "");
     row.dataset.reportId = reportId;
-    row.dataset.reportContent = reportContent;
-    row.dataset.reportCreatedAt = createdAt;
-    row.dataset.reportUserName = userName;
+    row.dataset.reportDetailUrl = detailUrl;
 
     const cell = document.createElement("td");
     cell.className = "ai-helper-clickable-cell";
@@ -130,24 +126,35 @@ describe("AiHelperMasterDetail", () => {
   });
 
   describe("selectReport via clickable cell", () => {
-    it("selects the row, marks it selected, and renders the detail after clicking", async () => {
+    it("selects the row and fetches the server-rendered detail pane", async () => {
       vi.useFakeTimers();
       addLayout();
-      const { row, cell } = addReportRow({ reportId: "3", reportContent: "**bold**", userName: "Bob" });
+      const fetchMock = vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          text: () => Promise.resolve('<div class="ai-helper-health-report-body" data-report-id="3">Detail</div>'),
+        }),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+      const { row, cell } = addReportRow({ reportId: "3", detailUrl: "/projects/1/ai_helper/health_reports/3" });
       const AiHelperMasterDetail = await loadClass();
       new AiHelperMasterDetail();
 
       cell.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 
       expect(row.classList.contains("selected")).toBe(true);
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/projects/1/ai_helper/health_reports/3",
+        { headers: { "X-Requested-With": "XMLHttpRequest", Accept: "text/html" } },
+      );
 
       const detailContainer = document.getElementById("ai-helper-health-report-detail-container");
-      expect(detailContainer.style.opacity).toBe("0");
+      expect(detailContainer.innerHTML).toContain("ai-helper-loader");
 
       await vi.advanceTimersByTimeAsync(300);
 
-      expect(detailContainer.innerHTML).toContain("data-report-id=\"3\"");
-      expect(detailContainer.innerHTML).toContain("Bob");
+      expect(detailContainer.innerHTML).toContain('data-report-id="3"');
 
       await vi.advanceTimersByTimeAsync(10);
       expect(detailContainer.style.opacity).toBe("1");
@@ -156,6 +163,8 @@ describe("AiHelperMasterDetail", () => {
     it("does nothing when clicking the already-selected report", async () => {
       vi.useFakeTimers();
       addLayout();
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
       const { cell } = addReportRow({ reportId: "3", selected: true });
       const AiHelperMasterDetail = await loadClass();
       const instance = new AiHelperMasterDetail();
@@ -164,26 +173,13 @@ describe("AiHelperMasterDetail", () => {
       cell.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 
       expect(updateSpy).not.toHaveBeenCalled();
-    });
-
-    it("uses the markdown parser to format content when it is available", async () => {
-      vi.useFakeTimers();
-      await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
-      addLayout();
-      const { cell } = addReportRow({ reportId: "9", reportContent: "**strong**" });
-      const AiHelperMasterDetail = await loadClass();
-      new AiHelperMasterDetail();
-
-      cell.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-      await vi.advanceTimersByTimeAsync(300);
-
-      const detailContainer = document.getElementById("ai-helper-health-report-detail-container");
-      expect(detailContainer.innerHTML).toContain("<strong>strong</strong>");
+      expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it("switches selection between rows, clearing the previous one", async () => {
       vi.useFakeTimers();
       addLayout();
+      vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
       const { row: row1, cell: cell1 } = addReportRow({ reportId: "1" });
       const { row: row2, cell: cell2 } = addReportRow({ reportId: "2" });
       const AiHelperMasterDetail = await loadClass();
@@ -194,49 +190,6 @@ describe("AiHelperMasterDetail", () => {
 
       expect(row1.classList.contains("selected")).toBe(false);
       expect(row2.classList.contains("selected")).toBe(true);
-    });
-  });
-
-  describe("buildDetailHTML", () => {
-    it("escapes user-controlled fields and uses i18n meta tags when present", async () => {
-      addMeta("i18n-label_export_to", "Exporter vers");
-      addMeta("i18n-field_created_on", "Créé le");
-      addMeta("i18n-field_author", "Auteur");
-      addLayout();
-      const AiHelperMasterDetail = await loadClass();
-      const instance = new AiHelperMasterDetail();
-
-      const html = instance.buildDetailHTML(
-        {
-          id: "7",
-          created_at: "2026-01-01T00:00:00Z",
-          user: { name: "<script>alert(1)</script>" },
-          health_report: "raw content",
-        },
-        "<p>formatted</p>",
-      );
-
-      expect(html).toContain("Exporter vers");
-      expect(html).toContain("Créé le");
-      expect(html).toContain("Auteur");
-      expect(html).not.toContain("<script>alert(1)</script>");
-      expect(html).toContain("&lt;script&gt;");
-      expect(html).toContain("<p>formatted</p>");
-    });
-
-    it("falls back to default English labels when no i18n meta tags are present", async () => {
-      addLayout();
-      const AiHelperMasterDetail = await loadClass();
-      const instance = new AiHelperMasterDetail();
-
-      const html = instance.buildDetailHTML(
-        { id: "1", created_at: "2026-01-01T00:00:00Z", user: { name: "Carol" }, health_report: "x" },
-        "content",
-      );
-
-      expect(html).toContain("Export to");
-      expect(html).toContain("Created on");
-      expect(html).toContain("Author");
     });
   });
 
@@ -255,60 +208,50 @@ describe("AiHelperMasterDetail", () => {
   });
 
   describe("loadReportDetail", () => {
-    it("renders the detail on a successful JSON response", async () => {
+    it("renders the server HTML on a successful response", async () => {
+      vi.useFakeTimers();
       addLayout();
       const AiHelperMasterDetail = await loadClass();
       const instance = new AiHelperMasterDetail();
-      const xhrInstances = createXhrMock();
+      const fetchMock = vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          text: () => Promise.resolve('<div class="ai-helper-health-report-body">Server rendered</div>'),
+        }),
+      );
+      vi.stubGlobal("fetch", fetchMock);
       const renderSpy = vi.spyOn(instance, "renderReportDetail");
 
-      instance.loadReportDetail("/reports/1");
-      const xhr = xhrInstances[0];
-      xhr.status = 200;
-      xhr.responseText = JSON.stringify({ id: "1", user: { name: "Dan" } });
-      xhr.onload();
+      await instance.loadReportDetail("/reports/1");
 
-      expect(renderSpy).toHaveBeenCalledWith({ id: "1", user: { name: "Dan" } });
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/reports/1",
+        { headers: { "X-Requested-With": "XMLHttpRequest", Accept: "text/html" } },
+      );
+      expect(renderSpy).toHaveBeenCalledWith('<div class="ai-helper-health-report-body">Server rendered</div>');
     });
 
-    it("shows an error when the response is not valid JSON", async () => {
+    it("shows an error when the response is not successful", async () => {
       addLayout();
       const AiHelperMasterDetail = await loadClass();
       const instance = new AiHelperMasterDetail();
-      const xhrInstances = createXhrMock();
+      vi.stubGlobal("fetch", vi.fn(() =>
+        Promise.resolve({ ok: false, status: 500, text: () => Promise.resolve("") }),
+      ));
 
-      instance.loadReportDetail("/reports/1");
-      const xhr = xhrInstances[0];
-      xhr.status = 200;
-      xhr.responseText = "not json";
-      xhr.onload();
+      await instance.loadReportDetail("/reports/1");
 
       expect(instance.detailContainer.innerHTML).toContain("Failed to load report");
     });
 
-    it("shows an error with the HTTP status when the request fails", async () => {
+    it("shows a network error message when the fetch rejects", async () => {
       addLayout();
       const AiHelperMasterDetail = await loadClass();
       const instance = new AiHelperMasterDetail();
-      const xhrInstances = createXhrMock();
+      vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new TypeError("network down"))));
 
-      instance.loadReportDetail("/reports/1");
-      const xhr = xhrInstances[0];
-      xhr.status = 500;
-      xhr.responseText = "";
-      xhr.onload();
-
-      expect(instance.detailContainer.innerHTML).toContain("Status: 500");
-    });
-
-    it("shows a network error message on xhr.onerror", async () => {
-      addLayout();
-      const AiHelperMasterDetail = await loadClass();
-      const instance = new AiHelperMasterDetail();
-      const xhrInstances = createXhrMock();
-
-      instance.loadReportDetail("/reports/1");
-      xhrInstances[0].onerror();
+      await instance.loadReportDetail("/reports/1");
 
       expect(instance.detailContainer.innerHTML).toContain("Network error occurred");
     });
@@ -429,38 +372,6 @@ describe("AiHelperMasterDetail", () => {
     });
   });
 
-  describe("exportMarkdown", () => {
-    it("submits a form with the report content and CSRF token to the project-scoped export URL", async () => {
-      addMeta("csrf-token", "tok-xyz");
-      Object.defineProperty(window, "location", {
-        value: new URL("http://localhost/projects/42/ai_helper/health_reports"),
-        writable: true,
-      });
-      addLayout();
-      const detailContainer = document.getElementById("ai-helper-health-report-detail-container");
-      detailContainer.innerHTML = '<a href="#" id="ai-helper-markdown-export-detail">Markdown</a>';
-      const AiHelperMasterDetail = await loadClass();
-      const instance = new AiHelperMasterDetail();
-      instance.attachExportEvents({ health_report: "raw md" });
-
-      const submitSpy = vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(() => {});
-      const appendChildSpy = vi.spyOn(document.body, "appendChild");
-
-      document.getElementById("ai-helper-markdown-export-detail").dispatchEvent(
-        new MouseEvent("click", { bubbles: true, cancelable: true }),
-      );
-
-      const form = appendChildSpy.mock.calls.find(([node]) => node.tagName === "FORM")?.[0];
-      expect(form.action).toContain("/projects/42/ai_helper/project_health_markdown");
-      expect(form.querySelector('input[name="health_report_content"]').value).toBe("raw md");
-      expect(form.querySelector('input[name="authenticity_token"]').value).toBe("tok-xyz");
-      expect(submitSpy).toHaveBeenCalledTimes(1);
-
-      submitSpy.mockRestore();
-      appendChildSpy.mockRestore();
-    });
-  });
-
   describe("window.updateHealthReportHistory", () => {
     it("does nothing when the history container is absent", async () => {
       addLayout();
@@ -478,6 +389,13 @@ describe("AiHelperMasterDetail", () => {
         value: new URL("http://localhost/projects/8/ai_helper/health_reports"),
         writable: true,
       });
+      vi.stubGlobal("fetch", vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          text: () => Promise.resolve("<div></div>"),
+        }),
+      ));
       const historyContainer = document.createElement("div");
       historyContainer.id = "ai-helper-health-report-history-container";
       container.appendChild(historyContainer);
@@ -492,8 +410,8 @@ describe("AiHelperMasterDetail", () => {
 
       xhr.status = 200;
       xhr.responseText =
-        '<table><tr class="ai-helper-report-row" data-report-id="1" data-report-content="c" ' +
-        'data-report-created-at="2026-01-01" data-report-user-name="Eve">' +
+        '<table><tr class="ai-helper-report-row" data-report-id="1" ' +
+        'data-report-detail-url="/projects/8/ai_helper/health_reports/1">' +
         '<td class="ai-helper-clickable-cell"></td></tr></table>';
       xhr.onload();
 

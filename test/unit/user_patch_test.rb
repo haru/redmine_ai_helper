@@ -56,5 +56,27 @@ class UserPatchTest < ActiveSupport::TestCase
       assert_nil AiHelperConversation.find_by(id: user_conversation.id)
       assert_not_nil AiHelperConversation.find_by(id: other_conversation.id)
     end
+
+    context "health report edit attribution" do
+      setup do
+        @editor = User.find(2)
+        @other_editor = User.find(3)
+        @project = Project.find(1)
+      end
+
+      should "reassign last_edited_by to the anonymous user when the editor is destroyed" do
+        report = AiHelperHealthReport.create!(project: @project, user: User.find(1), health_report: "Original")
+        report.update_content("Edited", @editor)
+        other_report = AiHelperHealthReport.create!(project: @project, user: User.find(1), health_report: "Other")
+        other_report.update_content("Edited by someone else", @other_editor)
+
+        @editor.destroy!
+
+        report.reload
+        assert_equal User.anonymous.id, report.last_edited_by_id
+        assert report.edited?
+        assert_equal @other_editor.id, other_report.reload.last_edited_by_id
+      end
+    end
   end
 end

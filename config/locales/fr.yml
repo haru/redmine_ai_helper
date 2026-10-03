@@ -15,6 +15,8 @@ fr:
   ai_helper_text_summary_generated_time: "Généré à %{time}"
   ai_helper_error_occurred: "Une erreur est survenue"
   permission_view_ai_helper: "Voir l'Assistant IA"
+  permission_edit_ai_helper_health_reports: "Modifier les rapports de santé"
+  field_health_report: "Contenu du rapport"
   label_ai_helper_error: "Erreur"
   ai_helper:
     notice_sub_issues_added: "Les sous-tâches ont été ajoutées"
@@ -80,6 +82,12 @@ fr:
         search_answer_instruction_with_vector: "Lors de la recherche de demandes, utilisez l'outil approprié: Pour les recherches conceptuelles/sémantiques (ex: 'demandes liées aux exceptions', 'problèmes de performance'), utilisez la recherche vectorielle (ask_with_filter). Pour les conditions de filtre explicites (ex: 'statut fermé', 'assigné à quelqu'un'), utilisez search_issues."
       leader_agent:
         generate_final_response: "Voici les résultats d'exécution de chaque étape du plan, dans l'ordre : %{execution_results} Utilisez ces résultats uniquement pour déterminer quelles étapes ont réussi et lesquelles ont échoué ; ils ne contiennent pas le contenu de la réponse. Reprenez ce contenu dans les réponses des agents figurant dans la conversation ci-dessus, puis rédigez la réponse finale pour l'utilisateur. Ne décrivez pas comme terminée ou réussie une étape dont le statut est `error`. N'incluez l'ID du ticket que si un ticket a effectivement été créé ou mis à jour ; sinon, ne mentionnez aucun ID et n'affirmez pas qu'une création ou une mise à jour a eu lieu. Ne mentionnez pas de détails internes tels que l'agent affecté à une étape. Si votre réponse inclut une question avec des choix discrets, pensez à ajouter le bloc <!--AIHELPER_OPTIONS:{...}--> à la toute fin."
+    health_report_edit:
+      edited: "Modifié"
+      edited_by_on_html: "Modifié par %{user} le %{time}"
+      show_original: "Afficher l'original"
+      show_current: "Afficher la version modifiée"
+      original_notice: "Ceci est le contenu original généré par l'IA."
   activerecord:
     models:
       ai_helper_model_profile: "Profil du modèle"

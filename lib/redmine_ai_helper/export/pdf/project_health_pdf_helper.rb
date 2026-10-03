@@ -17,9 +17,10 @@ module RedmineAiHelper
         # Generate PDF for project health report
         # @param project [Project] The project object
         # @param health_report [String] The health report content
-        # @param _options [Hash] Reserved for future use; currently ignored.
+        # @param options [Hash] Optional settings. :edit_notice is a line shown below
+        #   the header when the report was edited by a user.
         # @return [String] PDF content as binary string
-        def project_health_to_pdf(project, health_report, _options = {})
+        def project_health_to_pdf(project, health_report, options = {})
           pdf = Redmine::Export::PDF::ITCPDF.new(current_language)
           is_rtl = l(:direction) == "rtl"
           pdf.set_rtl(true) if is_rtl && pdf.respond_to?(:set_rtl)
@@ -34,6 +35,7 @@ module RedmineAiHelper
 
           text_align = is_rtl ? "R" : "L"
           render_pdf_header_section(pdf, project, left_margin, text_align)
+          render_pdf_edit_notice(pdf, options[:edit_notice], left_margin, text_align)
 
           pdf.SetFontStyle("", 10)
           pdf.set_x(left_margin)
@@ -44,6 +46,15 @@ module RedmineAiHelper
         end
 
         private
+
+        def render_pdf_edit_notice(pdf, notice, left_margin, text_align)
+          return if notice.blank?
+
+          pdf.set_x(left_margin)
+          pdf.SetFontStyle("I", 10)
+          pdf.multi_cell(0, 5, notice.sub(/\A>\s*/, ""), 0, text_align)
+          pdf.ln(4)
+        end
 
         def render_pdf_header_section(pdf, project, left_margin, text_align)
           pdf.set_x(left_margin)

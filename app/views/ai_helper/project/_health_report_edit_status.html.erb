@@ -1,0 +1,8 @@
+<% if health_report.edited? %>
+  <p class="warning ai-helper-health-report-edited-notice">
+    <%= content_tag(:strong, l("ai_helper.health_report_edit.edited")) %>
+    <%= t("ai_helper.health_report_edit.edited_by_on_html",
+          user: link_to_user(health_report.last_edited_by),
+          time: format_time(health_report.last_edited_on)) %>
+  </p>
+<% end %>

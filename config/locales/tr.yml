@@ -24,6 +24,8 @@ tr:
   permission_view_ai_helper: "AI Asistan'ı Görüntüle"
   permission_settings_ai_helper: "Proje Ayarları"
   permission_delete_ai_helper_health_reports: "Sağlık Raporlarını Sil"
+  permission_edit_ai_helper_health_reports: "Sağlık raporlarını düzenle"
+  field_health_report: "Rapor içeriği"
   label_ai_helper_error: "Hata"
   label_ai_helper_health_report_history: "Rapor Geçmişi"
   label_ai_helper_health_report_detail: "Rapor Detayı"
@@ -72,6 +74,12 @@ tr:
       note: "Rapor; iş istatistiklerini, zamanlama metriklerini, iş yükü dağılımını analiz eder ve uygulanabilir öneriler sunar."
       no_report_available: "PDF olarak dışa aktarılacak sağlık raporu yok"
       report_content: "Sağlık Raporu İçeriği"
+    health_report_edit:
+      edited: "Düzenlendi"
+      edited_by_on_html: "%{user} tarafından %{time} tarihinde düzenlendi"
+      show_original: "Orijinali göster"
+      show_current: "Düzenlenmiş sürümü göster"
+      original_notice: "Bu, yapay zeka tarafından oluşturulan orijinal içeriktir."
     health_report_comparison:
       compare_button: "Raporları Karşılaştır"
       comparison_column: "Karşılaştırma"

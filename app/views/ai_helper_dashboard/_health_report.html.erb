@@ -1,3 +1,4 @@
+<% ai_helper_markdown_toolbar_heads if User.current.allowed_to?(:edit_ai_helper_health_reports, @project) %>
 <%
   # Skip rendering if no project is available or user doesn't have permission
   if RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: @project, permission: { controller: :ai_helper, action: :project_health }) && AiHelperSetting.find_or_create.model_profile

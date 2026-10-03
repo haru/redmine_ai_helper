@@ -48,10 +48,14 @@
     </p>
   <% end %>
 
+  <% if latest_report_record && health_report.is_a?(String) && health_report == latest_report_record.health_report %>
+    <%= render "ai_helper/project/health_report_edit_status", health_report: latest_report_record %>
+  <% end %>
+
   <div class="ai-helper-project-health-content<% if health_report && !health_report.is_a?(Hash) %> has-report<% end %>">
     <% if health_report && !health_report.is_a?(Hash) %>
       <div id="ai-helper-project-health-result" class="ai-helper-final-content">
-        <%= raw textilizable(health_report.to_s, :object => project) %>
+        <%= render_health_report_markdown(health_report.to_s) %>
       </div>
       <!-- Hidden field to store the health report content for PDF generation -->
       <input type="hidden" id="ai-helper-health-report-content" value="<%= html_escape(health_report.to_s) %>" />

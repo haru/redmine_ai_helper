@@ -340,4 +340,161 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       assert_equal 0, summary[:total_issues]
     end
   end
+
+  context "update_content" do
+    setup do
+      @editor = User.find(2)
+      @report = AiHelperHealthReport.create!(
+        project: @project,
+        user: @user,
+        health_report: "AI generated report",
+        metrics: { issue_statistics: { total_issues: 10 } }.to_json
+      )
+    end
+
+    should "update the body and record editor information on change" do
+      assert @report.update_content("Edited report", @editor)
+
+      assert_equal "Edited report", @report.health_report
+      assert_equal @editor, @report.last_edited_by
+      assert_not_nil @report.last_edited_on
+      assert_equal "AI generated report", @report.original_health_report
+    end
+
+    should "keep the first original body unchanged on subsequent edits" do
+      second_editor = User.find(3)
+
+      @report.update_content("First edit", @editor)
+      @report.update_content("Second edit", second_editor)
+
+      assert_equal "Second edit", @report.health_report
+      assert_equal "AI generated report", @report.original_health_report
+      assert_equal second_editor, @report.last_edited_by
+    end
+
+    should "treat CRLF-submitted identical body as unchanged" do
+      report = AiHelperHealthReport.create!(
+        project: @project,
+        user: @user,
+        health_report: "a\nb"
+      )
+
+      assert report.update_content("a\r\nb", @editor)
+
+      report.reload
+      assert_equal "a\nb", report.health_report
+      assert_nil report.last_edited_on
+      assert_nil report.original_health_report
+      assert_nil report.last_edited_by_id
+      assert_equal 0, report.lock_version
+    end
+
+    should "reject an empty body without persisting edit columns" do
+      assert_not @report.update_content("", @editor)
+
+      assert_predicate @report.errors[:health_report], :present?
+
+      reloaded = @report.reload
+      assert_equal "AI generated report", reloaded.health_report
+      assert_nil reloaded.original_health_report
+      assert_nil reloaded.last_edited_by_id
+      assert_nil reloaded.last_edited_on
+    end
+
+    should "not change metrics, author, or created_at" do
+      original_created_at = @report.created_at
+
+      @report.update_content("Edited report", @editor)
+
+      reloaded = @report.reload
+      assert_equal({ issue_statistics: { total_issues: 10 } }, reloaded.metrics_hash)
+      assert_equal @user.id, reloaded.user_id
+      assert_equal original_created_at, reloaded.created_at
+    end
+
+    should "raise StaleObjectError when saving with an old lock_version" do
+      stale_report = AiHelperHealthReport.find(@report.id)
+      AiHelperHealthReport.find(@report.id).update_content("Edited by other user", User.find(3))
+
+      stale_report.lock_version = @report.lock_version
+
+      assert_raises ActiveRecord::StaleObjectError do
+        stale_report.update_content("Conflicting edit", @editor)
+      end
+    end
+  end
+
+  context "editable?" do
+    setup do
+      @role = Role.find(1)
+      @member = User.find(2)
+      @report = AiHelperHealthReport.create!(
+        project: @project,
+        user: @user,
+        health_report: "Test report"
+      )
+    end
+
+    teardown do
+      @role.remove_permission! :edit_ai_helper_health_reports
+      @project.update!(status: Project::STATUS_ACTIVE)
+    end
+
+    should "be editable by a member whose role has the permission" do
+      @role.add_permission! :edit_ai_helper_health_reports
+
+      assert @report.editable?(@member)
+    end
+
+    should "not be editable by a member whose role lacks the permission" do
+      @role.remove_permission! :edit_ai_helper_health_reports
+
+      assert_not @report.editable?(@member)
+    end
+
+    should "not be editable by a non-member" do
+      @role.add_permission! :edit_ai_helper_health_reports
+      non_member = User.find(4)
+
+      assert_not @report.editable?(non_member)
+    end
+
+    should "be editable by an administrator without an explicit grant" do
+      @role.remove_permission! :edit_ai_helper_health_reports
+      admin = User.find(1)
+
+      assert @report.editable?(admin)
+    end
+
+    should "not be editable when the ai_helper module is disabled" do
+      @role.add_permission! :edit_ai_helper_health_reports
+      @project.disable_module!(:ai_helper)
+
+      assert_not AiHelperHealthReport.find(@report.id).editable?(@member)
+    end
+
+    should "not be editable when the project is closed" do
+      @role.add_permission! :edit_ai_helper_health_reports
+      @project.update!(status: Project::STATUS_CLOSED)
+
+      assert_not @report.editable?(@member)
+    end
+
+    should "not be editable when the project is archived" do
+      @role.add_permission! :edit_ai_helper_health_reports
+      @project.update!(status: Project::STATUS_ARCHIVED)
+
+      assert_not @report.editable?(@member)
+    end
+  end
+
+  context "associations" do
+    should "belong to last_edited_by optionally" do
+      report = AiHelperHealthReport.new
+
+      assert_respond_to report, :last_edited_by
+      assert_nil report.last_edited_by
+      assert report.valid? || report.errors[:last_edited_by].empty?
+    end
+  end
 end
