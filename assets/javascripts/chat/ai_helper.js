@@ -242,6 +242,18 @@ class AiHelper {
     xhr.responseType = 'text';
 
     const parser = new AiHelperMarkdownParser();
+    let latestResponse = '';
+    const renderer = new AiHelperFrameRenderer(function() {
+      const lastMessage = document.getElementById('aihelper_last_message');
+      if (lastMessage) {
+        ai_helper.innerHTMLwithScripts(lastMessage, parser.parse(latestResponse));
+      }
+
+      const chatConversation = document.getElementById("aihelper-chat-conversation");
+      if (chatConversation) {
+        chatConversation.scrollTop = chatConversation.scrollHeight;
+      }
+    });
 
     // Hide any existing interactive option buttons while waiting for new response
     ai_helper.hideInteractiveOptions();
@@ -250,18 +262,13 @@ class AiHelper {
     this.handleSSEStream(xhr,
       // onContentCallback
       function(content, fullResponse) {
-        const lastMessage = document.getElementById('aihelper_last_message');
-        if (lastMessage) {
-          ai_helper.innerHTMLwithScripts(lastMessage, parser.parse(fullResponse));
-        }
-
-        const chatConversation = document.getElementById("aihelper-chat-conversation");
-        if (chatConversation) {
-          chatConversation.scrollTop = chatConversation.scrollHeight;
-        }
+        latestResponse = fullResponse;
+        renderer.schedule();
       },
       // onCompleteCallback
       function() {
+        // Show the tail of the response until reload_chat replaces it.
+        renderer.flush();
         const loaderArea = document.getElementById("ai-helper-loader-area");
         if (loaderArea) {
           loaderArea.style.display = "none";
@@ -276,6 +283,7 @@ class AiHelper {
     );
 
     xhr.onerror = function () {
+      renderer.cancel();
       const loaderArea = document.getElementById("ai-helper-loader-area");
       if (loaderArea) {
         loaderArea.style.display = "none";
@@ -289,6 +297,7 @@ class AiHelper {
 
     xhr.onload = function () {
       if (xhr.status !== 200) {
+        renderer.cancel();
         const lastMessage = document.getElementById('aihelper_last_message');
         if (lastMessage) {
             lastMessage.textContent = `Error: ${xhr.status} ${xhr.statusText}`;

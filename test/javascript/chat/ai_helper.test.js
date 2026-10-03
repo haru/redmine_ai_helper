@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { stubAnimationFrames } from "../support/animation_frames.js";
 import { loadScript } from "../support/load_script.js";
 
 function createAiHelperDOM() {
@@ -155,14 +156,17 @@ describe("AiHelper", () => {
   let dom;
   let helper;
   let xhr;
+  let frames;
 
   beforeEach(async () => {
     await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
+    await loadScript("assets/javascripts/shared/ai_helper_frame_renderer");
     await loadScript("assets/javascripts/chat/ai_helper");
     await loadScript("assets/javascripts/chat/ai_helper_streaming");
     await loadScript("assets/javascripts/chat/ai_helper_history");
     dom = createAiHelperDOM();
     xhr = createXhrMock();
+    frames = stubAnimationFrames();
     window.ai_helper_urls = {
       call_llm: "/ai_helper/call_llm",
       reload: "/ai_helper/reload",
@@ -799,8 +803,66 @@ describe("AiHelper", () => {
       xhr.onprogress();
       Object.assign(xhr, { responseText: 'data: {"choices":[{"delta":{"content":"Hi"}}]}\n' });
       xhr.onprogress();
+      frames.flush();
 
       expect(dom.lastMessage.innerHTML).toContain("Hi");
+    });
+
+    it("coalesces chunks that arrive within one animation frame into a single render", () => {
+      const renderSpy = vi.spyOn(helper, "innerHTMLwithScripts");
+      helper.call_llm();
+
+      xhr.responseText =
+        'data: {"choices":[{"delta":{"content":"one "}}]}\n' +
+        'data: {"choices":[{"delta":{"content":"two "}}]}\n';
+      xhr.onprogress();
+      xhr.responseText += 'data: {"choices":[{"delta":{"content":"three"}}]}\n';
+      xhr.onprogress();
+
+      expect(renderSpy).not.toHaveBeenCalled();
+      expect(frames.pendingCount()).toBe(1);
+
+      frames.flush();
+
+      expect(renderSpy).toHaveBeenCalledTimes(1);
+      expect(dom.lastMessage.innerHTML).toContain("one two three");
+    });
+
+    it("renders the pending content immediately when the stream completes", () => {
+      vi.spyOn(helper, "reload_chat").mockImplementation(() => {});
+      helper.call_llm();
+
+      xhr.responseText =
+        'data: {"choices":[{"delta":{"content":"tail"}}]}\n' +
+        'data: {"choices":[{"finish_reason":"stop"}]}\n';
+      xhr.onprogress();
+
+      expect(dom.lastMessage.innerHTML).toContain("tail");
+      expect(frames.pendingCount()).toBe(0);
+    });
+
+    it("cancels a pending render on xhr.onerror so it cannot overwrite the error", () => {
+      helper.call_llm();
+
+      xhr.responseText = 'data: {"choices":[{"delta":{"content":"partial"}}]}\n';
+      xhr.onprogress();
+      xhr.onerror();
+      frames.flush();
+
+      expect(dom.lastMessage.textContent).toBe("An error has occurred");
+    });
+
+    it("cancels a pending render on a non-200 response so it cannot overwrite the error", () => {
+      helper.call_llm();
+
+      xhr.responseText = 'data: {"choices":[{"delta":{"content":"partial"}}]}\n';
+      xhr.onprogress();
+      xhr.status = 500;
+      xhr.statusText = "Server Error";
+      xhr.onload();
+      frames.flush();
+
+      expect(dom.lastMessage.textContent).toBe("Error: 500 Server Error");
     });
 
     it("hides the loader and reloads the chat when the stream completes", () => {
