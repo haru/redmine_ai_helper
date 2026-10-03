@@ -1,2 +1,3 @@
+<% ai_helper_markdown_toolbar_heads if User.current.allowed_to?(:edit_ai_helper_health_reports, @project) %>
 <% html_title(l(:label_ai_helper_health_report_detail)) %>
 <%= render partial: 'ai_helper/project/health_report_show' %>

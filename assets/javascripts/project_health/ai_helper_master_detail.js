@@ -14,6 +14,8 @@ class AiHelperMasterDetail {
    */
   constructor() {
     this.selectedReportId = null;
+    // Incremented per detail request so slower, superseded responses are dropped
+    this.detailRequestId = 0;
     this.masterPane = null;
     this.detailPane = null;
     this.detailContainer = null;
@@ -84,15 +86,11 @@ class AiHelperMasterDetail {
   }
 
   /**
-   * Select a report row and render its detail from the row's own data
-   * attributes (no AJAX round-trip needed).
+   * Select a report row and fetch its server-rendered detail pane.
    * @param {HTMLElement} row - The `.ai-helper-report-row` element clicked.
    */
   selectReport(row) {
     const reportId = row.dataset.reportId;
-    const reportContent = row.dataset.reportContent;
-    const createdAt = row.dataset.reportCreatedAt;
-    const userName = row.dataset.reportUserName;
 
     if (this.selectedReportId === reportId) {
       return; // Already selected
@@ -101,17 +99,8 @@ class AiHelperMasterDetail {
     // Update selection state
     this.updateSelection(row, reportId);
 
-    // Display report detail directly from data attributes
-    const data = {
-      id: reportId,
-      health_report: reportContent,
-      created_at: createdAt,
-      user: {
-        name: userName
-      }
-    };
-
-    this.renderReportDetail(data);
+    // Fetch the detail pane rendered by the server
+    this.loadReportDetail(row.dataset.reportDetailUrl);
   }
 
   /**
@@ -131,113 +120,74 @@ class AiHelperMasterDetail {
   }
 
   /**
-   * Fetch a report's detail JSON via AJAX and render it.
+   * Fetch a report's detail pane HTML (server-rendered partial) via AJAX.
+   * A response (or error) is ignored once a newer detail request has started,
+   * so a slow earlier request cannot overwrite the currently selected report.
    * @param {string} url - The report detail endpoint.
+   * @returns {Promise<void>} Resolves when the detail pane has been rendered,
+   *   the error message has been shown, or the response was discarded as stale.
    */
   loadReportDetail(url) {
+    const requestId = ++this.detailRequestId;
+    const isStale = () => requestId !== this.detailRequestId;
+
     // Show loading state
     this.showLoading();
 
-    const xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    xhr.setRequestHeader('Accept', 'application/json');
-
-    xhr.onload = () => {
-      if (xhr.status === 200) {
-        try {
-          const data = JSON.parse(xhr.responseText);
-          this.renderReportDetail(data);
-        } catch (error) {
-          console.error('JSON parse error:', error);
-          this.showError(this.getI18nText('error_loading_report', 'Failed to load report') + ': ' + error.message);
-        }
-      } else {
-        console.error('HTTP error:', xhr.status, xhr.responseText);
-        this.showError(this.getI18nText('error_loading_report', 'Failed to load report') + ' (Status: ' + xhr.status + ')');
+    return fetch(url, {
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'text/html'
       }
-    };
-
-    xhr.onerror = () => {
-      this.showError(this.getI18nText('network_error', 'Network error occurred'));
-    };
-
-    xhr.send();
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('HTTP status: ' + response.status);
+        }
+        return response.text();
+      })
+      .then(html => {
+        if (isStale()) {
+          return;
+        }
+        this.renderReportDetail(html);
+      })
+      .catch(error => {
+        if (isStale()) {
+          return;
+        }
+        console.error('Failed to load report detail:', error);
+        // fetch() rejects with a TypeError on network failures
+        const message = error instanceof TypeError
+          ? this.getI18nText('network_error', 'Network error occurred')
+          : this.getI18nText('error_loading_report', 'Failed to load report');
+        this.showError(message);
+      });
   }
 
   /**
-   * Render a report's detail into the detail pane, fading out/in around the
-   * content swap.
-   * @param {object} data - Report fields: `id`, `health_report`, `created_at`, `user.name`, and optionally `formatted_html`.
+   * Render a report's server-rendered detail HTML into the detail pane,
+   * fading out/in around the content swap.
+   * @param {string} html - The detail pane HTML from the server.
    */
-  renderReportDetail(data) {
+  renderReportDetail(html) {
+    const requestId = this.detailRequestId;
+
     // Fade out
     this.detailContainer.style.opacity = '0';
 
     setTimeout(() => {
-      // Format content using Markdown parser if available
-      let formattedContent = data.formatted_html;
-      if (typeof AiHelperMarkdownParser !== 'undefined') {
-        const parser = new AiHelperMarkdownParser();
-        formattedContent = parser.parse(data.health_report);
+      // Another report was selected during the fade; its request owns the pane now
+      if (requestId !== this.detailRequestId) {
+        return;
       }
-
-      // Build HTML
-      const html = this.buildDetailHTML(data, formattedContent);
       this.detailContainer.innerHTML = html;
 
       // Fade in
       setTimeout(() => {
         this.detailContainer.style.opacity = '1';
       }, 10);
-
-      // Attach export event handlers
-      this.attachExportEvents(data);
     }, 300);
-  }
-
-  /**
-   * Build the detail pane's HTML for a report.
-   * @param {object} data - Report fields (see `renderReportDetail`).
-   * @param {string} formattedContent - The report body, already rendered from markdown to HTML.
-   * @returns {string} HTML for the detail pane.
-   */
-  buildDetailHTML(data, formattedContent) {
-    const createdAt = this.formatDateTime(data.created_at);
-    const userName = this.escapeHtml(data.user.name);
-    const reportId = data.id;
-    const projectId = this.getProjectId();
-    const exportLabel = this.getI18nText('label_export_to', 'Export to');
-    const createdOnLabel = this.getI18nText('field_created_on', 'Created on');
-    const authorLabel = this.getI18nText('field_author', 'Author');
-
-    return `
-      <div class="ai-helper-health-report-detail" data-report-id="${reportId}">
-
-        <div class="ai-helper-health-report-meta">
-          <p>
-            <strong>${createdOnLabel}:</strong>
-            ${createdAt}
-          </p>
-          <p>
-            <strong>${authorLabel}:</strong>
-            ${userName}
-          </p>
-        </div>
-
-        <div class="ai-helper-project-health-content has-report">
-          <div id="ai-helper-project-health-result" class="ai-helper-final-content">
-            ${formattedContent}
-          </div>
-          <input type="hidden" id="ai-helper-health-report-content" value="${this.escapeHtml(data.health_report)}" />
-        </div>
-
-        <p class="other-formats">
-          ${exportLabel}
-          <span><a href="#" class="text" id="ai-helper-markdown-export-detail">Markdown</a></span>
-          <span><a href="/projects/${projectId}/ai_helper/health_reports/${reportId}.pdf" class="pdf" id="ai-helper-pdf-export-detail">PDF</a></span>
-        </p>
-      </div>
-    `;
   }
 
   /**
@@ -333,63 +283,7 @@ class AiHelperMasterDetail {
     this.selectedReportId = null;
   }
 
-  /**
-   * Bind the detail pane's markdown export link (PDF export needs no
-   * handler; its href is already correct).
-   * @param {object} data - Report fields (see `renderReportDetail`).
-   */
-  attachExportEvents(data) {
-    const markdownExportLink = document.getElementById('ai-helper-markdown-export-detail');
-
-    if (markdownExportLink) {
-      markdownExportLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        this.exportMarkdown(data.health_report);
-      });
-    }
-
-    // PDF export link already has correct href, no additional handler needed
-  }
-
-  /**
-   * Submit the report content to the markdown export endpoint via a
-   * dynamically-built form POST (triggers a file download).
-   * @param {string} content - The report's raw markdown content.
-   */
-  exportMarkdown(content) {
-    // Create form to submit markdown export
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = this.getMarkdownExportUrl();
-
-    const contentField = document.createElement('input');
-    contentField.type = 'hidden';
-    contentField.name = 'health_report_content';
-    contentField.value = content;
-
-    const csrfField = document.createElement('input');
-    csrfField.type = 'hidden';
-    csrfField.name = 'authenticity_token';
-    csrfField.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
-    form.appendChild(contentField);
-    form.appendChild(csrfField);
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
-  }
-
   // Utility methods
-  /**
-   * Format an ISO date string using the browser's locale.
-   * @param {string} dateString - An ISO 8601 date/time string.
-   * @returns {string} The locale-formatted date/time.
-   */
-  formatDateTime(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleString();
-  }
-
   /**
    * Escape HTML special characters to prevent XSS.
    * @param {string} text - The raw text to escape.
@@ -399,25 +293,6 @@ class AiHelperMasterDetail {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
-  }
-
-  /**
-   * Extract the current project's identifier from the page URL.
-   * @returns {string} The project id/identifier, or `''` if not found.
-   */
-  getProjectId() {
-    // Extract project ID from URL
-    const match = window.location.pathname.match(/\/projects\/([^/]+)/);
-    return match ? match[1] : '';
-  }
-
-  /**
-   * Build the markdown export endpoint URL for the current project.
-   * @returns {string} The markdown export URL.
-   */
-  getMarkdownExportUrl() {
-    const projectId = this.getProjectId();
-    return `/projects/${projectId}/ai_helper/project_health_markdown`;
   }
 
   /**

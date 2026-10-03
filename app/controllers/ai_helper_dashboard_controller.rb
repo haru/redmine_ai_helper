@@ -9,7 +9,7 @@ class AiHelperDashboardController < ApplicationController
   protect_from_forgery with: :exception
 
   before_action :find_project, :authorize, :find_user
-  before_action :find_health_report_and_project, only: [ :health_report_show, :health_report_destroy ]
+  before_action :find_health_report_and_project, only: [ :health_report_show, :health_report_destroy, :health_report_update, :health_report_markdown ]
   before_action :set_per_page_limit, only: [ :index ]
 
   # Render the dashboard landing page for the current project.
@@ -53,14 +53,70 @@ class AiHelperDashboardController < ApplicationController
     end
 
     respond_to do |format|
-      format.html { render template: "ai_helper/project/health_report_show", layout: "base" }
+      format.html do
+        if request.xhr?
+          render partial: "ai_helper/project/health_report_detail_pane", locals: { health_report: @health_report }, layout: false
+        else
+          render template: "ai_helper/project/health_report_show", layout: "base"
+        end
+      end
       format.pdf do
         filename = "#{@project.identifier}-health-report-#{@health_report.created_at.strftime("%Y%m%d")}.pdf"
-        send_data(project_health_to_pdf(@project, @health_report.health_report),
+        send_data(project_health_to_pdf(@project, @health_report.health_report,
+                                        edit_notice: helpers.health_report_edit_notice_text(@health_report)),
                   type: "application/pdf",
                   filename: filename)
       end
     end
+  end
+
+  # Export a health report as a Markdown file. An edited report is prefixed
+  # with a quoted edit notice line.
+  def health_report_markdown
+    return render_403 unless @health_report.visible?(@user)
+
+    notice = helpers.health_report_edit_notice_text(@health_report)
+    content = notice ? "#{notice}\n\n#{@health_report.health_report}" : @health_report.health_report.to_s
+    filename = "#{@project.identifier}-health-report-#{@health_report.created_at.strftime("%Y%m%d")}.md"
+    send_data(content, type: "text/markdown", filename: filename)
+  end
+
+  # Update the body of a stored health report (JSON).
+  # Responds with the re-rendered detail pane on success, 422 on validation
+  # errors and 409 when the report was edited concurrently.
+  def health_report_update
+    return render_403 unless @health_report.editable?(@user)
+
+    attrs = params.require(:health_report).permit(:health_report, :lock_version)
+    if attrs[:lock_version].blank?
+      return render json: { status: "error", errors: [ l(:notice_locking_conflict) ] }, status: :unprocessable_content
+    end
+
+    @health_report.lock_version = attrs[:lock_version]
+
+    if @health_report.update_content(attrs[:health_report], @user)
+      edited = @health_report.saved_changes?
+      Rails.cache.delete("project_health_#{@project.id}___") if edited
+      ai_helper_logger.info "Health report #{@health_report.id} updated by user #{@user.id} (edited: #{edited})"
+      html = render_to_string(partial: "ai_helper/project/health_report_detail_pane",
+                              locals: { health_report: @health_report, notice: l(:notice_successful_update) },
+                              formats: [ :html ])
+      render json: { status: "ok", edited: edited, html: html }
+    else
+      render json: { status: "error", errors: @health_report.errors.full_messages }, status: :unprocessable_content
+    end
+  rescue ActiveRecord::StaleObjectError
+    render json: { status: "error", errors: [ l(:notice_locking_conflict) ] }, status: :conflict
+  end
+
+  # Render a Markdown preview of the text being edited (no layout).
+  def health_report_preview
+    html = if params[:text].present?
+        helpers.render_health_report_markdown(params[:text].to_s)
+    else
+        helpers.content_tag(:p, l(:label_nothing_to_preview), class: "empty-preview")
+    end
+    render html: html, layout: false
   end
 
   # Delete a stored health report if the current user has permission.

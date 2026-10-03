@@ -348,6 +348,12 @@ body.controller-ai_helper_dashboard.action-index .ai-helper-health-report-detail
   max-height: 100%;
 }
 
+/* Fill the flex container's width; otherwise it shrinks to the edit textarea */
+body.controller-ai_helper_dashboard.action-index .ai-helper-health-report-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 body.controller-ai_helper_dashboard.action-index .ai-helper-health-report-meta,
 body.controller-ai_helper_dashboard.action-index .ai-helper-health-report-detail .other-formats {
   flex: 0 0 auto;
@@ -1164,6 +1170,20 @@ body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-conte
   stroke: #f8f8f8 !important;
 }
 
+/* Edited marker sits outside the date's flow so dates stay aligned in the centered column */
+.ai-helper-health-report-created-on {
+  position: relative;
+}
+
+.ai-helper-health-report-edited-marker {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 4px;
+  line-height: 0;
+}
+
 /* Clickable cell styling */
 .ai-helper-clickable-cell {
   cursor: pointer;
@@ -1196,6 +1216,17 @@ body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-conte
 
 .ai-helper-health-report-meta p {
   margin: 0.5em 0;
+}
+
+/* Redmine core styles (e.g. `form { display: inline }`, `.icon { display: inline-flex }`)
+   override the UA `[hidden]` rule, so enforce it for the view/edit toggle */
+.ai-helper-health-report-body [hidden] {
+  display: none !important;
+}
+
+/* max-height is set by the editor JS to the textarea height */
+.ai-helper-health-report-edit-form .wiki-preview {
+  overflow-y: auto;
 }
 
 

@@ -1,0 +1,73 @@
+<div class="ai-helper-health-report-body" data-report-id="<%= health_report.id %>"
+     data-show-url="<%= ai_helper_health_report_show_path(@project, report_id: health_report.id) %>"
+     <% if health_report.editable? %>data-update-url="<%= ai_helper_health_report_update_path(@project, report_id: health_report.id) %>"<% end %><%= ' dir="rtl"'.html_safe if l(:direction) == 'rtl' %>>
+  <% if local_assigns[:notice] %>
+    <div class="flash notice"><%= notice %></div>
+  <% end %>
+
+  <div class="ai-helper-health-report-meta">
+    <p>
+      <strong><%= l(:field_created_on) %>:</strong>
+      <%= format_time(health_report.created_at) %>
+    </p>
+    <p>
+      <strong><%= l(:field_author) %>:</strong>
+      <%= link_to_user health_report.user %>
+    </p>
+    <%= render "ai_helper/project/health_report_edit_status", health_report: health_report %>
+  </div>
+
+  <% if health_report.editable? %>
+    <div class="contextual">
+      <%= link_to sprite_icon("edit", l(:button_edit)), "#", class: "icon icon-edit ai-helper-health-report-edit-link" %>
+    </div>
+  <% end %>
+
+  <div class="ai-helper-health-report-view">
+    <div class="ai-helper-health-report-current ai-helper-final-content" id="ai-helper-project-health-result">
+      <%= render_health_report_markdown(health_report.health_report.to_s) %>
+    </div>
+    <% if health_report.edited? %>
+      <div class="ai-helper-health-report-original" hidden>
+        <p class="warning"><%= l("ai_helper.health_report_edit.original_notice") %></p>
+        <div class="ai-helper-final-content">
+          <%= render_health_report_markdown(health_report.original_health_report.to_s) %>
+        </div>
+      </div>
+      <p>
+        <%= link_to l("ai_helper.health_report_edit.show_original"), "#", class: "ai-helper-health-report-show-original" %>
+        <%= link_to l("ai_helper.health_report_edit.show_current"), "#", class: "ai-helper-health-report-show-current", hidden: true %>
+      </p>
+    <% end %>
+  </div>
+
+  <% if health_report.editable? %>
+    <%= form_tag(ai_helper_health_report_update_path(@project, report_id: health_report.id), method: :patch,
+                 class: "ai-helper-health-report-edit-form", hidden: true,
+                 data: { conflict_hint: l("ai_helper.health_report_edit.conflict_hint"),
+                         save_failed_message: l("ai_helper.health_report_edit.save_failed") }) do %>
+      <div id="errorExplanation" class="ai-helper-health-report-edit-errors" hidden></div>
+      <%= hidden_field_tag "health_report[lock_version]", health_report.lock_version, id: nil %>
+      <%= text_area_tag "health_report[health_report]", health_report.health_report,
+                        id: "health_report_health_report_#{health_report.id}", class: "wiki-edit", rows: 20,
+                        data: { preview_url: ai_helper_health_report_preview_path(@project),
+                                help_url: help_wiki_syntax_path } %>
+      <p>
+        <%= submit_tag l(:button_save) %>
+        <%= link_to l(:button_cancel), "#", class: "ai-helper-health-report-edit-cancel" %>
+      </p>
+    <% end %>
+  <% end %>
+
+  <p class="other-formats">
+    <%= l(:label_export_to) %>
+    <span><%= link_to 'PDF',
+                      ai_helper_health_report_show_path(@project,
+                                                       report_id: health_report.id,
+                                                       format: :pdf),
+                      class: 'pdf' %></span>
+    <span><%= link_to 'Markdown',
+                      ai_helper_health_report_markdown_path(@project, report_id: health_report.id),
+                      class: 'text' %></span>
+  </p>
+</div>

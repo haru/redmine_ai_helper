@@ -51,10 +51,7 @@
             <tr class="ai-helper-report-row <%= cycle('odd', 'even') %> <%= 'selected' if @selected_report&.id == report.id %>"
                 data-report-id="<%= report.id %>"
                 data-report-url="<%= ai_helper_dashboard_path(@project, tab: 'health_report', report_id: report.id, format: :html) %>"
-                data-report-content="<%= html_escape(report.health_report.to_s) %>"
-                data-report-created-at="<%= report.created_at.iso8601 %>"
-                data-report-created-on="<%= html_escape(format_time(report.created_at)) %>"
-                data-report-user-name="<%= html_escape(report.user.name) %>">
+                data-report-detail-url="<%= ai_helper_health_report_show_path(@project, report_id: report.id) %>">
 
               <td class="id ai-helper-clickable-cell">
                 <%= report.id %>
@@ -83,7 +80,7 @@
               </td>
 
               <td class="created_on ai-helper-clickable-cell">
-                <%= format_time(report.created_at) %>
+                <span class="ai-helper-health-report-created-on"><%= format_time(report.created_at) %><span class="ai-helper-health-report-edited-marker" title="<%= l("ai_helper.health_report_edit.edited") %>"<%= ' hidden'.html_safe unless report.edited? %>><%= sprite_icon("edit", l("ai_helper.health_report_edit.edited"), icon_only: true) %></span></span>
               </td>
               <td class="author">
                 <%= link_to_user report.user %>
