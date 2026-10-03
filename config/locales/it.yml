@@ -23,8 +23,6 @@ it:
   permission_view_ai_helper: "Visualizza AI Helper"
   permission_settings_ai_helper: "Impostazioni progetto"
   permission_delete_ai_helper_health_reports: "Elimina report di salute"
-  permission_edit_ai_helper_health_reports: "Modifica report di salute"
-  field_health_report: "Contenuto del report"
   label_ai_helper_error: "Errore"
   label_ai_helper_health_report_history: "Storico report"
   label_ai_helper_health_report_detail: "Dettaglio report"
@@ -51,12 +49,6 @@ it:
       no_report_available: "Nessun report di salute disponibile per l'esportazione PDF"
       report_content: "Contenuto del report di salute"
 
-    health_report_edit:
-      edited: "Modificato"
-      edited_by_on_html: "Modificato da %{user} il %{time}"
-      show_original: "Mostra originale"
-      show_current: "Mostra versione modificata"
-      original_notice: "Questo è il contenuto originale generato dall'IA."
     health_report_comparison:
       compare_button: "Confronta report"
       comparison_column: "Confronto"

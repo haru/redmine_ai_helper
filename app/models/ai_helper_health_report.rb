@@ -10,6 +10,10 @@ class AiHelperHealthReport < ApplicationRecord
   validates :project_id, presence: true
   validates :user_id, presence: true
   validates :health_report, presence: true
+  validate :validate_edited_body_size, if: :will_save_change_to_last_edited_on?
+
+  # Maximum size in bytes of a user-edited body (fits a MySQL TEXT column).
+  MAX_EDITED_BODY_BYTES = 65_535
 
   # Scopes
   scope :sorted, -> { order(created_at: :desc) }
@@ -104,5 +108,15 @@ class AiHelperHealthReport < ApplicationRecord
       user_name: user.name,
       total_issues: metrics_hash.dig(:issue_statistics, :total_issues) || 0
     }
+  end
+
+  private
+
+  # Reject user edits whose body would not fit in a MySQL TEXT column.
+  # @return [void]
+  def validate_edited_body_size
+    return if health_report.to_s.bytesize <= MAX_EDITED_BODY_BYTES
+
+    errors.add(:health_report, :too_long, count: MAX_EDITED_BODY_BYTES)
   end
 end

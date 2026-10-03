@@ -1335,6 +1335,17 @@ This is a test report."
         assert_not Rails.cache.exist?("project_health_#{@project.id}___")
       end
 
+      should "return 422 and keep the report when lock_version is missing" do
+        patch :health_report_update, params: {
+                                      id: @project.id,
+                                      report_id: @report.id,
+                                      health_report: { health_report: "No lock" }
+                                    }
+
+        assert_response :unprocessable_entity
+        assert_equal "AI generated report", @report.reload.health_report
+      end
+
       should "return 422 with errors for an empty body" do
         patch :health_report_update, params: {
                                       id: @project.id,

@@ -18,8 +18,6 @@ zh:
   permission_view_ai_helper: "查看 AI 助手"
   permission_settings_ai_helper: "项目设置"
   permission_delete_ai_helper_health_reports: "删除健康报告"
-  permission_edit_ai_helper_health_reports: "编辑健康报告"
-  field_health_report: "报告正文"
   label_ai_helper_error: "错误"
   label_ai_helper_health_report_history: "报告历史"
   label_ai_helper_health_report_detail: "报告详情"
@@ -42,12 +40,6 @@ zh:
       note: "报告将分析问题统计、时间指标、工作负载分布，并提供可操作的建议。"
       no_report_available: "没有可用于 PDF 导出的健康报告"
       report_content: "健康报告内容"
-    health_report_edit:
-      edited: "已编辑"
-      edited_by_on_html: "由 %{user} 于 %{time} 编辑"
-      show_original: "显示原始内容"
-      show_current: "显示编辑后版本"
-      original_notice: "这是 AI 生成时的原始内容。"
     health_report_comparison:
       compare_button: "比较报告"
       comparison_column: "比较"

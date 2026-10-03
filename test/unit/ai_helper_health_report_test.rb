@@ -389,6 +389,25 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       assert_equal 0, report.lock_version
     end
 
+    should "reject an edited body larger than the maximum byte size" do
+      too_long = "あ" * ((AiHelperHealthReport::MAX_EDITED_BODY_BYTES / 3) + 1)
+
+      assert_not @report.update_content(too_long, @editor)
+      assert_predicate @report.errors[:health_report], :present?
+      assert_equal "AI generated report", @report.reload.health_report
+    end
+
+    should "accept an edited body at exactly the maximum byte size" do
+      assert @report.update_content("a" * AiHelperHealthReport::MAX_EDITED_BODY_BYTES, @editor)
+    end
+
+    should "not apply the size limit to AI generated reports" do
+      report = AiHelperHealthReport.new(project: @project, user: @user,
+                                        health_report: "a" * (AiHelperHealthReport::MAX_EDITED_BODY_BYTES + 1))
+
+      assert_predicate report, :valid?
+    end
+
     should "reject an empty body without persisting edit columns" do
       assert_not @report.update_content("", @editor)
 

@@ -80,7 +80,7 @@
       }
     }).then(function (response) {
       return response.json().then(function (json) {
-        return { ok: response.ok, json: json };
+        return { ok: response.ok, status: response.status, json: json };
       });
     }).then(function (result) {
       if (result.ok) {
@@ -93,7 +93,10 @@
           }
         }
       } else {
-        showErrors(form, result.json.errors || []);
+        // A 409 means the stored lock_version is stale; every retry would conflict again,
+        // so keep the typed text visible and ask the user to reload.
+        const errors = result.json.errors || [];
+        showErrors(form, result.status === 409 ? errors.concat([form.dataset.conflictHint || 'Reload the page to get the latest version; your text is kept in the editor.']) : errors);
       }
     }).catch(function (error) {
       showErrors(form, [error.message]);

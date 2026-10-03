@@ -91,6 +91,7 @@ ja:
       show_original: "オリジナルを表示"
       show_current: "編集後の内容を表示"
       original_notice: "これは AI が生成した時点のオリジナルの内容です。"
+      conflict_hint: "最新の内容を取得するにはページを再読み込みしてください。入力したテキストはエディタに残っているので、再読み込み前にコピーしてください。"
     health_report_comparison:
       compare_button: "レポート比較"
       comparison_column: "比較"

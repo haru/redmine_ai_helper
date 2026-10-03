@@ -88,7 +88,11 @@ class AiHelperDashboardController < ApplicationController
     return render_403 unless @health_report.editable?(@user)
 
     attrs = params.require(:health_report).permit(:health_report, :lock_version)
-    @health_report.lock_version = attrs[:lock_version] if attrs[:lock_version].present?
+    if attrs[:lock_version].blank?
+      return render json: { status: "error", errors: [ l(:notice_locking_conflict) ] }, status: :unprocessable_content
+    end
+
+    @health_report.lock_version = attrs[:lock_version]
 
     if @health_report.update_content(attrs[:health_report], @user)
       edited = @health_report.saved_changes?
