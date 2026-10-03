@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { stubAnimationFrames } from "../support/animation_frames.js";
 import { loadScript } from "../support/load_script.js";
 
 // ai_helper_stuff_todo.js wires up a "stuff to do" modal fed by an SSE
@@ -22,13 +23,7 @@ FakeEventSource.instances = [];
 
 describe("ai_helper_stuff_todo", () => {
   let container;
-  let frameCallbacks;
-
-  function flushAnimationFrames() {
-    const callbacks = Array.from(frameCallbacks.values());
-    frameCallbacks.clear();
-    callbacks.forEach((callback) => callback(0));
-  }
+  let frames;
 
   function sendChunk(source, text) {
     source.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: text } }] }) });
@@ -39,17 +34,11 @@ describe("ai_helper_stuff_todo", () => {
     document.body.appendChild(container);
     FakeEventSource.instances = [];
     vi.stubGlobal("EventSource", FakeEventSource);
-    frameCallbacks = new Map();
-    let nextFrameId = 1;
-    vi.stubGlobal("requestAnimationFrame", (callback) => {
-      const id = nextFrameId++;
-      frameCallbacks.set(id, callback);
-      return id;
-    });
-    vi.stubGlobal("cancelAnimationFrame", (id) => frameCallbacks.delete(id));
+    frames = stubAnimationFrames();
     delete window.aiHelperStuffTodoInitialized;
     delete window.AiHelperMarkdownParser;
     await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
+    await loadScript("assets/javascripts/shared/ai_helper_frame_renderer");
   });
 
   afterEach(() => {
@@ -167,12 +156,12 @@ describe("ai_helper_stuff_todo", () => {
     expect(source.url).toBe("/stuff_todo");
 
     sendChunk(source, "Hello ");
-    flushAnimationFrames();
+    frames.flush();
     expect(body.innerHTML).toContain("Hello");
     expect(body.innerHTML).toContain("ai-helper-cursor");
 
     sendChunk(source, "world");
-    flushAnimationFrames();
+    frames.flush();
     expect(body.innerHTML).toContain("Hello world");
 
     source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
@@ -197,9 +186,9 @@ describe("ai_helper_stuff_todo", () => {
 
     expect(parseSpy).not.toHaveBeenCalled();
     expect(body.innerHTML).toContain("ai-helper-loader");
-    expect(frameCallbacks.size).toBe(1);
+    expect(frames.pendingCount()).toBe(1);
 
-    flushAnimationFrames();
+    frames.flush();
 
     expect(parseSpy).toHaveBeenCalledTimes(1);
     expect(parseSpy).toHaveBeenCalledWith("one two three");
@@ -219,7 +208,7 @@ describe("ai_helper_stuff_todo", () => {
     sendChunk(source, "final text");
     source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
 
-    expect(frameCallbacks.size).toBe(0);
+    expect(frames.pendingCount()).toBe(0);
     expect(body.innerHTML).toContain("ai-helper-final-content");
     expect(body.innerHTML).toContain("final text");
     expect(body.innerHTML).not.toContain("ai-helper-cursor");
@@ -237,7 +226,7 @@ describe("ai_helper_stuff_todo", () => {
     sendChunk(source, "partial");
     source.onerror();
 
-    expect(frameCallbacks.size).toBe(0);
+    expect(frames.pendingCount()).toBe(0);
     expect(body.innerHTML).toContain("ai-helper-error");
   });
 
@@ -251,7 +240,7 @@ describe("ai_helper_stuff_todo", () => {
     sendChunk(FakeEventSource.instances[0], "stale text");
 
     closeBtn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    flushAnimationFrames();
+    frames.flush();
 
     expect(body.innerHTML).not.toContain("stale text");
   });
@@ -266,7 +255,7 @@ describe("ai_helper_stuff_todo", () => {
     sendChunk(FakeEventSource.instances[0], "stale text");
 
     link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-    flushAnimationFrames();
+    frames.flush();
 
     expect(body.innerHTML).toContain("ai-helper-loader");
     expect(body.innerHTML).not.toContain("stale text");

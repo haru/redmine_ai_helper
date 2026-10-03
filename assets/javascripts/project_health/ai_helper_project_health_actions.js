@@ -68,44 +68,26 @@ function handleGenerateProjectHealthClick(e, parser) {
   currentProjectHealthEventSource = new EventSource(url);
   const eventSource = currentProjectHealthEventSource;
   let content = '';
-  // Each render re-parses the whole accumulated report, so rendering on every
-  // token makes the cost grow quadratically and freezes the browser on long
-  // reports. Coalesce renders to at most one per animation frame instead.
-  let pendingRenderFrame = null;
-
-  const cancelPendingRender = function() {
-    if (pendingRenderFrame !== null) {
-      cancelAnimationFrame(pendingRenderFrame);
-      pendingRenderFrame = null;
-    }
-  };
-
-  const scheduleRender = function() {
-    if (pendingRenderFrame !== null) {
+  const renderer = new AiHelperFrameRenderer(function() {
+    // A newer generation may have replaced this stream since scheduling.
+    if (currentProjectHealthEventSource !== eventSource) {
       return;
     }
-    pendingRenderFrame = requestAnimationFrame(function() {
-      pendingRenderFrame = null;
-      // A newer generation may have replaced this stream since scheduling.
-      if (currentProjectHealthEventSource !== eventSource) {
-        return;
-      }
-      appendStreamingChunk(resultDiv, parser, content);
-    });
-  };
+    appendStreamingChunk(resultDiv, parser, content);
+  });
 
   eventSource.onmessage = function(event) {
     try {
       const data = JSON.parse(event.data);
       if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
         content += data.choices[0].delta.content;
-        scheduleRender();
+        renderer.schedule();
       }
 
       if (data.choices && data.choices[0] && data.choices[0].finish_reason === 'stop') {
         eventSource.close();
         currentProjectHealthEventSource = null;
-        cancelPendingRender();
+        renderer.cancel();
         finalizeStreamingContent(resultDiv, parser, content);
       }
     } catch (error) {
@@ -116,7 +98,7 @@ function handleGenerateProjectHealthClick(e, parser) {
   eventSource.onerror = function() {
     eventSource.close();
     currentProjectHealthEventSource = null;
-    cancelPendingRender();
+    renderer.cancel();
     if (resultDiv) {
       const errorMessage = document.querySelector('meta[name="error-message"]');
       const errorText = errorMessage ? errorMessage.getAttribute('content') : 'Error';

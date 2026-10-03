@@ -40,44 +40,26 @@ if (!window.aiHelperStuffTodoInitialized) {
     currentEventSource = new EventSource(stuffTodoUrl);
     const eventSource = currentEventSource;
     let content = '';
-    // Each render re-parses the whole accumulated content, so rendering on
-    // every token makes the cost grow quadratically and freezes the browser
-    // on long responses. Coalesce renders to at most one per animation frame.
-    let pendingRenderFrame = null;
-
-    const cancelPendingRender = function() {
-      if (pendingRenderFrame !== null) {
-        cancelAnimationFrame(pendingRenderFrame);
-        pendingRenderFrame = null;
-      }
-    };
-
-    const scheduleRender = function() {
-      if (pendingRenderFrame !== null) {
+    const renderer = new AiHelperFrameRenderer(function() {
+      // The modal may have been closed or reopened since scheduling.
+      if (currentEventSource !== eventSource) {
         return;
       }
-      pendingRenderFrame = requestAnimationFrame(function() {
-        pendingRenderFrame = null;
-        // The modal may have been closed or reopened since scheduling.
-        if (currentEventSource !== eventSource) {
-          return;
-        }
-        renderStreamingContent(parser, body, content);
-      });
-    };
+      renderStreamingContent(parser, body, content);
+    });
 
     eventSource.onmessage = function(event) {
       try {
         const data = JSON.parse(event.data);
         if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
           content += data.choices[0].delta.content;
-          scheduleRender();
+          renderer.schedule();
         }
 
         if (data.choices && data.choices[0] && data.choices[0].finish_reason === 'stop') {
           eventSource.close();
           currentEventSource = null;
-          cancelPendingRender();
+          renderer.cancel();
 
           const formattedContent = parser.parse(content);
           body.innerHTML = '<div class="ai-helper-final-content">' +
@@ -91,7 +73,7 @@ if (!window.aiHelperStuffTodoInitialized) {
     eventSource.onerror = function() {
       eventSource.close();
       currentEventSource = null;
-      cancelPendingRender();
+      renderer.cancel();
       const errorText = errorMeta ? errorMeta.getAttribute('content') : 'Error';
       body.innerHTML = '<div class="ai-helper-error">' + errorText + '</div>';
     };
