@@ -68,23 +68,27 @@ function handleGenerateProjectHealthClick(e, parser) {
   currentProjectHealthEventSource = new EventSource(url);
   const eventSource = currentProjectHealthEventSource;
   let content = '';
+  const renderer = new AiHelperFrameRenderer(function() {
+    // A newer generation may have replaced this stream since scheduling.
+    if (currentProjectHealthEventSource !== eventSource) {
+      return;
+    }
+    appendStreamingChunk(resultDiv, parser, content);
+  });
 
   eventSource.onmessage = function(event) {
     try {
       const data = JSON.parse(event.data);
       if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
         content += data.choices[0].delta.content;
-        if (resultDiv) {
-          appendStreamingChunk(resultDiv, parser, content);
-        }
+        renderer.schedule();
       }
 
       if (data.choices && data.choices[0] && data.choices[0].finish_reason === 'stop') {
         eventSource.close();
         currentProjectHealthEventSource = null;
-        if (resultDiv) {
-          finalizeStreamingContent(resultDiv, parser, content);
-        }
+        renderer.cancel();
+        finalizeStreamingContent(resultDiv, parser, content);
       }
     } catch (error) {
       console.error('Failed to parse project health streaming event data:', error, event.data);
@@ -94,6 +98,7 @@ function handleGenerateProjectHealthClick(e, parser) {
   eventSource.onerror = function() {
     eventSource.close();
     currentProjectHealthEventSource = null;
+    renderer.cancel();
     if (resultDiv) {
       const errorMessage = document.querySelector('meta[name="error-message"]');
       const errorText = errorMessage ? errorMessage.getAttribute('content') : 'Error';

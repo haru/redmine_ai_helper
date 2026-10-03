@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { stubAnimationFrames } from "../support/animation_frames.js";
 import { loadScript } from "../support/load_script.js";
 
 // ai_helper_stuff_todo.js wires up a "stuff to do" modal fed by an SSE
@@ -22,15 +23,22 @@ FakeEventSource.instances = [];
 
 describe("ai_helper_stuff_todo", () => {
   let container;
+  let frames;
+
+  function sendChunk(source, text) {
+    source.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: text } }] }) });
+  }
 
   beforeEach(async () => {
     container = document.createElement("div");
     document.body.appendChild(container);
     FakeEventSource.instances = [];
     vi.stubGlobal("EventSource", FakeEventSource);
+    frames = stubAnimationFrames();
     delete window.aiHelperStuffTodoInitialized;
     delete window.AiHelperMarkdownParser;
     await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
+    await loadScript("assets/javascripts/shared/ai_helper_frame_renderer");
   });
 
   afterEach(() => {
@@ -147,17 +155,110 @@ describe("ai_helper_stuff_todo", () => {
     const source = FakeEventSource.instances[0];
     expect(source.url).toBe("/stuff_todo");
 
-    source.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: "Hello " } }] }) });
+    sendChunk(source, "Hello ");
+    frames.flush();
     expect(body.innerHTML).toContain("Hello");
     expect(body.innerHTML).toContain("ai-helper-cursor");
 
-    source.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: "world" } }] }) });
+    sendChunk(source, "world");
+    frames.flush();
     expect(body.innerHTML).toContain("Hello world");
 
     source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
     expect(body.innerHTML).toContain("ai-helper-final-content");
     expect(body.innerHTML).toContain("Hello world");
     expect(source.closed).toBe(true);
+  });
+
+  it("coalesces chunks that arrive within one animation frame into a single render", async () => {
+    addMeta("ai-helper-stuff-todo-url", "/stuff_todo");
+    const link = addMenuLink();
+    const { body } = addModalElements();
+    const parseSpy = vi.spyOn(window.AiHelperMarkdownParser.prototype, "parse");
+
+    await load();
+    link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    const source = FakeEventSource.instances[0];
+
+    sendChunk(source, "one ");
+    sendChunk(source, "two ");
+    sendChunk(source, "three");
+
+    expect(parseSpy).not.toHaveBeenCalled();
+    expect(body.innerHTML).toContain("ai-helper-loader");
+    expect(frames.pendingCount()).toBe(1);
+
+    frames.flush();
+
+    expect(parseSpy).toHaveBeenCalledTimes(1);
+    expect(parseSpy).toHaveBeenCalledWith("one two three");
+    expect(body.innerHTML).toContain("one two three");
+    parseSpy.mockRestore();
+  });
+
+  it("cancels a pending streaming render when the stream finishes", async () => {
+    addMeta("ai-helper-stuff-todo-url", "/stuff_todo");
+    const link = addMenuLink();
+    const { body } = addModalElements();
+
+    await load();
+    link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    const source = FakeEventSource.instances[0];
+
+    sendChunk(source, "final text");
+    source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+
+    expect(frames.pendingCount()).toBe(0);
+    expect(body.innerHTML).toContain("ai-helper-final-content");
+    expect(body.innerHTML).toContain("final text");
+    expect(body.innerHTML).not.toContain("ai-helper-cursor");
+  });
+
+  it("cancels a pending streaming render when the stream errors", async () => {
+    addMeta("ai-helper-stuff-todo-url", "/stuff_todo");
+    const link = addMenuLink();
+    const { body } = addModalElements();
+
+    await load();
+    link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    const source = FakeEventSource.instances[0];
+
+    sendChunk(source, "partial");
+    source.onerror();
+
+    expect(frames.pendingCount()).toBe(0);
+    expect(body.innerHTML).toContain("ai-helper-error");
+  });
+
+  it("drops a pending render once the modal is closed", async () => {
+    addMeta("ai-helper-stuff-todo-url", "/stuff_todo");
+    const link = addMenuLink();
+    const { body, closeBtn } = addModalElements();
+
+    await load();
+    link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    sendChunk(FakeEventSource.instances[0], "stale text");
+
+    closeBtn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    frames.flush();
+
+    expect(body.innerHTML).not.toContain("stale text");
+  });
+
+  it("drops a pending render from a stream replaced by reopening the modal", async () => {
+    addMeta("ai-helper-stuff-todo-url", "/stuff_todo");
+    const link = addMenuLink();
+    const { body } = addModalElements();
+
+    await load();
+    link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    sendChunk(FakeEventSource.instances[0], "stale text");
+
+    link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    frames.flush();
+
+    expect(body.innerHTML).toContain("ai-helper-loader");
+    expect(body.innerHTML).not.toContain("stale text");
   });
 
   it("silently ignores malformed SSE payloads", async () => {

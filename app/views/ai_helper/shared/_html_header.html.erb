@@ -6,6 +6,7 @@
 %>
 <% if RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: project) %>
     <%= stylesheet_link_tag('ai_helper.css', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('shared/ai_helper_frame_renderer.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('chat/ai_helper.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('chat/ai_helper_streaming.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('chat/ai_helper_history.js', plugin: :redmine_ai_helper) %>

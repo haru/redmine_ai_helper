@@ -87,6 +87,19 @@ if (!window.aiHelperComparisonInitialized) {
       currentEventSource = new EventSource(analysisUrl);
       const eventSource = currentEventSource;
       let content = '';
+      const renderer = new AiHelperFrameRenderer(function() {
+        // A newer analysis may have replaced this stream since scheduling.
+        if (currentEventSource !== eventSource) {
+          return;
+        }
+        const formattedContent = parser.parse(content);
+        resultDiv.innerHTML = '<div class="ai-helper-streaming-content">' +
+          formattedContent +
+          '<span class="ai-helper-cursor">|</span></div>';
+
+        // Auto-scroll to bottom to show new content
+        resultDiv.scrollTop = resultDiv.scrollHeight;
+      });
 
       eventSource.onmessage = function(event) {
         try {
@@ -94,28 +107,13 @@ if (!window.aiHelperComparisonInitialized) {
 
           if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
             content += data.choices[0].delta.content;
-
-            // Hide loader on first content
-            const loader = resultDiv.querySelector('.ai-helper-loader');
-            if (loader && loader.style.display !== 'none') {
-              loader.style.display = 'none';
-            }
-
-            // Render streaming content
-            const formattedContent = parser.parse(content);
-            resultDiv.innerHTML = '<div class="ai-helper-streaming-content">' +
-              formattedContent +
-              '<span class="ai-helper-cursor">|</span></div>';
-
-            // Auto-scroll to bottom to show new content
-            if (resultDiv) {
-              resultDiv.scrollTop = resultDiv.scrollHeight;
-            }
+            renderer.schedule();
           }
 
           if (data.choices && data.choices[0] && data.choices[0].finish_reason === 'stop') {
             eventSource.close();
             currentEventSource = null;
+            renderer.cancel();
 
             // Render final content
             const formattedContent = parser.parse(content);
@@ -143,6 +141,7 @@ if (!window.aiHelperComparisonInitialized) {
       eventSource.onerror = function() {
         eventSource.close();
         currentEventSource = null;
+        renderer.cancel();
 
         const errorMessage = document.querySelector('meta[name="i18n-error-message"]');
         const errorText = errorMessage ? errorMessage.getAttribute('content') : 'Error';

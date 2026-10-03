@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadScriptAndFireDOMContentLoaded } from "../support/dom_content_loaded.js";
+import { stubAnimationFrames } from "../support/animation_frames.js";
 import { loadScript } from "../support/load_script.js";
 
 class FakeEventSource {
@@ -20,6 +21,11 @@ FakeEventSource.instances = [];
 describe("ai_helper_comparison", () => {
   let container;
   let cleanup;
+  let frames;
+
+  function sendChunk(source, text) {
+    source.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: text } }] }) });
+  }
 
   beforeEach(async () => {
     container = document.createElement("div");
@@ -29,6 +35,8 @@ describe("ai_helper_comparison", () => {
     delete window.aiHelperComparisonInitialized;
     delete window.AiHelperMarkdownParser;
     await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
+    await loadScript("assets/javascripts/shared/ai_helper_frame_renderer");
+    frames = stubAnimationFrames();
   });
 
   afterEach(() => {
@@ -123,7 +131,8 @@ describe("ai_helper_comparison", () => {
     expect(source.url).toBe("/comparisons/1/analyze");
     expect(resultDiv.innerHTML).toContain("ai-helper-loader");
 
-    source.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: "Analysis: " } }] }) });
+    sendChunk(source, "Analysis: ");
+    frames.flush();
     expect(resultDiv.innerHTML).toContain("Analysis:");
     expect(resultDiv.innerHTML).toContain("ai-helper-cursor");
 
@@ -135,6 +144,59 @@ describe("ai_helper_comparison", () => {
     expect(hiddenField.value).toBe("Analysis: better");
     expect(exportDiv.style.display).toBe("block");
     expect(source.closed).toBe(true);
+  });
+
+  it("coalesces chunks that arrive within one animation frame into a single render", async () => {
+    const resultDiv = addResultDiv();
+    addExportUi();
+    const parseSpy = vi.spyOn(window.AiHelperMarkdownParser.prototype, "parse");
+
+    await load();
+    const source = FakeEventSource.instances[0];
+
+    sendChunk(source, "one ");
+    sendChunk(source, "two ");
+    sendChunk(source, "three");
+
+    expect(parseSpy).not.toHaveBeenCalled();
+    expect(resultDiv.innerHTML).toContain("ai-helper-loader");
+    expect(frames.pendingCount()).toBe(1);
+
+    frames.flush();
+
+    expect(parseSpy).toHaveBeenCalledTimes(1);
+    expect(parseSpy).toHaveBeenCalledWith("one two three");
+    expect(resultDiv.innerHTML).toContain("one two three");
+    parseSpy.mockRestore();
+  });
+
+  it("cancels a pending streaming render when the stream finishes", async () => {
+    const resultDiv = addResultDiv();
+    addExportUi();
+
+    await load();
+    const source = FakeEventSource.instances[0];
+
+    sendChunk(source, "final text");
+    source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+
+    expect(frames.pendingCount()).toBe(0);
+    expect(resultDiv.innerHTML).toContain("ai-helper-final-content");
+    expect(resultDiv.innerHTML).not.toContain("ai-helper-cursor");
+  });
+
+  it("cancels a pending streaming render when the stream errors", async () => {
+    const resultDiv = addResultDiv();
+    addExportUi();
+
+    await load();
+    const source = FakeEventSource.instances[0];
+
+    sendChunk(source, "partial");
+    source.onerror();
+
+    expect(frames.pendingCount()).toBe(0);
+    expect(resultDiv.innerHTML).toContain("ai-helper-error");
   });
 
   it("ignores malformed SSE payloads without throwing", async () => {

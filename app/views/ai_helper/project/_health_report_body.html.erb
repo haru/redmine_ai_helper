@@ -23,6 +23,7 @@
     </div>
   <% end %>
 
+  <div class="ai-helper-project-health-content has-report">
   <div class="ai-helper-health-report-view">
     <div class="ai-helper-health-report-current ai-helper-final-content" id="ai-helper-project-health-result">
       <%= render_health_report_markdown(health_report.health_report.to_s) %>
@@ -58,6 +59,7 @@
       </p>
     <% end %>
   <% end %>
+  </div>
 
   <p class="other-formats">
     <%= l(:label_export_to) %>
