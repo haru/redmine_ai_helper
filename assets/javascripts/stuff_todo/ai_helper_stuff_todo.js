@@ -5,6 +5,24 @@ if (!window.aiHelperStuffTodoInitialized) {
   let currentEventSource = null;
 
   /**
+   * Render the accumulated streaming content with a trailing cursor and
+   * scroll the modal body to the bottom.
+   * @param {object} parser - Markdown parser used to render the content.
+   * @param {HTMLElement} body - Modal body element to render content into.
+   * @param {string} content - The full accumulated content so far.
+   * @returns {void}
+   */
+  function renderStreamingContent(parser, body, content) {
+    const formattedContent = parser.parse(content);
+    body.innerHTML = '<div class="ai-helper-streaming-content">' +
+      formattedContent +
+      '<span class="ai-helper-cursor">|</span></div>';
+
+    // Auto-scroll to bottom
+    body.scrollTop = body.scrollHeight;
+  }
+
+  /**
    * Open an SSE connection to `stuffTodoUrl` and render the streamed
    * markdown content into `body` as it arrives.
    * @param {string} stuffTodoUrl - SSE endpoint to stream suggestions from.
@@ -22,31 +40,44 @@ if (!window.aiHelperStuffTodoInitialized) {
     currentEventSource = new EventSource(stuffTodoUrl);
     const eventSource = currentEventSource;
     let content = '';
+    // Each render re-parses the whole accumulated content, so rendering on
+    // every token makes the cost grow quadratically and freezes the browser
+    // on long responses. Coalesce renders to at most one per animation frame.
+    let pendingRenderFrame = null;
+
+    const cancelPendingRender = function() {
+      if (pendingRenderFrame !== null) {
+        cancelAnimationFrame(pendingRenderFrame);
+        pendingRenderFrame = null;
+      }
+    };
+
+    const scheduleRender = function() {
+      if (pendingRenderFrame !== null) {
+        return;
+      }
+      pendingRenderFrame = requestAnimationFrame(function() {
+        pendingRenderFrame = null;
+        // The modal may have been closed or reopened since scheduling.
+        if (currentEventSource !== eventSource) {
+          return;
+        }
+        renderStreamingContent(parser, body, content);
+      });
+    };
 
     eventSource.onmessage = function(event) {
       try {
         const data = JSON.parse(event.data);
         if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
           content += data.choices[0].delta.content;
-
-          // Hide loader on first content
-          const loader = body.querySelector('.ai-helper-loader');
-          if (loader && loader.style.display !== 'none') {
-            loader.style.display = 'none';
-          }
-
-          const formattedContent = parser.parse(content);
-          body.innerHTML = '<div class="ai-helper-streaming-content">' +
-            formattedContent +
-            '<span class="ai-helper-cursor">|</span></div>';
-
-          // Auto-scroll to bottom
-          body.scrollTop = body.scrollHeight;
+          scheduleRender();
         }
 
         if (data.choices && data.choices[0] && data.choices[0].finish_reason === 'stop') {
           eventSource.close();
           currentEventSource = null;
+          cancelPendingRender();
 
           const formattedContent = parser.parse(content);
           body.innerHTML = '<div class="ai-helper-final-content">' +
@@ -60,6 +91,7 @@ if (!window.aiHelperStuffTodoInitialized) {
     eventSource.onerror = function() {
       eventSource.close();
       currentEventSource = null;
+      cancelPendingRender();
       const errorText = errorMeta ? errorMeta.getAttribute('content') : 'Error';
       body.innerHTML = '<div class="ai-helper-error">' + errorText + '</div>';
     };
