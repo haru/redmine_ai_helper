@@ -6,6 +6,7 @@
 %>
 <% if RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: project) %>
     <%= stylesheet_link_tag('ai_helper.css', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('shared/ai_helper_frame_renderer.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('chat/ai_helper.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('chat/ai_helper_streaming.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('chat/ai_helper_history.js', plugin: :redmine_ai_helper) %>
@@ -27,6 +28,7 @@
     <%= javascript_include_tag('project_health/ai_helper_project_health_actions.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('autocompletion/ai_helper_assignment_suggestion.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('project_health/ai_helper_master_detail.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('project_health/ai_helper_health_report_editor.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('sub_issues/ai_helper_sub_issues.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('summary/ai_helper_wiki_summary.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('summary/ai_helper_issue_summary.js', plugin: :redmine_ai_helper) %>

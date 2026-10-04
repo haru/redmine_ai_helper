@@ -107,7 +107,8 @@ module RedmineAiHelper
 
       # Call LLM to analyze files.
       # @param prompt [String] The analysis prompt
-      # @param file_paths [Array<String>] Paths or URLs of files
+      # @param file_paths [Array<String, RubyLLM::Attachment>] Paths or URLs of files,
+      #   or in-memory attachments
       # @return [String] The analysis result text
       def analyze_with_llm(prompt:, file_paths:)
         llm_provider = RedmineAiHelper::LlmProvider.get_llm_provider

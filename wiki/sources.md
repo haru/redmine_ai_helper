@@ -42,3 +42,4 @@ Sources are immutable inputs — the wiki never edits them.
 | S035 | specs/058-issue-summary-instructions (research.md + plan.md) | feature-artifact | 2026-09-20 | 2026-09-20 | issue-summary-instructions-role-gating.md, issue-summary-instructions-prompt-template.md, issue-ai-features.md |
 | S036 | specs/060-log-file-viewer (research.md + plan.md) | feature-artifact | 2026-09-23 | 2026-09-23 | log-file-location-resolution.md, log-file-reader.md, log-file-access-tools.md, tool-system.md, plugin-overview.md, mcp-server-endpoint.md, inline-completion-request-flow.md |
 | S037 | specs/062-optional-temperature (research.md + plan.md) | feature-artifact | 2026-09-30 | 2026-09-30 | model-profile-optional-temperature.md, llm-provider-layer.md |
+| S038 | specs/064-health-report-edit (research.md + plan.md) | feature-artifact | 2026-10-03 | 2026-10-03 | health-report.md, health-report-editing.md, health-report-markdown-rendering.md |

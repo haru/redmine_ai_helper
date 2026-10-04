@@ -1,0 +1,6 @@
+---
+_type: prompt
+input_variables:
+- filename
+template: |-
+  [Attachment notice] The text file "{filename}" is attached to this item, but its content could not be read because its character encoding could not be determined. Its content is not included. Do not guess or invent what the file contains. If the file is relevant to the user's request, tell the user that "{filename}" could not be read.

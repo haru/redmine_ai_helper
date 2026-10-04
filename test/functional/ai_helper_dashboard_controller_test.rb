@@ -1,6 +1,8 @@
 require_relative "../test_helper"
 
 class AiHelperDashboardControllerTest < ActionController::TestCase
+  include Redmine::I18n
+
   fixtures :projects, :users, :members, :member_roles, :roles, :enabled_modules
 
   context "AiHelperDashboardController" do
@@ -219,6 +221,25 @@ This is a test report."
 
         assert_response :forbidden
       end
+
+      should "render detail pane partial without layout for XHR requests" do
+        get :health_report_show, params: { id: @project.id, report_id: @report.id }, xhr: true
+
+        assert_response :success
+        assert_not_includes response.body, "<html"
+        assert_select "div.ai-helper-health-report-body[data-report-id=?]", @report.id.to_s, 1
+        assert_select "div.ai-helper-health-report-meta", 1
+        assert_select "div.ai-helper-health-report-view div.ai-helper-health-report-current#ai-helper-project-health-result.ai-helper-final-content", 1
+        assert_select "p.other-formats a.pdf", 1
+      end
+
+      should "render standalone page with layout for non-XHR requests" do
+        get :health_report_show, params: { id: @project.id, report_id: @report.id }
+
+        assert_response :success
+        assert_includes response.body, "<html"
+        assert_select "div.ai-helper-health-report-body[data-report-id=?]", @report.id.to_s, 1
+      end
     end
 
     context "#health_report_destroy" do
@@ -386,10 +407,9 @@ This is a test report."
         get :index, params: { id: @project.id, tab: "health_report" }
 
         assert_response :success
-        assert_select ".ai-helper-health-report-detail[data-report-id=?]", @report2.id.to_s, 1
+        assert_select ".ai-helper-health-report-body[data-report-id=?]", @report2.id.to_s, 1
         assert_select ".ai-helper-health-report-meta", 1
-        assert_select "#ai-helper-markdown-export-detail", 1
-        assert_select "#ai-helper-pdf-export-detail", 1
+        assert_select "p.other-formats a.pdf", 1
       end
 
       should "include clickable report rows with proper onclick handling" do
@@ -1239,6 +1259,367 @@ This is a test report."
         assert_match(/# Report Header/, response.body)
         assert_match(/## Markdown Section/, response.body)
         assert_match(/\*\*markdown\*\*/, response.body)
+      end
+    end
+
+    context "#health_report_update" do
+      setup do
+        @editor = User.find(2)
+        @request.session[:user_id] = @editor.id
+        User.current = @editor
+        Role.find(1).add_permission! :edit_ai_helper_health_reports
+        # An Accept header (not format: :json) keeps session auth; format=json is treated as an API request
+        @request.headers["Accept"] = "application/json"
+        # The test environment uses a null cache store; use a real one to observe invalidation
+        @original_cache = Rails.cache
+        Rails.cache = ActiveSupport::Cache::MemoryStore.new
+
+        @report = AiHelperHealthReport.create!(
+          project: @project,
+          user: @user,
+          health_report: "AI generated report",
+          metrics: { issue_statistics: { total_issues: 10 } }.to_json
+        )
+      end
+
+      teardown do
+        Rails.cache = @original_cache
+      end
+
+      should "update the report and return the rendered detail pane" do
+        patch :health_report_update, params: {
+                                      id: @project.id,
+                                      report_id: @report.id,
+                                      health_report: { health_report: "Edited report", lock_version: @report.lock_version }
+                                    }
+
+        assert_response :success
+        json = JSON.parse(response.body)
+        assert_equal "ok", json["status"]
+        assert_equal true, json["edited"]
+        assert_includes json["html"], "ai-helper-health-report-body"
+        assert_includes json["html"], l(:notice_successful_update)
+
+        reloaded = @report.reload
+        assert_equal "Edited report", reloaded.health_report
+        assert_equal @editor.id, reloaded.last_edited_by_id
+      end
+
+      should "return edited false without touching the report for unchanged content" do
+        Rails.cache.write("project_health_#{@project.id}___", "cached")
+
+        patch :health_report_update, params: {
+                                      id: @project.id,
+                                      report_id: @report.id,
+                                      health_report: { health_report: @report.health_report, lock_version: @report.lock_version }
+                                    }
+
+        assert_response :success
+        json = JSON.parse(response.body)
+        assert_equal "ok", json["status"]
+        assert_equal false, json["edited"]
+        assert_nil @report.reload.last_edited_on
+        assert Rails.cache.exist?("project_health_#{@project.id}___")
+      end
+
+      should "invalidate the project overview cache when content changed" do
+        Rails.cache.write("project_health_#{@project.id}___", "cached")
+
+        patch :health_report_update, params: {
+                                      id: @project.id,
+                                      report_id: @report.id,
+                                      health_report: { health_report: "Edited report", lock_version: @report.lock_version }
+                                    }
+
+        assert_response :success
+        assert_not Rails.cache.exist?("project_health_#{@project.id}___")
+      end
+
+      should "return 422 and keep the report when lock_version is missing" do
+        patch :health_report_update, params: {
+                                      id: @project.id,
+                                      report_id: @report.id,
+                                      health_report: { health_report: "No lock" }
+                                    }
+
+        assert_response :unprocessable_entity
+        assert_equal "AI generated report", @report.reload.health_report
+      end
+
+      should "return 422 with errors for an empty body" do
+        patch :health_report_update, params: {
+                                      id: @project.id,
+                                      report_id: @report.id,
+                                      health_report: { health_report: "", lock_version: @report.lock_version }
+                                    }
+
+        assert_response :unprocessable_entity
+        json = JSON.parse(response.body)
+        assert_equal "error", json["status"]
+        assert_predicate json["errors"], :present?
+        assert_equal "AI generated report", @report.reload.health_report
+      end
+
+      should "return 409 with the locking conflict message for a stale lock_version" do
+        current_lock_version = @report.lock_version
+        AiHelperHealthReport.find(@report.id).update_content("Edited by someone else", User.find(3))
+
+        patch :health_report_update, params: {
+                                      id: @project.id,
+                                      report_id: @report.id,
+                                      health_report: { health_report: "Conflicting edit", lock_version: current_lock_version }
+                                    }
+
+        assert_response :conflict
+        json = JSON.parse(response.body)
+        assert_equal "error", json["status"]
+        assert_equal [ l(:notice_locking_conflict) ], json["errors"]
+        assert_equal "Edited by someone else", @report.reload.health_report
+      end
+
+      should "ignore metrics and user_id parameters" do
+        patch :health_report_update, params: {
+                                      id: @project.id,
+                                      report_id: @report.id,
+                                      health_report: {
+                                        health_report: "Edited report",
+                                        lock_version: @report.lock_version,
+                                        metrics: "{}",
+                                        user_id: 3
+                                      }
+                                    }
+
+        assert_response :success
+        reloaded = @report.reload
+        assert_equal "Edited report", reloaded.health_report
+        assert_equal({ issue_statistics: { total_issues: 10 } }, reloaded.metrics_hash)
+        assert_equal @user.id, reloaded.user_id
+      end
+
+      should "return 404 for a report of another project" do
+        other_project = Project.find(2)
+        other_project.enabled_module_names = other_project.enabled_module_names + [ "ai_helper" ]
+        other_project.save!
+        other_report = AiHelperHealthReport.create!(
+          project: other_project,
+          user: @user,
+          health_report: "Other project report"
+        )
+
+        patch :health_report_update, params: {
+                                      id: @project.id,
+                                      report_id: other_report.id,
+                                      health_report: { health_report: "x", lock_version: 0 }
+                                    }
+
+        assert_response :not_found
+      end
+    end
+
+    context "#health_report_preview" do
+      setup do
+        @editor = User.find(2)
+        @request.session[:user_id] = @editor.id
+        User.current = @editor
+        Role.find(1).add_permission! :edit_ai_helper_health_reports
+        @original_text_formatting = Setting.text_formatting
+      end
+
+      teardown do
+        Setting.text_formatting = @original_text_formatting
+      end
+
+      should "render Markdown HTML without layout even under the Textile setting" do
+        Setting.text_formatting = "textile"
+
+        post :health_report_preview, params: { id: @project.id, text: "**bold** statement" }
+
+        assert_response :success
+        assert_not_includes response.body, "<html"
+        assert_includes response.body, "<strong>bold</strong>"
+      end
+
+      should "render an empty preview notice for blank text" do
+        post :health_report_preview, params: { id: @project.id, text: "" }
+
+        assert_response :success
+        assert_includes response.body, %(<p class="empty-preview">#{l(:label_nothing_to_preview)}</p>)
+      end
+    end
+
+    context "health report export with edit status" do
+      setup do
+        @report = AiHelperHealthReport.create!(project: @project, user: @user, health_report: "AI body")
+      end
+
+      should "export an unedited report as Markdown without a notice" do
+        get :health_report_markdown, params: { id: @project.id, report_id: @report.id }
+
+        assert_response :success
+        assert_includes response.media_type, "text/markdown"
+        assert_includes response.headers["Content-Disposition"], "attachment"
+        assert_includes response.headers["Content-Disposition"],
+                        "#{@project.identifier}-health-report-#{@report.created_at.strftime("%Y%m%d")}.md"
+        assert_equal "AI body", response.body
+      end
+
+      should "prefix the edit notice quote line for an edited report" do
+        @report.update_content("Edited body", User.find(2))
+
+        get :health_report_markdown, params: { id: @project.id, report_id: @report.id }
+
+        assert_response :success
+        notice, blank, body = response.body.split("\n", 3)
+        assert notice.start_with?("> #{l("ai_helper.health_report_edit.edited")}: ")
+        assert_equal "", blank
+        assert_equal "Edited body", body
+      end
+
+      should "return 403 when the user cannot view the report" do
+        @request.session[:user_id] = 4
+        User.current = User.find(4)
+
+        get :health_report_markdown, params: { id: @project.id, report_id: @report.id }
+
+        assert_response :forbidden
+      end
+
+      should "return 404 for a report of another project" do
+        other_project = Project.find(2)
+        other_project.enabled_module_names = other_project.enabled_module_names + [ "ai_helper" ]
+        other = AiHelperHealthReport.create!(project: other_project, user: @user, health_report: "Other")
+
+        get :health_report_markdown, params: { id: @project.id, report_id: other.id }
+
+        assert_response :not_found
+      end
+
+      should "pass the edit notice to the PDF generator for an edited report" do
+        @report.update_content("Edited body", User.find(2))
+        @controller.expects(:project_health_to_pdf).with do |_project, text, opts|
+          text == "Edited body" && opts[:edit_notice].to_s.start_with?("> ")
+        end.returns("%PDF-fake")
+
+        get :health_report_show, params: { id: @project.id, report_id: @report.id, format: :pdf }
+
+        assert_response :success
+      end
+
+      should "pass a nil edit notice to the PDF generator for an unedited report" do
+        @controller.expects(:project_health_to_pdf).with do |_project, _text, opts|
+          opts.key?(:edit_notice) && opts[:edit_notice].nil?
+        end.returns("%PDF-fake")
+
+        get :health_report_show, params: { id: @project.id, report_id: @report.id, format: :pdf }
+
+        assert_response :success
+      end
+
+      should "include the edited notice in the update response html" do
+        @request.session[:user_id] = 2
+        User.current = User.find(2)
+        Role.find(1).add_permission! :edit_ai_helper_health_reports
+        @request.headers["Accept"] = "application/json"
+
+        patch :health_report_update, params: {
+                                      id: @project.id,
+                                      report_id: @report.id,
+                                      health_report: { health_report: "Edited body", lock_version: @report.lock_version }
+                                    }
+
+        assert_response :success
+        assert_includes JSON.parse(response.body)["html"], "ai-helper-health-report-edited-notice"
+      end
+    end
+
+    context "edit permission" do
+      setup do
+        @role = Role.find(1)
+        @role.remove_permission! :edit_ai_helper_health_reports
+        @request.session[:user_id] = 2
+        User.current = User.find(2)
+        @request.headers["Accept"] = "application/json"
+        @report = AiHelperHealthReport.create!(project: @project, user: @user, health_report: "AI body")
+      end
+
+      teardown do
+        @role.remove_permission! :edit_ai_helper_health_reports
+        @project.update!(status: Project::STATUS_ACTIVE)
+      end
+
+      should "register an independent member-only permission within the ai_helper module" do
+        permission = Redmine::AccessControl.permission(:edit_ai_helper_health_reports)
+
+        assert_not_nil permission
+        assert_equal :ai_helper, permission.project_module
+        assert permission.require_member?
+        assert_not_equal Redmine::AccessControl.permission(:view_ai_helper), permission
+        assert_not_equal Redmine::AccessControl.permission(:delete_ai_helper_health_reports), permission
+        assert_not_includes permission.actions, "ai_helper_dashboard/health_report_show"
+      end
+
+      should "not grant the permission to any default role" do
+        Role.where(builtin: 0).find_each do |role|
+          assert_not role.permissions.include?(:edit_ai_helper_health_reports), "#{role.name} must not have it by default"
+        end
+      end
+
+      should "return 403 for update by a member without the permission and keep the report" do
+        patch :health_report_update, params: { id: @project.id, report_id: @report.id,
+                                               health_report: { health_report: "Hacked", lock_version: 0 } }
+
+        assert_response :forbidden
+        assert_equal "AI body", @report.reload.health_report
+      end
+
+      should "return 403 for preview by a member without the permission" do
+        post :health_report_preview, params: { id: @project.id, text: "x" }
+
+        assert_response :forbidden
+      end
+
+      should "return 403 for update by a non-member" do
+        @request.session[:user_id] = 4
+        User.current = User.find(4)
+
+        patch :health_report_update, params: { id: @project.id, report_id: @report.id,
+                                               health_report: { health_report: "Hacked", lock_version: 0 } }
+
+        assert_response :forbidden
+        assert_equal "AI body", @report.reload.health_report
+      end
+
+      should "allow an administrator without an explicit grant" do
+        @request.session[:user_id] = 1
+        User.current = User.find(1)
+
+        patch :health_report_update, params: { id: @project.id, report_id: @report.id,
+                                               health_report: { health_report: "Admin edit", lock_version: @report.lock_version } }
+
+        assert_response :success
+        assert_equal "Admin edit", @report.reload.health_report
+      end
+
+      should "return 403 when the ai_helper module is disabled for the project" do
+        @role.add_permission! :edit_ai_helper_health_reports
+        @project.disable_module!(:ai_helper)
+
+        patch :health_report_update, params: { id: @project.id, report_id: @report.id,
+                                               health_report: { health_report: "Edit", lock_version: 0 } }
+
+        assert_response :forbidden
+        assert_equal "AI body", @report.reload.health_report
+      end
+
+      should "return 403 when the project is closed" do
+        @role.add_permission! :edit_ai_helper_health_reports
+        @project.update!(status: Project::STATUS_CLOSED)
+
+        patch :health_report_update, params: { id: @project.id, report_id: @report.id,
+                                               health_report: { health_report: "Edit", lock_version: 0 } }
+
+        assert_response :forbidden
+        assert_equal "AI body", @report.reload.health_report
       end
     end
 

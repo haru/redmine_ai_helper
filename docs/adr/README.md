@@ -95,3 +95,7 @@ Briefly describe alternatives that were rejected and why.
 | [040](./040-tests-must-not-assume-time-advances.md) | Tests must not assume time advances under Redmine's frozen test clock | Accepted |
 | [041](./041-editor-overlays-layered-by-dom-order-without-z-index.md) | Editor overlays are layered by DOM order, without z-index | Accepted |
 | [042](./042-model-profile-temperature-is-optional.md) | Model profile temperature is optional; unset means the request omits it | Accepted |
+| [043](./043-text-attachments-converted-using-redmine-encoding-setting.md) | Text attachments are converted to UTF-8 using Redmine's encoding setting; unconvertible content is replaced by a note | Accepted |
+| [044](./044-health-reports-always-rendered-as-markdown.md) | Health reports are always rendered and edited as Markdown, independent of the text formatting setting | Accepted |
+| [045](./045-health-report-edit-keeps-original-and-latest-only.md) | Health report edits keep only the original and the latest version, with optimistic locking | Accepted |
+| [046](./046-streaming-renders-coalesced-per-animation-frame.md) | Streaming renders are coalesced to at most one per animation frame | Accepted |

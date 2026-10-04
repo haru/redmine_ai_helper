@@ -5,6 +5,15 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
   include RedmineAiHelper::Logger
   fixtures :projects, :users, :roles, :members, :member_roles
 
+  # Inflate all Flate streams of a PDF and return their concatenated content.
+  def pdf_text(pdf)
+    pdf.b.scan(/stream\r?\n(.*?)endstream/m).map do |(data)|
+      Zlib::Inflate.inflate(data)
+    rescue Zlib::Error
+      data
+    end.join.delete("\x00")
+  end
+
   context "ProjectHealthPdfHelper" do
     setup do
       @user = User.find(1)
@@ -13,6 +22,14 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
     end
 
     context "#project_health_to_pdf" do
+      should "include the edit notice only when provided" do
+        with_notice = project_health_to_pdf(@project, "# Report", edit_notice: "EditedNoticeMarker by someone")
+        without_notice = project_health_to_pdf(@project, "# Report", edit_notice: nil)
+
+        assert_includes pdf_text(with_notice), "EditedNoticeMarker"
+        assert_not_includes pdf_text(without_notice), "EditedNoticeMarker"
+      end
+
       should "generate PDF with proper header and content" do
         health_report = "# Test Health Report\n\nThis is a test report with **bold** text and *italic* text."
 

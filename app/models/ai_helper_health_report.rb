@@ -4,11 +4,16 @@ class AiHelperHealthReport < ApplicationRecord
 
   belongs_to :project
   belongs_to :user
+  belongs_to :last_edited_by, class_name: "User", optional: true
 
   # Validations
   validates :project_id, presence: true
   validates :user_id, presence: true
   validates :health_report, presence: true
+  validate :validate_edited_body_size, if: :will_save_change_to_last_edited_on?
+
+  # Maximum size in bytes of a user-edited body (fits a MySQL TEXT column).
+  MAX_EDITED_BODY_BYTES = 65_535
 
   # Scopes
   scope :sorted, -> { order(created_at: :desc) }
@@ -57,6 +62,43 @@ class AiHelperHealthReport < ApplicationRecord
     true
   end
 
+  # Whether the report body has ever been edited by a user.
+  # @return [Boolean] true once a user edit has been saved.
+  def edited?
+    last_edited_on.present?
+  end
+
+  # Check if the report body can be edited by the given user.
+  # @param user [User] The user to check edit rights for
+  # @return [Boolean] true if the user can view the report and holds the
+  #   edit_ai_helper_health_reports permission on the project
+  def editable?(user = User.current)
+    return false unless visible?(user)
+    user.allowed_to?(:edit_ai_helper_health_reports, project)
+  end
+
+  # Replace the report body with user-supplied content.
+  #
+  # The content is normalized by removing CR characters, and an identical
+  # submission is treated as a no-op that returns true without saving. On the
+  # first real edit the previous (AI generated) body is preserved in
+  # original_health_report; later edits never overwrite it.
+  #
+  # @param content [String] The edited body text (Markdown).
+  # @param user [User] The user performing the edit.
+  # @return [Boolean] true when saved or unchanged, false on validation
+  #   errors. Raises ActiveRecord::StaleObjectError on lock conflicts.
+  def update_content(content, user)
+    normalized = content.to_s.delete("\r")
+    return true if normalized == health_report
+
+    self.original_health_report = health_report if original_health_report.nil?
+    self.health_report = normalized
+    self.last_edited_by = user
+    self.last_edited_on = Time.current
+    save
+  end
+
   # Get summary information for the report
   # @return [Hash] Summary information
   def summary_info
@@ -66,5 +108,15 @@ class AiHelperHealthReport < ApplicationRecord
       user_name: user.name,
       total_issues: metrics_hash.dig(:issue_statistics, :total_issues) || 0
     }
+  end
+
+  private
+
+  # Reject user edits whose body would not fit in a MySQL TEXT column.
+  # @return [void]
+  def validate_edited_body_size
+    return if health_report.to_s.bytesize <= MAX_EDITED_BODY_BYTES
+
+    errors.add(:health_report, :too_long, count: MAX_EDITED_BODY_BYTES)
   end
 end

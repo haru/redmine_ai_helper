@@ -1,7 +1,7 @@
 ---
 title: Vector Search Internals
 type: component
-sources: [S010, S012, S033]
+sources: [S002, S010, S012, S033]
 updated: 2026-09-07
 ---
 

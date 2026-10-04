@@ -25,6 +25,8 @@ page files, not here.
 - [Issue Summary Instructions: Prompt Template & Settings](./pages/issue-summary-instructions-prompt-template.md) — the zero-prompt-diff template split, the setting's name vs. the wiki-summary feature, and why no cache invalidation is needed.
 - [Log File Location Resolution](./pages/log-file-location-resolution.md) — ADR-039: finding the Redmine log from the runtime `Rails.logger` (BroadcastLogger → private `@logdev` → `LogDevice#filename`), sharing `CustomLogger.log_file_path` for the AI Helper log, and never reading a substitute file.
 - [Model Profile Temperature Is Optional](./pages/model-profile-optional-temperature.md) — ADR-042: blank temperature sends none (providers already skip nil), the validation/migration/connection-test changes, GPT-5 auto-correction kept, and alternatives rejected.
+- [Health Report Editing](./pages/health-report-editing.md) — feature 064: the `:edit_ai_helper_health_reports` permission, keeping original + latest only, optimistic locking, `\r` normalization for unchanged saves, anonymous-editor reassignment, overview-cache invalidation, and edited notices in exports.
+- [Health Report Markdown Rendering](./pages/health-report-markdown-rendering.md) — ADR-044: saved reports render via `md_to_html` regardless of text formatting, the self-loaded CommonMark jsToolBar, the dedicated preview endpoint, and the server-rendered detail pane.
 
 ## component
 - [Chat Channel Gateway Architecture](./pages/chat-channel-gateway-architecture.md) — core + adapters structure, capability declaration, and gateway operational model.
@@ -37,7 +39,7 @@ page files, not here.
 - [MCP Integration](./pages/mcp-integration.md) — consuming external MCP servers: dynamic agent generation and the read-only gotcha. See [MCP Server Endpoint](./pages/mcp-server-endpoint.md) for the other direction.
 - [MCP Server Endpoint](./pages/mcp-server-endpoint.md) — exposing Redmine as an MCP server: stateless mode, auth, permissions, tool groups, and the anonymous-endpoint pattern reused by inbound webhooks.
 - [Custom Commands](./pages/custom-commands.md) — reusable `/command` prompt shortcuts, scope precedence, template variables.
-- [Project Health Report](./pages/health-report.md) — `ProjectAgent` dual-pattern generation, `AiHelperHealthReport` storage, streamed comparison, export, and REST API.
+- [Project Health Report](./pages/health-report.md) — `ProjectAgent` dual-pattern generation, `AiHelperHealthReport` storage, streamed comparison, export, REST API, and links to editing/rendering decisions.
 - [Think Model](./pages/think-model.md) — optional deep-reasoning model profile, its scope, validation, and no-fallback rules.
 - [BaseAgent LLM Calls](./pages/base-agent-llm-calls.md) — `chat` vs `@assistant` call styles, `think_chat`, and the `with_model` cross-provider gotcha.
 - [Tool System](./pages/tool-system.md) — the `BaseTools` DSL, `write: true`/read-only filtering, per-tool permission checks, and the tool providers.

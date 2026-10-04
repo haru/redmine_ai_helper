@@ -64,3 +64,11 @@ unless ProjectsHelper.ancestors.include?(RedmineAiHelper::ProjectsHelperPatch)
   ProjectsHelper.alias_method :render_project_hierarchy_without_ai_helper, :render_project_hierarchy
   ProjectsHelper.prepend RedmineAiHelper::ProjectsHelperPatch
 end
+
+# The project overview renders ai_helper/project/_health_report.html.erb via a
+# view hook, in the ProjectsController view context. With
+# include_all_helpers = false the plugin helper is not available there unless
+# it is mixed into ProjectsHelper explicitly.
+unless ProjectsHelper.ancestors.include?(AiHelperDashboardHelper)
+  ProjectsHelper.include AiHelperDashboardHelper
+end
