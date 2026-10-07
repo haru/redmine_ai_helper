@@ -23,6 +23,12 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
     assert_not_nil assigns(:model_profile)
   end
 
+  should "render connection test result as a live region" do
+    get :new
+
+    assert_select "span#ai-helper-test-connection-result[role=status][aria-live=polite]", 1
+  end
+
   should "create model profile with valid attributes" do
     assert_difference("AiHelperModelProfile.count", 1) do
       post :create, params: { ai_helper_model_profile: { name: "New Profile", access_key: "new_key", llm_type: "OpenAI", llm_model: "model" } }

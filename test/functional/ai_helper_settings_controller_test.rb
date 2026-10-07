@@ -691,7 +691,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
       assert_select "fieldset#ai-helper-qdrant-connection p#ai-helper-vector-test-connection" do
         assert_select "button[type=button]#ai-helper-vector-test-connection-btn", text: /#{I18n.t("ai_helper.model_profiles.test_connection")}/
-        assert_select "span#ai-helper-vector-test-connection-result", text: ""
+        assert_select "span#ai-helper-vector-test-connection-result[role=status][aria-live=polite]", text: ""
       end
       fieldset = css_select("fieldset#ai-helper-qdrant-connection").first
       config = JSON.parse(fieldset["data-config"])
