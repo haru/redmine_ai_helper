@@ -619,10 +619,6 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
   end
 
   context "qdrant connection section" do
-    teardown do
-      User.current.language = nil if User.current.respond_to?(:language=)
-    end
-
     should "group the Qdrant URI and API key in a fieldset with description" do
       get :index, params: { tab: "vector" }
 
@@ -639,6 +635,22 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert_select "#ai-helper-vector-search > p input#ai_helper_setting_dimension"
       assert_select "#ai-helper-vector-search > p input#ai_helper_setting_embedding_url"
       assert_select "#ai-helper-vector-search > p input#ai_helper_setting_vector_register_all_projects"
+    end
+
+    should "place the vector model profile settings right before the embedding model" do
+      get :index, params: { tab: "vector" }
+
+      assert_select "#ai-helper-vector-search > p input#ai_helper_setting_use_vector_model_profile"
+      assert_select "#ai-helper-vector-search > div#ai-helper-vector-model-profile-settings select#ai_helper_setting_vector_model_profile_id"
+      body = response.body
+      positions = %w[
+        ai-helper-qdrant-connection
+        ai_helper_setting_use_vector_model_profile
+        ai_helper_setting_vector_model_profile_id
+        ai_helper_setting_embedding_model
+      ].map { |id| body.index("id=\"#{id}\"") }
+      assert positions.all?, "all elements should be rendered: #{positions.inspect}"
+      assert_equal positions.sort, positions
     end
 
     should "label the fields with Qdrant in English" do

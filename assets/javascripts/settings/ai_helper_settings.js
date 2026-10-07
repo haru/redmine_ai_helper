@@ -202,7 +202,6 @@ function initVectorConnectionTest() {
   }
 
   button.addEventListener('click', function() {
-    if (button.disabled) { return; }
     const seq = ++requestSeq;
     const formData = new FormData();
     formData.append('ai_helper_setting[vector_search_uri]', uriField.value);
@@ -218,8 +217,10 @@ function initVectorConnectionTest() {
       body: formData
     })
       .then(function(response) {
+        // Non-JSON bodies (e.g. a login page after the session expired or a
+        // CSRF error page) carry no message, so report the HTTP status instead.
         return response.json().catch(function() {
-          return { success: false, error: '' };
+          return { success: false, error: 'HTTP ' + response.status };
         });
       })
       .then(function(data) {

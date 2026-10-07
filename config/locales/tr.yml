@@ -281,7 +281,7 @@ tr:
         think_model_description: "Sağlık raporu oluşturma ve iş yanıtı taslağı hazırlama gibi daha derin akıl yürütme gerektiren görevler için ayrı bir model kullanın."
         use_vector_model_profile: "Vektör model profilini kullan"
         vector_model_profile_id: "Vektör model profili"
-        vector_model_profile_description: "Vektör arama işlemleri (API kimlik bilgileri ve içerik analizi) için ayrı bir model profili kullanın. Not: embedding model adı yine de yukarıdaki Embedding modeli ayarı tarafından kontrol edilir."
+        vector_model_profile_description: "Vektör arama işlemleri (API kimlik bilgileri ve içerik analizi) için ayrı bir model profili kullanın. Not: embedding model adı yine de Embedding modeli ayarı tarafından kontrol edilir."
         mcp_server_enabled: "MCP sunucusunu etkinleştir"
         send_user_id_enabled: "Kullanıcı ID'sini LLM'e gönder"
         send_user_id_enabled_description: "Etkinleştirildiğinde, dahili Redmine kullanıcı ID'si LLM sağlayıcısına gönderilir. Bu, alt sistemlerde (ör. LiteLLM) kullanıcı bazlı istatistik takibine olanak tanır. Etkinleştirmeden önce gizlilik etkilerini göz önünde bulundurun."

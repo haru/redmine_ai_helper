@@ -3,15 +3,6 @@
   <p>
     <%= f.check_box :vector_search_enabled %>
   </p>
-  <p>
-    <%= f.check_box :use_vector_model_profile %>
-    <span class="description"><%= t("activerecord.attributes.ai_helper_setting.vector_model_profile_description") %></span>
-  </p>
-  <div id="ai-helper-vector-model-profile-settings">
-    <p>
-      <%= f.select :vector_model_profile_id, ai_helper_model_profile_options(@model_profiles), include_blank: true %>
-    </p>
-  </div>
   <div id="ai-helper-vector-search">
     <fieldset class="box" id="ai-helper-qdrant-connection" data-config='<%= {
       testConnectionUrl: ai_helper_settings_test_vector_connection_path,
@@ -33,6 +24,15 @@
         <span id="ai-helper-vector-test-connection-result"></span>
       </p>
     </fieldset>
+    <p>
+      <%= f.check_box :use_vector_model_profile %>
+      <span class="description"><%= t("activerecord.attributes.ai_helper_setting.vector_model_profile_description") %></span>
+    </p>
+    <div id="ai-helper-vector-model-profile-settings">
+      <p>
+        <%= f.select :vector_model_profile_id, ai_helper_model_profile_options(@model_profiles), include_blank: true %>
+      </p>
+    </div>
     <p>
       <%= f.text_field :embedding_model, size: 60 %>
     </p>

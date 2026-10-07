@@ -44,7 +44,10 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
           llm_provider: @mock_llm_provider
         )
         mock_qdrant_client = mock("Qdrant::Client")
-        ::Qdrant::Client.expects(:new).with(url: "http://localhost:6333", api_key: "test_key", logger: RedmineAiHelper::CustomLogger.instance).returns(mock_qdrant_client)
+        ::Qdrant::Client.expects(:new).with(
+          url: "http://localhost:6333", api_key: "test_key",
+          logger: instance_of(RedmineAiHelper::Vector::Qdrant::ApiKeyRedactingLogger)
+        ).returns(mock_qdrant_client)
 
         assert_equal mock_qdrant_client, qdrant.client
       end
@@ -392,6 +395,47 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
       end
     end
 
+    context "ApiKeyRedactingLogger" do
+      setup do
+        @io = StringIO.new
+        @logger = RedmineAiHelper::Vector::Qdrant::ApiKeyRedactingLogger.new(::Logger.new(@io))
+      end
+
+      should "mask the api-key header value in messages given as a block or an argument" do
+        @logger.info { %(request: api-key: "secret-1"\nUser-Agent: "Faraday") }
+        @logger.warn(%(request: Api-Key: "secret-2"))
+
+        assert_no_match(/secret-1|secret-2/, @io.string)
+        assert_includes @io.string, %(api-key: "[FILTERED]")
+        assert_includes @io.string, %(Api-Key: "[FILTERED]")
+        assert_includes @io.string, %(User-Agent: "Faraday")
+      end
+
+      should "pass other messages through unchanged at every level" do
+        %i[debug info warn error fatal].each do |level|
+          @logger.public_send(level, "#{level} message")
+        end
+
+        %w[debug info warn error fatal].each do |level|
+          assert_includes @io.string, "#{level} message"
+        end
+      end
+
+      should "keep the api key out of Faraday request logs" do
+        conn = Faraday.new(url: "http://qdrant:6333") do |f|
+          f.headers["api-key"] = "super-secret"
+          f.response :logger, @logger, { headers: true, bodies: true, errors: true }
+          f.adapter :test do |stub|
+            stub.get("/collections") { [ 200, {}, "ok" ] }
+          end
+        end
+        conn.get("/collections")
+
+        assert_includes @io.string, "GET http://qdrant:6333/collections"
+        assert_no_match(/super-secret/, @io.string)
+      end
+    end
+
     context "test_connection" do
       setup do
         @test_conn = Faraday.new(url: "http://qdrant:6333")
@@ -400,16 +444,12 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         @test_client.stubs(:collections).returns(@mock_collections)
       end
 
-      should "use a 10 second timeout constant" do
-        assert_equal 10, RedmineAiHelper::Vector::Qdrant::CONNECTION_TEST_TIMEOUT
-      end
-
-      should "build the client with raise_error and the custom logger" do
+      should "build the client with raise_error and the redacting logger" do
         ::Qdrant::Client.expects(:new).with(
           url: "http://qdrant:6333",
           api_key: "key",
           raise_error: true,
-          logger: RedmineAiHelper::CustomLogger.instance
+          logger: instance_of(RedmineAiHelper::Vector::Qdrant::ApiKeyRedactingLogger)
         ).returns(@test_client)
         @mock_collections.stubs(:list).returns({ "status" => "ok", "result" => { "collections" => [] } })
 

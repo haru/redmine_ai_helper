@@ -377,11 +377,11 @@ describe("initVectorConnectionTest", () => {
     expect(result.className).toBe("ai-helper-connection-failure");
   });
 
-  it("shows only the failed label when the response is not JSON", async () => {
-    const { btn, result } = await setup(() => Promise.resolve({ json: () => Promise.reject(new Error("bad json")) }));
+  it("shows the HTTP status when the response is not JSON", async () => {
+    const { btn, result } = await setup(() => Promise.resolve({ status: 422, json: () => Promise.reject(new Error("bad json")) }));
     btn.click();
     await flush();
-    expect(result.textContent).toBe("Connection failed");
+    expect(result.textContent).toBe("Connection failed: HTTP 422");
     expect(result.className).toBe("ai-helper-connection-failure");
   });
 

@@ -15,6 +15,29 @@ module RedmineAiHelper
       # Raised when the server answers a connection test but not like a Qdrant server.
       class UnexpectedResponseError < StandardError; end
 
+      # Logger wrapper that masks the "api-key" header value. qdrant-ruby logs
+      # request headers through Faraday at info level, which would otherwise
+      # write the Qdrant API key to the log file.
+      class ApiKeyRedactingLogger
+        # Matches the header line written by Faraday's log formatter.
+        API_KEY_HEADER = /(api-key: )"[^"]*"/i
+
+        # @param logger [#debug, #info, #warn, #error] The logger to write to.
+        def initialize(logger)
+          @logger = logger
+        end
+
+        %i[debug info warn error fatal].each do |level|
+          # Log a message at this level with the API key masked.
+          # @param message [String, nil] The message, or nil when given as a block.
+          # @yieldreturn [String] The message, evaluated only when message is nil.
+          define_method(level) do |message = nil, &block|
+            message = block.call if message.nil? && block
+            @logger.public_send(level, message.to_s.gsub(API_KEY_HEADER, '\\1"[FILTERED]"'))
+          end
+        end
+      end
+
       attr_reader :url, :api_key, :index_name, :llm_provider
 
       # Check that a Qdrant server is reachable and accepts the given credentials.
@@ -27,7 +50,7 @@ module RedmineAiHelper
       # @raise [Faraday::Error] When the connection or authentication fails.
       def self.test_connection(url:, api_key:)
         client = ::Qdrant::Client.new(
-          url: url, api_key: api_key, raise_error: true, logger: RedmineAiHelper::CustomLogger.instance
+          url: url, api_key: api_key, raise_error: true, logger: redacting_logger
         )
         # qdrant-ruby's Client.new has no timeout option, so set it on the
         # Faraday connection before the first request.
@@ -37,6 +60,12 @@ module RedmineAiHelper
         return true if response.is_a?(Hash) && response["status"] == "ok"
 
         raise UnexpectedResponseError, I18n.t("ai_helper.vector_search.messages.unexpected_response")
+      end
+
+      # The plugin logger wrapped so the Qdrant API key is never logged.
+      # @return [ApiKeyRedactingLogger]
+      def self.redacting_logger
+        ApiKeyRedactingLogger.new(RedmineAiHelper::CustomLogger.instance)
       end
 
       # @param url [String] The Qdrant server URL.
@@ -55,7 +84,7 @@ module RedmineAiHelper
       def client
         # Pass the plugin's custom logger so Faraday HTTP logs are routed to
         # log/ai_helper.log instead of being printed to STDOUT.
-        @client ||= ::Qdrant::Client.new(url: @url, api_key: @api_key, logger: RedmineAiHelper::CustomLogger.instance)
+        @client ||= ::Qdrant::Client.new(url: @url, api_key: @api_key, logger: self.class.redacting_logger)
       end
 
       # @!method embed(text)
