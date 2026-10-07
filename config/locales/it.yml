@@ -277,7 +277,7 @@ it:
         think_model_description: "Usa un modello separato per attività che richiedono un ragionamento più profondo, come la generazione del report di salute e le bozze di risposta ai ticket."
         use_vector_model_profile: "Usa profilo modello vettoriale"
         vector_model_profile_id: "Profilo modello vettoriale"
-        vector_model_profile_description: "Usa un profilo modello separato per le operazioni di ricerca vettoriale (credenziali API e analisi del contenuto). Nota: il nome del modello di embedding è comunque controllato dall'impostazione 'Modello di embedding'."
+        vector_model_profile_description: "Usa per la ricerca vettoriale un profilo modello diverso da \"Profilo modello\". Se il provider LLM specificato in \"Profilo modello\" non offre modelli di embedding, specifica qui un altro profilo modello."
         mcp_server_enabled: "Abilita server MCP"
         send_user_id_enabled: "Invia ID utente al LLM"
         send_user_id_enabled_description: "Se abilitato, l'ID utente interno di Redmine viene inviato al provider LLM. Questo consente il tracciamento di statistiche per utente a valle (es. LiteLLM). Valuta le implicazioni sulla privacy prima di abilitare."

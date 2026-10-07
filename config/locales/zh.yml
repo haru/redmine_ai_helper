@@ -205,7 +205,7 @@ zh:
         think_model_description: "对需要更深入推理的任务使用单独的模型，例如健康报告生成和问题回复草稿。"
         use_vector_model_profile: "使用向量模型配置"
         vector_model_profile_id: "向量模型配置"
-        vector_model_profile_description: "对向量搜索操作使用单独的模型配置（API 凭据和内容分析）。注意：嵌入模型名称仍由上面的嵌入模型设置控制。"
+        vector_model_profile_description: "向量搜索使用与“模型配置”不同的模型配置。如果“模型配置”中指定的 LLM 提供商不提供嵌入模型，请在此处指定其他模型配置。"
         read_only_mode: "Read-only mode"
         read_only_mode_description: "When enabled, the AI Helper chat cannot create, update, or delete any data (issues, wiki pages, comments, etc.). External MCP server integration is also disabled."
         all_projects_scope: "Target all projects"

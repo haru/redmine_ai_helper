@@ -618,6 +618,185 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
     end
   end
 
+  context "qdrant connection section" do
+    should "group the Qdrant URI and API key in a fieldset with description" do
+      get :index, params: { tab: "vector" }
+
+      assert_response :success
+      assert_select "#ai-helper-vector-search fieldset.box#ai-helper-qdrant-connection" do
+        assert_select "legend", text: I18n.t("ai_helper.vector_search.qdrant_server")
+        assert_select "em.info", text: I18n.t("ai_helper.vector_search.qdrant_server_description")
+        assert_select "input#ai_helper_setting_vector_search_uri[name='ai_helper_setting[vector_search_uri]']"
+        assert_select "input#ai_helper_setting_vector_search_api_key[name='ai_helper_setting[vector_search_api_key]']"
+        assert_select "span.description", text: I18n.t("ai_helper.vector_search.qdrant_api_key_description")
+        assert_select "input#ai_helper_setting_embedding_model", count: 0
+      end
+      assert_select "#ai-helper-vector-search > p input#ai_helper_setting_embedding_model"
+      assert_select "#ai-helper-vector-search > p input#ai_helper_setting_dimension"
+      assert_select "#ai-helper-vector-search > p input#ai_helper_setting_embedding_url"
+      assert_select "#ai-helper-vector-search > p input#ai_helper_setting_vector_register_all_projects"
+    end
+
+    should "place the vector model profile settings right before the embedding model" do
+      get :index, params: { tab: "vector" }
+
+      assert_select "#ai-helper-vector-search > p input#ai_helper_setting_use_vector_model_profile"
+      assert_select "#ai-helper-vector-search > div#ai-helper-vector-model-profile-settings select#ai_helper_setting_vector_model_profile_id"
+      body = response.body
+      positions = %w[
+        ai-helper-qdrant-connection
+        ai_helper_setting_use_vector_model_profile
+        ai_helper_setting_vector_model_profile_id
+        ai_helper_setting_embedding_model
+      ].map { |id| body.index("id=\"#{id}\"") }
+      assert positions.all?, "all elements should be rendered: #{positions.inspect}"
+      assert_equal positions.sort, positions
+    end
+
+    should "label the fields with Qdrant in English" do
+      Setting.default_language = "en"
+      get :index, params: { tab: "vector" }
+
+      assert_select "label[for=ai_helper_setting_vector_search_uri]", text: /Qdrant URI/
+      assert_select "label[for=ai_helper_setting_vector_search_api_key]", text: "Qdrant API key"
+    end
+
+    should "label the fields with Qdrant in Japanese" do
+      Setting.default_language = "ja"
+      @request.session[:user_id] = 1
+      User.find(1).update_column(:language, "ja")
+      get :index, params: { tab: "vector" }
+
+      assert_select "label[for=ai_helper_setting_vector_search_uri]", text: /Qdrant URI/
+      assert_select "label[for=ai_helper_setting_vector_search_api_key]", text: "Qdrant APIキー"
+    ensure
+      User.find(1).update_column(:language, "en")
+      Setting.default_language = "en"
+    end
+
+    should "mention Qdrant URI in the error when URI is blank and vector search is enabled" do
+      post :update, params: {
+        tab: "vector",
+        ai_helper_setting: { vector_search_enabled: "1", vector_search_uri: "" }
+      }
+
+      assert_response :success
+      assert_select "#errorExplanation", text: /Qdrant URI/
+      assert_nil @ai_helper_setting.reload.vector_search_uri.presence
+      assert_not @ai_helper_setting.vector_search_enabled
+    end
+
+    should "render the connection test button, result area and config" do
+      get :index, params: { tab: "vector" }
+
+      assert_select "fieldset#ai-helper-qdrant-connection p#ai-helper-vector-test-connection" do
+        assert_select "button[type=button]#ai-helper-vector-test-connection-btn", text: /#{I18n.t("ai_helper.model_profiles.test_connection")}/
+        assert_select "span#ai-helper-vector-test-connection-result[role=status][aria-live=polite]", text: ""
+      end
+      fieldset = css_select("fieldset#ai-helper-qdrant-connection").first
+      config = JSON.parse(fieldset["data-config"])
+      assert_equal "/ai_helper_settings/test_vector_connection", config["testConnectionUrl"]
+      assert_equal I18n.t("ai_helper.model_profiles.test_connection_success"), config["testConnectionSuccessLabel"]
+      assert_equal I18n.t("ai_helper.model_profiles.test_connection_failed"), config["testConnectionFailedLabel"]
+      assert_equal I18n.t(:label_loading), config["loadingLabel"]
+    end
+  end
+
+  context "test_vector_connection" do
+    should "return success and pass url and api_key" do
+      RedmineAiHelper::Vector::Qdrant.expects(:test_connection).with(url: "http://qdrant:6333", api_key: nil).returns(true)
+
+      post :test_vector_connection, params: { ai_helper_setting: { vector_search_uri: "http://qdrant:6333", vector_search_api_key: "" } }
+
+      assert_response :success
+      assert_equal({ "success" => true }, JSON.parse(response.body))
+    end
+
+    should "pass api key as is, nil for blank, and strip the URI" do
+      RedmineAiHelper::Vector::Qdrant.expects(:test_connection).with(url: "http://qdrant:6333", api_key: "secret").returns(true)
+      post :test_vector_connection, params: { ai_helper_setting: { vector_search_uri: "  http://qdrant:6333 ", vector_search_api_key: "secret" } }
+      assert_response :success
+
+      RedmineAiHelper::Vector::Qdrant.expects(:test_connection).with(url: "http://qdrant:6333", api_key: nil).returns(true)
+      post :test_vector_connection, params: { ai_helper_setting: { vector_search_uri: "http://qdrant:6333", vector_search_api_key: "  " } }
+      assert_response :success
+    end
+
+    should "reject invalid URIs without connecting" do
+      RedmineAiHelper::Vector::Qdrant.expects(:test_connection).never
+
+      [ "", "foo", "ftp://host", "http://", "http:// bad" ].each do |uri|
+        post :test_vector_connection, params: { ai_helper_setting: { vector_search_uri: uri } }
+
+        assert_response :unprocessable_content, "expected 422 for #{uri.inspect}"
+        body = JSON.parse(response.body)
+        assert_equal false, body["success"]
+        assert_equal I18n.t("ai_helper.vector_search.messages.invalid_uri"), body["error"]
+      end
+    end
+
+    should "return the exception message on connection errors" do
+      message = "the server responded with status 401 for GET http://qdrant:6333/collections"
+      RedmineAiHelper::Vector::Qdrant.stubs(:test_connection).raises(Faraday::UnauthorizedError.new(message))
+
+      post :test_vector_connection, params: { ai_helper_setting: { vector_search_uri: "http://qdrant:6333" } }
+
+      assert_response :internal_server_error
+      assert_equal({ "success" => false, "error" => message }, JSON.parse(response.body))
+    end
+
+    should "return the message for unexpected responses" do
+      error = RedmineAiHelper::Vector::Qdrant::UnexpectedResponseError.new("not qdrant")
+      RedmineAiHelper::Vector::Qdrant.stubs(:test_connection).raises(error)
+
+      post :test_vector_connection, params: { ai_helper_setting: { vector_search_uri: "http://qdrant:6333" } }
+
+      assert_response :internal_server_error
+      assert_equal "not qdrant", JSON.parse(response.body)["error"]
+    end
+
+    should "deny non-admin users" do
+      @request.session[:user_id] = 2
+      RedmineAiHelper::Vector::Qdrant.expects(:test_connection).never
+
+      post :test_vector_connection, params: { ai_helper_setting: { vector_search_uri: "http://qdrant:6333" } }
+
+      assert_response :forbidden
+    end
+
+    should "redirect anonymous users to login" do
+      @request.session[:user_id] = nil
+      RedmineAiHelper::Vector::Qdrant.expects(:test_connection).never
+
+      post :test_vector_connection, params: { ai_helper_setting: { vector_search_uri: "http://qdrant:6333" } }
+
+      assert_response :redirect
+    end
+
+    should "not modify the saved settings" do
+      @ai_helper_setting.update_columns(vector_search_uri: "http://saved:6333", vector_search_api_key: "saved-key")
+      before = AiHelperSetting.find_or_create.attributes.slice("vector_search_uri", "vector_search_api_key", "updated_at")
+      RedmineAiHelper::Vector::Qdrant.stubs(:test_connection).returns(true)
+
+      post :test_vector_connection, params: { ai_helper_setting: { vector_search_uri: "http://other:6333", vector_search_api_key: "other" } }
+
+      after = AiHelperSetting.find_or_create.attributes.slice("vector_search_uri", "vector_search_api_key", "updated_at")
+      assert_equal before, after
+    end
+
+    should "reject requests without CSRF token" do
+      ActionController::Base.allow_forgery_protection = true
+      begin
+        RedmineAiHelper::Vector::Qdrant.expects(:test_connection).never
+        post :test_vector_connection, params: { ai_helper_setting: { vector_search_uri: "http://qdrant:6333" } }
+
+        assert_equal 422, response.code.to_i
+      ensure
+        ActionController::Base.allow_forgery_protection = false
+      end
+    end
+  end
+
   context "vector tab layout" do
     should "render vector tab fields in vector tab content only" do
       get :index, params: { tab: "vector" }

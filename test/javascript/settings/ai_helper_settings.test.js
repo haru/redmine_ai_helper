@@ -276,3 +276,206 @@ describe("initAiHelperSettingsPage", () => {
     expect(() => window.initAiHelperSettingsPage()).not.toThrow();
   });
 });
+
+describe("initVectorConnectionTest", () => {
+  let container;
+  let csrfMeta;
+  const config = {
+    testConnectionUrl: "/ai_helper_settings/test_vector_connection",
+    testConnectionSuccessLabel: "Connection successful",
+    testConnectionFailedLabel: "Connection failed",
+    loadingLabel: "Loading...",
+  };
+
+  function addMarkup() {
+    csrfMeta = document.createElement("meta");
+    csrfMeta.name = "csrf-token";
+    csrfMeta.content = "token123";
+    document.head.appendChild(csrfMeta);
+
+    container = document.createElement("form");
+    container.innerHTML = `
+      <fieldset id="ai-helper-qdrant-connection">
+        <input type="text" id="ai_helper_setting_vector_search_uri" value="http://qdrant:6333">
+        <input type="text" id="ai_helper_setting_vector_search_api_key" value="k">
+        <p id="ai-helper-vector-test-connection">
+          <button type="button" id="ai-helper-vector-test-connection-btn">Test</button>
+          <span id="ai-helper-vector-test-connection-result"></span>
+        </p>
+      </fieldset>`;
+    container.querySelector("fieldset").dataset.config = JSON.stringify(config);
+    document.body.appendChild(container);
+    return {
+      btn: document.getElementById("ai-helper-vector-test-connection-btn"),
+      result: document.getElementById("ai-helper-vector-test-connection-result"),
+      uri: document.getElementById("ai_helper_setting_vector_search_uri"),
+      key: document.getElementById("ai_helper_setting_vector_search_api_key"),
+    };
+  }
+
+  function jsonResponse(body) {
+    return { json: () => Promise.resolve(body) };
+  }
+
+  function flush() {
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  afterEach(() => {
+    container?.remove();
+    csrfMeta?.remove();
+    container = undefined;
+    vi.unstubAllGlobals();
+    delete window.initVectorConnectionTest;
+  });
+
+  async function setup(fetchImpl) {
+    const els = addMarkup();
+    const fetchMock = vi.fn(fetchImpl);
+    vi.stubGlobal("fetch", fetchMock);
+    await loadScript("assets/javascripts/settings/ai_helper_settings");
+    window.initVectorConnectionTest();
+    return { ...els, fetchMock };
+  }
+
+  it("does nothing when the fieldset is absent", async () => {
+    await loadScript("assets/javascripts/settings/ai_helper_settings");
+    expect(() => window.initVectorConnectionTest()).not.toThrow();
+  });
+
+  it("posts the current unsaved values with the CSRF token", async () => {
+    const { btn, uri, fetchMock } = await setup(() => Promise.resolve(jsonResponse({ success: true })));
+    uri.value = "http://changed:6333";
+
+    btn.click();
+    await flush();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe(config.testConnectionUrl);
+    expect(options.method).toBe("POST");
+    expect(options.headers["X-CSRF-Token"]).toBe("token123");
+    const keys = Array.from(options.body.keys());
+    expect(keys.sort()).toEqual(["ai_helper_setting[vector_search_api_key]", "ai_helper_setting[vector_search_uri]"]);
+    expect(options.body.get("ai_helper_setting[vector_search_uri]")).toBe("http://changed:6333");
+    expect(options.body.get("ai_helper_setting[vector_search_api_key]")).toBe("k");
+  });
+
+  it("shows success", async () => {
+    const { btn, result } = await setup(() => Promise.resolve(jsonResponse({ success: true })));
+    btn.click();
+    await flush();
+    expect(result.textContent).toBe("Connection successful");
+    expect(result.className).toBe("ai-helper-connection-success");
+  });
+
+  it("shows the server error on failure", async () => {
+    const { btn, result } = await setup(() => Promise.resolve(jsonResponse({ success: false, error: "boom" })));
+    btn.click();
+    await flush();
+    expect(result.textContent).toBe("Connection failed: boom");
+    expect(result.className).toBe("ai-helper-connection-failure");
+  });
+
+  it("shows the HTTP status when the response is not JSON", async () => {
+    const { btn, result } = await setup(() => Promise.resolve({ status: 422, json: () => Promise.reject(new Error("bad json")) }));
+    btn.click();
+    await flush();
+    expect(result.textContent).toBe("Connection failed: HTTP 422");
+    expect(result.className).toBe("ai-helper-connection-failure");
+  });
+
+  it("shows the error message when fetch rejects", async () => {
+    const { btn, result } = await setup(() => Promise.reject(new Error("network down")));
+    btn.click();
+    await flush();
+    expect(result.textContent).toBe("Connection failed: network down");
+  });
+
+  it("renders error text safely (no HTML injection)", async () => {
+    const payload = "<img src=x onerror=alert(1)>";
+    const { btn, result } = await setup(() => Promise.resolve(jsonResponse({ success: false, error: payload })));
+    btn.click();
+    await flush();
+    expect(result.querySelector("img")).toBeNull();
+    expect(result.textContent).toBe("Connection failed: " + payload);
+  });
+
+  it("uses a non-submitting button", async () => {
+    const { btn } = await setup(() => Promise.resolve(jsonResponse({ success: true })));
+    const onSubmit = vi.fn((e) => e.preventDefault());
+    container.addEventListener("submit", onSubmit);
+    expect(btn.type).toBe("button");
+    btn.click();
+    await flush();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  describe("progress and staleness", () => {
+    let resolveFetch;
+    const pending = () => new Promise((resolve) => { resolveFetch = resolve; });
+
+    it("disables the button and shows the loading label while running", async () => {
+      const { btn, result } = await setup(pending);
+      btn.click();
+      expect(btn.disabled).toBe(true);
+      expect(result.textContent).toBe("Loading...");
+      expect(result.className).toBe("");
+    });
+
+    it("ignores clicks while a request is running", async () => {
+      const { btn, fetchMock } = await setup(pending);
+      btn.click();
+      btn.click();
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("re-enables the button after success, failure and fetch errors", async () => {
+      const outcomes = [
+        () => Promise.resolve(jsonResponse({ success: true })),
+        () => Promise.resolve(jsonResponse({ success: false, error: "x" })),
+        () => Promise.reject(new Error("net")),
+      ];
+      let i = 0;
+      const { btn } = await setup(() => outcomes[i++]());
+      for (let n = 0; n < 3; n++) {
+        btn.click();
+        await flush();
+        expect(btn.disabled).toBe(false);
+      }
+    });
+
+    it("clears the result when the URI or API key changes", async () => {
+      const { btn, result, uri, key } = await setup(() => Promise.resolve(jsonResponse({ success: true })));
+      for (const [field, type] of [[uri, "input"], [uri, "change"], [key, "input"], [key, "change"]]) {
+        btn.click();
+        await flush();
+        expect(result.textContent).not.toBe("");
+        field.dispatchEvent(new Event(type, { bubbles: true }));
+        expect(result.textContent).toBe("");
+        expect(result.className).toBe("");
+      }
+    });
+
+    it("discards the response when the input changed during the request", async () => {
+      const { btn, result, uri } = await setup(pending);
+      btn.click();
+      uri.dispatchEvent(new Event("input", { bubbles: true }));
+      resolveFetch(jsonResponse({ success: true }));
+      await flush();
+      expect(result.textContent).toBe("");
+      expect(btn.disabled).toBe(false);
+    });
+
+    it("shows only the latest result after a second run", async () => {
+      const responses = [{ success: false, error: "first" }, { success: true }];
+      let i = 0;
+      const { btn, result } = await setup(() => Promise.resolve(jsonResponse(responses[i++])));
+      btn.click();
+      await flush();
+      btn.click();
+      await flush();
+      expect(result.textContent).toBe("Connection successful");
+    });
+  });
+});

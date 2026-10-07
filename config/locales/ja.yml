@@ -35,6 +35,13 @@ ja:
   label_ai_helper_report_detail_mobile: "レポート詳細"
   label_ai_helper_close_detail: "詳細を閉じる"
   ai_helper:
+    vector_search:
+      qdrant_server: "Qdrant サーバー(ベクトルデータベース)"
+      qdrant_server_description: "以下の URI と API キーは、LLM ではなくベクトルデータベース Qdrant サーバーへの接続情報です。ベクトル検索を使うには、Qdrant サーバーを別途用意する必要があります。"
+      qdrant_api_key_description: "Qdrant 側で API キー認証を設定していない場合は空欄にしてください。"
+      messages:
+        invalid_uri: "Qdrant URI には http または https の正しい URL を入力してください。"
+        unexpected_response: "Qdrant サーバーとしての応答がありませんでした。Qdrant URI を確認してください。"
     settings:
       tab_general: "全般"
       tab_model: "モデル"
@@ -293,8 +300,8 @@ ja:
         vector_search_enabled: "ベクトル検索を有効にする"
         vector_register_all_projects: "すべてのプロジェクトを登録する"
         vector_register_all_projects_description: "有効にすると、AI Helperモジュールが有効なすべてのプロジェクトがベクトルDBに登録されます。無効にすると、登録するプロジェクトを個別に選択できます。"
-        vector_search_uri: "URI"
-        vector_search_api_key: "APIキー"
+        vector_search_uri: "Qdrant URI"
+        vector_search_api_key: "Qdrant APIキー"
         embedding_model: "埋め込みモデル"
         dimension: "次元数"
         use_think_model: "Thinkモデルを使用する"
@@ -302,7 +309,7 @@ ja:
         think_model_description: "健全性レポートの生成やチケット回答案の作成など、高度な推論が必要なタスクに別のモデルを使用します。"
         use_vector_model_profile: "ベクトル検索用モデルプロファイルを使用する"
         vector_model_profile_id: "ベクトル検索用モデルプロファイル"
-        vector_model_profile_description: "ベクトル検索操作（APIの認証情報とコンテンツ分析）に別のモデルプロファイルを使用します。埋め込みモデル名は上記の「埋め込みモデル」設定で制御されます。"
+        vector_model_profile_description: "ベクトル検索に、「モデル定義」とは別のモデルプロファイルを使います。モデル定義で指定したLLMプロバイダーが埋め込みモデルを提供していない場合、ここで別のモデルプロファイルを指定してください。"
         mcp_server_enabled: "MCPサーバーを有効にする"
         send_user_id_enabled: "ユーザーIDをLLMに送信する"
         send_user_id_enabled_description: "有効にすると、Redmineの内部ユーザーIDがLLMプロバイダに送信されます。これにより、下流（LiteLLM等）でユーザー別の統計情報を追跡できます。有効化前にプライバシーへの影響をご考慮ください。"

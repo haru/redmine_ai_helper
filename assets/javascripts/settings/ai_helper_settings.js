@@ -168,6 +168,90 @@ function modelTypeChanged() {
 window.modelTypeChanged = modelTypeChanged;
 
 /**
+ * Wire up the Qdrant "test connection" button in the vector search tab.
+ * Sends the current (unsaved) URI and API key to the server, shows progress
+ * while running, and discards results that are stale because the inputs
+ * changed or a newer request started. Does nothing when the section is absent.
+ */
+function initVectorConnectionTest() {
+  const container = document.getElementById('ai-helper-qdrant-connection');
+  if (!container) { return; }
+  const config = JSON.parse(container.dataset.config || '{}');
+  const button = document.getElementById('ai-helper-vector-test-connection-btn');
+  const result = document.getElementById('ai-helper-vector-test-connection-result');
+  const uriField = document.getElementById('ai_helper_setting_vector_search_uri');
+  const keyField = document.getElementById('ai_helper_setting_vector_search_api_key');
+  if (!button || !result || !uriField || !keyField) { return; }
+
+  let requestSeq = 0;
+
+  /** Empty the result area and drop its status class. */
+  function clearResult() {
+    result.textContent = '';
+    result.className = '';
+  }
+
+  /**
+   * Show a result message.
+   * @param {boolean} success Whether the test succeeded.
+   * @param {string} text Message shown via textContent.
+   */
+  function showResult(success, text) {
+    result.textContent = text;
+    result.className = success ? 'ai-helper-connection-success' : 'ai-helper-connection-failure';
+  }
+
+  button.addEventListener('click', function() {
+    const seq = ++requestSeq;
+    const formData = new FormData();
+    formData.append('ai_helper_setting[vector_search_uri]', uriField.value);
+    formData.append('ai_helper_setting[vector_search_api_key]', keyField.value);
+
+    button.disabled = true;
+    result.textContent = config.loadingLabel;
+    result.className = '';
+
+    fetch(config.testConnectionUrl, {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content },
+      body: formData
+    })
+      .then(function(response) {
+        // Non-JSON bodies (e.g. a login page after the session expired or a
+        // CSRF error page) carry no message, so report the HTTP status instead.
+        return response.json().catch(function() {
+          return { success: false, error: 'HTTP ' + response.status };
+        });
+      })
+      .then(function(data) {
+        if (seq !== requestSeq) { return; }
+        if (data.success) {
+          showResult(true, config.testConnectionSuccessLabel);
+        } else {
+          showResult(false, config.testConnectionFailedLabel + (data.error ? ': ' + data.error : ''));
+        }
+      })
+      .catch(function(error) {
+        if (seq !== requestSeq) { return; }
+        showResult(false, config.testConnectionFailedLabel + ': ' + error.message);
+      })
+      .finally(function() {
+        button.disabled = false;
+      });
+  });
+
+  [uriField, keyField].forEach(function(field) {
+    ['input', 'change'].forEach(function(type) {
+      field.addEventListener(type, function() {
+        requestSeq++;
+        clearResult();
+      });
+    });
+  });
+}
+window.initVectorConnectionTest = initVectorConnectionTest;
+
+/**
  * Wire up the settings page: tab-hidden-field sync, event bindings, and
  * initial visibility state. Called once via a bridge `<script>` at the same
  * position the original inline script occupied (after the form, so the
@@ -209,5 +293,6 @@ function initAiHelperSettingsPage() {
   setVectorSearchVisible();
   setVectorTargetProjectsVisible();
   setSendUserIdVisible();
+  initVectorConnectionTest();
 }
 window.initAiHelperSettingsPage = initAiHelperSettingsPage;
