@@ -391,5 +391,76 @@ class RedmineAiHelper::Vector::QdrantTest < ActiveSupport::TestCase
         assert_equal response_body, result
       end
     end
+
+    context "test_connection" do
+      setup do
+        @test_conn = Faraday.new(url: "http://qdrant:6333")
+        @test_client = mock("test_client")
+        @test_client.stubs(:connection).returns(@test_conn)
+        @test_client.stubs(:collections).returns(@mock_collections)
+      end
+
+      should "use a 10 second timeout constant" do
+        assert_equal 10, RedmineAiHelper::Vector::Qdrant::CONNECTION_TEST_TIMEOUT
+      end
+
+      should "build the client with raise_error and the custom logger" do
+        ::Qdrant::Client.expects(:new).with(
+          url: "http://qdrant:6333",
+          api_key: "key",
+          raise_error: true,
+          logger: RedmineAiHelper::CustomLogger.instance
+        ).returns(@test_client)
+        @mock_collections.stubs(:list).returns({ "status" => "ok", "result" => { "collections" => [] } })
+
+        assert_equal true, RedmineAiHelper::Vector::Qdrant.test_connection(url: "http://qdrant:6333", api_key: "key")
+      end
+
+      should "set timeouts before listing collections" do
+        ::Qdrant::Client.stubs(:new).returns(@test_client)
+        conn = @test_conn
+        @mock_collections.expects(:list).with do
+          conn.options.timeout == 10 && conn.options.open_timeout == 10
+        end.returns({ "status" => "ok", "result" => { "collections" => [] } })
+
+        assert RedmineAiHelper::Vector::Qdrant.test_connection(url: "http://qdrant:6333", api_key: nil)
+      end
+
+      should "pass nil api_key through" do
+        ::Qdrant::Client.expects(:new).with(has_entry(api_key: nil)).returns(@test_client)
+        @mock_collections.stubs(:list).returns({ "status" => "ok", "result" => { "collections" => [ { "name" => "a" } ] } })
+
+        assert RedmineAiHelper::Vector::Qdrant.test_connection(url: "http://qdrant:6333", api_key: nil)
+      end
+
+      should "raise UnexpectedResponseError for non-hash or non-ok responses" do
+        ::Qdrant::Client.stubs(:new).returns(@test_client)
+        [ "<html></html>", { "status" => "error" }, {} ].each do |response|
+          @mock_collections.stubs(:list).returns(response)
+          error = assert_raises(RedmineAiHelper::Vector::Qdrant::UnexpectedResponseError) do
+            RedmineAiHelper::Vector::Qdrant.test_connection(url: "http://qdrant:6333", api_key: nil)
+          end
+          assert_equal I18n.t("ai_helper.vector_search.messages.unexpected_response"), error.message
+        end
+      end
+
+      should "propagate Faraday errors" do
+        ::Qdrant::Client.stubs(:new).returns(@test_client)
+        [ Faraday::ConnectionFailed, Faraday::UnauthorizedError, Faraday::TimeoutError ].each do |klass|
+          @mock_collections.stubs(:list).raises(klass.new("boom"))
+          assert_raises(klass) do
+            RedmineAiHelper::Vector::Qdrant.test_connection(url: "http://qdrant:6333", api_key: nil)
+          end
+        end
+      end
+
+      should "not change the timeout of the regular client" do
+        real = RedmineAiHelper::Vector::Qdrant.new(
+          url: "http://localhost:6333", api_key: nil, index_name: "x", llm_provider: @mock_llm_provider
+        )
+        assert_not_equal 10, real.client.connection.options.timeout
+        assert_not_equal 10, real.client.connection.options.open_timeout
+      end
+    end
   end
 end

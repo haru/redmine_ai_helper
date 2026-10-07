@@ -9,7 +9,35 @@ module RedmineAiHelper
     class Qdrant
       include RedmineAiHelper::Logger
 
+      # Timeout in seconds (read and open) applied only to connection tests.
+      CONNECTION_TEST_TIMEOUT = 10
+
+      # Raised when the server answers a connection test but not like a Qdrant server.
+      class UnexpectedResponseError < StandardError; end
+
       attr_reader :url, :api_key, :index_name, :llm_provider
+
+      # Check that a Qdrant server is reachable and accepts the given credentials.
+      # Only reads the collection list; nothing is created, changed or deleted.
+      # Network and authentication failures (Faraday errors) are not rescued.
+      # @param url [String] The Qdrant server URL (must already be validated).
+      # @param api_key [String, nil] The Qdrant API key, or nil when not used.
+      # @return [true] When Qdrant answered with status "ok".
+      # @raise [UnexpectedResponseError] When the response is not a Qdrant "ok" response.
+      # @raise [Faraday::Error] When the connection or authentication fails.
+      def self.test_connection(url:, api_key:)
+        client = ::Qdrant::Client.new(
+          url: url, api_key: api_key, raise_error: true, logger: RedmineAiHelper::CustomLogger.instance
+        )
+        # qdrant-ruby's Client.new has no timeout option, so set it on the
+        # Faraday connection before the first request.
+        client.connection.options.timeout = CONNECTION_TEST_TIMEOUT
+        client.connection.options.open_timeout = CONNECTION_TEST_TIMEOUT
+        response = client.collections.list
+        return true if response.is_a?(Hash) && response["status"] == "ok"
+
+        raise UnexpectedResponseError, I18n.t("ai_helper.vector_search.messages.unexpected_response")
+      end
 
       # @param url [String] The Qdrant server URL.
       # @param api_key [String] The Qdrant API key.

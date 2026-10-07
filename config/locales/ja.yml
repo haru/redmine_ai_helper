@@ -35,6 +35,13 @@ ja:
   label_ai_helper_report_detail_mobile: "レポート詳細"
   label_ai_helper_close_detail: "詳細を閉じる"
   ai_helper:
+    vector_search:
+      qdrant_server: "Qdrant サーバー(ベクトルデータベース)"
+      qdrant_server_description: "以下の URI と API キーは、LLM ではなくベクトルデータベース Qdrant サーバーへの接続情報です。ベクトル検索を使うには、Qdrant サーバーを別途用意する必要があります。"
+      qdrant_api_key_description: "Qdrant 側で API キー認証を設定していない場合は空欄にしてください。"
+      messages:
+        invalid_uri: "Qdrant URI には http または https の正しい URL を入力してください。"
+        unexpected_response: "Qdrant サーバーとしての応答がありませんでした。Qdrant URI を確認してください。"
     settings:
       tab_general: "全般"
       tab_model: "モデル"
@@ -293,8 +300,8 @@ ja:
         vector_search_enabled: "ベクトル検索を有効にする"
         vector_register_all_projects: "すべてのプロジェクトを登録する"
         vector_register_all_projects_description: "有効にすると、AI Helperモジュールが有効なすべてのプロジェクトがベクトルDBに登録されます。無効にすると、登録するプロジェクトを個別に選択できます。"
-        vector_search_uri: "URI"
-        vector_search_api_key: "APIキー"
+        vector_search_uri: "Qdrant URI"
+        vector_search_api_key: "Qdrant APIキー"
         embedding_model: "埋め込みモデル"
         dimension: "次元数"
         use_think_model: "Thinkモデルを使用する"
