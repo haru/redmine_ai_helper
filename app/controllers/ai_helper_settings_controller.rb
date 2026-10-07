@@ -6,10 +6,12 @@ class AiHelperSettingsController < ApplicationController
 
   protect_from_forgery with: :exception
 
-  before_action :require_admin, :find_setting
+  before_action :require_admin
+  before_action :find_setting, except: :test_vector_connection
   self.main_menu = false
 
   include AiHelperSettingsHelper
+  include RedmineAiHelper::Logger
 
   # Placeholder value rendered in token fields when a token is already
   # stored, so the raw value never reaches the HTML source (same approach
@@ -78,7 +80,37 @@ class AiHelperSettingsController < ApplicationController
     end
   end
 
+  # Checks the Qdrant connection with the unsaved values from the form.
+  # Does not read or write the stored settings. Responds with JSON
+  # `{ success: true }` or `{ success: false, error: message }`.
+  def test_vector_connection
+    attrs = params[:ai_helper_setting] || {}
+    uri = attrs[:vector_search_uri].to_s.strip
+    api_key = attrs[:vector_search_api_key].to_s.strip.presence
+
+    unless valid_vector_search_uri?(uri)
+      render json: { success: false, error: l("ai_helper.vector_search.messages.invalid_uri") }, status: :unprocessable_content
+      return
+    end
+
+    RedmineAiHelper::Vector::Qdrant.test_connection(url: uri, api_key: api_key)
+    render json: { success: true }
+  rescue => e
+    ai_helper_logger.error("Qdrant connection test failed: #{e.class}: #{e.message}")
+    render json: { success: false, error: e.message }, status: :internal_server_error
+  end
+
   private
+
+  # Whether the given string is an http(s) URL with a host.
+  # @param uri [String] The Qdrant URI entered on the form.
+  # @return [Boolean]
+  def valid_vector_search_uri?(uri)
+    parsed = URI.parse(uri)
+    parsed.is_a?(URI::HTTP) && parsed.host.present?
+  rescue URI::InvalidURIError
+    false
+  end
 
   # Always enforce CSRF verification for this controller.
   # Overrides Redmine's ApplicationController which conditionally skips

@@ -3,22 +3,36 @@
   <p>
     <%= f.check_box :vector_search_enabled %>
   </p>
-  <p>
-    <%= f.check_box :use_vector_model_profile %>
-    <span class="description"><%= t("activerecord.attributes.ai_helper_setting.vector_model_profile_description") %></span>
-  </p>
-  <div id="ai-helper-vector-model-profile-settings">
-    <p>
-      <%= f.select :vector_model_profile_id, ai_helper_model_profile_options(@model_profiles), include_blank: true %>
-    </p>
-  </div>
   <div id="ai-helper-vector-search">
+    <fieldset class="box" id="ai-helper-qdrant-connection" data-config='<%= {
+      testConnectionUrl: ai_helper_settings_test_vector_connection_path,
+      testConnectionSuccessLabel: l("ai_helper.model_profiles.test_connection_success"),
+      testConnectionFailedLabel: l("ai_helper.model_profiles.test_connection_failed"),
+      loadingLabel: l(:label_loading)
+    }.to_json %>'>
+      <legend><%= l("ai_helper.vector_search.qdrant_server") %></legend>
+      <p><em class="info"><%= l("ai_helper.vector_search.qdrant_server_description") %></em></p>
+      <p>
+        <%= f.text_field :vector_search_uri, size: 60, required: true %>
+      </p>
+      <p>
+        <%= f.text_field :vector_search_api_key, size: 60 %>
+        <span class="description"><%= l("ai_helper.vector_search.qdrant_api_key_description") %></span>
+      </p>
+      <p id="ai-helper-vector-test-connection">
+        <button type="button" id="ai-helper-vector-test-connection-btn"><%= l("ai_helper.model_profiles.test_connection") %></button>
+        <span id="ai-helper-vector-test-connection-result" role="status" aria-live="polite"></span>
+      </p>
+    </fieldset>
     <p>
-      <%= f.text_field :vector_search_uri, size: 60, required: true %>
+      <%= f.check_box :use_vector_model_profile %>
+      <span class="description"><%= t("activerecord.attributes.ai_helper_setting.vector_model_profile_description") %></span>
     </p>
-    <p>
-      <%= f.text_field :vector_search_api_key, size: 60 %>
-    </p>
+    <div id="ai-helper-vector-model-profile-settings">
+      <p>
+        <%= f.select :vector_model_profile_id, ai_helper_model_profile_options(@model_profiles), include_blank: true %>
+      </p>
+    </div>
     <p>
       <%= f.text_field :embedding_model, size: 60 %>
     </p>
