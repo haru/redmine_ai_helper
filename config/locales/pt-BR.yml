@@ -207,7 +207,7 @@ pt-BR:
         think_model_description: Use um modelo separado para tarefas que exigem raciocínio mais profundo, como geração de relatório de saúde e rascunho de resposta de tarefa.
         use_vector_model_profile: Usar perfil de modelo vetorial
         vector_model_profile_id: Perfil do modelo vetorial
-        vector_model_profile_description: 'Use um perfil de modelo separado para operações de busca vetorial (credenciais de API e análise de conteúdo). Observação: o nome do modelo de embedding continua sendo controlado pela configuração de Modelo de embedding.'
+        vector_model_profile_description: "Usa um perfil de modelo diferente do \"Perfil de modelo\" para a busca vetorial. Se o provedor de LLM especificado em \"Perfil de modelo\" não oferecer modelos de embedding, especifique outro perfil de modelo aqui."
         read_only_mode: "Read-only mode"
         read_only_mode_description: "When enabled, the AI Helper chat cannot create, update, or delete any data (issues, wiki pages, comments, etc.). External MCP server integration is also disabled."
         all_projects_scope: "Target all projects"
