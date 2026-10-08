@@ -17,7 +17,7 @@ not accessible, permission denied, validation error, version in use) are
 returned as `{ error: "<message>" }`. System failures (database connection,
 SQL errors, program bugs) are raised as before. The mechanism is
 `BaseTools::UserError` and the private `BaseTools#user_errors_as_result`. Only
-the four version functions (`capable_version_properties`, `create_version`,
+the four version functions (`capable_version_props`, `create_version`,
 `update_version`, `delete_version`) use it.
 
 ## Consequences

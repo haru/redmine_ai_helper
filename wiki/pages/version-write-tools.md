@@ -23,7 +23,7 @@ versions with parity to the Versions REST API (S041). Part of the
   `tool_call_permitted?`), and the MCP server picks up `BaseTools.subclasses`
   automatically — no registration code (S041). See
   [MCP Server Endpoint](./mcp-server-endpoint.md).
-- **`VersionTools#capable_version_properties(project_id:)`** (read) returns the
+- **`VersionTools#capable_version_props(project_id:)`** (read) returns the
   status options, the sharings allowed for a new version in that project, and
   the editable version custom fields (id, name, format, required, options,
   multiple). Without it the AI has no way to learn version custom-field IDs

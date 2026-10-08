@@ -190,7 +190,7 @@ class AgentsTest < ActiveSupport::TestCase
       backstory = @agent.backstory
 
       assert_includes backstory, "create_version"
-      assert_includes backstory, "capable_version_properties"
+      assert_includes backstory, "capable_version_props"
       assert_includes backstory, "update_version"
       assert_includes backstory, "delete_version"
     end
@@ -200,7 +200,7 @@ class AgentsTest < ActiveSupport::TestCase
       names = @agent.available_tool_classes.map { |c| c.name.split("::").last.underscore }
 
       %w[create_version update_version delete_version].each { |n| assert_not_includes names, n }
-      %w[list_versions version_info capable_version_properties].each { |n| assert_includes names, n }
+      %w[list_versions version_info capable_version_props].each { |n| assert_includes names, n }
     end
   end
 

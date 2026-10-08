@@ -122,11 +122,11 @@ class McpServerBuilderTest < ActiveSupport::TestCase
       assert server.tools.key?("search_issues"), "expected read tools to remain when read_only_mode is enabled"
     end
 
-    should "keep capable_version_properties in the built server when read_only_mode is enabled" do
+    should "keep capable_version_props in the built server when read_only_mode is enabled" do
       @setting.update_column(:read_only_mode, true)
       server = RedmineAiHelper::Mcp::Server.build
 
-      assert server.tools.key?("capable_version_properties")
+      assert server.tools.key?("capable_version_props")
     end
 
     should "keep the log functions in the built server when read_only_mode is enabled" do

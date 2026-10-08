@@ -82,9 +82,9 @@ class VersionToolsTest < ActiveSupport::TestCase
     assert_equal @project.versions.count, response.size
   end
 
-  def test_capable_version_properties_for_regular_user
+  def test_capable_version_props_for_regular_user
     cf = VersionCustomField.create!(name: "Sprint goal", field_format: "string", visible: true, editable: true)
-    response = @provider.capable_version_properties(project_id: @project.id)
+    response = @provider.capable_version_props(project_id: @project.id)
 
     assert_equal @project.id, response[:project_id]
     assert_equal %w[open locked closed], response[:statuses]
@@ -94,36 +94,36 @@ class VersionToolsTest < ActiveSupport::TestCase
     %i[field_format is_required multiple possible_values default_value].each { |k| assert field.key?(k) }
   end
 
-  def test_capable_version_properties_for_admin_includes_system
+  def test_capable_version_props_for_admin_includes_system
     User.current = User.find(1)
-    response = @provider.capable_version_properties(project_id: @project.id)
+    response = @provider.capable_version_props(project_id: @project.id)
 
     assert_includes response[:allowed_sharings], "system"
   end
 
-  def test_capable_version_properties_hides_invisible_custom_fields
+  def test_capable_version_props_hides_invisible_custom_fields
     hidden = VersionCustomField.create!(name: "Hidden", field_format: "string", visible: false, editable: true, role_ids: [ 2 ])
-    response = @provider.capable_version_properties(project_id: @project.id)
+    response = @provider.capable_version_props(project_id: @project.id)
 
     assert_not_includes response[:custom_fields].map { |f| f[:id] }, hidden.id
   end
 
-  def test_capable_version_properties_lists_possible_values_with_values_to_set
+  def test_capable_version_props_lists_possible_values_with_values_to_set
     list = VersionCustomField.create!(name: "Phase", field_format: "list", possible_values: %w[Alpha Beta], visible: true, editable: true)
     enum = VersionCustomField.create!(name: "Team", field_format: "enumeration", visible: true, editable: true)
     backend = enum.enumerations.create!(name: "Backend", active: true)
     text = VersionCustomField.create!(name: "Goal", field_format: "string", visible: true, editable: true)
-    fields = @provider.capable_version_properties(project_id: @project.id)[:custom_fields].index_by { |f| f[:id] }
+    fields = @provider.capable_version_props(project_id: @project.id)[:custom_fields].index_by { |f| f[:id] }
 
     assert_equal [ { value: "Alpha", label: "Alpha" }, { value: "Beta", label: "Beta" } ], fields[list.id][:possible_values]
     assert_equal [ { value: backend.id.to_s, label: "Backend" } ], fields[enum.id][:possible_values]
     assert_equal [], fields[text.id][:possible_values]
   end
 
-  def test_capable_version_properties_errors
-    assert_equal({ error: "project_id is required" }, @provider.capable_version_properties(project_id: nil))
-    assert_equal({ error: "Project not found. id = 999" }, @provider.capable_version_properties(project_id: 999))
-    assert_equal({ error: "Project is not accessible: id = 2" }, @provider.capable_version_properties(project_id: 2))
+  def test_capable_version_props_errors
+    assert_equal({ error: "project_id is required" }, @provider.capable_version_props(project_id: nil))
+    assert_equal({ error: "Project not found. id = 999" }, @provider.capable_version_props(project_id: 999))
+    assert_equal({ error: "Project is not accessible: id = 2" }, @provider.capable_version_props(project_id: 2))
   end
 
   private

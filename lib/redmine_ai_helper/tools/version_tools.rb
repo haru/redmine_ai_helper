@@ -80,14 +80,14 @@ module RedmineAiHelper
         versions
       end
 
-      define_function :capable_version_properties, description: "Return the values that can be set when creating a version in the project: statuses, sharing values allowed for the current user, and the version custom fields the current user can edit." do
+      define_function :capable_version_props, description: "Return the values that can be set when creating a version in the project: statuses, sharing values allowed for the current user, and the version custom fields the current user can edit." do
         property :project_id, type: "integer", description: "The project ID of the project in which a version would be created.", required: true
       end
       # Return the values that can be set when creating a version in the project.
       # @param project_id [Integer] The project ID.
       # @return [Hash] statuses, allowed sharings and editable custom fields, or { error: } for a user-caused failure.
       #   Each custom field's possible_values is a list of { value:, label: }; value is what to pass to the write tools.
-      def capable_version_properties(project_id:)
+      def capable_version_props(project_id:)
         user_errors_as_result do
           raise UserError, "project_id is required" if project_id.nil?
           project = Project.find_by(id: project_id)

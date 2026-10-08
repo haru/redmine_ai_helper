@@ -15,7 +15,7 @@ module RedmineAiHelper
         property :sharing, type: "string", description: "The sharing scope. Defaults to none. Values not allowed for the current user are rejected.", required: false, enum: %w[none descendants hierarchy tree system]
         property :wiki_page_title, type: "string", description: "The title of the related wiki page (up to 255 characters).", required: false
         property :default_project_version, type: "boolean", description: "true sets it as the project's default version; false does nothing.", required: false
-        property :custom_fields, type: "array", description: "Values of the version custom fields. Use capable_version_properties to see the editable ones and their possible values. A multiple-value field is set to the one given value.", required: false do
+        property :custom_fields, type: "array", description: "Values of the version custom fields. Use capable_version_props to see the editable ones and their possible values. A multiple-value field is set to the one given value.", required: false do
           item type: "object", description: "A custom field value." do
             property :field_id, type: "integer", description: "The custom field ID.", required: true
             property :value, type: "string", description: "The value to set.", required: false
@@ -66,7 +66,7 @@ module RedmineAiHelper
         property :sharing, type: "string", description: "The new sharing scope. Values not allowed for the current user are rejected.", required: false, enum: %w[none descendants hierarchy tree system]
         property :wiki_page_title, type: "string", description: "The title of the related wiki page (up to 255 characters).", required: false
         property :default_project_version, type: "boolean", description: "true sets it as the project's default version; false does nothing.", required: false
-        property :custom_fields, type: "array", description: "Values of the version custom fields. Use capable_version_properties to see the editable ones and their possible values. A multiple-value field is set to the one given value.", required: false do
+        property :custom_fields, type: "array", description: "Values of the version custom fields. Use capable_version_props to see the editable ones and their possible values. A multiple-value field is set to the one given value.", required: false do
           item type: "object", description: "A custom field value." do
             property :field_id, type: "integer", description: "The custom field ID.", required: true
             property :value, type: "string", description: "The value to set.", required: false

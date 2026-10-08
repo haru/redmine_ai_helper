@@ -17,7 +17,7 @@ it set the value, and the value was never saved.
 `Version#allowed_sharings(User.current)` and the requested custom fields
 against `Version#editable_custom_field_values(User.current)` before saving.
 A value outside these sets is returned as an error that lists the allowed
-values. `capable_version_properties` exposes the same sets so the AI can check
+values. `capable_version_props` exposes the same sets so the AI can check
 them first. All other attribute validation is left to Redmine.
 
 ## Consequences
