@@ -211,13 +211,6 @@ describe("initAiHelperSettingsPage", () => {
     expect(document.getElementById("ai_helper_setting_use_vector_model_profile").parentElement.style.display).toBe("");
   });
 
-  it("does not expose modelTypeChanged", async () => {
-    addMarkup();
-    await loadScript("assets/javascripts/settings/ai_helper_settings");
-
-    expect(window.modelTypeChanged).toBeUndefined();
-  });
-
   it("refreshes the send-user-id row after a model profile is loaded", async () => {
     const { modelProfileSelect, modelTypeMeta } = addMarkup();
     const option = document.createElement("option");

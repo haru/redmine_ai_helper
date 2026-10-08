@@ -1,7 +1,7 @@
 ---
 title: Embedding Connection Test
 type: component
-sources: [S039]
+sources: [S039, S040]
 updated: 2026-10-08
 ---
 
@@ -58,12 +58,14 @@ The provider is built with `request_options: { request_timeout: 10, max_retries:
   `cause`).
 - Wrapping the call in `Timeout.timeout` was rejected as unsafe (S039).
 
-## The "dimension" and "embedding URL" fields are unused
+## The "dimension" and "embedding URL" settings were removed
 
-`dimension` and `embedding_url` are saved by the settings form but not read
-anywhere in `app/` or `lib/`; the real dimension is detected from one embedding,
-and Azure OpenAI embeddings use the profile's `base_uri` (S039). The test
-ignores both fields (S039).
+`dimension` and `embedding_url` used to be saved by the settings form but were
+never read in `app/` or `lib/`; the real dimension is detected from one
+embedding, and Azure OpenAI embeddings use the profile's `base_uri` (S039).
+Both columns, their form fields, `embedding_url_enabled?`, and the JS
+`modelTypeChanged` were then removed; stale form posts that still send them are
+silently ignored because they are no longer safe attributes (S040).
 
 ## Front end
 

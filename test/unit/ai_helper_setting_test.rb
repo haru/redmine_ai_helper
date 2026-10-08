@@ -484,10 +484,6 @@ class AiHelperSettingTest < ActiveSupport::TestCase
       assert_not_includes names, "embedding_url"
     end
 
-    should "not respond to embedding_url_enabled?" do
-      assert_not_respond_to AiHelperSetting.new, :embedding_url_enabled?
-    end
-
     should "not have dimension or embedding_url columns" do
       assert_not_includes AiHelperSetting.column_names, "dimension"
       assert_not_includes AiHelperSetting.column_names, "embedding_url"

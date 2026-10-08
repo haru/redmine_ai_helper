@@ -18,7 +18,9 @@ fi
 npm run lint
 npm run test:coverage
 
-yard stats --list-undoc | tee /dev/stderr |  grep -q "100.00%"
+yard_stats=$(yard stats --list-undoc)
+echo "$yard_stats"
+echo "$yard_stats" | grep -q "100.00%"
 
 rubocop --ignore-parent-exclusion
 

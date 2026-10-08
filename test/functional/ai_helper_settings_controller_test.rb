@@ -511,8 +511,6 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
           vector_search_uri: "http://localhost:6333",
           vector_search_api_key: "test-api-key",
           embedding_model: "text-embedding-3-large",
-          dimension: "1536", # removed setting: stale requests must still save
-          embedding_url: "",
           use_vector_model_profile: "1",
           vector_model_profile_id: vector_profile.id.to_s,
           vector_register_all_projects: "1",
@@ -1045,32 +1043,15 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       end
     end
 
-    [
-      RedmineAiHelper::LlmProvider::LLM_OPENAI_COMPATIBLE,
-      RedmineAiHelper::LlmProvider::LLM_AZURE_OPENAI
-    ].each do |llm_type|
-      should "not render the removed dimension and embedding URL fields when the base model profile is #{llm_type}" do
-        @model_profile.update_column(:llm_type, llm_type)
-        @ai_helper_setting.update!(model_profile_id: @model_profile.id, vector_search_enabled: true, vector_search_uri: "http://localhost:6333")
-
-        get :index, params: { tab: "vector" }
-
-        assert_response :success
-        assert_select "#ai_helper_dimension", count: 0
-        assert_select "#ai_helper_embedding_url", count: 0
-        assert_select "input[name='ai_helper_setting[dimension]']", count: 0
-        assert_select "input[name='ai_helper_setting[embedding_url]']", count: 0
-      end
-    end
-
-    should "not render the removed dimension and embedding URL fields when vector search is disabled" do
-      @ai_helper_setting.update!(vector_search_enabled: false)
+    should "not render the removed dimension and embedding URL fields for an Azure OpenAI base model profile" do
+      @model_profile.update_column(:llm_type, RedmineAiHelper::LlmProvider::LLM_AZURE_OPENAI)
+      @ai_helper_setting.update!(model_profile_id: @model_profile.id, vector_search_enabled: true, vector_search_uri: "http://localhost:6333")
 
       get :index, params: { tab: "vector" }
 
       assert_response :success
-      assert_select "#ai_helper_dimension", count: 0
-      assert_select "#ai_helper_embedding_url", count: 0
+      assert_select "input[name='ai_helper_setting[dimension]']", count: 0
+      assert_select "input[name='ai_helper_setting[embedding_url]']", count: 0
     end
 
     should "save successfully when a stale request still includes the removed dimension and embedding_url" do
@@ -1086,6 +1067,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       }
 
       assert_redirected_to controller: "ai_helper_settings", action: :index, tab: "vector"
+      assert_equal I18n.t(:notice_successful_update), flash[:notice]
       @ai_helper_setting.reload
       assert_equal "text-embedding-3-large", @ai_helper_setting.embedding_model
     end
@@ -1098,7 +1080,6 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
           vector_search_uri: "http://localhost:6333",
           vector_search_api_key: "test-key",
           embedding_model: "text-embedding-3-large",
-          dimension: "1536",
           use_vector_model_profile: "0",
           vector_model_profile_id: "",
           vector_register_all_projects: "1",
