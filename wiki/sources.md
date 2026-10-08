@@ -45,3 +45,4 @@ Sources are immutable inputs — the wiki never edits them.
 | S038 | specs/064-health-report-edit (research.md + plan.md) | feature-artifact | 2026-10-03 | 2026-10-03 | health-report.md, health-report-editing.md, health-report-markdown-rendering.md |
 | S039 | specs/066-embedding-connection-test (research.md + plan.md) | feature-artifact | 2026-10-08 | 2026-10-08 | embedding-connection-test.md, vector-search.md, llm-provider-layer.md |
 | S040 | specs/067-remove-unused-embedding-settings (research.md + plan.md) | feature-artifact | 2026-10-08 | 2026-10-08 | embedding-connection-test.md |
+| S041 | specs/068-version-create-update (research.md + plan.md) | feature-artifact | 2026-10-08 | 2026-10-08 | version-write-tools.md, version-write-tools-error-policy.md, tool-system.md |

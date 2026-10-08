@@ -27,6 +27,7 @@ page files, not here.
 - [Model Profile Temperature Is Optional](./pages/model-profile-optional-temperature.md) — ADR-042: blank temperature sends none (providers already skip nil), the validation/migration/connection-test changes, GPT-5 auto-correction kept, and alternatives rejected.
 - [Health Report Editing](./pages/health-report-editing.md) — feature 064: the `:edit_ai_helper_health_reports` permission, keeping original + latest only, optimistic locking, `\r` normalization for unchanged saves, anonymous-editor reassignment, overview-cache invalidation, and edited notices in exports.
 - [Health Report Markdown Rendering](./pages/health-report-markdown-rendering.md) — ADR-044: saved reports render via `md_to_html` regardless of text formatting, the self-loaded CommonMark jsToolBar, the dedicated preview endpoint, and the server-rendered detail pane.
+- [Version Write Tools: Strict Input & Error Results](./pages/version-write-tools-error-policy.md) — ADR-047/048: why disallowed sharing/custom fields error instead of being dropped, and why user mistakes return `{ error: }` while system failures raise.
 
 ## component
 - [Chat Channel Gateway Architecture](./pages/chat-channel-gateway-architecture.md) — core + adapters structure, capability declaration, and gateway operational model.
@@ -50,6 +51,7 @@ page files, not here.
 - [Wiki Tools](./pages/wiki-tools.md) — `WikiTools`/`WikiWriteTools`: the unified `{id:, title:}` parent format, `wiki_update_page`'s `parent_title` semantics and validation, and why cross-wiki parents and N+1 eager-loading were left alone.
 - [Log File Access Tools](./pages/log-file-access-tools.md) — `SystemTools`' admin-only `get_log_file_info`/`read_log_tail`/`search_log`: admin → setting → input gating, the `log_access_enabled` setting, limits, path hiding, and `SystemAgent` prompt guidance.
 - [Log File Reader](./pages/log-file-reader.md) — `LogFileReader`: backward chunked tail and search, the 500 MB scan cap, literal matching, and when line numbers count from the start vs. only from the end.
+- [Version Write Tools](./pages/version-write-tools.md) — feature 068: `create_version`/`update_version`/`delete_version`, `capable_version_properties`, permissions on the version's own project, delete rules, update semantics.
 
 ## reference
 - [Chat History APIs](./pages/chat-history-apis.md) — Slack/Discord message-retrieval APIs, scopes, display-name resolution, exclusion rules.
