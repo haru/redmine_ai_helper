@@ -36,6 +36,7 @@ en:
   label_ai_helper_close_detail: "Close Detail"
   ai_helper:
     vector_search:
+      embedding_dimension: "Dimension"
       qdrant_server: "Qdrant server (vector database)"
       qdrant_server_description: "The URI and API key below are for connecting to the Qdrant vector database server, not to the LLM. To use vector search, you need to set up a Qdrant server separately."
       qdrant_api_key_description: "Leave blank if API key authentication is not configured on the Qdrant server."
@@ -308,7 +309,6 @@ en:
         vector_search_uri: "Qdrant URI"
         vector_search_api_key: "Qdrant API key"
         embedding_model: "Embedding model"
-        dimension: "Dimension"
         use_think_model: "Use think model"
         think_model_profile_id: "Think model profile"
         think_model_description: "Use a separate model for tasks requiring deeper reasoning, such as health report generation and issue reply drafting."

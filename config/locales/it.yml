@@ -32,6 +32,8 @@ it:
   label_ai_helper_close_detail: "Chiudi dettaglio"
 
   ai_helper:
+    vector_search:
+      embedding_dimension: "Dimensione"
     notice_sub_issues_added: "I sotto-ticket sono stati aggiunti"
     error_invalid_assignee: "Assegnatario non valido per '%{subject}' - l'utente non è autorizzato per questo tracker"
 
@@ -271,7 +273,6 @@ it:
         vector_search_uri: "URI"
         vector_search_api_key: "Chiave API"
         embedding_model: "Modello di embedding"
-        dimension: "Dimensione"
         use_think_model: "Usa modello di ragionamento"
         think_model_profile_id: "Profilo modello di ragionamento"
         think_model_description: "Usa un modello separato per attività che richiedono un ragionamento più profondo, come la generazione del report di salute e le bozze di risposta ai ticket."

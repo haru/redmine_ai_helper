@@ -44,7 +44,7 @@ page files, not here.
 - [BaseAgent LLM Calls](./pages/base-agent-llm-calls.md) — `chat` vs `@assistant` call styles, `think_chat`, and the `with_model` cross-provider gotcha.
 - [Tool System](./pages/tool-system.md) — the `BaseTools` DSL, `write: true`/read-only filtering, per-tool permission checks, and the tool providers.
 - [LLM Provider Layer](./pages/llm-provider-layer.md) — the `LlmProvider` factory, resolution paths, provider subclasses/quirks, profile config, and structured output.
-- [Embedding Connection Test](./pages/embedding-connection-test.md) — the vector-tab button that embeds a fixed text with the unsaved form values: shared profile rule, 10 s per-request timeout gotchas, response check, and the unused `dimension`/`embedding_url` fields.
+- [Embedding Connection Test](./pages/embedding-connection-test.md) — the vector-tab button that embeds a fixed text with the unsaved form values: shared profile rule, 10 s per-request timeout gotchas, response check, and the removed `dimension`/`embedding_url` settings.
 - [Vector Search Internals](./pages/vector-search-internals.md) — Qdrant subsystem components, hybrid content/embeddings, payload indexes, rake tasks, staleness sync, and project-selection scope/gating.
 - [JavaScript Quality Tooling](./pages/js-quality-tooling.md) — ESLint 10 flat config + Vitest 4/jsdom + `@vitest/coverage-v8`, Node.js/npm setup, and regression-check/CI wiring.
 - [Wiki Tools](./pages/wiki-tools.md) — `WikiTools`/`WikiWriteTools`: the unified `{id:, title:}` parent format, `wiki_update_page`'s `parent_title` semantics and validation, and why cross-wiki parents and N+1 eager-loading were left alone.

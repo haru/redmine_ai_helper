@@ -26,6 +26,8 @@ zh:
   label_ai_helper_report_detail_mobile: "报告详情"
   label_ai_helper_close_detail: "关闭详情"
   ai_helper:
+    vector_search:
+      embedding_dimension: "维度"
     notice_sub_issues_added: "已添加子问题"
     error_invalid_assignee: "'%{subject}' 的负责人无效 - 用户无权处理此跟踪器"
     chat:
@@ -199,7 +201,6 @@ zh:
         vector_search_uri: "URI"
         vector_search_api_key: "API 密钥"
         embedding_model: "嵌入模型"
-        dimension: "维度"
         use_think_model: "使用思考模型"
         think_model_profile_id: "思考模型配置"
         think_model_description: "对需要更深入推理的任务使用单独的模型，例如健康报告生成和问题回复草稿。"

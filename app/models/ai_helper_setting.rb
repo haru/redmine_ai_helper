@@ -16,7 +16,7 @@ class AiHelperSetting < ApplicationRecord
 
   before_save :clear_vector_model_profile_id_if_disabled
 
-  safe_attributes "model_profile_id", "additional_instructions", "version", "vector_search_enabled", "vector_search_uri", "vector_search_api_key", "embedding_model", "dimension", "vector_search_index_name", "vector_search_index_type", "embedding_url",
+  safe_attributes "model_profile_id", "additional_instructions", "version", "vector_search_enabled", "vector_search_uri", "vector_search_api_key", "embedding_model", "vector_search_index_name", "vector_search_index_type",
     "attachment_send_enabled", "attachment_max_size_mb",
     "use_think_model", "think_model_profile_id",
     "use_vector_model_profile", "vector_model_profile_id",
@@ -116,12 +116,6 @@ class AiHelperSetting < ApplicationRecord
   end
 
   public
-
-  # Returns true if embedding_url is required
-  # @return [Boolean] Whether embedding URL is enabled
-  def embedding_url_enabled?
-    model_profile&.llm_type == RedmineAiHelper::LlmProvider::LLM_AZURE_OPENAI
-  end
 
   # Returns the model profile used for vector operations (embedding and
   # content analysis), following the same rule as actual vector registration.

@@ -32,6 +32,8 @@ tr:
   label_ai_helper_report_detail_mobile: "Rapor Detayı"
   label_ai_helper_close_detail: "Detayı Kapat"
   ai_helper:
+    vector_search:
+      embedding_dimension: "Boyut"
     settings:
       tab_general: "Genel"
       tab_model: "Model"
@@ -275,7 +277,6 @@ tr:
         vector_search_uri: "URI"
         vector_search_api_key: "API anahtarı"
         embedding_model: "Embedding modeli"
-        dimension: "Boyut"
         use_think_model: "Düşünme modelini kullan"
         think_model_profile_id: "Düşünme modeli profili"
         think_model_description: "Sağlık raporu oluşturma ve iş yanıtı taslağı hazırlama gibi daha derin akıl yürütme gerektiren görevler için ayrı bir model kullanın."
