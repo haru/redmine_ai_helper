@@ -1,8 +1,8 @@
 ---
 title: Vector Search
 type: reference
-sources: [S002, S004, S008, S010, S012, S033]
-updated: 2026-09-07
+sources: [S002, S004, S008, S010, S012, S033, S039]
+updated: 2026-10-08
 ---
 
 # Vector Search
@@ -24,7 +24,9 @@ chat model stays Anthropic while embedding/summarization use, e.g., OpenAI
 (S004). The embedding provider itself must still support embeddings — the system
 does **not** validate that the chosen profile's model can embed; a bad
 combination surfaces as an API error from the provider, and the settings screen
-shows a note telling admins to verify the combination themselves (S004).
+shows a note telling admins to verify the combination themselves (S004). A
+"Test connection" button on the vector tab now does that check before saving — see
+[Embedding Connection Test](./embedding-connection-test.md) (S039).
 
 ## Setup
 

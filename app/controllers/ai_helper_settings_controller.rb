@@ -7,7 +7,7 @@ class AiHelperSettingsController < ApplicationController
   protect_from_forgery with: :exception
 
   before_action :require_admin
-  before_action :find_setting, except: :test_vector_connection
+  before_action :find_setting, except: %i[test_vector_connection test_embedding_connection]
   self.main_menu = false
 
   include AiHelperSettingsHelper
@@ -18,6 +18,18 @@ class AiHelperSettingsController < ApplicationController
   # as AiHelperModelProfilesController::DUMMY_ACCESS_KEY). When this value
   # is submitted, the controller keeps the existing token unchanged.
   DUMMY_TOKEN = "___DUMMY_TOKEN___"
+
+  # Maximum length of the provider error message returned by
+  # #test_embedding_connection. The log keeps the full message.
+  EMBEDDING_TEST_ERROR_MAX_LENGTH = 500
+
+  # Number of backtrace lines logged when #test_embedding_connection fails
+  # with an unexpected error (not a provider, network or response error).
+  EMBEDDING_TEST_BACKTRACE_LINES = 10
+
+  # Form fields used by #test_embedding_connection to pick the model profile
+  # and embedding model. Any other submitted parameter is ignored.
+  EMBEDDING_TEST_FIELDS = %w[model_profile_id use_vector_model_profile vector_model_profile_id embedding_model].freeze
 
   # Display the settings page
   def index
@@ -100,7 +112,95 @@ class AiHelperSettingsController < ApplicationController
     render json: { success: false, error: e.message }, status: :internal_server_error
   end
 
+  # Checks that the embedding model works with the unsaved values from the
+  # form, by embedding a fixed text once with the model profile that vector
+  # registration would use. Does not save the settings or touch the vector DB.
+  # For providers with a model registry, the profile's chat model may first be
+  # looked up in the provider's model list, so a wrong chat model name also
+  # fails this test.
+  # Responds with JSON `{ success: true, dimension: n }` or
+  # `{ success: false, error: message }`.
+  def test_embedding_connection
+    setting = AiHelperSetting.new
+    setting.safe_attributes = params.fetch(:ai_helper_setting, {}).permit(*EMBEDDING_TEST_FIELDS)
+
+    profile, error = embedding_test_profile(setting)
+    if error
+      render json: { success: false, error: error }, status: :unprocessable_content
+      return
+    end
+
+    dimension = RedmineAiHelper::LlmProvider.test_embedding(profile: profile, embedding_model: setting.embedding_model)
+    render json: { success: true, dimension: dimension }
+  # NotImplementedError (unsupported llm_type) is a ScriptError, so list it explicitly.
+  rescue StandardError, NotImplementedError => e
+    ai_helper_logger.error(embedding_test_log_message(e))
+    render json: { success: false, error: embedding_test_error_message(e) }, status: :internal_server_error
+  end
+
   private
+
+  # Resolves the model profile for the embedding connection test, checking
+  # that the form selects one before anything is sent to the provider.
+  # @param setting [AiHelperSetting] unsaved setting holding the form values
+  # @return [Array(AiHelperModelProfile, nil), Array(nil, String)] the profile, or nil and an error message
+  def embedding_test_profile(setting)
+    if setting.use_vector_model_profile?
+      return [ nil, l("ai_helper.vector_search.messages.vector_model_profile_required") ] if setting.vector_model_profile_id.blank?
+    else
+      return [ nil, l("ai_helper.vector_search.messages.model_profile_required") ] if setting.model_profile_id.blank?
+    end
+
+    profile = begin
+      setting.vector_llm_model_profile
+    rescue ActiveRecord::RecordNotFound
+      nil
+    end
+    return [ nil, l("ai_helper.vector_search.messages.model_profile_not_found") ] unless profile
+
+    [ profile, nil ]
+  end
+
+  # Message shown for a failed embedding connection test.
+  # @param error [StandardError] the error raised by the test
+  # @return [String] the timeout message, or the error message truncated to EMBEDDING_TEST_ERROR_MAX_LENGTH
+  def embedding_test_error_message(error)
+    if embedding_test_timeout?(error)
+      return l("ai_helper.vector_search.messages.embedding_timeout", seconds: RedmineAiHelper::LlmProvider::EMBEDDING_TEST_TIMEOUT)
+    end
+
+    error.message.truncate(EMBEDDING_TEST_ERROR_MAX_LENGTH)
+  end
+
+  # Log line for a failed embedding connection test. Unexpected errors also get
+  # the first EMBEDDING_TEST_BACKTRACE_LINES backtrace lines so their origin can
+  # be found; provider, network and response errors are logged on one line.
+  # @param error [Exception] the error raised by the test
+  # @return [String]
+  def embedding_test_log_message(error)
+    message = "Embedding connection test failed: #{error.class}: #{error.message}"
+    return message if embedding_test_expected_error?(error)
+
+    [ message, *error.backtrace&.first(EMBEDDING_TEST_BACKTRACE_LINES) ].join("\n")
+  end
+
+  # Whether the error comes from the provider, the network or the response
+  # check, rather than from a bug in our code.
+  # @param error [Exception]
+  # @return [Boolean]
+  def embedding_test_expected_error?(error)
+    error.is_a?(RubyLLM::Error) || error.is_a?(Faraday::Error) ||
+      error.is_a?(RedmineAiHelper::LlmProvider::UnexpectedEmbeddingResponseError)
+  end
+
+  # Whether the error is a read timeout or a connect timeout. faraday-net_http
+  # wraps Net::OpenTimeout in Faraday::ConnectionFailed.
+  # @param error [StandardError]
+  # @return [Boolean]
+  def embedding_test_timeout?(error)
+    error.is_a?(Faraday::TimeoutError) ||
+      (error.is_a?(Faraday::ConnectionFailed) && error.cause.is_a?(Net::OpenTimeout))
+  end
 
   # Whether the given string is an http(s) URL with a host.
   # @param uri [String] The Qdrant URI entered on the form.

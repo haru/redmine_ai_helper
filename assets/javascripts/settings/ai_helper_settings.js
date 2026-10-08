@@ -168,21 +168,33 @@ function modelTypeChanged() {
 window.modelTypeChanged = modelTypeChanged;
 
 /**
- * Wire up the Qdrant "test connection" button in the vector search tab.
- * Sends the current (unsaved) URI and API key to the server, shows progress
- * while running, and discards results that are stale because the inputs
- * changed or a newer request started. Does nothing when the section is absent.
+ * Build FormData with an `ai_helper_setting[key]` entry for each value.
+ * @param {{[key: string]: string}} values Setting values keyed by attribute name.
+ * @returns {FormData} Form data ready to post.
  */
-function initVectorConnectionTest() {
-  const container = document.getElementById('ai-helper-qdrant-connection');
-  if (!container) { return; }
-  const config = JSON.parse(container.dataset.config || '{}');
-  const button = document.getElementById('ai-helper-vector-test-connection-btn');
-  const result = document.getElementById('ai-helper-vector-test-connection-result');
-  const uriField = document.getElementById('ai_helper_setting_vector_search_uri');
-  const keyField = document.getElementById('ai_helper_setting_vector_search_api_key');
-  if (!button || !result || !uriField || !keyField) { return; }
+function settingFormData(values) {
+  const formData = new FormData();
+  Object.keys(values).forEach(function(key) {
+    formData.append('ai_helper_setting[' + key + ']', values[key]);
+  });
+  return formData;
+}
 
+/**
+ * Wire up a "test connection" button (shared by the Qdrant and embedding tests).
+ * Posts the current (unsaved) form values, shows progress while running, and
+ * discards results that are stale because an input changed or a newer request
+ * started. Results are rendered with textContent only.
+ * @param {object} options Binding options.
+ * @param {HTMLButtonElement} options.button Button that starts the test.
+ * @param {HTMLElement} options.result Element that shows the result message.
+ * @param {HTMLElement[]} options.fields Inputs whose input/change events clear the result and make a running request stale.
+ * @param {function(): FormData} options.buildFormData Returns the form data to post.
+ * @param {object} options.config Parsed data-config with testConnectionUrl, testConnectionSuccessLabel, testConnectionFailedLabel and loadingLabel.
+ * @param {function(object): string} [options.formatSuccess] Returns the success message for the response data; defaults to testConnectionSuccessLabel.
+ */
+function bindConnectionTest({ button, result, fields, buildFormData, config, formatSuccess }) {
+  const successText = formatSuccess || function() { return config.testConnectionSuccessLabel; };
   let requestSeq = 0;
 
   /** Empty the result area and drop its status class. */
@@ -203,9 +215,7 @@ function initVectorConnectionTest() {
 
   button.addEventListener('click', function() {
     const seq = ++requestSeq;
-    const formData = new FormData();
-    formData.append('ai_helper_setting[vector_search_uri]', uriField.value);
-    formData.append('ai_helper_setting[vector_search_api_key]', keyField.value);
+    const body = buildFormData();
 
     button.disabled = true;
     result.textContent = config.loadingLabel;
@@ -214,7 +224,7 @@ function initVectorConnectionTest() {
     fetch(config.testConnectionUrl, {
       method: 'POST',
       headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content },
-      body: formData
+      body: body
     })
       .then(function(response) {
         // Non-JSON bodies (e.g. a login page after the session expired or a
@@ -226,7 +236,7 @@ function initVectorConnectionTest() {
       .then(function(data) {
         if (seq !== requestSeq) { return; }
         if (data.success) {
-          showResult(true, config.testConnectionSuccessLabel);
+          showResult(true, successText(data));
         } else {
           showResult(false, config.testConnectionFailedLabel + (data.error ? ': ' + data.error : ''));
         }
@@ -240,7 +250,7 @@ function initVectorConnectionTest() {
       });
   });
 
-  [uriField, keyField].forEach(function(field) {
+  fields.forEach(function(field) {
     ['input', 'change'].forEach(function(type) {
       field.addEventListener(type, function() {
         requestSeq++;
@@ -249,7 +259,74 @@ function initVectorConnectionTest() {
     });
   });
 }
+
+/**
+ * Wire up the Qdrant "test connection" button in the vector search tab.
+ * Sends the current (unsaved) URI and API key to the server. Does nothing
+ * when the section is absent.
+ */
+function initVectorConnectionTest() {
+  const container = document.getElementById('ai-helper-qdrant-connection');
+  if (!container) { return; }
+  const config = JSON.parse(container.dataset.config || '{}');
+  const button = document.getElementById('ai-helper-vector-test-connection-btn');
+  const result = document.getElementById('ai-helper-vector-test-connection-result');
+  const uriField = document.getElementById('ai_helper_setting_vector_search_uri');
+  const keyField = document.getElementById('ai_helper_setting_vector_search_api_key');
+  if (!button || !result || !uriField || !keyField) { return; }
+
+  bindConnectionTest({
+    button,
+    result,
+    config,
+    fields: [uriField, keyField],
+    buildFormData: function() {
+      return settingFormData({
+        vector_search_uri: uriField.value,
+        vector_search_api_key: keyField.value
+      });
+    }
+  });
+}
 window.initVectorConnectionTest = initVectorConnectionTest;
+
+/**
+ * Wire up the embedding model "test connection" button in the vector search
+ * tab. Sends the current (unsaved) model profile selections and embedding
+ * model name, and shows the vector dimension on success. Does nothing when
+ * the section is absent.
+ */
+function initEmbeddingConnectionTest() {
+  const container = document.getElementById('ai-helper-embedding-connection');
+  if (!container) { return; }
+  const config = JSON.parse(container.dataset.config || '{}');
+  const button = document.getElementById('ai-helper-embedding-test-connection-btn');
+  const result = document.getElementById('ai-helper-embedding-test-connection-result');
+  const modelProfileField = document.getElementById('ai_helper_setting_model_profile_id');
+  const useVectorProfileField = document.getElementById('ai_helper_setting_use_vector_model_profile');
+  const vectorProfileField = document.getElementById('ai_helper_setting_vector_model_profile_id');
+  const embeddingModelField = document.getElementById('ai_helper_setting_embedding_model');
+  if (!button || !result || !modelProfileField || !useVectorProfileField || !vectorProfileField || !embeddingModelField) { return; }
+
+  bindConnectionTest({
+    button,
+    result,
+    config,
+    fields: [modelProfileField, useVectorProfileField, vectorProfileField, embeddingModelField],
+    buildFormData: function() {
+      return settingFormData({
+        model_profile_id: modelProfileField.value,
+        use_vector_model_profile: useVectorProfileField.checked ? '1' : '0',
+        vector_model_profile_id: vectorProfileField.value,
+        embedding_model: embeddingModelField.value
+      });
+    },
+    formatSuccess: function(data) {
+      return config.testConnectionSuccessLabel + ' (' + config.dimensionLabel + ': ' + data.dimension + ')';
+    }
+  });
+}
+window.initEmbeddingConnectionTest = initEmbeddingConnectionTest;
 
 /**
  * Wire up the settings page: tab-hidden-field sync, event bindings, and
@@ -294,5 +371,6 @@ function initAiHelperSettingsPage() {
   setVectorTargetProjectsVisible();
   setSendUserIdVisible();
   initVectorConnectionTest();
+  initEmbeddingConnectionTest();
 }
 window.initAiHelperSettingsPage = initAiHelperSettingsPage;
