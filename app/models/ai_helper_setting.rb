@@ -123,6 +123,17 @@ class AiHelperSetting < ApplicationRecord
     model_profile&.llm_type == RedmineAiHelper::LlmProvider::LLM_AZURE_OPENAI
   end
 
+  # Returns the model profile used for vector operations (embedding and
+  # content analysis), following the same rule as actual vector registration.
+  # The dedicated vector profile is used only when use_vector_model_profile is
+  # on and an ID is set; otherwise the base model profile is used.
+  # @return [AiHelperModelProfile, nil] nil when no base profile is set or it no longer exists
+  # @raise [ActiveRecord::RecordNotFound] when the dedicated vector profile no longer exists
+  def vector_llm_model_profile
+    return AiHelperModelProfile.find(vector_model_profile_id) if use_vector_model_profile? && vector_model_profile_id.present?
+    model_profile
+  end
+
   # Get the maximum tokens from the model profile
   # @return [Integer, nil] The maximum tokens or nil if not configured
   def max_tokens

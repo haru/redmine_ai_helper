@@ -36,6 +36,18 @@
     <p>
       <%= f.text_field :embedding_model, size: 60 %>
     </p>
+    <div id="ai-helper-embedding-connection" data-config='<%= {
+      testConnectionUrl: ai_helper_settings_test_embedding_connection_path,
+      testConnectionSuccessLabel: l("ai_helper.model_profiles.test_connection_success"),
+      testConnectionFailedLabel: l("ai_helper.model_profiles.test_connection_failed"),
+      dimensionLabel: l("activerecord.attributes.ai_helper_setting.dimension"),
+      loadingLabel: l(:label_loading)
+    }.to_json %>'>
+      <p id="ai-helper-embedding-test-connection">
+        <button type="button" id="ai-helper-embedding-test-connection-btn"><%= l("ai_helper.model_profiles.test_connection") %></button>
+        <span id="ai-helper-embedding-test-connection-result" role="status" aria-live="polite"></span>
+      </p>
+    </div>
     <p id="ai_helper_dimension" style="display: none;">
       <%= f.text_field :dimension, size: 60 %>
     </p>

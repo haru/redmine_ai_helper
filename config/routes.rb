@@ -59,6 +59,7 @@ RedmineApp::Application.routes.draw do
   post "ai_helper_settings/index", to: "ai_helper_settings#update", as: "ai_helper_setting_update"
   get "ai_helper_settings/help/:channel_type", to: "ai_helper_settings#help", as: "ai_helper_settings_help"
   post "ai_helper_settings/test_vector_connection", to: "ai_helper_settings#test_vector_connection", as: "ai_helper_settings_test_vector_connection"
+  post "ai_helper_settings/test_embedding_connection", to: "ai_helper_settings#test_embedding_connection", as: "ai_helper_settings_test_embedding_connection"
 
   post "ai_helper_channel_bindings", to: "ai_helper_channel_bindings#create", as: "ai_helper_channel_bindings"
   delete "ai_helper_channel_bindings/:id", to: "ai_helper_channel_bindings#destroy", as: "ai_helper_channel_binding"

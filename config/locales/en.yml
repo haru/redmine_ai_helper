@@ -42,6 +42,11 @@ en:
       messages:
         invalid_uri: "Qdrant URI must be a valid http or https URL."
         unexpected_response: "The server did not respond as a Qdrant server. Please check the Qdrant URI."
+        vector_model_profile_required: "Select a model profile for vector search."
+        model_profile_required: "Select a model profile on the Model tab."
+        model_profile_not_found: "The selected model profile was not found."
+        embedding_timeout: "No response within %{seconds} seconds."
+        unexpected_embedding_response: "No embedding vector was returned. Check the embedding model name."
     settings:
       tab_general: "General"
       tab_model: "Model"

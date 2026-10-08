@@ -42,6 +42,11 @@ ja:
       messages:
         invalid_uri: "Qdrant URI には http または https の正しい URL を入力してください。"
         unexpected_response: "Qdrant サーバーとしての応答がありませんでした。Qdrant URI を確認してください。"
+        vector_model_profile_required: "ベクトル検索用モデルプロファイルを選択してください。"
+        model_profile_required: "モデルタブでモデルプロファイルを選択してください。"
+        model_profile_not_found: "選択されたモデルプロファイルが見つかりません。"
+        embedding_timeout: "%{seconds} 秒以内に応答がありませんでした。"
+        unexpected_embedding_response: "埋め込みベクトルが返されませんでした。埋め込みモデル名を確認してください。"
     settings:
       tab_general: "全般"
       tab_model: "モデル"

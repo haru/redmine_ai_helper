@@ -145,6 +145,47 @@ class AiHelperSettingTest < ActiveSupport::TestCase
     end
   end
 
+  context "vector_llm_model_profile" do
+    setup do
+      @base_profile = AiHelperModelProfile.create!(
+        name: "Base Profile",
+        access_key: "base_key",
+        llm_type: "OpenAI",
+        llm_model: "gpt-4o"
+      )
+      @vector_profile = AiHelperModelProfile.create!(
+        name: "Vector Profile",
+        access_key: "vec_key",
+        llm_type: "OpenAI",
+        llm_model: "text-embedding-3-large"
+      )
+    end
+
+    should "return the vector profile when use_vector_model_profile is true and vector_model_profile_id is set" do
+      setting = AiHelperSetting.new(model_profile_id: @base_profile.id, use_vector_model_profile: true, vector_model_profile_id: @vector_profile.id)
+
+      assert_equal @vector_profile, setting.vector_llm_model_profile
+    end
+
+    should "return the base profile when use_vector_model_profile is false, ignoring vector_model_profile_id" do
+      setting = AiHelperSetting.new(model_profile_id: @base_profile.id, use_vector_model_profile: false, vector_model_profile_id: @vector_profile.id)
+
+      assert_equal @base_profile, setting.vector_llm_model_profile
+    end
+
+    should "return the base profile when use_vector_model_profile is true but vector_model_profile_id is blank" do
+      setting = AiHelperSetting.new(model_profile_id: @base_profile.id, use_vector_model_profile: true, vector_model_profile_id: nil)
+
+      assert_equal @base_profile, setting.vector_llm_model_profile
+    end
+
+    should "raise ActiveRecord::RecordNotFound when the vector profile no longer exists" do
+      setting = AiHelperSetting.new(model_profile_id: @base_profile.id, use_vector_model_profile: true, vector_model_profile_id: 999_999)
+
+      assert_raises(ActiveRecord::RecordNotFound) { setting.vector_llm_model_profile }
+    end
+  end
+
   context "before_save clear_vector_model_profile_id_if_disabled" do
     setup do
       @vector_profile = AiHelperModelProfile.create!(
