@@ -217,16 +217,22 @@ describe("initAiHelperSettingsPage", () => {
     option.value = "42";
     modelProfileSelect.appendChild(option);
     modelProfileSelect.value = "42";
-    modelTypeMeta.textContent = "azure_openai";
+    // As on the real page, the model type element only arrives with the
+    // AJAX-loaded profile detail (_show.html.erb).
+    modelTypeMeta.remove();
     const sendUserIdDiv = document.getElementById("ai-helper-send-user-id");
-    sendUserIdDiv.style.display = "none";
-    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({
-      ok: true,
-      text: () => Promise.resolve("<p>profile 42</p>"),
-    })));
+    let resolveFetch;
+    vi.stubGlobal("fetch", vi.fn(() => new Promise((resolve) => { resolveFetch = resolve; })));
 
     await loadScript("assets/javascripts/settings/ai_helper_settings");
     window.initAiHelperSettingsPage();
+
+    expect(sendUserIdDiv.style.display).toBe("none");
+
+    resolveFetch({
+      ok: true,
+      text: () => Promise.resolve('<p>profile 42</p><div id="ai_helper_model_type">azure_openai</div>'),
+    });
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(sendUserIdDiv.style.display).toBe("");
