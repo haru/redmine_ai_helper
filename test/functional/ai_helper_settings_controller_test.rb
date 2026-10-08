@@ -948,10 +948,10 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
     end
 
     should "log the backtrace for unexpected errors" do
-      RedmineAiHelper::LlmProvider.stubs(:test_embedding).raises(NoMethodError.new("undefined method 'foo'"))
+      RedmineAiHelper::LlmProvider.stubs(:test_embedding).raises(RuntimeError.new("boom"))
       AiHelperSettingsController.ai_helper_logger.expects(:error).with do |message|
         lines = message.lines(chomp: true)
-        lines.first == "Embedding connection test failed: NoMethodError: undefined method 'foo'" &&
+        lines.first == "Embedding connection test failed: RuntimeError: boom" &&
           lines.size > 1 && lines.size <= 1 + AiHelperSettingsController::EMBEDDING_TEST_BACKTRACE_LINES
       end
 
