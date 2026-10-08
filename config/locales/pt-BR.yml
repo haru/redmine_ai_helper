@@ -18,6 +18,8 @@ pt-BR:
   permission_view_ai_helper: Visualizar AI Helper
   label_ai_helper_error: Erro
   ai_helper:
+    vector_search:
+      embedding_dimension: Dimensão
     notice_sub_issues_added: As subtarefas foram adicionadas
     chat:
       planning: Criando plano de execução...
@@ -201,7 +203,6 @@ pt-BR:
         vector_search_uri: Endereço URI
         vector_search_api_key: Chave de API
         embedding_model: Modelo de embedding
-        dimension: Dimensão
         use_think_model: Usar modelo de raciocínio
         think_model_profile_id: Perfil do modelo de raciocínio
         think_model_description: Use um modelo separado para tarefas que exigem raciocínio mais profundo, como geração de relatório de saúde e rascunho de resposta de tarefa.

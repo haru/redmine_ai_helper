@@ -17,8 +17,6 @@ describe("initAiHelperSettingsPage", () => {
     container.id = "ai-helper-settings-index";
     container.dataset.config = JSON.stringify({
       modelProfilesPath: "/ai_helper_model_profiles",
-      compatibleType: "openai_compatible",
-      azureType: "azure_openai",
       userIdSupportedTypes: ["openai", "openai_compatible", "azure_openai"],
       ...config,
     });
@@ -57,8 +55,7 @@ describe("initAiHelperSettingsPage", () => {
     });
 
     ["ai-helper-think-model-settings", "ai-helper-attachment-settings", "ai-helper-vector-target-projects",
-      "ai-helper-vector-model-profile-settings", "ai-helper-vector-search", "ai-helper-send-user-id",
-      "ai_helper_dimension", "ai_helper_embedding_url"].forEach((id) => {
+      "ai-helper-vector-model-profile-settings", "ai-helper-vector-search", "ai-helper-send-user-id"].forEach((id) => {
       const div = document.createElement("div");
       div.id = id;
       container.appendChild(div);
@@ -77,7 +74,6 @@ describe("initAiHelperSettingsPage", () => {
     container = undefined;
     vi.unstubAllGlobals();
     delete window.initAiHelperSettingsPage;
-    delete window.modelTypeChanged;
     delete window.setSendUserIdVisible;
   });
 
@@ -215,26 +211,32 @@ describe("initAiHelperSettingsPage", () => {
     expect(document.getElementById("ai_helper_setting_use_vector_model_profile").parentElement.style.display).toBe("");
   });
 
-  it("modelTypeChanged shows the dimension field for the compatible type", async () => {
-    const { modelTypeMeta } = addMarkup();
+  it("does not expose modelTypeChanged", async () => {
+    addMarkup();
     await loadScript("assets/javascripts/settings/ai_helper_settings");
-    modelTypeMeta.textContent = "openai_compatible";
 
-    window.modelTypeChanged();
-
-    expect(document.getElementById("ai_helper_dimension").style.display).toBe("");
-    expect(document.getElementById("ai_helper_embedding_url").style.display).toBe("none");
+    expect(window.modelTypeChanged).toBeUndefined();
   });
 
-  it("modelTypeChanged shows the embedding URL field for the azure type", async () => {
-    const { modelTypeMeta } = addMarkup();
-    await loadScript("assets/javascripts/settings/ai_helper_settings");
+  it("refreshes the send-user-id row after a model profile is loaded", async () => {
+    const { modelProfileSelect, modelTypeMeta } = addMarkup();
+    const option = document.createElement("option");
+    option.value = "42";
+    modelProfileSelect.appendChild(option);
+    modelProfileSelect.value = "42";
     modelTypeMeta.textContent = "azure_openai";
+    const sendUserIdDiv = document.getElementById("ai-helper-send-user-id");
+    sendUserIdDiv.style.display = "none";
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({
+      ok: true,
+      text: () => Promise.resolve("<p>profile 42</p>"),
+    })));
 
-    window.modelTypeChanged();
+    await loadScript("assets/javascripts/settings/ai_helper_settings");
+    window.initAiHelperSettingsPage();
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(document.getElementById("ai_helper_embedding_url").style.display).toBe("");
-    expect(document.getElementById("ai_helper_dimension").style.display).toBe("none");
+    expect(sendUserIdDiv.style.display).toBe("");
   });
 
   it("toggles the send-user-id row only for supported model types", async () => {
@@ -269,8 +271,6 @@ describe("initAiHelperSettingsPage", () => {
     addMarkup();
     document.getElementById("ai_helper_model_type").remove();
     document.getElementById("ai-helper-send-user-id").remove();
-    document.getElementById("ai_helper_dimension").remove();
-    document.getElementById("ai_helper_embedding_url").remove();
     await loadScript("assets/javascripts/settings/ai_helper_settings");
 
     expect(() => window.initAiHelperSettingsPage()).not.toThrow();
@@ -687,7 +687,7 @@ describe("initEmbeddingConnectionTest", () => {
     });
     ["ai_helper_model_profile_description", "ai_helper_model_type", "ai-helper-think-model-settings",
       "ai-helper-attachment-settings", "ai-helper-vector-target-projects", "ai-helper-vector-model-profile-settings",
-      "ai-helper-vector-search", "ai-helper-send-user-id", "ai_helper_dimension", "ai_helper_embedding_url"].forEach((id) => {
+      "ai-helper-vector-search", "ai-helper-send-user-id"].forEach((id) => {
       const div = document.createElement("div");
       div.id = id;
       container.appendChild(div);

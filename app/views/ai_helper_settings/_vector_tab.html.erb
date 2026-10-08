@@ -40,7 +40,7 @@
       testConnectionUrl: ai_helper_settings_test_embedding_connection_path,
       testConnectionSuccessLabel: l("ai_helper.model_profiles.test_connection_success"),
       testConnectionFailedLabel: l("ai_helper.model_profiles.test_connection_failed"),
-      dimensionLabel: l("activerecord.attributes.ai_helper_setting.dimension"),
+      dimensionLabel: l("ai_helper.vector_search.embedding_dimension"),
       loadingLabel: l(:label_loading)
     }.to_json %>'>
       <p id="ai-helper-embedding-test-connection">
@@ -48,12 +48,6 @@
         <span id="ai-helper-embedding-test-connection-result" role="status" aria-live="polite"></span>
       </p>
     </div>
-    <p id="ai_helper_dimension" style="display: none;">
-      <%= f.text_field :dimension, size: 60 %>
-    </p>
-    <p id="ai_helper_embedding_url" style="display: none;">
-      <%= f.text_field :embedding_url, size: 90 %>
-    </p>
     <p>
       <%= f.check_box :vector_register_all_projects %>
       <span class="description"><%= t("activerecord.attributes.ai_helper_setting.vector_register_all_projects_description") %></span>

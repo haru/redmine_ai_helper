@@ -48,7 +48,7 @@ function loadModelProfile(id) {
     })
     .then(function(html) {
       setHtmlAndRunScripts(descriptionDiv, html);
-      modelTypeChanged();
+      setSendUserIdVisible();
     })
     .catch(function() {
       descriptionDiv.textContent = config.loadErrorMessage;
@@ -151,21 +151,6 @@ function setSendUserIdVisible() {
   if (sendUserIdDiv) {sendUserIdDiv.style.display = supported ? '' : 'none';}
 }
 window.setSendUserIdVisible = setSendUserIdVisible;
-
-/**
- * Show/hide the model-type-specific fields (dimension, embedding URL) for
- * the just-loaded model profile, and refresh the "send user ID" visibility.
- */
-function modelTypeChanged() {
-  const config = getAiHelperSettingsConfig();
-  const modelType = document.getElementById('ai_helper_model_type')?.textContent || '';
-  const dimensionDiv = document.getElementById('ai_helper_dimension');
-  const embeddingUrlDiv = document.getElementById('ai_helper_embedding_url');
-  if (dimensionDiv) {dimensionDiv.style.display = modelType === config.compatibleType ? '' : 'none';}
-  if (embeddingUrlDiv) {embeddingUrlDiv.style.display = modelType === config.azureType ? '' : 'none';}
-  setSendUserIdVisible();
-}
-window.modelTypeChanged = modelTypeChanged;
 
 /**
  * Build FormData with an `ai_helper_setting[key]` entry for each value.
