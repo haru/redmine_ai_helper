@@ -122,6 +122,13 @@ class McpServerBuilderTest < ActiveSupport::TestCase
       assert server.tools.key?("search_issues"), "expected read tools to remain when read_only_mode is enabled"
     end
 
+    should "keep capable_version_properties in the built server when read_only_mode is enabled" do
+      @setting.update_column(:read_only_mode, true)
+      server = RedmineAiHelper::Mcp::Server.build
+
+      assert server.tools.key?("capable_version_properties")
+    end
+
     should "keep the log functions in the built server when read_only_mode is enabled" do
       @setting.update_column(:read_only_mode, true)
 
@@ -190,6 +197,6 @@ class McpServerBuilderTest < ActiveSupport::TestCase
   end
 
   def write_tool_names
-    %w[create_new_issue update_issue wiki_add_page wiki_update_page wiki_delete_page]
+    %w[create_new_issue update_issue wiki_add_page wiki_update_page wiki_delete_page create_version update_version delete_version]
   end
 end
