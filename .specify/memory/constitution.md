@@ -1,19 +1,17 @@
 <!--
 SYNC IMPACT REPORT
 =================
-Version change: 1.3.0 → 1.4.0
+Version change: 1.4.0 → 1.4.1
 Modified principles:
-  - VI. Documentation & Architecture Decision Records: expanded with
-      "Review Feedback Logs" (recording spec corrections and adopted code
-      review findings, and consulting past entries before writing specs/code).
-Added sections:
-  - VI. "Review Feedback Logs" subsection
-  - Development Workflow: steps to consult and record review feedback logs
-  - Code Standards: "Review feedback" row
+  - II. Design Document Authority: the secondary authority for runtime development
+      guidance is now `AGENTS.md` (CLAUDE.md files were consolidated into
+      AGENTS.md).
+  - Governance: runtime development guidance reference changed from
+      `CLAUDE.md` to `AGENTS.md`.
+Added sections: N/A
 Removed sections: N/A
 Templates requiring updates:
-  - .specify/templates/plan-template.md  ✅ No change needed (Constitution
-      Check gates are derived from this file).
+  - .specify/templates/plan-template.md  ✅ No change needed.
   - .specify/templates/spec-template.md  ✅ No change needed.
   - .specify/templates/tasks-template.md ✅ No change needed.
 Deferred TODOs: None.
@@ -50,7 +48,7 @@ Specifications in the `specs/` directory are AUTHORITATIVE and MANDATORY.
   approval obtained before implementation begins.
 - When a design appears incorrect, the agent MUST ask the user first rather
   than silently implementing a different approach.
-- `CLAUDE.md` is a secondary authority for runtime development guidance and
+- `AGENTS.md` is a secondary authority for runtime development guidance and
   MUST be respected in the absence of a `specs/` document.
 
 **Rationale**: Design authority prevents drift between intent and
@@ -247,6 +245,6 @@ the implementation does not violate any principle. The Constitution Check
 section in `plan.md` serves this purpose for planned features.
 
 For runtime development guidance not covered by this constitution, refer to
-`CLAUDE.md`.
+`AGENTS.md`.
 
-**Version**: 1.4.0 | **Ratified**: 2026-02-27 | **Last Amended**: 2026-10-09
+**Version**: 1.4.1 | **Ratified**: 2026-02-27 | **Last Amended**: 2026-10-09

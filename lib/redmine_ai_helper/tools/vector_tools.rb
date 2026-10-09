@@ -285,7 +285,7 @@ module RedmineAiHelper
       # Create a filter for the Qdrant database query.
       # Filter items that are nil, or have a nil key/condition/value, or an
       # unrecognized condition, are skipped with a warning log (see
-      # lib/redmine_ai_helper/tools/CLAUDE.md "Skip and warn").
+      # lib/redmine_ai_helper/tools/AGENTS.md "Skip and warn").
       # @param filter [Array<Hash>] The filter to create.
       # @return [Array<Hash>] The created filter.
       def create_filter(filter)
