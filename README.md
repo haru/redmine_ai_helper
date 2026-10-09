@@ -539,7 +539,7 @@ All requests must include a Redmine API key in the `X-Redmine-API-Key` header. T
 | Repository | `repository_info`, `read_file`, `read_diff` | Source code and revision access |
 | Board | `list_boards`, `read_message` | Forum and message access |
 | User | `list_users`, `find_user` | User lookup |
-| Version | `list_versions`, `version_info` | Milestone information |
+| Version | `list_versions`, `version_info`, `capable_version_props`, `create_version`, `update_version`, `delete_version` | Read, create, update, and delete versions |
 | File | `analyze_content_files` | File content analysis via LLM |
 | Vector | `find_similar_issues`, `ask_with_filter` | Semantic search (requires vector search setup) |
 

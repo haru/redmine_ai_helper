@@ -1,8 +1,8 @@
 ---
 title: Tool System
 type: component
-sources: [S008, S016, S026, S032, S033, S034, S036]
-updated: 2026-09-23
+sources: [S008, S016, S026, S032, S033, S034, S036, S041]
+updated: 2026-10-08
 ---
 
 # Tool System
@@ -77,6 +77,7 @@ providers' functions it may call — a per-agent permission boundary (S008).
 | `IssueTools`, `IssueSearchTools` | Issue read/search; filter operators like `=`, `>=`, `><t+` |
 | `IssueUpdateTools` | Create/update issues (atomic, `parent_issue_id` hierarchy) |
 | `ProjectTools`, `VersionTools` | Metadata; `accessible_project?` checks |
+| `VersionWriteTools` | Version create/update/delete — see [Version Write Tools](./version-write-tools.md) (S041) |
 | `WikiTools`, `WikiWriteTools` | Wiki read / write — see [Wiki Tools](./wiki-tools.md) |
 | `VectorTools` | Semantic search over Qdrant |
 | `FileTools` | Document analysis via prompt templates |
@@ -84,6 +85,11 @@ providers' functions it may call — a per-agent permission boundary (S008).
 | `UserTools`, `SystemTools`, `BoardTools`, `RepositoryTools` | Users, env info + admin [log access](./log-file-access-tools.md) (S036), forums, SCM |
 
 ## Gotchas
+
+- **Error convention**: most tools `raise` on failure, which in chat aborts the
+  whole tool loop. The version tools return `{ error: }` for user mistakes and
+  raise only for system failures — see
+  [Version Write Tools: Strict Input & Error Results](./version-write-tools-error-policy.md) (S041).
 
 - LLM-supplied JSON filter keys may arrive as strings; tools **normalize nested
   hash keys** before use (S008).
@@ -96,4 +102,5 @@ providers' functions it may call — a per-agent permission boundary (S008).
 - [Agent Write-Capability Routing](./agent-write-capability-routing.md)
 - [search_issues Cross-Project Scoping](./search-issues-cross-project-scoping.md)
 - [Wiki Tools](./wiki-tools.md)
+- [Version Write Tools](./version-write-tools.md)
 - [All-Projects Data-Access Scope](./all-projects-data-access-scope.md)
