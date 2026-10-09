@@ -107,7 +107,7 @@ class MCPToolAdapterTest < ActiveSupport::TestCase
         logger = mock("logger")
         logged = sequence("logged")
         logger.expects(:error).with { |message| message.include?("RuntimeError: Database is down") }.in_sequence(logged)
-        logger.expects(:error).with { |message| message.include?("in 'explode'") }.in_sequence(logged)
+        logger.expects(:error).with { |message| message.include?("tool_adapter_test.rb") }.in_sequence(logged)
         RedmineAiHelper::Mcp::ToolAdapter.stubs(:ai_helper_logger).returns(logger)
 
         mcp_tool = RedmineAiHelper::Mcp::MCPToolAdapter.adapt(error_tools_class.tool_classes.first)
