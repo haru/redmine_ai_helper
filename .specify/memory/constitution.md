@@ -1,16 +1,19 @@
 <!--
 SYNC IMPACT REPORT
 =================
-Version change: 1.2.0 → 1.3.0
+Version change: 1.3.0 → 1.4.0
 Modified principles:
-  - III. Simplicity (YAGNI) → III. Simplicity (KISS, DRY, YAGNI): expanded
-      to explicitly include KISS and DRY principles.
+  - VI. Documentation & Architecture Decision Records: expanded with
+      "Review Feedback Logs" (recording spec corrections and adopted code
+      review findings, and consulting past entries before writing specs/code).
 Added sections:
-  - VI. Documentation & Architecture Decision Records: ADR requirements,
-      docs/ directory conventions, English-only policy.
+  - VI. "Review Feedback Logs" subsection
+  - Development Workflow: steps to consult and record review feedback logs
+  - Code Standards: "Review feedback" row
 Removed sections: N/A
 Templates requiring updates:
-  - .specify/templates/plan-template.md  ✅ No structural change needed.
+  - .specify/templates/plan-template.md  ✅ No change needed (Constitution
+      Check gates are derived from this file).
   - .specify/templates/spec-template.md  ✅ No change needed.
   - .specify/templates/tasks-template.md ✅ No change needed.
 Deferred TODOs: None.
@@ -146,18 +149,45 @@ Project documentation MUST be maintained proactively and consistently.
 - ADRs MUST follow the standard format: title, context, decision, status,
   and consequences.
 
+**Review Feedback Logs (`docs/spec-feedback/`, `docs/code-review-feedback/`)**:
+- After applying a user-requested correction to a specification (`specs/`
+  artifacts such as `spec.md`, `plan.md`, `tasks.md`, or a design document),
+  agents MUST record it in `docs/spec-feedback/` using the
+  `record-spec-feedback` skill.
+- After changing code in response to a review finding (GitHub Copilot PR
+  review or a local AI review), agents MUST record it in
+  `docs/code-review-feedback/` using the `record-code-review-feedback` skill.
+- Typo-only or wording-only fixes and review findings that were not adopted
+  MUST NOT be recorded.
+- Each entry MUST state the feedback, the root cause (why the AI produced the
+  original output), and a concrete prevention rule.
+- Logs are append-only (except for updating an entry's "Promoted to" field
+  when its prevention rule is promoted) and written in English, following the
+  template in each directory's `README.md`.
+- Before writing or updating a specification (`/speckit-specify`,
+  `/speckit-clarify`, `/speckit-plan`), agents MUST read the index in
+  `docs/spec-feedback/README.md` and the entries relevant to the feature.
+- Before writing or changing code, including tests (`/speckit-implement` or
+  any other code change), agents MUST read the index in
+  `docs/code-review-feedback/README.md` and the entries relevant to the files
+  or area being changed.
+
 **Rationale**: ADRs preserve the reasoning behind architectural choices for
 future maintainers. An append-only policy ensures decision history is never
 lost or rewritten. English documentation ensures accessibility across the
-open-source contributor base.
+open-source contributor base. Review feedback logs turn repeated corrections
+into reusable knowledge so the same mistakes are not made again.
 
 ## Development Workflow
 
 All feature work MUST follow this sequence:
 
 1. Branch from `develop` using git-flow (`feature/`, `fix/`, etc.).
-2. Create or update the specification in `specs/<###-feature-name>/spec.md`.
-3. Write failing tests (Red phase) — get user confirmation before proceeding.
+2. Read the relevant entries in `docs/spec-feedback/`, then create or update
+   the specification in `specs/<###-feature-name>/spec.md`. Record every
+   user-requested correction in `docs/spec-feedback/` (see Principle VI).
+3. Read the relevant entries in `docs/code-review-feedback/`, then write
+   failing tests (Red phase) — get user confirmation before proceeding.
 4. Implement minimum code to pass tests (Green phase).
 5. Refactor while keeping tests green (Refactor phase).
 6. Run `rubocop` after every Ruby file modification and fix all offenses before
@@ -166,7 +196,9 @@ All feature work MUST follow this sequence:
 7. Verify test coverage is 95%+ before requesting review.
 8. Run `yard stats --list-undoc` and fix ALL undocumented public APIs before
    requesting review. Zero undocumented items is the required gate.
-9. Merge via PR targeting `develop`; `main` receives only production-ready releases.
+9. Record every review finding that leads to a code change (GitHub Copilot PR
+   review or local AI review) in `docs/code-review-feedback/` (see Principle VI).
+10. Merge via PR targeting `develop`; `main` receives only production-ready releases.
 
 **Commit messages** MUST be written in plain English. MUST NOT reference
 Claude Code or any AI tooling in commit messages.
@@ -192,6 +224,7 @@ are made during planning or implementation (see Principle VI).
 | Error handling | Surface errors immediately; NEVER add silent fallbacks |
 | ADR | Write in `docs/adr/` for significant design decisions; append-only |
 | docs/ files | Descriptive English filenames; all content in English |
+| Review feedback | Read `docs/spec-feedback/` before specs and `docs/code-review-feedback/` before code; record spec corrections and adopted review findings there; append-only |
 
 ## Governance
 
@@ -216,4 +249,4 @@ section in `plan.md` serves this purpose for planned features.
 For runtime development guidance not covered by this constitution, refer to
 `CLAUDE.md`.
 
-**Version**: 1.3.0 | **Ratified**: 2026-02-27 | **Last Amended**: 2026-05-23
+**Version**: 1.4.0 | **Ratified**: 2026-02-27 | **Last Amended**: 2026-10-09
