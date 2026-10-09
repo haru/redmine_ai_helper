@@ -39,7 +39,7 @@ module RedmineAiHelper
           raise UserError, "project_id is required" if project_id.nil?
           raise UserError, "name is required" if name.nil?
           project = Project.find_by(id: project_id)
-          raise UserError, "Project not found. id = #{project_id}" if project.nil?
+          raise UserError, "Project not found. id = #{project_id}" if project.nil? || !project.visible?
           raise UserError, "Project is not accessible: id = #{project_id}" unless accessible_project?(project)
           raise UserError, "Permission denied" unless User.current.allowed_to?(:manage_versions, project)
 

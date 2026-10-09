@@ -126,6 +126,12 @@ class VersionToolsTest < ActiveSupport::TestCase
     assert_equal({ error: "Project is not accessible: id = 2" }, @provider.capable_version_props(project_id: 2))
   end
 
+  def test_capable_version_props_masks_invisible_project_as_not_found
+    hidden = Project.create!(name: "Hidden", identifier: "hidden-proj", is_public: false)
+
+    assert_equal({ error: "Project not found. id = #{hidden.id}" }, @provider.capable_version_props(project_id: hidden.id))
+  end
+
   private
 
   def disable_ai_helper_module

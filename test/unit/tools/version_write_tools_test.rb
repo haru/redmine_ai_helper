@@ -95,6 +95,14 @@ class VersionWriteToolsTest < ActiveSupport::TestCase
       end
     end
 
+    should "return not found for an invisible project" do
+      hidden = Project.create!(name: "Hidden", identifier: "hidden-proj", is_public: false)
+
+      assert_no_difference "Version.count" do
+        assert_equal({ error: "Project not found. id = #{hidden.id}" }, @provider.create_version(project_id: hidden.id, name: "X"))
+      end
+    end
+
     should "return a validation error for a duplicate name" do
       assert_no_difference "Version.count" do
         result = @provider.create_version(project_id: 1, name: "0.1")

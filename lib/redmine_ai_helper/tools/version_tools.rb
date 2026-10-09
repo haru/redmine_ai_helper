@@ -91,7 +91,7 @@ module RedmineAiHelper
         user_errors_as_result do
           raise UserError, "project_id is required" if project_id.nil?
           project = Project.find_by(id: project_id)
-          raise UserError, "Project not found. id = #{project_id}" if project.nil?
+          raise UserError, "Project not found. id = #{project_id}" if project.nil? || !project.visible?
           raise UserError, "Project is not accessible: id = #{project_id}" unless accessible_project?(project)
 
           # Built only to ask Redmine for the allowed values; never saved.
