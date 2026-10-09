@@ -62,11 +62,11 @@ Write a rule that is concrete and checkable at spec-writing time (e.g. "When a s
 2. Create `docs/spec-feedback/NNN-short-title.md` from the template, in English, with today's date.
 3. Append a row to the README index: `| [SF-NNN](./NNN-short-title.md) | Title | category | feature | Not yet |`.
 
-Never edit or delete existing entries — only add the index row.
+Never edit or delete existing entries, except for updating the **Promoted to** field in Step 7.
 
 ### Step 7: Propose Promotion When It Recurs
 
-If the new entry has one or more **Related** entries (the pattern has occurred at least twice), propose to the user where the prevention rule should be promoted (AGENTS.md, the constitution, a skill) and show the proposed text. Do not change those files without the user's approval.
+If the new entry has one or more **Related** entries (the pattern has occurred at least twice), propose to the user where the prevention rule should be promoted (AGENTS.md, the constitution, a skill) and show the proposed text. Do not change those files without the user's approval. After the approved rule is added, update the entry's **Promoted to** field and the matching index cell to name the destination.
 
 ### Step 8: Report
 
@@ -75,4 +75,4 @@ Tell the user the created file, the category, the prevention rule, and any promo
 ## Notes
 
 - Write entries in English regardless of the conversation language.
-- Keep excerpts short; link to the file instead of copying large sections.
+- Keep excerpts short, but make each entry self-contained: `specs/` is gitignored, so quote the lines needed to understand the correction instead of linking to the artifact.

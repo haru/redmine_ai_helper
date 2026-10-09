@@ -22,9 +22,9 @@ When one review contains several findings, combine the findings that share a roo
 
 ## Rules
 
-- **Append-only**: never modify or delete past entries. If an entry turns out to be wrong, add a new entry that references and corrects it. The only edit allowed on existing files is adding rows to this README's index.
+- **Append-only**: never modify or delete past entries. If an entry turns out to be wrong, add a new entry that references and corrects it. The only edits allowed on existing files are adding rows to this README's index and, when an entry's prevention rule is promoted, updating that entry's **Promoted to** field and the matching index cell.
 - **English only**: all entries must be written in English.
-- **Numbered sequentially**: use the format `NNN-short-title.md` (e.g., `001-n-plus-one-in-version-list.md`).
+- **Numbered sequentially**: use the format `NNN-short-title.md` (e.g., `001-n-plus-one-in-version-list.md`). If another branch merged an entry with the same number first, renumber yours (file name, heading, and index row) before merging.
 - Use the `record-code-review-feedback` skill to create entries.
 
 ## Root-cause categories

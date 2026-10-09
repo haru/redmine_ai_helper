@@ -35,7 +35,7 @@ Identify the review source:
     --jq '.[] | select(.user.login == "Copilot") | {id, path, line, html_url, body}'
   ```
 
-- **Local AI review** (`/code-review`, `speckit-review-*`, etc.): use the findings reported earlier in the conversation.
+- **Local AI review** (`/code-review`, `speckit-review-*`, etc.): use the findings reported earlier in the conversation. If they are no longer available (e.g. after `/clear` or in a new session), ask the user for them instead of reconstructing them.
 
 For each finding, check whether it led to a code change (`git diff`, `git log -p` on the affected files, or the conversation). Keep only adopted findings. Skip typo-only and formatting-only fixes.
 
@@ -67,11 +67,11 @@ Write a rule that is concrete and checkable at code-generation time (e.g. "Tools
 2. Create `docs/code-review-feedback/NNN-short-title.md` from the template, in English, with today's date. Include the review comment URL and the fix commit hash when available.
 3. Append a row to the README index: `| [CRF-NNN](./NNN-short-title.md) | Title | category | source | Not yet |`.
 
-Never edit or delete existing entries — only add the index row.
+Never edit or delete existing entries, except for updating the **Promoted to** field in Step 7.
 
 ### Step 7: Propose Promotion When It Recurs
 
-If the new entry has one or more **Related** entries (the pattern has occurred at least twice), propose to the user where the prevention rule should be promoted (AGENTS.md, the constitution, an ADR, a skill) and show the proposed text. Do not change those files without the user's approval.
+If the new entry has one or more **Related** entries (the pattern has occurred at least twice), propose to the user where the prevention rule should be promoted (AGENTS.md, the constitution, an ADR, a skill) and show the proposed text. Do not change those files without the user's approval. After the approved rule is added, update the entry's **Promoted to** field and the matching index cell to name the destination.
 
 ### Step 8: Report
 

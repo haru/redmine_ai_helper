@@ -186,8 +186,8 @@ Agents expose tools by overriding `available_tool_providers` to return an array 
 - When the user asks you to correct a specification (`specs/` artifacts such as spec.md, plan.md, tasks.md, or design docs), record the feedback with the `record-spec-feedback` skill after applying the fix.
 - When a code review (GitHub Copilot PR review or a local AI review) leads to a code change, record it with the `record-code-review-feedback` skill.
 - Do not record typo-only or wording-only fixes, or review findings that were not adopted.
-- Before writing a specification, read the index in `docs/spec-feedback/README.md` and the entries relevant to the feature. Before generating code, read `docs/code-review-feedback/README.md` likewise.
-- Logs are append-only, in English, and follow the template in each README.
+- Before writing a specification, read the index in `docs/spec-feedback/README.md` and the entries relevant to the feature. Before writing or changing code (including tests), read `docs/code-review-feedback/README.md` likewise.
+- Logs are append-only (except for updating an entry's **Promoted to** field when its rule is promoted), in English, and follow the template in each README.
 
 ## Internationalization
 - All user-facing text via `config/locales/*.yml` using `t()` helper

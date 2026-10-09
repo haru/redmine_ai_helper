@@ -12,9 +12,8 @@ Added sections:
   - Code Standards: "Review feedback" row
 Removed sections: N/A
 Templates requiring updates:
-  - .specify/templates/plan-template.md  ⚠ Pending user decision: Constitution
-      Check could list "consulted docs/spec-feedback/ and
-      docs/code-review-feedback/ entries" as a check item.
+  - .specify/templates/plan-template.md  ✅ No change needed (Constitution
+      Check gates are derived from this file).
   - .specify/templates/spec-template.md  ✅ No change needed.
   - .specify/templates/tasks-template.md ✅ No change needed.
 Deferred TODOs: None.
@@ -162,14 +161,16 @@ Project documentation MUST be maintained proactively and consistently.
   MUST NOT be recorded.
 - Each entry MUST state the feedback, the root cause (why the AI produced the
   original output), and a concrete prevention rule.
-- Logs are append-only and written in English, following the template in each
-  directory's `README.md`.
+- Logs are append-only (except for updating an entry's "Promoted to" field
+  when its prevention rule is promoted) and written in English, following the
+  template in each directory's `README.md`.
 - Before writing or updating a specification (`/speckit-specify`,
   `/speckit-clarify`, `/speckit-plan`), agents MUST read the index in
   `docs/spec-feedback/README.md` and the entries relevant to the feature.
-- Before generating code (`/speckit-implement` or any code change), agents
-  MUST read the index in `docs/code-review-feedback/README.md` and the entries
-  relevant to the files or area being changed.
+- Before writing or changing code, including tests (`/speckit-implement` or
+  any other code change), agents MUST read the index in
+  `docs/code-review-feedback/README.md` and the entries relevant to the files
+  or area being changed.
 
 **Rationale**: ADRs preserve the reasoning behind architectural choices for
 future maintainers. An append-only policy ensures decision history is never
@@ -185,9 +186,9 @@ All feature work MUST follow this sequence:
 2. Read the relevant entries in `docs/spec-feedback/`, then create or update
    the specification in `specs/<###-feature-name>/spec.md`. Record every
    user-requested correction in `docs/spec-feedback/` (see Principle VI).
-3. Write failing tests (Red phase) — get user confirmation before proceeding.
-4. Read the relevant entries in `docs/code-review-feedback/`, then implement
-   minimum code to pass tests (Green phase).
+3. Read the relevant entries in `docs/code-review-feedback/`, then write
+   failing tests (Red phase) — get user confirmation before proceeding.
+4. Implement minimum code to pass tests (Green phase).
 5. Refactor while keeping tests green (Refactor phase).
 6. Run `rubocop` after every Ruby file modification and fix all offenses before
    proceeding. Zero offenses is the required gate. Use the `/rubocop` skill for
