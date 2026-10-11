@@ -1,6 +1,6 @@
 source "https://rubygems.org"
 
-gem "json", "< 3"
+gem "json", "< 4"
 gem "mcp", "~> 1.7.0"
 gem "ruby_llm", "~> 2.1.0"
 
