@@ -939,7 +939,7 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
     should "log the full error message without a backtrace for provider errors" do
       long_message = "y" * 600
-      RedmineAiHelper::LlmProvider.stubs(:test_embedding).raises(RubyLLM::Error.new(nil, long_message))
+      RedmineAiHelper::LlmProvider.stubs(:test_embedding).raises(RubyLLM::Error.new(long_message))
       AiHelperSettingsController.ai_helper_logger.expects(:error).with("Embedding connection test failed: RubyLLM::Error: #{long_message}")
 
       post_embedding_test

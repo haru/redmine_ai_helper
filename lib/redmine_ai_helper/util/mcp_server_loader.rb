@@ -1,6 +1,5 @@
 require "singleton"
 require "json"
-require "ruby_llm/mcp"
 
 module RedmineAiHelper
   module Util
@@ -25,8 +24,9 @@ module RedmineAiHelper
         mcp_servers.each do |server_name, server_config|
           begin
             # Validate server configuration
-            unless valid_server_config?(server_config)
-              ai_helper_logger.warn "Invalid configuration for MCP server '#{server_name}': #{server_config}"
+            unless valid_server_config?(server_config, server_name)
+              # Never log the config itself: it may contain credentials in url, headers or env.
+              ai_helper_logger.error "MCP server '#{server_name}' was not loaded because its configuration is invalid or unsupported"
               next
             end
 
@@ -75,25 +75,51 @@ module RedmineAiHelper
         {}
       end
 
-      # Validate server configuration
-      def valid_server_config?(config)
+      # Validate server configuration.
+      # SSE servers and plain-HTTP servers outside the loopback interface are
+      # rejected with a warning because RubyLLM's built-in MCP client supports
+      # only stdio and Streamable HTTP over HTTPS (or loopback HTTP).
+      # @param config [Hash] server configuration from config.json
+      # @param server_name [String, nil] server name used in warnings
+      # @return [Boolean] true when the configuration can be loaded
+      def valid_server_config?(config, server_name = nil)
         return false unless config.is_a?(Hash)
 
         # Infer type if missing (backward compatibility):
         # - If command/args present => stdio
-        # - If url present => http (default over sse since we cannot auto-detect sse reliably)
+        # - If url present => http (Streamable HTTP; SSE is no longer supported)
         config["type"] ||= infer_server_type(config)
 
         return false unless config["type"]
 
         case config["type"]
         when "stdio"
-          !!(config["command"] || config["args"])
-        when "http", "sse"
-          !!(config["url"] && valid_url?(config["url"]))
+          valid_stdio_config?(config)
+        when "http"
+          valid_http_config?(config, server_name)
+        when "sse"
+          ai_helper_logger.warn "MCP server '#{server_name}' uses the SSE transport, which is no longer supported. " \
+                                "Use the Streamable HTTP transport (\"type\": \"http\") instead."
+          false
         else
           false
         end
+      end
+
+      # A stdio server needs a non-empty argv built from "command" and "args",
+      # and "env" must be a Hash when given.
+      def valid_stdio_config?(config)
+        return false unless config["args"].nil? || (config["args"].is_a?(Array) && config["args"].all?(String))
+        return false unless config["env"].nil? || config["env"].is_a?(Hash)
+
+        [ config["command"], *config["args"] ].compact.any?
+      end
+
+      # An HTTP server needs a secure URL, and "headers" must be a Hash when given.
+      def valid_http_config?(config, server_name)
+        return false unless config["headers"].nil? || config["headers"].is_a?(Hash)
+
+        !!(config["url"] && valid_url?(config["url"]) && secure_url?(config["url"], server_name))
       end
 
       # Infer server type from available keys (internal helper)
@@ -111,69 +137,58 @@ module RedmineAiHelper
         false
       end
 
+      # Check that the URL satisfies RubyLLM's transport policy: HTTPS, or plain
+      # HTTP on a loopback host, and no credentials embedded in the URL.
+      # Delegates to RubyLLM::MCP::HTTP.secure? so the rule is not duplicated.
+      # @param url [String] server URL
+      # @param server_name [String, nil] server name used in the warning
+      # @return [Boolean]
+      def secure_url?(url, server_name)
+        return true if RubyLLM::MCP::HTTP.secure?(url)
+
+        uri = URI.parse(url)
+        uri.user = nil
+        uri.password = nil
+        ai_helper_logger.warn "MCP server '#{server_name}' (#{uri}) cannot be loaded: a non-loopback host requires " \
+                              "https:// and the URL must not contain credentials (use \"headers\" instead)."
+        false
+      end
+
       # Create MCP client
       def create_mcp_client(server_name, server_config)
-        # Allow implicit type inference
-        server_type = server_config["type"] || infer_server_type(server_config)
-        case server_type
+        case server_config["type"]
         when "stdio"
           create_stdio_client(server_name, server_config)
         when "http"
           create_http_client(server_name, server_config)
-        when "sse"
-          create_sse_client(server_name, server_config)
         else
           raise ArgumentError, "Unsupported MCP server type: #{server_config["type"] || "unknown"}"
         end
       end
 
-      # Create STDIO MCP client using ruby_llm-mcp
+      # Create STDIO MCP client using RubyLLM's built-in MCP client.
+      # The command is passed as an argv array, so no shell is involved.
+      # input_requests is disabled so RubyLLM declines server-initiated input
+      # (elicitation) requests instead of pausing the chat with an empty answer.
       def create_stdio_client(server_name, server_config)
-        RubyLLM::MCP.client(
+        argv = [ server_config["command"], *server_config["args"] ].compact
+
+        RubyLLM.mcp(
           name: server_name,
-          transport_type: :stdio,
-          config: {
-            command: build_command_string(server_config),
-            env: server_config["env"] || {}
-          }
+          command: argv,
+          env: server_config["env"] || {},
+          input_requests: false
         )
       end
 
-      # Create HTTP MCP client using ruby_llm-mcp (streamable transport)
+      # Create HTTP MCP client (Streamable HTTP) using RubyLLM's built-in MCP client.
       def create_http_client(server_name, server_config)
-        RubyLLM::MCP.client(
+        RubyLLM.mcp(
           name: server_name,
-          transport_type: :streamable,
-          config: {
-            url: server_config["url"],
-            headers: server_config["headers"] || {}
-          }
+          url: server_config["url"],
+          headers: server_config["headers"] || {},
+          input_requests: false
         )
-      end
-
-      # Create SSE MCP client using ruby_llm-mcp
-      def create_sse_client(server_name, server_config)
-        RubyLLM::MCP.client(
-          name: server_name,
-          transport_type: :sse,
-          config: {
-            url: server_config["url"],
-            headers: server_config["headers"] || {}
-          }
-        )
-      end
-
-      # Build command string
-      def build_command_string(server_config)
-        if server_config["command"] && server_config["args"]
-          "#{server_config["command"]} #{server_config["args"].join(" ")}"
-        elsif server_config["command"]
-          server_config["command"]
-        elsif server_config["args"]
-          server_config["args"].join(" ")
-        else
-          raise ArgumentError, "Either 'command' or 'args' must be specified for stdio MCP server"
-        end
       end
 
       # Dynamically create MCP agent subclass
@@ -203,14 +218,10 @@ module RedmineAiHelper
           define_method(:can_write?) { true }
 
           define_method :available_tool_classes do
-            return @cached_tool_classes if @cached_tool_classes
-            @cached_tool_classes = RedmineAiHelper::Tools::McpTools.generate_tool_classes(
+            RedmineAiHelper::Tools::McpTools.generate_tool_classes(
               mcp_server_name: server_name,
               mcp_client: mcp_client
             )
-          rescue => e
-            ai_helper_logger.error "Error loading tools for MCP server '#{server_name}': #{e.message}"
-            []
           end
 
           # Override available_tools to handle MCP tool instances

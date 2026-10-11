@@ -12,7 +12,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
 
     # Mock create_chat for assistant method
     @mock_chat = mock("RubyLLM::Chat")
-    @mock_chat.stubs(:on_end_message).returns(@mock_chat)
+    @mock_chat.stubs(:after_message).returns(@mock_chat)
     @mock_llm_provider.stubs(:create_chat).returns(@mock_chat)
 
     RedmineAiHelper::LlmProvider.stubs(:get_llm_provider).returns(@mock_llm_provider)
@@ -165,12 +165,13 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
   context "chat" do
     should "use create_chat to send messages and return answer" do
       mock_chat_instance = mock("RubyLLM::Chat")
-      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
       mock_chat_instance.stubs(:add_message)
 
       mock_response = mock("Response")
       mock_response.stubs(:content).returns("test answer")
       mock_chat_instance.stubs(:ask).returns(mock_response)
+      mock_chat_instance.stubs(:waiting?).returns(false)
 
       @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
 
@@ -201,11 +202,12 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
 
     should "propagate errors raised while reading streamed chunks" do
       mock_chat_instance = mock("RubyLLM::Chat")
-      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
       mock_chat_instance.stubs(:add_message)
       failing_chunk = mock("Chunk")
       failing_chunk.stubs(:content).raises(RuntimeError.new("stream read failed"))
       mock_chat_instance.expects(:ask).yields(failing_chunk)
+      mock_chat_instance.stubs(:waiting?).returns(false)
       @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
 
       callback = ->(content) { }
@@ -215,14 +217,50 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       assert_equal "stream read failed", error.message
     end
 
+    should "raise when the chat is paused waiting for input" do
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+      mock_response = mock("Response")
+      mock_response.stubs(:content).returns("")
+      mock_chat_instance.stubs(:ask).returns(mock_response)
+      mock_chat_instance.stubs(:waiting?).returns(true)
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+
+      error = assert_raises(RuntimeError) do
+        @agent.chat([ { role: "user", content: "Hello" } ])
+      end
+      assert_match(/paused before completion/, error.message)
+    end
+
+    should "raise when a streamed chat is paused waiting for input" do
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+      chunk = mock("Chunk")
+      chunk.stubs(:content).returns("partial")
+      mock_chat_instance.stubs(:ask).yields(chunk)
+      mock_chat_instance.stubs(:waiting?).returns(true)
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+
+      chunks_received = []
+      callback = ->(content) { chunks_received << content }
+      error = assert_raises(RuntimeError) do
+        @agent.chat([ { role: "user", content: "Hello" } ], {}, callback)
+      end
+      assert_match(/paused before completion/, error.message)
+      assert_equal [ "partial" ], chunks_received
+    end
+
     should "pass system_prompt as instructions to create_chat" do
       mock_chat_instance = mock("RubyLLM::Chat")
-      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
       mock_chat_instance.stubs(:add_message)
 
       mock_response = mock("Response")
       mock_response.stubs(:content).returns("answer")
       mock_chat_instance.stubs(:ask).returns(mock_response)
+      mock_chat_instance.stubs(:waiting?).returns(false)
 
       # system_prompt embeds Time.now.iso8601, so freeze it here to avoid a flaky
       # mismatch when the two system_prompt calls below straddle a second boundary.
@@ -236,13 +274,14 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
 
     should "pass with: parameter to ask when provided" do
       mock_chat_instance = mock("RubyLLM::Chat")
-      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
       mock_chat_instance.stubs(:add_message)
 
       mock_response = mock("Response")
       mock_response.stubs(:content).returns("image answer")
       image_paths = [ "/path/to/image.png" ]
       mock_chat_instance.expects(:ask).with("Describe this", with: image_paths).returns(mock_response)
+      mock_chat_instance.stubs(:waiting?).returns(false)
 
       @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
 
@@ -254,12 +293,13 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
 
     should "not pass with: to ask when nil" do
       mock_chat_instance = mock("RubyLLM::Chat")
-      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
       mock_chat_instance.stubs(:add_message)
 
       mock_response = mock("Response")
       mock_response.stubs(:content).returns("text answer")
       mock_chat_instance.expects(:ask).with("Hello").returns(mock_response)
+      mock_chat_instance.stubs(:waiting?).returns(false)
 
       @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
 
@@ -278,12 +318,13 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       @mock_think_provider.stubs(:max_tokens).returns(4096)
 
       @mock_think_chat_instance = mock("RubyLLM::Chat think")
-      @mock_think_chat_instance.stubs(:on_end_message).returns(@mock_think_chat_instance)
+      @mock_think_chat_instance.stubs(:after_message).returns(@mock_think_chat_instance)
       @mock_think_chat_instance.stubs(:add_message)
 
       @mock_think_response = mock("Response think")
       @mock_think_response.stubs(:content).returns("think answer")
       @mock_think_chat_instance.stubs(:ask).returns(@mock_think_response)
+      @mock_think_chat_instance.stubs(:waiting?).returns(false)
       @mock_think_provider.stubs(:create_chat).returns(@mock_think_chat_instance)
     end
 
@@ -292,11 +333,12 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       agent = BaseAgentTestModele::TestAgent.new(@params)
 
       mock_chat_instance = mock("RubyLLM::Chat")
-      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
       mock_chat_instance.stubs(:add_message)
       mock_response = mock("Response")
       mock_response.stubs(:content).returns("normal answer")
       mock_chat_instance.stubs(:ask).returns(mock_response)
+      mock_chat_instance.stubs(:waiting?).returns(false)
       @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
 
       messages = [ { role: "user", content: "Hello" } ]
@@ -343,11 +385,12 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
 
     should "obtain a string response via chat and parse it with the schema" do
       mock_chat_instance = mock("RubyLLM::Chat")
-      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
       mock_chat_instance.stubs(:add_message)
       mock_response = mock("Response")
       mock_response.stubs(:content).returns('{"goal": "structured"}')
       mock_chat_instance.stubs(:ask).returns(mock_response)
+      mock_chat_instance.stubs(:waiting?).returns(false)
       @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
 
       result = @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @json_schema)
@@ -358,11 +401,12 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
     should "propagate the with: parameter to chat" do
       image_paths = [ "/path/to/img.png" ]
       mock_chat_instance = mock("RubyLLM::Chat")
-      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
       mock_chat_instance.stubs(:add_message)
       mock_response = mock("Response")
       mock_response.stubs(:content).returns('{"goal": "img"}')
       mock_chat_instance.expects(:ask).with("hi", with: image_paths).returns(mock_response)
+      mock_chat_instance.stubs(:waiting?).returns(false)
       @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
 
       result = @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @json_schema, with: image_paths)
@@ -373,13 +417,14 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
     should "retain the with: parameter when regenerating after a schema violation" do
       image_paths = [ "/path/to/img.png" ]
       mock_chat_instance = mock("RubyLLM::Chat")
-      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
       mock_chat_instance.stubs(:add_message)
       bad_response = mock("Response bad")
       bad_response.stubs(:content).returns('{"other": "no goal"}')
       good_response = mock("Response good")
       good_response.stubs(:content).returns('{"goal": "regenerated"}')
       mock_chat_instance.expects(:ask).with(anything, with: image_paths).twice.returns(bad_response, good_response)
+      mock_chat_instance.stubs(:waiting?).returns(false)
       @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
 
       result = @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @json_schema, with: image_paths)
@@ -389,11 +434,12 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
 
     should "not rescue JSON::ParserError" do
       mock_chat_instance = mock("RubyLLM::Chat")
-      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
       mock_chat_instance.stubs(:add_message)
       mock_response = mock("Response")
       mock_response.stubs(:content).returns("not parseable {{{")
       mock_chat_instance.stubs(:ask).returns(mock_response)
+      mock_chat_instance.stubs(:waiting?).returns(false)
       @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
 
       assert_raises(JSON::ParserError) do
@@ -403,11 +449,12 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
 
     should "not rescue SchemaViolationError" do
       mock_chat_instance = mock("RubyLLM::Chat")
-      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
       mock_chat_instance.stubs(:add_message)
       mock_response = mock("Response")
       mock_response.stubs(:content).returns('{"other": "no goal"}')
       mock_chat_instance.stubs(:ask).returns(mock_response)
+      mock_chat_instance.stubs(:waiting?).returns(false)
       @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
 
       assert_raises(RedmineAiHelper::Util::StructuredOutputHelper::SchemaViolationError) do
@@ -424,11 +471,12 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
     should "call create_chat with a non-strict schema payload when supports_structured_output? is true" do
       @mock_llm_provider.stubs(:supports_structured_output?).returns(true)
       mock_chat_instance = mock("RubyLLM::Chat")
-      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
       mock_chat_instance.stubs(:add_message)
       mock_response = mock("Response")
-      mock_response.stubs(:content).returns({ "goal" => "native" })
+      mock_response.stubs(:content).returns({ "goal" => "native" }.to_json)
       mock_chat_instance.stubs(:ask).returns(mock_response)
+      mock_chat_instance.stubs(:waiting?).returns(false)
       @mock_llm_provider.expects(:create_chat).with { |opts| opts.key?(:schema) && opts[:schema][:strict] == false && opts[:schema][:schema] == @json_schema }.returns(mock_chat_instance)
 
       result = @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @json_schema)
@@ -436,29 +484,31 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       assert_equal "native", result["goal"]
     end
 
-    should "skip JSON parsing when response.content is a Hash" do
+    should "parse a JSON String response.content as returned by RubyLLM 2.x" do
       @mock_llm_provider.stubs(:supports_structured_output?).returns(true)
       mock_chat_instance = mock("RubyLLM::Chat")
-      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
       mock_chat_instance.stubs(:add_message)
       mock_response = mock("Response")
-      mock_response.stubs(:content).returns({ "goal" => "hash-content" })
+      mock_response.stubs(:content).returns('{"goal":"native"}')
       mock_chat_instance.stubs(:ask).returns(mock_response)
-      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:waiting?).returns(false)
+      @mock_llm_provider.expects(:create_chat).returns(mock_chat_instance)
 
       result = @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @json_schema)
 
-      assert_equal "hash-content", result["goal"]
+      assert_equal "native", result["goal"]
     end
 
     should "join the normal parse path when response.content is a String" do
       @mock_llm_provider.stubs(:supports_structured_output?).returns(true)
       mock_chat_instance = mock("RubyLLM::Chat")
-      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
       mock_chat_instance.stubs(:add_message)
       mock_response = mock("Response")
       mock_response.stubs(:content).returns('{"goal": "string-content"}')
       mock_chat_instance.stubs(:ask).returns(mock_response)
+      mock_chat_instance.stubs(:waiting?).returns(false)
       @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
 
       result = @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @json_schema)
@@ -469,12 +519,13 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
     should "pass regeneration through the fallback chat method on schema violation (native)" do
       @mock_llm_provider.stubs(:supports_structured_output?).returns(true)
       mock_chat_instance = mock("RubyLLM::Chat")
-      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
       mock_chat_instance.stubs(:add_message)
-      # Native returns a non-conforming Hash first
+      # Native returns a non-conforming JSON object first
       mock_response = mock("Response")
-      mock_response.stubs(:content).returns({ "other" => "no goal" })
+      mock_response.stubs(:content).returns({ "other" => "no goal" }.to_json)
       mock_chat_instance.stubs(:ask).returns(mock_response)
+      mock_chat_instance.stubs(:waiting?).returns(false)
       @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
       # Regeneration via fallback chat returns compliant JSON
       @agent.expects(:chat).with(anything, anything, anything, anything).returns('{"goal": "regenerated"}').at_least_once
@@ -488,11 +539,12 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       image_paths = [ "/path/to/img.png" ]
       @mock_llm_provider.stubs(:supports_structured_output?).returns(true)
       mock_chat_instance = mock("RubyLLM::Chat")
-      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
       mock_chat_instance.stubs(:add_message)
       mock_response = mock("Response")
-      mock_response.stubs(:content).returns({ "other" => "no goal" })
+      mock_response.stubs(:content).returns({ "other" => "no goal" }.to_json)
       mock_chat_instance.stubs(:ask).returns(mock_response)
+      mock_chat_instance.stubs(:waiting?).returns(false)
       @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
       @agent.expects(:chat).with { |_msgs, _opt, _cb, **kw| kw[:with] == image_paths }.returns('{"goal": "regenerated"}')
 
@@ -517,11 +569,12 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
 
     should "wrap the array-rooted schema into an object payload for create_chat" do
       mock_chat_instance = mock("RubyLLM::Chat")
-      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
       mock_chat_instance.stubs(:add_message)
       mock_response = mock("Response")
-      mock_response.stubs(:content).returns({ "value" => [ { "corrected" => "the" } ] })
+      mock_response.stubs(:content).returns({ "value" => [ { "corrected" => "the" } ] }.to_json)
       mock_chat_instance.stubs(:ask).returns(mock_response)
+      mock_chat_instance.stubs(:waiting?).returns(false)
       @mock_llm_provider.expects(:create_chat).with do |opts|
         opts[:schema][:schema]["type"] == "object" &&
           opts[:schema][:schema]["properties"].key?("value") &&
@@ -536,11 +589,12 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
 
     should "unwrap a String native response before validating against the array schema" do
       mock_chat_instance = mock("RubyLLM::Chat")
-      mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
       mock_chat_instance.stubs(:add_message)
       mock_response = mock("Response")
       mock_response.stubs(:content).returns('{"value": [{"corrected": "the"}]}')
       mock_chat_instance.stubs(:ask).returns(mock_response)
+      mock_chat_instance.stubs(:waiting?).returns(false)
       @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
 
       result = @agent.structured_chat([ { role: "user", content: "hi" } ], json_schema: @array_schema)
@@ -567,44 +621,6 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       result = @agent.format_instructions_for(@json_schema)
 
       assert_includes result, "JSON Schema"
-    end
-  end
-
-  context "extract_text_content" do
-    should "return text as-is for plain string content" do
-      result = @agent.send(:extract_text_content, "Hello world")
-
-      assert_equal "Hello world", result
-    end
-
-    should "return nil for nil content" do
-      result = @agent.send(:extract_text_content, nil)
-
-      assert_nil result
-    end
-
-    should "return text from RubyLLM::Content object" do
-      content = RubyLLM::Content.new("Image description text", [])
-      result = @agent.send(:extract_text_content, content)
-
-      assert_equal "Image description text", result
-    end
-
-    should "return text from RubyLLM::Content with attachments, stripping binary data" do
-      # Create a temporary image file
-      tmpfile = Tempfile.new([ "test_image", ".png" ])
-      tmpfile.binmode
-      # PNG header bytes
-      tmpfile.write("\x89PNG\r\n\x1a\n")
-      tmpfile.flush
-
-      content = RubyLLM::Content.new("Describe this image", [ tmpfile.path ])
-      result = @agent.send(:extract_text_content, content)
-
-      assert_equal "Describe this image", result
-    ensure
-      tmpfile&.close
-      tmpfile&.unlink
     end
   end
 
@@ -636,7 +652,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       @mock_think_provider.stubs(:max_tokens).returns(4096)
 
       @mock_think_chat = mock("think_chat")
-      @mock_think_chat.stubs(:on_end_message).returns(@mock_think_chat)
+      @mock_think_chat.stubs(:after_message).returns(@mock_think_chat)
       @mock_think_chat.stubs(:add_message)
       @mock_think_chat.stubs(:messages).returns([])
       @mock_think_provider.stubs(:create_chat).returns(@mock_think_chat)
@@ -743,6 +759,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       mock_response = mock("response")
       mock_response.stubs(:content).returns("test response")
       @mock_chat.stubs(:ask).with("テストメッセージ").returns(mock_response)
+      @mock_chat.stubs(:waiting?).returns(false)
       @mock_chat.stubs(:add_message)
 
       response = @agent.perform_task({})
@@ -849,6 +866,10 @@ class StreamingMockChat
     @chunks = chunks
   end
 
+  def waiting?
+    false
+  end
+
   def with_instructions(_text)
     self
   end
@@ -857,7 +878,7 @@ class StreamingMockChat
     self
   end
 
-  def on_end_message(&_block)
+  def after_message(&_block)
     self
   end
 

@@ -1,8 +1,8 @@
 ---
 title: Plugin Overview
 type: concept
-sources: [S002, S003, S005, S013, S014, S033, S036]
-updated: 2026-09-23
+sources: [S002, S003, S005, S013, S014, S033, S036, S042]
+updated: 2026-10-11
 ---
 
 # Plugin Overview
@@ -28,6 +28,8 @@ over RubyLLM (S002, S005). This page is the hub linking the wiki's topic pages.
   document, code, and audio attachments (S002).
 - **[MCP Integration](./mcp-integration.md)** — both consume external MCP
   servers and expose Redmine itself as one (S002).
+- **[RubyLLM 2.1 Migration](./ruby-llm-2-1-migration.md)** — RubyLLM 2.1, its
+  built-in MCP client, and the Ruby 3.2+ requirement (S042).
 - **[Vector Search](./vector-search.md)** via Qdrant — powers similar-issue and
   duplicate-issue detection (S002).
 - **[Log File Access](./log-file-access-tools.md)** — administrators can tail

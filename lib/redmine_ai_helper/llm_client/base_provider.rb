@@ -76,16 +76,12 @@ module RedmineAiHelper
       #
       # Returns false when the provider slug is unknown (Azure OpenAI,
       # OpenAI-compatible) or the model is not registered. Otherwise returns
-      # the model's `structured_output?` capability. Judgment failures fall to
-      # the safe (non-native) side.
+      # the model's `structured_output` capability.
       # @return [Boolean]
       def supports_structured_output?
         return false if ruby_llm_provider_slug.nil?
         model = RubyLLM.models.by_provider(ruby_llm_provider_slug).all.find { |m| m.id == model_name }
-        model&.structured_output? ? true : false
-      rescue => e
-        ai_helper_logger.warn "supports_structured_output? judgment failed, falling back to false: #{e.message}"
-        false
+        model&.supports?(:structured_output) ? true : false
       end
 
       # Generate an embedding vector for the given text via the memoized context.
@@ -100,7 +96,7 @@ module RedmineAiHelper
       def embed(text, embedding_model: AiHelperSetting.find_or_create.embedding_model)
         opts = {}
         if ruby_llm_provider_class.nil?
-          opts[:provider] = :openai
+          opts[:provider] = embedding_provider_slug
           opts[:assume_model_exists] = true
         end
         if embedding_model.blank?
@@ -112,19 +108,29 @@ module RedmineAiHelper
 
       protected
 
+      # RubyLLM provider slug used for embedding requests when the provider has no
+      # RubyLLM provider class of its own. Override when the endpoint is not OpenAI.
+      # @return [Symbol]
+      def embedding_provider_slug
+        :openai
+      end
+
       # Applies the current user's Redmine ID to the chat request if the
       # send_user_id_enabled setting is active and the provider supports the field.
+      # The ID is sent as `safety_identifier` through provider options rather than
+      # with_end_user, because RubyLLM's OpenAI Responses protocol drops the value
+      # passed to with_end_user.
       # @param chat [RubyLLM::Chat] the chat instance to annotate
       # @return [RubyLLM::Chat] the same chat instance
       def apply_user_identifier(chat)
         return chat unless AiHelperSetting.send_user_id_enabled?
         return chat unless supports_user_identifier?
 
-        chat.with_params(user: User.current.id.to_s)
+        chat.with_provider_options(safety_identifier: User.current.id.to_s)
         chat
       end
 
-      # Returns whether this provider's API accepts the `user` request field.
+      # Returns whether this provider's API accepts the `safety_identifier` field.
       # Override to return false for providers that reject unknown top-level fields.
       # @return [Boolean]
       def supports_user_identifier?
@@ -232,12 +238,16 @@ module RedmineAiHelper
       end
 
       # Appends a single model to the RubyLLM model registry.
-      # RubyLLM 1.x does not expose a public API for adding individual models, so
-      # this method accesses the internal @models array directly.  It is isolated
+      # RubyLLM does not expose a public API for adding individual models, so
+      # this method accesses the internal @models array directly.  The array is
+      # replaced rather than mutated because RubyLLM caches its id index keyed on
+      # the array's identity; an in-place append would leave that index stale and
+      # the new model would not be found by Chat creation.  It is isolated
       # here so that any future public API can be adopted in a single place.
-      # @param model_info [RubyLLM::Model::Info] model to register
+      # @param model_info [RubyLLM::Model] model to register
       def append_to_model_registry(model_info)
-        RubyLLM.models.instance_variable_get(:@models) << model_info
+        registry = RubyLLM.models
+        registry.instance_variable_set(:@models, registry.instance_variable_get(:@models) + [ model_info ])
       end
     end
   end

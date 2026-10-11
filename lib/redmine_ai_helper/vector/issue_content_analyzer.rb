@@ -97,8 +97,7 @@ module RedmineAiHelper
       # Parse the LLM response using StructuredOutputHelper.
       # Retries keep the original file attachments but not the native schema:
       # the retry prompt embeds the schema textually instead.
-      # @param response [String, Hash, Array] The raw response text from the LLM,
-      #   or a pre-parsed Hash/Array when native structured output is used.
+      # @param response [String] The raw response text from the LLM.
       # @param messages [Array<Hash>] The original messages for retry context.
       # @param with [Array<String>, nil] File paths attached to the original request.
       # @return [Hash] A hash containing :summary (String) and :keywords (Array<String>).

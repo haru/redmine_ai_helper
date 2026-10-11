@@ -21,7 +21,7 @@ module RedmineAiHelper
         configure_http_proxy(config)
       end
 
-      # Gemini's API rejects the `user` field as an unknown parameter.
+      # Gemini's API has no `safety_identifier` field, so the user ID is not sent.
       def supports_user_identifier?
         false
       end

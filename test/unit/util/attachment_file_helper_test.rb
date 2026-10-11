@@ -503,12 +503,13 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
       ]
 
       result = @helper.supported_attachment_paths(container_with(*atts))
-      content = RubyLLM::Content.new("question", result)
+      # chat.ask(text, with: paths) wraps the paths into RubyLLM::Attachment objects
+      attachments = RubyLLM::Message.new(role: :user, content: "question", attachments: result).attachments
 
-      assert_equal 3, content.attachments.size
+      assert_equal 3, attachments.size
       # Converted attachments keep the original filename, so they are embedded as text
-      assert_equal [ :text, :text ], content.attachments.first(2).map(&:type)
-      payload = content.attachments.map(&:for_llm)
+      assert_equal [ :text, :text ], attachments.first(2).map(&:type)
+      payload = attachments.map(&:for_llm)
       assert_nothing_raised { JSON.generate(payload) }
       assert_includes payload[0], "# 見出し"
       assert_includes payload[1], "puts '日本語'"

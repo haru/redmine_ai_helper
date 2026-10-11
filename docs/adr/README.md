@@ -101,3 +101,5 @@ Briefly describe alternatives that were rejected and why.
 | [046](./046-streaming-renders-coalesced-per-animation-frame.md) | Streaming renders are coalesced to at most one per animation frame | Accepted |
 | [047](./047-version-write-tools-reject-disallowed-attributes.md) | Version write tools reject disallowed sharing and non-editable custom fields | Proposed |
 | [048](./048-version-write-tools-return-expected-failures-as-error-results.md) | Version tools return user-caused failures as error results and raise system failures | Proposed |
+| [049](./049-migrate-to-ruby-llm-2-1-and-require-ruby-3-2.md) | Migrate to RubyLLM 2.1 and require Ruby 3.2 or later | Proposed |
+| [050](./050-replace-ruby-llm-mcp-with-built-in-mcp-client.md) | Replace ruby_llm-mcp with RubyLLM's built-in MCP client | Proposed |

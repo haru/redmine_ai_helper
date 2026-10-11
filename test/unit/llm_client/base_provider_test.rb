@@ -224,7 +224,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
           mock_chat = mock("RubyLLM::Chat")
           mock_chat.expects(:with_instructions).never
           mock_chat.expects(:with_temperature).with(@setting.model_profile.temperature)
-          mock_chat.expects(:with_params).with(user: User.current.id.to_s).once
+          mock_chat.expects(:with_provider_options).with(safety_identifier: User.current.id.to_s).once
 
           mock_context.expects(:chat).with(model: @setting.model_profile.llm_model).returns(mock_chat)
           @provider.expects(:build_context).returns(mock_context)
@@ -240,7 +240,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
           mock_chat = mock("RubyLLM::Chat")
           mock_chat.expects(:with_instructions).never
           mock_chat.expects(:with_temperature).with(@setting.model_profile.temperature)
-          mock_chat.expects(:with_params).never
+          mock_chat.expects(:with_provider_options).never
 
           mock_context.expects(:chat).with(model: @setting.model_profile.llm_model).returns(mock_chat)
           @provider.expects(:build_context).returns(mock_context)
@@ -385,7 +385,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
       # T006
       should "model_in_registry? returns false when provider slug does not match" do
         # Register model with different provider
-        other_model = RubyLLM::Model::Info.new(id: @test_model_id, provider: "anthropic", name: "Test Model")
+        other_model = RubyLLM::Model.new(id: @test_model_id, provider: "anthropic", name: "Test Model")
         RubyLLM.models.instance_variable_get(:@models) << other_model
 
         assert_equal false, @concrete_provider.send(:model_in_registry?)
@@ -393,7 +393,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
 
       # T007
       should "model_in_registry? returns true when model ID and provider slug both match" do
-        openai_model = RubyLLM::Model::Info.new(id: @test_model_id, provider: "openai", name: "Test Model")
+        openai_model = RubyLLM::Model.new(id: @test_model_id, provider: "openai", name: "Test Model")
         RubyLLM.models.instance_variable_get(:@models) << openai_model
 
         assert_equal true, @concrete_provider.send(:model_in_registry?)
@@ -401,7 +401,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
 
       # T008
       should "fetch_and_register_model! registers model when list_models contains the target" do
-        fetched_model = RubyLLM::Model::Info.new(id: @test_model_id, provider: "openai", name: "New Model")
+        fetched_model = RubyLLM::Model.new(id: @test_model_id, provider: "openai", name: "New Model")
         mock_provider_instance = mock("RubyLLMProviderInstance")
         mock_provider_instance.expects(:list_models).returns([ fetched_model ])
         RubyLLM::Providers::OpenAI.expects(:new).returns(mock_provider_instance)
@@ -409,6 +409,15 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         @concrete_provider.send(:fetch_and_register_model!)
 
         assert @concrete_provider.send(:model_in_registry?), "Model should be registered after fetch"
+      end
+
+      should "make a registered model resolvable by RubyLLM even after its id index was built" do
+        # Build RubyLLM's id index first; it must not hide the model registered afterwards.
+        assert_raises(RubyLLM::ModelNotFoundError) { RubyLLM.models.find(@test_model_id, provider: "openai") }
+
+        @concrete_provider.send(:append_to_model_registry, RubyLLM::Model.new(id: @test_model_id, provider: "openai", name: "New Model"))
+
+        assert_equal @test_model_id, RubyLLM.models.find(@test_model_id, provider: "openai").id
       end
 
       # T009
@@ -424,7 +433,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
 
       should "fetch_and_register_model! applies request_options to the model list configuration" do
         provider = FakeOpenAiProvider.new(model_profile: @test_profile, request_options: { request_timeout: 10, max_retries: 0 })
-        fetched_model = RubyLLM::Model::Info.new(id: @test_model_id, provider: "openai", name: "New Model")
+        fetched_model = RubyLLM::Model.new(id: @test_model_id, provider: "openai", name: "New Model")
         mock_provider_instance = mock("RubyLLMProviderInstance")
         mock_provider_instance.expects(:list_models).returns([ fetched_model ])
         RubyLLM::Providers::OpenAI.expects(:new).with do |config|
@@ -436,7 +445,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
 
       should "fetch_and_register_model! keeps the default configuration when request_options is nil" do
         defaults = RubyLLM::Configuration.new
-        fetched_model = RubyLLM::Model::Info.new(id: @test_model_id, provider: "openai", name: "New Model")
+        fetched_model = RubyLLM::Model.new(id: @test_model_id, provider: "openai", name: "New Model")
         mock_provider_instance = mock("RubyLLMProviderInstance")
         mock_provider_instance.expects(:list_models).returns([ fetched_model ])
         RubyLLM::Providers::OpenAI.expects(:new).with do |config|
@@ -454,7 +463,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
 
       # T011
       should "ensure_model_registered! skips fetch when model already in registry" do
-        openai_model = RubyLLM::Model::Info.new(id: @test_model_id, provider: "openai", name: "Existing Model")
+        openai_model = RubyLLM::Model.new(id: @test_model_id, provider: "openai", name: "Existing Model")
         RubyLLM.models.instance_variable_get(:@models) << openai_model
         @concrete_provider.expects(:fetch_and_register_model!).never
         @concrete_provider.send(:ensure_model_registered!)
@@ -545,8 +554,8 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
           assert_equal false, @so_provider.supports_structured_output?
         end
 
-        should "return the model structured_output? value when registered as capable" do
-          capable = RubyLLM::Model::Info.new(
+        should "return the model structured_output capability when registered as capable" do
+          capable = RubyLLM::Model.new(
             id: @so_model_id, provider: "openai", name: "Capable", capabilities: %w[structured_output]
           )
           RubyLLM.models.instance_variable_get(:@models) << capable
@@ -555,7 +564,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         end
 
         should "return false when registered model lacks structured_output capability" do
-          incapable = RubyLLM::Model::Info.new(
+          incapable = RubyLLM::Model.new(
             id: @so_model_id, provider: "openai", name: "Incapable", capabilities: %w[streaming]
           )
           RubyLLM.models.instance_variable_get(:@models) << incapable
@@ -563,10 +572,10 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
           assert_equal false, @so_provider.supports_structured_output?
         end
 
-        should "return false when the registry lookup raises an error" do
+        should "raise when the registry lookup raises an error" do
           RubyLLM.models.stubs(:by_provider).raises(StandardError.new("registry unavailable"))
 
-          assert_equal false, @so_provider.supports_structured_output?
+          assert_raises(StandardError) { @so_provider.supports_structured_output? }
         end
       end
     end
@@ -612,18 +621,18 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         User.current = @original_current_user
       end
 
-      should "not call with_params when supports_user_identifier? is false" do
+      should "not call with_provider_options when supports_user_identifier? is false" do
         @setting.send_user_id_enabled = true
         @setting.save!
         @provider.stubs(:supports_user_identifier?).returns(false)
 
         mock_chat = mock("RubyLLM::Chat")
-        mock_chat.expects(:with_params).never
+        mock_chat.expects(:with_provider_options).never
 
         @provider.send(:apply_user_identifier, mock_chat)
       end
 
-      should "call chat.with_params with the current user's id when send_user_id_enabled is true" do
+      should "call chat.with_provider_options with the current user's id when send_user_id_enabled is true" do
         @setting.send_user_id_enabled = true
         @setting.save!
 
@@ -631,17 +640,17 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         User.current = user
 
         mock_chat = mock("RubyLLM::Chat")
-        mock_chat.expects(:with_params).with(user: user.id.to_s).once
+        mock_chat.expects(:with_provider_options).with(safety_identifier: user.id.to_s).once
 
         @provider.send(:apply_user_identifier, mock_chat)
       end
 
-      should "not call chat.with_params when send_user_id_enabled is false" do
+      should "not call chat.with_provider_options when send_user_id_enabled is false" do
         @setting.send_user_id_enabled = false
         @setting.save!
 
         mock_chat = mock("RubyLLM::Chat")
-        mock_chat.expects(:with_params).never
+        mock_chat.expects(:with_provider_options).never
 
         @provider.send(:apply_user_identifier, mock_chat)
       end
@@ -653,7 +662,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         User.current = User.anonymous
 
         mock_chat = mock("RubyLLM::Chat")
-        mock_chat.expects(:with_params).with(user: User.anonymous.id.to_s).once
+        mock_chat.expects(:with_provider_options).with(safety_identifier: User.anonymous.id.to_s).once
 
         @provider.send(:apply_user_identifier, mock_chat)
       end
@@ -665,13 +674,13 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         user_a = User.find(1)
         User.current = user_a
         mock_chat_a = mock("RubyLLM::Chat A")
-        mock_chat_a.expects(:with_params).with(user: user_a.id.to_s).once
+        mock_chat_a.expects(:with_provider_options).with(safety_identifier: user_a.id.to_s).once
         @provider.send(:apply_user_identifier, mock_chat_a)
 
         user_b = User.anonymous
         User.current = user_b
         mock_chat_b = mock("RubyLLM::Chat B")
-        mock_chat_b.expects(:with_params).with(user: user_b.id.to_s).once
+        mock_chat_b.expects(:with_provider_options).with(safety_identifier: user_b.id.to_s).once
         @provider.send(:apply_user_identifier, mock_chat_b)
 
         assert_not_equal user_a.id.to_s, user_b.id.to_s
