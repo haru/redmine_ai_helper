@@ -16,10 +16,10 @@ module RedmineAiHelper
 
       # Generates the part of the Leader Agent's system prompt that does not
       # change between requests (no time, site, page or user information).
+      # Memoized like #context_prompt.
       # @return [String] the fixed prompt
       def fixed_prompt
-        prompt = RedmineAiHelper::Util::PromptLoader.load_template("leader_agent/system_prompt")
-        prompt.format(
+        @fixed_prompt ||= RedmineAiHelper::Util::PromptLoader.load_template("leader_agent/system_prompt").format(
           lang: I18n.t(:general_lang_name),
           additional_system_prompt: AiHelperSetting.find_or_create.additional_instructions
         )
@@ -31,24 +31,26 @@ module RedmineAiHelper
       # the same for the lifetime of this instance.
       # @return [String] the context prompt
       def context_prompt
-        @context_prompt ||= begin
-          current_user_info = {
-            id: User.current.id,
-            name: User.current.name,
-            timezone: User.current.time_zone
-          }
-          prompt = RedmineAiHelper::Util::PromptLoader.load_template("leader_agent/system_prompt_context")
-          prompt.format(
-            time: Time.now.iso8601,
-            site_info: site_info_json(project: @project),
-            current_page_info: current_page_info_string(),
-            current_user: User.current,
-            current_user_info: JSON.pretty_generate(current_user_info)
-          )
-        end
+        @context_prompt ||= RedmineAiHelper::Util::PromptLoader.load_template("leader_agent/system_prompt_context").format(
+          time: Time.now.iso8601,
+          site_info: site_info_json(project: @project),
+          current_page_info: current_page_info_string(),
+          current_user: User.current,
+          current_user_info: current_user_info_json
+        )
       end
 
       private
+
+      # Generates a JSON string that describes the current user.
+      # @return [String] the user's ID, name and time zone as pretty-printed JSON
+      def current_user_info_json
+        JSON.pretty_generate(
+          id: User.current.id,
+          name: User.current.name,
+          timezone: User.current.time_zone
+        )
+      end
 
       # Generates a string that describes the current page information.
       # @return [String] A string that describes the current page information.

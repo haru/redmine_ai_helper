@@ -58,9 +58,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
     end
 
     should "return correct system prompt" do
-      system_prompt = @agent.system_prompt.to_s
-
-      assert_includes system_prompt.to_s, @agent.backstory
+      assert_includes @agent.system_prompt.to_s, @agent.backstory
     end
 
     should "return an Instructions object split into fixed and variable parts" do
@@ -81,9 +79,23 @@ class LeaderAgentTest < ActiveSupport::TestCase
     end
 
     should "put variable information at the end of to_s" do
-      text = @agent.system_prompt.to_s
+      prompt = @agent.system_prompt
 
-      assert text.end_with?(@agent.system_prompt.variable)
+      assert prompt.to_s.end_with?(prompt.variable)
+    end
+
+    should "keep the fixed part identical across users, projects, pages and time" do
+      first = RedmineAiHelper::Agents::LeaderAgent.new(@params.merge(controller_name: "issues", action_name: "index")).system_prompt
+
+      User.current = User.find(2)
+      later = Time.now.utc + 3600
+      Time.stubs(:now).returns(later)
+      second = RedmineAiHelper::Agents::LeaderAgent.new(
+        @params.merge(project: Project.find(2), controller_name: "projects", action_name: "show")
+      ).system_prompt
+
+      assert_equal first.fixed, second.fixed
+      assert_not_equal first.variable, second.variable
     end
 
     should "generate goal correctly" do

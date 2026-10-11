@@ -48,6 +48,23 @@ if defined?(Rails::TestUnitReporter) && Rails::TestUnitReporter.respond_to?(:exe
   end
 end
 
+# Assertions shared by the LLM provider tests.
+module ProviderTestAssertions
+  # Asserts that the provider sends a split system prompt as one system message
+  # with the two parts joined and no cache marker.
+  # @param provider [RedmineAiHelper::LlmClient::BaseProvider] the provider under test
+  def assert_single_uncached_system_message(provider)
+    instructions = RedmineAiHelper::LlmClient::Instructions.new(fixed: "FIXED", variable: "VARIABLE")
+    chat = provider.create_chat(instructions: instructions)
+    system_messages = chat.messages.select { |m| m.role == :system }
+
+    assert_equal 1, system_messages.size
+    assert_equal "FIXED\n\nVARIABLE", system_messages.first.content
+    assert_equal false, system_messages.first.cache_until_here?
+  end
+end
+ActiveSupport.on_load(:active_support_test_case) { include ProviderTestAssertions }
+
 require File.expand_path(File.dirname(__FILE__) + "/model_factory")
 
 # Load model_factory.rb from the same folder as this file

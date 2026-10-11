@@ -336,7 +336,7 @@ When vector search is enabled, attachment contents are also incorporated into th
    - Access Key: Enter the API key for the AI service
    - Model name: Specify the AI model name (e.g., gpt-4.1-mini)
    - Temperature: Optionally set the temperature for the AI model (e.g., 0.7). Leave it blank to omit the parameter and use the AI service's default (required for models that reject temperature).
-   - Prompt caching (Anthropic only): Enabled by default. The system prompt, tool definitions and conversation history are cached by Anthropic (default 5-minute lifetime) to reduce input cost and latency. Cache read/write token counts are recorded in each Langfuse generation (`metadata.cache_read_input_tokens` / `cache_creation_input_tokens`). Uncheck it to disable caching for that profile. Other providers cache automatically and are not affected.
+   - Prompt caching (Anthropic only): Enabled by default. The system prompt, tool definitions and conversation history are cached by Anthropic (default 5-minute lifetime) to reduce input cost and latency. Uncheck it to disable caching for that profile. Other providers ignore this setting; OpenAI, Azure OpenAI and Gemini apply their own automatic prefix caching, and OpenAI-compatible servers may or may not. Cache read/write token counts reported by any provider are recorded in each Langfuse generation (`metadata.cache_read_input_tokens` / `cache_creation_input_tokens`).
 3. Select the model profile you created from the dropdown menu and save the settings.
 
 

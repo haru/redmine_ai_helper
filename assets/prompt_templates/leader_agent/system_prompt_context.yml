@@ -7,6 +7,8 @@ input_variables:
   - current_user
   - current_user_info
 template: |-
+  The following is reference information for you.
+
   ----
 
   Reference information:

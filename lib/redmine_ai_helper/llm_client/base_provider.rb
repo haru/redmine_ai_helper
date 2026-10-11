@@ -117,7 +117,9 @@ module RedmineAiHelper
       # @param chat [RubyLLM::Chat] the chat instance to configure
       # @param instructions [String, Instructions, nil] system prompt
       # @return [void]
+      # @raise [ArgumentError] when +instructions+ is of any other type
       def apply_instructions(chat, instructions)
+        instructions = Instructions.coerce(instructions)
         chat.with_instructions(instructions.to_s) if instructions
       end
 

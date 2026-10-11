@@ -218,6 +218,28 @@ class SystemPromptTest < ActiveSupport::TestCase
     assert_match(/#{Regexp.escape(@user.name)}/, context)
   end
 
+  def test_context_prompt_starts_with_reference_lead_in
+    en = I18n.with_locale(:en) { RedmineAiHelper::Util::SystemPrompt.new(project: @project).context_prompt }
+    ja = I18n.with_locale(:ja) { RedmineAiHelper::Util::SystemPrompt.new(project: @project).context_prompt }
+
+    assert en.start_with?("The following is reference information for you.\n\n----")
+    assert ja.start_with?("以下はあなたの参考知識です。\n\n----")
+  end
+
+  def test_fixed_prompt_is_identical_across_users_pages_and_time
+    first = RedmineAiHelper::Util::SystemPrompt.new(controller_name: "issues", action_name: "show", content_id: @issue.id, project: @project)
+    first_fixed = first.fixed_prompt
+    first_context = first.context_prompt
+
+    User.current = users(:users_002)
+    later = Time.now.utc + 3600
+    Time.stubs(:now).returns(later)
+    second = RedmineAiHelper::Util::SystemPrompt.new(controller_name: "wiki", action_name: "show", content_id: @wiki_page.id, project: projects(:projects_002))
+
+    assert_equal first_fixed, second.fixed_prompt
+    assert_not_equal first_context, second.context_prompt
+  end
+
   def test_context_prompt_is_memoized
     system_prompt = RedmineAiHelper::Util::SystemPrompt.new(project: @project)
     first = system_prompt.context_prompt

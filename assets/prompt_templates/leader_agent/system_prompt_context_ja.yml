@@ -7,6 +7,8 @@ input_variables:
   - current_user
   - current_user_info
 template: |-
+  以下はあなたの参考知識です。
+
   ----
 
   参考情報：

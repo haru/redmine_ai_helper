@@ -125,21 +125,31 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       assert_includes prompt.fixed, RedmineAiHelper::Util::PromptLoader.load_template("base_agent/read_only_notice").format
     end
 
+    should "keep the fixed part identical across calls at different times" do
+      Time.stubs(:now).returns(Time.utc(2026, 10, 11, 12, 34, 56))
+      first = @agent.system_prompt
+      Time.stubs(:now).returns(Time.utc(2026, 10, 11, 13, 0, 0))
+      second = @agent.system_prompt
+
+      assert_equal first.fixed, second.fixed
+      assert_not_equal first.variable, second.variable
+    end
+
     should "put the time after everything else in to_s" do
       frozen = Time.utc(2026, 10, 11, 12, 34, 56)
       Time.stubs(:now).returns(frozen)
-      text = @agent.system_prompt.to_s
+      prompt = @agent.system_prompt
+      text = prompt.to_s
 
-      assert text.end_with?(@agent.system_prompt.variable)
+      assert text.end_with?(prompt.variable)
       assert_includes text, frozen.iso8601
       assert_operator text.index(@agent.backstory), :<, text.index(frozen.iso8601)
     end
 
-    should "not leave a time input variable in the system_prompt templates" do
-      %w[base_agent/system_prompt].each do |name|
-        template = RedmineAiHelper::Util::PromptLoader.load_template(name)
-        assert_not_includes template.input_variables.map(&:to_s), "time"
-      end
+    should "not leave a time input variable in the system_prompt template" do
+      template = RedmineAiHelper::Util::PromptLoader.load_template("base_agent/system_prompt")
+
+      assert_not_includes template.input_variables.map(&:to_s), "time"
     end
   end
 

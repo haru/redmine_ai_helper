@@ -29,4 +29,4 @@ The AI preserved the pre-migration rescue-and-return-empty pattern when swapping
 
 Do not write `rescue => e` that returns `[]`/`false`/nil or caches a failure. When replacing a client library, re-derive where errors are raised (eager vs lazy) and what states (paused, waiting) can yield an empty result. Tests must assert that errors propagate.
 
-**Promoted to**: Not yet
+**Promoted to**: AGENTS.md

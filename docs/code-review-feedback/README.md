@@ -86,8 +86,13 @@ A concrete, checkable rule to apply when generating future code.
 |-------|-------|----------|--------|-------------|
 | [CRF-001](./001-azure-embed-provider-slug.md) | Azure embedding still used the :openai provider after the :azure migration | edge-case | Local AI review | Not yet |
 | [CRF-002](./002-secrets-in-rejected-config-log.md) | Rejected MCP server config was logged in full, including credentials | security | Local AI review | Not yet |
-| [CRF-003](./003-swallowed-mcp-and-structured-output-errors.md) | Errors swallowed or cached as empty results around MCP tools and structured output | error-handling | Local AI review | Not yet |
+| [CRF-003](./003-swallowed-mcp-and-structured-output-errors.md) | Errors swallowed or cached as empty results around MCP tools and structured output | error-handling | Local AI review | AGENTS.md |
 | [CRF-004](./004-end-user-dropped-by-responses-protocol.md) | Spec-assumed with_end_user does not send the user ID on the OpenAI Responses protocol | other | Local AI review | Not yet |
-| [CRF-005](./005-stale-dead-code-and-docs-after-migration.md) | Dead branches, stale comments and tests tied to the old API left after the RubyLLM 2.1 migration | doc-comment | Local AI review | Not yet |
-| [CRF-006](./006-untested-paused-chat-guard.md) | Paused-chat guard added without a test that exercises it | test-gap | GitHub Copilot (PR #499) | Not yet |
-| [CRF-007](./007-docs-not-updated-after-review-fix.md) | Docs kept describing behaviour that a review fix had changed | doc-comment | GitHub Copilot (PR #499) | Not yet |
+| [CRF-005](./005-stale-dead-code-and-docs-after-migration.md) | Dead branches, stale comments and tests tied to the old API left after the RubyLLM 2.1 migration | doc-comment | Local AI review | AGENTS.md |
+| [CRF-006](./006-untested-paused-chat-guard.md) | Paused-chat guard added without a test that exercises it | test-gap | GitHub Copilot (PR #499) | AGENTS.md |
+| [CRF-007](./007-docs-not-updated-after-review-fix.md) | Docs kept describing behaviour that a review fix had changed | doc-comment | GitHub Copilot (PR #499) | AGENTS.md |
+| [CRF-008](./008-leader-lead-in-sentence-dropped.md) | Leader prompt lead-in sentence dropped when splitting the template | convention-violation | Local AI review | Not yet |
+| [CRF-009](./009-unvalidated-instructions-value-object.md) | Instructions value object and apply_instructions accepted invalid input silently | error-handling | Local AI review | AGENTS.md |
+| [CRF-010](./010-prompt-caching-test-gaps.md) | Prompt caching tests missed cache stability, explicit profiles and the end-to-end payload | test-gap | Local AI review | AGENTS.md |
+| [CRF-011](./011-cache-docs-overstated-behaviour.md) | Prompt caching docs and comments described behaviour more narrowly or strongly than the code | doc-comment | Local AI review | AGENTS.md |
+| [CRF-012](./012-prompt-caching-simplifications.md) | Hand-written branching where a single path or data mapping suffices | readability | Local AI review | Not yet |

@@ -280,6 +280,18 @@ describe("AiHelperModelProfile.initForm (from _form.html.erb)", () => {
     expect(promptCachingElement.style.display).toBe("none");
   });
 
+  it.each(["openai", "gemini", "azure_openai", "openai_compatible"])(
+    "hides the prompt caching field on load for the %s type",
+    async (llmType) => {
+      const { llmTypeSelect, promptCachingElement } = addFormMarkup();
+      llmTypeSelect.value = llmType;
+      await loadScript("assets/javascripts/settings/ai_helper_model_profile");
+      window.AiHelperModelProfile.initForm();
+
+      expect(promptCachingElement.style.display).toBe("none");
+    }
+  );
+
   it("clears the readonly attribute on the access key/organization fields on focus", async () => {
     addFormMarkup();
     const accessKeyInput = document.createElement("input");

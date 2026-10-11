@@ -110,10 +110,9 @@ const AiHelperModelProfile = (() => {
      */
     function handleLlmTypeChange() {
       const selectedValue = llmTypeSelect.value;
-      const accessKeyRequiredElement = document.querySelector('#ai-helper-mode-access-key .required');
 
       setVisible(document.getElementById('ai-helper-model-base-uri'), isBaseUriRequired(selectedValue));
-      setVisible(accessKeyRequiredElement, selectedValue !== config.compatibleType);
+      setVisible(document.querySelector('#ai-helper-mode-access-key .required'), selectedValue !== config.compatibleType);
       setVisible(document.getElementById('ai-helper-model-organization-id'), selectedValue === config.openaiType);
       setVisible(document.getElementById('ai-helper-model-prompt-caching'), selectedValue === config.anthropicType);
     }

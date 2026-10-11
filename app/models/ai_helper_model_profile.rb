@@ -29,6 +29,13 @@ class AiHelperModelProfile < ApplicationRecord
     "#{name} (#{llm_type}: #{llm_model})"
   end
 
+  # Returns true if explicit prompt caching applies to this profile.
+  # Only Anthropic uses the prompt_caching_enabled setting; other providers ignore it.
+  # @return [Boolean]
+  def prompt_caching_active?
+    llm_type == RedmineAiHelper::LlmProvider::LLM_ANTHROPIC && prompt_caching_enabled
+  end
+
   # returns true if base_uri is required.
   def base_uri_required?
     # Check if the llm_type is OpenAICompatible

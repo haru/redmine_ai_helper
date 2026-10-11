@@ -14,23 +14,23 @@ module RedmineAiHelper
       # and the fixed part of the system prompt is cached as its own system
       # block, so it is reused across different questions. The variable part
       # follows without a cache marker. No TTL is given, so the provider
-      # default applies. When caching is disabled, behaves like the base class.
+      # default applies. A plain String is cached as a whole. When caching is
+      # disabled, behaves like the base class.
       # @param chat [RubyLLM::Chat] the chat instance to configure
       # @param instructions [String, Instructions, nil] system prompt
       # @return [void]
+      # @raise [ArgumentError] when +instructions+ is of any other type
       def apply_instructions(chat, instructions)
-        return super unless resolved_model_profile.prompt_caching_enabled
+        profile = resolved_model_profile
+        raise "Model Profile not found" unless profile
+        return super unless profile.prompt_caching_active?
 
+        instructions = Instructions.coerce(instructions)
         chat.with_caching
-        case instructions
-        when nil
-          nil
-        when RedmineAiHelper::LlmClient::Instructions
-          chat.with_instructions(instructions.fixed, cache_until_here: true)
-          chat.with_instructions(instructions.variable, append: true) unless instructions.variable.to_s.empty?
-        else
-          chat.with_instructions(instructions, cache_until_here: true)
-        end
+        return unless instructions
+
+        chat.with_instructions(instructions.fixed, cache_until_here: true)
+        chat.with_instructions(instructions.variable, append: true) if instructions.variable?
       end
 
       def ruby_llm_provider_class

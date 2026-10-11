@@ -30,4 +30,4 @@ When fixing CRF-003 the AI added the guard and then only made existing mocks sat
 
 Every new `raise`/guard branch must come with a test that drives the condition to true and asserts the error. Stubbing a new predicate only to its "happy" value in existing tests is not coverage; add the opposite case in the same change (for both streaming and non-streaming paths when the method has both).
 
-**Promoted to**: Not yet
+**Promoted to**: AGENTS.md

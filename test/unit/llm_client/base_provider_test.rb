@@ -806,34 +806,34 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
 
     context "create_chat with Instructions" do
       setup do
-        @instructions = RedmineAiHelper::LlmClient::Instructions.new(fixed: "FIXED", variable: "VARIABLE")
-        @mock_context = mock("RubyLLM::Context")
-        @mock_chat = mock("RubyLLM::Chat")
-        @mock_chat.stubs(:with_temperature)
-        @mock_context.stubs(:chat).returns(@mock_chat)
-        @provider.stubs(:build_context).returns(@mock_context)
+        @provider = FakeOpenAiProvider.new
+        @provider.stubs(:ensure_model_registered!)
       end
 
-      should "pass the joined prompt to with_instructions exactly once" do
-        @mock_chat.expects(:with_instructions).with("FIXED\n\nVARIABLE").once
-        @provider.create_chat(instructions: @instructions)
+      should "send a split system prompt as one system message without cache markers" do
+        assert_single_uncached_system_message(@provider)
       end
 
       should "pass a String through unchanged" do
-        @mock_chat.expects(:with_instructions).with("plain").once
-        @provider.create_chat(instructions: "plain")
+        chat = @provider.create_chat(instructions: "plain")
+
+        assert_equal [ "plain" ], chat.messages.select { |m| m.role == :system }.map(&:content)
       end
 
-      should "not call with_instructions for nil" do
-        @mock_chat.expects(:with_instructions).never
-        @provider.create_chat(instructions: nil)
+      should "add no system message for nil" do
+        chat = @provider.create_chat(instructions: nil)
+
+        assert_empty(chat.messages.select { |m| m.role == :system })
       end
 
       should "never enable caching" do
-        @mock_chat.stubs(:with_instructions)
-        @mock_chat.expects(:with_caching).never
-        @mock_chat.expects(:cache_until_here).never
-        @provider.create_chat(instructions: @instructions)
+        chat = @provider.create_chat(instructions: RedmineAiHelper::LlmClient::Instructions.new(fixed: "FIXED", variable: "VARIABLE"))
+
+        assert_not chat.caching
+      end
+
+      should "raise ArgumentError for an unsupported instructions type" do
+        assert_raises(ArgumentError) { @provider.create_chat(instructions: { text: "prompt" }) }
       end
     end
   end

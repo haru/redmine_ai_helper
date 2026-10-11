@@ -170,9 +170,10 @@ module RedmineAiHelper
 
       # It finishes the generation and updates it with the output.
       # @param output [String] The output string to be processed.
-      # @param usage [Hash] Token usage (+:prompt_tokens+, +:completion_tokens+, +:total_tokens+ and, when
-      #   reported by the provider, +:cache_read_tokens+ / +:cache_write_tokens+). +:prompt_tokens+ is the
-      #   total input including cached tokens; the cache breakdown is recorded in the generation metadata.
+      # @param usage [Hash] Token usage (+:prompt_tokens+, +:completion_tokens+, +:total_tokens+ and, whenever
+      #   RubyLLM returns a non-nil value, +:cache_read_tokens+ / +:cache_write_tokens+; Chat Completions
+      #   providers always return 0 for cache writes). +:prompt_tokens+ is the total input including cached
+      #   tokens; the cache breakdown is recorded in the generation metadata.
       # @return [void]
       def finish(output:, usage:)
         return unless @generation
@@ -189,14 +190,18 @@ module RedmineAiHelper
 
       private
 
+      # Maps usage hash keys to the Langfuse generation metadata keys for cache token counts.
+      CACHE_METADATA_KEYS = {
+        cache_read_tokens: :cache_read_input_tokens,
+        cache_write_tokens: :cache_creation_input_tokens
+      }.freeze
+      private_constant :CACHE_METADATA_KEYS
+
       # Builds the Langfuse metadata for prompt cache token counts.
       # @param usage [Hash] The usage hash passed to {#finish}.
       # @return [Hash] The cache read/creation counts present in +usage+; empty when none.
       def cache_metadata_from(usage)
-        metadata = {}
-        metadata[:cache_read_input_tokens] = usage[:cache_read_tokens] if usage.key?(:cache_read_tokens)
-        metadata[:cache_creation_input_tokens] = usage[:cache_write_tokens] if usage.key?(:cache_write_tokens)
-        metadata
+        usage.slice(*CACHE_METADATA_KEYS.keys).transform_keys(CACHE_METADATA_KEYS)
       end
     end
   end

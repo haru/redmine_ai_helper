@@ -1,8 +1,14 @@
 require File.expand_path("../../../test_helper", __FILE__)
 require "redmine_ai_helper/llm_client/anthropic_provider"
+require "redmine_ai_helper/agents/leader_agent"
+require "redmine_ai_helper/agents/project_agent"
 
 class RedmineAiHelper::LlmClient::AnthropicProviderTest < ActiveSupport::TestCase
+  fixtures :projects, :users
+
   # Renders the request payload the Anthropic protocol would send for the chat.
+  # Calls RubyLLM internals (protocol_for / render_payload) on purpose, to check
+  # the actual wire format; update this helper when upgrading RubyLLM.
   def payload_for_chat(chat)
     chat.provider.protocol_for(chat.model).new(chat.provider, chat.model).send(
       :render_payload,
@@ -97,7 +103,6 @@ class RedmineAiHelper::LlmClient::AnthropicProviderTest < ActiveSupport::TestCas
         @instructions = RedmineAiHelper::LlmClient::Instructions.new(fixed: "FIXED", variable: "VARIABLE")
       end
 
-
       should "add top-level cache_control and cache only the fixed system block" do
         payload = payload_for_chat(@provider.create_chat(instructions: @instructions))
 
@@ -146,6 +151,72 @@ class RedmineAiHelper::LlmClient::AnthropicProviderTest < ActiveSupport::TestCas
         assert_equal 1, payload[:system].size
         assert_equal "FIXED\n\nVARIABLE", payload[:system][0][:text]
         assert_nil payload[:system][0][:cache_control]
+      end
+
+      should "raise ArgumentError for an unsupported instructions type" do
+        assert_raises(ArgumentError) { @provider.create_chat(instructions: { text: "prompt" }) }
+      end
+
+      context "with an explicit model profile" do
+        setup do
+          @other_profile = AiHelperModelProfile.create!(
+            name: "Other Anthropic Profile",
+            llm_type: "Anthropic",
+            llm_model: "claude-sonnet-4-5-20250929",
+            access_key: "other_anthropic_key"
+          )
+        end
+
+        teardown do
+          @other_profile.destroy
+        end
+
+        should "use the explicit profile's disabled setting over the global profile" do
+          @other_profile.update!(prompt_caching_enabled: false)
+          provider = RedmineAiHelper::LlmClient::AnthropicProvider.new(model_profile: @other_profile)
+          payload = payload_for_chat(provider.create_chat(instructions: @instructions))
+
+          assert_nil payload[:cache_control]
+          assert_equal 1, payload[:system].size
+        end
+
+        should "use the explicit profile's enabled setting over the global profile" do
+          @anthropic_profile.update!(prompt_caching_enabled: false)
+          provider = RedmineAiHelper::LlmClient::AnthropicProvider.new(model_profile: @other_profile)
+          payload = payload_for_chat(provider.create_chat(instructions: @instructions))
+
+          assert_equal({ type: "ephemeral" }, payload[:cache_control])
+          assert_equal 2, payload[:system].size
+        end
+      end
+
+      context "with an agent's system prompt" do
+        setup do
+          User.current = users(:users_001)
+          @agent_params = { project: projects(:projects_001) }
+        end
+
+        should "send the Leader Agent's prompt as a cached fixed block and an uncached context block" do
+          agent = RedmineAiHelper::Agents::LeaderAgent.new(@agent_params)
+          payload = payload_for_chat(agent.assistant.chat)
+
+          assert_equal 2, payload[:system].size
+          assert_includes payload[:system][0][:text], agent.backstory
+          assert_equal({ type: "ephemeral" }, payload[:system][0][:cache_control])
+          assert_match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/, payload[:system][1][:text])
+          assert_nil payload[:system][1][:cache_control]
+        end
+
+        should "send a sub agent's prompt as a cached fixed block and an uncached time block" do
+          agent = RedmineAiHelper::Agents::ProjectAgent.new(@agent_params)
+          payload = payload_for_chat(agent.assistant.chat)
+
+          assert_equal 2, payload[:system].size
+          assert_includes payload[:system][0][:text], agent.backstory
+          assert_equal({ type: "ephemeral" }, payload[:system][0][:cache_control])
+          assert_match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/, payload[:system][1][:text])
+          assert_nil payload[:system][1][:cache_control]
+        end
       end
     end
   end

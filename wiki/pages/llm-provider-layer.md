@@ -108,5 +108,8 @@ Leader) site/page/user context are in `variable`. `BaseProvider#apply_instructio
 sends both joined as one system message with no cache markers. `AnthropicProvider`
 overrides it: when the profile's `prompt_caching_enabled` is true it calls
 `with_caching` and caches the fixed part as its own system block
-(`cache_until_here: true`). Langfuse records total input plus cache read/write
-counts in generation metadata. See ADR-051 (`docs/adr/051-prompt-caching-with-split-system-prompt.md`).
+(`cache_until_here: true`). Both accept a String, `Instructions` or nil
+(normalized by `Instructions.coerce`) and raise `ArgumentError` on any other
+type. Langfuse records total input (input + cache read + cache write) as
+`promptTokens` and the cache read/write breakdown in generation metadata
+(`cache_read_input_tokens` / `cache_creation_input_tokens`). See ADR-051 (`docs/adr/051-prompt-caching-with-split-system-prompt.md`).
