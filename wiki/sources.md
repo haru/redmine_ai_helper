@@ -47,3 +47,4 @@ Sources are immutable inputs — the wiki never edits them.
 | S040 | specs/067-remove-unused-embedding-settings (research.md + plan.md) | feature-artifact | 2026-10-08 | 2026-10-08 | embedding-connection-test.md |
 | S041 | specs/068-version-create-update (research.md + plan.md) | feature-artifact | 2026-10-08 | 2026-10-08 | version-write-tools.md, version-write-tools-error-policy.md, tool-system.md |
 | S042 | specs/069-ruby-llm-2-1-migration (research.md + plan.md) | feature-artifact | 2026-10-11 | 2026-10-11 | ruby-llm-2-1-migration.md, mcp-integration.md, llm-provider-layer.md, base-agent-llm-calls.md, plugin-overview.md, tool-system.md |
+| S043 | specs/070-prompt-caching (research.md + plan.md) | feature-artifact | 2026-10-11 | 2026-10-11 | prompt-caching.md, llm-provider-layer.md, base-agent-llm-calls.md, plugin-overview.md |

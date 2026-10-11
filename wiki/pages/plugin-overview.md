@@ -1,7 +1,7 @@
 ---
 title: Plugin Overview
 type: concept
-sources: [S002, S003, S005, S013, S014, S033, S036, S042]
+sources: [S002, S003, S005, S013, S014, S033, S036, S042, S043]
 updated: 2026-10-11
 ---
 
@@ -30,6 +30,9 @@ over RubyLLM (S002, S005). This page is the hub linking the wiki's topic pages.
   servers and expose Redmine itself as one (S002).
 - **[RubyLLM 2.1 Migration](./ruby-llm-2-1-migration.md)** — RubyLLM 2.1, its
   built-in MCP client, and the Ruby 3.2+ requirement (S042).
+- **[Prompt Caching](./prompt-caching.md)** — Anthropic profiles cache the
+  system prompt, tools and history via a split system prompt; per-profile
+  `prompt_caching_enabled` setting (default on) (S043).
 - **[Vector Search](./vector-search.md)** via Qdrant — powers similar-issue and
   duplicate-issue detection (S002).
 - **[Log File Access](./log-file-access-tools.md)** — administrators can tail
