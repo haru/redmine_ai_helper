@@ -164,7 +164,7 @@ class LangfuseCallbackTest < ActiveSupport::TestCase
       mock_generation = mock("generation")
 
       user_msg = create_mock_message(role: :user, content: "hello")
-      assistant_msg = create_mock_message(role: :assistant, content: "response without tokens", tokens: nil)
+      assistant_msg = create_mock_message(role: :assistant, content: "response without tokens", tokens: RubyLLM::Tokens.new)
 
       mock_span.expects(:create_generation).returns(mock_generation)
       mock_generation.expects(:finish).with(
@@ -217,10 +217,10 @@ class LangfuseCallbackTest < ActiveSupport::TestCase
 
   # RubyLLM 2.x exposes token usage as message.tokens (input / output)
   def tokens_of(input, output)
-    Struct.new(:input, :output).new(input, output)
+    RubyLLM::Tokens.new(input: input, output: output)
   end
 
-  def create_mock_message(role:, content:, tokens: nil, tool_calls: nil)
+  def create_mock_message(role:, content:, tokens: RubyLLM::Tokens.new, tool_calls: nil)
     msg = mock("message")
     msg.stubs(:role).returns(role)
     msg.stubs(:content).returns(content)

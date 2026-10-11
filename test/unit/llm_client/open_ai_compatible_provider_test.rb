@@ -158,7 +158,7 @@ class RedmineAiHelper::LlmClient::OpenAiCompatibleProviderTest < ActiveSupport::
         mock_chat = mock("RubyLLM::Chat")
         mock_chat.expects(:with_instructions).never
         mock_chat.expects(:with_temperature).with(@compatible_profile.temperature)
-        mock_chat.expects(:with_end_user).with(User.current.id.to_s).once
+        mock_chat.expects(:with_provider_options).with(safety_identifier: User.current.id.to_s).once
 
         mock_context.expects(:chat).with(
           model: @compatible_profile.llm_model,
@@ -178,7 +178,7 @@ class RedmineAiHelper::LlmClient::OpenAiCompatibleProviderTest < ActiveSupport::
         mock_chat = mock("RubyLLM::Chat")
         mock_chat.expects(:with_instructions).never
         mock_chat.expects(:with_temperature).with(@compatible_profile.temperature)
-        mock_chat.expects(:with_end_user).never
+        mock_chat.expects(:with_provider_options).never
 
         mock_context.expects(:chat).with(
           model: @compatible_profile.llm_model,

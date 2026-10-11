@@ -104,7 +104,8 @@ class McpServerLoaderTest < ActiveSupport::TestCase
         RubyLLM.expects(:mcp).with(
           name: "fs",
           command: [ "npx", "-y", "@modelcontextprotocol/server-filesystem", "/tmp" ],
-          env: {}
+          env: {},
+          input_requests: false
         ).returns(:client)
 
         assert_equal :client, @loader.send(:create_mcp_client, "fs", config.merge("type" => "stdio"))
@@ -112,21 +113,21 @@ class McpServerLoaderTest < ActiveSupport::TestCase
 
       should "A2: pass command and env through for stdio" do
         config = { "type" => "stdio", "command" => "/usr/bin/server", "env" => { "TOKEN" => "x" } }
-        RubyLLM.expects(:mcp).with(name: "srv", command: [ "/usr/bin/server" ], env: { "TOKEN" => "x" }).returns(:client)
+        RubyLLM.expects(:mcp).with(name: "srv", command: [ "/usr/bin/server" ], env: { "TOKEN" => "x" }, input_requests: false).returns(:client)
 
         assert_equal :client, @loader.send(:create_mcp_client, "srv", config)
       end
 
       should "A2: use args as the argv when command is absent" do
         config = { "type" => "stdio", "args" => [ "node", "server.js" ] }
-        RubyLLM.expects(:mcp).with(name: "srv", command: [ "node", "server.js" ], env: {}).returns(:client)
+        RubyLLM.expects(:mcp).with(name: "srv", command: [ "node", "server.js" ], env: {}, input_requests: false).returns(:client)
 
         assert_equal :client, @loader.send(:create_mcp_client, "srv", config)
       end
 
       should "keep arguments containing spaces as single argv elements" do
         config = { "type" => "stdio", "command" => "node", "args" => [ "my server.js" ] }
-        RubyLLM.expects(:mcp).with(name: "srv", command: [ "node", "my server.js" ], env: {}).returns(:client)
+        RubyLLM.expects(:mcp).with(name: "srv", command: [ "node", "my server.js" ], env: {}, input_requests: false).returns(:client)
 
         @loader.send(:create_mcp_client, "srv", config)
       end
@@ -134,7 +135,8 @@ class McpServerLoaderTest < ActiveSupport::TestCase
       should "A3: build an http client with headers" do
         config = { "type" => "http", "url" => "https://mcp.example.com/mcp", "headers" => { "Authorization" => "Bearer t" } }
         RubyLLM.expects(:mcp).with(
-          name: "web", url: "https://mcp.example.com/mcp", headers: { "Authorization" => "Bearer t" }
+          name: "web", url: "https://mcp.example.com/mcp", headers: { "Authorization" => "Bearer t" },
+          input_requests: false
         ).returns(:client)
 
         assert_equal :client, @loader.send(:create_mcp_client, "web", config)
@@ -142,7 +144,7 @@ class McpServerLoaderTest < ActiveSupport::TestCase
 
       should "A3: default headers to an empty hash" do
         config = { "type" => "http", "url" => "https://mcp.example.com/mcp" }
-        RubyLLM.expects(:mcp).with(name: "web", url: "https://mcp.example.com/mcp", headers: {}).returns(:client)
+        RubyLLM.expects(:mcp).with(name: "web", url: "https://mcp.example.com/mcp", headers: {}, input_requests: false).returns(:client)
 
         @loader.send(:create_mcp_client, "web", config)
       end
@@ -218,7 +220,7 @@ class McpServerLoaderTest < ActiveSupport::TestCase
       @loader.stubs(:load_config).returns(config)
       RedmineAiHelper::CustomLogger.stubs(:instance).returns(create_mock_logger)
       @loader.stubs(:ai_helper_logger).returns(create_mock_logger)
-      RubyLLM.expects(:mcp).once.with(name: "good", url: "https://mcp.example.com/mcp", headers: {}).returns(mock("mcp_client"))
+      RubyLLM.expects(:mcp).once.with(name: "good", url: "https://mcp.example.com/mcp", headers: {}, input_requests: false).returns(mock("mcp_client"))
 
       @loader.send(:generate_mcp_agent_classes)
 
@@ -268,7 +270,7 @@ class McpServerLoaderTest < ActiveSupport::TestCase
       RedmineAiHelper::Tools::McpTools.expects(:generate_tool_classes).with(
         mcp_server_name: "filesystem",
         mcp_client: fake_client
-      ).once.returns(fake_tools)
+      ).at_least_once.returns(fake_tools)
 
       stub_llm_provider
 
@@ -377,35 +379,46 @@ class McpServerLoaderTest < ActiveSupport::TestCase
       end
     end
 
-    should "return empty tool providers and log error when tool generation fails" do
+    should "not log the server config of a rejected server" do
       config = {
         "mcpServers" => {
-          "filesystem" => {
-            "command" => "node",
-            "args" => [ "server.js" ]
-          }
+          "leaky" => { "url" => "https://user:secret@mcp.example.com/mcp", "headers" => { "Authorization" => "Bearer top-secret" } }
         }
       }
-      server_config = config["mcpServers"]["filesystem"]
-
-      fake_client = mock("mcp_client")
+      messages = []
       mock_logger = create_mock_logger
-
-      mock_logger.expects(:error).with(includes("Error loading tools for MCP server 'filesystem': boom"))
-
+      mock_logger.stubs(:warn).with { |m| messages << m }
+      mock_logger.stubs(:error).with { |m| messages << m }
       @loader.stubs(:load_config).returns(config)
-      @loader.expects(:create_mcp_client).with("filesystem", server_config).returns(fake_client)
-      RedmineAiHelper::CustomLogger.stubs(:instance).returns(mock_logger)
+      @loader.stubs(:ai_helper_logger).returns(mock_logger)
+      RubyLLM.expects(:mcp).never
+
+      @loader.send(:generate_mcp_agent_classes)
+
+      assert(messages.any? { |m| m.include?("'leaky'") })
+      assert(messages.none? { |m| m.include?("secret") || m.include?("top-secret") })
+    end
+
+    should "reject stdio configs with a non-array args or non-hash env" do
+      assert_equal false, @loader.send(:valid_server_config?, { "command" => "node", "args" => "server.js" }, "a")
+      assert_equal false, @loader.send(:valid_server_config?, { "command" => "node", "env" => "X=1" }, "a")
+      assert_equal false, @loader.send(:valid_server_config?, { "args" => [] }, "a")
+      assert_equal false, @loader.send(:valid_server_config?, { "url" => "https://x.example.com", "headers" => [] }, "a")
+    end
+
+    should "propagate errors when tool generation fails" do
+      config = { "mcpServers" => { "filesystem" => { "command" => "node", "args" => [ "server.js" ] } } }
+      @loader.stubs(:load_config).returns(config)
+      @loader.expects(:create_mcp_client).returns(mock("mcp_client"))
 
       stub_llm_provider
 
       @loader.send(:generate_mcp_agent_classes)
-      klass = Object.const_get("AiHelperMcpFilesystem")
-      agent = klass.new
-
+      agent = Object.const_get("AiHelperMcpFilesystem").new
       RedmineAiHelper::Tools::McpTools.stubs(:generate_tool_classes).raises(StandardError.new("boom"))
 
-      assert_equal [], agent.available_tool_classes
+      error = assert_raises(StandardError) { agent.available_tool_classes }
+      assert_equal "boom", error.message
     end
 
     should "propagate errors when tool list retrieval fails in backstory" do
@@ -442,7 +455,7 @@ class McpServerLoaderTest < ActiveSupport::TestCase
     should "create appropriate MCP client based on type and inferred configuration" do
       stdio_config = { "type" => "stdio", "command" => "node" }
       http_config = { "type" => "http", "url" => "https://api.example.com" }
-      inferred_config = { "command" => "node", "args" => [ "worker.js" ] }
+      inferred_config = { "type" => "stdio", "command" => "node", "args" => [ "worker.js" ] }
 
       @loader.expects(:create_stdio_client).with("stdio_server", stdio_config).returns(:stdio_client)
       @loader.expects(:create_http_client).with("http_server", http_config).returns(:http_client)

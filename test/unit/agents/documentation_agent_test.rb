@@ -82,7 +82,7 @@ class DocumentationAgentTest < ActiveSupport::TestCase
     mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
     mock_chat_instance.stubs(:add_message)
     mock_response = mock("Response")
-    mock_response.stubs(:content).returns(
+    mock_response.stubs(:content).returns({
       "value" => [
         {
           "original" => "teh",
@@ -93,8 +93,9 @@ class DocumentationAgentTest < ActiveSupport::TestCase
           "confidence" => "high"
         }
       ]
-    )
+    }.to_json)
     mock_chat_instance.stubs(:ask).returns(mock_response)
+    mock_chat_instance.stubs(:waiting?).returns(false)
     @agent.llm_provider.expects(:create_chat).with do |opts|
       opts[:schema][:schema]["type"] == "object" && opts[:schema][:schema]["properties"].key?("value")
     end.returns(mock_chat_instance)

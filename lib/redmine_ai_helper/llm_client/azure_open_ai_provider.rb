@@ -6,7 +6,8 @@ module RedmineAiHelper
   module LlmClient
     # AzureOpenAiProvider configures RubyLLM for Azure OpenAI API access.
     # Uses RubyLLM's :azure provider, which builds the endpoint URL from the
-    # configured base URI and selects the API protocol per deployment.
+    # configured base URI and selects the API protocol from the deployment name
+    # (Responses API for gpt-5.4+ / gpt-6+ names, Chat Completions otherwise).
     class AzureOpenAiProvider < RedmineAiHelper::LlmClient::BaseProvider
       # Create a RubyLLM::Chat instance for Azure OpenAI.
       # Overrides base class to use provider: :azure and assume_model_exists: true.
@@ -30,6 +31,12 @@ module RedmineAiHelper
       end
 
       protected
+
+      # Azure embeddings go through RubyLLM's :azure provider.
+      # @return [Symbol]
+      def embedding_provider_slug
+        :azure
+      end
 
       # Build a RubyLLM::Context with Azure OpenAI endpoint and API key.
       # @return [RubyLLM::Context]

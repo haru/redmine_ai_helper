@@ -45,6 +45,7 @@ class RedmineAiHelper::AssistantTest < ActiveSupport::TestCase
 
         @mock_chat.stubs(:messages).returns([ mock_message ])
         @mock_chat.expects(:ask).with("test question").returns(mock_response)
+        @mock_chat.stubs(:waiting?).returns(false)
 
         result = @assistant.run(auto_tool_execution: true)
 

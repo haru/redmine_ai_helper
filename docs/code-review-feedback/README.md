@@ -84,3 +84,8 @@ A concrete, checkable rule to apply when generating future code.
 
 | Entry | Title | Category | Source | Promoted to |
 |-------|-------|----------|--------|-------------|
+| [CRF-001](./001-azure-embed-provider-slug.md) | Azure embedding still used the :openai provider after the :azure migration | edge-case | Local AI review | Not yet |
+| [CRF-002](./002-secrets-in-rejected-config-log.md) | Rejected MCP server config was logged in full, including credentials | security | Local AI review | Not yet |
+| [CRF-003](./003-swallowed-mcp-and-structured-output-errors.md) | Errors swallowed or cached as empty results around MCP tools and structured output | error-handling | Local AI review | Not yet |
+| [CRF-004](./004-end-user-dropped-by-responses-protocol.md) | Spec-assumed with_end_user does not send the user ID on the OpenAI Responses protocol | other | Local AI review | Not yet |
+| [CRF-005](./005-stale-dead-code-and-docs-after-migration.md) | Dead branches, stale comments and tests tied to the old API left after the RubyLLM 2.1 migration | doc-comment | Local AI review | Not yet |

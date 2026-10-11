@@ -478,10 +478,10 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
     end
   end
 
-  context "parse with Hash/Array input (native path)" do
-    should "skip JSON parsing and apply conform + validate for Hash input" do
+  context "parse with native structured output JSON strings" do
+    should "apply conform + validate to a JSON object string" do
       schema = { "type" => "object", "properties" => { "goal" => { "type" => "string" } }, "required" => [ "goal" ] }
-      data = { "goal" => "g", "extra" => "x" }
+      data = { "goal" => "g", "extra" => "x" }.to_json
 
       result = Util::StructuredOutputHelper.parse(response: data, json_schema: schema)
 
@@ -489,13 +489,12 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
       assert_not result.key?("extra")
     end
 
-    should "conform a bare array Hash response via wrap" do
+    should "conform a bare JSON array string via wrap" do
       schema = {
         "type" => "object",
         "properties" => { "sub_issues" => { "type" => "array", "items" => { "type" => "object", "properties" => { "subject" => { "type" => "string" } }, "required" => [ "subject" ] } } }
       }
-      # Native path returns a bare Array
-      result = Util::StructuredOutputHelper.parse(response: [ { "subject" => "a" } ], json_schema: schema)
+      result = Util::StructuredOutputHelper.parse(response: [ { "subject" => "a" } ].to_json, json_schema: schema)
 
       assert_kind_of Hash, result
       assert_equal "a", result["sub_issues"][0]["subject"]
@@ -505,7 +504,7 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
       schema = { "type" => "object", "properties" => { "goal" => { "type" => "string" } }, "required" => [ "goal" ] }
 
       assert_raises(Util::StructuredOutputHelper::SchemaViolationError) do
-        Util::StructuredOutputHelper.parse(response: { "other" => "x" }, json_schema: schema)
+        Util::StructuredOutputHelper.parse(response: { "other" => "x" }.to_json, json_schema: schema)
       end
     end
   end
@@ -598,7 +597,7 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
       Util::StructuredOutputHelper.stubs(:ai_helper_logger).returns(logger)
 
       assert_raises(Util::StructuredOutputHelper::SchemaViolationError) do
-        Util::StructuredOutputHelper.parse(response: { "other" => "x" }, json_schema: schema)
+        Util::StructuredOutputHelper.parse(response: { "other" => "x" }.to_json, json_schema: schema)
       end
     end
   end
@@ -641,26 +640,20 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
     end
 
     context "unwrap_array_root" do
-      should "unwrap a Hash response with the value key" do
-        result = Util::StructuredOutputHelper.unwrap_array_root({ "value" => [ { "corrected" => "the" } ] })
-
-        assert_equal [ { "corrected" => "the" } ], result
-      end
-
       should "unwrap a String JSON response with the value key" do
         result = Util::StructuredOutputHelper.unwrap_array_root('{"value": [{"corrected": "the"}]}')
 
-        assert_equal [ { "corrected" => "the" } ], result
+        assert_equal [ { "corrected" => "the" } ], JSON.parse(result)
       end
 
       should "return the response unchanged when the value key is absent" do
-        response = { "other" => [ 1, 2 ] }
+        response = { "other" => [ 1, 2 ] }.to_json
 
         assert_equal response, Util::StructuredOutputHelper.unwrap_array_root(response)
       end
 
-      should "return the response unchanged when it is already a bare Array" do
-        response = [ { "corrected" => "the" } ]
+      should "return the response unchanged when it is already a bare JSON array" do
+        response = [ { "corrected" => "the" } ].to_json
 
         assert_equal response, Util::StructuredOutputHelper.unwrap_array_root(response)
       end
@@ -678,7 +671,7 @@ class StructuredOutputHelperTest < ActiveSupport::TestCase
         payload = Util::StructuredOutputHelper.native_schema_payload(native_schema)
         assert_equal "object", payload[:schema]["type"]
 
-        native_response = { "value" => [ { "corrected" => "the", "extra" => "strip me" } ] }
+        native_response = { "value" => [ { "corrected" => "the", "extra" => "strip me" } ] }.to_json
         unwrapped = Util::StructuredOutputHelper.unwrap_array_root(native_response)
 
         result = Util::StructuredOutputHelper.parse(response: unwrapped, json_schema: @array_schema)

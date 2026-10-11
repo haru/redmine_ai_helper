@@ -26,6 +26,8 @@ RubyLLM 2.1 fixes both, but its gemspec requires Ruby 3.2 or later, so Ruby 3.1 
 - Positive: Issue #480 and Issue #491 are resolved without plugin-side workarounds; protocol selection follows RubyLLM and needs no maintenance here.
 - Negative: Ruby 3.1 users must upgrade Ruby or stay on the previous plugin version.
 - Negative: OpenAI-compatible servers that do not implement the Responses API (many Ollama, vLLM and LM Studio setups) stop working.
+- Negative: RubyLLM's `with_end_user` is dropped by the OpenAI Responses protocol (the default for OpenAI and OpenAI-compatible profiles), so the plugin sends the user ID as `safety_identifier` through `with_provider_options` instead.
+- Negative: Azure protocol selection is a heuristic on the deployment name (gpt-5.4+ / gpt-6+ use Responses); a deployment with an unrelated name stays on Chat Completions.
 - Negative: the plugin still touches RubyLLM internals in one place (`append_to_model_registry` writes to the registry's `@models`), which may need rework on later RubyLLM releases.
 
 ## Alternatives Considered

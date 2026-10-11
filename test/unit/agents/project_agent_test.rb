@@ -325,6 +325,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
         mock_response = mock("Response")
         mock_response.stubs(:content).returns("think answer")
         @mock_think_chat.stubs(:ask).returns(mock_response)
+        @mock_think_chat.stubs(:waiting?).returns(false)
         @mock_think_provider.stubs(:create_chat).returns(@mock_think_chat)
         @mock_think_provider.stubs(:model_name).returns("claude-3-7-sonnet")
         @mock_think_provider.stubs(:temperature).returns(nil)

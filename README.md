@@ -462,9 +462,9 @@ Two transport types are supported. The `type` field can be omitted — it is inf
 
 Notes:
 
-- Plain `http://` URLs are accepted only for loopback hosts (`localhost`, `127.0.0.1`, `::1`). Any other host requires `https://`.
+- Plain `http://` URLs are accepted only for loopback hosts (`localhost`, `127.0.0.1`, and `[::1]` written in brackets in the URL). Any other host requires `https://`.
 - Do not embed credentials in the URL (`https://user:pass@host/...`). Use the `headers` field instead.
-- The legacy SSE transport (`"type": "sse"`) is no longer supported. Servers that use it, and any other unsupported configuration, are skipped and a warning is written to the AI Helper log. Use the Streamable HTTP transport (`"type": "http"`) instead.
+- The legacy SSE transport (`"type": "sse"`) is no longer supported. Servers that use it, and any other unsupported configuration, are skipped and an error is written to the AI Helper log (without the server's credentials). Use the Streamable HTTP transport (`"type": "http"`) instead.
 
 **STDIO example** (local process):
 ```json
@@ -633,7 +633,7 @@ langfuse:
 
 If you do not want the AI Helper to send anything outside your network, configure it as follows:
 
-- **LLM**: Use a locally hosted model, such as Ollama, through the OpenAI Compatible provider.
+- **LLM**: Use a locally hosted model through the OpenAI Compatible provider. The OpenAI Compatible provider communicates through the OpenAI Responses API (`/v1/responses`), so the server must support it; servers that only offer Chat Completions do not work.
 - **Vector search**: Use a locally hosted Qdrant, together with a local embedding model.
 - **Langfuse**: Use a self-hosted Langfuse instance, or leave Langfuse unconfigured.
 - **MCP servers**: Use only MCP servers that do not communicate externally.

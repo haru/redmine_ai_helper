@@ -19,17 +19,16 @@ The plugin has **two independent MCP capabilities** (S002):
 ## Consuming external MCP servers
 
 Configured in `config/ai_helper/config.json` (under the Redmine root) via an
-`mcpServers` map; restart Redmine to apply (S002). Three transport types, with
+`mcpServers` map; restart Redmine to apply (S002). Two transport types, with
 `type` **auto-detected** from the other keys when omitted (S002):
 
 | Type | Auto-detected when | Transport |
 |---|---|---|
 | `stdio` | `command` or `args` present | local process over stdin/stdout |
 | `http` | `url` present, no `type` | MCP Streamable HTTP |
-| `sse` | `type: "sse"` explicit | Server-Sent Events |
 
-External connections are handled by the `ruby_llm-mcp` library, with one client
-per transport (`create_stdio_client` / `create_http_client` / `create_sse_client`)
+External connections are handled by RubyLLM's built-in MCP client (`RubyLLM.mcp`),
+with one client per transport (`create_stdio_client` / `create_http_client`; SSE is no longer supported, see ADR-050)
 (S006).
 
 ### Dynamic agent generation

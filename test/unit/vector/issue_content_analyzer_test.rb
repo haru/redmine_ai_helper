@@ -466,7 +466,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
         @mock_chat = mock("chat_instance")
         @mock_chat.stubs(:add_message)
         @mock_response = mock("response")
-        @mock_response.stubs(:content).returns({ "summary" => "Native summary.", "keywords" => [ "native" ] })
+        @mock_response.stubs(:content).returns({ "summary" => "Native summary.", "keywords" => [ "native" ] }.to_json)
         @mock_chat.stubs(:ask).returns(@mock_response)
       end
 

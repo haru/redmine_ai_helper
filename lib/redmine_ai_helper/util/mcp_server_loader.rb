@@ -25,7 +25,8 @@ module RedmineAiHelper
           begin
             # Validate server configuration
             unless valid_server_config?(server_config, server_name)
-              ai_helper_logger.warn "Invalid configuration for MCP server '#{server_name}': #{server_config}"
+              # Never log the config itself: it may contain credentials in url, headers or env.
+              ai_helper_logger.error "MCP server '#{server_name}' was not loaded because its configuration is invalid or unsupported"
               next
             end
 
@@ -93,9 +94,9 @@ module RedmineAiHelper
 
         case config["type"]
         when "stdio"
-          !!(config["command"] || config["args"])
+          valid_stdio_config?(config)
         when "http"
-          !!(config["url"] && valid_url?(config["url"]) && secure_url?(config["url"], server_name))
+          valid_http_config?(config, server_name)
         when "sse"
           ai_helper_logger.warn "MCP server '#{server_name}' uses the SSE transport, which is no longer supported. " \
                                 "Use the Streamable HTTP transport (\"type\": \"http\") instead."
@@ -103,6 +104,22 @@ module RedmineAiHelper
         else
           false
         end
+      end
+
+      # A stdio server needs a non-empty argv built from "command" and "args",
+      # and "env" must be a Hash when given.
+      def valid_stdio_config?(config)
+        return false unless config["args"].nil? || (config["args"].is_a?(Array) && config["args"].all?(String))
+        return false unless config["env"].nil? || config["env"].is_a?(Hash)
+
+        [ config["command"], *config["args"] ].compact.any?
+      end
+
+      # An HTTP server needs a secure URL, and "headers" must be a Hash when given.
+      def valid_http_config?(config, server_name)
+        return false unless config["headers"].nil? || config["headers"].is_a?(Hash)
+
+        !!(config["url"] && valid_url?(config["url"]) && secure_url?(config["url"], server_name))
       end
 
       # Infer server type from available keys (internal helper)
@@ -139,9 +156,7 @@ module RedmineAiHelper
 
       # Create MCP client
       def create_mcp_client(server_name, server_config)
-        # Allow implicit type inference
-        server_type = server_config["type"] || infer_server_type(server_config)
-        case server_type
+        case server_config["type"]
         when "stdio"
           create_stdio_client(server_name, server_config)
         when "http"
@@ -153,14 +168,16 @@ module RedmineAiHelper
 
       # Create STDIO MCP client using RubyLLM's built-in MCP client.
       # The command is passed as an argv array, so no shell is involved.
+      # input_requests is disabled so RubyLLM declines server-initiated input
+      # (elicitation) requests instead of pausing the chat with an empty answer.
       def create_stdio_client(server_name, server_config)
         argv = [ server_config["command"], *server_config["args"] ].compact
-        raise ArgumentError, "Either 'command' or 'args' must be specified for stdio MCP server" if argv.empty?
 
         RubyLLM.mcp(
           name: server_name,
           command: argv,
-          env: server_config["env"] || {}
+          env: server_config["env"] || {},
+          input_requests: false
         )
       end
 
@@ -169,7 +186,8 @@ module RedmineAiHelper
         RubyLLM.mcp(
           name: server_name,
           url: server_config["url"],
-          headers: server_config["headers"] || {}
+          headers: server_config["headers"] || {},
+          input_requests: false
         )
       end
 
@@ -200,14 +218,10 @@ module RedmineAiHelper
           define_method(:can_write?) { true }
 
           define_method :available_tool_classes do
-            return @cached_tool_classes if @cached_tool_classes
-            @cached_tool_classes = RedmineAiHelper::Tools::McpTools.generate_tool_classes(
+            RedmineAiHelper::Tools::McpTools.generate_tool_classes(
               mcp_server_name: server_name,
               mcp_client: mcp_client
             )
-          rescue => e
-            ai_helper_logger.error "Error loading tools for MCP server '#{server_name}': #{e.message}"
-            []
           end
 
           # Override available_tools to handle MCP tool instances

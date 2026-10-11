@@ -224,7 +224,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
           mock_chat = mock("RubyLLM::Chat")
           mock_chat.expects(:with_instructions).never
           mock_chat.expects(:with_temperature).with(@setting.model_profile.temperature)
-          mock_chat.expects(:with_end_user).with(User.current.id.to_s).once
+          mock_chat.expects(:with_provider_options).with(safety_identifier: User.current.id.to_s).once
 
           mock_context.expects(:chat).with(model: @setting.model_profile.llm_model).returns(mock_chat)
           @provider.expects(:build_context).returns(mock_context)
@@ -240,7 +240,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
           mock_chat = mock("RubyLLM::Chat")
           mock_chat.expects(:with_instructions).never
           mock_chat.expects(:with_temperature).with(@setting.model_profile.temperature)
-          mock_chat.expects(:with_end_user).never
+          mock_chat.expects(:with_provider_options).never
 
           mock_context.expects(:chat).with(model: @setting.model_profile.llm_model).returns(mock_chat)
           @provider.expects(:build_context).returns(mock_context)
@@ -572,10 +572,10 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
           assert_equal false, @so_provider.supports_structured_output?
         end
 
-        should "return false when the registry lookup raises an error" do
+        should "raise when the registry lookup raises an error" do
           RubyLLM.models.stubs(:by_provider).raises(StandardError.new("registry unavailable"))
 
-          assert_equal false, @so_provider.supports_structured_output?
+          assert_raises(StandardError) { @so_provider.supports_structured_output? }
         end
       end
     end
@@ -621,18 +621,18 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         User.current = @original_current_user
       end
 
-      should "not call with_end_user when supports_user_identifier? is false" do
+      should "not call with_provider_options when supports_user_identifier? is false" do
         @setting.send_user_id_enabled = true
         @setting.save!
         @provider.stubs(:supports_user_identifier?).returns(false)
 
         mock_chat = mock("RubyLLM::Chat")
-        mock_chat.expects(:with_end_user).never
+        mock_chat.expects(:with_provider_options).never
 
         @provider.send(:apply_user_identifier, mock_chat)
       end
 
-      should "call chat.with_end_user with the current user's id when send_user_id_enabled is true" do
+      should "call chat.with_provider_options with the current user's id when send_user_id_enabled is true" do
         @setting.send_user_id_enabled = true
         @setting.save!
 
@@ -640,17 +640,17 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         User.current = user
 
         mock_chat = mock("RubyLLM::Chat")
-        mock_chat.expects(:with_end_user).with(user.id.to_s).once
+        mock_chat.expects(:with_provider_options).with(safety_identifier: user.id.to_s).once
 
         @provider.send(:apply_user_identifier, mock_chat)
       end
 
-      should "not call chat.with_end_user when send_user_id_enabled is false" do
+      should "not call chat.with_provider_options when send_user_id_enabled is false" do
         @setting.send_user_id_enabled = false
         @setting.save!
 
         mock_chat = mock("RubyLLM::Chat")
-        mock_chat.expects(:with_end_user).never
+        mock_chat.expects(:with_provider_options).never
 
         @provider.send(:apply_user_identifier, mock_chat)
       end
@@ -662,7 +662,7 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         User.current = User.anonymous
 
         mock_chat = mock("RubyLLM::Chat")
-        mock_chat.expects(:with_end_user).with(User.anonymous.id.to_s).once
+        mock_chat.expects(:with_provider_options).with(safety_identifier: User.anonymous.id.to_s).once
 
         @provider.send(:apply_user_identifier, mock_chat)
       end
@@ -674,13 +674,13 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         user_a = User.find(1)
         User.current = user_a
         mock_chat_a = mock("RubyLLM::Chat A")
-        mock_chat_a.expects(:with_end_user).with(user_a.id.to_s).once
+        mock_chat_a.expects(:with_provider_options).with(safety_identifier: user_a.id.to_s).once
         @provider.send(:apply_user_identifier, mock_chat_a)
 
         user_b = User.anonymous
         User.current = user_b
         mock_chat_b = mock("RubyLLM::Chat B")
-        mock_chat_b.expects(:with_end_user).with(user_b.id.to_s).once
+        mock_chat_b.expects(:with_provider_options).with(safety_identifier: user_b.id.to_s).once
         @provider.send(:apply_user_identifier, mock_chat_b)
 
         assert_not_equal user_a.id.to_s, user_b.id.to_s

@@ -40,6 +40,17 @@ class RedmineAiHelper::LlmClient::AzureOpenAiProviderTest < ActiveSupport::TestC
       assert_not_equal @azure_profile.access_key, config.openai_api_key
     end
 
+    should "embed through the :azure provider, not :openai" do
+      mock_context = mock("RubyLLM::Context")
+      mock_embedding = mock("embedding")
+      mock_embedding.stubs(:vectors).returns([ 0.1 ])
+      mock_context.expects(:embed).with("hi", model: "text-embedding-3-small", provider: :azure,
+                                              assume_model_exists: true).returns(mock_embedding)
+      @provider.stubs(:context).returns(mock_context)
+
+      assert_equal [ 0.1 ], @provider.embed("hi", embedding_model: "text-embedding-3-small")
+    end
+
     should "memoize the context" do
       context1 = @provider.context
       context2 = @provider.context
@@ -150,7 +161,7 @@ class RedmineAiHelper::LlmClient::AzureOpenAiProviderTest < ActiveSupport::TestC
         mock_chat = mock("RubyLLM::Chat")
         mock_chat.expects(:with_instructions).never
         mock_chat.expects(:with_temperature).with(@azure_profile.temperature)
-        mock_chat.expects(:with_end_user).with(User.current.id.to_s).once
+        mock_chat.expects(:with_provider_options).with(safety_identifier: User.current.id.to_s).once
 
         mock_context.expects(:chat).with(
           model: @azure_profile.llm_model,
@@ -170,7 +181,7 @@ class RedmineAiHelper::LlmClient::AzureOpenAiProviderTest < ActiveSupport::TestC
         mock_chat = mock("RubyLLM::Chat")
         mock_chat.expects(:with_instructions).never
         mock_chat.expects(:with_temperature).with(@azure_profile.temperature)
-        mock_chat.expects(:with_end_user).never
+        mock_chat.expects(:with_provider_options).never
 
         mock_context.expects(:chat).with(
           model: @azure_profile.llm_model,

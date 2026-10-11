@@ -81,3 +81,5 @@ A concrete, checkable rule to apply when writing future specifications.
 
 | Entry | Title | Category | Feature | Promoted to |
 |-------|-------|----------|---------|-------------|
+| [SF-001](./001-assumed-azure-protocol.md) | Assumed Azure OpenAI keeps Chat Completions without asking | unconfirmed-assumption | 069-ruby-llm-2-1-migration | Not yet |
+| [SF-002](./002-added-langfuse-token-breakdown.md) | Added Langfuse token breakdown fields not recorded today | scope-creep | 069-ruby-llm-2-1-migration | Not yet |

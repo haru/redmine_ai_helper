@@ -68,6 +68,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
       mock_response = mock("Response")
       mock_response.stubs(:content).returns(goal_json)
       @mock_ruby_llm_chat.stubs(:ask).returns(mock_response)
+      @mock_ruby_llm_chat.stubs(:waiting?).returns(false)
 
       goal = @agent.generate_goal(@messages)
 
@@ -107,6 +108,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
       mock_response = mock("Response")
       mock_response.stubs(:content).returns(steps_json)
       @mock_ruby_llm_chat.stubs(:ask).returns(mock_response)
+      @mock_ruby_llm_chat.stubs(:waiting?).returns(false)
 
       goal = "test goal"
       steps = @agent.generate_steps(goal, @messages)
@@ -126,6 +128,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
       chat_response.stubs(:content).returns("test answer")
 
       @mock_ruby_llm_chat.stubs(:ask).returns(goal_response).then.returns(chat_response)
+      @mock_ruby_llm_chat.stubs(:waiting?).returns(false)
 
       result = @agent.perform_user_request(@messages)
 
@@ -147,6 +150,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
       mock_response = mock("Response")
       mock_response.stubs(:content).returns(steps_json)
       @mock_ruby_llm_chat.stubs(:ask).returns(mock_response)
+      @mock_ruby_llm_chat.stubs(:waiting?).returns(false)
 
       steps = @agent.generate_steps("test goal", @messages)
 
@@ -193,6 +197,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
 
       RedmineAiHelper::ChatRoom.stubs(:new).returns(mock_chat_room)
       @mock_ruby_llm_chat.stubs(:ask).returns(stub(content: "final answer"))
+      @mock_ruby_llm_chat.stubs(:waiting?).returns(false)
 
       @agent.perform_user_request(@messages)
     end
@@ -225,6 +230,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
 
       RedmineAiHelper::ChatRoom.stubs(:new).returns(mock_chat_room)
       @mock_ruby_llm_chat.stubs(:ask).returns(stub(content: "final answer"))
+      @mock_ruby_llm_chat.stubs(:waiting?).returns(false)
 
       @agent.perform_user_request(@messages)
     end
@@ -270,6 +276,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
       RedmineAiHelper::ChatRoom.stubs(:new).returns(mock_chat_room)
 
       @mock_ruby_llm_chat.stubs(:ask).returns(stub(content: "final answer"))
+      @mock_ruby_llm_chat.stubs(:waiting?).returns(false)
 
       @agent.perform_user_request(@messages)
     end
@@ -365,6 +372,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
 
         RedmineAiHelper::ChatRoom.stubs(:new).returns(mock_chat_room)
         @mock_ruby_llm_chat.stubs(:ask).returns(stub(content: "final answer"))
+        @mock_ruby_llm_chat.stubs(:waiting?).returns(false)
 
         @agent.perform_user_request(@messages)
       end
@@ -401,6 +409,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
 
         RedmineAiHelper::ChatRoom.stubs(:new).returns(mock_chat_room)
         @mock_ruby_llm_chat.stubs(:ask).returns(stub(content: "final answer"))
+        @mock_ruby_llm_chat.stubs(:waiting?).returns(false)
 
         @agent.perform_user_request(@messages)
       end
@@ -435,6 +444,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
 
         RedmineAiHelper::ChatRoom.stubs(:new).returns(mock_chat_room)
         @mock_ruby_llm_chat.stubs(:ask).returns(stub(content: "final answer"))
+        @mock_ruby_llm_chat.stubs(:waiting?).returns(false)
 
         @agent.perform_user_request(@messages)
       end
@@ -484,6 +494,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
         real_chat_room = RedmineAiHelper::ChatRoom.new("test goal")
         RedmineAiHelper::ChatRoom.stubs(:new).returns(real_chat_room)
         @mock_ruby_llm_chat.stubs(:ask).returns(stub(content: "final answer"))
+        @mock_ruby_llm_chat.stubs(:waiting?).returns(false)
 
         @agent.perform_user_request(@messages)
 
@@ -530,6 +541,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
 
         captured_content = nil
         @mock_ruby_llm_chat.expects(:ask).with do |content, **_opts|
+        @mock_ruby_llm_chat.stubs(:waiting?).returns(false)
           captured_content = content
           true
         end.returns(stub(content: "final answer"))

@@ -63,7 +63,7 @@ All inherit `RedmineAiHelper::LlmClient::BaseProvider` (S009):
 ## Provider quirks (gotchas)
 
 - **Anthropic & Gemini** override `supports_user_identifier?` → **false**: they
-  reject the `user` identifier field (S009).
+  have no `safety_identifier` field, so no user ID is sent (S009). Other providers send the ID as `safety_identifier` via `with_provider_options`.
 - **OpenAI-Compatible** (e.g. Ollama): `create_chat` forces `provider: :openai`
   and `assume_model_exists: true` to bypass model-list validation on custom
   endpoints, and sets `openai_use_system_role = true` (S009).

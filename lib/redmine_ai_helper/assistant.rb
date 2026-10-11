@@ -28,6 +28,8 @@ module RedmineAiHelper
       messages = @chat.messages
       last_user_message = messages.reverse.find { |m| m.role == :user }
       response = @chat.ask(last_user_message&.content || "")
+      raise "The chat was paused before completion and is waiting for input that cannot be provided" if @chat.waiting?
+
       [ response ]
     end
 
