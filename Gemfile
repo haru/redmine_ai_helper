@@ -5,7 +5,7 @@ gem "mcp", "~> 1.7.0"
 gem "ruby_llm", "~> 2.1.0"
 
 gem "langfuse", "~> 0.1.1"
-gem "qdrant-ruby", "~> 0.9.9"
+gem "qdrant-ruby", "~> 0.9.10"
 gem "websocket-client-simple", "~> 0.9"
 
 group :test do
