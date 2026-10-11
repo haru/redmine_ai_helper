@@ -33,6 +33,15 @@ module RedmineAiHelper
         chat.with_instructions(instructions.variable, append: true) if instructions.variable?
       end
 
+      # Anthropic rejects object schemas that do not set
+      # `additionalProperties: false` explicitly, so every object node in the
+      # schema gets it unless the schema already specifies a value.
+      # @param schema [Hash] payload (`{ name:, schema:, strict: }`)
+      # @return [Hash] payload with a closed-object schema
+      def prepare_schema(schema)
+        schema.merge(schema: close_objects(schema[:schema]))
+      end
+
       def ruby_llm_provider_class
         RubyLLM::Providers::Anthropic
       end
@@ -49,6 +58,24 @@ module RedmineAiHelper
       # Anthropic's API has no `safety_identifier` field, so the user ID is not sent.
       def supports_user_identifier?
         false
+      end
+
+      # Recursively add `additionalProperties: false` to object nodes.
+      # @param node [Object] a schema node (Hash, Array or scalar)
+      # @return [Object] the node with objects closed
+      def close_objects(node)
+        case node
+        when Hash
+          closed = node.transform_values { |v| close_objects(v) }
+          object = [ node["type"], node[:type] ].include?("object")
+          has_key = closed.key?("additionalProperties") || closed.key?(:additionalProperties)
+          closed["additionalProperties"] = false if object && !has_key
+          closed
+        when Array
+          node.map { |v| close_objects(v) }
+        else
+          node
+        end
       end
 
       # Build a RubyLLM::Context with Anthropic API key.

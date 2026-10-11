@@ -16,7 +16,8 @@ class RedmineAiHelper::LlmClient::AnthropicProviderTest < ActiveSupport::TestCas
       tools: chat.tools,
       temperature: chat.temperature,
       model: chat.model,
-      caching: chat.caching
+      caching: chat.caching,
+      schema: chat.schema
     )
   end
 
@@ -46,6 +47,30 @@ class RedmineAiHelper::LlmClient::AnthropicProviderTest < ActiveSupport::TestCas
 
     should "return a RubyLLM::Context" do
       assert_instance_of RubyLLM::Context, @provider.context
+    end
+
+    should "close every object in a native structured-output schema" do
+      schema = {
+        "type" => "object",
+        "properties" => {
+          "steps" => { "type" => "array", "items" => { "type" => "object", "properties" => { "a" => { "type" => "string" } } } },
+          "open" => { "type" => "object", "additionalProperties" => true }
+        }
+      }
+      prepared = @provider.send(:prepare_schema, name: "response", schema: schema, strict: false)
+
+      assert_equal false, prepared[:schema]["additionalProperties"]
+      assert_equal false, prepared[:schema]["properties"]["steps"]["items"]["additionalProperties"]
+      assert_equal true, prepared[:schema]["properties"]["open"]["additionalProperties"]
+      assert_nil schema["additionalProperties"]
+    end
+
+    should "send closed objects in the chat's output_config schema" do
+      schema = { name: "response", strict: false, schema: { "type" => "object", "properties" => { "x" => { "type" => "string" } } } }
+      chat = @provider.create_chat(instructions: "hi", schema: schema)
+      payload = payload_for_chat(chat)
+
+      assert_equal false, payload.dig(:output_config, :format, :schema, :additionalProperties)
     end
 
     should "memoize the context" do

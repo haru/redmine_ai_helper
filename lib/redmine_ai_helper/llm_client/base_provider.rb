@@ -69,9 +69,17 @@ module RedmineAiHelper
         apply_instructions(chat, instructions)
         chat.with_tools(*tools) unless tools.empty?
         chat.with_temperature(temperature) if temperature
-        chat.with_schema(schema) if schema
+        chat.with_schema(prepare_schema(schema)) if schema
         apply_user_identifier(chat)
         chat
+      end
+
+      # Adjust the native structured-output payload for the provider's API
+      # requirements. The base implementation returns it unchanged.
+      # @param schema [Hash] payload (`{ name:, schema:, strict: }`)
+      # @return [Hash] the payload to pass to `chat.with_schema`
+      def prepare_schema(schema)
+        schema
       end
 
       # Whether the configured model supports native structured output.
