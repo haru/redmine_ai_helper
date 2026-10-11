@@ -6,7 +6,7 @@
 [![codecov](https://codecov.io/gh/haru/redmine_ai_helper/graph/badge.svg?token=1HOSGRHVM9)](https://codecov.io/gh/haru/redmine_ai_helper)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/haru/redmine_ai_helper)
 ![Redmine](https://img.shields.io/badge/redmine->=6.0-blue?logo=redmine&logoColor=%23B32024&labelColor=f0f0f0&link=https%3A%2F%2Fwww.redmine.org)
-
+![Ruby](https://img.shields.io/badge/ruby->=3.2-blue?logo=ruby&logoColor=%23B32024&labelColor=f0f0f0&link=https%3A%2F%2Fwww.ruby-lang.org)
 
 - [Redmine AI Helper Plugin](#redmine-ai-helper-plugin)
 - [✨ Features](#-features)
