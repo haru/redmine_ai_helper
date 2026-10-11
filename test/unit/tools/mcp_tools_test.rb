@@ -55,6 +55,20 @@ class McpToolsTest < ActiveSupport::TestCase
       assert_not_same tools1, tools2
     end
 
+    should "log the error and return an empty array when the MCP client raises RubyLLM::MCP::Error" do
+      error_client = Object.new
+      error_client.define_singleton_method(:tools) do
+        raise RubyLLM::MCP::Error, "connection refused"
+      end
+
+      tools = Tools::McpTools.generate_tool_classes(
+        mcp_server_name: "unreachable_server",
+        mcp_client: error_client
+      )
+
+      assert_equal [], tools
+    end
+
     should "return empty array when client.tools raises error" do
       error_client = Object.new
       error_client.define_singleton_method(:tools) do

@@ -29,7 +29,7 @@ module RedmineAiHelper
           instance = ruby_tool_class.new
           tool_name = extract_tool_name(instance)
           tool_description = ruby_tool_class.description.to_s
-          tool_schema = sanitize_schema(instance.params_schema || {})
+          tool_schema = sanitize_schema(instance.parameters_schema || {})
 
           MCP::Tool.define(
             name: tool_name,
@@ -63,7 +63,7 @@ module RedmineAiHelper
             end
           end
 
-          result = ruby_tool_class.new.call(arguments)
+          result = ruby_tool_class.new.call(**arguments)
 
           if result.is_a?(Hash) && result[:error]
             { content: [ { type: "text", text: result[:error].to_s } ], isError: true }

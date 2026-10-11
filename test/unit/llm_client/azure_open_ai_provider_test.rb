@@ -31,6 +31,15 @@ class RedmineAiHelper::LlmClient::AzureOpenAiProviderTest < ActiveSupport::TestC
       assert_instance_of RubyLLM::Context, @provider.context
     end
 
+    should "configure azure_api_base and azure_api_key, not the openai settings" do
+      config = @provider.context.config
+
+      assert_equal @azure_profile.base_uri, config.azure_api_base
+      assert_equal @azure_profile.access_key, config.azure_api_key
+      assert_not_equal @azure_profile.base_uri, config.openai_api_base
+      assert_not_equal @azure_profile.access_key, config.openai_api_key
+    end
+
     should "memoize the context" do
       context1 = @provider.context
       context2 = @provider.context
@@ -58,7 +67,7 @@ class RedmineAiHelper::LlmClient::AzureOpenAiProviderTest < ActiveSupport::TestC
       mock_chat.expects(:with_temperature).with(@azure_profile.temperature)
       mock_context.expects(:chat).with(
         model: @azure_profile.llm_model,
-        provider: :openai,
+        provider: :azure,
         assume_model_exists: true
       ).returns(mock_chat)
       @provider.expects(:build_context).returns(mock_context)
@@ -75,7 +84,7 @@ class RedmineAiHelper::LlmClient::AzureOpenAiProviderTest < ActiveSupport::TestC
       mock_chat.expects(:with_temperature).with(@azure_profile.temperature)
       mock_context.expects(:chat).with(
         model: @azure_profile.llm_model,
-        provider: :openai,
+        provider: :azure,
         assume_model_exists: true
       ).returns(mock_chat)
       @provider.expects(:build_context).returns(mock_context)
@@ -91,7 +100,7 @@ class RedmineAiHelper::LlmClient::AzureOpenAiProviderTest < ActiveSupport::TestC
       mock_chat.expects(:with_temperature).with(@azure_profile.temperature)
       mock_context.expects(:chat).with(
         model: @azure_profile.llm_model,
-        provider: :openai,
+        provider: :azure,
         assume_model_exists: true
       ).returns(mock_chat)
       @provider.expects(:build_context).returns(mock_context)
@@ -112,7 +121,7 @@ class RedmineAiHelper::LlmClient::AzureOpenAiProviderTest < ActiveSupport::TestC
         mock_chat.expects(:with_temperature).never
         mock_context.expects(:chat).with(
           model: @azure_profile.llm_model,
-          provider: :openai,
+          provider: :azure,
           assume_model_exists: true
         ).returns(mock_chat)
         @provider.expects(:build_context).returns(mock_context)
@@ -141,11 +150,11 @@ class RedmineAiHelper::LlmClient::AzureOpenAiProviderTest < ActiveSupport::TestC
         mock_chat = mock("RubyLLM::Chat")
         mock_chat.expects(:with_instructions).never
         mock_chat.expects(:with_temperature).with(@azure_profile.temperature)
-        mock_chat.expects(:with_params).with(user: User.current.id.to_s).once
+        mock_chat.expects(:with_end_user).with(User.current.id.to_s).once
 
         mock_context.expects(:chat).with(
           model: @azure_profile.llm_model,
-          provider: :openai,
+          provider: :azure,
           assume_model_exists: true
         ).returns(mock_chat)
         @provider.expects(:build_context).returns(mock_context)
@@ -161,11 +170,11 @@ class RedmineAiHelper::LlmClient::AzureOpenAiProviderTest < ActiveSupport::TestC
         mock_chat = mock("RubyLLM::Chat")
         mock_chat.expects(:with_instructions).never
         mock_chat.expects(:with_temperature).with(@azure_profile.temperature)
-        mock_chat.expects(:with_params).never
+        mock_chat.expects(:with_end_user).never
 
         mock_context.expects(:chat).with(
           model: @azure_profile.llm_model,
-          provider: :openai,
+          provider: :azure,
           assume_model_exists: true
         ).returns(mock_chat)
         @provider.expects(:build_context).returns(mock_context)

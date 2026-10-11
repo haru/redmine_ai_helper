@@ -61,11 +61,6 @@ class McpServerLoaderTest < ActiveSupport::TestCase
 
       assert @loader.send(:valid_server_config?, valid_http)
 
-      # Valid SSE configuration
-      valid_sse = { "type" => "sse", "url" => "https://api.example.com/sse" }
-
-      assert @loader.send(:valid_server_config?, valid_sse)
-
       # Invalid configurations
       invalid_configs = [
         {},
@@ -103,26 +98,151 @@ class McpServerLoaderTest < ActiveSupport::TestCase
       end
     end
 
-    should "build command string correctly" do
-      config_with_both = { "command" => "npx", "args" => [ "-y", "@modelcontextprotocol/server-slack" ] }
-      expected = "npx -y @modelcontextprotocol/server-slack"
+    context "create_mcp_client with RubyLLM.mcp" do
+      should "A1: build a stdio client from command and args as an argv array" do
+        config = { "command" => "npx", "args" => [ "-y", "@modelcontextprotocol/server-filesystem", "/tmp" ] }
+        RubyLLM.expects(:mcp).with(
+          name: "fs",
+          command: [ "npx", "-y", "@modelcontextprotocol/server-filesystem", "/tmp" ],
+          env: {}
+        ).returns(:client)
 
-      assert_equal expected, @loader.send(:build_command_string, config_with_both)
+        assert_equal :client, @loader.send(:create_mcp_client, "fs", config.merge("type" => "stdio"))
+      end
 
-      config_command_only = { "command" => "node server.js" }
+      should "A2: pass command and env through for stdio" do
+        config = { "type" => "stdio", "command" => "/usr/bin/server", "env" => { "TOKEN" => "x" } }
+        RubyLLM.expects(:mcp).with(name: "srv", command: [ "/usr/bin/server" ], env: { "TOKEN" => "x" }).returns(:client)
 
-      assert_equal "node server.js", @loader.send(:build_command_string, config_command_only)
+        assert_equal :client, @loader.send(:create_mcp_client, "srv", config)
+      end
 
-      config_args_only = { "args" => [ "node", "server.js" ] }
+      should "A2: use args as the argv when command is absent" do
+        config = { "type" => "stdio", "args" => [ "node", "server.js" ] }
+        RubyLLM.expects(:mcp).with(name: "srv", command: [ "node", "server.js" ], env: {}).returns(:client)
 
-      assert_equal "node server.js", @loader.send(:build_command_string, config_args_only)
+        assert_equal :client, @loader.send(:create_mcp_client, "srv", config)
+      end
+
+      should "keep arguments containing spaces as single argv elements" do
+        config = { "type" => "stdio", "command" => "node", "args" => [ "my server.js" ] }
+        RubyLLM.expects(:mcp).with(name: "srv", command: [ "node", "my server.js" ], env: {}).returns(:client)
+
+        @loader.send(:create_mcp_client, "srv", config)
+      end
+
+      should "A3: build an http client with headers" do
+        config = { "type" => "http", "url" => "https://mcp.example.com/mcp", "headers" => { "Authorization" => "Bearer t" } }
+        RubyLLM.expects(:mcp).with(
+          name: "web", url: "https://mcp.example.com/mcp", headers: { "Authorization" => "Bearer t" }
+        ).returns(:client)
+
+        assert_equal :client, @loader.send(:create_mcp_client, "web", config)
+      end
+
+      should "A3: default headers to an empty hash" do
+        config = { "type" => "http", "url" => "https://mcp.example.com/mcp" }
+        RubyLLM.expects(:mcp).with(name: "web", url: "https://mcp.example.com/mcp", headers: {}).returns(:client)
+
+        @loader.send(:create_mcp_client, "web", config)
+      end
+
+      should "not support the sse type" do
+        RubyLLM.expects(:mcp).never
+
+        assert_raises(ArgumentError) do
+          @loader.send(:create_mcp_client, "sse_server", { "type" => "sse", "url" => "https://stream.example.com" })
+        end
+      end
     end
 
-    should "raise error for invalid command configuration" do
-      invalid_config = {}
-      assert_raises ArgumentError do
-        @loader.send(:build_command_string, invalid_config)
+    context "valid_server_config? transport restrictions" do
+      setup do
+        @warnings = []
+        warnings = @warnings
+        logger = mock("logger")
+        logger.stubs(:debug)
+        logger.stubs(:info)
+        logger.stubs(:error)
+        logger.stubs(:warn).with { |msg| warnings << msg; true }
+        @loader.stubs(:ai_helper_logger).returns(logger)
       end
+
+      should "A4/A5: accept plain http on loopback hosts" do
+        [ "http://localhost:8080/mcp", "http://127.0.0.1:8080/mcp", "http://[::1]:8080/mcp" ].each do |url|
+          assert @loader.send(:valid_server_config?, { "type" => "http", "url" => url }), "should accept #{url}"
+        end
+        assert_empty @warnings
+      end
+
+      should "accept https" do
+        assert @loader.send(:valid_server_config?, { "url" => "https://mcp.example.com/mcp" })
+      end
+
+      should "R1: reject the sse type with a migration warning" do
+        assert_not @loader.send(:valid_server_config?, { "type" => "sse", "url" => "https://mcp.context7.com/sse" })
+        assert_equal 1, @warnings.size
+        assert_includes @warnings.first, "uses the SSE transport, which is no longer supported"
+        assert_includes @warnings.first, "Streamable HTTP transport (\"type\": \"http\")"
+      end
+
+      should "R2: reject plain http on a non-loopback host" do
+        assert_not @loader.send(:valid_server_config?, { "url" => "http://mcp-server:8080/mcp" })
+        assert_equal 1, @warnings.size
+        assert_includes @warnings.first, "https://"
+        assert_includes @warnings.first, "http://mcp-server:8080/mcp"
+      end
+
+      should "R3: reject credentials in the URL and point to headers" do
+        assert_not @loader.send(:valid_server_config?, { "url" => "https://user:pass@mcp.example.com/mcp" })
+        assert_equal 1, @warnings.size
+        assert_includes @warnings.first, "headers"
+      end
+
+      should "not leak credentials from the URL into the warning" do
+        @loader.send(:valid_server_config?, { "url" => "https://user:secret@mcp.example.com/mcp" })
+
+        assert_not_includes @warnings.first, "secret"
+      end
+    end
+
+    should "R1/R2/R3: skip rejected servers and keep loading the others" do
+      config = {
+        "mcpServers" => {
+          "old_sse" => { "type" => "sse", "url" => "https://mcp.example.com/sse" },
+          "plain" => { "url" => "http://mcp-server:8080/mcp" },
+          "creds" => { "url" => "https://u:p@mcp.example.com/mcp" },
+          "good" => { "type" => "http", "url" => "https://mcp.example.com/mcp" }
+        }
+      }
+      @loader.stubs(:load_config).returns(config)
+      RedmineAiHelper::CustomLogger.stubs(:instance).returns(create_mock_logger)
+      @loader.stubs(:ai_helper_logger).returns(create_mock_logger)
+      RubyLLM.expects(:mcp).once.with(name: "good", url: "https://mcp.example.com/mcp", headers: {}).returns(mock("mcp_client"))
+
+      @loader.send(:generate_mcp_agent_classes)
+
+      assert Object.const_defined?("AiHelperMcpGood")
+      assert_not Object.const_defined?("AiHelperMcpOldSse")
+      assert_not Object.const_defined?("AiHelperMcpPlain")
+      assert_not Object.const_defined?("AiHelperMcpCreds")
+    end
+
+    should "pass MCP tool instances to RubyLLM::Chat#with_tools" do
+      config = { "mcpServers" => { "filesystem" => { "command" => "node", "args" => [ "server.js" ] } } }
+      fake_client = mock("mcp_client")
+      fake_tools = build_fake_tool_instances
+      fake_client.stubs(:tools).returns(fake_tools)
+      @loader.stubs(:load_config).returns(config)
+      @loader.expects(:create_mcp_client).returns(fake_client)
+      RedmineAiHelper::CustomLogger.stubs(:instance).returns(create_mock_logger)
+      Tools::McpTools.instance_variable_set(:@mcp_tool_cache, nil)
+      stub_llm_provider
+
+      @loader.send(:generate_mcp_agent_classes)
+      agent = Object.const_get("AiHelperMcpFilesystem").new
+
+      assert_equal fake_tools, agent.available_tool_classes
     end
 
     should "generate dynamic MCP agent subclass with cached tools and backstory" do
@@ -143,7 +263,7 @@ class McpServerLoaderTest < ActiveSupport::TestCase
       @loader.expects(:create_mcp_client).with("filesystem", server_config).returns(fake_client)
       RedmineAiHelper::CustomLogger.stubs(:instance).returns(mock_logger)
 
-      # Build fake tool instances (as ruby_llm-mcp returns)
+      # Build fake tool instances (as RubyLLM's built-in MCP client returns)
       fake_tools = build_fake_tool_instances
       RedmineAiHelper::Tools::McpTools.expects(:generate_tool_classes).with(
         mcp_server_name: "filesystem",
@@ -322,17 +442,14 @@ class McpServerLoaderTest < ActiveSupport::TestCase
     should "create appropriate MCP client based on type and inferred configuration" do
       stdio_config = { "type" => "stdio", "command" => "node" }
       http_config = { "type" => "http", "url" => "https://api.example.com" }
-      sse_config = { "type" => "sse", "url" => "https://stream.example.com" }
       inferred_config = { "command" => "node", "args" => [ "worker.js" ] }
 
       @loader.expects(:create_stdio_client).with("stdio_server", stdio_config).returns(:stdio_client)
       @loader.expects(:create_http_client).with("http_server", http_config).returns(:http_client)
-      @loader.expects(:create_sse_client).with("sse_server", sse_config).returns(:sse_client)
       @loader.expects(:create_stdio_client).with("inferred_server", inferred_config).returns(:inferred_client)
 
       assert_equal :stdio_client, @loader.send(:create_mcp_client, "stdio_server", stdio_config)
       assert_equal :http_client, @loader.send(:create_mcp_client, "http_server", http_config)
-      assert_equal :sse_client, @loader.send(:create_mcp_client, "sse_server", sse_config)
       assert_equal :inferred_client, @loader.send(:create_mcp_client, "inferred_server", inferred_config)
 
       assert_raises(ArgumentError) do

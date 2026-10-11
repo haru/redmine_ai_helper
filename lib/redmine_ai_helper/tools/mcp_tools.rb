@@ -1,8 +1,8 @@
 module RedmineAiHelper
   # Tools namespace for agent capabilities
   module Tools
-    # MCP (Model Context Protocol) tools integration via ruby_llm-mcp.
-    # Since ruby_llm-mcp client.tools returns RubyLLM::MCP::Tool instances
+    # MCP (Model Context Protocol) tools integration via RubyLLM's built-in MCP client.
+    # Since the client's tools method returns RubyLLM::MCP::Tool instances
     # that are already RubyLLM::Tool compatible, this class simply caches
     # and returns those tool instances directly.
     class McpTools < RedmineAiHelper::BaseTools
@@ -11,7 +11,7 @@ module RedmineAiHelper
       class << self
         # Return MCP tools directly from the client.
         # @param mcp_server_name [String] MCP server name
-        # @param mcp_client [RubyLLM::MCP::Client] MCP client instance
+        # @param mcp_client [RubyLLM::MCP] MCP instance created by RubyLLM.mcp
         # @return [Array<RubyLLM::MCP::Tool>] array of tool instances
         def generate_tool_classes(mcp_server_name:, mcp_client:)
           @mcp_tool_cache ||= {}

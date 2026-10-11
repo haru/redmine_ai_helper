@@ -31,7 +31,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
     @mock_ruby_llm_chat = mock("RubyLLM::Chat")
     @mock_ruby_llm_chat.stubs(:with_instructions).returns(@mock_ruby_llm_chat)
     @mock_ruby_llm_chat.stubs(:with_temperature).returns(@mock_ruby_llm_chat)
-    @mock_ruby_llm_chat.stubs(:on_end_message).returns(@mock_ruby_llm_chat)
+    @mock_ruby_llm_chat.stubs(:after_message).returns(@mock_ruby_llm_chat)
     @mock_ruby_llm_chat.stubs(:add_message)
     @mock_llm_provider.stubs(:create_chat).returns(@mock_ruby_llm_chat)
     @mock_llm_provider.stubs(:supports_structured_output?).returns(false)

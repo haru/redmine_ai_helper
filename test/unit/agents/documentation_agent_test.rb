@@ -79,7 +79,7 @@ class DocumentationAgentTest < ActiveSupport::TestCase
     @agent.llm_provider = mock("llm_provider")
     @agent.llm_provider.stubs(:supports_structured_output?).returns(true)
     mock_chat_instance = mock("RubyLLM::Chat")
-    mock_chat_instance.stubs(:on_end_message).returns(mock_chat_instance)
+    mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
     mock_chat_instance.stubs(:add_message)
     mock_response = mock("Response")
     mock_response.stubs(:content).returns(

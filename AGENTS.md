@@ -156,7 +156,7 @@ Agents expose tools by overriding `available_tool_providers` to return an array 
 - Global settings: `AiHelperSetting` model
 - Project settings: `AiHelperProjectSetting` model
 - Model profiles: `AiHelperModelProfile` for LLM configurations
-- MCP endpoints: `config/ai_helper/config.json` (STDIO/HTTP/SSE)
+- MCP endpoints: `config/ai_helper/config.json` (STDIO/HTTP via RubyLLM's built-in MCP client)
 - Langfuse: `config/ai_helper/config.yml`
 - Prompt templates: `assets/prompt_templates/` (English and Japanese)
 

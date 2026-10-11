@@ -33,10 +33,6 @@ end
 
 # Load MCP Server Loader and generate MCP Agent classes
 require "redmine_ai_helper/util/mcp_server_loader"
-# Suppress RubyLLM::MCP INFO logs; the gem has its own Logger independent of RubyLLM.configure
-if defined?(RubyLLM::MCP) && RubyLLM::MCP.respond_to?(:logger)
-  RubyLLM::MCP.logger.level = ::Logger::ERROR
-end
 
 # Generate MCP Agent classes after all agents are loaded
 begin

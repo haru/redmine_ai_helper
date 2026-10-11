@@ -1,16 +1,28 @@
 # MCP Transport Configuration Examples
 
-This document provides configuration examples for the new MCP HTTP+SSE transport implementation in the Redmine AI Helper plugin.
+This document provides configuration examples for connecting the Redmine AI Helper plugin to external MCP servers. The plugin uses RubyLLM's built-in MCP client, which supports two transports: **stdio** and **Streamable HTTP**.
 
 ## Auto-Detection
 
-Transport type is automatically detected based on configuration:
-- **STDIO**: When `command` or `args` is present
-- **HTTP**: When `url` is present
+The transport type is detected from the configuration when `type` is omitted:
+- **stdio**: when `command` or `args` is present
+- **http** (Streamable HTTP): when `url` is present
 
-No explicit `transport` field is required.
+## Supported Transports and Restrictions
 
-## STDIO Transport Examples
+| Transport | `type` | Notes |
+|-----------|--------|-------|
+| stdio | `stdio` | Starts a local process. `command` and `args` are passed as an argv array; no shell is involved. |
+| Streamable HTTP | `http` | Use `https://`. Plain `http://` is accepted only for `localhost`, `127.0.0.1` and `::1`. |
+
+Not supported (the server is skipped and a warning is written to the AI Helper log):
+- The legacy SSE transport (`"type": "sse"`). Use Streamable HTTP (`"type": "http"`) instead.
+- Plain `http://` URLs for any host other than the loopback addresses.
+- URLs that contain credentials (`https://user:pass@host/...`). Use `headers` instead.
+
+The recognized keys are `type`, `command`, `args`, `env` (stdio) and `url`, `headers` (http). Other keys are ignored.
+
+## stdio Examples
 
 ### Basic Command Configuration
 ```json
@@ -41,6 +53,7 @@ No explicit `transport` field is required.
 ```
 
 ### Args Only Configuration
+When `command` is omitted, `args` is used as the whole argv:
 ```json
 {
   "mcpServers": {
@@ -51,14 +64,14 @@ No explicit `transport` field is required.
 }
 ```
 
-## HTTP Transport Examples
+## Streamable HTTP Examples
 
-### Basic HTTP Configuration
+### Loopback (plain HTTP allowed)
 ```json
 {
   "mcpServers": {
-    "remote_api": {
-      "url": "http://localhost:3000"
+    "local_api": {
+      "url": "http://localhost:3000/mcp"
     }
   }
 }
@@ -69,37 +82,20 @@ No explicit `transport` field is required.
 {
   "mcpServers": {
     "secure_api": {
-      "url": "https://api.example.com",
+      "type": "http",
+      "url": "https://api.example.com/mcp",
       "headers": {
         "Authorization": "Bearer your-api-token",
         "X-API-Key": "your-api-key"
-      },
-      "timeout": 60
-    }
-  }
-}
-```
-
-### HTTP with Custom Settings
-```json
-{
-  "mcpServers": {
-    "production_api": {
-      "url": "https://mcp.production.com",
-      "timeout": 45,
-      "reconnect": true,
-      "max_retries": 5,
-      "headers": {
-        "User-Agent": "Redmine-AI-Helper/1.0"
       }
     }
   }
 }
 ```
 
-## Mixed Transport Configuration
+## Mixed Configuration
 
-You can use both STDIO and HTTP transports in the same configuration:
+stdio and HTTP servers can be used in the same file:
 
 ```json
 {
@@ -109,23 +105,9 @@ You can use both STDIO and HTTP transports in the same configuration:
       "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/user/projects"]
     },
     "remote_database": {
-      "url": "https://db-api.example.com",
+      "url": "https://db-api.example.com/mcp",
       "headers": {
         "Authorization": "Bearer db-access-token"
-      }
-    },
-    "local_git": {
-      "command": "python",
-      "args": ["/usr/local/bin/git-mcp-server.py"],
-      "env": {
-        "GIT_REPO_PATH": "/home/user/repos"
-      }
-    },
-    "cloud_storage": {
-      "url": "https://storage-api.cloud.com",
-      "timeout": 120,
-      "headers": {
-        "X-Storage-Key": "storage-key"
       }
     }
   }
@@ -139,114 +121,24 @@ Place your configuration file at:
 /path/to/redmine/config/ai_helper/config.json
 ```
 
-## HTTP Transport Features
+Restart Redmine after changing it.
 
-### Supported Features
-- ✅ Server-Sent Events (SSE) for real-time communication
-- ✅ Custom headers for authentication
-- ✅ Configurable timeouts
-- ✅ Automatic reconnection
-- ✅ Exponential backoff retry logic
-- ✅ HTTPS/TLS support
-- ✅ Session management
+## Behavior Notes
 
-### Configuration Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `url` | string | required | MCP server base URL |
-| `headers` | object | `{}` | Custom HTTP headers |
-| `timeout` | number | `30` | Request timeout in seconds |
-| `reconnect` | boolean | `false` | Enable automatic reconnection |
-| `max_retries` | number | `3` | Maximum retry attempts |
-
-## Error Handling
-
-The HTTP transport includes comprehensive error handling:
-
-- **Connection errors**: Automatic retry with exponential backoff
-- **Timeout errors**: Configurable timeout with clear error messages
-- **HTTP errors**: Proper status code handling (4xx, 5xx)
-- **JSON parsing errors**: Graceful handling of malformed responses
-- **SSE connection issues**: Automatic reconnection when enabled
-
-## Migration from Old Configuration
-
-The system automatically handles legacy configurations. No manual migration is required:
-
-**Old format** (still supported):
-```json
-{
-  "mcpServers": {
-    "server": {
-      "command": "npx",
-      "args": ["-y", "server"]
-    }
-  }
-}
-```
-
-**New format** (equivalent):
-```json
-{
-  "mcpServers": {
-    "server": {
-      "command": "npx",
-      "args": ["-y", "server"]
-    }
-  }
-}
-```
-
-No changes needed - the system automatically detects the transport type!
-
-## Testing Your Configuration
-
-You can test your MCP transport configuration:
-
-1. **Check logs**: Look for MCP connection messages in Redmine logs
-2. **Use Rails console**: Test transport creation manually
-3. **Monitor network**: For HTTP transports, monitor network requests
-
-### Rails Console Testing
-
-```ruby
-# Test STDIO transport
-config = { 'command' => 'echo', 'args' => ['test'] }
-transport = RedmineAiHelper::Transport::TransportFactory.create(config)
-puts transport.class.name # => RedmineAiHelper::Transport::StdioTransport
-
-# Test HTTP transport  
-config = { 'url' => 'http://localhost:3000' }
-transport = RedmineAiHelper::Transport::TransportFactory.create(config)
-puts transport.class.name # => RedmineAiHelper::Transport::HttpSseTransport
-```
+- One agent (`AiHelperMcp<ServerName>`) is created per valid server.
+- A server that cannot be reached, or whose tool list cannot be retrieved, is logged and its agent has no tools. Other servers are not affected.
+- When read-only mode is enabled, all external MCP agents are disabled.
 
 ## Troubleshooting
 
-### Common Issues
-
-1. **"Cannot determine transport type"**
-   - Ensure your configuration has either `command`/`args` OR `url`
-   - Check JSON syntax validity
+1. **The server does not appear**
+   - Check the AI Helper log for a warning naming the server. SSE servers, non-loopback `http://` URLs and URLs with credentials are skipped.
+   - Check the JSON syntax of `config.json`.
 
 2. **HTTP connection failures**
-   - Verify the URL is accessible
-   - Check firewall settings
-   - Ensure the MCP server supports SSE
+   - Verify the URL is reachable from the Redmine server and uses `https://` (or a loopback address).
+   - Verify that the server implements the Streamable HTTP transport.
 
-3. **STDIO command not found**
-   - Verify the command exists in PATH
-   - Check file permissions
-   - Ensure all required dependencies are installed
-
-### Debug Mode
-
-Enable debug logging to troubleshoot issues:
-
-```ruby
-# In Rails console
-Rails.logger.level = :debug
-```
-
-This will show detailed transport initialization and communication logs.
+3. **stdio command not found**
+   - Verify the command exists in PATH of the Redmine process.
+   - Check file permissions and that all required dependencies are installed.

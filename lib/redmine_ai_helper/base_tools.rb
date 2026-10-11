@@ -70,8 +70,8 @@ module RedmineAiHelper
         tool_class = Class.new(RubyLLM::Tool) do
           description description
 
-          # Set the JSON schema directly via params
-          params json_schema if json_schema
+          # Set the JSON schema directly via parameters
+          parameters json_schema if json_schema
 
           # execute delegates to the actual method on a tools instance
           define_method :execute do |**kwargs|

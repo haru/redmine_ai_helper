@@ -320,7 +320,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
         User.current = User.find(1)
         @mock_think_provider = mock("think_llm_provider")
         @mock_think_chat = mock("RubyLLM::Chat think")
-        @mock_think_chat.stubs(:on_end_message).returns(@mock_think_chat)
+        @mock_think_chat.stubs(:after_message).returns(@mock_think_chat)
         @mock_think_chat.stubs(:add_message)
         mock_response = mock("Response")
         mock_response.stubs(:content).returns("think answer")

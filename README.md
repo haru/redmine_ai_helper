@@ -304,6 +304,8 @@ When vector search is enabled, attachment contents are also incorporated into th
 
 # 📦 Installation
 
+**Requirements**: Redmine 6.0 or later and Ruby 3.2 or later. Ruby 3.1 is no longer supported.
+
 1. Extract the plugin to your Redmine plugins folder:
    ```bash
    cd {REDMINE_ROOT}/plugins/
@@ -443,10 +445,6 @@ Connect to external MCP servers to perform tasks such as sending issue summaries
             "headers": {
                "Authorization": "Bearer github_pat_xxxxxxxxxxxxxxx"
             }
-         },
-         "context7": {
-            "type": "sse",
-            "url": "https://mcp.context7.com/sse"
          }
       }
    }
@@ -455,13 +453,18 @@ Connect to external MCP servers to perform tasks such as sending issue summaries
 
 ### Transport Types
 
-Three transport types are supported. The `type` field can be omitted — it is inferred automatically from the other keys:
+Two transport types are supported. The `type` field can be omitted — it is inferred automatically from the other keys:
 
 | Type | Auto-detected when | Description |
 |------|--------------------|-------------|
 | `stdio` | `command` or `args` is present | Spawns a local process and communicates via stdin/stdout |
 | `http` | `url` is present (no `type` key) | MCP Streamable HTTP transport |
-| `sse` | `type: "sse"` is specified explicitly | Server-Sent Events transport |
+
+Notes:
+
+- Plain `http://` URLs are accepted only for loopback hosts (`localhost`, `127.0.0.1`, `::1`). Any other host requires `https://`.
+- Do not embed credentials in the URL (`https://user:pass@host/...`). Use the `headers` field instead.
+- The legacy SSE transport (`"type": "sse"`) is no longer supported. Servers that use it, and any other unsupported configuration, are skipped and a warning is written to the AI Helper log. Use the Streamable HTTP transport (`"type": "http"`) instead.
 
 **STDIO example** (local process):
 ```json

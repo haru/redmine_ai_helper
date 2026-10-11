@@ -76,13 +76,13 @@ module RedmineAiHelper
       #
       # Returns false when the provider slug is unknown (Azure OpenAI,
       # OpenAI-compatible) or the model is not registered. Otherwise returns
-      # the model's `structured_output?` capability. Judgment failures fall to
+      # the model's `structured_output` capability. Judgment failures fall to
       # the safe (non-native) side.
       # @return [Boolean]
       def supports_structured_output?
         return false if ruby_llm_provider_slug.nil?
         model = RubyLLM.models.by_provider(ruby_llm_provider_slug).all.find { |m| m.id == model_name }
-        model&.structured_output? ? true : false
+        model&.supports?(:structured_output) ? true : false
       rescue => e
         ai_helper_logger.warn "supports_structured_output? judgment failed, falling back to false: #{e.message}"
         false
@@ -120,11 +120,11 @@ module RedmineAiHelper
         return chat unless AiHelperSetting.send_user_id_enabled?
         return chat unless supports_user_identifier?
 
-        chat.with_params(user: User.current.id.to_s)
+        chat.with_end_user(User.current.id.to_s)
         chat
       end
 
-      # Returns whether this provider's API accepts the `user` request field.
+      # Returns whether this provider's API accepts the end-user identifier (sent via with_end_user).
       # Override to return false for providers that reject unknown top-level fields.
       # @return [Boolean]
       def supports_user_identifier?
@@ -232,12 +232,16 @@ module RedmineAiHelper
       end
 
       # Appends a single model to the RubyLLM model registry.
-      # RubyLLM 1.x does not expose a public API for adding individual models, so
-      # this method accesses the internal @models array directly.  It is isolated
+      # RubyLLM does not expose a public API for adding individual models, so
+      # this method accesses the internal @models array directly.  The array is
+      # replaced rather than mutated because RubyLLM caches its id index keyed on
+      # the array's identity; an in-place append would leave that index stale and
+      # the new model would not be found by Chat creation.  It is isolated
       # here so that any future public API can be adopted in a single place.
-      # @param model_info [RubyLLM::Model::Info] model to register
+      # @param model_info [RubyLLM::Model] model to register
       def append_to_model_registry(model_info)
-        RubyLLM.models.instance_variable_get(:@models) << model_info
+        registry = RubyLLM.models
+        registry.instance_variable_set(:@models, registry.instance_variable_get(:@models) + [ model_info ])
       end
     end
   end

@@ -445,7 +445,7 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
       RedmineAiHelper::LlmProvider.stubs(:provider_for_profile).returns(real_provider)
 
       # Stub list_models on any OpenAI provider instance (triggered by fetch_and_register_model!)
-      fetched_model = RubyLLM::Model::Info.new(
+      fetched_model = RubyLLM::Model.new(
         id: unregistered_model_id, provider: "openai", name: "GPT Unregistered Controller Test"
       )
       RubyLLM::Providers::OpenAI.any_instance.expects(:list_models).at_least_once.returns([ fetched_model ])

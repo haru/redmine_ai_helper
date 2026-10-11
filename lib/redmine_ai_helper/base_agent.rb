@@ -364,37 +364,39 @@ module RedmineAiHelper
     end
 
     # Set up Langfuse callbacks on a RubyLLM::Chat instance.
-    # Registers an on_end_message callback that creates Langfuse generations
+    # Registers an after_message callback that creates Langfuse generations
     # for each assistant response with token usage data.
     # @param chat_instance [RubyLLM::Chat] The chat instance to register callbacks on.
     # @param provider [Object] The LLM provider used for this chat (for model name logging).
     def setup_langfuse_callbacks(chat_instance, provider: @llm_provider)
       return unless langfuse
 
-      chat_instance.on_end_message do |message|
+      chat_instance.after_message do |message|
         next unless message && message.role == :assistant
         next unless langfuse.current_span
 
         span = langfuse.current_span
         usage = {}
-        if message.input_tokens
+        tokens = message.tokens
+        if tokens&.input
           usage = {
-            prompt_tokens: message.input_tokens,
-            completion_tokens: message.output_tokens,
-            total_tokens: (message.input_tokens || 0) + (message.output_tokens || 0)
+            prompt_tokens: tokens.input,
+            completion_tokens: tokens.output,
+            total_tokens: (tokens.input || 0) + (tokens.output || 0)
           }
         end
 
-        # Collect input messages (all messages before the current response)
-        # Extract text-only content from Content objects to avoid binary image data in JSON serialization
+        # Collect input messages (all messages before the current response).
+        # Message#content is always text in RubyLLM 2.x; attachments are kept separately,
+        # so no binary data reaches the JSON serialization.
         input_messages = chat_instance.messages[0..-2].map do |m|
-          { role: m.role.to_s, content: extract_text_content(m.content) }
+          { role: m.role.to_s, content: m.content }
         end
 
-        # Determine output: use content if available, otherwise represent tool calls.
+        # Determine output: use content if present, otherwise represent tool calls.
         # RubyLLM tool_calls is a Hash { call_id => ToolCall }, so use .values to get ToolCall objects.
-        output = extract_text_content(message.content)
-        if output.nil? && message.tool_calls
+        output = message.content
+        if output.blank? && message.tool_calls.present?
           output = message.tool_calls.values.map(&:to_h).to_json
         end
 
@@ -420,19 +422,6 @@ module RedmineAiHelper
     def read_only_notice
       return "" unless AiHelperSetting.read_only_mode?
       load_prompt("base_agent/read_only_notice").format
-    end
-
-    # Extracts text content from a message content value.
-    # When content is a RubyLLM::Content object (e.g., containing image attachments),
-    # returns only the text portion to avoid binary data in JSON serialization.
-    # @param content [String, RubyLLM::Content, nil] The message content
-    # @return [String, nil] The text content
-    def extract_text_content(content)
-      if content.is_a?(RubyLLM::Content)
-        content.text
-      else
-        content
-      end
     end
 
     # Response class for agent tasks
