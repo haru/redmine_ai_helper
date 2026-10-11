@@ -13,7 +13,7 @@ The plugin used the `ruby_llm-mcp` gem to connect to external MCP servers config
 - Keep the existing per-tool mechanism: `McpTools.generate_tool_classes` returns `mcp.tools` (`RubyLLM::Tool`-compatible instances) and agents pass them to `with_tools`. `with_mcp` is not used, so `available_tool_classes`, `available_tools` and the backstory generation stay unchanged.
 - SSE servers and plain HTTP to non-loopback hosts (or URLs with credentials) are unsupported. The loader logs a warning naming the server and skips it; other servers keep loading. The plugin does not implement its own SSE or plain-HTTP transport.
 - The loader calls `RubyLLM::MCP::HTTP.secure?` instead of duplicating the policy, so the warning is raised at load time rather than at the first connection. That class is marked `:nodoc:` and is an internal API; tests cover loopback HTTP, external HTTP, credentials and HTTPS so that a change in RubyLLM is detected.
-- `config.json` keeps its format. Connection and tool-listing failures are logged per server as before, leaving that server's agent without tools.
+- `config.json` keeps its format. Connection and tool-listing failures are not converted into an empty tool set: `McpTools.generate_tool_classes` keeps no cache and no rescue, so the error propagates to the request that uses that server's agent, and the next tool lookup connects again.
 
 ## Consequences
 

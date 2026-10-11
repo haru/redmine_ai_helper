@@ -89,3 +89,5 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-003](./003-swallowed-mcp-and-structured-output-errors.md) | Errors swallowed or cached as empty results around MCP tools and structured output | error-handling | Local AI review | Not yet |
 | [CRF-004](./004-end-user-dropped-by-responses-protocol.md) | Spec-assumed with_end_user does not send the user ID on the OpenAI Responses protocol | other | Local AI review | Not yet |
 | [CRF-005](./005-stale-dead-code-and-docs-after-migration.md) | Dead branches, stale comments and tests tied to the old API left after the RubyLLM 2.1 migration | doc-comment | Local AI review | Not yet |
+| [CRF-006](./006-untested-paused-chat-guard.md) | Paused-chat guard added without a test that exercises it | test-gap | GitHub Copilot (PR #499) | Not yet |
+| [CRF-007](./007-docs-not-updated-after-review-fix.md) | Docs kept describing behaviour that a review fix had changed | doc-comment | GitHub Copilot (PR #499) | Not yet |

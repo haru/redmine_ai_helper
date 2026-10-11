@@ -28,7 +28,7 @@ No `protocol:` option is passed. OpenAI and OpenAI-compatible profiles therefore
 
 - `McpServerLoader` calls `RubyLLM.mcp(name:, command: argv, env:)` for stdio and `RubyLLM.mcp(name:, url:, headers:)` for HTTP. stdio uses an argv array, so there is no shell string and spaces in args are safe (S042).
 - `mcp.tools` returns `RubyLLM::Tool`-compatible objects that still go through `with_tools`. `with_mcp` was rejected because it would force a rework of `available_tool_classes` (S042).
-- Connection happens lazily on the first `tools` call. Per-server failures are logged and that agent gets no tools. This preserves the old behaviour and is not new fallback logic (S042).
+- Connection happens lazily on the first `tools` call. Connection and tool-list failures propagate to the calling request; nothing is cached, so the next lookup retries. The old rescue-and-cache-`[]` behaviour was removed as a fallback (CRF-003).
 - **Unsupported, skipped at validation with a logged warning**: `"type": "sse"` (the built-in client has only Streamable HTTP/stdio), and plain `http://` to a non-loopback host or a URL with `user:pass@`. The check calls the `:nodoc:` `RubyLLM::MCP::HTTP.secure?` rather than duplicating it, so tests cover loopback http, external http and https to catch drift (S042).
 
 See [MCP Integration](./mcp-integration.md).
@@ -40,7 +40,7 @@ See [MCP Integration](./mcp-integration.md).
 | `on_end_message` → `after_message` (appends; also fires for tool results) | `setup_langfuse_callbacks` keeps the `role == :assistant` filter |
 | `input_tokens`/`output_tokens` → `message.tokens` | records prompt/completion/total only |
 | `RubyLLM::Content` removed | `extract_text_content` branch dropped; no compat stub |
-| `with_params` → `with_end_user` | still skipped when `supports_user_identifier?` is false |
+| `with_params` → `with_end_user` | not used: the Responses protocol drops it, so `safety_identifier` is sent via `with_provider_options`; still skipped when `supports_user_identifier?` is false (ADR-049) |
 | Tool DSL `params` → `parameters` | change in `BaseTools.define_function` |
 | `with_instructions` replaces | unchanged: it is called once per chat |
 | Structured output `content` is a String | no code change; parsers already accept Strings |

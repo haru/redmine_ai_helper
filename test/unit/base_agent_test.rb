@@ -217,6 +217,41 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       assert_equal "stream read failed", error.message
     end
 
+    should "raise when the chat is paused waiting for input" do
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+      mock_response = mock("Response")
+      mock_response.stubs(:content).returns("")
+      mock_chat_instance.stubs(:ask).returns(mock_response)
+      mock_chat_instance.stubs(:waiting?).returns(true)
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+
+      error = assert_raises(RuntimeError) do
+        @agent.chat([ { role: "user", content: "Hello" } ])
+      end
+      assert_match(/paused before completion/, error.message)
+    end
+
+    should "raise when a streamed chat is paused waiting for input" do
+      mock_chat_instance = mock("RubyLLM::Chat")
+      mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)
+      mock_chat_instance.stubs(:add_message)
+      chunk = mock("Chunk")
+      chunk.stubs(:content).returns("partial")
+      mock_chat_instance.stubs(:ask).yields(chunk)
+      mock_chat_instance.stubs(:waiting?).returns(true)
+      @mock_llm_provider.stubs(:create_chat).returns(mock_chat_instance)
+
+      chunks_received = []
+      callback = ->(content) { chunks_received << content }
+      error = assert_raises(RuntimeError) do
+        @agent.chat([ { role: "user", content: "Hello" } ], {}, callback)
+      end
+      assert_match(/paused before completion/, error.message)
+      assert_equal [ "partial" ], chunks_received
+    end
+
     should "pass system_prompt as instructions to create_chat" do
       mock_chat_instance = mock("RubyLLM::Chat")
       mock_chat_instance.stubs(:after_message).returns(mock_chat_instance)

@@ -126,7 +126,7 @@ Restart Redmine after changing it.
 ## Behavior Notes
 
 - One agent (`AiHelperMcp<ServerName>`) is created per valid server.
-- A server that cannot be reached, or whose tool list cannot be retrieved, is logged and its agent has no tools. Other servers are not affected.
+- A server that cannot be reached, or whose tool list cannot be retrieved, makes the request that uses its agent fail with an error, which is also logged. The failure is not cached: the next request connects to the server again. Requests that do not use that server are not affected.
 - When read-only mode is enabled, all external MCP agents are disabled.
 
 ## Troubleshooting
