@@ -99,3 +99,14 @@ injected into the prompt instead of calling the native API.
   [Completion Request Timeout Policy](./completion-request-timeout-policy.md) ·
   [Embedding Connection Test](./embedding-connection-test.md) ·
   [Model Profile Temperature Is Optional](./model-profile-optional-temperature.md)
+
+## Prompt caching and split system prompt
+
+`BaseAgent#system_prompt` / `LeaderAgent#system_prompt` return an
+`LlmClient::Instructions(fixed, variable)` value object; the time and (for the
+Leader) site/page/user context are in `variable`. `BaseProvider#apply_instructions`
+sends both joined as one system message with no cache markers. `AnthropicProvider`
+overrides it: when the profile's `prompt_caching_enabled` is true it calls
+`with_caching` and caches the fixed part as its own system block
+(`cache_until_here: true`). Langfuse records total input plus cache read/write
+counts in generation metadata. See ADR-051 (`docs/adr/051-prompt-caching-with-split-system-prompt.md`).

@@ -170,7 +170,9 @@ module RedmineAiHelper
 
       # It finishes the generation and updates it with the output.
       # @param output [String] The output string to be processed.
-      # @param usage [Usage] The usage object to be processed.
+      # @param usage [Hash] Token usage (+:prompt_tokens+, +:completion_tokens+, +:total_tokens+ and, when
+      #   reported by the provider, +:cache_read_tokens+ / +:cache_write_tokens+). +:prompt_tokens+ is the
+      #   total input including cached tokens; the cache breakdown is recorded in the generation metadata.
       # @return [void]
       def finish(output:, usage:)
         return unless @generation
@@ -180,7 +182,21 @@ module RedmineAiHelper
           completion_tokens: usage[:completion_tokens],
           total_tokens: usage[:total_tokens]
         )
+        cache_metadata = cache_metadata_from(usage)
+        @generation.metadata = cache_metadata unless cache_metadata.empty?
         Langfuse.update_generation(@generation)
+      end
+
+      private
+
+      # Builds the Langfuse metadata for prompt cache token counts.
+      # @param usage [Hash] The usage hash passed to {#finish}.
+      # @return [Hash] The cache read/creation counts present in +usage+; empty when none.
+      def cache_metadata_from(usage)
+        metadata = {}
+        metadata[:cache_read_input_tokens] = usage[:cache_read_tokens] if usage.key?(:cache_read_tokens)
+        metadata[:cache_creation_input_tokens] = usage[:cache_write_tokens] if usage.key?(:cache_write_tokens)
+        metadata
       end
     end
   end

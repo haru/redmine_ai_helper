@@ -8,6 +8,31 @@ module RedmineAiHelper
     class AnthropicProvider < RedmineAiHelper::LlmClient::BaseProvider
       protected
 
+      # Applies the system prompt with Anthropic prompt caching.
+      # When the profile has prompt caching enabled, the request gets an
+      # automatic cache breakpoint (covering tools and the conversation so far)
+      # and the fixed part of the system prompt is cached as its own system
+      # block, so it is reused across different questions. The variable part
+      # follows without a cache marker. No TTL is given, so the provider
+      # default applies. When caching is disabled, behaves like the base class.
+      # @param chat [RubyLLM::Chat] the chat instance to configure
+      # @param instructions [String, Instructions, nil] system prompt
+      # @return [void]
+      def apply_instructions(chat, instructions)
+        return super unless resolved_model_profile.prompt_caching_enabled
+
+        chat.with_caching
+        case instructions
+        when nil
+          nil
+        when RedmineAiHelper::LlmClient::Instructions
+          chat.with_instructions(instructions.fixed, cache_until_here: true)
+          chat.with_instructions(instructions.variable, append: true) unless instructions.variable.to_s.empty?
+        else
+          chat.with_instructions(instructions, cache_until_here: true)
+        end
+      end
+
       def ruby_llm_provider_class
         RubyLLM::Providers::Anthropic
       end

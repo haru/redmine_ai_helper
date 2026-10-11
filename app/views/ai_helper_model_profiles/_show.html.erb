@@ -52,6 +52,12 @@
   <%= @model_profile.organization_id %>
 </p>
 <% end %>
+<% if @model_profile.llm_type == RedmineAiHelper::LlmProvider::LLM_ANTHROPIC %>
+<p>
+  <%= label_tag AiHelperModelProfile.human_attribute_name(:prompt_caching_enabled) %>
+  <%= @model_profile.prompt_caching_enabled ? l(:general_text_Yes) : l(:general_text_No) %>
+</p>
+<% end %>
 <% if @model_profile.base_uri_required? %>
 <p>
   <%= label_tag AiHelperModelProfile.human_attribute_name(:base_uri) %>

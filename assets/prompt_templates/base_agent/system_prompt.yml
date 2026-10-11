@@ -2,7 +2,6 @@
 _type: prompt
 input_variables:
   - role
-  - time
   - backstory
   - lang
   - read_only_notice
@@ -18,8 +17,6 @@ template: |-
   There are multiple agent roles in RedmineAIHelper.
   You will work together with other agents to provide services to RedmineAIHelper users.
   You will receive instructions from the agent with the <<leader>> role.
-
-  The current time is {time}.
 
   - You can speak various languages such as Japanese, English, and Chinese, but unless otherwise specified by the user, you should answer in {lang}.
 

@@ -14,27 +14,38 @@ module RedmineAiHelper
         @project = option[:project]
       end
 
-      # Generates a system prompt for the Leader Agent.
-      # @param _conversation [Object] Reserved for future use; currently ignored.
-      def prompt(_conversation = nil)
-        return @prompt_text if @prompt_text
-        current_user_info = {
-          id: User.current.id,
-          name: User.current.name,
-          timezone: User.current.time_zone
-        }
+      # Generates the part of the Leader Agent's system prompt that does not
+      # change between requests (no time, site, page or user information).
+      # @return [String] the fixed prompt
+      def fixed_prompt
         prompt = RedmineAiHelper::Util::PromptLoader.load_template("leader_agent/system_prompt")
-        @prompt_text = prompt.format(
+        prompt.format(
           lang: I18n.t(:general_lang_name),
-          time: Time.now.iso8601,
-          site_info: site_info_json(project: @project),
-          current_page_info: current_page_info_string(),
-          current_user: User.current,
-          current_user_info: JSON.pretty_generate(current_user_info),
           additional_system_prompt: AiHelperSetting.find_or_create.additional_instructions
         )
+      end
 
-        @prompt_text
+      # Generates the part of the Leader Agent's system prompt that changes
+      # per request: the current time, site information, the page the user is
+      # viewing, and the user's information. Memoized so that the time stays
+      # the same for the lifetime of this instance.
+      # @return [String] the context prompt
+      def context_prompt
+        @context_prompt ||= begin
+          current_user_info = {
+            id: User.current.id,
+            name: User.current.name,
+            timezone: User.current.time_zone
+          }
+          prompt = RedmineAiHelper::Util::PromptLoader.load_template("leader_agent/system_prompt_context")
+          prompt.format(
+            time: Time.now.iso8601,
+            site_info: site_info_json(project: @project),
+            current_page_info: current_page_info_string(),
+            current_user: User.current,
+            current_user_info: JSON.pretty_generate(current_user_info)
+          )
+        end
       end
 
       private

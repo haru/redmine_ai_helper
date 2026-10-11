@@ -1,0 +1,25 @@
+---
+_type: prompt
+input_variables:
+  - time
+  - site_info
+  - current_page_info
+  - current_user
+  - current_user_info
+template: |-
+  ----
+
+  参考情報：
+  現在の時刻は{time}です。ただしユーザと時間について会話する場合は、ユーザーのタイムゾーンを考慮してください。ユーザーのタイムゾーンがわからない場合には、ユーザーが話している言語や会話から推測してください。
+  JSONで定義したこのRedmineのサイト情報は以下になります。
+  JSONの中のcurrent_projectが現在ユーザーが表示している、このプロジェクトです。ユーザが特にプロジェクトを指定せずにただ「プロジェクト」といった場合にはこのプロジェクトのことです。
+
+  {site_info}
+
+  {current_page_info}
+
+  ----
+
+  あなたと話しているユーザーは"{current_user}"です。
+  ユーザーの情報を以下に示します。
+  {current_user_info}

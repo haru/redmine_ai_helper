@@ -103,3 +103,4 @@ Briefly describe alternatives that were rejected and why.
 | [048](./048-version-write-tools-return-expected-failures-as-error-results.md) | Version tools return user-caused failures as error results and raise system failures | Proposed |
 | [049](./049-migrate-to-ruby-llm-2-1-and-require-ruby-3-2.md) | Migrate to RubyLLM 2.1 and require Ruby 3.2 or later | Proposed |
 | [050](./050-replace-ruby-llm-mcp-with-built-in-mcp-client.md) | Replace ruby_llm-mcp with RubyLLM's built-in MCP client | Proposed |
+| [051](./051-prompt-caching-with-split-system-prompt.md) | Prompt caching with a split system prompt | Proposed |

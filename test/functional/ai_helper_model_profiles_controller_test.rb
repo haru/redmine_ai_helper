@@ -471,6 +471,63 @@ class AiHelperModelProfilesControllerTest < ActionController::TestCase
     end
   end
 
+  context "prompt caching setting" do
+    should "show a checked prompt caching checkbox on the new form" do
+      get :new
+
+      assert_response :success
+      assert_select "p#ai-helper-model-prompt-caching input[type=checkbox][name='ai_helper_model_profile[prompt_caching_enabled]'][checked=checked]", 1
+    end
+
+    should "save prompt_caching_enabled on create" do
+      post :create, params: { ai_helper_model_profile: { name: "Anthropic NoCache", access_key: "k", llm_type: "Anthropic", llm_model: "claude", prompt_caching_enabled: "0" } }
+
+      assert_equal false, AiHelperModelProfile.find_by(name: "Anthropic NoCache").prompt_caching_enabled
+    end
+
+    should "save prompt_caching_enabled on update" do
+      patch :update, params: { id: @model_profile.id, ai_helper_model_profile: { prompt_caching_enabled: "0" } }
+
+      assert_equal false, @model_profile.reload.prompt_caching_enabled
+    end
+
+    should "show the setting in the detail view for Anthropic only" do
+      anthropic = AiHelperModelProfile.create!(name: "Anthropic Show", access_key: "k", llm_type: "Anthropic", llm_model: "claude", prompt_caching_enabled: false)
+      get :show, params: { id: anthropic.id }
+
+      assert_response :success
+      assert_select "label", text: AiHelperModelProfile.human_attribute_name(:prompt_caching_enabled)
+      assert_select "p", text: /#{Regexp.escape(I18n.t(:general_text_No))}/
+
+      get :show, params: { id: @model_profile.id }
+
+      assert_select "label", text: AiHelperModelProfile.human_attribute_name(:prompt_caching_enabled), count: 0
+    end
+
+    should "copy prompt_caching_enabled" do
+      @model_profile.update!(prompt_caching_enabled: false)
+      post :copy, params: { id: @model_profile.id, name: "Copied NoCache" }
+
+      assert_equal false, AiHelperModelProfile.find_by(name: "Copied NoCache").prompt_caching_enabled
+    end
+
+    should "build the test connection profile from the submitted value" do
+      submitted_profile = nil
+      chat_mock = mock("chat")
+      chat_mock.expects(:ask).with("hi").returns(mock("message"))
+      provider_mock = mock("provider")
+      provider_mock.expects(:create_chat).returns(chat_mock)
+      RedmineAiHelper::LlmProvider.expects(:provider_for_profile).with do |profile|
+        submitted_profile = profile
+        true
+      end.returns(provider_mock)
+
+      post :test_connection, params: { ai_helper_model_profile: { llm_type: "Anthropic", llm_model: "claude", access_key: "k", prompt_caching_enabled: "0" } }
+
+      assert_equal false, submitted_profile.prompt_caching_enabled
+    end
+  end
+
   context "copy action" do
     should "copy model profile with valid name" do
       assert_difference("AiHelperModelProfile.count", 1) do

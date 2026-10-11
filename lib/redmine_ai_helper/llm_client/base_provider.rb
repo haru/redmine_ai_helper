@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "instructions"
+
 module RedmineAiHelper
   # LLM provider implementations for different AI services.
   module LlmClient
@@ -56,7 +58,7 @@ module RedmineAiHelper
       end
 
       # Create a RubyLLM::Chat instance via the memoized context.
-      # @param instructions [String, nil] system prompt
+      # @param instructions [String, Instructions, nil] system prompt
       # @param tools [Array<Class>] tool classes to attach
       # @param schema [Hash, nil] native structured-output payload
       #   (`{ name:, schema:, strict: }`). When provided, `chat.with_schema` is
@@ -64,7 +66,7 @@ module RedmineAiHelper
       # @return [RubyLLM::Chat]
       def create_chat(instructions: nil, tools: [], schema: nil)
         chat = context.chat(model: model_name)
-        chat.with_instructions(instructions) if instructions
+        apply_instructions(chat, instructions)
         chat.with_tools(*tools) unless tools.empty?
         chat.with_temperature(temperature) if temperature
         chat.with_schema(schema) if schema
@@ -107,6 +109,17 @@ module RedmineAiHelper
       end
 
       protected
+
+      # Applies the system prompt to the chat as a single system message.
+      # No cache markers are added, so providers with automatic caching
+      # receive exactly the request they would without this feature.
+      # Providers with explicit prompt caching override this method.
+      # @param chat [RubyLLM::Chat] the chat instance to configure
+      # @param instructions [String, Instructions, nil] system prompt
+      # @return [void]
+      def apply_instructions(chat, instructions)
+        chat.with_instructions(instructions.to_s) if instructions
+      end
 
       # RubyLLM provider slug used for embedding requests when the provider has no
       # RubyLLM provider class of its own. Override when the endpoint is not OpenAI.

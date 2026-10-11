@@ -803,5 +803,38 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         assert_same provider.context, provider.context
       end
     end
+
+    context "create_chat with Instructions" do
+      setup do
+        @instructions = RedmineAiHelper::LlmClient::Instructions.new(fixed: "FIXED", variable: "VARIABLE")
+        @mock_context = mock("RubyLLM::Context")
+        @mock_chat = mock("RubyLLM::Chat")
+        @mock_chat.stubs(:with_temperature)
+        @mock_context.stubs(:chat).returns(@mock_chat)
+        @provider.stubs(:build_context).returns(@mock_context)
+      end
+
+      should "pass the joined prompt to with_instructions exactly once" do
+        @mock_chat.expects(:with_instructions).with("FIXED\n\nVARIABLE").once
+        @provider.create_chat(instructions: @instructions)
+      end
+
+      should "pass a String through unchanged" do
+        @mock_chat.expects(:with_instructions).with("plain").once
+        @provider.create_chat(instructions: "plain")
+      end
+
+      should "not call with_instructions for nil" do
+        @mock_chat.expects(:with_instructions).never
+        @provider.create_chat(instructions: nil)
+      end
+
+      should "never enable caching" do
+        @mock_chat.stubs(:with_instructions)
+        @mock_chat.expects(:with_caching).never
+        @mock_chat.expects(:cache_until_here).never
+        @provider.create_chat(instructions: @instructions)
+      end
+    end
   end
 end

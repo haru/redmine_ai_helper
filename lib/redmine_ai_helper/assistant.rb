@@ -43,7 +43,7 @@ module RedmineAiHelper
     delegate :messages, to: :@chat
 
     # Set new instructions for the assistant.
-    # @param value [String] The new instructions.
+    # @param value [String, RedmineAiHelper::LlmClient::Instructions] The new instructions.
     def instructions=(value)
       @instructions = value
     end

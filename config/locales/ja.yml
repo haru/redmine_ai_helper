@@ -298,6 +298,7 @@ ja:
         base_uri: "ベースURI"
         http_proxy: "HTTPプロキシ"
         max_tokens: "MAXトークン数"
+        prompt_caching_enabled: "プロンプトキャッシュ"
       ai_helper_setting:
         model_profile_id: "モデル定義"
         additional_instructions: "追加の指示"

@@ -12,7 +12,7 @@ class AiHelperModelProfile < ApplicationRecord
   validates :http_proxy, format: { with: URI::DEFAULT_PARSER.make_regexp(%w[http https]), message: l("ai_helper.model_profiles.messages.must_be_valid_url") }, allow_blank: true
   validates :temperature, numericality: { greater_than_or_equal_to: 0.0 }, allow_nil: true
 
-  safe_attributes "name", "llm_type", "access_key", "organization_id", "base_uri", "http_proxy", "version", "llm_model", "temperature", "max_tokens"
+  safe_attributes "name", "llm_type", "access_key", "organization_id", "base_uri", "http_proxy", "version", "llm_model", "temperature", "max_tokens", "prompt_caching_enabled"
 
   before_validation :handle_gpt5_temperature
 

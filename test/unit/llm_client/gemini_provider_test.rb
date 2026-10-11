@@ -78,5 +78,17 @@ class RedmineAiHelper::LlmClient::GeminiProviderTest < ActiveSupport::TestCase
         assert_equal false, @provider.send(:supports_user_identifier?)
       end
     end
+
+    context "create_chat with Instructions" do
+      should "send one system message without cache markers" do
+        instructions = RedmineAiHelper::LlmClient::Instructions.new(fixed: "FIXED", variable: "VARIABLE")
+        chat = @provider.create_chat(instructions: instructions)
+        system_messages = chat.messages.select { |m| m.role == :system }
+
+        assert_equal 1, system_messages.size
+        assert_equal "FIXED\n\nVARIABLE", system_messages.first.content
+        assert_equal false, system_messages.first.cache_until_here?
+      end
+    end
   end
 end

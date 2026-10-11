@@ -1,0 +1,6 @@
+---
+_type: prompt
+input_variables:
+  - time
+template: |-
+  現在の時刻は{time}です。

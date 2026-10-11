@@ -173,6 +173,7 @@ describe("AiHelperModelProfile.initForm (from _form.html.erb)", () => {
       compatibleType: "openai_compatible",
       azureType: "azure_openai",
       openaiType: "openai",
+      anthropicType: "anthropic",
       testConnectionUrl: "/test-connection",
       testConnectionFailedLabel: "Failed",
       testConnectionSuccessLabel: "Success",
@@ -204,7 +205,11 @@ describe("AiHelperModelProfile.initForm (from _form.html.erb)", () => {
     organizationIdElement.id = "ai-helper-model-organization-id";
     container.appendChild(organizationIdElement);
 
-    return { llmTypeSelect, baseUriElement, requiredSpan, organizationIdElement };
+    const promptCachingElement = document.createElement("p");
+    promptCachingElement.id = "ai-helper-model-prompt-caching";
+    container.appendChild(promptCachingElement);
+
+    return { llmTypeSelect, baseUriElement, requiredSpan, organizationIdElement, promptCachingElement };
   }
 
   afterEach(() => {
@@ -260,6 +265,19 @@ describe("AiHelperModelProfile.initForm (from _form.html.erb)", () => {
     llmTypeSelect.value = "anthropic";
     llmTypeSelect.dispatchEvent(new Event("change", { bubbles: true }));
     expect(organizationIdElement.style.display).toBe("none");
+  });
+
+  it("shows the prompt caching field for the anthropic type only", async () => {
+    const { llmTypeSelect, promptCachingElement } = addFormMarkup();
+    llmTypeSelect.value = "anthropic";
+    await loadScript("assets/javascripts/settings/ai_helper_model_profile");
+    window.AiHelperModelProfile.initForm();
+
+    expect(promptCachingElement.style.display).toBe("block");
+
+    llmTypeSelect.value = "openai";
+    llmTypeSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(promptCachingElement.style.display).toBe("none");
   });
 
   it("clears the readonly attribute on the access key/organization fields on focus", async () => {
