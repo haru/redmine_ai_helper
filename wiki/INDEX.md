@@ -28,6 +28,7 @@ page files, not here.
 - [Health Report Editing](./pages/health-report-editing.md) — feature 064: the `:edit_ai_helper_health_reports` permission, keeping original + latest only, optimistic locking, `\r` normalization for unchanged saves, anonymous-editor reassignment, overview-cache invalidation, and edited notices in exports.
 - [Health Report Markdown Rendering](./pages/health-report-markdown-rendering.md) — ADR-044: saved reports render via `md_to_html` regardless of text formatting, the self-loaded CommonMark jsToolBar, the dedicated preview endpoint, and the server-rendered detail pane.
 - [Version Write Tools: Strict Input & Error Results](./pages/version-write-tools-error-policy.md) — ADR-047/048: why disallowed sharing/custom fields error instead of being dropped, and why user mistakes return `{ error: }` while system failures raise.
+- [RubyLLM 2.1 Migration](./pages/ruby-llm-2-1-migration.md) — feature 069: RubyLLM 2.1 and Ruby 3.2+, API style left to RubyLLM, Azure on `:azure`, built-in MCP client (no SSE / non-loopback http), and the 2.0 API changes absorbed.
 
 ## component
 - [Chat Channel Gateway Architecture](./pages/chat-channel-gateway-architecture.md) — core + adapters structure, capability declaration, and gateway operational model.

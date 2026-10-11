@@ -1,8 +1,8 @@
 ---
 title: MCP Integration
 type: component
-sources: [S002, S006, S016, S033, S034]
-updated: 2026-09-12
+sources: [S002, S006, S016, S033, S034, S042]
+updated: 2026-10-11
 ---
 
 # MCP Integration
@@ -28,8 +28,10 @@ Configured in `config/ai_helper/config.json` (under the Redmine root) via an
 | `http` | `url` present, no `type` | MCP Streamable HTTP |
 
 External connections are handled by RubyLLM's built-in MCP client (`RubyLLM.mcp`),
-with one client per transport (`create_stdio_client` / `create_http_client`; SSE is no longer supported, see ADR-050)
-(S006).
+via `RubyLLM.mcp` (ADR-050). SSE is no longer supported, and plain `http://` to a
+non-loopback host (or a URL with credentials) is skipped with a logged warning
+(S006, S042). stdio commands are passed as an argv array, not a shell string
+(S042). Rationale: [RubyLLM 2.1 Migration](./ruby-llm-2-1-migration.md).
 
 ### Dynamic agent generation
 
@@ -38,8 +40,8 @@ with one client per transport (`create_stdio_client` / `create_http_client`; SSE
 `BaseAgent` subclass at runtime** — no per-server code, only config changes
 trigger regeneration (S006). The naming follows the config key (a `slack` entry
 produces a Slack MCP agent; the project also refers to these as `SubMcpAgent`
-classes). Its tools are built by fetching the server's tool list and creating
-tool classes dynamically (`McpTools.generate_tool_classes`), and the generated
+classes). Its tools come from `McpTools.generate_tool_classes`, which now returns the
+client's `mcp.tools` (`RubyLLM::Tool`-compatible, passed via `with_tools`) (S042), and the generated
 agent joins the same dispatcher as built-in agents so orchestration is
 transparent (S006). See [Multi-Agent Architecture](./multi-agent-architecture.md).
 
@@ -76,6 +78,7 @@ file contents and diffs until ADR-037 (S034).
 - [Multi-Agent Architecture](./multi-agent-architecture.md) — where generated MCP
   agents plug in, and the read-only mode they respect.
 - [Plugin Overview](./plugin-overview.md)
+- [RubyLLM 2.1 Migration](./ruby-llm-2-1-migration.md) — why the built-in client, and what it dropped.
 - [Agent Write-Capability Routing](./agent-write-capability-routing.md) —
   why these agents override `can_write?` instead of using the default.
 - [All-Projects Data-Access Scope](./all-projects-data-access-scope.md) —
