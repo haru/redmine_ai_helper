@@ -93,10 +93,11 @@ module RedmineAiHelper
       # model may not exist in RubyLLM's static registry (e.g. Ollama models such as "nomic-embed-text:latest"),
       # so we explicitly bypass the registry check.
       # @param text [String] text to embed
+      # @param embedding_model [String, nil] embedding model name. When omitted, the
+      #   saved AiHelperSetting#embedding_model is used. An explicit nil or blank
+      #   value uses the provider's default embedding model.
       # @return [Array<Float>] embedding vector
-      def embed(text)
-        setting = AiHelperSetting.find_or_create
-        embedding_model = setting.embedding_model
+      def embed(text, embedding_model: AiHelperSetting.find_or_create.embedding_model)
         opts = {}
         if ruby_llm_provider_class.nil?
           opts[:provider] = :openai
@@ -191,12 +192,21 @@ module RedmineAiHelper
       def apply_request_options(context)
         return context unless @request_options
 
-        context.config.request_timeout = @request_options[:request_timeout] if @request_options.key?(:request_timeout)
-        context.config.max_retries = @request_options[:max_retries] if @request_options.key?(:max_retries)
+        apply_request_options_to_config(context.config)
         context
       end
 
       private
+
+      # Writes the per-instance HTTP overrides (+:request_timeout+, +:max_retries+)
+      # to the given configuration. No-op when request_options is nil.
+      # @param config [RubyLLM::Configuration]
+      def apply_request_options_to_config(config)
+        return unless @request_options
+
+        config.request_timeout = @request_options[:request_timeout] if @request_options.key?(:request_timeout)
+        config.max_retries = @request_options[:max_retries] if @request_options.key?(:max_retries)
+      end
 
       # Returns true if the configured model is already in the RubyLLM registry
       # for the correct provider, preventing cross-provider false positives.
@@ -212,6 +222,7 @@ module RedmineAiHelper
           return if model_in_registry?
           config = RubyLLM::Configuration.new
           configure_provider_config(config)
+          apply_request_options_to_config(config)
           provider_instance = ruby_llm_provider_class.new(config)
           fetched_models = provider_instance.list_models
           model_info = fetched_models.find { |m| m.id == model_name }

@@ -329,6 +329,37 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
 
           assert_equal [ 0.1, 0.2, 0.3 ], result
         end
+
+        should "use the embedding_model argument without forcing provider when ruby_llm_provider_class is present" do
+          @concrete_provider.stubs(:ensure_model_registered!)
+          mock_context = mock("RubyLLM::Context")
+          mock_context.expects(:embed).with("test text", model: "text-embedding-3-large").returns(stub(vectors: [ 0.1 ]))
+          @concrete_provider.expects(:build_context).returns(mock_context)
+
+          assert_equal [ 0.1 ], @concrete_provider.embed("test text", embedding_model: "text-embedding-3-large")
+        end
+      end
+
+      should "use the embedding_model argument instead of the saved setting" do
+        mock_context = mock("RubyLLM::Context")
+        mock_context.expects(:embed).with("test text", model: "text-embedding-3-large", provider: :openai, assume_model_exists: true).returns(stub(vectors: [ 0.1 ]))
+        @provider.expects(:build_context).returns(mock_context)
+
+        @setting.embedding_model = "text-embedding-ada-002"
+        @setting.save!
+
+        assert_equal [ 0.1 ], @provider.embed("test text", embedding_model: "text-embedding-3-large")
+      end
+
+      should "not pass model when the embedding_model argument is blank" do
+        @setting.update!(embedding_model: "text-embedding-ada-002")
+        mock_context = mock("RubyLLM::Context")
+        mock_context.expects(:embed).with("test text", provider: :openai, assume_model_exists: true).twice.returns(stub(vectors: [ 0.1 ]))
+        @provider.expects(:build_context).returns(mock_context)
+
+        [ nil, "" ].each do |blank|
+          assert_equal [ 0.1 ], @provider.embed("test text", embedding_model: blank)
+        end
       end
     end
 
@@ -389,6 +420,30 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         assert_raises(RuntimeError) do
           @concrete_provider.send(:fetch_and_register_model!)
         end
+      end
+
+      should "fetch_and_register_model! applies request_options to the model list configuration" do
+        provider = FakeOpenAiProvider.new(model_profile: @test_profile, request_options: { request_timeout: 10, max_retries: 0 })
+        fetched_model = RubyLLM::Model::Info.new(id: @test_model_id, provider: "openai", name: "New Model")
+        mock_provider_instance = mock("RubyLLMProviderInstance")
+        mock_provider_instance.expects(:list_models).returns([ fetched_model ])
+        RubyLLM::Providers::OpenAI.expects(:new).with do |config|
+          config.request_timeout == 10 && config.max_retries == 0
+        end.returns(mock_provider_instance)
+
+        provider.send(:fetch_and_register_model!)
+      end
+
+      should "fetch_and_register_model! keeps the default configuration when request_options is nil" do
+        defaults = RubyLLM::Configuration.new
+        fetched_model = RubyLLM::Model::Info.new(id: @test_model_id, provider: "openai", name: "New Model")
+        mock_provider_instance = mock("RubyLLMProviderInstance")
+        mock_provider_instance.expects(:list_models).returns([ fetched_model ])
+        RubyLLM::Providers::OpenAI.expects(:new).with do |config|
+          config.request_timeout == defaults.request_timeout && config.max_retries == defaults.max_retries
+        end.returns(mock_provider_instance)
+
+        @concrete_provider.send(:fetch_and_register_model!)
       end
 
       # T010

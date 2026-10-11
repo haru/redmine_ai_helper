@@ -99,3 +99,5 @@ Briefly describe alternatives that were rejected and why.
 | [044](./044-health-reports-always-rendered-as-markdown.md) | Health reports are always rendered and edited as Markdown, independent of the text formatting setting | Accepted |
 | [045](./045-health-report-edit-keeps-original-and-latest-only.md) | Health report edits keep only the original and the latest version, with optimistic locking | Accepted |
 | [046](./046-streaming-renders-coalesced-per-animation-frame.md) | Streaming renders are coalesced to at most one per animation frame | Accepted |
+| [047](./047-version-write-tools-reject-disallowed-attributes.md) | Version write tools reject disallowed sharing and non-editable custom fields | Proposed |
+| [048](./048-version-write-tools-return-expected-failures-as-error-results.md) | Version tools return user-caused failures as error results and raise system failures | Proposed |

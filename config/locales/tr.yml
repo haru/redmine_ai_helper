@@ -32,6 +32,8 @@ tr:
   label_ai_helper_report_detail_mobile: "Rapor Detayı"
   label_ai_helper_close_detail: "Detayı Kapat"
   ai_helper:
+    vector_search:
+      embedding_dimension: "Boyut"
     settings:
       tab_general: "Genel"
       tab_model: "Model"
@@ -275,13 +277,12 @@ tr:
         vector_search_uri: "URI"
         vector_search_api_key: "API anahtarı"
         embedding_model: "Embedding modeli"
-        dimension: "Boyut"
         use_think_model: "Düşünme modelini kullan"
         think_model_profile_id: "Düşünme modeli profili"
         think_model_description: "Sağlık raporu oluşturma ve iş yanıtı taslağı hazırlama gibi daha derin akıl yürütme gerektiren görevler için ayrı bir model kullanın."
         use_vector_model_profile: "Vektör model profilini kullan"
         vector_model_profile_id: "Vektör model profili"
-        vector_model_profile_description: "Vektör arama işlemleri (API kimlik bilgileri ve içerik analizi) için ayrı bir model profili kullanın. Not: embedding model adı yine de yukarıdaki Embedding modeli ayarı tarafından kontrol edilir."
+        vector_model_profile_description: "Vektör arama için \"Model profili\" ayarından farklı bir model profili kullanır. \"Model profili\" ile belirtilen LLM sağlayıcısı embedding modeli sunmuyorsa burada başka bir model profili belirtin."
         mcp_server_enabled: "MCP sunucusunu etkinleştir"
         send_user_id_enabled: "Kullanıcı ID'sini LLM'e gönder"
         send_user_id_enabled_description: "Etkinleştirildiğinde, dahili Redmine kullanıcı ID'si LLM sağlayıcısına gönderilir. Bu, alt sistemlerde (ör. LiteLLM) kullanıcı bazlı istatistik takibine olanak tanır. Etkinleştirmeden önce gizlilik etkilerini göz önünde bulundurun."

@@ -17,8 +17,6 @@ describe("initAiHelperSettingsPage", () => {
     container.id = "ai-helper-settings-index";
     container.dataset.config = JSON.stringify({
       modelProfilesPath: "/ai_helper_model_profiles",
-      compatibleType: "openai_compatible",
-      azureType: "azure_openai",
       userIdSupportedTypes: ["openai", "openai_compatible", "azure_openai"],
       ...config,
     });
@@ -57,8 +55,7 @@ describe("initAiHelperSettingsPage", () => {
     });
 
     ["ai-helper-think-model-settings", "ai-helper-attachment-settings", "ai-helper-vector-target-projects",
-      "ai-helper-vector-model-profile-settings", "ai-helper-vector-search", "ai-helper-send-user-id",
-      "ai_helper_dimension", "ai_helper_embedding_url"].forEach((id) => {
+      "ai-helper-vector-model-profile-settings", "ai-helper-vector-search", "ai-helper-send-user-id"].forEach((id) => {
       const div = document.createElement("div");
       div.id = id;
       container.appendChild(div);
@@ -77,7 +74,6 @@ describe("initAiHelperSettingsPage", () => {
     container = undefined;
     vi.unstubAllGlobals();
     delete window.initAiHelperSettingsPage;
-    delete window.modelTypeChanged;
     delete window.setSendUserIdVisible;
   });
 
@@ -215,26 +211,31 @@ describe("initAiHelperSettingsPage", () => {
     expect(document.getElementById("ai_helper_setting_use_vector_model_profile").parentElement.style.display).toBe("");
   });
 
-  it("modelTypeChanged shows the dimension field for the compatible type", async () => {
-    const { modelTypeMeta } = addMarkup();
+  it("refreshes the send-user-id row after a model profile is loaded", async () => {
+    const { modelProfileSelect, modelTypeMeta } = addMarkup();
+    const option = document.createElement("option");
+    option.value = "42";
+    modelProfileSelect.appendChild(option);
+    modelProfileSelect.value = "42";
+    // As on the real page, the model type element only arrives with the
+    // AJAX-loaded profile detail (_show.html.erb).
+    modelTypeMeta.remove();
+    const sendUserIdDiv = document.getElementById("ai-helper-send-user-id");
+    let resolveFetch;
+    vi.stubGlobal("fetch", vi.fn(() => new Promise((resolve) => { resolveFetch = resolve; })));
+
     await loadScript("assets/javascripts/settings/ai_helper_settings");
-    modelTypeMeta.textContent = "openai_compatible";
+    window.initAiHelperSettingsPage();
 
-    window.modelTypeChanged();
+    expect(sendUserIdDiv.style.display).toBe("none");
 
-    expect(document.getElementById("ai_helper_dimension").style.display).toBe("");
-    expect(document.getElementById("ai_helper_embedding_url").style.display).toBe("none");
-  });
+    resolveFetch({
+      ok: true,
+      text: () => Promise.resolve('<p>profile 42</p><div id="ai_helper_model_type">azure_openai</div>'),
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
-  it("modelTypeChanged shows the embedding URL field for the azure type", async () => {
-    const { modelTypeMeta } = addMarkup();
-    await loadScript("assets/javascripts/settings/ai_helper_settings");
-    modelTypeMeta.textContent = "azure_openai";
-
-    window.modelTypeChanged();
-
-    expect(document.getElementById("ai_helper_embedding_url").style.display).toBe("");
-    expect(document.getElementById("ai_helper_dimension").style.display).toBe("none");
+    expect(sendUserIdDiv.style.display).toBe("");
   });
 
   it("toggles the send-user-id row only for supported model types", async () => {
@@ -269,10 +270,437 @@ describe("initAiHelperSettingsPage", () => {
     addMarkup();
     document.getElementById("ai_helper_model_type").remove();
     document.getElementById("ai-helper-send-user-id").remove();
-    document.getElementById("ai_helper_dimension").remove();
-    document.getElementById("ai_helper_embedding_url").remove();
     await loadScript("assets/javascripts/settings/ai_helper_settings");
 
     expect(() => window.initAiHelperSettingsPage()).not.toThrow();
+  });
+});
+
+describe("initVectorConnectionTest", () => {
+  let container;
+  let csrfMeta;
+  const config = {
+    testConnectionUrl: "/ai_helper_settings/test_vector_connection",
+    testConnectionSuccessLabel: "Connection successful",
+    testConnectionFailedLabel: "Connection failed",
+    loadingLabel: "Loading...",
+  };
+
+  function addMarkup() {
+    csrfMeta = document.createElement("meta");
+    csrfMeta.name = "csrf-token";
+    csrfMeta.content = "token123";
+    document.head.appendChild(csrfMeta);
+
+    container = document.createElement("form");
+    container.innerHTML = `
+      <fieldset id="ai-helper-qdrant-connection">
+        <input type="text" id="ai_helper_setting_vector_search_uri" value="http://qdrant:6333">
+        <input type="text" id="ai_helper_setting_vector_search_api_key" value="k">
+        <p id="ai-helper-vector-test-connection">
+          <button type="button" id="ai-helper-vector-test-connection-btn">Test</button>
+          <span id="ai-helper-vector-test-connection-result"></span>
+        </p>
+      </fieldset>`;
+    container.querySelector("fieldset").dataset.config = JSON.stringify(config);
+    document.body.appendChild(container);
+    return {
+      btn: document.getElementById("ai-helper-vector-test-connection-btn"),
+      result: document.getElementById("ai-helper-vector-test-connection-result"),
+      uri: document.getElementById("ai_helper_setting_vector_search_uri"),
+      key: document.getElementById("ai_helper_setting_vector_search_api_key"),
+    };
+  }
+
+  function jsonResponse(body) {
+    return { json: () => Promise.resolve(body) };
+  }
+
+  function flush() {
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  afterEach(() => {
+    container?.remove();
+    csrfMeta?.remove();
+    container = undefined;
+    vi.unstubAllGlobals();
+    delete window.initVectorConnectionTest;
+  });
+
+  async function setup(fetchImpl) {
+    const els = addMarkup();
+    const fetchMock = vi.fn(fetchImpl);
+    vi.stubGlobal("fetch", fetchMock);
+    await loadScript("assets/javascripts/settings/ai_helper_settings");
+    window.initVectorConnectionTest();
+    return { ...els, fetchMock };
+  }
+
+  it("does nothing when the fieldset is absent", async () => {
+    await loadScript("assets/javascripts/settings/ai_helper_settings");
+    expect(() => window.initVectorConnectionTest()).not.toThrow();
+  });
+
+  it("posts the current unsaved values with the CSRF token", async () => {
+    const { btn, uri, fetchMock } = await setup(() => Promise.resolve(jsonResponse({ success: true })));
+    uri.value = "http://changed:6333";
+
+    btn.click();
+    await flush();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe(config.testConnectionUrl);
+    expect(options.method).toBe("POST");
+    expect(options.headers["X-CSRF-Token"]).toBe("token123");
+    const keys = Array.from(options.body.keys());
+    expect(keys.sort()).toEqual(["ai_helper_setting[vector_search_api_key]", "ai_helper_setting[vector_search_uri]"]);
+    expect(options.body.get("ai_helper_setting[vector_search_uri]")).toBe("http://changed:6333");
+    expect(options.body.get("ai_helper_setting[vector_search_api_key]")).toBe("k");
+  });
+
+  it("shows success", async () => {
+    const { btn, result } = await setup(() => Promise.resolve(jsonResponse({ success: true })));
+    btn.click();
+    await flush();
+    expect(result.textContent).toBe("Connection successful");
+    expect(result.className).toBe("ai-helper-connection-success");
+  });
+
+  it("shows the server error on failure", async () => {
+    const { btn, result } = await setup(() => Promise.resolve(jsonResponse({ success: false, error: "boom" })));
+    btn.click();
+    await flush();
+    expect(result.textContent).toBe("Connection failed: boom");
+    expect(result.className).toBe("ai-helper-connection-failure");
+  });
+
+  it("shows the HTTP status when the response is not JSON", async () => {
+    const { btn, result } = await setup(() => Promise.resolve({ status: 422, json: () => Promise.reject(new Error("bad json")) }));
+    btn.click();
+    await flush();
+    expect(result.textContent).toBe("Connection failed: HTTP 422");
+    expect(result.className).toBe("ai-helper-connection-failure");
+  });
+
+  it("shows the error message when fetch rejects", async () => {
+    const { btn, result } = await setup(() => Promise.reject(new Error("network down")));
+    btn.click();
+    await flush();
+    expect(result.textContent).toBe("Connection failed: network down");
+  });
+
+  it("renders error text safely (no HTML injection)", async () => {
+    const payload = "<img src=x onerror=alert(1)>";
+    const { btn, result } = await setup(() => Promise.resolve(jsonResponse({ success: false, error: payload })));
+    btn.click();
+    await flush();
+    expect(result.querySelector("img")).toBeNull();
+    expect(result.textContent).toBe("Connection failed: " + payload);
+  });
+
+  it("uses a non-submitting button", async () => {
+    const { btn } = await setup(() => Promise.resolve(jsonResponse({ success: true })));
+    const onSubmit = vi.fn((e) => e.preventDefault());
+    container.addEventListener("submit", onSubmit);
+    expect(btn.type).toBe("button");
+    btn.click();
+    await flush();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  describe("progress and staleness", () => {
+    let resolveFetch;
+    const pending = () => new Promise((resolve) => { resolveFetch = resolve; });
+
+    it("disables the button and shows the loading label while running", async () => {
+      const { btn, result } = await setup(pending);
+      btn.click();
+      expect(btn.disabled).toBe(true);
+      expect(result.textContent).toBe("Loading...");
+      expect(result.className).toBe("");
+    });
+
+    it("ignores clicks while a request is running", async () => {
+      const { btn, fetchMock } = await setup(pending);
+      btn.click();
+      btn.click();
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("re-enables the button after success, failure and fetch errors", async () => {
+      const outcomes = [
+        () => Promise.resolve(jsonResponse({ success: true })),
+        () => Promise.resolve(jsonResponse({ success: false, error: "x" })),
+        () => Promise.reject(new Error("net")),
+      ];
+      let i = 0;
+      const { btn } = await setup(() => outcomes[i++]());
+      for (let n = 0; n < 3; n++) {
+        btn.click();
+        await flush();
+        expect(btn.disabled).toBe(false);
+      }
+    });
+
+    it("clears the result when the URI or API key changes", async () => {
+      const { btn, result, uri, key } = await setup(() => Promise.resolve(jsonResponse({ success: true })));
+      for (const [field, type] of [[uri, "input"], [uri, "change"], [key, "input"], [key, "change"]]) {
+        btn.click();
+        await flush();
+        expect(result.textContent).not.toBe("");
+        field.dispatchEvent(new Event(type, { bubbles: true }));
+        expect(result.textContent).toBe("");
+        expect(result.className).toBe("");
+      }
+    });
+
+    it("discards the response when the input changed during the request", async () => {
+      const { btn, result, uri } = await setup(pending);
+      btn.click();
+      uri.dispatchEvent(new Event("input", { bubbles: true }));
+      resolveFetch(jsonResponse({ success: true }));
+      await flush();
+      expect(result.textContent).toBe("");
+      expect(btn.disabled).toBe(false);
+    });
+
+    it("shows only the latest result after a second run", async () => {
+      const responses = [{ success: false, error: "first" }, { success: true }];
+      let i = 0;
+      const { btn, result } = await setup(() => Promise.resolve(jsonResponse(responses[i++])));
+      btn.click();
+      await flush();
+      btn.click();
+      await flush();
+      expect(result.textContent).toBe("Connection successful");
+    });
+  });
+});
+
+describe("initEmbeddingConnectionTest", () => {
+  let container;
+  let csrfMeta;
+  const config = {
+    testConnectionUrl: "/ai_helper_settings/test_embedding_connection",
+    testConnectionSuccessLabel: "接続成功",
+    testConnectionFailedLabel: "接続失敗",
+    dimensionLabel: "次元数",
+    loadingLabel: "読み込み中...",
+  };
+
+  function addMarkup() {
+    csrfMeta = document.createElement("meta");
+    csrfMeta.name = "csrf-token";
+    csrfMeta.content = "token123";
+    document.head.appendChild(csrfMeta);
+
+    container = document.createElement("form");
+    container.innerHTML = `
+      <select id="ai_helper_setting_model_profile_id">
+        <option value=""></option>
+        <option value="1" selected>Base</option>
+        <option value="2">Vector</option>
+      </select>
+      <input type="checkbox" id="ai_helper_setting_use_vector_model_profile">
+      <select id="ai_helper_setting_vector_model_profile_id">
+        <option value="" selected></option>
+        <option value="2">Vector</option>
+      </select>
+      <input type="text" id="ai_helper_setting_embedding_model" value="text-embedding-3-large">
+      <div id="ai-helper-embedding-connection">
+        <p id="ai-helper-embedding-test-connection">
+          <button type="button" id="ai-helper-embedding-test-connection-btn">Test</button>
+          <span id="ai-helper-embedding-test-connection-result" role="status" aria-live="polite"></span>
+        </p>
+      </div>`;
+    container.querySelector("#ai-helper-embedding-connection").dataset.config = JSON.stringify(config);
+    document.body.appendChild(container);
+    return {
+      btn: document.getElementById("ai-helper-embedding-test-connection-btn"),
+      result: document.getElementById("ai-helper-embedding-test-connection-result"),
+      modelProfile: document.getElementById("ai_helper_setting_model_profile_id"),
+      useVector: document.getElementById("ai_helper_setting_use_vector_model_profile"),
+      vectorProfile: document.getElementById("ai_helper_setting_vector_model_profile_id"),
+      embeddingModel: document.getElementById("ai_helper_setting_embedding_model"),
+    };
+  }
+
+  function jsonResponse(body) {
+    return { json: () => Promise.resolve(body) };
+  }
+
+  function flush() {
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  afterEach(() => {
+    container?.remove();
+    csrfMeta?.remove();
+    container = undefined;
+    vi.unstubAllGlobals();
+    delete window.initEmbeddingConnectionTest;
+    delete window.initVectorConnectionTest;
+    delete window.initAiHelperSettingsPage;
+  });
+
+  async function setup(fetchImpl) {
+    const els = addMarkup();
+    const fetchMock = vi.fn(fetchImpl);
+    vi.stubGlobal("fetch", fetchMock);
+    await loadScript("assets/javascripts/settings/ai_helper_settings");
+    window.initEmbeddingConnectionTest();
+    return { ...els, fetchMock };
+  }
+
+  it("does nothing when the section is absent", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    await loadScript("assets/javascripts/settings/ai_helper_settings");
+    expect(() => window.initEmbeddingConnectionTest()).not.toThrow();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("posts only the four unsaved values with the CSRF token", async () => {
+    const { btn, useVector, vectorProfile, embeddingModel, fetchMock } = await setup(() => Promise.resolve(jsonResponse({ success: true, dimension: 3 })));
+    embeddingModel.value = "text-embedding-3-small";
+
+    btn.click();
+    await flush();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    let [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe(config.testConnectionUrl);
+    expect(options.method).toBe("POST");
+    expect(options.headers["X-CSRF-Token"]).toBe("token123");
+    expect(Array.from(options.body.keys()).sort()).toEqual([
+      "ai_helper_setting[embedding_model]",
+      "ai_helper_setting[model_profile_id]",
+      "ai_helper_setting[use_vector_model_profile]",
+      "ai_helper_setting[vector_model_profile_id]",
+    ]);
+    expect(options.body.get("ai_helper_setting[model_profile_id]")).toBe("1");
+    expect(options.body.get("ai_helper_setting[use_vector_model_profile]")).toBe("0");
+    expect(options.body.get("ai_helper_setting[vector_model_profile_id]")).toBe("");
+    expect(options.body.get("ai_helper_setting[embedding_model]")).toBe("text-embedding-3-small");
+
+    useVector.checked = true;
+    vectorProfile.value = "2";
+    btn.click();
+    await flush();
+
+    [, options] = fetchMock.mock.calls[1];
+    expect(options.body.get("ai_helper_setting[use_vector_model_profile]")).toBe("1");
+    expect(options.body.get("ai_helper_setting[vector_model_profile_id]")).toBe("2");
+  });
+
+  it("shows the vector dimension on success", async () => {
+    const { btn, result } = await setup(() => Promise.resolve(jsonResponse({ success: true, dimension: 3072 })));
+    btn.click();
+    await flush();
+    expect(result.textContent).toBe(`${config.testConnectionSuccessLabel} (${config.dimensionLabel}: 3072)`);
+    expect(result.textContent).toBe("接続成功 (次元数: 3072)");
+    expect(result.className).toBe("ai-helper-connection-success");
+  });
+
+  it("shows the server error on failure", async () => {
+    const { btn, result } = await setup(() => Promise.resolve(jsonResponse({ success: false, error: "boom" })));
+    btn.click();
+    await flush();
+    expect(result.textContent).toBe("接続失敗: boom");
+    expect(result.className).toBe("ai-helper-connection-failure");
+  });
+
+  describe("progress and staleness", () => {
+    let resolveFetch;
+    const pending = () => new Promise((resolve) => { resolveFetch = resolve; });
+
+    it("disables the button and shows the loading label while running, then re-enables it", async () => {
+      const { btn, result } = await setup(pending);
+      btn.click();
+      expect(btn.disabled).toBe(true);
+      expect(result.textContent).toBe("読み込み中...");
+      expect(result.className).toBe("");
+
+      resolveFetch(jsonResponse({ success: true, dimension: 3 }));
+      await flush();
+      expect(btn.disabled).toBe(false);
+    });
+
+    it("clears the result and discards the pending response when any input changes", async () => {
+      const els = await setup(pending);
+      const changes = [
+        [els.embeddingModel, "input"],
+        [els.useVector, "change"],
+        [els.modelProfile, "change"],
+        [els.vectorProfile, "change"],
+      ];
+      for (const [field, type] of changes) {
+        els.btn.click();
+        field.dispatchEvent(new Event(type, { bubbles: true }));
+        expect(els.result.textContent).toBe("");
+        resolveFetch(jsonResponse({ success: true, dimension: 3 }));
+        await flush();
+        expect(els.result.textContent).toBe("");
+        expect(els.result.className).toBe("");
+      }
+    });
+
+    it("shows only the latest result after a second run", async () => {
+      const responses = [{ success: false, error: "first" }, { success: true, dimension: 1536 }];
+      let i = 0;
+      const { btn, result } = await setup(() => Promise.resolve(jsonResponse(responses[i++])));
+      btn.click();
+      await flush();
+      btn.click();
+      await flush();
+      expect(result.textContent).toBe("接続成功 (次元数: 1536)");
+    });
+
+    it("shows the HTTP status when the response is not JSON", async () => {
+      const { btn, result } = await setup(() => Promise.resolve({ status: 500, json: () => Promise.reject(new Error("bad json")) }));
+      btn.click();
+      await flush();
+      expect(result.textContent).toBe("接続失敗: HTTP 500");
+      expect(result.className).toBe("ai-helper-connection-failure");
+    });
+
+    it("shows the error message when fetch rejects", async () => {
+      const { btn, result } = await setup(() => Promise.reject(new Error("network down")));
+      btn.click();
+      await flush();
+      expect(result.textContent).toBe("接続失敗: network down");
+    });
+  });
+
+  it("is wired up by initAiHelperSettingsPage", async () => {
+    const { btn } = addMarkup();
+    // initAiHelperSettingsPage binds model-tab checkboxes; provide the rest of them.
+    ["ai_helper_setting_use_think_model", "ai_helper_setting_attachment_send_enabled",
+      "ai_helper_setting_vector_search_enabled", "ai_helper_setting_vector_register_all_projects"].forEach((id) => {
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.id = id;
+      container.appendChild(cb);
+    });
+    ["ai_helper_model_profile_description", "ai_helper_model_type", "ai-helper-think-model-settings",
+      "ai-helper-attachment-settings", "ai-helper-vector-target-projects", "ai-helper-vector-model-profile-settings",
+      "ai-helper-vector-search", "ai-helper-send-user-id"].forEach((id) => {
+      const div = document.createElement("div");
+      div.id = id;
+      container.appendChild(div);
+    });
+    const fetchMock = vi.fn((url) => (url === config.testConnectionUrl
+      ? Promise.resolve(jsonResponse({ success: true, dimension: 3 }))
+      : Promise.resolve({ ok: true, text: () => Promise.resolve("") })));
+    vi.stubGlobal("fetch", fetchMock);
+    await loadScript("assets/javascripts/settings/ai_helper_settings");
+
+    window.initAiHelperSettingsPage();
+    btn.click();
+    await flush();
+
+    expect(fetchMock.mock.calls.map((call) => call[0])).toContain(config.testConnectionUrl);
   });
 });

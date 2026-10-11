@@ -10,8 +10,8 @@ module RedmineAiHelper
     # @param projects [Array<Project>] The projects to render
     # @return [String] The rendered HTML with AI Helper icons added
     def render_project_hierarchy(projects)
-      # Call the original render_project_hierarchy method to get the base HTML
-      html = render_project_hierarchy_without_ai_helper(projects)
+      # Preserve the rendering chain, including wrappers from other plugins.
+      html = super(projects)
 
       # Post-process the HTML to add AI Helper icons
       add_ai_helper_icons_to_project_hierarchy(html, projects)
@@ -61,7 +61,6 @@ module RedmineAiHelper
 end
 
 unless ProjectsHelper.ancestors.include?(RedmineAiHelper::ProjectsHelperPatch)
-  ProjectsHelper.alias_method :render_project_hierarchy_without_ai_helper, :render_project_hierarchy
   ProjectsHelper.prepend RedmineAiHelper::ProjectsHelperPatch
 end
 

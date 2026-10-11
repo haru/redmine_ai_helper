@@ -178,11 +178,29 @@ class AgentsTest < ActiveSupport::TestCase
     end
 
     should "return correct tool providers" do
-      assert_equal [ RedmineAiHelper::Tools::VersionTools ], @agent.available_tool_providers
+      assert_equal [ RedmineAiHelper::Tools::VersionTools, RedmineAiHelper::Tools::VersionWriteTools ], @agent.available_tool_providers
     end
 
     should "return correct tool classes derived from providers" do
-      assert_equal RedmineAiHelper::Tools::VersionTools.tool_classes, @agent.available_tool_classes
+      expected = RedmineAiHelper::Tools::VersionTools.tool_classes + RedmineAiHelper::Tools::VersionWriteTools.tool_classes
+      assert_equal expected, @agent.available_tool_classes
+    end
+
+    should "mention the version write tools in the backstory" do
+      backstory = @agent.backstory
+
+      assert_includes backstory, "create_version"
+      assert_includes backstory, "capable_version_props"
+      assert_includes backstory, "update_version"
+      assert_includes backstory, "delete_version"
+    end
+
+    should "exclude the version write tools in read-only mode" do
+      AiHelperSetting.stubs(:read_only_mode?).returns(true)
+      names = @agent.available_tool_classes.map { |c| c.name.split("::").last.underscore }
+
+      %w[create_version update_version delete_version].each { |n| assert_not_includes names, n }
+      %w[list_versions version_info capable_version_props].each { |n| assert_includes names, n }
     end
   end
 

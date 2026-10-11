@@ -19,7 +19,32 @@ module RedmineAiHelper
     LLM_ANTHROPIC = "Anthropic".freeze
     # Azure OpenAI provider constant
     LLM_AZURE_OPENAI = "AzureOpenAi".freeze
+    # Timeout in seconds for each HTTP request of the embedding connection test
+    # (the model list fetch and the embed call each get their own limit).
+    EMBEDDING_TEST_TIMEOUT = 10
+    # Fixed text sent by the embedding connection test. No Redmine data is sent.
+    EMBEDDING_TEST_TEXT = "connection test".freeze
+
+    # Raised by .test_embedding when the response contains no non-empty numeric vector.
+    class UnexpectedEmbeddingResponseError < StandardError; end
+
     class << self
+      # Embeds EMBEDDING_TEST_TEXT once with the given profile and embedding model,
+      # using EMBEDDING_TEST_TIMEOUT seconds per request and no retries.
+      # @param profile [AiHelperModelProfile] the model profile to connect with
+      # @param embedding_model [String, nil] embedding model name; blank uses the provider default
+      # @return [Integer] the dimension of the returned vector
+      # @raise [UnexpectedEmbeddingResponseError] when no non-empty numeric vector is returned
+      # @raise [StandardError] provider / Faraday errors are propagated unchanged
+      def test_embedding(profile:, embedding_model:)
+        provider = provider_for_profile(profile, request_options: { request_timeout: EMBEDDING_TEST_TIMEOUT, max_retries: 0 })
+        vectors = provider.embed(EMBEDDING_TEST_TEXT, embedding_model: embedding_model.presence)
+        unless vectors.is_a?(Array) && vectors.any? && vectors.all?(Numeric)
+          raise UnexpectedEmbeddingResponseError, I18n.t("ai_helper.vector_search.messages.unexpected_embedding_response")
+        end
+        vectors.length
+      end
+
       # Returns an instance of the appropriate LLM client based on the system settings.
       # @param request_options [Hash, nil] Per-request HTTP overrides forwarded to
       #   the provider (see BaseProvider#initialize). nil keeps the global settings.
@@ -31,19 +56,18 @@ module RedmineAiHelper
 
       # Returns an LLM provider instance for vector operations.
       # The returned provider supplies API credentials and the chat model used for
-      # content analysis. Note: the embedding model name is still controlled by
-      # AiHelperSetting#embedding_model, not by the profile's llm_model.
-      # Falls back to get_llm_provider when:
+      # content analysis. Note: the embedding model name is not taken from the
+      # profile's llm_model. BaseProvider#embed uses AiHelperSetting#embedding_model
+      # unless the caller passes embedding_model:.
+      # The profile is chosen by AiHelperSetting#vector_llm_model_profile, so it is
+      # the base model profile (same as get_llm_provider) when:
       #   - use_vector_model_profile is false
       #   - vector_model_profile_id is blank
-      # Raises ActiveRecord::RecordNotFound if use_vector_model_profile is true but the
-      # referenced profile no longer exists.
+      # @raise [ActiveRecord::RecordNotFound] if use_vector_model_profile is true but the
+      #   referenced profile no longer exists.
       # @return [Object] An instance of the appropriate LLM client.
       def get_vector_llm_provider
-        setting = AiHelperSetting.find_or_create
-        return get_llm_provider unless setting.use_vector_model_profile? && setting.vector_model_profile_id.present?
-        profile = AiHelperModelProfile.find(setting.vector_model_profile_id)
-        provider_for_profile(profile)
+        provider_for_profile(AiHelperSetting.find_or_create.vector_llm_model_profile)
       end
 
       # Returns an LLM provider instance for the Think model, or nil if not configured.

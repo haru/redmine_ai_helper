@@ -2,6 +2,7 @@
 
 require "mcp"
 require "json"
+require "redmine_ai_helper/logger"
 
 module RedmineAiHelper
   module Mcp
@@ -16,6 +17,8 @@ module RedmineAiHelper
     #   mcp_tool = ToolAdapter.adapt(IssueSearchTools.tool_classes.first)
     #   server = MCP::Server.new(tools: [mcp_tool])
     class ToolAdapter
+      include RedmineAiHelper::Logger
+
       class << self
         # Converts a RubyLLM::Tool subclass into an MCP::Tool subclass.
         #
@@ -41,6 +44,7 @@ module RedmineAiHelper
         # Executes the RubyLLM tool and returns an MCP result hash.
         # Tool-level errors are surfaced to the MCP client via +isError: true+
         # rather than raising, as required by the MCP +tools/call+ contract.
+        # Raised exceptions are logged with their backtrace before being returned.
         #
         # @param ruby_tool_class [Class] RubyLLM::Tool subclass
         # @param arguments [Hash] symbol-keyed arguments from MCP
@@ -67,6 +71,10 @@ module RedmineAiHelper
             { content: [ { type: "text", text: JSON.generate(result) } ], isError: false }
           end
         rescue => e
+          # The controller treats this as a normal response, so log here or the
+          # failure is invisible to operators.
+          ai_helper_logger.error "MCP tool #{ruby_tool_class.name} failed: #{e.class}: #{e.message}"
+          ai_helper_logger.error e.backtrace.join("\n")
           { content: [ { type: "text", text: e.message } ], isError: true }
         end
 

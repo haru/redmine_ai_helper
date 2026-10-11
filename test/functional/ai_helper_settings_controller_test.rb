@@ -511,8 +511,6 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
           vector_search_uri: "http://localhost:6333",
           vector_search_api_key: "test-api-key",
           embedding_model: "text-embedding-3-large",
-          dimension: "1536",
-          embedding_url: "",
           use_vector_model_profile: "1",
           vector_model_profile_id: vector_profile.id.to_s,
           vector_register_all_projects: "1",
@@ -618,7 +616,410 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
     end
   end
 
+  context "qdrant connection section" do
+    should "group the Qdrant URI and API key in a fieldset with description" do
+      get :index, params: { tab: "vector" }
+
+      assert_response :success
+      assert_select "#ai-helper-vector-search fieldset.box#ai-helper-qdrant-connection" do
+        assert_select "legend", text: I18n.t("ai_helper.vector_search.qdrant_server")
+        assert_select "em.info", text: I18n.t("ai_helper.vector_search.qdrant_server_description")
+        assert_select "input#ai_helper_setting_vector_search_uri[name='ai_helper_setting[vector_search_uri]']"
+        assert_select "input#ai_helper_setting_vector_search_api_key[name='ai_helper_setting[vector_search_api_key]']"
+        assert_select "span.description", text: I18n.t("ai_helper.vector_search.qdrant_api_key_description")
+        assert_select "input#ai_helper_setting_embedding_model", count: 0
+      end
+      assert_select "#ai-helper-vector-search > p input#ai_helper_setting_embedding_model"
+      assert_select "#ai-helper-vector-search input#ai_helper_setting_dimension", count: 0
+      assert_select "#ai-helper-vector-search input#ai_helper_setting_embedding_url", count: 0
+      assert_select "#ai-helper-vector-search > p input#ai_helper_setting_vector_register_all_projects"
+    end
+
+    should "place the vector model profile settings right before the embedding model" do
+      get :index, params: { tab: "vector" }
+
+      assert_select "#ai-helper-vector-search > p input#ai_helper_setting_use_vector_model_profile"
+      assert_select "#ai-helper-vector-search > div#ai-helper-vector-model-profile-settings select#ai_helper_setting_vector_model_profile_id"
+      body = response.body
+      positions = %w[
+        ai-helper-qdrant-connection
+        ai_helper_setting_use_vector_model_profile
+        ai_helper_setting_vector_model_profile_id
+        ai_helper_setting_embedding_model
+      ].map { |id| body.index("id=\"#{id}\"") }
+      assert positions.all?, "all elements should be rendered: #{positions.inspect}"
+      assert_equal positions.sort, positions
+    end
+
+    should "label the fields with Qdrant in English" do
+      Setting.default_language = "en"
+      get :index, params: { tab: "vector" }
+
+      assert_select "label[for=ai_helper_setting_vector_search_uri]", text: /Qdrant URI/
+      assert_select "label[for=ai_helper_setting_vector_search_api_key]", text: "Qdrant API key"
+    end
+
+    should "label the fields with Qdrant in Japanese" do
+      Setting.default_language = "ja"
+      @request.session[:user_id] = 1
+      User.find(1).update_column(:language, "ja")
+      get :index, params: { tab: "vector" }
+
+      assert_select "label[for=ai_helper_setting_vector_search_uri]", text: /Qdrant URI/
+      assert_select "label[for=ai_helper_setting_vector_search_api_key]", text: "Qdrant APIキー"
+    ensure
+      User.find(1).update_column(:language, "en")
+      Setting.default_language = "en"
+    end
+
+    should "mention Qdrant URI in the error when URI is blank and vector search is enabled" do
+      post :update, params: {
+        tab: "vector",
+        ai_helper_setting: { vector_search_enabled: "1", vector_search_uri: "" }
+      }
+
+      assert_response :success
+      assert_select "#errorExplanation", text: /Qdrant URI/
+      assert_nil @ai_helper_setting.reload.vector_search_uri.presence
+      assert_not @ai_helper_setting.vector_search_enabled
+    end
+
+    should "render the connection test button, result area and config" do
+      get :index, params: { tab: "vector" }
+
+      assert_select "fieldset#ai-helper-qdrant-connection p#ai-helper-vector-test-connection" do
+        assert_select "button[type=button]#ai-helper-vector-test-connection-btn", text: /#{I18n.t("ai_helper.model_profiles.test_connection")}/
+        assert_select "span#ai-helper-vector-test-connection-result[role=status][aria-live=polite]", text: ""
+      end
+      fieldset = css_select("fieldset#ai-helper-qdrant-connection").first
+      config = JSON.parse(fieldset["data-config"])
+      assert_equal "/ai_helper_settings/test_vector_connection", config["testConnectionUrl"]
+      assert_equal I18n.t("ai_helper.model_profiles.test_connection_success"), config["testConnectionSuccessLabel"]
+      assert_equal I18n.t("ai_helper.model_profiles.test_connection_failed"), config["testConnectionFailedLabel"]
+      assert_equal I18n.t(:label_loading), config["loadingLabel"]
+    end
+  end
+
+  context "test_vector_connection" do
+    should "return success and pass url and api_key" do
+      RedmineAiHelper::Vector::Qdrant.expects(:test_connection).with(url: "http://qdrant:6333", api_key: nil).returns(true)
+
+      post :test_vector_connection, params: { ai_helper_setting: { vector_search_uri: "http://qdrant:6333", vector_search_api_key: "" } }
+
+      assert_response :success
+      assert_equal({ "success" => true }, JSON.parse(response.body))
+    end
+
+    should "pass api key as is, nil for blank, and strip the URI" do
+      RedmineAiHelper::Vector::Qdrant.expects(:test_connection).with(url: "http://qdrant:6333", api_key: "secret").returns(true)
+      post :test_vector_connection, params: { ai_helper_setting: { vector_search_uri: "  http://qdrant:6333 ", vector_search_api_key: "secret" } }
+      assert_response :success
+
+      RedmineAiHelper::Vector::Qdrant.expects(:test_connection).with(url: "http://qdrant:6333", api_key: nil).returns(true)
+      post :test_vector_connection, params: { ai_helper_setting: { vector_search_uri: "http://qdrant:6333", vector_search_api_key: "  " } }
+      assert_response :success
+    end
+
+    should "reject invalid URIs without connecting" do
+      RedmineAiHelper::Vector::Qdrant.expects(:test_connection).never
+
+      [ "", "foo", "ftp://host", "http://", "http:// bad" ].each do |uri|
+        post :test_vector_connection, params: { ai_helper_setting: { vector_search_uri: uri } }
+
+        assert_response :unprocessable_content, "expected 422 for #{uri.inspect}"
+        body = JSON.parse(response.body)
+        assert_equal false, body["success"]
+        assert_equal I18n.t("ai_helper.vector_search.messages.invalid_uri"), body["error"]
+      end
+    end
+
+    should "return the exception message on connection errors" do
+      message = "the server responded with status 401 for GET http://qdrant:6333/collections"
+      RedmineAiHelper::Vector::Qdrant.stubs(:test_connection).raises(Faraday::UnauthorizedError.new(message))
+
+      post :test_vector_connection, params: { ai_helper_setting: { vector_search_uri: "http://qdrant:6333" } }
+
+      assert_response :internal_server_error
+      assert_equal({ "success" => false, "error" => message }, JSON.parse(response.body))
+    end
+
+    should "return the message for unexpected responses" do
+      error = RedmineAiHelper::Vector::Qdrant::UnexpectedResponseError.new("not qdrant")
+      RedmineAiHelper::Vector::Qdrant.stubs(:test_connection).raises(error)
+
+      post :test_vector_connection, params: { ai_helper_setting: { vector_search_uri: "http://qdrant:6333" } }
+
+      assert_response :internal_server_error
+      assert_equal "not qdrant", JSON.parse(response.body)["error"]
+    end
+
+    should "deny non-admin users" do
+      @request.session[:user_id] = 2
+      RedmineAiHelper::Vector::Qdrant.expects(:test_connection).never
+
+      post :test_vector_connection, params: { ai_helper_setting: { vector_search_uri: "http://qdrant:6333" } }
+
+      assert_response :forbidden
+    end
+
+    should "redirect anonymous users to login" do
+      @request.session[:user_id] = nil
+      RedmineAiHelper::Vector::Qdrant.expects(:test_connection).never
+
+      post :test_vector_connection, params: { ai_helper_setting: { vector_search_uri: "http://qdrant:6333" } }
+
+      assert_response :redirect
+    end
+
+    should "not modify the saved settings" do
+      @ai_helper_setting.update_columns(vector_search_uri: "http://saved:6333", vector_search_api_key: "saved-key")
+      before = AiHelperSetting.find_or_create.attributes.slice("vector_search_uri", "vector_search_api_key", "updated_at")
+      RedmineAiHelper::Vector::Qdrant.stubs(:test_connection).returns(true)
+
+      post :test_vector_connection, params: { ai_helper_setting: { vector_search_uri: "http://other:6333", vector_search_api_key: "other" } }
+
+      after = AiHelperSetting.find_or_create.attributes.slice("vector_search_uri", "vector_search_api_key", "updated_at")
+      assert_equal before, after
+    end
+
+    should "reject requests without CSRF token" do
+      ActionController::Base.allow_forgery_protection = true
+      begin
+        RedmineAiHelper::Vector::Qdrant.expects(:test_connection).never
+        post :test_vector_connection, params: { ai_helper_setting: { vector_search_uri: "http://qdrant:6333" } }
+
+        assert_equal 422, response.code.to_i
+      ensure
+        ActionController::Base.allow_forgery_protection = false
+      end
+    end
+  end
+
+  context "test_embedding_connection" do
+    setup do
+      @vector_profile = AiHelperModelProfile.create!(name: "Vector Profile", access_key: "vec_key", llm_type: "OpenAI", llm_model: "gpt-4o-mini")
+    end
+
+    should "return success using the base profile and the unsaved embedding model" do
+      RedmineAiHelper::LlmProvider.expects(:test_embedding)
+        .with(profile: @model_profile, embedding_model: "text-embedding-3-large").returns(3072)
+
+      post_embedding_test
+
+      assert_response :success
+      assert_equal({ "success" => true, "dimension" => 3072 }, JSON.parse(response.body))
+    end
+
+    should "use the dedicated vector profile when use_vector_model_profile is on" do
+      RedmineAiHelper::LlmProvider.expects(:test_embedding)
+        .with(profile: @vector_profile, embedding_model: "text-embedding-3-small").returns(1536)
+
+      post_embedding_test(use_vector_model_profile: "1", vector_model_profile_id: @vector_profile.id.to_s, embedding_model: "text-embedding-3-small")
+
+      assert_response :success
+    end
+
+    should "return 422 when the vector profile is required but not selected" do
+      RedmineAiHelper::LlmProvider.expects(:test_embedding).never
+
+      post_embedding_test(use_vector_model_profile: "1", vector_model_profile_id: "")
+
+      assert_response :unprocessable_content
+      assert_equal({ "success" => false, "error" => I18n.t("ai_helper.vector_search.messages.vector_model_profile_required") }, JSON.parse(response.body))
+    end
+
+    should "return 422 when the base profile is not selected" do
+      RedmineAiHelper::LlmProvider.expects(:test_embedding).never
+
+      post_embedding_test(model_profile_id: "")
+
+      assert_response :unprocessable_content
+      assert_equal({ "success" => false, "error" => I18n.t("ai_helper.vector_search.messages.model_profile_required") }, JSON.parse(response.body))
+    end
+
+    should "return 422 when no setting parameters are posted" do
+      RedmineAiHelper::LlmProvider.expects(:test_embedding).never
+
+      post :test_embedding_connection
+
+      assert_response :unprocessable_content
+      assert_equal({ "success" => false, "error" => I18n.t("ai_helper.vector_search.messages.model_profile_required") }, JSON.parse(response.body))
+    end
+
+    should "use the dedicated vector profile even when the base profile is not selected" do
+      RedmineAiHelper::LlmProvider.expects(:test_embedding)
+        .with(profile: @vector_profile, embedding_model: "text-embedding-3-large").returns(1536)
+
+      post_embedding_test(model_profile_id: "", use_vector_model_profile: "1", vector_model_profile_id: @vector_profile.id.to_s)
+
+      assert_response :success
+    end
+
+    should "return a JSON error when the profile has an unsupported LLM type" do
+      @model_profile.update_column(:llm_type, "Unknown")
+
+      post_embedding_test
+
+      assert_response :internal_server_error
+      assert_equal({ "success" => false, "error" => "LLM provider not found" }, JSON.parse(response.body))
+    end
+
+    should "return 422 when the selected profile no longer exists" do
+      RedmineAiHelper::LlmProvider.expects(:test_embedding).never
+
+      [
+        { use_vector_model_profile: "1", vector_model_profile_id: "999999" },
+        { use_vector_model_profile: "0", model_profile_id: "999999" }
+      ].each do |overrides|
+        post_embedding_test(overrides)
+
+        assert_response :unprocessable_content
+        assert_equal({ "success" => false, "error" => I18n.t("ai_helper.vector_search.messages.model_profile_not_found") }, JSON.parse(response.body))
+      end
+    end
+
+    should "return the provider error message" do
+      RedmineAiHelper::LlmProvider.stubs(:test_embedding).raises(RubyLLM::UnauthorizedError.new("Incorrect API key provided"))
+
+      post_embedding_test
+
+      assert_response :internal_server_error
+      assert_equal({ "success" => false, "error" => "Incorrect API key provided" }, JSON.parse(response.body))
+    end
+
+    should "truncate long error messages to 500 characters" do
+      RedmineAiHelper::LlmProvider.stubs(:test_embedding).raises(StandardError.new("x" * 600))
+
+      post_embedding_test
+
+      error = JSON.parse(response.body)["error"]
+      assert_equal 500, error.length
+      assert error.end_with?("...")
+    end
+
+    should "return the timeout message for read and connect timeouts" do
+      connect_timeout = begin
+        begin
+          raise Net::OpenTimeout, "execution expired"
+        rescue Net::OpenTimeout
+          raise Faraday::ConnectionFailed, "execution expired"
+        end
+      rescue Faraday::ConnectionFailed => e
+        e
+      end
+      expected = I18n.t("ai_helper.vector_search.messages.embedding_timeout", seconds: RedmineAiHelper::LlmProvider::EMBEDDING_TEST_TIMEOUT)
+
+      [ Faraday::TimeoutError.new("timeout"), connect_timeout ].each do |error|
+        RedmineAiHelper::LlmProvider.stubs(:test_embedding).raises(error)
+
+        post_embedding_test
+
+        assert_response :internal_server_error
+        assert_equal({ "success" => false, "error" => expected }, JSON.parse(response.body))
+      end
+    end
+
+    should "return the provider message for connection failures that are not timeouts" do
+      RedmineAiHelper::LlmProvider.stubs(:test_embedding).raises(Faraday::ConnectionFailed.new("Connection refused"))
+
+      post_embedding_test
+
+      assert_equal "Connection refused", JSON.parse(response.body)["error"]
+    end
+
+    should "return the message for unexpected embedding responses" do
+      message = I18n.t("ai_helper.vector_search.messages.unexpected_embedding_response")
+      RedmineAiHelper::LlmProvider.stubs(:test_embedding).raises(RedmineAiHelper::LlmProvider::UnexpectedEmbeddingResponseError.new(message))
+
+      post_embedding_test
+
+      assert_response :internal_server_error
+      assert_equal message, JSON.parse(response.body)["error"]
+    end
+
+    should "log the full error message without a backtrace for provider errors" do
+      long_message = "y" * 600
+      RedmineAiHelper::LlmProvider.stubs(:test_embedding).raises(RubyLLM::Error.new(nil, long_message))
+      AiHelperSettingsController.ai_helper_logger.expects(:error).with("Embedding connection test failed: RubyLLM::Error: #{long_message}")
+
+      post_embedding_test
+    end
+
+    should "log the backtrace for unexpected errors" do
+      RedmineAiHelper::LlmProvider.stubs(:test_embedding).raises(RuntimeError.new("boom"))
+      AiHelperSettingsController.ai_helper_logger.expects(:error).with do |message|
+        lines = message.lines(chomp: true)
+        lines.first == "Embedding connection test failed: RuntimeError: boom" &&
+          lines.size > 1 && lines.size <= 1 + AiHelperSettingsController::EMBEDDING_TEST_BACKTRACE_LINES
+      end
+
+      post_embedding_test
+    end
+
+    should "not modify the saved settings" do
+      @ai_helper_setting.update_columns(embedding_model: "saved-model", use_vector_model_profile: false, vector_model_profile_id: nil, model_profile_id: @model_profile.id)
+      keys = %w[embedding_model use_vector_model_profile vector_model_profile_id model_profile_id updated_at]
+      before = AiHelperSetting.find_or_create.attributes.slice(*keys)
+      RedmineAiHelper::LlmProvider.stubs(:test_embedding).returns(3)
+
+      post_embedding_test(use_vector_model_profile: "1", vector_model_profile_id: @vector_profile.id.to_s, embedding_model: "other-model")
+
+      assert_response :success
+      assert_equal before, AiHelperSetting.find_or_create.attributes.slice(*keys)
+    end
+
+    should "ignore parameters other than the four test fields" do
+      AiHelperSetting.any_instance.expects(:vector_search_uri=).never
+      RedmineAiHelper::LlmProvider.stubs(:test_embedding).returns(3)
+
+      post_embedding_test(vector_search_uri: "http://ignored:6333")
+
+      assert_response :success
+    end
+
+    should "deny non-admin users" do
+      @request.session[:user_id] = 2
+      RedmineAiHelper::LlmProvider.expects(:test_embedding).never
+
+      post_embedding_test
+
+      assert_response :forbidden
+    end
+
+    should "redirect anonymous users to login" do
+      @request.session[:user_id] = nil
+      RedmineAiHelper::LlmProvider.expects(:test_embedding).never
+
+      post_embedding_test
+
+      assert_response :redirect
+    end
+  end
+
   context "vector tab layout" do
+    should "render the embedding connection test right after the embedding model field" do
+      get :index, params: { tab: "vector" }
+
+      assert_response :success
+      assert_select "#ai-helper-vector-search > div#ai-helper-embedding-connection p#ai-helper-embedding-test-connection" do
+        assert_select "button[type=button]#ai-helper-embedding-test-connection-btn", text: /#{I18n.t("ai_helper.model_profiles.test_connection")}/
+        assert_select "span#ai-helper-embedding-test-connection-result[role=status][aria-live=polite]", text: ""
+      end
+      body = response.body
+      positions = %w[ai_helper_setting_embedding_model ai-helper-embedding-connection ai_helper_setting_vector_register_all_projects].map { |id| body.index("id=\"#{id}\"") }
+      assert positions.all?, "all elements should be rendered: #{positions.inspect}"
+      assert_equal positions.sort, positions
+      embedding_p = css_select("#ai-helper-vector-search > p").find { |p| p.at_css("#ai_helper_setting_embedding_model") }
+      assert_equal "ai-helper-embedding-connection", embedding_p.next_element["id"]
+
+      config = JSON.parse(css_select("div#ai-helper-embedding-connection").first["data-config"])
+      assert_equal "/ai_helper_settings/test_embedding_connection", config["testConnectionUrl"]
+      assert_equal I18n.t("ai_helper.model_profiles.test_connection_success"), config["testConnectionSuccessLabel"]
+      assert_equal I18n.t("ai_helper.model_profiles.test_connection_failed"), config["testConnectionFailedLabel"]
+      assert_equal I18n.t("ai_helper.vector_search.embedding_dimension"), config["dimensionLabel"]
+      assert_equal I18n.t(:label_loading), config["loadingLabel"]
+    end
+
     should "render vector tab fields in vector tab content only" do
       get :index, params: { tab: "vector" }
 
@@ -629,8 +1030,10 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
         assert_select "input[type=text][name='ai_helper_setting[vector_search_uri]']"
         assert_select "input[type=text][name='ai_helper_setting[vector_search_api_key]']"
         assert_select "input[type=text][name='ai_helper_setting[embedding_model]']"
-        assert_select "input[type=text][name='ai_helper_setting[dimension]']"
-        assert_select "input[type=text][name='ai_helper_setting[embedding_url]']"
+        assert_select "#ai_helper_dimension", count: 0
+        assert_select "#ai_helper_embedding_url", count: 0
+        assert_select "input[name='ai_helper_setting[dimension]']", count: 0
+        assert_select "input[name='ai_helper_setting[embedding_url]']", count: 0
         assert_select "input[type=checkbox][name='ai_helper_setting[use_vector_model_profile]']"
         assert_select "select[name='ai_helper_setting[vector_model_profile_id]']"
         assert_select "input[type=checkbox][name='ai_helper_setting[vector_register_all_projects]']"
@@ -638,6 +1041,35 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
         assert_select "input[type=checkbox][name='ai_helper_setting[mcp_server_enabled]']", { count: 0 }
         assert_select "select[name='ai_helper_setting[model_profile_id]']", { count: 0 }
       end
+    end
+
+    should "not render the removed dimension and embedding URL fields for an Azure OpenAI base model profile" do
+      @model_profile.update_column(:llm_type, RedmineAiHelper::LlmProvider::LLM_AZURE_OPENAI)
+      @ai_helper_setting.update!(model_profile_id: @model_profile.id, vector_search_enabled: true, vector_search_uri: "http://localhost:6333")
+
+      get :index, params: { tab: "vector" }
+
+      assert_response :success
+      assert_select "input[name='ai_helper_setting[dimension]']", count: 0
+      assert_select "input[name='ai_helper_setting[embedding_url]']", count: 0
+    end
+
+    should "save successfully when a stale request still includes the removed dimension and embedding_url" do
+      post :update, params: {
+        tab: "vector",
+        ai_helper_setting: {
+          vector_search_enabled: "1",
+          vector_search_uri: "http://localhost:6333",
+          embedding_model: "text-embedding-3-large",
+          dimension: "1536",
+          embedding_url: "https://example.openai.azure.com"
+        }
+      }
+
+      assert_redirected_to controller: "ai_helper_settings", action: :index, tab: "vector"
+      assert_equal I18n.t(:notice_successful_update), flash[:notice]
+      @ai_helper_setting.reload
+      assert_equal "text-embedding-3-large", @ai_helper_setting.embedding_model
     end
 
     should "save from vector tab and redirect with tab vector" do
@@ -648,7 +1080,6 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
           vector_search_uri: "http://localhost:6333",
           vector_search_api_key: "test-key",
           embedding_model: "text-embedding-3-large",
-          dimension: "1536",
           use_vector_model_profile: "0",
           vector_model_profile_id: "",
           vector_register_all_projects: "1",
@@ -1270,6 +1701,19 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
 
       assert_response :not_found
     end
+  end
+
+  private
+
+  # Posts the four form values the embedding connection test sends.
+  def post_embedding_test(overrides = {})
+    attrs = {
+      model_profile_id: @model_profile.id.to_s,
+      use_vector_model_profile: "0",
+      vector_model_profile_id: "",
+      embedding_model: "text-embedding-3-large"
+    }.merge(overrides)
+    post :test_embedding_connection, params: { ai_helper_setting: attrs }
   end
 end
 

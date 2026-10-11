@@ -106,6 +106,15 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       assert_includes prompt, RedmineAiHelper::Util::PromptLoader.load_template("base_agent/read_only_notice").format
     end
 
+    should "state in the read-only notice that reading remains allowed" do
+      AiHelperSetting.stubs(:read_only_mode?).returns(true)
+
+      prompt = @agent.system_prompt
+
+      assert_match(/can still read, search, and summarize/, prompt)
+      assert_match(/reading is NOT restricted/, prompt)
+    end
+
     should "not include the read-only notice when read_only_mode is false" do
       AiHelperSetting.stubs(:read_only_mode?).returns(false)
 

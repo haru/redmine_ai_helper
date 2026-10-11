@@ -92,6 +92,50 @@ class MCPToolAdapterTest < ActiveSupport::TestCase
         assert_equal true, result[:isError]
         assert_includes result[:content].first[:text], "Something went wrong"
       end
+
+      should "log the exception when tool raises" do
+        error_tools_class = Class.new(RedmineAiHelper::BaseTools) do
+          define_function :explode, description: "Always raises" do
+            property :dummy, type: "string", description: "Dummy", required: false
+          end
+
+          def explode(dummy: nil) # rubocop:disable Lint/UnusedMethodArgument
+            raise "Database is down"
+          end
+        end
+
+        logger = mock("logger")
+        logged = sequence("logged")
+        logger.expects(:error).with { |message| message.include?("RuntimeError: Database is down") }.in_sequence(logged)
+        logger.expects(:error).with { |message| message.include?("tool_adapter_test.rb") }.in_sequence(logged)
+        RedmineAiHelper::Mcp::ToolAdapter.stubs(:ai_helper_logger).returns(logger)
+
+        mcp_tool = RedmineAiHelper::Mcp::MCPToolAdapter.adapt(error_tools_class.tool_classes.first)
+        result = mcp_tool.call
+
+        assert_equal true, result[:isError]
+      end
+
+      should "not log an error result returned by the tool" do
+        error_tools_class = Class.new(RedmineAiHelper::BaseTools) do
+          define_function :refuse, description: "Returns an error result" do
+            property :dummy, type: "string", description: "Dummy", required: false
+          end
+
+          def refuse(dummy: nil) # rubocop:disable Lint/UnusedMethodArgument
+            { error: "Permission denied" }
+          end
+        end
+
+        logger = mock("logger")
+        logger.expects(:error).never
+        RedmineAiHelper::Mcp::ToolAdapter.stubs(:ai_helper_logger).returns(logger)
+
+        result = RedmineAiHelper::Mcp::MCPToolAdapter.adapt(error_tools_class.tool_classes.first).call
+
+        assert_equal true, result[:isError]
+        assert_equal "Permission denied", result[:content].first[:text]
+      end
     end
   end
 end

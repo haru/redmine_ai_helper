@@ -1,8 +1,8 @@
 ---
 title: LLM Provider Layer
 type: component
-sources: [S009, S021, S037]
-updated: 2026-09-30
+sources: [S009, S021, S037, S039]
+updated: 2026-10-08
 ---
 
 # LLM Provider Layer
@@ -22,6 +22,8 @@ three entry points (S009):
 - `get_llm_provider` — the default, from the global `model_profile`.
 - `get_vector_llm_provider` — the [vector model profile](./vector-search.md);
   **falls back to the default** when `use_vector_model_profile` is false (S009).
+  The selection rule now lives in `AiHelperSetting#vector_llm_model_profile`,
+  shared with the [embedding connection test](./embedding-connection-test.md) (S039).
 - `get_think_llm_provider` — returns **nil** when the
   [think model](./think-model.md) is off/unconfigured, which is exactly the
   signal that makes `think_chat` fall back to normal `chat` (S009). See
@@ -44,14 +46,19 @@ All inherit `RedmineAiHelper::LlmClient::BaseProvider` (S009):
   Temperature is applied only when set (`with_temperature(temperature) if
   temperature`), so a blank profile temperature sends none — see
   [Model Profile Temperature Is Optional](./model-profile-optional-temperature.md) (S037).
-- `embed` generates embeddings; `supports_structured_output?` reports native
+- `embed(text, embedding_model:)` generates embeddings; the keyword defaults to
+  the saved `AiHelperSetting#embedding_model`, and an explicit nil/blank uses the
+  provider default (S039); `supports_structured_output?` reports native
   JSON-schema support (S009).
 - **Per-call HTTP options**: `initialize` accepts an optional `request_options:`
   (`request_timeout` / `max_retries`) that `context` applies to `context.config`
   *after* `build_context`, and `get_llm_provider` / `provider_for_profile` pass
   it through. `RubyLLM.context` `dup`s the global config, so the override is
-  caller-scoped and the five subclasses need no change (S021). Its only current
-  user is [inline completion](./completion-request-timeout-policy.md).
+  caller-scoped and the five subclasses need no change (S021). It is used by
+  [inline completion](./completion-request-timeout-policy.md) and by the
+  [embedding connection test](./embedding-connection-test.md) (10 s, no retries);
+  `fetch_and_register_model!` now applies it too, so the model-list fetch honours
+  the limit (S039).
 
 ## Provider quirks (gotchas)
 
@@ -86,4 +93,5 @@ injected into the prompt instead of calling the native API.
   [BaseAgent LLM Calls](./base-agent-llm-calls.md) ·
   [Think Model](./think-model.md) · [Vector Search](./vector-search.md) ·
   [Completion Request Timeout Policy](./completion-request-timeout-policy.md) ·
+  [Embedding Connection Test](./embedding-connection-test.md) ·
   [Model Profile Temperature Is Optional](./model-profile-optional-temperature.md)

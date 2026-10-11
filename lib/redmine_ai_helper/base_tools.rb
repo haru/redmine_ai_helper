@@ -14,6 +14,12 @@ module RedmineAiHelper
     include RedmineAiHelper::Logger
     include ROUTE_HELPERS
 
+    # Raised by a tool for a failure caused by the user's input or situation
+    # (missing argument, not found, permission denied, validation error, etc.).
+    # Tools that wrap their body with {#user_errors_as_result} return it as
+    # { error: message } instead of raising.
+    class UserError < StandardError; end
+
     # Valid keys for the {requires} class-level DSL.
     VALID_REQUIRE_KEYS = %i[vector_db_enabled admin].freeze
 
@@ -396,6 +402,16 @@ module RedmineAiHelper
     end
 
     private
+
+    # Run the block and convert a UserError into an error result.
+    # Other exceptions (system failures) are not rescued.
+    # @yield The tool body.
+    # @return [Object, Hash] The block's value, or { error: message } for a UserError.
+    def user_errors_as_result
+      yield
+    rescue UserError => e
+      { error: e.message }
+    end
 
     def format_named_record(obj)
       return nil unless obj

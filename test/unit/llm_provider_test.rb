@@ -135,6 +135,59 @@ class LlmProviderTest < ActiveSupport::TestCase
       end
     end
 
+    context "test_embedding" do
+      setup do
+        @profile = AiHelperSetting.find_or_create.model_profile
+        @provider = mock("provider")
+        @llm_provider.stubs(:provider_for_profile)
+          .with(@profile, request_options: { request_timeout: 10, max_retries: 0 })
+          .returns(@provider)
+      end
+
+      should "embed the fixed text once with a 10-second timeout and no retries and return the dimension" do
+        @provider.expects(:embed)
+          .with(RedmineAiHelper::LlmProvider::EMBEDDING_TEST_TEXT, embedding_model: "x")
+          .once.returns([ 0.1, 0.2, 0.3 ])
+
+        assert_equal 3, @llm_provider.test_embedding(profile: @profile, embedding_model: "x")
+      end
+
+      should "pass nil as the embedding model when it is blank" do
+        @provider.expects(:embed)
+          .with(RedmineAiHelper::LlmProvider::EMBEDDING_TEST_TEXT, embedding_model: nil)
+          .returns([ 0.1 ])
+
+        assert_equal 1, @llm_provider.test_embedding(profile: @profile, embedding_model: "")
+      end
+
+      should "raise UnexpectedEmbeddingResponseError when no numeric vector is returned" do
+        [ [], nil, [ [ 0.1 ] ], [ 0.1, nil ] ].each do |vectors|
+          @provider.stubs(:embed).returns(vectors)
+
+          error = assert_raises(RedmineAiHelper::LlmProvider::UnexpectedEmbeddingResponseError) do
+            @llm_provider.test_embedding(profile: @profile, embedding_model: "x")
+          end
+          assert_equal I18n.t("ai_helper.vector_search.messages.unexpected_embedding_response"), error.message
+        end
+      end
+
+      should "propagate provider errors unchanged" do
+        [ RubyLLM::UnauthorizedError.new("bad key"), Faraday::TimeoutError.new("timeout") ].each do |error|
+          @provider.stubs(:embed).raises(error)
+
+          raised = assert_raises(error.class) do
+            @llm_provider.test_embedding(profile: @profile, embedding_model: "x")
+          end
+          assert_same error, raised
+        end
+      end
+
+      should "define the test constants" do
+        assert_equal 10, RedmineAiHelper::LlmProvider::EMBEDDING_TEST_TIMEOUT
+        assert_equal "connection test", RedmineAiHelper::LlmProvider::EMBEDDING_TEST_TEXT
+      end
+    end
+
     context "get_llm_provider" do
       setup do
         @setting = AiHelperSetting.find_or_create

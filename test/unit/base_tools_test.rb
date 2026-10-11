@@ -450,4 +450,29 @@ class BaseToolsTest < ActiveSupport::TestCase
       end
     end
   end
+
+  context "user_errors_as_result" do
+    setup do
+      @tool = Class.new(RedmineAiHelper::BaseTools) do
+        def run(&block)
+          user_errors_as_result(&block)
+        end
+      end.new
+    end
+
+    should "return the block value when no exception is raised" do
+      assert_equal({ ok: true }, @tool.run { { ok: true } })
+    end
+
+    should "return an error hash for a UserError" do
+      result = @tool.run { raise RedmineAiHelper::BaseTools::UserError, "msg" }
+
+      assert_equal({ error: "msg" }, result)
+    end
+
+    should "re-raise other exceptions" do
+      assert_raises(RuntimeError) { @tool.run { raise "boom" } }
+      assert_raises(ActiveRecord::StatementInvalid) { @tool.run { raise ActiveRecord::StatementInvalid } }
+    end
+  end
 end
