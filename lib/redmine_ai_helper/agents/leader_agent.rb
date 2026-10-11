@@ -157,10 +157,10 @@ module RedmineAiHelper
                   }
                 },
                 required: [ "agent", "step", "description_for_human", "use_think_model", "requires_write" ]
-              },
-              required: [ "steps" ]
+              }
             }
-          }
+          },
+          required: [ "steps" ]
         }
       end
 

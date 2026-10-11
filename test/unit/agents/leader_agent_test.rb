@@ -170,6 +170,22 @@ class LeaderAgentTest < ActiveSupport::TestCase
       assert_kind_of String, result
     end
 
+    should "declare required steps at the schema root where every required key is a sibling property" do
+      schema = @agent.send(:generate_steps_json_schema)
+      assert_equal [ "steps" ], schema[:required]
+      assert_nil schema[:properties][:steps][:required]
+
+      check = lambda do |node|
+        next unless node.is_a?(Hash)
+        if node[:required]
+          missing = node[:required].map(&:to_sym) - (node[:properties] || {}).keys.map(&:to_sym)
+          assert_empty missing, "required keys without matching properties"
+        end
+        node.values.each { |v| v.is_a?(Hash) ? check.call(v) : (v.is_a?(Array) && v.each { |e| check.call(e) }) }
+      end
+      check.call(schema)
+    end
+
     should "include use_think_model boolean field in generate_steps JSON schema" do
       steps_json = {
         "steps" => [
