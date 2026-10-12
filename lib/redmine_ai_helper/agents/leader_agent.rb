@@ -28,9 +28,14 @@ module RedmineAiHelper
       end
 
       # Get the complete system prompt including backstory
-      # @return [String] The system prompt
+      # The fixed part holds the instructions, the backstory and the read-only
+      # notice; the variable part holds the time, site, page and user information.
+      # @return [RedmineAiHelper::LlmClient::Instructions] The system prompt
       def system_prompt
-        "#{@system_prompt.prompt}\n\n#{backstory}#{read_only_notice}"
+        RedmineAiHelper::LlmClient::Instructions.new(
+          fixed: "#{@system_prompt.fixed_prompt}\n\n#{backstory}#{read_only_notice}",
+          variable: @system_prompt.context_prompt
+        )
       end
 
       # Perform a user request by generating a goal and steps for the agents to follow.
@@ -152,10 +157,10 @@ module RedmineAiHelper
                   }
                 },
                 required: [ "agent", "step", "description_for_human", "use_think_model", "requires_write" ]
-              },
-              required: [ "steps" ]
+              }
             }
-          }
+          },
+          required: [ "steps" ]
         }
       end
 

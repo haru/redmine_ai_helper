@@ -29,6 +29,7 @@ page files, not here.
 - [Health Report Markdown Rendering](./pages/health-report-markdown-rendering.md) — ADR-044: saved reports render via `md_to_html` regardless of text formatting, the self-loaded CommonMark jsToolBar, the dedicated preview endpoint, and the server-rendered detail pane.
 - [Version Write Tools: Strict Input & Error Results](./pages/version-write-tools-error-policy.md) — ADR-047/048: why disallowed sharing/custom fields error instead of being dropped, and why user mistakes return `{ error: }` while system failures raise.
 - [RubyLLM 2.1 Migration](./pages/ruby-llm-2-1-migration.md) — feature 069: RubyLLM 2.1 and Ruby 3.2+, API style left to RubyLLM, Azure on `:azure`, built-in MCP client (no SSE / non-loopback http), and the 2.0 API changes absorbed.
+- [Prompt Caching & Split System Prompt](./pages/prompt-caching.md) — feature 070/ADR-051: Anthropic-only cache breakpoints, the `Instructions(fixed, variable)` split, why other providers get one system string, `prompt_caching_enabled`, and Langfuse cache-token accounting.
 
 ## component
 - [Chat Channel Gateway Architecture](./pages/chat-channel-gateway-architecture.md) — core + adapters structure, capability declaration, and gateway operational model.

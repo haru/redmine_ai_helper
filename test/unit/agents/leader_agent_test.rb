@@ -58,9 +58,44 @@ class LeaderAgentTest < ActiveSupport::TestCase
     end
 
     should "return correct system prompt" do
-      system_prompt = @agent.system_prompt
+      assert_includes @agent.system_prompt.to_s, @agent.backstory
+    end
 
-      assert_includes system_prompt, @agent.backstory
+    should "return an Instructions object split into fixed and variable parts" do
+      prompt = @agent.system_prompt
+
+      assert_instance_of RedmineAiHelper::LlmClient::Instructions, prompt
+      assert_includes prompt.fixed, @agent.backstory
+      assert_equal @agent.instance_variable_get(:@system_prompt).context_prompt, prompt.variable
+    end
+
+    should "keep time, site, page and user information out of the fixed part" do
+      prompt = @agent.system_prompt
+
+      assert_no_match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/, prompt.fixed)
+      assert_no_match(/"current_project"|"redmine_version"/, prompt.fixed)
+      assert_no_match(/The user you are talking to is/, prompt.fixed)
+      assert_match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/, prompt.variable)
+    end
+
+    should "put variable information at the end of to_s" do
+      prompt = @agent.system_prompt
+
+      assert prompt.to_s.end_with?(prompt.variable)
+    end
+
+    should "keep the fixed part identical across users, projects, pages and time" do
+      first = RedmineAiHelper::Agents::LeaderAgent.new(@params.merge(controller_name: "issues", action_name: "index")).system_prompt
+
+      User.current = User.find(2)
+      later = Time.now.utc + 3600
+      Time.stubs(:now).returns(later)
+      second = RedmineAiHelper::Agents::LeaderAgent.new(
+        @params.merge(project: Project.find(2), controller_name: "projects", action_name: "show")
+      ).system_prompt
+
+      assert_equal first.fixed, second.fixed
+      assert_not_equal first.variable, second.variable
     end
 
     should "generate goal correctly" do
@@ -133,6 +168,22 @@ class LeaderAgentTest < ActiveSupport::TestCase
       result = @agent.perform_user_request(@messages)
 
       assert_kind_of String, result
+    end
+
+    should "declare required steps at the schema root where every required key is a sibling property" do
+      schema = @agent.send(:generate_steps_json_schema)
+      assert_equal [ "steps" ], schema[:required]
+      assert_nil schema[:properties][:steps][:required]
+
+      check = lambda do |node|
+        next unless node.is_a?(Hash)
+        if node[:required]
+          missing = node[:required].map(&:to_sym) - (node[:properties] || {}).keys.map(&:to_sym)
+          assert_empty missing, "required keys without matching properties"
+        end
+        node.values.each { |v| v.is_a?(Hash) ? check.call(v) : (v.is_a?(Array) && v.each { |e| check.call(e) }) }
+      end
+      check.call(schema)
     end
 
     should "include use_think_model boolean field in generate_steps JSON schema" do
@@ -556,7 +607,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
       should "include the read-only notice when read_only_mode is true" do
         AiHelperSetting.stubs(:read_only_mode?).returns(true)
 
-        prompt = @agent.system_prompt
+        prompt = @agent.system_prompt.to_s
 
         assert_includes prompt, RedmineAiHelper::Util::PromptLoader.load_template("base_agent/read_only_notice").format
       end
@@ -564,7 +615,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
       should "not include the read-only notice when read_only_mode is false" do
         AiHelperSetting.stubs(:read_only_mode?).returns(false)
 
-        prompt = @agent.system_prompt
+        prompt = @agent.system_prompt.to_s
 
         assert_not_includes prompt, RedmineAiHelper::Util::PromptLoader.load_template("base_agent/read_only_notice").format
       end

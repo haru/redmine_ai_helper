@@ -1,0 +1,6 @@
+---
+_type: prompt
+input_variables:
+  - time
+template: |-
+  The current time is {time}.

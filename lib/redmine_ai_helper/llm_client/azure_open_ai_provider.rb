@@ -11,7 +11,7 @@ module RedmineAiHelper
     class AzureOpenAiProvider < RedmineAiHelper::LlmClient::BaseProvider
       # Create a RubyLLM::Chat instance for Azure OpenAI.
       # Overrides base class to use provider: :azure and assume_model_exists: true.
-      # @param instructions [String, nil] system prompt
+      # @param instructions [String, Instructions, nil] system prompt
       # @param tools [Array<Class>] tool classes to attach
       # @param schema [Hash, nil] Unused: Azure OpenAI has no provider slug, so
       #   native structured output is never selected (the keyword is accepted
@@ -23,7 +23,7 @@ module RedmineAiHelper
           provider: :azure,
           assume_model_exists: true
         )
-        chat.with_instructions(instructions) if instructions
+        apply_instructions(chat, instructions)
         chat.with_tools(*tools) unless tools.empty?
         chat.with_temperature(temperature) if temperature
         apply_user_identifier(chat)

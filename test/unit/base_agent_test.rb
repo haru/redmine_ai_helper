@@ -97,11 +97,67 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
     end
   end
 
+  context "system_prompt split into fixed and variable parts" do
+    should "return an Instructions object" do
+      assert_instance_of RedmineAiHelper::LlmClient::Instructions, @agent.system_prompt
+    end
+
+    should "keep the current time out of the fixed part in English and Japanese" do
+      frozen = Time.utc(2026, 10, 11, 12, 34, 56)
+      Time.stubs(:now).returns(frozen)
+      %i[en ja].each do |locale|
+        I18n.with_locale(locale) do
+          prompt = @agent.system_prompt
+
+          assert_no_match(/2026-10-11T12:34:56/, prompt.fixed)
+          assert_match(/2026-10-11T12:34:56/, prompt.variable)
+        end
+      end
+    end
+
+    should "include role, language, backstory and read-only notice in the fixed part" do
+      AiHelperSetting.stubs(:read_only_mode?).returns(true)
+      prompt = @agent.system_prompt
+
+      assert_includes prompt.fixed, @agent.role
+      assert_includes prompt.fixed, @agent.backstory
+      assert_includes prompt.fixed, I18n.t(:general_lang_name)
+      assert_includes prompt.fixed, RedmineAiHelper::Util::PromptLoader.load_template("base_agent/read_only_notice").format
+    end
+
+    should "keep the fixed part identical across calls at different times" do
+      Time.stubs(:now).returns(Time.utc(2026, 10, 11, 12, 34, 56))
+      first = @agent.system_prompt
+      Time.stubs(:now).returns(Time.utc(2026, 10, 11, 13, 0, 0))
+      second = @agent.system_prompt
+
+      assert_equal first.fixed, second.fixed
+      assert_not_equal first.variable, second.variable
+    end
+
+    should "put the time after everything else in to_s" do
+      frozen = Time.utc(2026, 10, 11, 12, 34, 56)
+      Time.stubs(:now).returns(frozen)
+      prompt = @agent.system_prompt
+      text = prompt.to_s
+
+      assert text.end_with?(prompt.variable)
+      assert_includes text, frozen.iso8601
+      assert_operator text.index(@agent.backstory), :<, text.index(frozen.iso8601)
+    end
+
+    should "not leave a time input variable in the system_prompt template" do
+      template = RedmineAiHelper::Util::PromptLoader.load_template("base_agent/system_prompt")
+
+      assert_not_includes template.input_variables.map(&:to_s), "time"
+    end
+  end
+
   context "system_prompt with read_only_mode" do
     should "include the read-only notice when read_only_mode is true" do
       AiHelperSetting.stubs(:read_only_mode?).returns(true)
 
-      prompt = @agent.system_prompt
+      prompt = @agent.system_prompt.to_s
 
       assert_includes prompt, RedmineAiHelper::Util::PromptLoader.load_template("base_agent/read_only_notice").format
     end
@@ -109,7 +165,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
     should "state in the read-only notice that reading remains allowed" do
       AiHelperSetting.stubs(:read_only_mode?).returns(true)
 
-      prompt = @agent.system_prompt
+      prompt = @agent.system_prompt.to_s
 
       assert_match(/can still read, search, and summarize/, prompt)
       assert_match(/reading is NOT restricted/, prompt)
@@ -118,7 +174,7 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
     should "not include the read-only notice when read_only_mode is false" do
       AiHelperSetting.stubs(:read_only_mode?).returns(false)
 
-      prompt = @agent.system_prompt
+      prompt = @agent.system_prompt.to_s
 
       assert_not_includes prompt, RedmineAiHelper::Util::PromptLoader.load_template("base_agent/read_only_notice").format
     end

@@ -15,7 +15,7 @@ class SystemPromptTest < ActiveSupport::TestCase
   def test_prompt_with_project_page
     options = { controller_name: "projects", action_name: "show", project: @project }
     system_prompt = RedmineAiHelper::Util::SystemPrompt.new(options)
-    prompt = system_prompt.prompt
+    prompt = system_prompt.context_prompt
 
     assert_match(/This is the information page for the project '#{@project.name}'/, prompt)
   end
@@ -23,7 +23,7 @@ class SystemPromptTest < ActiveSupport::TestCase
   def test_prompt_with_issue_page
     options = { controller_name: "issues", action_name: "show", content_id: @issue.id, project: @project }
     system_prompt = RedmineAiHelper::Util::SystemPrompt.new(options)
-    prompt = system_prompt.prompt
+    prompt = system_prompt.context_prompt
 
     assert_match(/This is the detail page for issue ##{@issue.id}/, prompt)
   end
@@ -31,7 +31,7 @@ class SystemPromptTest < ActiveSupport::TestCase
   def test_prompt_with_issue_index_page
     options = { controller_name: "issues", action_name: "index", project: @project }
     system_prompt = RedmineAiHelper::Util::SystemPrompt.new(options)
-    prompt = system_prompt.prompt
+    prompt = system_prompt.context_prompt
 
     assert_match(/This is the issue list page./, prompt)
   end
@@ -39,7 +39,7 @@ class SystemPromptTest < ActiveSupport::TestCase
   def test_prompt_with_issue_new_page
     options = { controller_name: "issues", action_name: "new", project: @project }
     system_prompt = RedmineAiHelper::Util::SystemPrompt.new(options)
-    prompt = system_prompt.prompt
+    prompt = system_prompt.context_prompt
 
     assert_match(/This is the new page for the issue./, prompt)
   end
@@ -47,7 +47,7 @@ class SystemPromptTest < ActiveSupport::TestCase
   def test_prompt_with_wiki_page
     options = { controller_name: "wiki", action_name: "show", content_id: @wiki_page.id, project: @project }
     system_prompt = RedmineAiHelper::Util::SystemPrompt.new(options)
-    prompt = system_prompt.prompt
+    prompt = system_prompt.context_prompt
 
     assert_match(/This is the Wiki page titled '#{@wiki_page.title}'/, prompt)
   end
@@ -55,7 +55,7 @@ class SystemPromptTest < ActiveSupport::TestCase
   def test_prompt_with_repository_page
     options = { controller_name: "repositories", action_name: "show", content_id: @repository.id, project: @project }
     system_prompt = RedmineAiHelper::Util::SystemPrompt.new(options)
-    prompt = system_prompt.prompt
+    prompt = system_prompt.context_prompt
 
     assert_match(/This is the information page for the repository '#{@repository.name}'/, prompt)
   end
@@ -63,7 +63,7 @@ class SystemPromptTest < ActiveSupport::TestCase
   def test_prompt_with_repository_entry_page
     options = { controller_name: "repositories", action_name: "entry", content_id: @repository.id, additional_info: { "path" => "path/to/file", "rev" => "123" }, project: @project }
     system_prompt = RedmineAiHelper::Util::SystemPrompt.new(options)
-    prompt = system_prompt.prompt
+    prompt = system_prompt.context_prompt
 
     assert_match(/The displayed file path is path\/to\/file. The revision is 123. The repository is '#{@repository.name}/, prompt)
   end
@@ -71,7 +71,7 @@ class SystemPromptTest < ActiveSupport::TestCase
   def test_prompt_with_repository_diff_page
     options = { controller_name: "repositories", action_name: "diff", content_id: @repository.id, additional_info: { "rev" => "123", "rev_to" => "456", "path" => "path/to/file" }, project: @project }
     system_prompt = RedmineAiHelper::Util::SystemPrompt.new(options)
-    prompt = system_prompt.prompt
+    prompt = system_prompt.context_prompt
 
     assert_match(/diff page for the repository '#{@repository.name}/, prompt)
   end
@@ -79,7 +79,7 @@ class SystemPromptTest < ActiveSupport::TestCase
   def test_prompt_with_repository_revision_page
     options = { controller_name: "repositories", action_name: "revision", content_id: @repository.id, additional_info: { "rev" => "123" }, project: @project }
     system_prompt = RedmineAiHelper::Util::SystemPrompt.new(options)
-    prompt = system_prompt.prompt
+    prompt = system_prompt.context_prompt
 
     assert_match(/This is the revision information page for the repository '#{@repository.name}'/, prompt)
   end
@@ -87,7 +87,7 @@ class SystemPromptTest < ActiveSupport::TestCase
   def test_prompt_with_repository_other_page
     options = { controller_name: "repositories", action_name: "other", project: @project, content_id: @repository.id }
     system_prompt = RedmineAiHelper::Util::SystemPrompt.new(options)
-    prompt = system_prompt.prompt
+    prompt = system_prompt.context_prompt
 
     assert_match(/This is the information page for the repository./, prompt)
   end
@@ -96,7 +96,7 @@ class SystemPromptTest < ActiveSupport::TestCase
     options = { controller_name: "boards", action_name: "show", content_id: 1, project: @project }
     board = Board.find(1)
     system_prompt = RedmineAiHelper::Util::SystemPrompt.new(options)
-    prompt = system_prompt.prompt
+    prompt = system_prompt.context_prompt
 
     assert_match(/forum '#{board.name}'. The forum ID is #{board.id}/, prompt)
   end
@@ -104,7 +104,7 @@ class SystemPromptTest < ActiveSupport::TestCase
   def test_prompt_with_board_index_page
     options = { controller_name: "boards", action_name: "index", project: @project }
     system_prompt = RedmineAiHelper::Util::SystemPrompt.new(options)
-    prompt = system_prompt.prompt
+    prompt = system_prompt.context_prompt
 
     assert_match(/This is the forum list page./, prompt)
   end
@@ -113,7 +113,7 @@ class SystemPromptTest < ActiveSupport::TestCase
     options = { controller_name: "boards", action_name: "index", project: @project, content_id: 1 }
     board = Board.find(1)
     system_prompt = RedmineAiHelper::Util::SystemPrompt.new(options)
-    prompt = system_prompt.prompt
+    prompt = system_prompt.context_prompt
 
     assert_match(/forum '#{board.name}'. The forum ID is #{board.id}/, prompt)
   end
@@ -121,7 +121,7 @@ class SystemPromptTest < ActiveSupport::TestCase
   def test_prompt_with_board_other_page
     options = { controller_name: "boards", action_name: "other", project: @project }
     system_prompt = RedmineAiHelper::Util::SystemPrompt.new(options)
-    prompt = system_prompt.prompt
+    prompt = system_prompt.context_prompt
 
     assert_match(/This is the page for the forum./, prompt)
   end
@@ -130,7 +130,7 @@ class SystemPromptTest < ActiveSupport::TestCase
     options = { controller_name: "messages", action_name: "show", project: @project, content_id: 1 }
     message = Message.find(1)
     system_prompt = RedmineAiHelper::Util::SystemPrompt.new(options)
-    prompt = system_prompt.prompt
+    prompt = system_prompt.context_prompt
 
     assert_match(/This is the page for the message '#{message.subject}'. The message ID is #{message.id}/, prompt)
   end
@@ -138,7 +138,7 @@ class SystemPromptTest < ActiveSupport::TestCase
   def test_prompt_with_message_other_page
     options = { controller_name: "messages", action_name: "other", project: @project }
     system_prompt = RedmineAiHelper::Util::SystemPrompt.new(options)
-    prompt = system_prompt.prompt
+    prompt = system_prompt.context_prompt
 
     assert_match(/This is the page for the message./, prompt)
   end
@@ -156,7 +156,7 @@ class SystemPromptTest < ActiveSupport::TestCase
     options = { controller_name: "versions", action_name: "show", project: @project, content_id: 1 }
     version = Version.find(1)
     system_prompt = RedmineAiHelper::Util::SystemPrompt.new(options)
-    prompt = system_prompt.prompt
+    prompt = system_prompt.context_prompt
 
     assert_match(/version '#{version.name}'. The version ID is #{version.id}/, prompt)
   end
@@ -164,7 +164,7 @@ class SystemPromptTest < ActiveSupport::TestCase
   def test_prompt_with_version_other_page
     options = { controller_name: "versions", action_name: "other", project: @project }
     system_prompt = RedmineAiHelper::Util::SystemPrompt.new(options)
-    prompt = system_prompt.prompt
+    prompt = system_prompt.context_prompt
 
     assert_match(/This is the page for the version./, prompt)
   end
@@ -173,7 +173,7 @@ class SystemPromptTest < ActiveSupport::TestCase
     should "always include the #NNNN issue reference instruction, regardless of channel" do
       options = { controller_name: "issues", action_name: "show", content_id: @issue.id, project: @project }
       system_prompt = RedmineAiHelper::Util::SystemPrompt.new(options)
-      prompt = system_prompt.prompt
+      prompt = system_prompt.fixed_prompt
 
       assert_match(/#1549/, prompt, "instructions about #NNNN format should always be present")
     end
@@ -181,11 +181,71 @@ class SystemPromptTest < ActiveSupport::TestCase
     should "include the instruction in both ja and en locales" do
       options = { controller_name: "issues", action_name: "show", content_id: @issue.id, project: @project }
 
-      ja_prompt = I18n.with_locale(:ja) { RedmineAiHelper::Util::SystemPrompt.new(options).prompt }
-      en_prompt = I18n.with_locale(:en) { RedmineAiHelper::Util::SystemPrompt.new(options).prompt }
+      ja_prompt = I18n.with_locale(:ja) { RedmineAiHelper::Util::SystemPrompt.new(options).fixed_prompt }
+      en_prompt = I18n.with_locale(:en) { RedmineAiHelper::Util::SystemPrompt.new(options).fixed_prompt }
 
       assert_match(/#1549/, ja_prompt)
       assert_match(/#1549/, en_prompt)
     end
+  end
+
+  def test_fixed_prompt_excludes_variable_information
+    options = { controller_name: "issues", action_name: "show", content_id: @issue.id, project: @project }
+    system_prompt = RedmineAiHelper::Util::SystemPrompt.new(options)
+    fixed = system_prompt.fixed_prompt
+
+    assert_no_match(/Redmine::VERSION|"current_project"/, fixed)
+    assert_no_match(/The current time is/, fixed)
+    assert_no_match(/currently being viewed/, fixed)
+    assert_no_match(/#{Regexp.escape(@user.name)}/, fixed)
+    assert_match(/Redmine AI Helper/, fixed)
+  end
+
+  def test_fixed_prompt_includes_additional_instructions
+    AiHelperSetting.any_instance.stubs(:additional_instructions).returns("EXTRA INSTRUCTION")
+    fixed = RedmineAiHelper::Util::SystemPrompt.new(project: @project).fixed_prompt
+
+    assert_match(/EXTRA INSTRUCTION/, fixed)
+  end
+
+  def test_context_prompt_includes_time_site_page_and_user
+    options = { controller_name: "issues", action_name: "show", content_id: @issue.id, project: @project }
+    context = RedmineAiHelper::Util::SystemPrompt.new(options).context_prompt
+
+    assert_match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/, context)
+    assert_match(/"current_project"/, context)
+    assert_match(/detail page for issue ##{@issue.id}/, context)
+    assert_match(/#{Regexp.escape(@user.name)}/, context)
+  end
+
+  def test_context_prompt_starts_with_reference_lead_in
+    en = I18n.with_locale(:en) { RedmineAiHelper::Util::SystemPrompt.new(project: @project).context_prompt }
+    ja = I18n.with_locale(:ja) { RedmineAiHelper::Util::SystemPrompt.new(project: @project).context_prompt }
+
+    assert en.start_with?("The following is reference information for you.\n\n----")
+    assert ja.start_with?("以下はあなたの参考知識です。\n\n----")
+  end
+
+  def test_fixed_prompt_is_identical_across_users_pages_and_time
+    first = RedmineAiHelper::Util::SystemPrompt.new(controller_name: "issues", action_name: "show", content_id: @issue.id, project: @project)
+    first_fixed = first.fixed_prompt
+    first_context = first.context_prompt
+
+    User.current = users(:users_002)
+    later = Time.now.utc + 3600
+    Time.stubs(:now).returns(later)
+    second = RedmineAiHelper::Util::SystemPrompt.new(controller_name: "wiki", action_name: "show", content_id: @wiki_page.id, project: projects(:projects_002))
+
+    assert_equal first_fixed, second.fixed_prompt
+    assert_not_equal first_context, second.context_prompt
+  end
+
+  def test_context_prompt_is_memoized
+    system_prompt = RedmineAiHelper::Util::SystemPrompt.new(project: @project)
+    first = system_prompt.context_prompt
+    later = Time.now.utc + 3600
+    Time.stubs(:now).returns(later)
+
+    assert_equal first, system_prompt.context_prompt
   end
 end

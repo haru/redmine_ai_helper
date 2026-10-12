@@ -3,6 +3,7 @@
 require "ruby_llm"
 require "redmine_ai_helper/logger"
 require "redmine_ai_helper/assistant"
+require "redmine_ai_helper/llm_client/instructions"
 
 module RedmineAiHelper
   # Base class for all agents.
@@ -133,20 +134,22 @@ module RedmineAiHelper
       available_tool_classes.any?(&:write_tool?)
     end
 
-    # The content of the system prompt
-    # @return [String] The system prompt content.
+    # The content of the system prompt.
+    # The fixed part does not include per-call values (it may still differ by
+    # agent, project, language or settings); the variable part holds the
+    # current time so that the fixed part can be cached by the provider.
+    # @return [RedmineAiHelper::LlmClient::Instructions] The system prompt.
     def system_prompt
-      time = Time.now.iso8601
       prompt = load_prompt("base_agent/system_prompt")
-      prompt_text = prompt.format(
+      fixed = prompt.format(
         role: role,
         backstory: backstory,
-        time: time,
         lang: I18n.t(:general_lang_name),
         read_only_notice: read_only_notice
       )
+      variable = load_prompt("base_agent/current_time").format(time: Time.now.iso8601)
 
-      prompt_text
+      RedmineAiHelper::LlmClient::Instructions.new(fixed: fixed, variable: variable)
     end
 
     # List all tools as OpenAI-format hashes (used by LeaderAgent backstory etc.)
@@ -386,15 +389,7 @@ module RedmineAiHelper
         next unless langfuse.current_span
 
         span = langfuse.current_span
-        usage = {}
-        tokens = message.tokens
-        if tokens.input
-          usage = {
-            prompt_tokens: tokens.input,
-            completion_tokens: tokens.output,
-            total_tokens: tokens.input + (tokens.output || 0)
-          }
-        end
+        usage = langfuse_usage_from(message.tokens)
 
         # Collect input messages (all messages before the current response).
         # Message#content is always a String (or nil) in RubyLLM 2.x; attachments are kept separately,
@@ -418,6 +413,28 @@ module RedmineAiHelper
           max_tokens: provider.max_tokens
         )&.finish(output: output, usage: usage)
       end
+    end
+
+    # Builds the Langfuse usage hash from RubyLLM token counts.
+    # +tokens.input+ excludes cached tokens, so cache reads and writes are added
+    # back to report the total input; the breakdown is included whenever
+    # RubyLLM returns a non-nil value (Chat Completions providers always
+    # return 0 for cache writes).
+    # @param tokens [RubyLLM::Tokens] Token counts of an assistant message.
+    # @return [Hash] The usage hash; empty (with a warning logged) when the
+    #   input token count is unknown.
+    def langfuse_usage_from(tokens)
+      unless tokens.input
+        ai_helper_logger.warn "Token usage not reported by the provider; Langfuse usage is not recorded"
+        return {}
+      end
+
+      total_input = tokens.input + tokens.cache_read.to_i + tokens.cache_write.to_i
+      {
+        prompt_tokens: total_input,
+        completion_tokens: tokens.output,
+        total_tokens: total_input + tokens.output.to_i
+      }.merge({ cache_read_tokens: tokens.cache_read, cache_write_tokens: tokens.cache_write }.compact)
     end
 
     # Loads the prompt template from the specified name.

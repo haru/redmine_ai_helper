@@ -803,5 +803,38 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
         assert_same provider.context, provider.context
       end
     end
+
+    context "create_chat with Instructions" do
+      setup do
+        @provider = FakeOpenAiProvider.new
+        @provider.stubs(:ensure_model_registered!)
+      end
+
+      should "send a split system prompt as one system message without cache markers" do
+        assert_single_uncached_system_message(@provider)
+      end
+
+      should "pass a String through unchanged" do
+        chat = @provider.create_chat(instructions: "plain")
+
+        assert_equal [ "plain" ], chat.messages.select { |m| m.role == :system }.map(&:content)
+      end
+
+      should "add no system message for nil" do
+        chat = @provider.create_chat(instructions: nil)
+
+        assert_empty(chat.messages.select { |m| m.role == :system })
+      end
+
+      should "never enable caching" do
+        chat = @provider.create_chat(instructions: RedmineAiHelper::LlmClient::Instructions.new(fixed: "FIXED", variable: "VARIABLE"))
+
+        assert_not chat.caching
+      end
+
+      should "raise ArgumentError for an unsupported instructions type" do
+        assert_raises(ArgumentError) { @provider.create_chat(instructions: { text: "prompt" }) }
+      end
+    end
   end
 end

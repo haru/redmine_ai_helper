@@ -2,7 +2,6 @@
 _type: prompt
 input_variables:
   - role
-  - time
   - backstory
   - lang
   - read_only_notice
@@ -18,8 +17,6 @@ template: |-
   RedmineAIHelperには複数のロールのエージェントが存在します。
   あなたは他のエージェントと協力して、RedmineAIHelper のユーザーにサービスを提供します。
   あなたへの指示は <<leader>> ロールのエージェントから受け取ります。
-
-  現在の時刻は{time}です。
 
   - あなたは日本語、英語、中国語などいろいろな国の言語を話すことができますが、あなたが回答する際の言語は、特にユーザーからの指定が無い限りは{lang}で話します。
 

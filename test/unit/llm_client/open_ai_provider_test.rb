@@ -169,5 +169,9 @@ class RedmineAiHelper::LlmClient::OpenAiProviderTest < ActiveSupport::TestCase
         assert_not_equal openai.protocols[:chat_completions], openai.protocol_for(model)
       end
     end
+
+    should "send a split system prompt as one system message without cache markers" do
+      assert_single_uncached_system_message(@provider)
+    end
   end
 end

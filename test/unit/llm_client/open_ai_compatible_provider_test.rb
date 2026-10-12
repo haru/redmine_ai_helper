@@ -190,5 +190,9 @@ class RedmineAiHelper::LlmClient::OpenAiCompatibleProviderTest < ActiveSupport::
         @provider.create_chat
       end
     end
+
+    should "send a split system prompt as one system message without cache markers" do
+      assert_single_uncached_system_message(@provider)
+    end
   end
 end

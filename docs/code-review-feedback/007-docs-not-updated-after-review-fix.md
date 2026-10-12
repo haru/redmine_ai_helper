@@ -31,4 +31,4 @@ The docs were written from the plan (S042) before the review fixes. When the rev
 
 When a fix changes observable behaviour (error handling, which API sends a value), grep `docs/`, `wiki/`, ADRs created in the same branch, README and AGENTS.md for the old behaviour's wording and API names, and update them in the same change. When ingesting a feature into the wiki, prefer the final code over the plan where they differ.
 
-**Promoted to**: Not yet
+**Promoted to**: AGENTS.md

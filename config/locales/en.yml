@@ -298,6 +298,7 @@ en:
         base_uri: "Base URI"
         http_proxy: "HTTP Proxy"
         max_tokens: "Max tokens"
+        prompt_caching_enabled: "Prompt caching"
       ai_helper_setting:
         model_profile_id: "Model profile"
         additional_instructions: "Additional instructions"

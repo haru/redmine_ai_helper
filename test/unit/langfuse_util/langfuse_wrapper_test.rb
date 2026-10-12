@@ -55,6 +55,35 @@ class RedmineAiHelper::LangfuseUtil::LangfuseWrapperTest < ActiveSupport::TestCa
 
       assert generation.finish(output: "test output", usage: { prompt_tokens: 10, completion_tokens: 5 })
     end
+
+    context "cache metadata" do
+      setup do
+        span = @langfuse.create_span(name: "test_span", input: "test_input")
+        @generation = span.create_generation(name: "g", messages: [ "m" ], model: "test_model")
+        @inner = @generation.instance_variable_get(:@generation)
+      end
+
+      should "set cache metadata when usage has cache keys" do
+        @generation.finish(output: "o", usage: { prompt_tokens: 5620, completion_tokens: 80, total_tokens: 5700, cache_read_tokens: 5200, cache_write_tokens: 300 })
+
+        assert_equal({ cache_read_input_tokens: 5200, cache_creation_input_tokens: 300 }, @inner.metadata)
+        assert_equal 5620, @inner.usage.prompt_tokens
+        assert_equal 80, @inner.usage.completion_tokens
+        assert_equal 5700, @inner.usage.total_tokens
+      end
+
+      should "set only the cache key that is present" do
+        @generation.finish(output: "o", usage: { prompt_tokens: 10, cache_read_tokens: 0 })
+
+        assert_equal({ cache_read_input_tokens: 0 }, @inner.metadata)
+      end
+
+      should "not set metadata when usage has no cache keys" do
+        @generation.finish(output: "o", usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 })
+
+        assert_nil @inner.metadata
+      end
+    end
   end
 
   context "update_trace_output" do

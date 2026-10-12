@@ -1,7 +1,7 @@
 ---
 title: LLM Provider Layer
 type: component
-sources: [S009, S021, S037, S039, S042]
+sources: [S009, S021, S037, S039, S042, S043]
 updated: 2026-10-11
 ---
 
@@ -98,4 +98,13 @@ injected into the prompt instead of calling the native API.
   [Think Model](./think-model.md) · [Vector Search](./vector-search.md) ·
   [Completion Request Timeout Policy](./completion-request-timeout-policy.md) ·
   [Embedding Connection Test](./embedding-connection-test.md) ·
-  [Model Profile Temperature Is Optional](./model-profile-optional-temperature.md)
+  [Model Profile Temperature Is Optional](./model-profile-optional-temperature.md) ·
+  [Prompt Caching](./prompt-caching.md)
+
+## Prompt caching and split system prompt
+
+`BaseProvider#apply_instructions` joins an `Instructions(fixed, variable)` value
+into one system message with no cache markers; `AnthropicProvider` overrides it
+to add `with_caching` and a cached fixed block when the profile's
+`prompt_caching_enabled` is true (S043). Full decision on
+[Prompt Caching & Split System Prompt](./prompt-caching.md).

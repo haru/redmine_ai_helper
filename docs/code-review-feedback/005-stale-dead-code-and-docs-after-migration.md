@@ -29,4 +29,4 @@ The AI made the minimal renames needed to compile and pass tests, editing mocks 
 
 After a library migration, grep the repo (code, comments, AGENTS.md, wiki, tests) for every removed API name and for type assumptions the library no longer allows (e.g. Hash content), and delete or update them in the same change.
 
-**Promoted to**: Not yet
+**Promoted to**: AGENTS.md

@@ -132,9 +132,11 @@ Agents expose tools by overriding `available_tool_providers` to return an array 
 - Write comments in English
 - Logging: mixin `RedmineAiHelper::Logger`, use `ai_helper_logger` — **never** `Rails.logger`
 - Error handling: **NEVER implement fallback error handling**. Let errors surface immediately. No silent continues.
+- Value objects validate their documented invariants in `initialize` and raise `ArgumentError`. A method documented to accept a type union branches on the types explicitly and raises on anything else — do not let `to_s` or `&.` absorb unexpected values (CRF-003, CRF-009)
 
 ### Testing
 - **TDD**: Write tests before implementing features
+- Assert cross-call properties (e.g. a cache prefix) by equality: build two instances with every per-request input changed and `assert_equal` the stable part. For a value that crosses layers (agent → provider → request payload), add at least one test from the top-level entry point to the rendered payload. Every new `raise`/guard branch gets a test that drives it (CRF-006, CRF-010)
 - Framework: `shoulda` (context/should blocks) + `mocha` (mocking external servers only)
 - Test fixtures: `test/model_factory.rb` (FactoryBot)
 - Test structure: `test/unit/` (models, agents, tools), `test/unit/lib/` (lib classes), `test/functional/` (controllers), `test/integration/` (API)
@@ -181,6 +183,7 @@ Agents expose tools by overriding `available_tool_providers` to return an array 
 - All docs/ content in English
 - ADRs are **append-only** — add new ones to supersede; never modify or delete past ADRs
 - Format: use template in `docs/adr/README.md`
+- Before documenting what a shared code path sends or records, check its behaviour for every provider/protocol that reaches it (read the library source), state guarantees with their actual scope, and when a fix changes behaviour, update docs/, wiki/, README and same-branch ADRs in the same change (CRF-005, CRF-007, CRF-011)
 
 ## Review Feedback Logs
 - When the user asks you to correct a specification (`specs/` artifacts such as spec.md, plan.md, tasks.md, or design docs), record the feedback with the `record-spec-feedback` skill after applying the fix.
