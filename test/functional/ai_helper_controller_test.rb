@@ -141,7 +141,9 @@ class AiHelperControllerTest < ActionController::TestCase
         get :reload, params: { id: @project.id }
 
         assert_select "div.aihelper-citations", count: 0
-        assert_no_match(/#{Regexp.escape(I18n.t(:label_ai_helper_citations))}/, response.body.sub(/<script.*?<\/script>/m, ""))
+        doc = Nokogiri::HTML(response.body)
+        doc.css("script").remove
+        assert_not_includes doc.text, I18n.t(:label_ai_helper_citations)
       end
 
       should "show the heading in Japanese" do

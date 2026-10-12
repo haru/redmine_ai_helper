@@ -102,3 +102,4 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-016](./016-web-search-docs-overstated-support.md) | Web search docs overstated OpenAI support and omitted the Think-model case | doc-comment | Local AI review | Not yet |
 | [CRF-017](./017-web-search-test-gaps.md) | Web search tests skipped the negative routing path, read-only mode and the real payload | test-gap | Local AI review | Not yet |
 | [CRF-018](./018-web-search-simplifications.md) | Repeated expressions and a dead initial value in the web search change | readability | Local AI review | Not yet |
+| [CRF-019](./019-regex-html-stripping-in-test.md) | Test stripped script blocks from HTML with a regular expression | test-gap | GitHub CodeQL (PR #505) | Not yet |
