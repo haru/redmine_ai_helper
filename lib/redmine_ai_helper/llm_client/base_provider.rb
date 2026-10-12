@@ -94,6 +94,13 @@ module RedmineAiHelper
         model&.supports?(:structured_output) ? true : false
       end
 
+      # Whether the configured model profile's provider supports web search.
+      # @return [Boolean]
+      # @raise [ArgumentError] when the profile's llm_type is unknown
+      def supports_web_search?
+        RedmineAiHelper::LlmProvider.web_search_supported?(resolved_model_profile.llm_type)
+      end
+
       # Generate an embedding vector for the given text via the memoized context.
       # When ruby_llm_provider_class is nil (OpenAI-compatible providers such as Azure/OpenAI Compatible), the embedding
       # model may not exist in RubyLLM's static registry (e.g. Ollama models such as "nomic-embed-text:latest"),

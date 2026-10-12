@@ -1,8 +1,8 @@
 ---
 title: Plugin Overview
 type: concept
-sources: [S002, S003, S005, S013, S014, S033, S036, S042, S043]
-updated: 2026-10-11
+sources: [S002, S003, S005, S013, S014, S033, S036, S042, S043, S044]
+updated: 2026-10-12
 ---
 
 # Plugin Overview
@@ -33,6 +33,9 @@ over RubyLLM (S002, S005). This page is the hub linking the wiki's topic pages.
 - **[Prompt Caching](./prompt-caching.md)** — Anthropic profiles cache the
   system prompt, tools and history via a split system prompt; per-profile
   `prompt_caching_enabled` setting (default on) (S043).
+- **[Web Search & Citations](./web-search-citations.md)** — an admin-enabled
+  `WebSearchAgent` answers from the web on OpenAI/Anthropic/Gemini profiles and
+  shows provider-returned sources under the answer; default off (S044).
 - **[Vector Search](./vector-search.md)** via Qdrant — powers similar-issue and
   duplicate-issue detection (S002).
 - **[Log File Access](./log-file-access-tools.md)** — administrators can tail

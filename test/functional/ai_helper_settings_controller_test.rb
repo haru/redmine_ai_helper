@@ -1715,6 +1715,74 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
     }.merge(overrides)
     post :test_embedding_connection, params: { ai_helper_setting: attrs }
   end
+
+  context "web search setting" do
+    should "show the checkbox and description on the general tab" do
+      get :index, params: { tab: "general" }
+
+      assert_response :success
+      assert_select "input[type=checkbox][name='ai_helper_setting[web_search_enabled]']"
+      assert_includes response.body, ERB::Util.html_escape(I18n.t("activerecord.attributes.ai_helper_setting.web_search_enabled_description", locale: :en))
+    end
+
+    should "show the description in Japanese" do
+      User.find(1).update_column(:language, "ja")
+      get :index, params: { tab: "general" }
+
+      assert_includes response.body, ERB::Util.html_escape(I18n.t("activerecord.attributes.ai_helper_setting.web_search_enabled_description", locale: :ja))
+    end
+
+    should "save web_search_enabled" do
+      post :update, params: { ai_helper_setting: { web_search_enabled: "1" } }
+
+      assert_redirected_to action: :index
+      assert_equal true, AiHelperSetting.find_or_create.web_search_enabled
+    end
+
+    should "turn web_search_enabled off" do
+      @ai_helper_setting.update!(web_search_enabled: true)
+
+      post :update, params: { ai_helper_setting: { web_search_enabled: "0" } }
+
+      assert_redirected_to action: :index
+      assert_equal false, AiHelperSetting.find_or_create.web_search_enabled
+    end
+
+    should "render without a warning when enabled and no main profile is set" do
+      @ai_helper_setting.update!(model_profile_id: nil, web_search_enabled: true)
+
+      get :index, params: { tab: "general" }
+
+      assert_response :success
+      assert_select "span.warning", text: /web search/i, count: 0
+    end
+
+    should "warn when enabled and the main profile does not support web search" do
+      @model_profile.update!(llm_type: "OpenAICompatible", base_uri: "http://localhost:11434/v1")
+      @ai_helper_setting.update!(model_profile_id: @model_profile.id, web_search_enabled: true)
+
+      get :index, params: { tab: "general" }
+
+      assert_select "span.warning", text: /does not support web search/
+    end
+
+    should "not warn when enabled and the main profile supports web search" do
+      @ai_helper_setting.update!(model_profile_id: @model_profile.id, web_search_enabled: true)
+
+      get :index, params: { tab: "general" }
+
+      assert_select "span.warning", text: /web search/i, count: 0
+    end
+
+    should "not warn when web search is disabled" do
+      @model_profile.update!(llm_type: "OpenAICompatible", base_uri: "http://localhost:11434/v1")
+      @ai_helper_setting.update!(model_profile_id: @model_profile.id, web_search_enabled: false)
+
+      get :index, params: { tab: "general" }
+
+      assert_select "span.warning", text: /web search/i, count: 0
+    end
+  end
 end
 
 # US2-2: an inbound adapter enabled without its required fields must not

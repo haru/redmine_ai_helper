@@ -84,3 +84,6 @@ A concrete, checkable rule to apply when writing future specifications.
 | [SF-001](./001-assumed-azure-protocol.md) | Assumed Azure OpenAI keeps Chat Completions without asking | unconfirmed-assumption | 069-ruby-llm-2-1-migration | Not yet |
 | [SF-002](./002-added-langfuse-token-breakdown.md) | Added Langfuse token breakdown fields not recorded today | scope-creep | 069-ruby-llm-2-1-migration | Not yet |
 | [SF-003](./003-missed-leader-system-prompt.md) | Limited prompt reordering to the common agent prompt and missed the leader prompt | scope-gap | 070-prompt-caching | Not yet |
+| [SF-004](./004-citation-order-not-revisited-after-agent-decision.md) | Kept a citation order tied to the final answer after choosing a dedicated search agent | other | 071-web-search-citations | Not yet |
+| [SF-005](./005-settings-contract-assumed-model-profile-present.md) | Settings contract dereferenced the main model profile without checking it can be unset | convention-unknown | 071-web-search-citations | Not yet |
+| [SF-006](./006-web-search-contract-error-handling-scope.md) | Web search contract accepted cut-off answers and rescued every error in the agent | convention-unknown | 071-web-search-citations | Not yet |

@@ -47,6 +47,17 @@ class RedmineAiHelper::LlmClient::BaseProviderTest < ActiveSupport::TestCase
       end
     end
 
+    should "report web search support according to the profile's llm_type" do
+      {
+        "OpenAI" => true, "Anthropic" => true, "Gemini" => true,
+        "AzureOpenAi" => false, "OpenAICompatible" => false
+      }.each do |type, expected|
+        profile = AiHelperModelProfile.new(llm_type: type)
+        provider = RedmineAiHelper::LlmClient::BaseProvider.new(model_profile: profile)
+        assert_equal expected, provider.supports_web_search?, type
+      end
+    end
+
     should "return model name from model profile" do
       assert_equal @setting.model_profile.llm_model, @provider.model_name
     end

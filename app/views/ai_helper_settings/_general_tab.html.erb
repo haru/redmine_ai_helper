@@ -28,6 +28,14 @@
     <span class="description"><%= t("activerecord.attributes.ai_helper_setting.log_access_enabled_description") %></span>
   </p>
   <hr>
+  <p>
+    <%= f.check_box :web_search_enabled %>
+    <span class="description"><%= t("activerecord.attributes.ai_helper_setting.web_search_enabled_description") %></span>
+    <% if @setting.web_search_enabled && @setting.model_profile && !RedmineAiHelper::LlmProvider.web_search_supported?(@setting.model_profile.llm_type) %>
+      <span class="warning"><%= t("ai_helper.settings.web_search_unsupported_profile") %></span>
+    <% end %>
+  </p>
+  <hr>
   <div id="ai-helper-send-user-id">
     <p>
       <%= f.check_box :send_user_id_enabled %>
