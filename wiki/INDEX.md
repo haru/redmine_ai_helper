@@ -30,6 +30,7 @@ page files, not here.
 - [Version Write Tools: Strict Input & Error Results](./pages/version-write-tools-error-policy.md) — ADR-047/048: why disallowed sharing/custom fields error instead of being dropped, and why user mistakes return `{ error: }` while system failures raise.
 - [RubyLLM 2.1 Migration](./pages/ruby-llm-2-1-migration.md) — feature 069: RubyLLM 2.1 and Ruby 3.2+, API style left to RubyLLM, Azure on `:azure`, built-in MCP client (no SSE / non-loopback http), and the 2.0 API changes absorbed.
 - [Prompt Caching & Split System Prompt](./pages/prompt-caching.md) — feature 070/ADR-051: Anthropic-only cache breakpoints, the `Instructions(fixed, variable)` split, why other providers get one system string, `prompt_caching_enabled`, and Langfuse cache-token accounting.
+- [Web Search & Citations](./pages/web-search-citations.md) — feature 071/ADR-052: one dedicated `WebSearchAgent`, type-only provider support check, task-text-only requests, `WebCitation` value objects carried to the saved message, and display on screen and gateway.
 
 ## component
 - [Chat Channel Gateway Architecture](./pages/chat-channel-gateway-architecture.md) — core + adapters structure, capability declaration, and gateway operational model.

@@ -1,8 +1,8 @@
 ---
 title: AI Chat Sidebar
 type: component
-sources: [S013]
-updated: 2026-08-01
+sources: [S013, S044]
+updated: 2026-10-12
 ---
 
 # AI Chat Sidebar
@@ -66,7 +66,7 @@ format (S013) — the same method that folds in imported
   `ai_helper/chat/_citations` ERB partial (escaped, new tab with
   `rel="noopener noreferrer"`, only `http(s)` URLs as links). No JavaScript
   builds them; the existing reload shows them, including after reopening a
-  conversation (ADR-052).
+  conversation (ADR-052, S044). See [Web Search & Citations](./web-search-citations.md).
 
 ## Related
 

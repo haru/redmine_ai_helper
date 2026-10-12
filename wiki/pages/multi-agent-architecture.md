@@ -1,8 +1,8 @@
 ---
 title: Multi-Agent Architecture
 type: concept
-sources: [S005, S008, S009, S016, S017]
-updated: 2026-08-07
+sources: [S005, S008, S009, S016, S017, S044]
+updated: 2026-10-12
 ---
 
 # Multi-Agent Architecture
@@ -61,7 +61,8 @@ AiHelperController  →  RedmineAiHelper::Llm  →  LeaderAgent  →  worker age
   `content_filter`, or `pause_turn` after RubyLLM's continuations) becomes an
   error response. Its sources flow `WebSearchAgent#citations` →
   `ChatRoom#citations` → `LeaderAgent#citations` → the `AiHelperMessage` that
-  `Llm#chat` returns (ADR-052). Search terms are chosen by the model.
+  `Llm#chat` returns (ADR-052, S044). Search terms are chosen by the model.
+  Details: [Web Search & Citations](./web-search-citations.md).
 
 ## Tool system
 
@@ -97,3 +98,5 @@ proxy settings ([Nginx SSE Proxy](./nginx-sse-proxy.md)).
   an alternate entry point that reuses this same agent stack.
 - [Agent Write-Capability Routing](./agent-write-capability-routing.md) — the
   `requires_write`/`can_write?` guard mentioned above.
+- [Web Search & Citations](./web-search-citations.md) — the dedicated search
+  agent and how sources reach the answer.

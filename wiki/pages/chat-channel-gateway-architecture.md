@@ -1,8 +1,8 @@
 ---
 title: Chat Channel Gateway Architecture
 type: component
-sources: [S001, S002, S018, S019]
-updated: 2026-08-08
+sources: [S001, S002, S018, S019, S044]
+updated: 2026-10-12
 ---
 
 # Chat Channel Gateway Architecture
@@ -80,7 +80,8 @@ unmodified (S019).
 Web search sources: when the answer has sources, `MessageHandler#reply` appends
 a plain text list (`- title: url`) under a localized heading after the issue-link
 conversion, so titles are never rewritten. The saved answer content does not
-contain the list (ADR-052).
+contain the list (ADR-052, S044). See
+[Web Search & Citations](./web-search-citations.md).
 
 ## Related
 
