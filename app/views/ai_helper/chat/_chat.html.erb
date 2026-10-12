@@ -19,6 +19,7 @@
       <div>
         <%= linkify_issue_references(md_to_html(message.content)) %>
       </div>
+      <%= render partial: "ai_helper/chat/citations", locals: { citations: message.web_citations } %>
     <% end %>
   </div>
 <% end %>

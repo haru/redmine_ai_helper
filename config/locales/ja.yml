@@ -5,6 +5,7 @@ ja:
   label_ai_helper_input_newline: "Shift + Enter で改行します。"
   label_ai_helper_custom_command_hint: "'/'でカスタムコマンドを入力できます。"
   label_ai_helper_start_new_chat: "新しいチャットを開始"
+  label_ai_helper_citations: "出典"
   label_ai_helper_free_input_option: "その他（自分で入力）"
   label_ai_helper_read_only_suffix: "（読み取り専用）"
   ai_helper_summary: "AIヘルパーで要約"
@@ -52,6 +53,7 @@ ja:
       tab_general: "全般"
       tab_model: "モデル"
       tab_vector: "ベクトル検索"
+      web_search_unsupported_profile: "現在のモデルプロファイルは Web 検索に対応していないため、Web 検索は使われません。"
       tab_channels: "チャット連携"
     chat_channel:
       adapters:
@@ -325,6 +327,8 @@ ja:
         all_projects_scope_description: "有効にすると、AI Helper モジュールが有効でないプロジェクトのデータも参照・更新の対象となり、LLMにデータが送信されます。無効の場合にはAI Helperモジュールが有効でないプロジェクトのデータは参照・更新の対象になりません。"
         log_access_enabled: "ログ参照を許可する"
         log_access_enabled_description: "有効にすると、管理者がチャットやMCPサーバーからRedmine本体のログとAI Helperのログを参照できるようになり、ログの内容が設定済みのLLMプロバイダー（MCPサーバー経由の場合はMCPクライアント）へ送信されます。ログには個人情報や機密情報が含まれる場合があるため、必要なときだけ有効にしてください。"
+        web_search_enabled: "Web 検索を有効にする"
+        web_search_enabled_description: "有効にすると、チャットで LLM プロバイダーの Web 検索を使って調べ、回答の出典を表示します。質問や、閲覧中のチケット・Wiki などの内容が、検索の語句として LLM プロバイダーや検索エンジンに送られる可能性があります。OpenAI(Responses API を使うモデル)、Anthropic、Gemini のモデルプロファイルで使えます。"
       ai_helper_project_setting:
         issue_draft_instructions: "チケットのコメントを生成する際の指示"
         subtask_instructions: "子チケットを生成する際の指示"

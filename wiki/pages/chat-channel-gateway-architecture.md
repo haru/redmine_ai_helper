@@ -77,6 +77,11 @@ unchanged (S018). ADR-017 records that claim as verified: the whole pre-existing
 suite, `gateway_test.rb` and both concrete adapters' tests included, passes
 unmodified (S019).
 
+Web search sources: when the answer has sources, `MessageHandler#reply` appends
+a plain text list (`- title: url`) under a localized heading after the issue-link
+conversion, so titles are never rewritten. The saved answer content does not
+contain the list (ADR-052).
+
 ## Related
 
 - [Chat Context Import](./chat-context-import.md) — how surrounding messages

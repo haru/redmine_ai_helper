@@ -80,7 +80,7 @@ Controller (AiHelperController)
 - **Custom commands**: Users define reusable commands (global/project/user scoped) stored in `AiHelperCustomCommand`. `CustomCommandExpander` expands `/command_name input` syntax with template variables (`{input}`, `{user_name}`, `{project_name}`, `{datetime}`)
 - **Image/multi-modal attachments**: Images attached to Issues, Wiki pages, and Board messages are sent to LLMs for visual understanding. `IssueTools`/`WikiTools`/`BoardTools` use `AttachmentImageHelper` to collect image paths; images are provided to the LLM via `BaseAgent#chat(with:)` or dedicated image tool parameters — disk paths are never embedded in the textual prompt/JSON sent to the LLM. Image detection uses Redmine's `Attachment#image?` (bmp, gif, jpg, jpe, jpeg, png, webp)
 
-Key agents: `IssueReadAgent`, `IssueWriteAgent`, `RepositoryAgent`, `WikiAgent`, `ProjectAgent`, `BoardAgent`, `SystemAgent`, `UserAgent`, `VersionAgent`, `DocumentationAgent`, `FileAgent`, `LeaderAgent`, `McpAgent`
+Key agents: `IssueReadAgent`, `IssueWriteAgent`, `RepositoryAgent`, `WikiAgent`, `ProjectAgent`, `BoardAgent`, `SystemAgent`, `UserAgent`, `VersionAgent`, `DocumentationAgent`, `FileAgent`, `LeaderAgent`, `McpAgent`, `WebSearchAgent`
 
 ### Tool System DSL Example
 ```ruby

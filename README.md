@@ -338,6 +338,14 @@ When vector search is enabled, attachment contents are also incorporated into th
    - Temperature: Optionally set the temperature for the AI model (e.g., 0.7). Leave it blank to omit the parameter and use the AI service's default (required for models that reject temperature).
    - Prompt caching (Anthropic only): Enabled by default. The system prompt, tool definitions and conversation history are cached by Anthropic (default 5-minute lifetime) to reduce input cost and latency. Uncheck it to disable caching for that profile. Other providers ignore this setting; OpenAI, Azure OpenAI and Gemini apply their own automatic prefix caching, and OpenAI-compatible servers may or may not. Cache read/write token counts reported by any provider are recorded in each Langfuse generation (`metadata.cache_read_input_tokens` / `cache_creation_input_tokens`).
 3. Select the model profile you created from the dropdown menu and save the settings.
+4. Optionally enable **Enable web search** on the General tab (disabled by default; system-wide, not per project). When enabled and the main model profile is OpenAI, Anthropic or Gemini, the chat can look up public information on the web through the LLM provider's own search tool and shows the sources (the title when the provider returns one, and the URL) under the answer, in the chat screen and in Slack/Discord replies. Notes:
+   - Only the chat uses web search (the screen chat and the chat gateway). Other features, such as issue summaries and inline completion, never send a search request.
+   - The model decides when to search and which search terms to use. The question and the content of issues, wiki pages and other data being viewed may be sent to the LLM provider and its search engine as search terms.
+   - Azure OpenAI and OpenAI-compatible profiles do not support it; the settings page shows a warning when it is enabled with such a profile, and no search request is sent.
+   - OpenAI models that RubyLLM sends to the Chat Completions API (the search-preview models and models whose name contains `audio` or `realtime`) have no web search tool, so a web search step fails with an error on them. Use a model served through the Responses API (e.g. `gpt-4o`, `gpt-5`).
+   - For steps that use the Think model, the Think model profile's provider decides. If it does not support web search, the step is answered without searching and shows no sources.
+   - Gemini returns Google redirect URLs as the source URLs, with the site's domain as the title.
+   - Search-related provider charges apply (billed by the LLM provider).
 
 
 ## Think Model Settings

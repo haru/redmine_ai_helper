@@ -16,6 +16,7 @@ RubyLLM.configure do |config|
 end
 require "redmine_ai_helper/util/config_file"
 require "redmine_ai_helper/util/permission_checker"
+require "redmine_ai_helper/web_citation"
 require "redmine_ai_helper/user_patch"
 require "redmine_ai_helper/project_patch"
 require "redmine_ai_helper/projects_helper_patch"

@@ -108,3 +108,17 @@ into one system message with no cache markers; `AnthropicProvider` overrides it
 to add `with_caching` and a cached fixed block when the profile's
 `prompt_caching_enabled` is true (S043). Full decision on
 [Prompt Caching & Split System Prompt](./prompt-caching.md).
+
+## Web search support
+
+`LlmProvider.web_search_supported?(llm_type)` is true for OpenAI, Anthropic and
+Gemini, false for Azure OpenAI and OpenAI-compatible, and raises
+`ArgumentError` for an unknown type. `BaseProvider#supports_web_search?` applies
+it to the provider's profile. `create_chat` never adds the search tool;
+only `WebSearchAgent` does (ADR-052).
+
+The check is by LLM type only. RubyLLM 2.1 routes OpenAI's search-preview
+models and model ids matching `audio`/`realtime` to Chat Completions, which has
+no `web_search` alias, so a web search step on those models raises
+`UnsupportedServerToolError` and becomes an error response; the settings page
+does not warn about them.

@@ -231,8 +231,10 @@ class LeaderAgentTest < ActiveSupport::TestCase
 
       mock_issue_read_agent = mock("issue_read_agent")
       mock_issue_read_agent.stubs(:add_message)
+      mock_issue_read_agent.stubs(:citations).returns([])
       mock_project_agent = mock("project_agent")
       mock_project_agent.stubs(:add_message)
+      mock_project_agent.stubs(:citations).returns([])
 
       agent_list = RedmineAiHelper::AgentList.instance
       agent_list.stubs(:get_agent_instance).with("issue_read_agent", anything).returns(mock_issue_read_agent)
@@ -243,6 +245,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
       mock_chat_room.stubs(:share_goal)
       mock_chat_room.stubs(:messages).returns([])
       mock_chat_room.stubs(:execution_results_json).returns("[]")
+      mock_chat_room.stubs(:citations).returns([])
       mock_chat_room.expects(:send_task).with("leader", "issue_read_agent", issue_answer_step["step"], { use_think_model: true })
       mock_chat_room.expects(:send_task).with("leader", "project_agent", retrieval_step["step"], { use_think_model: false })
 
@@ -268,6 +271,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
 
       mock_repo_agent = mock("repository_agent")
       mock_repo_agent.stubs(:add_message)
+      mock_repo_agent.stubs(:citations).returns([])
 
       agent_list = RedmineAiHelper::AgentList.instance
       agent_list.stubs(:get_agent_instance).with("repository_agent", anything).returns(mock_repo_agent)
@@ -277,6 +281,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
       mock_chat_room.stubs(:share_goal)
       mock_chat_room.stubs(:messages).returns([])
       mock_chat_room.stubs(:execution_results_json).returns("[]")
+      mock_chat_room.stubs(:citations).returns([])
       mock_chat_room.expects(:send_task).with("leader", "repository_agent", code_review_step["step"], { use_think_model: true })
 
       RedmineAiHelper::ChatRoom.stubs(:new).returns(mock_chat_room)
@@ -308,9 +313,11 @@ class LeaderAgentTest < ActiveSupport::TestCase
 
       mock_wiki_agent = mock("wiki_agent")
       mock_wiki_agent.stubs(:add_message)
+      mock_wiki_agent.stubs(:citations).returns([])
       mock_wiki_agent.stubs(:can_write?).returns(true)
       mock_project_agent = mock("project_agent")
       mock_project_agent.stubs(:add_message)
+      mock_project_agent.stubs(:citations).returns([])
 
       agent_list = RedmineAiHelper::AgentList.instance
       agent_list.stubs(:get_agent_instance).with("wiki_agent", anything).returns(mock_wiki_agent)
@@ -321,6 +328,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
       mock_chat_room.stubs(:share_goal)
       mock_chat_room.stubs(:messages).returns([])
       mock_chat_room.stubs(:execution_results_json).returns("[]")
+      mock_chat_room.stubs(:citations).returns([])
       mock_chat_room.expects(:send_task).with("leader", "wiki_agent", wiki_step["step"], { use_think_model: true })
       mock_chat_room.expects(:send_task).with("leader", "project_agent", retrieval_step["step"], { use_think_model: false })
 
@@ -404,9 +412,11 @@ class LeaderAgentTest < ActiveSupport::TestCase
 
         mock_issue_read_agent = mock("issue_read_agent")
         mock_issue_read_agent.stubs(:add_message)
+        mock_issue_read_agent.stubs(:citations).returns([])
         mock_issue_read_agent.stubs(:can_write?).returns(false)
         mock_project_agent = mock("project_agent")
         mock_project_agent.stubs(:add_message)
+        mock_project_agent.stubs(:citations).returns([])
         mock_project_agent.stubs(:can_write?).returns(false)
 
         agent_list = RedmineAiHelper::AgentList.instance
@@ -418,6 +428,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
         mock_chat_room.stubs(:share_goal)
         mock_chat_room.stubs(:messages).returns([])
         mock_chat_room.stubs(:execution_results_json).returns("[]")
+      mock_chat_room.stubs(:citations).returns([])
         mock_chat_room.expects(:record_skipped_step).with(agent: "issue_read_agent", step: write_step["step"], error: anything)
         mock_chat_room.expects(:send_task).once.with("leader", "project_agent", retrieval_step["step"], { use_think_model: false })
 
@@ -445,6 +456,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
 
         mock_wiki_agent = mock("wiki_agent")
         mock_wiki_agent.stubs(:add_message)
+        mock_wiki_agent.stubs(:citations).returns([])
         mock_wiki_agent.stubs(:can_write?).returns(true)
 
         agent_list = RedmineAiHelper::AgentList.instance
@@ -455,6 +467,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
         mock_chat_room.stubs(:share_goal)
         mock_chat_room.stubs(:messages).returns([])
         mock_chat_room.stubs(:execution_results_json).returns("[]")
+      mock_chat_room.stubs(:citations).returns([])
         mock_chat_room.expects(:record_skipped_step).never
         mock_chat_room.expects(:send_task).once.with("leader", "wiki_agent", read_step["step"], { use_think_model: false })
 
@@ -480,6 +493,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
 
         mock_wiki_agent = mock("wiki_agent")
         mock_wiki_agent.stubs(:add_message)
+        mock_wiki_agent.stubs(:citations).returns([])
         mock_wiki_agent.stubs(:can_write?).returns(true)
 
         agent_list = RedmineAiHelper::AgentList.instance
@@ -490,6 +504,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
         mock_chat_room.stubs(:share_goal)
         mock_chat_room.stubs(:messages).returns([])
         mock_chat_room.stubs(:execution_results_json).returns("[]")
+      mock_chat_room.stubs(:citations).returns([])
         mock_chat_room.expects(:record_skipped_step).never
         mock_chat_room.expects(:send_task).once.with("leader", "wiki_agent", write_step["step"], { use_think_model: true })
 
@@ -525,12 +540,14 @@ class LeaderAgentTest < ActiveSupport::TestCase
         mock_issue_read_agent = mock("issue_read_agent")
         mock_issue_read_agent.stubs(:role).returns("issue_read_agent")
         mock_issue_read_agent.stubs(:add_message)
+        mock_issue_read_agent.stubs(:citations).returns([])
         mock_issue_read_agent.stubs(:can_write?).returns(false)
         mock_issue_read_agent.expects(:perform_task).never
 
         mock_update_agent = mock("issue_write_agent")
         mock_update_agent.stubs(:role).returns("issue_write_agent")
         mock_update_agent.stubs(:add_message)
+        mock_update_agent.stubs(:citations).returns([])
         mock_update_agent.stubs(:can_write?).returns(true)
         mock_update_agent.stubs(:perform_task).returns(
           RedmineAiHelper::BaseAgent::TaskResponse.create_success("comment added")
@@ -575,6 +592,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
 
         mock_project_agent = mock("project_agent")
         mock_project_agent.stubs(:add_message)
+        mock_project_agent.stubs(:citations).returns([])
         mock_project_agent.stubs(:can_write?).returns(false)
 
         agent_list = RedmineAiHelper::AgentList.instance
@@ -584,6 +602,7 @@ class LeaderAgentTest < ActiveSupport::TestCase
         mock_chat_room = mock("chat_room")
         mock_chat_room.stubs(:add_agent)
         mock_chat_room.stubs(:share_goal)
+        mock_chat_room.stubs(:citations).returns([])
         mock_chat_room.stubs(:messages).returns([])
         mock_chat_room.stubs(:send_task)
         mock_chat_room.stubs(:execution_results_json).returns(execution_json)
@@ -600,6 +619,104 @@ class LeaderAgentTest < ActiveSupport::TestCase
         @agent.perform_user_request(@messages)
 
         assert_includes captured_content, "no write capability"
+      end
+    end
+
+    context "citations" do
+      setup do
+        @citation = RedmineAiHelper::WebCitation.new(url: "https://example.com/a", title: "A")
+        @mock_ruby_llm_chat.stubs(:ask).returns(stub(content: "final answer"))
+        @mock_ruby_llm_chat.stubs(:waiting?).returns(false)
+      end
+
+      should "be empty before any request" do
+        assert_equal [], @agent.citations
+      end
+
+      should "take the chat room citations when the chat room was used" do
+        @agent.stubs(:generate_goal).returns({ "goal" => "g", "generate_steps_required" => true })
+        @agent.stubs(:generate_steps).returns({ "steps" => [ { "agent" => "web_search_agent", "step" => "s", "description_for_human" => "d", "use_think_model" => false, "requires_write" => false } ] })
+        mock_chat_room = mock("chat_room")
+        mock_chat_room.stubs(:add_agent)
+        mock_chat_room.stubs(:share_goal)
+        mock_chat_room.stubs(:messages).returns([])
+        mock_chat_room.stubs(:execution_results_json).returns("[]")
+        mock_chat_room.stubs(:send_task)
+        mock_chat_room.stubs(:citations).returns([ @citation ])
+        agent_stub = mock("web_search_agent")
+        agent_stub.stubs(:add_message)
+        RedmineAiHelper::AgentList.instance.stubs(:get_agent_instance).returns(agent_stub)
+        RedmineAiHelper::ChatRoom.stubs(:new).returns(mock_chat_room)
+
+        @agent.perform_user_request(@messages)
+
+        assert_equal [ @citation ], @agent.citations
+      end
+
+      should "be reset when the same instance then answers directly" do
+        @agent.instance_variable_set(:@citations, [ @citation ])
+        @agent.stubs(:generate_goal).returns({ "goal" => "g", "generate_steps_required" => false })
+
+        @agent.perform_user_request(@messages)
+
+        assert_equal [], @agent.citations
+      end
+
+      should "be empty when the leader answers directly" do
+        @agent.stubs(:generate_goal).returns({ "goal" => "g", "generate_steps_required" => false })
+
+        @agent.perform_user_request(@messages)
+
+        assert_equal [], @agent.citations
+      end
+
+      should "be empty when no step is generated" do
+        @agent.stubs(:generate_goal).returns({ "goal" => "g", "generate_steps_required" => true })
+        @agent.stubs(:generate_steps).returns({ "steps" => [] })
+
+        @agent.perform_user_request(@messages)
+
+        assert_equal [], @agent.citations
+      end
+    end
+
+    context "web search unavailable notice" do
+      should "be added to the system prompt when web search is not available" do
+        RedmineAiHelper::Agents::WebSearchAgent.any_instance.stubs(:enabled?).returns(false)
+
+        assert_includes @agent.system_prompt.to_s, RedmineAiHelper::Util::PromptLoader.load_template("leader_agent/web_search_unavailable_notice").format
+      end
+
+      should "not be added when web search is available" do
+        RedmineAiHelper::Agents::WebSearchAgent.any_instance.stubs(:enabled?).returns(true)
+
+        assert_not_includes @agent.system_prompt.to_s, RedmineAiHelper::Util::PromptLoader.load_template("leader_agent/web_search_unavailable_notice").format
+      end
+
+      should "be written in en and ja" do
+        RedmineAiHelper::Agents::WebSearchAgent.any_instance.stubs(:enabled?).returns(false)
+        %w[en ja].each do |locale|
+          I18n.with_locale(locale) do
+            notice = RedmineAiHelper::Util::PromptLoader.load_template("leader_agent/web_search_unavailable_notice").format
+            assert_not_empty notice
+            assert_includes @agent.system_prompt.to_s, notice
+          end
+        end
+        en = I18n.with_locale(:en) { RedmineAiHelper::Util::PromptLoader.load_template("leader_agent/web_search_unavailable_notice").format }
+        ja = I18n.with_locale(:ja) { RedmineAiHelper::Util::PromptLoader.load_template("leader_agent/web_search_unavailable_notice").format }
+        assert_not_equal en, ja
+      end
+
+      should "not hide the agent from the step planner when it is available" do
+        RedmineAiHelper::Agents::WebSearchAgent.any_instance.stubs(:enabled?).returns(true)
+        names = RedmineAiHelper::AgentList.instance.list_agents.map { |a| a[:agent_name] }
+        assert_includes names, "web_search_agent"
+      end
+
+      should "hide the agent from the step planner when it is not available" do
+        RedmineAiHelper::Agents::WebSearchAgent.any_instance.stubs(:enabled?).returns(false)
+        names = RedmineAiHelper::AgentList.instance.list_agents.map { |a| a[:agent_name] }
+        assert_not_includes names, "web_search_agent"
       end
     end
 

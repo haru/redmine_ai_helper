@@ -96,3 +96,9 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-010](./010-prompt-caching-test-gaps.md) | Prompt caching tests missed cache stability, explicit profiles and the end-to-end payload | test-gap | Local AI review | AGENTS.md |
 | [CRF-011](./011-cache-docs-overstated-behaviour.md) | Prompt caching docs and comments described behaviour more narrowly or strongly than the code | doc-comment | Local AI review | AGENTS.md |
 | [CRF-012](./012-prompt-caching-simplifications.md) | Hand-written branching where a single path or data mapping suffices | readability | Local AI review | Not yet |
+| [CRF-013](./013-settings-view-nil-model-profile.md) | Settings page crashed when web search was on and no main model profile was set | edge-case | Local AI review | Not yet |
+| [CRF-014](./014-web-search-truncated-answer-and-broad-rescue.md) | Truncated web search answers counted as success, and the rescue hid plugin errors | error-handling | Local AI review | Not yet |
+| [CRF-015](./015-citation-type-invariant-gaps.md) | Web citation types left invariants unenforced at their edges | convention-violation | Local AI review | Not yet |
+| [CRF-016](./016-web-search-docs-overstated-support.md) | Web search docs overstated OpenAI support and omitted the Think-model case | doc-comment | Local AI review | Not yet |
+| [CRF-017](./017-web-search-test-gaps.md) | Web search tests skipped the negative routing path, read-only mode and the real payload | test-gap | Local AI review | Not yet |
+| [CRF-018](./018-web-search-simplifications.md) | Repeated expressions and a dead initial value in the web search change | readability | Local AI review | Not yet |

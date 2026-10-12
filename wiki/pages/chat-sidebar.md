@@ -62,6 +62,12 @@ format (S013) — the same method that folds in imported
   strips dangerous tags and event handlers to prevent **XSS** (S013). The same
   parser renders [health reports](./health-report.md) client-side.
 
+- When web search is enabled, an answer's sources are rendered below it from the
+  `ai_helper/chat/_citations` ERB partial (escaped, new tab with
+  `rel="noopener noreferrer"`, only `http(s)` URLs as links). No JavaScript
+  builds them; the existing reload shows them, including after reopening a
+  conversation (ADR-052).
+
 ## Related
 
 - [Multi-Agent Architecture](./multi-agent-architecture.md) ·

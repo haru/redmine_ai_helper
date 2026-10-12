@@ -52,7 +52,7 @@ module RedmineAiHelper
         return reply(message, guidance(:module_disabled, user), user) unless project.module_enabled?(:ai_helper)
 
         answer = process_question(message, user, project)
-        reply(message, answer.content, user)
+        reply(message, answer.content, user, citations: answer.web_citations)
       rescue => e
         ai_helper_logger.error "chat channel processing failed: #{e.full_message}"
         begin
@@ -102,7 +102,7 @@ module RedmineAiHelper
         original_locale = I18n.locale
         begin
           User.current = user
-          I18n.locale = user.language.presence || Setting.default_language
+          I18n.locale = reply_locale(user)
           answer = RedmineAiHelper::Llm.new.chat(conversation, NOOP_PROC, { project: project })
         ensure
           User.current = User.anonymous
@@ -141,10 +141,14 @@ module RedmineAiHelper
       # removal logic (FR-003).
       # @param user [User, nil] the service account, for guidance localization;
       #   nil when called before the account is resolved (#handle's early guidance replies)
-      def reply(message, text, user = nil)
+      # @param citations [Array<RedmineAiHelper::WebCitation>] web search sources;
+      #   appended as a plain text list after the body has been converted, so
+      #   they never pass through IssueLinkFormatter
+      def reply(message, text, user = nil, citations: [])
         body = RedmineAiHelper::ChatChannel::IssueLinkFormatter
                 .new(@adapter.issue_link_format)
                 .format(strip_ui_options(text, user))
+        body = "#{body}\n\n#{citations_text(citations, user)}" unless citations.empty?
         @adapter.send_message(channel_id: message.channel_id, thread_key: message.thread_key,
                                text: body)
       end
@@ -169,10 +173,25 @@ module RedmineAiHelper
         stripped.presence || guidance(:empty_answer, user)
       end
 
+      # The web search sources as a plain text list under a localized heading.
+      # @param citations [Array<RedmineAiHelper::WebCitation>]
+      # @param user [User, nil] the service account, for the heading's language
+      # @return [String]
+      def citations_text(citations, user)
+        lines = citations.map { |citation| citation.title ? "- #{citation.title}: #{citation.url}" : "- #{citation.url}" }
+        [ I18n.t(:label_ai_helper_citations, locale: reply_locale(user)), *lines ].join("\n")
+      end
+
       # Localized guidance text, preferring the service account's language.
       def guidance(key, user)
-        locale = user&.language.presence || Setting.default_language
-        I18n.t("ai_helper.chat_channel.errors.#{key}", locale: locale)
+        I18n.t("ai_helper.chat_channel.errors.#{key}", locale: reply_locale(user))
+      end
+
+      # The language of the replies: the service account's, else the default language.
+      # @param user [User, nil] the service account
+      # @return [String]
+      def reply_locale(user)
+        user&.language.presence || Setting.default_language
       end
     end
   end

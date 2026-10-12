@@ -25,6 +25,32 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
     @agent2 = BaseAgentTestModele::TestAgent2.new(@params)
   end
 
+  context "citations" do
+    should "default to an empty array" do
+      assert_equal [], @agent.citations
+    end
+  end
+
+  context "provider tools" do
+    setup do
+      RedmineAiHelper::LlmProvider.unstub(:get_llm_provider)
+      profile = AiHelperModelProfile.create!(name: "ws", llm_type: "OpenAI", llm_model: "gpt-4o", access_key: "k")
+      AiHelperSetting.find_or_create.update!(model_profile_id: profile.id, web_search_enabled: true)
+    end
+
+    should "never be enabled on chats of agents other than the web search agent" do
+      RubyLLM::Chat.any_instance.expects(:with_provider_tools).never
+      RubyLLM::Chat.any_instance.stubs(:ask).returns(stub(content: "x"))
+      RubyLLM::Chat.any_instance.stubs(:waiting?).returns(false)
+      [ RedmineAiHelper::Agents::LeaderAgent, RedmineAiHelper::Agents::WikiAgent, BaseAgentTestModele::TestAgent ].each do |klass|
+        agent = klass.new(project: @project, langfuse: DummyLangfuse.new)
+        agent.chat([ { role: "user", content: "hi" } ])
+        agent.think_chat([ { role: "user", content: "hi" } ])
+        assert_equal [], agent.assistant.chat.provider_tools, klass.name
+      end
+    end
+  end
+
   context "assistant" do
     should "return the instance of the agent" do
       assistant = @agent.assistant
@@ -426,6 +452,14 @@ class RedmineAiHelper::BaseAgentTest < ActiveSupport::TestCase
       agent = BaseAgentTestModele::TestAgent.new(@params)
 
       assert_nil agent.think_llm_provider
+    end
+
+    should "return the think provider, or the main provider when none is configured, from think_or_main_provider" do
+      RedmineAiHelper::LlmProvider.stubs(:get_think_llm_provider).returns(@mock_think_provider)
+      assert_equal @mock_think_provider, BaseAgentTestModele::TestAgent.new(@params).think_or_main_provider
+
+      RedmineAiHelper::LlmProvider.stubs(:get_think_llm_provider).returns(nil)
+      assert_equal @mock_llm_provider, BaseAgentTestModele::TestAgent.new(@params).think_or_main_provider
     end
   end
 

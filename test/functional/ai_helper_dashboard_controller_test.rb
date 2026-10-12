@@ -42,6 +42,15 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
         assert_template :index
       end
 
+      should "not offer a web search setting in the project settings tab" do
+        Role.find(1).add_permission! :settings_ai_helper
+
+        get :index, params: { id: @project.id, tab: "settings" }
+
+        assert_response :success
+        assert_select "input[name*='web_search']", count: 0
+      end
+
       should "show settings tab when user has settings permission" do
         manager_role = Role.find(1)
         manager_role.add_permission! :settings_ai_helper

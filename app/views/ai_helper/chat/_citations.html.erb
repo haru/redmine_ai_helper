@@ -1,0 +1,19 @@
+<%# Web search sources of an answer. The title and the url come from an external
+    source: they are output only with the default ERB escaping, and only an
+    http(s) url becomes a link. %>
+<% if citations.present? %>
+  <div class="aihelper-citations">
+    <p><strong><%= l(:label_ai_helper_citations) %></strong></p>
+    <ol>
+      <% citations.each do |citation| %>
+        <li>
+          <% if citation.linkable? %>
+            <%= link_to citation.label, citation.url, target: "_blank", rel: "noopener noreferrer", class: "external" %>
+          <% else %>
+            <%= citation.label %><% if citation.title %> (<%= citation.url %>)<% end %>
+          <% end %>
+        </li>
+      <% end %>
+    </ol>
+  </div>
+<% end %>

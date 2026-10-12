@@ -19,6 +19,11 @@ module RedmineAiHelper
     LLM_ANTHROPIC = "Anthropic".freeze
     # Azure OpenAI provider constant
     LLM_AZURE_OPENAI = "AzureOpenAi".freeze
+    # LLM types whose provider-side web search tool RubyLLM supports. For OpenAI
+    # this holds only for models served through the Responses API: RubyLLM sends
+    # the search-preview models and the audio/realtime models to Chat Completions,
+    # which has no web search tool.
+    WEB_SEARCH_LLM_TYPES = [ LLM_OPENAI, LLM_ANTHROPIC, LLM_GEMINI ].freeze
     # Timeout in seconds for each HTTP request of the embedding connection test
     # (the model list fetch and the embed call each get their own limit).
     EMBEDDING_TEST_TIMEOUT = 10
@@ -109,6 +114,18 @@ module RedmineAiHelper
         else
           raise NotImplementedError, "LLM provider not found"
         end
+      end
+
+      # Whether the given LLM type supports provider-side web search. The check is
+      # by LLM type only; see WEB_SEARCH_LLM_TYPES for the OpenAI models it does not cover.
+      # @param llm_type [String] AiHelperModelProfile#llm_type
+      # @return [Boolean]
+      # @raise [ArgumentError] when llm_type is not a known LLM type
+      def web_search_supported?(llm_type)
+        return true if WEB_SEARCH_LLM_TYPES.include?(llm_type)
+        return false if [ LLM_OPENAI_COMPATIBLE, LLM_AZURE_OPENAI ].include?(llm_type)
+
+        raise ArgumentError, "Unknown LLM type: #{llm_type.inspect}"
       end
 
       # Returns the options to display in the settings screen's dropdown menu

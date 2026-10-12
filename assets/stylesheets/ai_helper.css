@@ -1651,3 +1651,11 @@ table.list.ai-helper-report-list td.radio .radio-placeholder {
   overflow-y: auto;
   flex: 1 1 auto;
 }
+
+.aihelper-citations {
+  margin-top: 0.5em;
+}
+
+.aihelper-citations p {
+  margin-bottom: 0.2em;
+}

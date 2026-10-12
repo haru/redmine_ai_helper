@@ -11,7 +11,13 @@ module RedmineAiHelper
       def initialize(params = {})
         super(params)
         @system_prompt = RedmineAiHelper::Util::SystemPrompt.new(params)
+        @citations = []
       end
+
+      # The web search sources of the last request; reset at the start of each
+      # request, and empty when the leader answered without the chat room.
+      # @return [Array<RedmineAiHelper::WebCitation>]
+      attr_reader :citations
 
       # Get the agent's backstory
       # @return [String] The backstory prompt
@@ -28,18 +34,19 @@ module RedmineAiHelper
       end
 
       # Get the complete system prompt including backstory
-      # The fixed part holds the instructions, the backstory and the read-only
-      # notice; the variable part holds the time, site, page and user information.
+      # The fixed part holds the instructions, the backstory, the read-only
+      # notice and the web search unavailable notice; the variable part holds the time, site, page and user information.
       # @return [RedmineAiHelper::LlmClient::Instructions] The system prompt
       def system_prompt
         RedmineAiHelper::LlmClient::Instructions.new(
-          fixed: "#{@system_prompt.fixed_prompt}\n\n#{backstory}#{read_only_notice}",
+          fixed: "#{@system_prompt.fixed_prompt}\n\n#{backstory}#{read_only_notice}#{web_search_unavailable_notice}",
           variable: @system_prompt.context_prompt
         )
       end
 
       # Perform a user request by generating a goal and steps for the agents to follow.
       def perform_user_request(messages, option = {}, callback = nil)
+        @citations = []
         goal_json = generate_goal(messages)
         goal = goal_json["goal"]
         return chat(messages, option, callback) unless goal_json["generate_steps_required"]
@@ -54,6 +61,7 @@ module RedmineAiHelper
         end
 
         chat_room = execute_chat_room_steps(goal, steps, callback)
+        @citations = chat_room.citations
 
         callback.call(I18n.t("ai_helper.chat.generating_final_response") + "\n") if callback
 
@@ -124,6 +132,14 @@ module RedmineAiHelper
       end
 
       private
+
+      # Tells the leader that web search cannot be used, so it does not pretend to have searched.
+      # @return [String] The notice (after a blank line) when the web search agent is not available; an empty string otherwise.
+      def web_search_unavailable_notice
+        return "" if RedmineAiHelper::Agents::WebSearchAgent.new(project: @project).enabled?
+
+        "\n\n#{load_prompt("leader_agent/web_search_unavailable_notice").format}"
+      end
 
       # JSON schema for the generate_steps structured output.
       def generate_steps_json_schema

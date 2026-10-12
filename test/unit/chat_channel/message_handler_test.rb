@@ -99,6 +99,16 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
            locale: user&.language.presence || Setting.default_language)
   end
 
+  def answer_with(citations, content: "Answer body")
+    message = assistant_message(content)
+    message.web_citations = citations
+    RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(message)
+  end
+
+  def source(url, title = nil)
+    RedmineAiHelper::WebCitation.new(url: url, title: title)
+  end
+
   context "handle" do
     should "reply with guidance when no service account is configured" do
       @setting.update_column(:redmine_user_id, nil)
@@ -747,6 +757,63 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       @history_handler.handle(history_incoming)
 
       assert_equal error_text(:module_disabled), @history_adapter.sent_messages.first[:text]
+    end
+  end
+
+  context "web search sources" do
+    should "append the sources as text after the body" do
+      answer_with([ source("https://example.com/a", "Page A"), source("https://example.com/b") ])
+
+      @handler.handle(incoming)
+
+      heading = I18n.t(:label_ai_helper_citations, locale: @service_account.language.presence || Setting.default_language)
+      expected = "Answer body\n\n#{heading}\n- Page A: https://example.com/a\n- https://example.com/b"
+      assert_equal expected, @adapter.sent_messages.first[:text]
+    end
+
+    should "not convert issue references in titles into issue links" do
+      answer_with([ source("https://example.com/a", "Fix #123 now") ])
+
+      @handler.handle(incoming)
+
+      text = @adapter.sent_messages.first[:text]
+      assert_includes text, "- Fix #123 now: https://example.com/a"
+      assert_no_match(/#123 \(/, text)
+    end
+
+    should "add nothing when there are no sources" do
+      answer_with([])
+
+      @handler.handle(incoming)
+
+      assert_equal "Answer body", @adapter.sent_messages.first[:text]
+    end
+
+    should "not store the sources text in the saved answer content" do
+      answer_with([ source("https://example.com/a", "Page A") ])
+
+      @handler.handle(incoming)
+
+      saved = AiHelperConversation.last.messages.where(role: "assistant").last
+      assert_equal "Answer body", saved.content
+      assert_equal [ source("https://example.com/a", "Page A") ], saved.web_citations
+    end
+
+    should "use the heading of the service account's language" do
+      @service_account.update_column(:language, "ja")
+      answer_with([ source("https://example.com/a") ])
+
+      @handler.handle(incoming)
+
+      assert_includes @adapter.sent_messages.first[:text], "\n出典\n"
+    end
+
+    should "list a source that is not http(s) as text" do
+      answer_with([ source("javascript:alert(1)", "Evil") ])
+
+      @handler.handle(incoming)
+
+      assert_includes @adapter.sent_messages.first[:text], "- Evil: javascript:alert(1)"
     end
   end
 

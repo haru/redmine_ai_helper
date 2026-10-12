@@ -56,11 +56,24 @@ module RedmineAiHelper
       @shared_messages = []
     end
 
+    # The web search sources gathered while handling a request. Only agents
+    # that use web search override this; every other agent has none.
+    # @return [Array<RedmineAiHelper::WebCitation>]
+    def citations
+      []
+    end
+
     # Lazily returns the Think LLM provider, creating it on first access.
     # This avoids unnecessary DB lookups when the Think model is disabled
     # or not used by a particular agent.
     def think_llm_provider
       @think_llm_provider ||= RedmineAiHelper::LlmProvider.get_think_llm_provider
+    end
+
+    # The Think LLM provider, or the regular provider when no Think model is configured.
+    # @return [RedmineAiHelper::LlmClient::BaseProvider]
+    def think_or_main_provider
+      think_llm_provider || @llm_provider
     end
 
     # Returns the assistant instance, creating it on first access.
@@ -189,7 +202,7 @@ module RedmineAiHelper
     #   to attach to the request.
     # @return [String] The response from the LLM.
     def think_chat(messages, _option = {}, callback = nil, with: nil)
-      provider = think_llm_provider || @llm_provider
+      provider = think_or_main_provider
       chat_instance = provider.create_chat(instructions: system_prompt)
       setup_langfuse_callbacks(chat_instance, provider: provider)
       ask_with_messages(chat_instance, messages, callback, with: with)
@@ -363,7 +376,7 @@ module RedmineAiHelper
     # tool-call state that cannot be safely copied across providers.
     # @return [RedmineAiHelper::Assistant]
     def build_think_assistant
-      provider = think_llm_provider || @llm_provider
+      provider = think_or_main_provider
       think_asst = RedmineAiHelper::AssistantProvider.get_assistant(
         llm_provider: provider,
         instructions: system_prompt,

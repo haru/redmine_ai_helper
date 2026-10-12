@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "redmine_ai_helper/logger"
+require "redmine_ai_helper/web_citation"
 
 module RedmineAiHelper
   # A class representing a chat room where the LeaderAgent and other agents collaborate to achieve the user's goal.
@@ -104,6 +105,12 @@ module RedmineAiHelper
         Reason: #{error}
       EOS
       add_message("assistant", agent, notice, "all")
+    end
+
+    # The web search sources gathered by all agents in the room, without duplicate URLs.
+    # @return [Array<RedmineAiHelper::WebCitation>]
+    def citations
+      RedmineAiHelper::WebCitation.dedupe(@agents.flat_map(&:citations))
     end
 
     # Format the accumulated step results as a JSON array string, in plan order.

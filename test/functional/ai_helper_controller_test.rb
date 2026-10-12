@@ -3,6 +3,18 @@ require_relative "../test_helper"
 class AiHelperControllerTest < ActionController::TestCase
   fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :custom_values, :groups_users, :members, :member_roles, :roles, :user_preferences, :issue_statuses, :wikis, :wiki_pages, :wiki_contents
 
+  # Add an assistant answer with the given web search sources to the conversation.
+  def add_answer(citations)
+    message = AiHelperMessage.new(content: "The answer", role: "assistant")
+    message.web_citations = citations
+    @conversation.messages << message
+    @conversation.save!
+  end
+
+  def citation(url, title = nil)
+    RedmineAiHelper::WebCitation.new(url: url, title: title)
+  end
+
   context "AiHelperController" do
     setup do
       @controller = AiHelperController.new
@@ -77,6 +89,86 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         assert_template partial: "ai_helper/chat/_chat"
+      end
+    end
+
+    context "#reload with citations" do
+      setup do
+        @request.session[:ai_helper] = { conversation_id: @conversation.id }
+      end
+
+      should "show a heading and a list of sources under the answer" do
+        add_answer([ citation("https://example.com/a", "Page A"), citation("https://example.com/b") ])
+
+        get :reload, params: { id: @project.id }
+
+        assert_select "div.aihelper-citations strong", text: I18n.t(:label_ai_helper_citations)
+        assert_select "div.aihelper-citations ol li", count: 2
+        assert_select "div.aihelper-citations li:nth-child(1) a[href='https://example.com/a']", text: "Page A"
+        assert_select "div.aihelper-citations li:nth-child(2) a[href='https://example.com/b']", text: "https://example.com/b"
+      end
+
+      should "open links in a new tab without leaking the opener" do
+        add_answer([ citation("https://example.com/a", "Page A") ])
+
+        get :reload, params: { id: @project.id }
+
+        assert_select "div.aihelper-citations a[target='_blank'][rel='noopener noreferrer']"
+      end
+
+      should "show a non http(s) source as text, not as a link" do
+        add_answer([ citation("javascript:alert(1)", "Evil") ])
+
+        get :reload, params: { id: @project.id }
+
+        assert_select "div.aihelper-citations a", count: 0
+        assert_select "div.aihelper-citations li", text: /Evil/
+        assert_select "div.aihelper-citations li", text: /javascript:alert\(1\)/
+      end
+
+      should "escape HTML in the title and the url" do
+        add_answer([ citation("https://example.com/?a=<b>&c=\"d\"", "<script>alert(1)</script>") ])
+
+        get :reload, params: { id: @project.id }
+
+        assert_select "div.aihelper-citations script", count: 0
+        assert_includes response.body, "&lt;script&gt;alert(1)&lt;/script&gt;"
+      end
+
+      should "show neither heading nor list for an answer without sources" do
+        add_answer([])
+
+        get :reload, params: { id: @project.id }
+
+        assert_select "div.aihelper-citations", count: 0
+        assert_no_match(/#{Regexp.escape(I18n.t(:label_ai_helper_citations))}/, response.body.sub(/<script.*?<\/script>/m, ""))
+      end
+
+      should "show the heading in Japanese" do
+        add_answer([ citation("https://example.com/a") ])
+        @user.update_column(:language, "ja")
+
+        get :reload, params: { id: @project.id }
+
+        assert_select "div.aihelper-citations strong", text: I18n.t(:label_ai_helper_citations, locale: :ja)
+        assert_equal "出典", I18n.t(:label_ai_helper_citations, locale: :ja)
+      end
+    end
+
+    context "#call_llm with citations" do
+      should "save the answer with its web search sources" do
+        answer = AiHelperMessage.new(content: "The answer", role: "assistant")
+        answer.web_citations = [ citation("https://example.com/a", "Page A"), citation("https://example.com/b") ]
+        llm_mock = mock("RedmineAiHelper::Llm")
+        llm_mock.stubs(:chat).returns(answer)
+        RedmineAiHelper::Llm.stubs(:new).returns(llm_mock)
+
+        post :chat, params: { id: @project.id, ai_helper_message: { content: "Hello AI" } }
+        post :call_llm, params: { id: @project.id, controller_name: "issues", action_name: "show", content_id: 1, additional_info: { key: "value" } }
+
+        saved = AiHelperMessage.where(role: "assistant").order(:id).last.reload
+        assert_equal "The answer", saved.content
+        assert_equal [ citation("https://example.com/a", "Page A"), citation("https://example.com/b") ], saved.web_citations
       end
     end
 
