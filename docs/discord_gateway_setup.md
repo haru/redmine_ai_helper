@@ -101,11 +101,12 @@ heartbeat acknowledgements (zombie-connection detection). Stop it with
   the failure is logged. A ⏳ can stay behind if the gateway is killed before it
   finishes. Continue by mentioning the bot again inside that thread.
 - **Progress**: while a question that needs several steps is being worked on,
-  the bot shows one progress message where the answer will appear (the plan,
-  then each step) and edits it as the work advances. It is deleted after the
-  answer is posted, so only the answer stays. Questions that need no steps show
-  no progress message. This needs only the Send Messages and Send Messages in
-  Threads permissions the bot already has. If the progress message cannot be
+  the bot shows one progress message where the answer will appear (a "creating
+  plan" line, then each step, then a "generating final response" line) and edits it as the work advances. It is deleted after the
+  answer is posted, so only the answer stays. A question that needs no steps shows
+  at most the "creating plan" line, which is deleted at once. This needs no
+  permission beyond those in step 2 (Send Messages, Send Messages in Threads and
+  Read Message History). If the progress message cannot be
   posted, edited or deleted, the failure is logged in `log/ai_helper.log` and
   the answer is still posted. Progress messages never ping anyone.
 - **In a direct message**: just send your question (no mention needed). The bot

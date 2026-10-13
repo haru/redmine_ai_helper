@@ -105,3 +105,6 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-019](./019-regex-html-stripping-in-test.md) | Test stripped script blocks from HTML with a regular expression | test-gap | GitHub CodeQL (PR #505) | Not yet |
 | [CRF-020](./020-shutdown-race-widened-by-reaction-call.md) | A slow reaction call between the shutdown check and the queue push lost messages | edge-case | Local AI review | Not yet |
 | [CRF-021](./021-discord-unknown-emoji-ignored-as-missing-reaction.md) | Discord "Unknown Emoji" error ignored as if it meant a missing reaction | error-handling | Local AI review | Not yet |
+| [CRF-022](./022-progress-rescue-too-broad.md) | Progress reporter rescued every StandardError from the adapter and trusted its return value | error-handling | Local AI review | AGENTS.md |
+| [CRF-023](./023-progress-docs-inaccurate.md) | Progress docs described the plan line, the no-step case and permissions inaccurately | doc-comment | Local AI review | Not yet |
+| [CRF-024](./024-progress-test-gaps.md) | Progress tests could not fail or did not confirm the failure they simulated | test-gap | Local AI review | Not yet |

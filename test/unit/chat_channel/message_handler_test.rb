@@ -196,27 +196,27 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
     end.returns(assistant_message("final answer"))
   end
 
-  def slack_setup
-    create(:ai_helper_chat_adapter_setting, channel_type: "slack", enabled: true, app_token: "xapp-secret",
-                                            bot_token: "xoxb-secret", redmine_user_id: @service_account.id,
-                                            default_project_id: @project.id)
-    create(:ai_helper_channel_binding, channel_type: "slack", channel_id: "CH1", project: @project)
-    adapter = RedmineAiHelper::ChatChannel::Adapters::SlackAdapter.new
+  # Creates the adapter setting and binding for +channel_type+ and returns the
+  # adapter with a question message that arrived through it.
+  def channel_setup(channel_type, adapter_class, thread_key:, message_ts:, **setting_attrs)
+    create(:ai_helper_chat_adapter_setting, channel_type: channel_type, enabled: true,
+                                            redmine_user_id: @service_account.id,
+                                            default_project_id: @project.id, **setting_attrs)
+    create(:ai_helper_channel_binding, channel_type: channel_type, channel_id: "CH1", project: @project)
     message = RedmineAiHelper::ChatChannel::IncomingMessage.new(
-      channel_type: "slack", channel_id: "CH1", thread_key: "CH1:1.000001", text: "question", message_ts: "1.000001"
+      channel_type: channel_type, channel_id: "CH1", thread_key: thread_key, text: "question", message_ts: message_ts
     )
-    [ adapter, message ]
+    [ adapter_class.new, message ]
+  end
+
+  def slack_setup
+    channel_setup("slack", RedmineAiHelper::ChatChannel::Adapters::SlackAdapter,
+                  thread_key: "CH1:1.000001", message_ts: "1.000001", app_token: "xapp-secret", bot_token: "xoxb-secret")
   end
 
   def discord_setup
-    create(:ai_helper_chat_adapter_setting, channel_type: "discord", enabled: true, bot_token: "discord-secret",
-                                            redmine_user_id: @service_account.id, default_project_id: @project.id)
-    create(:ai_helper_channel_binding, channel_type: "discord", channel_id: "CH1", project: @project)
-    adapter = RedmineAiHelper::ChatChannel::Adapters::DiscordAdapter.new
-    message = RedmineAiHelper::ChatChannel::IncomingMessage.new(
-      channel_type: "discord", channel_id: "CH1", thread_key: "CH1:T1", text: "question", message_ts: "M1"
-    )
-    [ adapter, message ]
+    channel_setup("discord", RedmineAiHelper::ChatChannel::Adapters::DiscordAdapter,
+                  thread_key: "CH1:T1", message_ts: "M1", bot_token: "discord-secret")
   end
 
   # The form of every Slack write call (the history read is left out).
@@ -225,9 +225,12 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
         .map { |request| [ request.path, URI.decode_www_form(request.body.to_s).to_h ] }
   end
 
+  def stored_conversation(channel_type, thread_key)
+    AiHelperChannelConversation.find_by!(channel_type: channel_type, thread_key: thread_key).conversation
+  end
+
   def stored_answer(channel_type, thread_key)
-    AiHelperChannelConversation.find_by!(channel_type: channel_type, thread_key: thread_key)
-                               .conversation.messages.last.content
+    stored_conversation(channel_type, thread_key).messages.last.content
   end
 
   context "handle" do
@@ -976,8 +979,7 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
 
       @progress_handler.handle(progress_incoming)
 
-      conversation = AiHelperChannelConversation.find_by!(channel_type: "handler_progress_chat",
-                                                          thread_key: "CH1:1.000001").conversation
+      conversation = stored_conversation("handler_progress_chat", "CH1:1.000001")
       assert_equal [ "What are the open issues?", "final answer" ], conversation.messages.map(&:content)
     end
 
@@ -1116,6 +1118,7 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
 
           adapter.handler.handle(message)
 
+          assert_includes http.requests.map(&:path), path
           assert_includes slack_forms(http).map { |_path, form| form["text"] }, "final answer"
           assert_equal "final answer", stored_answer("slack", "CH1:1.000001")
         end
@@ -1139,6 +1142,7 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
 
           adapter.handler.handle(message)
 
+          assert(http.requests.any? { |request| request.is_a?(klass) })
           contents = http.requests.map { |request| request.body && JSON.parse(request.body)["content"] }
           assert_includes contents, "final answer"
           assert_equal "final answer", stored_answer("discord", "CH1:T1")

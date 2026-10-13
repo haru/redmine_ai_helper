@@ -257,6 +257,11 @@ class LeaderAgentTest < ActiveSupport::TestCase
     end
 
     context "progress_proc (073 chat channel progress)" do
+      should "reject a progress_proc that cannot be called" do
+        error = assert_raises(ArgumentError) { RedmineAiHelper::Agents::LeaderAgent.new(@params.merge(progress_proc: "text")) }
+        assert_match(/progress_proc must respond to #call/, error.message)
+      end
+
       setup do
         @steps = [
           { "agent" => "issue_read_agent", "step" => "Read the issue.", "description_for_human" => "Reading the issue...",

@@ -57,7 +57,8 @@ module RedmineAiHelper
         # Open/read timeout for every REST call (contract: 10 seconds).
         HTTP_TIMEOUT_SECONDS = 10
         # Replies longer than this are split before posting (Discord's hard
-        # limit is 2,000; 1,900 leaves headroom).
+        # limit is 2,000; 1,900 leaves headroom); a progress message drops its
+        # oldest lines instead.
         MAX_MESSAGE_LENGTH = 1900
         # Progress messages parse no mentions, so a line can never ping anyone.
         NO_MENTIONS = { parse: [] }.freeze
@@ -270,6 +271,11 @@ module RedmineAiHelper
           true
         end
 
+        # @return [Array<Class>] the failures a progress call may raise
+        def progress_errors
+          [ DiscordApiError, DiscordRequestError, JSON::ParserError, *NETWORK_ERRORS ]
+        end
+
         # @return [Integer] the longest text of one progress message
         def max_message_length
           MAX_MESSAGE_LENGTH
@@ -298,7 +304,7 @@ module RedmineAiHelper
         # @return [void]
         # @raise [DiscordApiError, DiscordRequestError] on any Discord error
         def update_progress(handle:, text:)
-          request(:patch, "/channels/#{handle.channel_id}/messages/#{handle.message_id}",
+          request(:patch, progress_path(handle),
                   body: { content: text, allowed_mentions: NO_MENTIONS })
           nil
         end
@@ -308,7 +314,7 @@ module RedmineAiHelper
         # @return [void]
         # @raise [DiscordApiError, DiscordRequestError] on any Discord error
         def delete_progress(handle:)
-          request(:delete, "/channels/#{handle.channel_id}/messages/#{handle.message_id}")
+          request(:delete, progress_path(handle))
           nil
         end
 
@@ -684,6 +690,12 @@ module RedmineAiHelper
           @reply_targets.delete(thread_key)
           @reply_targets[thread_key] = message_id
           @reply_targets.delete(@reply_targets.each_key.first) while @reply_targets.size > MAX_REPLY_TARGETS
+        end
+
+        # @param handle [RedmineAiHelper::ChatChannel::ProgressReporter::Handle] the posted message
+        # @return [String] the REST path of the progress message
+        def progress_path(handle)
+          "/channels/#{handle.channel_id}/messages/#{handle.message_id}"
         end
 
         # Parses a thread_key into the REST destination and the message to

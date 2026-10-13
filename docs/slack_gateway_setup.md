@@ -16,7 +16,7 @@ The integration uses Slack **Socket Mode**: the gateway process opens an outgoin
 3. Under **OAuth & Permissions → Bot Token Scopes**, add:
    - `app_mentions:read` — receive mentions in channels
    - `im:history` — receive direct messages, and read the recent messages of a DM
-   - `chat:write` — post replies
+   - `chat:write` — post replies, and update and delete the bot's own progress messages
    - `reactions:write` — show the "processing" reaction
    - `channels:history` — read the surrounding messages of public channels and their threads
    - `groups:history` — the same for private channels
@@ -91,7 +91,7 @@ WantedBy=multi-user.target
 
 - In a bound channel, invite the bot (`/invite @your-bot`) and mention it: `@your-bot what are the open issues?`
 - The bot adds a ⏳ reaction to your message as soon as it receives it, removes it when processing ends, and posts the answer as a thread reply. This needs the `reactions:write` scope; without it the answer is still posted and the failure is logged. A ⏳ can stay behind if the gateway is killed before it finishes.
-- While a question that needs several steps is being worked on, the bot shows one progress message in the thread (the plan, then each step) and rewrites it as the work advances. It is deleted after the answer is posted, so only the answer stays. Questions that need no steps show no progress message. This needs only the `chat:write` scope the bot already has. If the progress message cannot be posted, updated or deleted, the failure is logged in `log/ai_helper.log` and the answer is still posted.
+- While a question that needs several steps is being worked on, the bot shows one progress message in the thread (a "creating plan" line, then each step, then a "generating final response" line) and rewrites it as the work advances. It is deleted after the answer is posted, so only the answer stays. A question that needs no steps shows at most the "creating plan" line, which is deleted at once. This needs only the `chat:write` scope the bot already has. If the progress message cannot be posted, updated or deleted, the failure is logged in `log/ai_helper.log` and the answer is still posted.
 - Follow-up questions in the same thread keep the conversation context. Anyone can continue the thread; every question runs under the **execution account's** Redmine permissions.
 - DMs to the bot are answered in the configured default project.
 

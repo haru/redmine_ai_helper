@@ -12,7 +12,7 @@ module RedmineAiHelper
     module Adapters
       # Slack adapter using Socket Mode: an outgoing WebSocket connection
       # obtained via apps.connections.open, so no public URL is required.
-      # Web API calls (auth.test, chat.postMessage) go through Net::HTTP
+      # Web API calls (auth.test, chat.*, reactions.*, conversations.*) go through Net::HTTP
       # directly. Tokens are never written to the log.
       class SlackAdapter < BaseAdapter
         # Raised when a Slack Web API call returns ok:false. Authentication
@@ -35,7 +35,8 @@ module RedmineAiHelper
         SLACK_API_BASE = "https://slack.com/api"
         # Open/read timeout for every Web API call (contract: 10 seconds).
         HTTP_TIMEOUT_SECONDS = 10
-        # Replies longer than this are split before posting (research.md R-008).
+        # Replies longer than this are split before posting (research.md R-008);
+        # a progress message drops its oldest lines instead.
         MAX_MESSAGE_LENGTH = 3900
         # Messages requested per history page (Slack's maximum for a full page).
         HISTORY_PAGE_LIMIT = 200
@@ -142,7 +143,7 @@ module RedmineAiHelper
         # @param text [String] the reply body (Markdown as-is)
         # @return [void]
         def send_message(channel_id:, thread_key:, text:)
-          thread_ts = thread_key.split(":", 2).last
+          thread_ts = thread_ts_of(thread_key)
           split_text(text).each do |chunk|
             api_call("chat.postMessage", token: settings.bot_token,
                      params: { channel: channel_id, thread_ts: thread_ts, text: chunk })
@@ -173,6 +174,11 @@ module RedmineAiHelper
           true
         end
 
+        # @return [Array<Class>] the failures a progress call may raise
+        def progress_errors
+          [ SlackApiError, JSON::ParserError, *NETWORK_ERRORS ]
+        end
+
         # @return [Integer] the longest text of one progress message
         def max_message_length
           MAX_MESSAGE_LENGTH
@@ -186,7 +192,7 @@ module RedmineAiHelper
         # @raise [SlackApiError] on any Slack error
         def post_progress(channel_id:, thread_key:, text:)
           body = api_call("chat.postMessage", token: settings.bot_token,
-                          params: { channel: channel_id, thread_ts: thread_key.split(":", 2).last, text: text })
+                          params: { channel: channel_id, thread_ts: thread_ts_of(thread_key), text: text })
           RedmineAiHelper::ChatChannel::ProgressReporter::Handle.new(channel_id: channel_id, message_id: body["ts"])
         end
 
@@ -229,7 +235,7 @@ module RedmineAiHelper
         # @param after [String, nil] only messages after this ts are returned
         # @return [Array<HistoryMessage>] ascending (oldest first)
         def fetch_thread_history(channel_id:, thread_key:, after: nil)
-          params = { channel: channel_id, ts: thread_key.split(":", 2).last,
+          params = { channel: channel_id, ts: thread_ts_of(thread_key),
                      inclusive: false, limit: HISTORY_PAGE_LIMIT }
           params[:oldest] = after if after.present?
           raw_messages = []
@@ -269,6 +275,12 @@ module RedmineAiHelper
         end
 
         private
+
+        # @param thread_key [String] "{channel_id}:{thread_ts}"
+        # @return [String] the Slack thread timestamp
+        def thread_ts_of(thread_key)
+          thread_key.split(":", 2).last
+        end
 
         # Fetches the bot's own user id and validates the bot token. The bot id
         # is kept as well: the gateway's own posts appear in the history with a

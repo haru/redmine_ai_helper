@@ -8,6 +8,8 @@ class ChatChannelProgressReporterTest < ActiveSupport::TestCase
 
   # Records every progress call. Each operation can be made to fail with an
   # error stored in +errors+.
+  class StubApiError < StandardError; end
+
   class StubAdapter
     attr_reader :calls, :failures
     attr_accessor :supports, :max_length
@@ -29,6 +31,10 @@ class ChatChannelProgressReporterTest < ActiveSupport::TestCase
 
     def max_message_length
       @max_length
+    end
+
+    def progress_errors
+      [ StubApiError ]
     end
 
     def post_progress(channel_id:, thread_key:, text:)
@@ -61,6 +67,13 @@ class ChatChannelProgressReporterTest < ActiveSupport::TestCase
     @reporter = Reporter.new(adapter: @adapter, message: @message)
     @logger = stub_everything("logger")
     @reporter.stubs(:ai_helper_logger).returns(@logger)
+  end
+
+  context "inspect" do
+    should "name neither the adapter nor the message so the LLM option log stays clean" do
+      assert_equal "#<RedmineAiHelper::ChatChannel::ProgressReporter>", @reporter.inspect
+      assert_no_match(/stub_chat|hi/, { progress_proc: @reporter }.to_s)
+    end
   end
 
   context "Handle" do
@@ -127,6 +140,14 @@ class ChatChannelProgressReporterTest < ActiveSupport::TestCase
       assert(texts.all? { |text| text.length <= 10 })
     end
 
+    should "keep two lines that join to exactly the limit (FR-007)" do
+      @adapter.max_length = 9
+      @reporter.call("aaaa\n")
+      @reporter.call("bbbb\n")
+
+      assert_equal "aaaa\nbbbb", @adapter.calls.last.last[:text]
+    end
+
     should "cut a single line that alone exceeds the limit" do
       @adapter.max_length = 10
       @reporter.call("#{"x" * 50}\n")
@@ -179,7 +200,7 @@ class ChatChannelProgressReporterTest < ActiveSupport::TestCase
 
   context "failures (FR-006)" do
     should "log a failed post, stop updating and not delete" do
-      @adapter.failures[:post] = RuntimeError.new("channel_not_found")
+      @adapter.failures[:post] = StubApiError.new("channel_not_found")
       @logger.expects(:error).once.with do |message|
         message.start_with?("chat channel: failed to post progress message on stub_chat thread C1:1.1: ") &&
           message.include?("channel_not_found")
@@ -194,9 +215,9 @@ class ChatChannelProgressReporterTest < ActiveSupport::TestCase
 
     should "log a failed update and try again on the next call and on finish" do
       @reporter.call("A\n")
-      @adapter.failures[:update] = RuntimeError.new("message_not_found")
+      @adapter.failures[:update] = StubApiError.new("message_not_found")
       @logger.expects(:error).twice.with do |message|
-        message.start_with?("chat channel: failed to update progress message on stub_chat thread C1:1.1: ")
+        message.start_with?("chat channel: failed to update progress message P1 (channel C1) on stub_chat thread C1:1.1: ")
       end
 
       assert_nothing_raised { @reporter.call("B\n") }
@@ -208,30 +229,54 @@ class ChatChannelProgressReporterTest < ActiveSupport::TestCase
 
     should "log a failed delete without raising" do
       @reporter.call("A\n")
-      @adapter.failures[:delete] = RuntimeError.new("cant_delete_message")
+      @adapter.failures[:delete] = StubApiError.new("cant_delete_message")
       @logger.expects(:error).once.with do |message|
-        message.start_with?("chat channel: failed to delete progress message on stub_chat thread C1:1.1: ")
+        message.start_with?("chat channel: failed to delete progress message P1 (channel C1) on stub_chat thread C1:1.1: ")
       end
 
       assert_nothing_raised { @reporter.finish }
-    end
-
-    should "not put the adapter's token into the log" do
-      @adapter.failures[:post] = RuntimeError.new("slack_error")
-      logged = []
-      @logger.stubs(:error).with { |message| logged << message; true }
-      @adapter.stubs(:settings).returns(stub(bot_token: "xoxb-secret"))
-
-      @reporter.call("A\n")
-
-      assert_equal 1, logged.size
-      assert_no_match(/xoxb-secret/, logged.first)
     end
 
     should "not catch bugs outside the adapter calls" do
       @adapter.max_length = nil
 
       assert_raises(StandardError) { @reporter.call("A\n") }
+    end
+
+    should "reject a max_message_length that cannot hold the omission marker" do
+      @adapter.max_length = 2
+
+      assert_raises(ArgumentError) { @reporter.call("A\n") }
+      assert_empty @adapter.calls
+    end
+
+    should "not catch errors the adapter does not declare in progress_errors" do
+      @adapter.failures[:post] = NoMethodError.new("undefined method for nil")
+
+      assert_raises(NoMethodError) { @reporter.call("A\n") }
+    end
+
+    should "disable progress and log when post_progress does not return a Handle" do
+      @adapter.define_singleton_method(:post_progress) do |**args|
+        @calls << [ :post, args ]
+        nil
+      end
+      @adapter.stubs(:progress_errors).returns([ TypeError ])
+      @logger.expects(:error).once.with { |message| message.include?("must return a ProgressReporter::Handle") }
+
+      @reporter.call("A\n")
+      @reporter.call("B\n")
+      @reporter.finish
+
+      assert_equal [ :post ], @adapter.kinds
+    end
+
+    should "name the posted message in the log when a delete fails" do
+      @reporter.call("A\n")
+      @adapter.failures[:delete] = StubApiError.new("cant_delete_message")
+      @logger.expects(:error).once.with { |message| message.include?("progress message P1 (channel C1)") }
+
+      @reporter.finish
     end
   end
 end

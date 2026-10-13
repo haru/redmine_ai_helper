@@ -825,6 +825,21 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
       assert_equal false, @adapter.supports_progress?
     end
 
+    should "declare no progress errors by default" do
+      assert_equal [], @adapter.progress_errors
+    end
+
+    should "have every adapter that supports progress implement the whole progress interface" do
+      RedmineAiHelper::ChatChannel::BaseAdapter.subclasses.each do |klass|
+        next unless klass.instance_method(:supports_progress?).owner != RedmineAiHelper::ChatChannel::BaseAdapter
+
+        %i[post_progress update_progress delete_progress max_message_length progress_errors].each do |name|
+          assert_not_equal RedmineAiHelper::ChatChannel::BaseAdapter, klass.instance_method(name).owner,
+                           "#{klass} supports progress but does not implement #{name}"
+        end
+      end
+    end
+
     should "raise NotImplementedError from post_progress" do
       assert_raises(NotImplementedError) { @adapter.post_progress(channel_id: "C1", thread_key: "C1:1", text: "a") }
     end

@@ -1333,6 +1333,14 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
   end
 
   context "progress messages (C-4)" do
+    should "declare its API and network failures as progress errors" do
+      errors = @adapter.progress_errors
+      [ described_error = RedmineAiHelper::ChatChannel::Adapters::DiscordAdapter::DiscordApiError,
+        RedmineAiHelper::ChatChannel::Adapters::DiscordAdapter::DiscordRequestError,
+        JSON::ParserError, Net::ReadTimeout, SocketError ].each { |error| assert_includes errors, error }
+      assert_not_nil described_error
+    end
+
     should "support progress and allow 1900 characters" do
       assert @adapter.supports_progress?
       assert_equal 1900, @adapter.max_message_length

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "net/http"
+require "openssl"
 require "redmine_ai_helper/logger"
 require "redmine_ai_helper/chat_channel/incoming_message"
 require "redmine_ai_helper/chat_channel/issue_link_formatter"
@@ -21,6 +23,10 @@ module RedmineAiHelper
       DEFAULT_RECEIVE_TIMEOUT_SECONDS = 30
       # Upper bound of the exponential reconnect backoff.
       MAX_BACKOFF_SECONDS = 60
+      # Failures of the network itself, as raised by Net::HTTP. Adapters add
+      # their API errors to these in #progress_errors.
+      NETWORK_ERRORS = [ Net::OpenTimeout, Net::ReadTimeout, Net::WriteTimeout, SocketError, SystemCallError,
+                        IOError, OpenSSL::SSL::SSLError ].freeze
 
       class << self
         # Adapter subclasses collected by the inherited hook. channel_type is
@@ -205,7 +211,7 @@ module RedmineAiHelper
       def clear_processing(message:); end
 
       # Whether the adapter can show a progress message that is posted once,
-      # rewritten as the task advances and deleted at the end (FR-010).
+      # rewritten as the task advances and deleted at the end (073 FR-010).
       # Adapters returning true implement #post_progress, #update_progress,
       # #delete_progress and #max_message_length.
       # @return [Boolean]
@@ -239,6 +245,15 @@ module RedmineAiHelper
       # @return [void]
       def delete_progress(handle:)
         raise NotImplementedError, "#{self.class.name} must implement #delete_progress"
+      end
+
+      # The errors a progress call may raise because the chat tool or the
+      # network failed. ProgressReporter logs these and carries on; any other
+      # error is a bug and surfaces. Adapters returning true from
+      # #supports_progress? override this.
+      # @return [Array<Class>]
+      def progress_errors
+        []
       end
 
       # The longest text the chat tool accepts in one progress message.

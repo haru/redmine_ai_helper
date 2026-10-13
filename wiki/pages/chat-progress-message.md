@@ -13,13 +13,14 @@ ADR-054 (S046).
 
 ## Data flow
 
-- `LeaderAgent` takes an optional `progress_proc`. The plan line, each step
+- `LeaderAgent` takes an optional `progress_proc`. The "creating plan" line, each step
   line and the "generating final response" line go to the existing callback
   and to `progress_proc`; answer chunks go to the callback only, and what the
   callback receives is unchanged (S046).
 - `MessageHandler#handle` builds a `ProgressReporter` per question and passes
-  it through `Llm#chat` options. Questions needing no steps post nothing
-  (S046).
+  it through `Llm#chat` options. A question that needs no steps ends
+  after planning, so at most the "creating plan" line is shown and then
+  deleted (S046).
 - `ProgressReporter#call` posts the first line, then rewrites the same
   message with all lines; text over `adapter.max_message_length` drops the
   oldest lines first (S046).
@@ -38,7 +39,8 @@ scopes or permissions are needed (S046).
 ## Error policy
 
 Like [Chat Processing Reaction](./chat-processing-reaction.md), the reporter
-rescues and logs `StandardError` from the three adapter calls only, so a
+rescues and logs only the adapter's `progress_errors` (API and network
+failures) from the three adapter calls; other errors surface. A
 progress failure never costs the answer: a failed post stops all further
 progress, a failed update is retried on the next line, and delete is still
 tried (S046). A deliberate narrow exception to the no-fallback rule.
