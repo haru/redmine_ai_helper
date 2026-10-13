@@ -50,4 +50,4 @@ Sources are immutable inputs — the wiki never edits them.
 | S043 | specs/070-prompt-caching (research.md + plan.md) | feature-artifact | 2026-10-11 | 2026-10-11 | prompt-caching.md, llm-provider-layer.md, base-agent-llm-calls.md, plugin-overview.md |
 | S044 | specs/071-web-search-citations (research.md + plan.md) | feature-artifact | 2026-10-12 | 2026-10-12 | web-search-citations.md, multi-agent-architecture.md, llm-provider-layer.md, chat-sidebar.md, chat-channel-gateway-architecture.md, plugin-overview.md |
 | S045 | specs/072-restore-slack-processing-reaction (research.md + plan.md) | feature-artifact | 2026-10-13 | 2026-10-13 | chat-processing-reaction.md, chat-channel-gateway-architecture.md |
-| S046 | specs/073-chat-channel-progress (research.md + plan.md) | feature-artifact | 2026-10-13 | 2026-10-13 | chat-progress-message.md, chat-channel-gateway-architecture.md |
+| S046 | specs/073-chat-channel-progress (research.md + plan.md + contracts) | feature-artifact | 2026-10-13 | 2026-10-13 | chat-progress-message.md, chat-channel-gateway-architecture.md |

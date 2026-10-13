@@ -34,16 +34,24 @@ ADR-054 (S046).
 `chat.postMessage` / `chat.update` / `chat.delete` (limit 3900); Discord uses
 POST / PATCH / DELETE on the message (limit 1900) with
 `allowed_mentions: { parse: [] }` so progress never pings (S046). No new
-scopes or permissions are needed (S046).
+scopes or permissions are needed; a Discord reply-mode post carries a
+`message_reference`, which needs Read Message History, already granted
+at setup (S046). An adapter that supports progress also implements
+`progress_errors` (see below), and the reporter checks that
+`max_message_length` is an Integer of at least 3 (S046).
 
 ## Error policy
 
 Like [Chat Processing Reaction](./chat-processing-reaction.md), the reporter
-rescues and logs only the adapter's `progress_errors` (API and network
-failures) from the three adapter calls; other errors surface. A
+rescues and logs only the adapter's `progress_errors` (API errors,
+unparsable responses, network failures) from the three adapter calls; any
+other error, such as a bug inside an adapter, surfaces (S046). A
 progress failure never costs the answer: a failed post stops all further
 progress, a failed update is retried on the next line, and delete is still
-tried (S046). A deliberate narrow exception to the no-fallback rule.
+tried (S046). A `post_progress` result that is not a `Handle` is logged as a
+`TypeError` and stops progress, and the log line names the posted message so
+one left behind can be found (S046). A deliberate narrow exception to the
+no-fallback rule; the rule is in AGENTS.md (CRF-022, SF-010).
 
 ## Rejected
 
