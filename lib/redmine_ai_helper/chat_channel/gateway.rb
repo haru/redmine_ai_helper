@@ -38,12 +38,19 @@ module RedmineAiHelper
 
       # Queues a message received by an adapter thread for the worker.
       # Silently drops messages after shutdown is requested to prevent
-      # orphaned items that would never be processed.
+      # orphaned items that would never be processed. The shutdown flag is
+      # checked again after the processing mark is shown, because that API
+      # call can take seconds; a message dropped then has its mark removed.
       # @param adapter [BaseAdapter] the adapter the message arrived on
       # @param message [IncomingMessage] the normalized message
       # @return [void]
       def enqueue(adapter, message)
         return if @shutdown_requested
+        show_processing_safely(adapter, message)
+        if @shutdown_requested
+          clear_processing_safely(adapter, message)
+          return
+        end
         @queue << [ adapter, message ]
       end
 
@@ -166,8 +173,44 @@ module RedmineAiHelper
             ai_helper_logger.info "gateway: processed message on #{adapter.channel_type} thread #{message.thread_key}"
           rescue => e
             ai_helper_logger.error "gateway: error processing message on #{adapter.channel_type}: #{e.full_message}"
+          ensure
+            clear_processing_safely(adapter, message)
           end
         end
+      end
+
+      # Shows the processing mark on the message. A failure (missing
+      # permission, deleted message, network) must not lose the answer, so it
+      # is logged and processing continues (FR-004).
+      # @param adapter [BaseAdapter] the adapter the message arrived on
+      # @param message [IncomingMessage] the message being queued
+      # @return [void]
+      def show_processing_safely(adapter, message)
+        adapter.show_processing(message: message)
+      rescue => e
+        log_reaction_failure("show", adapter, message, e)
+      end
+
+      # Removes the processing mark; failures are logged, never raised, so the
+      # worker always moves on to the next message.
+      # @param adapter [BaseAdapter] the adapter the message arrived on
+      # @param message [IncomingMessage] the message that was processed
+      # @return [void]
+      def clear_processing_safely(adapter, message)
+        adapter.clear_processing(message: message)
+      rescue => e
+        log_reaction_failure("clear", adapter, message, e)
+      end
+
+      # Logs a failed processing-reaction operation.
+      # @param action [String] "show" or "clear"
+      # @param adapter [BaseAdapter] the adapter involved
+      # @param message [IncomingMessage] the message the reaction targeted
+      # @param error [Exception] the failure
+      # @return [void]
+      def log_reaction_failure(action, adapter, message, error)
+        ai_helper_logger.error "gateway: failed to #{action} processing reaction on #{adapter.channel_type} " \
+                               "thread #{message.thread_key}: #{error.full_message}"
       end
 
       # SIGTERM/SIGINT trigger a graceful shutdown. The handler body runs in

@@ -95,8 +95,11 @@ heartbeat acknowledgements (zombie-connection detection). Stop it with
 ## 5. Use it
 
 - **In a bound channel**: mention the bot (`@YourBot how many open issues?`).
-  The bot adds a ⏳ reaction and posts the answer in a thread started from your
-  question. Continue by mentioning the bot again inside that thread.
+  The bot adds a ⏳ reaction to your message as soon as it receives it, removes
+  it when processing ends, and posts the answer in a thread started from your
+  question. Without the Add Reactions permission the answer is still posted and
+  the failure is logged. A ⏳ can stay behind if the gateway is killed before it
+  finishes. Continue by mentioning the bot again inside that thread.
 - **In a direct message**: just send your question (no mention needed). The bot
   replies to your message; continue the conversation by replying to the bot's
   answer. A new, non-reply message starts a fresh conversation.

@@ -1229,4 +1229,104 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
                    @adapter.fetch_thread_history(channel_id: "C1", thread_key: "C1:T1").map(&:speaker)
     end
   end
+
+  context "rest api delete" do
+    should "send a DELETE request" do
+      stub_discord_calls({})
+
+      @adapter.send(:request, :delete, "/channels/C1/messages/M1/reactions/%E2%8F%B3/@me")
+
+      assert_instance_of Net::HTTP::Delete, @discord_requests.first
+    end
+  end
+
+  def reaction_message(message_ts: "M1", channel_id: "C1", origin_channel_id: nil)
+    IncomingMessage.new(
+      channel_type: "discord", channel_id: channel_id, thread_key: "#{channel_id}:T1",
+      message_ts: message_ts, text: "hi", origin_channel_id: origin_channel_id
+    )
+  end
+
+  context "processing reaction" do
+    should "PUT the hourglass reaction on the origin channel" do
+      stub_discord_calls({})
+
+      @adapter.show_processing(message: reaction_message(origin_channel_id: "T1"))
+
+      assert_instance_of Net::HTTP::Put, @discord_requests.first
+      assert_equal "/api/v10/channels/T1/messages/M1/reactions/%E2%8F%B3/@me", discord_paths.first
+    end
+
+    should "raise ArgumentError when adding without a message_ts" do
+      assert_raises(ArgumentError) { @adapter.show_processing(message: reaction_message(message_ts: nil)) }
+    end
+
+    should "DELETE the hourglass reaction" do
+      stub_discord_calls({})
+
+      @adapter.clear_processing(message: reaction_message)
+
+      assert_instance_of Net::HTTP::Delete, @discord_requests.first
+      assert_equal "/api/v10/channels/C1/messages/M1/reactions/%E2%8F%B3/@me", discord_paths.first
+    end
+
+    should "raise 404 with code 10014, 10008 and 403 when removing" do
+      [ [ 404, 10_014 ], [ 404, 10_008 ], [ 403, 50_013 ] ].each do |status, code|
+        Net::HTTP.any_instance.stubs(:request).returns(http_response(status, { "code" => code }))
+
+        error = assert_raises(DiscordRequestError) { @adapter.clear_processing(message: reaction_message) }
+        assert_equal status, error.status
+        assert_equal code, error.code
+      end
+    end
+
+    should "not swallow a 401 when removing" do
+      Net::HTTP.any_instance.stubs(:request).returns(http_response(401, {}))
+
+      assert_raises(DiscordApiError) { @adapter.clear_processing(message: reaction_message) }
+    end
+
+    should "raise ArgumentError when removing without a message_ts" do
+      assert_raises(ArgumentError) { @adapter.clear_processing(message: reaction_message(message_ts: nil)) }
+    end
+
+    context "origin_channel_id of dispatched messages" do
+      setup do
+        @dispatcher = RecordingDispatcher.new
+        @adapter.dispatcher = @dispatcher
+      end
+
+      should "be the thread id for a mention inside an existing thread" do
+        @adapter.stubs(:fetch_channel).returns({ "type" => 11, "parent_id" => "P1" })
+
+        @adapter.send(:process_message, guild_message(content: "<@BOT> more", channel_id: "T1"))
+
+        assert_equal "T1", @dispatcher.messages.first.origin_channel_id
+      end
+
+      should "equal channel_id for a DM" do
+        @adapter.send(:process_message, dm_message(id: "C", content: "hi"))
+
+        assert_equal "D1", @dispatcher.messages.first.origin_channel_id
+      end
+
+      should "equal channel_id when a new thread is created" do
+        @adapter.stubs(:fetch_channel).returns({ "type" => 0 })
+        @adapter.stubs(:create_thread).returns("M1")
+
+        @adapter.send(:process_message, guild_message(content: "<@BOT> hi"))
+
+        assert_equal "C1", @dispatcher.messages.first.origin_channel_id
+      end
+
+      should "equal channel_id in reply mode" do
+        @adapter.stubs(:fetch_channel).returns({ "type" => 0 })
+        @adapter.stubs(:create_thread).returns(nil)
+
+        @adapter.send(:process_message, guild_message(content: "<@BOT> hi"))
+
+        assert_equal "C1", @dispatcher.messages.first.origin_channel_id
+      end
+    end
+  end
 end
