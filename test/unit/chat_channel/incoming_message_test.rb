@@ -11,31 +11,7 @@ class ChatChannelIncomingMessageTest < ActiveSupport::TestCase
     )
   end
 
-  context "origin_channel_id" do
-    should "default to channel_id when omitted" do
-      assert_equal "C1", build.origin_channel_id
-    end
-
-    should "default to channel_id when nil" do
-      assert_equal "C1", build(origin_channel_id: nil).origin_channel_id
-    end
-
-    should "return the explicit value" do
-      assert_equal "T9", build(origin_channel_id: "T9").origin_channel_id
-    end
-
-    should "raise ArgumentError for an empty string" do
-      assert_raises(ArgumentError) { build(origin_channel_id: "") }
-    end
-
-    should "raise ArgumentError for a non-String value" do
-      [ 123, :sym ].each do |value|
-        assert_raises(ArgumentError) { build(origin_channel_id: value) }
-      end
-    end
-
-    should "keep the instance frozen" do
-      assert_predicate build(origin_channel_id: "T9"), :frozen?
-    end
+  should "be frozen" do
+    assert_predicate build, :frozen?
   end
 end

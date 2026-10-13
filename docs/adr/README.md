@@ -105,4 +105,5 @@ Briefly describe alternatives that were rejected and why.
 | [050](./050-replace-ruby-llm-mcp-with-built-in-mcp-client.md) | Replace ruby_llm-mcp with RubyLLM's built-in MCP client | Proposed |
 | [051](./051-prompt-caching-with-split-system-prompt.md) | Prompt caching with a split system prompt | Proposed |
 | [052](./052-web-search-via-dedicated-agent.md) | Web search through a dedicated agent, with sources carried on the agent instances | Proposed |
-| [053](./053-processing-reaction-lifecycle.md) | Processing reaction lifecycle owned by the gateway | Proposed |
+| [053](./053-processing-reaction-lifecycle.md) | Processing reaction lifecycle owned by the gateway | Proposed (superseded by ADR-054) |
+| [054](./054-chat-channel-progress-message.md) | Progress message for chat channel questions | Proposed |

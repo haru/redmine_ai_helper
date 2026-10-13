@@ -5,15 +5,16 @@ require "redmine_ai_helper/logger"
 module RedmineAiHelper
   module ChatChannel
     # Shows the progress of one question in the chat tool: a single message
-    # that is posted with the first progress line, rewritten as more lines
-    # arrive and deleted when the question has been answered.
+    # that is posted with the first progress line and given an hourglass
+    # reaction, rewritten as more lines arrive and deleted when the question
+    # has been answered.
     #
     # A reporter moves idle -> posted -> finished. It is disabled from the
     # start when the adapter has no progress support, and after a failed first
     # post; a disabled reporter does nothing.
     #
     # Instances are handed to the LLM layer as a +progress_proc+ (anything that
-    # responds to #call). Failures of the chat tool's API are logged and never
+    # responds to #call). Failures of the chat tool's API are logged instead of
     # raised, so a progress message that cannot be shown never costs the
     # answer. This is a deliberate exception to the no-fallback rule (073 FR-006,
     # docs/adr/054-chat-channel-progress-message.md), limited to this
@@ -90,6 +91,7 @@ module RedmineAiHelper
             @handle = handle
           end
           @state = posted ? :posted : :disabled
+          guarded("mark") { @adapter.mark_progress(handle: @handle) } if posted
         end
       end
 
@@ -123,7 +125,7 @@ module RedmineAiHelper
       # Runs one adapter call. An error listed in the adapter's
       # #progress_errors is logged and reported as a failure instead of being
       # raised (073 FR-006); any other error is raised.
-      # @param action [String] "post", "update" or "delete", for the log
+      # @param action [String] "post", "mark", "update" or "delete", for the log
       # @return [Boolean] whether the call succeeded
       def guarded(action)
         yield

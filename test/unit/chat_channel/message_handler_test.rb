@@ -95,6 +95,10 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       RedmineAiHelper::ChatChannel::ProgressReporter::Handle.new(channel_id: channel_id, message_id: "P1")
     end
 
+    def mark_progress(handle:)
+      @events << [ :mark_progress, handle.message_id ]
+    end
+
     def update_progress(handle:, text:) # rubocop:disable Lint/UnusedMethodArgument
       @events << [ :update_progress, text ]
     end
@@ -967,6 +971,7 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
 
       assert_equal [
         [ :post_progress, "Planning" ],
+        [ :mark_progress, "P1" ],
         [ :update_progress, "Planning\n- Step 1" ],
         [ :update_progress, "Planning\n- Step 1\nFinal" ],
         [ :send_message, "final answer" ],
@@ -988,8 +993,9 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
 
       @progress_handler.handle(progress_incoming)
 
-      assert_equal [ :post_progress, :send_message, :delete_progress ], @progress_adapter.events.map(&:first)
-      assert_equal error_text(:processing_failed), @progress_adapter.events[1].last
+      assert_equal [ :post_progress, :mark_progress, :send_message, :delete_progress ],
+                   @progress_adapter.events.map(&:first)
+      assert_equal error_text(:processing_failed), @progress_adapter.events[2].last
     end
 
     should "delete the progress message once when the reply itself fails" do
@@ -998,7 +1004,7 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
 
       @progress_handler.handle(progress_incoming)
 
-      assert_equal [ :post_progress, :send_message, :send_message, :delete_progress ],
+      assert_equal [ :post_progress, :mark_progress, :send_message, :send_message, :delete_progress ],
                    @progress_adapter.events.map(&:first)
     end
 
@@ -1070,13 +1076,14 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       adapter.handler.handle(message)
 
       forms = slack_forms(http)
-      assert_equal %w[/api/chat.postMessage /api/chat.update /api/chat.update /api/chat.postMessage /api/chat.delete],
-                   forms.map(&:first)
+      assert_equal %w[/api/chat.postMessage /api/reactions.add /api/chat.update /api/chat.update /api/chat.postMessage
+                      /api/chat.delete], forms.map(&:first)
       assert_equal @planning, forms[0].last["text"]
-      assert_equal "#{@planning}\n- Reading the issue...", forms[1].last["text"]
-      assert_equal "#{@planning}\n- Reading the issue...\n#{@final}", forms[2].last["text"]
-      assert_equal "final answer", forms[3].last["text"]
-      assert_equal({ "channel" => "CH1", "ts" => "P1" }, forms[4].last)
+      assert_equal({ "channel" => "CH1", "timestamp" => "P1", "name" => "hourglass_flowing_sand" }, forms[1].last)
+      assert_equal "#{@planning}\n- Reading the issue...", forms[2].last["text"]
+      assert_equal "#{@planning}\n- Reading the issue...\n#{@final}", forms[3].last["text"]
+      assert_equal "final answer", forms[4].last["text"]
+      assert_equal({ "channel" => "CH1", "ts" => "P1" }, forms[5].last)
     end
 
     should "send the leader's progress to Discord's POST, PATCH and DELETE (SF-007)" do
@@ -1087,13 +1094,14 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       adapter.handler.handle(message)
 
       writes = http.requests.reject { |request| request.is_a?(Net::HTTP::Get) }
-      assert_equal [ Net::HTTP::Post, Net::HTTP::Patch, Net::HTTP::Patch, Net::HTTP::Post, Net::HTTP::Delete ],
-                   writes.map(&:class)
+      assert_equal [ Net::HTTP::Post, Net::HTTP::Put, Net::HTTP::Patch, Net::HTTP::Patch, Net::HTTP::Post,
+                     Net::HTTP::Delete ], writes.map(&:class)
       bodies = writes.map { |request| request.body && JSON.parse(request.body) }
       assert_equal @planning, bodies[0]["content"]
-      assert_equal "#{@planning}\n- Reading the issue...", bodies[1]["content"]
-      assert_equal "#{@planning}\n- Reading the issue...\n#{@final}", bodies[2]["content"]
-      assert_equal "final answer", bodies[3]["content"]
+      assert_equal "/api/v10/channels/T1/messages/P1/reactions/%E2%8F%B3/@me", writes[1].path
+      assert_equal "#{@planning}\n- Reading the issue...", bodies[2]["content"]
+      assert_equal "#{@planning}\n- Reading the issue...\n#{@final}", bodies[3]["content"]
+      assert_equal "final answer", bodies[4]["content"]
       assert_equal "/api/v10/channels/T1/messages/P1", writes.last.path
     end
 
@@ -1104,7 +1112,8 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       end
 
       # operation => the Slack API path that fails for the progress message
-      { "post" => "/api/chat.postMessage", "update" => "/api/chat.update", "delete" => "/api/chat.delete" }.each do |name, path|
+      { "post" => "/api/chat.postMessage", "reaction" => "/api/reactions.add", "update" => "/api/chat.update",
+        "delete" => "/api/chat.delete" }.each do |name, path|
         should "Slack: deliver the final answer when the progress #{name} fails" do
           adapter, message = slack_setup
           posts = 0
@@ -1124,7 +1133,7 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
         end
       end
 
-      { "post" => [ Net::HTTP::Post, 1 ], "update" => [ Net::HTTP::Patch, nil ],
+      { "post" => [ Net::HTTP::Post, 1 ], "reaction" => [ Net::HTTP::Put, nil ], "update" => [ Net::HTTP::Patch, nil ],
         "delete" => [ Net::HTTP::Delete, nil ] }.each do |name, (klass, nth)|
         should "Discord: deliver the final answer when the progress #{name} fails" do
           adapter, message = discord_setup

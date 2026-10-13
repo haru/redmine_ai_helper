@@ -44,6 +44,11 @@ class ChatChannelProgressReporterTest < ActiveSupport::TestCase
       Handle.new(channel_id: channel_id, message_id: "P1")
     end
 
+    def mark_progress(handle:)
+      @calls << [ :mark, { handle: handle } ]
+      raise @failures[:mark] if @failures[:mark]
+    end
+
     def update_progress(handle:, text:)
       @calls << [ :update, { handle: handle, text: text } ]
       raise @failures[:update] if @failures[:update]
@@ -100,7 +105,8 @@ class ChatChannelProgressReporterTest < ActiveSupport::TestCase
     should "post the first line to the message's channel and thread" do
       @reporter.call("A\n")
 
-      assert_equal [ [ :post, { channel_id: "C1", thread_key: "C1:1.1", text: "A" } ] ], @adapter.calls
+      assert_equal [ :post, { channel_id: "C1", thread_key: "C1:1.1", text: "A" } ], @adapter.calls.first
+      assert_equal [ :post, :mark ], @adapter.kinds
     end
 
     should "rewrite the same message with every line so far and post only once (FR-002, SC-002)" do
@@ -108,11 +114,11 @@ class ChatChannelProgressReporterTest < ActiveSupport::TestCase
       @reporter.call("B\n")
       @reporter.call("C\n")
 
-      assert_equal [ :post, :update, :update ], @adapter.kinds
-      assert_equal "A\nB", @adapter.calls[1].last[:text]
-      assert_equal "A\nB\nC", @adapter.calls[2].last[:text]
-      assert_equal "C1", @adapter.calls[1].last[:handle].channel_id
+      assert_equal [ :post, :mark, :update, :update ], @adapter.kinds
+      assert_equal "A\nB", @adapter.calls[2].last[:text]
+      assert_equal "A\nB\nC", @adapter.calls[3].last[:text]
       assert_equal "P1", @adapter.calls[1].last[:handle].message_id
+      assert_equal "C1", @adapter.calls[2].last[:handle].channel_id
     end
 
     should "ignore empty and newline-only text without calling the API" do
@@ -135,7 +141,7 @@ class ChatChannelProgressReporterTest < ActiveSupport::TestCase
       @reporter.call("bbbb\n")
       @reporter.call("cccc\n")
 
-      texts = @adapter.calls.map { |_, args| args[:text] }
+      texts = @adapter.calls.reject { |kind, _| kind == :mark }.map { |_, args| args[:text] }
       assert_equal [ "aaaa", "aaaa\nbbbb", "bbbb\ncccc" ], texts
       assert(texts.all? { |text| text.length <= 10 })
     end
@@ -145,7 +151,7 @@ class ChatChannelProgressReporterTest < ActiveSupport::TestCase
       @reporter.call("aaaa\n")
       @reporter.call("bbbb\n")
 
-      assert_equal "aaaa\nbbbb", @adapter.calls.last.last[:text]
+      assert_equal "aaaa\nbbbb", @adapter.calls.reject { |kind, _| kind == :mark }.last.last[:text]
     end
 
     should "cut a single line that alone exceeds the limit" do
@@ -171,7 +177,7 @@ class ChatChannelProgressReporterTest < ActiveSupport::TestCase
       @reporter.call("A\n")
       @reporter.finish
 
-      assert_equal [ :post, :delete ], @adapter.kinds
+      assert_equal [ :post, :mark, :delete ], @adapter.kinds
       assert_equal "P1", @adapter.calls.last.last[:handle].message_id
     end
 
@@ -186,7 +192,7 @@ class ChatChannelProgressReporterTest < ActiveSupport::TestCase
       @reporter.finish
       @reporter.finish
 
-      assert_equal [ :post, :delete ], @adapter.kinds
+      assert_equal [ :post, :mark, :delete ], @adapter.kinds
     end
 
     should "ignore calls after finish" do
@@ -194,11 +200,24 @@ class ChatChannelProgressReporterTest < ActiveSupport::TestCase
       @reporter.finish
       @reporter.call("B\n")
 
-      assert_equal [ :post, :delete ], @adapter.kinds
+      assert_equal [ :post, :mark, :delete ], @adapter.kinds
     end
   end
 
   context "failures (FR-006)" do
+    should "log a failed reaction and keep updating and deleting the message" do
+      @adapter.failures[:mark] = StubApiError.new("missing_scope")
+      @logger.expects(:error).once.with do |message|
+        message.include?("failed to mark progress message P1 (channel C1)") && message.include?("missing_scope")
+      end
+
+      assert_nothing_raised { @reporter.call("A\n") }
+      @reporter.call("B\n")
+      @reporter.finish
+
+      assert_equal [ :post, :mark, :update, :delete ], @adapter.kinds
+    end
+
     should "log a failed post, stop updating and not delete" do
       @adapter.failures[:post] = StubApiError.new("channel_not_found")
       @logger.expects(:error).once.with do |message|
@@ -224,7 +243,7 @@ class ChatChannelProgressReporterTest < ActiveSupport::TestCase
       assert_nothing_raised { @reporter.call("C\n") }
       @reporter.finish
 
-      assert_equal [ :post, :update, :update, :delete ], @adapter.kinds
+      assert_equal [ :post, :mark, :update, :update, :delete ], @adapter.kinds
     end
 
     should "log a failed delete without raising" do
@@ -256,18 +275,16 @@ class ChatChannelProgressReporterTest < ActiveSupport::TestCase
       assert_raises(NoMethodError) { @reporter.call("A\n") }
     end
 
-    should "disable progress and log when post_progress does not return a Handle" do
+    should "raise TypeError when post_progress does not return a Handle, and delete nothing" do
       @adapter.define_singleton_method(:post_progress) do |**args|
         @calls << [ :post, args ]
         nil
       end
-      @adapter.stubs(:progress_errors).returns([ TypeError ])
-      @logger.expects(:error).once.with { |message| message.include?("must return a ProgressReporter::Handle") }
 
-      @reporter.call("A\n")
-      @reporter.call("B\n")
+      error = assert_raises(TypeError) { @reporter.call("A\n") }
       @reporter.finish
 
+      assert_match(/must return a ProgressReporter::Handle/, error.message)
       assert_equal [ :post ], @adapter.kinds
     end
 

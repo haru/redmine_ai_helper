@@ -108,3 +108,4 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-022](./022-progress-rescue-too-broad.md) | Progress reporter rescued every StandardError from the adapter and trusted its return value | error-handling | Local AI review | AGENTS.md |
 | [CRF-023](./023-progress-docs-inaccurate.md) | Progress docs described the plan line, the no-step case and permissions inaccurately | doc-comment | Local AI review | Not yet |
 | [CRF-024](./024-progress-test-gaps.md) | Progress tests could not fail or did not confirm the failure they simulated | test-gap | Local AI review | Not yet |
+| [CRF-025](./025-progress-docs-claims-corrected.md) | Progress docs and a test claimed behaviour the code does not have | doc-comment | User review | Not yet |

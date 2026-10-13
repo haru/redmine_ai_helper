@@ -19,9 +19,10 @@ ADR-054 (S046).
   callback receives is unchanged (S046).
 - `MessageHandler#handle` builds a `ProgressReporter` per question and passes
   it through `Llm#chat` options. A question that needs no steps ends
-  after planning, so at most the "creating plan" line is shown and then
-  deleted (S046).
-- `ProgressReporter#call` posts the first line, then rewrites the same
+  after planning, so at most the "creating plan" line is shown, and it is
+  deleted after the answer like every progress message (S046).
+- `ProgressReporter#call` posts the first line and adds an ⏳ reaction to it
+  (a failed reaction is only logged), then rewrites the same
   message with all lines; text over `adapter.max_message_length` drops the
   oldest lines first (S046).
 - `handle`'s `ensure` calls `finish`, which deletes the message after the
@@ -31,26 +32,29 @@ ADR-054 (S046).
 ## Adapters
 
 `BaseAdapter#supports_progress?` is false by default. Slack uses
-`chat.postMessage` / `chat.update` / `chat.delete` (limit 3900); Discord uses
-POST / PATCH / DELETE on the message (limit 1900) with
-`allowed_mentions: { parse: [] }` so progress never pings (S046). No new
-scopes or permissions are needed; a Discord reply-mode post carries a
-`message_reference`, which needs Read Message History, already granted
-at setup (S046). An adapter that supports progress also implements
+`chat.postMessage` / `reactions.add` / `chat.update` / `chat.delete` (limit
+3900); Discord uses POST / PUT (the reaction) / PATCH / DELETE (limit 1900) with
+`allowed_mentions: { parse: [] }` so progress never pings (S046). The ⏳
+reaction needs `reactions:write` / Add Reactions, which the setup guides
+already list (S046). An adapter that supports progress also implements
 `progress_errors` (see below), and the reporter checks that
 `max_message_length` is an Integer of at least 3 (S046).
 
+The ⏳ on the question message (feature 072) was removed: the progress
+message now carries the only ⏳, and a question without a progress message
+gets none (S046).
+
 ## Error policy
 
-Like [Chat Processing Reaction](./chat-processing-reaction.md), the reporter
+Like the removed [Chat Processing Reaction](./chat-processing-reaction.md) hooks, the reporter
 rescues and logs only the adapter's `progress_errors` (API errors,
-unparsable responses, network failures) from the three adapter calls; any
+unparsable responses, network failures) from the adapter calls; any
 other error, such as a bug inside an adapter, surfaces (S046). A
 progress failure never costs the answer: a failed post stops all further
-progress, a failed update is retried on the next line, and delete is still
-tried (S046). A `post_progress` result that is not a `Handle` is logged as a
-`TypeError` and stops progress, and the log line names the posted message so
-one left behind can be found (S046). A deliberate narrow exception to the
+progress, a failed reaction is only logged, a failed update is retried on the
+next line, and delete is still tried (S046). A `post_progress` result that is not a `Handle` is a
+bug and raises `TypeError`. The log line names the posted message so one left
+behind can be found (S046). A deliberate narrow exception to the
 no-fallback rule; the rule is in AGENTS.md (CRF-022, SF-010).
 
 ## Rejected

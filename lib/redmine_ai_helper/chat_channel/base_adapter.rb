@@ -195,25 +195,10 @@ module RedmineAiHelper
         raise NotImplementedError, "#{self.class.name} must implement #send_message"
       end
 
-      # Marks the received message as being processed (e.g. an hourglass
-      # reaction). Does nothing by default. Implementations hide only expected
-      # states (such as "already reacted") and raise everything else; the
-      # caller (Gateway) logs the failure and carries on. Must never include
-      # the bot token in an exception message.
-      # @param message [IncomingMessage] the message being processed
-      # @return [void]
-      def show_processing(message:); end
-
-      # Removes the mark set by #show_processing. Same contract as
-      # #show_processing; does nothing by default.
-      # @param message [IncomingMessage] the message that was processed
-      # @return [void]
-      def clear_processing(message:); end
-
       # Whether the adapter can show a progress message that is posted once,
       # rewritten as the task advances and deleted at the end (073 FR-010).
-      # Adapters returning true implement #post_progress, #update_progress,
-      # #delete_progress and #max_message_length.
+      # Adapters returning true implement #post_progress, #mark_progress,
+      # #update_progress, #delete_progress and #max_message_length.
       # @return [Boolean]
       def supports_progress?
         false
@@ -237,6 +222,16 @@ module RedmineAiHelper
       # @return [void]
       def update_progress(handle:, text:)
         raise NotImplementedError, "#{self.class.name} must implement #update_progress"
+      end
+
+      # Adds the hourglass reaction to the progress message posted by
+      # #post_progress, so it reads as work in progress. Same error contract
+      # as #post_progress. The reaction goes with the message when it is
+      # deleted.
+      # @param handle [ProgressReporter::Handle] the posted message
+      # @return [void]
+      def mark_progress(handle:)
+        raise NotImplementedError, "#{self.class.name} must implement #mark_progress"
       end
 
       # Deletes the progress message posted by #post_progress. Same error

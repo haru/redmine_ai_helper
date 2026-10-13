@@ -29,8 +29,8 @@ module RedmineAiHelper
           end
         end
 
-        # Reaction name used to mark a message as being processed.
-        PROCESSING_REACTION = "hourglass_flowing_sand"
+        # Reaction name that marks a progress message as work in progress.
+        PROGRESS_REACTION = "hourglass_flowing_sand"
         # Base URL of the Slack Web API.
         SLACK_API_BASE = "https://slack.com/api"
         # Open/read timeout for every Web API call (contract: 10 seconds).
@@ -150,24 +150,6 @@ module RedmineAiHelper
           end
         end
 
-        # Adds the hourglass reaction to the received message.
-        # @param message [RedmineAiHelper::ChatChannel::IncomingMessage] the message being processed
-        # @return [void]
-        # @raise [ArgumentError] when the message has no +message_ts+
-        # @raise [SlackApiError] on any Slack error except +already_reacted+
-        def show_processing(message:)
-          react("reactions.add", message, ignore: "already_reacted")
-        end
-
-        # Removes the hourglass reaction from the received message.
-        # @param message [RedmineAiHelper::ChatChannel::IncomingMessage] the processed message
-        # @return [void]
-        # @raise [ArgumentError] when the message has no +message_ts+
-        # @raise [SlackApiError] on any Slack error except +no_reaction+
-        def clear_processing(message:)
-          react("reactions.remove", message, ignore: "no_reaction")
-        end
-
         # Slack can rewrite and delete the bot's own messages.
         # @return [Boolean]
         def supports_progress?
@@ -194,6 +176,16 @@ module RedmineAiHelper
           body = api_call("chat.postMessage", token: settings.bot_token,
                           params: { channel: channel_id, thread_ts: thread_ts_of(thread_key), text: text })
           RedmineAiHelper::ChatChannel::ProgressReporter::Handle.new(channel_id: channel_id, message_id: body["ts"])
+        end
+
+        # Adds the hourglass reaction to the progress message (reactions.add).
+        # @param handle [RedmineAiHelper::ChatChannel::ProgressReporter::Handle] the posted message
+        # @return [void]
+        # @raise [SlackApiError] on any Slack error
+        def mark_progress(handle:)
+          api_call("reactions.add", token: settings.bot_token,
+                   params: { channel: handle.channel_id, timestamp: handle.message_id, name: PROGRESS_REACTION })
+          nil
         end
 
         # Rewrites the progress message (chat.update).
@@ -486,22 +478,6 @@ module RedmineAiHelper
           http.open_timeout = HTTP_TIMEOUT_SECONDS
           http.read_timeout = HTTP_TIMEOUT_SECONDS
           http
-        end
-
-        # Calls a reactions.* method for the processing mark.
-        # @param method [String] "reactions.add" or "reactions.remove"
-        # @param message [RedmineAiHelper::ChatChannel::IncomingMessage] the target message
-        # @param ignore [String] the Slack error code that is an expected state
-        # @return [void]
-        def react(method, message, ignore:)
-          raise ArgumentError, "message_ts is required for #{method}" if message.message_ts.nil?
-
-          api_call(method, token: settings.bot_token, params: {
-            channel: message.origin_channel_id, timestamp: message.message_ts, name: PROCESSING_REACTION
-          })
-          nil
-        rescue SlackApiError => e
-          raise unless e.code == ignore
         end
 
         # Calls a Slack Web API method. ok:false responses are raised as

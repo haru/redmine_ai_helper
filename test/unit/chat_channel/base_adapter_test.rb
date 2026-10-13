@@ -803,18 +803,6 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
     end
   end
 
-  context "processing reaction hooks" do
-    should "do nothing and return nil by default" do
-      adapter = ChatChannelBaseAdapterTest::FakeAdapter.new
-      message = RedmineAiHelper::ChatChannel::IncomingMessage.new(
-        channel_type: "fake_chat", channel_id: "C1", thread_key: "C1:1", text: "hi", message_ts: "1"
-      )
-
-      assert_nil adapter.show_processing(message: message)
-      assert_nil adapter.clear_processing(message: message)
-    end
-  end
-
   context "progress message hooks (C-2)" do
     setup do
       @adapter = ChatChannelBaseAdapterTest::FakeAdapter.new
@@ -833,7 +821,7 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
       RedmineAiHelper::ChatChannel::BaseAdapter.subclasses.each do |klass|
         next unless klass.instance_method(:supports_progress?).owner != RedmineAiHelper::ChatChannel::BaseAdapter
 
-        %i[post_progress update_progress delete_progress max_message_length progress_errors].each do |name|
+        %i[post_progress mark_progress update_progress delete_progress max_message_length progress_errors].each do |name|
           assert_not_equal RedmineAiHelper::ChatChannel::BaseAdapter, klass.instance_method(name).owner,
                            "#{klass} supports progress but does not implement #{name}"
         end
@@ -842,6 +830,10 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
 
     should "raise NotImplementedError from post_progress" do
       assert_raises(NotImplementedError) { @adapter.post_progress(channel_id: "C1", thread_key: "C1:1", text: "a") }
+    end
+
+    should "raise NotImplementedError from mark_progress" do
+      assert_raises(NotImplementedError) { @adapter.mark_progress(handle: @handle) }
     end
 
     should "raise NotImplementedError from update_progress" do

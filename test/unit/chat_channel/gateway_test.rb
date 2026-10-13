@@ -364,200 +364,55 @@ class ChatChannelGatewayTest < ActiveSupport::TestCase
     end
   end
 
-  # Adapter that records the order of processing-reaction calls.
-  class ReactionGatewayAdapter < FakeGatewayAdapter
+  # Adapter whose handler records the messages it handled.
+  class HandledGatewayAdapter < FakeGatewayAdapter
     attr_reader :events
-    attr_accessor :show_error, :clear_error
 
     def initialize
       super
       @events = []
     end
-
-    def show_processing(message:)
-      @events << [ :show, message.text ]
-      raise @show_error if @show_error
-    end
-
-    def clear_processing(message:)
-      @events << [ :clear, message.text ]
-      raise @clear_error if @clear_error
-    end
   end
 
-  # Handler that records ordering against the adapter's events.
-  class OrderedHandler
+  # Handler that records every message and can fail on one text.
+  class EventHandler
     def initialize(adapter, fail_on: nil)
       @adapter = adapter
       @fail_on = fail_on
     end
 
     def handle(message)
-      @adapter.events << [ :handle, message.text ]
+      @adapter.events << message.text
       raise "handler failed" if message.text == @fail_on
     end
   end
 
-  context "processing reaction" do
+  context "queueing and shutdown" do
     setup do
-      @adapter = ReactionGatewayAdapter.new
-      @adapter.instance_variable_set(:@handler, OrderedHandler.new(@adapter))
+      @adapter = HandledGatewayAdapter.new
+      @adapter.instance_variable_set(:@handler, EventHandler.new(@adapter))
       @gateway.stubs(:build_enabled_adapters).returns([ @adapter ])
     end
 
-    should "show processing before the message is queued" do
+    should "queue the message" do
       queue = @gateway.instance_variable_get(:@queue)
-      @adapter.expects(:show_processing).with { |args| queue.empty? && args[:message].text == "one" }
 
       @gateway.enqueue(@adapter, incoming("one"))
 
       assert_equal 1, queue.size
     end
 
-    should "not show processing for a message dropped after shutdown" do
-      @adapter.after_dispatch = -> do
-        @gateway.shutdown
-        @gateway.enqueue(@adapter, incoming("late"))
-      end
-      @adapter.messages_to_dispatch = [ incoming("one") ]
-
-      @gateway.run
-
-      assert_equal [ [ :show, "one" ], [ :handle, "one" ], [ :clear, "one" ] ], @adapter.events
-    end
-
-    should "clear the mark and not queue when shutdown is requested while showing processing" do
-      queue = @gateway.instance_variable_get(:@queue)
-      @adapter.stubs(:show_processing).with { @gateway.shutdown; true }
-      @adapter.expects(:clear_processing).with { |args| args[:message].text == "late" }
-
-      @gateway.enqueue(@adapter, incoming("late"))
-
-      assert_equal [ RedmineAiHelper::ChatChannel::Gateway::SHUTDOWN ], Array.new(queue.size) { queue.pop }
-    end
-
-    should "clear processing after a successful handle" do
-      @adapter.messages_to_dispatch = [ incoming("one") ]
+    should "process every queued message and continue after a handler failure" do
+      @adapter.instance_variable_set(:@handler, EventHandler.new(@adapter, fail_on: "boom"))
+      @adapter.messages_to_dispatch = [ incoming("a"), incoming("boom"), incoming("c") ]
       @adapter.after_dispatch = -> { @gateway.shutdown }
 
       @gateway.run
 
-      assert_equal [ [ :show, "one" ], [ :handle, "one" ], [ :clear, "one" ] ], @adapter.events
+      assert_equal %w[a boom c], @adapter.events
     end
 
-    should "clear processing even when handle raises" do
-      @adapter.instance_variable_set(:@handler, OrderedHandler.new(@adapter, fail_on: "boom"))
-      @adapter.messages_to_dispatch = [ incoming("boom") ]
-      @adapter.after_dispatch = -> { @gateway.shutdown }
-
-      @gateway.run
-
-      assert_equal(1, @adapter.events.count { |kind, _| kind == :clear })
-    end
-
-    should "pair every show with a clear and drain everything queued before shutdown" do
-      @adapter.messages_to_dispatch = [ incoming("a"), incoming("b"), incoming("c") ]
-      @adapter.after_dispatch = -> { @gateway.shutdown }
-
-      @gateway.run
-
-      assert_equal(3, @adapter.events.count { |kind, _| kind == :show })
-      assert_equal(3, @adapter.events.count { |kind, _| kind == :handle })
-      assert_equal(3, @adapter.events.count { |kind, _| kind == :clear })
-    end
-
-    should "still queue and process the message when show_processing raises, and log it" do
-      @adapter.show_error = RuntimeError.new("missing_scope")
-      @adapter.messages_to_dispatch = [ incoming("one") ]
-      @adapter.after_dispatch = -> { @gateway.shutdown }
-      logger = stub_everything("logger")
-      logger.expects(:error).with { |m| m.include?("gateway_chat") && m.include?("C1:1.000001") && m.include?("missing_scope") }
-      @gateway.stubs(:ai_helper_logger).returns(logger)
-
-      @gateway.run
-
-      assert_includes @adapter.events, [ :handle, "one" ]
-    end
-
-    should "continue to the next message when clear_processing raises, and log it" do
-      @adapter.clear_error = RuntimeError.new("message_not_found")
-      @adapter.messages_to_dispatch = [ incoming("one"), incoming("two") ]
-      @adapter.after_dispatch = -> { @gateway.shutdown }
-      logger = stub_everything("logger")
-      logger.expects(:error).twice.with { |m| m.include?("gateway_chat") && m.include?("C1:1.000001") && m.include?("message_not_found") }
-      @gateway.stubs(:ai_helper_logger).returns(logger)
-
-      @gateway.run
-
-      assert_equal(2, @adapter.events.count { |kind, _| kind == :handle })
-    end
-
-    should "not log an error for expected states (already reacted, no reaction)" do
-      slack = RedmineAiHelper::ChatChannel::Adapters::SlackAdapter
-      AiHelperChatAdapterSetting.delete_all
-      create(:ai_helper_chat_adapter_setting, channel_type: "slack", enabled: true,
-                        app_token: "xapp-secret", bot_token: "xoxb-secret", redmine_user_id: 2, default_project_id: 1)
-      adapter = slack.new
-      adapter.stubs(:api_call).raises(slack::SlackApiError.new("x", code: "already_reacted"))
-      message = RedmineAiHelper::ChatChannel::IncomingMessage.new(
-        channel_type: "slack", channel_id: "C1", thread_key: "C1:1.0", message_ts: "1.0", text: "hi"
-      )
-      @gateway.expects(:ai_helper_logger).never
-
-      @gateway.enqueue(adapter, message)
-      adapter.unstub(:api_call)
-      adapter.stubs(:api_call).raises(slack::SlackApiError.new("x", code: "no_reaction"))
-      @gateway.send(:clear_processing_safely, adapter, message)
-    end
-
-    should "send the real Slack and Discord reaction requests from enqueue" do
-      AiHelperChatAdapterSetting.delete_all
-      create(:ai_helper_chat_adapter_setting, channel_type: "slack", enabled: true,
-                        app_token: "xapp-secret", bot_token: "xoxb-secret", redmine_user_id: 2, default_project_id: 1)
-      create(:ai_helper_chat_adapter_setting, channel_type: "discord", enabled: true,
-                        bot_token: "discord-secret", redmine_user_id: 2, default_project_id: 1)
-      sent = []
-      Net::HTTP.any_instance.stubs(:request).with { |req| sent << req; true }
-               .returns(stub(body: { "ok" => true }.to_json, code: "200"))
-      slack_message = RedmineAiHelper::ChatChannel::IncomingMessage.new(
-        channel_type: "slack", channel_id: "C9", thread_key: "C9:1.0", message_ts: "5.5", text: "hi"
-      )
-      discord_message = RedmineAiHelper::ChatChannel::IncomingMessage.new(
-        channel_type: "discord", channel_id: "P1", thread_key: "P1:T1", message_ts: "M7", text: "hi",
-        origin_channel_id: "T1"
-      )
-
-      @gateway.enqueue(RedmineAiHelper::ChatChannel::Adapters::SlackAdapter.new, slack_message)
-      @gateway.enqueue(RedmineAiHelper::ChatChannel::Adapters::DiscordAdapter.new, discord_message)
-
-      assert_equal "/api/reactions.add", sent[0].path
-      assert_equal({ "channel" => "C9", "timestamp" => "5.5", "name" => "hourglass_flowing_sand" },
-                   URI.decode_www_form(sent[0].body).to_h)
-      assert_equal "/api/v10/channels/T1/messages/M7/reactions/%E2%8F%B3/@me", sent[1].path
-    end
-
-    should "not include the bot token in logged reaction errors" do
-      slack = RedmineAiHelper::ChatChannel::Adapters::SlackAdapter
-      AiHelperChatAdapterSetting.delete_all
-      create(:ai_helper_chat_adapter_setting, channel_type: "slack", enabled: true,
-                        app_token: "xapp-secret", bot_token: "xoxb-secret", redmine_user_id: 2, default_project_id: 1)
-      adapter = slack.new
-      Net::HTTP.any_instance.stubs(:request).returns(stub(body: { "ok" => false, "error" => "missing_scope" }.to_json))
-      logged = []
-      logger = stub_everything("logger")
-      logger.stubs(:error).with { |m| logged << m; true }
-      @gateway.stubs(:ai_helper_logger).returns(logger)
-      message = RedmineAiHelper::ChatChannel::IncomingMessage.new(
-        channel_type: "slack", channel_id: "C1", thread_key: "C1:1.0", message_ts: "1.0", text: "hi"
-      )
-
-      @gateway.enqueue(adapter, message)
-
-      assert_equal 1, logged.size
-      assert_no_match(/xoxb-secret/, logged.first)
-    end
-
-    should "not queue or react after shutdown but drain earlier messages with matching clears" do
+    should "not queue after shutdown but drain earlier messages" do
       @adapter.messages_to_dispatch = [ incoming("a"), incoming("b") ]
       @adapter.after_dispatch = -> do
         @gateway.shutdown
@@ -566,8 +421,7 @@ class ChatChannelGatewayTest < ActiveSupport::TestCase
 
       @gateway.run
 
-      assert_equal(2, @adapter.events.count { |kind, _| kind == :clear })
-      assert_empty(@adapter.events.select { |_, text| text == "late" })
+      assert_equal %w[a b], @adapter.events
     end
   end
 end

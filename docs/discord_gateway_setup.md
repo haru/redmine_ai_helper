@@ -40,7 +40,7 @@ which uses two tokens).
    - **Send Messages** — post answers
    - **Send Messages in Threads** — answer inside threads
    - **Create Public Threads** — start a thread from a question
-   - **Add Reactions** — show the "processing" reaction (⏳)
+   - **Add Reactions** — mark progress messages with ⏳
    - **Read Message History** — follow reply chains for continued
      conversations, and read the messages around a mention
 3. Open the generated URL, choose the target server, and authorize. You need
@@ -95,20 +95,8 @@ heartbeat acknowledgements (zombie-connection detection). Stop it with
 ## 5. Use it
 
 - **In a bound channel**: mention the bot (`@YourBot how many open issues?`).
-  The bot adds a ⏳ reaction to your message as soon as it receives it, removes
-  it when processing ends, and posts the answer in a thread started from your
-  question. Without the Add Reactions permission the answer is still posted and
-  the failure is logged. A ⏳ can stay behind if the gateway is killed before it
-  finishes. Continue by mentioning the bot again inside that thread.
-- **Progress**: while a question that needs several steps is being worked on,
-  the bot shows one progress message where the answer will appear (a "creating
-  plan" line, then each step, then a "generating final response" line) and edits it as the work advances. It is deleted after the
-  answer is posted, so only the answer stays. A question that needs no steps shows
-  at most the "creating plan" line, which is deleted at once. This needs no
-  permission beyond those in step 2 (Send Messages, Send Messages in Threads and
-  Read Message History). If the progress message cannot be
-  posted, edited or deleted, the failure is logged in `log/ai_helper.log` and
-  the answer is still posted. Progress messages never ping anyone.
+  The bot posts the answer in a thread started from your question. Continue by
+  mentioning the bot again inside that thread.
 - **In a direct message**: just send your question (no mention needed). The bot
   replies to your message; continue the conversation by replying to the bot's
   answer. A new, non-reply message starts a fresh conversation.
