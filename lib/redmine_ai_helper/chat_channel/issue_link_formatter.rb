@@ -6,10 +6,21 @@ module RedmineAiHelper
     # chat-tool-specific link syntax. The detection pattern protects code
     # blocks, inline code, existing URLs and markdown links from conversion.
     class IssueLinkFormatter
-      # Value object pairing a rendering function with the regexp that
-      # matches its output, used by {BaseAdapter#link_safe_cut} to avoid
+      # Immutable value object pairing a rendering function with the regexp
+      # that matches its output, used by {BaseAdapter#link_safe_cut} to avoid
       # splitting messages inside a link.
-      Format = Struct.new(:renderer, :pattern) do
+      Format = Data.define(:renderer, :pattern) do
+        # @param renderer [#call] builds the link from (label, url)
+        # @param pattern [Regexp] matches the renderer's output
+        # @raise [ArgumentError] when +renderer+ does not respond to #call or
+        #   +pattern+ is not a Regexp
+        def initialize(renderer:, pattern:)
+          raise ArgumentError, "renderer must respond to #call, got #{renderer.class}" unless renderer.respond_to?(:call)
+          raise ArgumentError, "pattern must be a Regexp, got #{pattern.class}" unless pattern.is_a?(Regexp)
+
+          super
+        end
+
         # Builds the link string for the given label and URL.
         # @param label [String] the display text (e.g. "#1549")
         # @param url [String] the absolute URL
@@ -23,19 +34,14 @@ module RedmineAiHelper
       PLAIN = Format.new(
         ->(label, url) { "#{label} (#{url})" },
         /#\d+ \(https?:\/\/[^\s)]+\)/
-      ).freeze
+      )
 
-      # Slack mrkdwn format: `<https://example.com/issues/1549|#1549>`
-      SLACK = Format.new(
-        ->(label, url) { "<#{url}|#{label}>" },
-        /<https?:\/\/[^\s|>]+\|#\d+>/
-      ).freeze
-
-      # Discord markdown format: `[#1549](https://example.com/issues/1549)`
-      DISCORD = Format.new(
+      # Markdown link format, used by Slack (markdown blocks) and Discord:
+      # `[#1549](https://example.com/issues/1549)`
+      MARKDOWN = Format.new(
         ->(label, url) { "[#{label}](#{url})" },
         /\[#\d+\]\(https?:\/\/[^\s)]+\)/
-      ).freeze
+      )
 
       # Combined detection pattern for protected regions and issue references.
       # The first alternative (protected) matches code fences (backtick or

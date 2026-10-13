@@ -310,7 +310,7 @@ module RedmineAiHelper
 
         # @return [IssueLinkFormatter::Format]
         def issue_link_format
-          IssueLinkFormatter::DISCORD
+          IssueLinkFormatter::MARKDOWN
         end
 
         # Discord serves both thread and channel messages through the same

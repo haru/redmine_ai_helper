@@ -447,13 +447,40 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       assert_equal error_text(:processing_failed), @adapter.sent_messages.first[:text]
     end
 
-    should "still deliver the error notice when the answer's own link formatting failed" do
+    should "send the answer_delivery_failed notice when the answer's own link formatting failed" do
       Setting.stubs(:host_name).returns("")
       RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("see #1549"))
 
       @handler.handle(incoming)
 
-      assert_equal error_text(:processing_failed), @adapter.sent_messages.first[:text]
+      assert_equal([ error_text(:answer_delivery_failed) ], @adapter.sent_messages.map { |m| m[:text] })
+    end
+
+    should "name the channel and thread when logging a processing failure" do
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).raises(RuntimeError, "boom")
+      logged = []
+      logger = stub_everything("logger")
+      logger.stubs(:error).with { |line| logged << line; true }
+      @handler.stubs(:ai_helper_logger).returns(logger)
+
+      @handler.handle(incoming)
+
+      assert_match(/processing failed on #{incoming.channel_type} thread #{Regexp.escape(incoming.thread_key)}: .*boom/m,
+                   logged.first)
+    end
+
+    should "name the channel and thread when logging an answer delivery failure" do
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("answer"))
+      @adapter.stubs(:send_message).raises(RuntimeError, "rejected")
+      logged = []
+      logger = stub_everything("logger")
+      logger.stubs(:error).with { |line| logged << line; true }
+      @handler.stubs(:ai_helper_logger).returns(logger)
+
+      @handler.handle(incoming)
+
+      assert_match(/failed to deliver the answer on #{incoming.channel_type} thread #{Regexp.escape(incoming.thread_key)}: .*rejected/m,
+                   logged.first)
     end
   end
 
@@ -1041,6 +1068,108 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
     end
   end
 
+  context "Slack markdown blocks and plain notices (074)" do
+    setup do
+      Setting.stubs(:protocol).returns("https")
+      Setting.stubs(:host_name).returns("r.example.com")
+    end
+
+    should "C-7: send the processing_failed notice through send_plain_message, not send_message" do
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).raises(RuntimeError, "boom")
+      @adapter.expects(:send_plain_message).with(channel_id: "CH1", thread_key: "CH1:1.000001",
+                                                 text: error_text(:processing_failed))
+      @adapter.expects(:send_message).never
+
+      @handler.handle(incoming)
+    end
+
+    should "C-7: send guidance through send_message" do
+      @setting.update_column(:redmine_user_id, nil)
+      @adapter.expects(:send_plain_message).never
+
+      @handler.handle(incoming)
+
+      assert_equal([ error_text(:service_account_not_configured, user: nil) ], @adapter.sent_messages.map { |m| m[:text] })
+    end
+
+    should "CRF-010: render an answer from MessageHandler#handle to a markdown block with a markdown issue link" do
+      AiHelperChatAdapterSetting.delete_all
+      adapter, message = slack_setup
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("# Summary\n\n- see #154"))
+      http = FakeHttp.new { |_request, _index| { "ok" => true, "ts" => "P1", "messages" => [] } }
+      adapter.stubs(:build_http).returns(http)
+
+      adapter.handler.handle(message)
+
+      path, form = slack_forms(http).find { |entry| entry.first == "/api/chat.postMessage" }
+      assert_equal "/api/chat.postMessage", path
+      expected = "# Summary\n\n- see [#154](https://r.example.com/issues/154)"
+      assert_equal expected, form["text"]
+      assert_equal [ { "type" => "markdown", "text" => expected } ], JSON.parse(form["blocks"])
+      assert_no_match(/<https?:/, form["blocks"])
+    end
+
+    should "FR-010: still deliver the error notice, without blocks, when the answer post is rejected" do
+      AiHelperChatAdapterSetting.delete_all
+      adapter, message = slack_setup
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message("answer"))
+      http = FakeHttp.new do |request, _index|
+        form = URI.decode_www_form(request.body.to_s).to_h
+        if request.path == "/api/chat.postMessage" && form.key?("blocks")
+          { "ok" => false, "error" => "invalid_blocks" }
+        else
+          { "ok" => true, "messages" => [] }
+        end
+      end
+      adapter.stubs(:build_http).returns(http)
+
+      adapter.handler.handle(message)
+
+      posts = slack_forms(http).select { |entry| entry.first == "/api/chat.postMessage" }.map(&:last)
+      assert_equal 2, posts.size
+      assert posts.first.key?("blocks")
+      assert_equal error_text(:answer_delivery_failed), posts.last["text"]
+      assert_not posts.last.key?("blocks")
+    end
+
+    should "send the processing_failed notice, not answer_delivery_failed, when the answer was never generated" do
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).raises(RuntimeError, "boom")
+
+      @handler.handle(incoming)
+
+      assert_equal([ error_text(:processing_failed) ], @adapter.sent_messages.map { |m| m[:text] })
+    end
+
+    should "post the empty_answer guidance as a markdown block when the LLM answer is empty" do
+      AiHelperChatAdapterSetting.delete_all
+      adapter, message = slack_setup
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).returns(assistant_message(""))
+      http = FakeHttp.new { |_request, _index| { "ok" => true, "ts" => "P1", "messages" => [] } }
+      adapter.stubs(:build_http).returns(http)
+
+      adapter.handler.handle(message)
+
+      posts = slack_forms(http).select { |entry| entry.first == "/api/chat.postMessage" }.map(&:last)
+      assert_equal 1, posts.size
+      assert_equal error_text(:empty_answer), posts.first["text"]
+      assert_equal [ { "type" => "markdown", "text" => error_text(:empty_answer) } ], JSON.parse(posts.first["blocks"])
+    end
+
+    should "FR-009: post the Discord error notice as the message content" do
+      AiHelperChatAdapterSetting.delete_all
+      adapter, message = discord_setup
+      RedmineAiHelper::Llm.any_instance.stubs(:chat).raises(RuntimeError, "boom")
+      http = FakeHttp.new { |request, _index| request.is_a?(Net::HTTP::Get) ? [] : { "id" => "R1" } }
+      adapter.stubs(:build_http).returns(http)
+
+      adapter.handler.handle(message)
+
+      posts = http.requests.select { |request| request.is_a?(Net::HTTP::Post) }
+      assert_equal 1, posts.size
+      assert_equal error_text(:processing_failed), JSON.parse(posts.first.body)["content"]
+    end
+  end
+
   context "progress through the real adapters" do
     setup do
       AiHelperChatAdapterSetting.delete_all
@@ -1083,6 +1212,10 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       assert_equal "#{@planning}\n- Reading the issue...", forms[2].last["text"]
       assert_equal "#{@planning}\n- Reading the issue...\n#{@final}", forms[3].last["text"]
       assert_equal "final answer", forms[4].last["text"]
+      # FR-007: the progress post, both rewrites and the answer carry their text as a markdown block.
+      [ 0, 2, 3, 4 ].each do |i|
+        assert_equal [ { "type" => "markdown", "text" => forms[i].last["text"] } ], JSON.parse(forms[i].last["blocks"])
+      end
       assert_equal({ "channel" => "CH1", "ts" => "P1" }, forms[5].last)
     end
 

@@ -994,8 +994,8 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
   end
 
   context "issue link format" do
-    should "V-19: return DISCORD format" do
-      assert_equal RedmineAiHelper::ChatChannel::IssueLinkFormatter::DISCORD,
+    should "V-19: return MARKDOWN format" do
+      assert_equal RedmineAiHelper::ChatChannel::IssueLinkFormatter::MARKDOWN,
                    @adapter.issue_link_format
     end
 

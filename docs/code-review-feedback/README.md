@@ -109,3 +109,9 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-023](./023-progress-docs-inaccurate.md) | Progress docs described the plan line, the no-step case and permissions inaccurately | doc-comment | Local AI review | Not yet |
 | [CRF-024](./024-progress-test-gaps.md) | Progress tests could not fail or did not confirm the failure they simulated | test-gap | Local AI review | Not yet |
 | [CRF-025](./025-progress-docs-claims-corrected.md) | Progress docs and a test claimed behaviour the code does not have | doc-comment | User review | Not yet |
+| [CRF-026](./026-blank-slack-markdown-body.md) | Slack markdown body guard let blank and non-String text through | edge-case | Local AI review | Not yet |
+| [CRF-027](./027-delivery-failure-reported-as-generation-failure.md) | Answer delivery failure reported to the user as a generation failure | error-handling | Local AI review | Not yet |
+| [CRF-028](./028-slack-markdown-docs-overstated.md) | Plain-notice docs overstated the formatting, and a wiki link was broken | doc-comment | Local AI review | Not yet |
+| [CRF-029](./029-slack-markdown-test-gaps.md) | Slack markdown tests skipped the progress payload end to end and compared JSON strings | test-gap | Local AI review | Not yet |
+| [CRF-030](./030-mutable-unvalidated-link-format.md) | IssueLinkFormatter::Format was a mutable Struct without validation | convention-violation | Local AI review | Not yet |
+| [CRF-031](./031-duplicated-slack-chunk-posting.md) | Slack rich and plain senders duplicated the chunk-posting loop | readability | Local AI review | Not yet |

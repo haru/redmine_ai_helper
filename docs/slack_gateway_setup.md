@@ -90,7 +90,7 @@ WantedBy=multi-user.target
 ## 4. Use it
 
 - In a bound channel, invite the bot (`/invite @your-bot`) and mention it: `@your-bot what are the open issues?`
-- The bot posts the answer as a thread reply.
+- The bot posts the answer as a thread reply. Answers, guidance and progress messages are shown as Markdown (headings, lists, code blocks, tables, links); no extra scope is needed beyond `chat:write`. Failure notices are sent as a plain `text` message without a markdown block. If the answer was generated but could not be posted, the notice says so, and the answer may be missing or cut off.
 - Follow-up questions in the same thread keep the conversation context. Anyone can continue the thread; every question runs under the **execution account's** Redmine permissions.
 - DMs to the bot are answered in the configured default project.
 
