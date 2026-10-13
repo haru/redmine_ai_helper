@@ -167,6 +167,50 @@ module RedmineAiHelper
           react("reactions.remove", message, ignore: "no_reaction")
         end
 
+        # Slack can rewrite and delete the bot's own messages.
+        # @return [Boolean]
+        def supports_progress?
+          true
+        end
+
+        # @return [Integer] the longest text of one progress message
+        def max_message_length
+          MAX_MESSAGE_LENGTH
+        end
+
+        # Posts the progress message into the thread (chat.postMessage).
+        # @param channel_id [String] the Slack channel id
+        # @param thread_key [String] "{channel_id}:{thread_ts}"
+        # @param text [String] the progress text
+        # @return [RedmineAiHelper::ChatChannel::ProgressReporter::Handle]
+        # @raise [SlackApiError] on any Slack error
+        def post_progress(channel_id:, thread_key:, text:)
+          body = api_call("chat.postMessage", token: settings.bot_token,
+                          params: { channel: channel_id, thread_ts: thread_key.split(":", 2).last, text: text })
+          RedmineAiHelper::ChatChannel::ProgressReporter::Handle.new(channel_id: channel_id, message_id: body["ts"])
+        end
+
+        # Rewrites the progress message (chat.update).
+        # @param handle [RedmineAiHelper::ChatChannel::ProgressReporter::Handle] the posted message
+        # @param text [String] the new full text
+        # @return [void]
+        # @raise [SlackApiError] on any Slack error
+        def update_progress(handle:, text:)
+          api_call("chat.update", token: settings.bot_token,
+                   params: { channel: handle.channel_id, ts: handle.message_id, text: text })
+          nil
+        end
+
+        # Deletes the progress message (chat.delete).
+        # @param handle [RedmineAiHelper::ChatChannel::ProgressReporter::Handle] the posted message
+        # @return [void]
+        # @raise [SlackApiError] on any Slack error
+        def delete_progress(handle:)
+          api_call("chat.delete", token: settings.bot_token,
+                   params: { channel: handle.channel_id, ts: handle.message_id })
+          nil
+        end
+
         # @return [IssueLinkFormatter::Format]
         def issue_link_format
           IssueLinkFormatter::SLACK

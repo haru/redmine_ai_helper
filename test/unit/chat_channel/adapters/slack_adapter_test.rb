@@ -5,6 +5,9 @@ require File.expand_path("../../../../test_helper", __FILE__)
 class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
   include FactoryBot::Syntax::Methods
 
+  Handle = RedmineAiHelper::ChatChannel::ProgressReporter::Handle
+  SlackApiErrorClass = RedmineAiHelper::ChatChannel::Adapters::SlackAdapter::SlackApiError
+
   setup do
     AiHelperChatAdapterSetting.delete_all
     create(:ai_helper_chat_adapter_setting,
@@ -1093,6 +1096,61 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
       ].each { |event| @adapter.send(:process_event, event) }
 
       assert_equal %w[1.1 2.2 4.4], dispatcher.messages.map(&:message_ts)
+    end
+  end
+
+  context "progress messages (C-3)" do
+    should "support progress and allow 3900 characters" do
+      assert @adapter.supports_progress?
+      assert_equal 3900, @adapter.max_message_length
+    end
+
+    should "post into the thread and return a handle built from the response ts" do
+      stub_slack_calls({ "ok" => true, "ts" => "300.000100", "channel" => "C123" })
+
+      handle = @adapter.post_progress(channel_id: "C123", thread_key: "C123:111.222", text: "Planning")
+
+      assert_equal "/api/chat.postMessage", slack_paths.first
+      assert_equal({ "channel" => "C123", "thread_ts" => "111.222", "text" => "Planning" }, slack_form(0))
+      assert_equal "C123", handle.channel_id
+      assert_equal "300.000100", handle.message_id
+    end
+
+    should "rewrite the message with chat.update" do
+      stub_slack_calls({ "ok" => true })
+
+      @adapter.update_progress(handle: Handle.new(channel_id: "C123", message_id: "300.000100"), text: "A\nB")
+
+      assert_equal "/api/chat.update", slack_paths.first
+      assert_equal({ "channel" => "C123", "ts" => "300.000100", "text" => "A\nB" }, slack_form(0))
+    end
+
+    should "delete the message with chat.delete" do
+      stub_slack_calls({ "ok" => true })
+
+      @adapter.delete_progress(handle: Handle.new(channel_id: "C123", message_id: "300.000100"))
+
+      assert_equal "/api/chat.delete", slack_paths.first
+      assert_equal({ "channel" => "C123", "ts" => "300.000100" }, slack_form(0))
+    end
+
+    should "raise SlackApiError when posting fails" do
+      stub_slack_calls({ "ok" => false, "error" => "channel_not_found" })
+
+      error = assert_raises(SlackApiErrorClass) do
+        @adapter.post_progress(channel_id: "C123", thread_key: "C123:1.2", text: "a")
+      end
+      assert_match(/channel_not_found/, error.message)
+      assert_no_match(/xoxb-secret/, error.message)
+    end
+
+    should "raise SlackApiError when updating or deleting fails" do
+      handle = Handle.new(channel_id: "C123", message_id: "1.2")
+      stub_slack_calls({ "ok" => false, "error" => "message_not_found" })
+      assert_raises(SlackApiErrorClass) { @adapter.update_progress(handle: handle, text: "a") }
+
+      stub_slack_calls({ "ok" => false, "error" => "cant_delete_message" })
+      assert_raises(SlackApiErrorClass) { @adapter.delete_progress(handle: handle) }
     end
   end
 end

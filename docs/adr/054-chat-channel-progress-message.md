@@ -1,0 +1,32 @@
+# ADR-054: Progress message for chat channel questions
+
+**Date**: 2026-10-13
+**Status**: Proposed
+
+## Context
+
+The web sidebar shows the leader agent's progress (the plan and each step) while it works. The Slack and Discord gateway passed a no-op callback to `Llm#chat`, so a question that takes a while showed nothing but the ⏳ reaction (ADR-053) until the answer arrived. The leader agent sends the progress lines and the streamed answer through the same callback, so a callback cannot tell them apart.
+
+## Decision
+
+- `LeaderAgent` accepts an optional `progress_proc` in its parameters. The plan line, each step line and the "generating final response" line go to both the existing callback and `progress_proc`, in the same order. The answer's text chunks go only to the callback. What the callback receives does not change.
+- `MessageHandler#handle` creates a `ProgressReporter` per question and passes it to `Llm#chat` as `progress_proc`. The first line is posted as one message; later lines rewrite that message with all lines so far. Only questions that go through steps cause a post.
+- `BaseAdapter` gains `supports_progress?` (false by default), `post_progress`, `update_progress`, `delete_progress` and `max_message_length`. An adapter that does not support progress shows nothing. Slack uses `chat.postMessage`, `chat.update` and `chat.delete`; Discord uses POST, PATCH and DELETE on the message. Discord progress bodies set `allowed_mentions: { parse: [] }` so a line can never ping anyone.
+- `handle` deletes the progress message in an `ensure`, after the answer or the error notice has been posted, so every path (answer, error, guidance) is covered in one place.
+- The text is cut to the adapter's limit by dropping the oldest lines first.
+- Failures: like ADR-053, the reporter rescues `StandardError` from the three adapter calls and logs it with `ai_helper_logger.error`, so a progress message that cannot be shown never costs the answer. This is a deliberate exception to the no-fallback rule, limited to this auxiliary display and to the adapter call itself; bugs in building the text are not rescued. After a failed post nothing more is posted, updated or deleted. After a failed update the next line tries again, and the final delete is still tried.
+- The progress lines are not stored in the Redmine conversation.
+
+## Consequences
+
+- Users see the plan and steps in the thread while waiting, and no trace of them afterwards.
+- A forced kill of the gateway can leave a progress message behind, as with ⏳; there is no sweep.
+- The leader agent now has two outputs for progress. Both must be kept in step when a progress line is added.
+- Each progress line costs one chat API call on the worker thread.
+
+## Alternatives Considered
+
+- Telling progress from answer chunks by content inside the callback: fragile, and the lines are localized text.
+- Giving the callback a type argument: changes the contract of every caller, including the web sidebar.
+- Slack's assistant status API: needs the Assistant feature and extra scopes, and has no Discord counterpart.
+- Leaving the progress message in place: clutters every thread with text that is stale once the answer is posted.

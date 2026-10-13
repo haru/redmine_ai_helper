@@ -3,6 +3,7 @@
 require "redmine_ai_helper/logger"
 require "redmine_ai_helper/chat_channel/incoming_message"
 require "redmine_ai_helper/chat_channel/issue_link_formatter"
+require "redmine_ai_helper/chat_channel/progress_reporter"
 require "redmine_ai_helper/chat_channel/message_handler"
 
 module RedmineAiHelper
@@ -202,6 +203,49 @@ module RedmineAiHelper
       # @param message [IncomingMessage] the message that was processed
       # @return [void]
       def clear_processing(message:); end
+
+      # Whether the adapter can show a progress message that is posted once,
+      # rewritten as the task advances and deleted at the end (FR-010).
+      # Adapters returning true implement #post_progress, #update_progress,
+      # #delete_progress and #max_message_length.
+      # @return [Boolean]
+      def supports_progress?
+        false
+      end
+
+      # Posts the progress message into the thread. Treats no error as
+      # expected: every failure is raised, and the caller logs it. Must never
+      # include the bot token in an exception message.
+      # @param channel_id [String] Channel identifier
+      # @param thread_key [String] Thread identifier
+      # @param text [String] Progress text
+      # @return [ProgressReporter::Handle] the posted message
+      def post_progress(channel_id:, thread_key:, text:)
+        raise NotImplementedError, "#{self.class.name} must implement #post_progress"
+      end
+
+      # Rewrites the progress message posted by #post_progress. Same error
+      # contract as #post_progress.
+      # @param handle [ProgressReporter::Handle] the posted message
+      # @param text [String] the new full text
+      # @return [void]
+      def update_progress(handle:, text:)
+        raise NotImplementedError, "#{self.class.name} must implement #update_progress"
+      end
+
+      # Deletes the progress message posted by #post_progress. Same error
+      # contract as #post_progress.
+      # @param handle [ProgressReporter::Handle] the posted message
+      # @return [void]
+      def delete_progress(handle:)
+        raise NotImplementedError, "#{self.class.name} must implement #delete_progress"
+      end
+
+      # The longest text the chat tool accepts in one progress message.
+      # @return [Integer]
+      def max_message_length
+        raise NotImplementedError, "#{self.class.name} must implement #max_message_length"
+      end
 
       # The link format for this adapter. Returns PLAIN by default so that
       # adapters that do not declare a format still produce link-safe output.

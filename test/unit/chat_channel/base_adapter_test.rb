@@ -814,4 +814,31 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
       assert_nil adapter.clear_processing(message: message)
     end
   end
+
+  context "progress message hooks (C-2)" do
+    setup do
+      @adapter = ChatChannelBaseAdapterTest::FakeAdapter.new
+      @handle = RedmineAiHelper::ChatChannel::ProgressReporter::Handle.new(channel_id: "C1", message_id: "1.2")
+    end
+
+    should "not support progress messages by default (FR-010)" do
+      assert_equal false, @adapter.supports_progress?
+    end
+
+    should "raise NotImplementedError from post_progress" do
+      assert_raises(NotImplementedError) { @adapter.post_progress(channel_id: "C1", thread_key: "C1:1", text: "a") }
+    end
+
+    should "raise NotImplementedError from update_progress" do
+      assert_raises(NotImplementedError) { @adapter.update_progress(handle: @handle, text: "a") }
+    end
+
+    should "raise NotImplementedError from delete_progress" do
+      assert_raises(NotImplementedError) { @adapter.delete_progress(handle: @handle) }
+    end
+
+    should "raise NotImplementedError from max_message_length" do
+      assert_raises(NotImplementedError) { @adapter.max_message_length }
+    end
+  end
 end

@@ -1,7 +1,7 @@
 ---
 title: Chat Channel Gateway Architecture
 type: component
-sources: [S001, S002, S018, S019, S044, S045]
+sources: [S001, S002, S018, S019, S044, S045, S046]
 updated: 2026-10-13
 ---
 
@@ -55,6 +55,13 @@ turned into an `IncomingMessage` and handled through `MessageHandler` (S001).
 The gateway shows ⏳ on a received message from `Gateway#enqueue` and removes it
 in `worker_loop`'s `ensure` (S045). Details, error policy and the Discord
 thread target: [Chat Processing Reaction](./chat-processing-reaction.md).
+
+## Progress message
+
+While a multi-step question runs, `MessageHandler` shows one progress message
+that is rewritten and then deleted after the reply, via optional adapter
+methods gated by `supports_progress?` (S046). See
+[Chat Progress Message](./chat-progress-message.md).
 
 ## Adapter capability declaration
 

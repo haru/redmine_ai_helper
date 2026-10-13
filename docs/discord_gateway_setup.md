@@ -100,6 +100,14 @@ heartbeat acknowledgements (zombie-connection detection). Stop it with
   question. Without the Add Reactions permission the answer is still posted and
   the failure is logged. A ⏳ can stay behind if the gateway is killed before it
   finishes. Continue by mentioning the bot again inside that thread.
+- **Progress**: while a question that needs several steps is being worked on,
+  the bot shows one progress message where the answer will appear (the plan,
+  then each step) and edits it as the work advances. It is deleted after the
+  answer is posted, so only the answer stays. Questions that need no steps show
+  no progress message. This needs only the Send Messages and Send Messages in
+  Threads permissions the bot already has. If the progress message cannot be
+  posted, edited or deleted, the failure is logged in `log/ai_helper.log` and
+  the answer is still posted. Progress messages never ping anyone.
 - **In a direct message**: just send your question (no mention needed). The bot
   replies to your message; continue the conversation by replying to the bot's
   answer. A new, non-reply message starts a fresh conversation.

@@ -256,6 +256,121 @@ class LeaderAgentTest < ActiveSupport::TestCase
       @agent.perform_user_request(@messages)
     end
 
+    context "progress_proc (073 chat channel progress)" do
+      setup do
+        @steps = [
+          { "agent" => "issue_read_agent", "step" => "Read the issue.", "description_for_human" => "Reading the issue...",
+            "use_think_model" => false, "requires_write" => false },
+          { "agent" => "issue_write_agent", "step" => "Update the issue.", "description_for_human" => "Updating the issue...",
+            "use_think_model" => false, "requires_write" => true }
+        ]
+        @chat_room = mock("chat_room")
+        @chat_room.stubs(:add_agent)
+        @chat_room.stubs(:share_goal)
+        @chat_room.stubs(:messages).returns([])
+        @chat_room.stubs(:execution_results_json).returns("[]")
+        @chat_room.stubs(:citations).returns([])
+        @chat_room.stubs(:send_task)
+        @chat_room.stubs(:record_skipped_step)
+        RedmineAiHelper::ChatRoom.stubs(:new).returns(@chat_room)
+
+        read_agent = mock("issue_read_agent")
+        read_agent.stubs(:can_write?).returns(true)
+        # The write step is skipped (read-only agent), but still announced.
+        write_agent = mock("issue_write_agent")
+        write_agent.stubs(:can_write?).returns(false)
+        agent_list = RedmineAiHelper::AgentList.instance
+        agent_list.stubs(:get_agent_instance).with("issue_read_agent", anything).returns(read_agent)
+        agent_list.stubs(:get_agent_instance).with("issue_write_agent", anything).returns(write_agent)
+
+        @planning = I18n.t("ai_helper.chat.planning") + "\n"
+        @final = I18n.t("ai_helper.chat.generating_final_response") + "\n"
+
+        # Runs a request that has steps. The final answer is streamed as one
+        # "chunk" through the callback it is handed. Returns the strings the
+        # main callback received.
+        steps = @steps
+        @run_with_steps = lambda do |agent|
+          agent.stubs(:generate_goal).returns({ "goal" => "g", "generate_steps_required" => true })
+          agent.stubs(:generate_steps).returns({ "steps" => steps })
+          agent.stubs(:chat).with { |_m, _o, cb| cb&.call("chunk"); true }.returns("final answer")
+          received = []
+          agent.perform_user_request(@messages, {}, proc { |text| received << text })
+          received
+        end
+      end
+
+      should "pass the planning line, every step and the final-response line, in order, and no answer chunks (FR-001, FR-004)" do
+        progress = []
+        agent = RedmineAiHelper::Agents::LeaderAgent.new(@params.merge(progress_proc: proc { |text| progress << text }))
+
+        @run_with_steps.call(agent)
+
+        assert_equal [ @planning, "- Reading the issue...\n", "- Updating the issue...\n", @final ], progress
+      end
+
+      should "not change what the callback receives (FR-011)" do
+        progress = []
+        with_progress = RedmineAiHelper::Agents::LeaderAgent.new(@params.merge(progress_proc: proc { |text| progress << text }))
+        without_progress = RedmineAiHelper::Agents::LeaderAgent.new(@params)
+
+        assert_equal @run_with_steps.call(without_progress), @run_with_steps.call(with_progress)
+      end
+
+      should "not call progress_proc when no steps are required (FR-003)" do
+        progress = []
+        agent = RedmineAiHelper::Agents::LeaderAgent.new(@params.merge(progress_proc: proc { |text| progress << text }))
+        agent.stubs(:generate_goal).returns({ "goal" => "g", "generate_steps_required" => false })
+        agent.stubs(:chat).returns("answer")
+
+        agent.perform_user_request(@messages, {}, proc { |_text| })
+
+        assert_empty progress
+      end
+
+      should "pass only the planning line when the plan has no steps" do
+        progress = []
+        agent = RedmineAiHelper::Agents::LeaderAgent.new(@params.merge(progress_proc: proc { |text| progress << text }))
+        agent.stubs(:generate_goal).returns({ "goal" => "g", "generate_steps_required" => true })
+        agent.stubs(:generate_steps).returns({ "steps" => [] })
+        agent.stubs(:chat).returns("answer")
+
+        agent.perform_user_request(@messages, {}, proc { |_text| })
+
+        assert_equal [ @planning ], progress
+      end
+
+      should "pass only the planning line when the only step belongs to the leader" do
+        progress = []
+        agent = RedmineAiHelper::Agents::LeaderAgent.new(@params.merge(progress_proc: proc { |text| progress << text }))
+        agent.stubs(:generate_goal).returns({ "goal" => "g", "generate_steps_required" => true })
+        agent.stubs(:generate_steps).returns({ "steps" => [ { "agent" => "leader", "step" => "x" } ] })
+        agent.stubs(:chat).returns("answer")
+
+        agent.perform_user_request(@messages, {}, proc { |_text| })
+
+        assert_equal [ @planning ], progress
+      end
+
+      should "work without progress_proc" do
+        agent = RedmineAiHelper::Agents::LeaderAgent.new(@params)
+
+        assert_nothing_raised { @run_with_steps.call(agent) }
+      end
+
+      should "report progress when no callback is given" do
+        progress = []
+        agent = RedmineAiHelper::Agents::LeaderAgent.new(@params.merge(progress_proc: proc { |text| progress << text }))
+        agent.stubs(:generate_goal).returns({ "goal" => "g", "generate_steps_required" => true })
+        agent.stubs(:generate_steps).returns({ "steps" => @steps })
+        agent.stubs(:chat).returns("final answer")
+
+        agent.perform_user_request(@messages)
+
+        assert_equal [ @planning, "- Reading the issue...\n", "- Updating the issue...\n", @final ], progress
+      end
+    end
+
     should "pass use_think_model: true for code review step (US3)" do
       code_review_step = {
         "agent" => "repository_agent",
