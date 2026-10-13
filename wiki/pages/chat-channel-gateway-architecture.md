@@ -1,7 +1,7 @@
 ---
 title: Chat Channel Gateway Architecture
 type: component
-sources: [S001, S002, S018, S019, S044, S045]
+sources: [S001, S002, S018, S019, S044, S045, S046]
 updated: 2026-10-13
 ---
 
@@ -50,11 +50,18 @@ turned into an `IncomingMessage` and handled through `MessageHandler` (S001).
   (S002). History import adds more scopes — see
   [Chat History APIs](./chat-history-apis.md).
 
-## Processing reaction
+## Processing reaction (removed)
 
-The gateway shows ⏳ on a received message from `Gateway#enqueue` and removes it
-in `worker_loop`'s `ensure` (S045). Details, error policy and the Discord
-thread target: [Chat Processing Reaction](./chat-processing-reaction.md).
+The gateway no longer marks a received message with ⏳ (feature 072's behaviour
+was removed in feature 073); `Gateway#enqueue` only queues (S046). History:
+[Chat Processing Reaction](./chat-processing-reaction.md).
+
+## Progress message
+
+While a multi-step question runs, `MessageHandler` shows one progress message
+that is rewritten and then deleted after the reply, via optional adapter
+methods gated by `supports_progress?` (S046). See
+[Chat Progress Message](./chat-progress-message.md).
 
 ## Adapter capability declaration
 
@@ -103,8 +110,8 @@ contain the list (ADR-052, S044). See
   controller and its security rules.
 - [Inbound Event Queue](./inbound-event-queue.md) — the event table, claiming,
   expiry, retention, and reply metadata.
-- [Chat Processing Reaction](./chat-processing-reaction.md) — the ⏳ mark
-  lifecycle: shown on receipt, always cleared after processing.
+- [Chat Processing Reaction](./chat-processing-reaction.md) — the removed ⏳
+  mark on the question (history).
 - [Plugin Overview](./plugin-overview.md) — where the gateway sits among the
   plugin's features.
 

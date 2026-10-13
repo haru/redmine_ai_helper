@@ -34,7 +34,8 @@ page files, not here.
 
 ## component
 - [Chat Channel Gateway Architecture](./pages/chat-channel-gateway-architecture.md) — core + adapters structure, capability declaration, and gateway operational model.
-- [Chat Processing Reaction](./pages/chat-processing-reaction.md) — ⏳ reaction shown on receipt and always cleared by the gateway; error policy and Discord thread target.
+- [Chat Processing Reaction](./pages/chat-processing-reaction.md) — history of the ⏳ reaction on the question, removed in feature 073 (the ⏳ now sits on the progress message).
+- [Chat Progress Message](./pages/chat-progress-message.md) — the leader's plan/steps shown as one rewritten message in Slack/Discord and deleted after the answer; `progress_proc`, `ProgressReporter`, error policy.
 - [Inbound Webhook Endpoint](./pages/inbound-webhook-endpoint.md) — the anonymous `POST /ai_helper/chat_webhook/:channel_type` controller: skipped filters, raw-body signature verification, challenge responses, webhook URL display.
 - [Inbound Event Queue](./pages/inbound-event-queue.md) — the `ai_helper_inbound_events` table: atomic claiming, freshness expiry, retention purge, and reply metadata resolved by event id.
 - [Chat Context Import](./pages/chat-context-import.md) — how surrounding messages are imported, cursored, persisted as `context` role, and fed to the LLM.

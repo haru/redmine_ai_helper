@@ -64,6 +64,79 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
     end
   end
 
+  # Adapter with progress support that logs every call, in call order, into
+  # one list so the order of progress and reply calls can be asserted.
+  class ProgressRecordingAdapter < RecordingAdapter
+    attr_reader :events
+    attr_accessor :send_error
+
+    class << self
+      def channel_type
+        "handler_progress_chat"
+      end
+    end
+
+    def initialize
+      super
+      @events = []
+      @send_error = nil
+    end
+
+    def supports_progress?
+      true
+    end
+
+    def max_message_length
+      3900
+    end
+
+    def post_progress(channel_id:, thread_key:, text:) # rubocop:disable Lint/UnusedMethodArgument
+      @events << [ :post_progress, text ]
+      RedmineAiHelper::ChatChannel::ProgressReporter::Handle.new(channel_id: channel_id, message_id: "P1")
+    end
+
+    def mark_progress(handle:)
+      @events << [ :mark_progress, handle.message_id ]
+    end
+
+    def update_progress(handle:, text:) # rubocop:disable Lint/UnusedMethodArgument
+      @events << [ :update_progress, text ]
+    end
+
+    def delete_progress(handle:)
+      @events << [ :delete_progress, handle.message_id ]
+    end
+
+    def send_message(channel_id:, thread_key:, text:)
+      @events << [ :send_message, text ]
+      if @send_error
+        error = @send_error
+        @send_error = nil
+        raise error
+      end
+      super
+    end
+  end
+
+  # Stands in for Net::HTTP: records every request and answers it through the
+  # block (request, 0-based index) -> body hash, or nil for a 500 response.
+  class FakeHttp
+    Response = Struct.new(:code, :body)
+
+    attr_reader :requests
+
+    def initialize(&responder)
+      @responder = responder
+      @requests = []
+    end
+
+    def request(request)
+      @requests << request
+      body = @responder.call(request, @requests.size - 1)
+      body ? Response.new("200", body.to_json) : Response.new("500", "{}")
+    end
+  end
+
   setup do
     @adapter = RecordingAdapter.new
     @handler = @adapter.handler
@@ -107,6 +180,61 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
 
   def source(url, title = nil)
     RedmineAiHelper::WebCitation.new(url: url, title: title)
+  end
+
+  def progress_incoming
+    RedmineAiHelper::ChatChannel::IncomingMessage.new(
+      channel_type: "handler_progress_chat", channel_id: "CH1", thread_key: "CH1:1.000001",
+      text: "What are the open issues?"
+    )
+  end
+
+  # Makes Llm#chat report the given lines to the progress proc it receives,
+  # then raise +then_raise+ if given.
+  def llm_reports(*lines, then_raise: nil)
+    RedmineAiHelper::Llm.any_instance.stubs(:chat).with do |_conversation, _proc, option|
+      lines.each { |line| option[:progress_proc].call(line) }
+      raise then_raise if then_raise
+
+      true
+    end.returns(assistant_message("final answer"))
+  end
+
+  # Creates the adapter setting and binding for +channel_type+ and returns the
+  # adapter with a question message that arrived through it.
+  def channel_setup(channel_type, adapter_class, thread_key:, message_ts:, **setting_attrs)
+    create(:ai_helper_chat_adapter_setting, channel_type: channel_type, enabled: true,
+                                            redmine_user_id: @service_account.id,
+                                            default_project_id: @project.id, **setting_attrs)
+    create(:ai_helper_channel_binding, channel_type: channel_type, channel_id: "CH1", project: @project)
+    message = RedmineAiHelper::ChatChannel::IncomingMessage.new(
+      channel_type: channel_type, channel_id: "CH1", thread_key: thread_key, text: "question", message_ts: message_ts
+    )
+    [ adapter_class.new, message ]
+  end
+
+  def slack_setup
+    channel_setup("slack", RedmineAiHelper::ChatChannel::Adapters::SlackAdapter,
+                  thread_key: "CH1:1.000001", message_ts: "1.000001", app_token: "xapp-secret", bot_token: "xoxb-secret")
+  end
+
+  def discord_setup
+    channel_setup("discord", RedmineAiHelper::ChatChannel::Adapters::DiscordAdapter,
+                  thread_key: "CH1:T1", message_ts: "M1", bot_token: "discord-secret")
+  end
+
+  # The form of every Slack write call (the history read is left out).
+  def slack_forms(http)
+    http.requests.reject { |request| request.path.include?("history") }
+        .map { |request| [ request.path, URI.decode_www_form(request.body.to_s).to_h ] }
+  end
+
+  def stored_conversation(channel_type, thread_key)
+    AiHelperChannelConversation.find_by!(channel_type: channel_type, thread_key: thread_key).conversation
+  end
+
+  def stored_answer(channel_type, thread_key)
+    stored_conversation(channel_type, thread_key).messages.last.content
   end
 
   context "handle" do
@@ -814,6 +942,221 @@ class ChatChannelMessageHandlerTest < ActiveSupport::TestCase
       @handler.handle(incoming)
 
       assert_includes @adapter.sent_messages.first[:text], "- Evil: javascript:alert(1)"
+    end
+  end
+
+  context "progress messages" do
+    setup do
+      @progress_adapter = ProgressRecordingAdapter.new
+      @progress_handler = @progress_adapter.handler
+      create(:ai_helper_chat_adapter_setting, channel_type: "handler_progress_chat",
+                                              redmine_user_id: @service_account.id)
+      create(:ai_helper_channel_binding, channel_type: "handler_progress_chat", channel_id: "CH1", project: @project)
+    end
+
+    should "pass a ProgressReporter to Llm#chat as progress_proc (US1)" do
+      RedmineAiHelper::Llm.any_instance.expects(:chat).with do |_conversation, proc, option|
+        proc.equal?(RedmineAiHelper::ChatChannel::MessageHandler::NOOP_PROC) &&
+          option[:project] == @project &&
+          option[:progress_proc].is_a?(RedmineAiHelper::ChatChannel::ProgressReporter)
+      end.returns(assistant_message("final answer"))
+
+      @progress_handler.handle(progress_incoming)
+    end
+
+    should "post once, rewrite, reply with the answer and then delete (US1, US2, FR-005)" do
+      llm_reports("Planning\n", "- Step 1\n", "Final\n")
+
+      @progress_handler.handle(progress_incoming)
+
+      assert_equal [
+        [ :post_progress, "Planning" ],
+        [ :mark_progress, "P1" ],
+        [ :update_progress, "Planning\n- Step 1" ],
+        [ :update_progress, "Planning\n- Step 1\nFinal" ],
+        [ :send_message, "final answer" ],
+        [ :delete_progress, "P1" ]
+      ], @progress_adapter.events
+    end
+
+    should "keep progress lines out of the stored conversation (FR-009)" do
+      llm_reports("Planning\n", "- Step 1\n")
+
+      @progress_handler.handle(progress_incoming)
+
+      conversation = stored_conversation("handler_progress_chat", "CH1:1.000001")
+      assert_equal [ "What are the open issues?", "final answer" ], conversation.messages.map(&:content)
+    end
+
+    should "delete the progress message after the error notice when processing raises (US2)" do
+      llm_reports("Planning\n", then_raise: RuntimeError.new("boom"))
+
+      @progress_handler.handle(progress_incoming)
+
+      assert_equal [ :post_progress, :mark_progress, :send_message, :delete_progress ],
+                   @progress_adapter.events.map(&:first)
+      assert_equal error_text(:processing_failed), @progress_adapter.events[2].last
+    end
+
+    should "delete the progress message once when the reply itself fails" do
+      llm_reports("Planning\n")
+      @progress_adapter.send_error = RuntimeError.new("slack is down")
+
+      @progress_handler.handle(progress_incoming)
+
+      assert_equal [ :post_progress, :mark_progress, :send_message, :send_message, :delete_progress ],
+                   @progress_adapter.events.map(&:first)
+    end
+
+    should "not touch the progress message when no service account is configured (FR-003)" do
+      AiHelperChatAdapterSetting.for_channel("handler_progress_chat").update_column(:redmine_user_id, nil)
+
+      @progress_handler.handle(progress_incoming)
+
+      assert_equal [ :send_message ], @progress_adapter.events.map(&:first)
+    end
+
+    should "not touch the progress message when the project has no AI helper module (FR-003)" do
+      @project.disable_module!("ai_helper")
+
+      @progress_handler.handle(progress_incoming)
+
+      assert_equal [ :send_message ], @progress_adapter.events.map(&:first)
+    end
+
+    should "not touch the progress message when no project resolves (FR-003)" do
+      AiHelperChannelBinding.where(channel_type: "handler_progress_chat").delete_all
+
+      @progress_handler.handle(progress_incoming)
+
+      assert_equal [ :send_message ], @progress_adapter.events.map(&:first)
+    end
+
+    should "post no progress for an answer that needs no steps (FR-003)" do
+      llm_reports
+
+      @progress_handler.handle(progress_incoming)
+
+      assert_equal [ [ :send_message, "final answer" ] ], @progress_adapter.events
+    end
+  end
+
+  context "progress through the real adapters" do
+    setup do
+      AiHelperChatAdapterSetting.delete_all
+      @locale = @service_account.language.presence || Setting.default_language
+      @planning = I18n.t("ai_helper.chat.planning", locale: @locale)
+      @final = I18n.t("ai_helper.chat.generating_final_response", locale: @locale)
+      steps = [ { "agent" => "issue_read_agent", "step" => "Read the issue.",
+                  "description_for_human" => "Reading the issue...", "use_think_model" => false,
+                  "requires_write" => false } ]
+      # Only the LLM calls are replaced; the leader's progress reporting runs for real.
+      leader = RedmineAiHelper::Agents::LeaderAgent
+      leader.any_instance.stubs(:generate_goal).returns({ "goal" => "g", "generate_steps_required" => true })
+      leader.any_instance.stubs(:generate_steps).returns({ "steps" => steps })
+      leader.any_instance.stubs(:chat).returns("final answer")
+      chat_room = mock("chat_room")
+      chat_room.stubs(:add_agent)
+      chat_room.stubs(:share_goal)
+      chat_room.stubs(:send_task)
+      chat_room.stubs(:messages).returns([])
+      chat_room.stubs(:execution_results_json).returns("[]")
+      chat_room.stubs(:citations).returns([])
+      RedmineAiHelper::ChatRoom.stubs(:new).returns(chat_room)
+      read_agent = mock("issue_read_agent")
+      read_agent.stubs(:can_write?).returns(true)
+      RedmineAiHelper::AgentList.instance.stubs(:get_agent_instance).with("issue_read_agent", anything).returns(read_agent)
+    end
+
+    should "send the leader's progress to Slack's chat.postMessage, chat.update and chat.delete (SF-007)" do
+      adapter, message = slack_setup
+      http = FakeHttp.new { |_request, _index| { "ok" => true, "ts" => "P1", "messages" => [] } }
+      adapter.stubs(:build_http).returns(http)
+
+      adapter.handler.handle(message)
+
+      forms = slack_forms(http)
+      assert_equal %w[/api/chat.postMessage /api/reactions.add /api/chat.update /api/chat.update /api/chat.postMessage
+                      /api/chat.delete], forms.map(&:first)
+      assert_equal @planning, forms[0].last["text"]
+      assert_equal({ "channel" => "CH1", "timestamp" => "P1", "name" => "hourglass_flowing_sand" }, forms[1].last)
+      assert_equal "#{@planning}\n- Reading the issue...", forms[2].last["text"]
+      assert_equal "#{@planning}\n- Reading the issue...\n#{@final}", forms[3].last["text"]
+      assert_equal "final answer", forms[4].last["text"]
+      assert_equal({ "channel" => "CH1", "ts" => "P1" }, forms[5].last)
+    end
+
+    should "send the leader's progress to Discord's POST, PATCH and DELETE (SF-007)" do
+      adapter, message = discord_setup
+      http = FakeHttp.new { |request, _index| request.is_a?(Net::HTTP::Get) ? [] : { "id" => "P1" } }
+      adapter.stubs(:build_http).returns(http)
+
+      adapter.handler.handle(message)
+
+      writes = http.requests.reject { |request| request.is_a?(Net::HTTP::Get) }
+      assert_equal [ Net::HTTP::Post, Net::HTTP::Put, Net::HTTP::Patch, Net::HTTP::Patch, Net::HTTP::Post,
+                     Net::HTTP::Delete ], writes.map(&:class)
+      bodies = writes.map { |request| request.body && JSON.parse(request.body) }
+      assert_equal @planning, bodies[0]["content"]
+      assert_equal "/api/v10/channels/T1/messages/P1/reactions/%E2%8F%B3/@me", writes[1].path
+      assert_equal "#{@planning}\n- Reading the issue...", bodies[2]["content"]
+      assert_equal "#{@planning}\n- Reading the issue...\n#{@final}", bodies[3]["content"]
+      assert_equal "final answer", bodies[4]["content"]
+      assert_equal "/api/v10/channels/T1/messages/P1", writes.last.path
+    end
+
+    context "when the progress message cannot be shown (US3, FR-006)" do
+      setup do
+        RedmineAiHelper::ChatChannel::ProgressReporter.any_instance.stubs(:ai_helper_logger)
+                                                      .returns(stub_everything("logger"))
+      end
+
+      # operation => the Slack API path that fails for the progress message
+      { "post" => "/api/chat.postMessage", "reaction" => "/api/reactions.add", "update" => "/api/chat.update",
+        "delete" => "/api/chat.delete" }.each do |name, path|
+        should "Slack: deliver the final answer when the progress #{name} fails" do
+          adapter, message = slack_setup
+          posts = 0
+          http = FakeHttp.new do |request, _index|
+            posts += 1 if request.path == "/api/chat.postMessage"
+            # The first postMessage is the progress post, the second is the answer.
+            failing = request.path == path && (path != "/api/chat.postMessage" || posts == 1)
+            failing ? { "ok" => false, "error" => "boom" } : { "ok" => true, "ts" => "P1", "messages" => [] }
+          end
+          adapter.stubs(:build_http).returns(http)
+
+          adapter.handler.handle(message)
+
+          assert_includes http.requests.map(&:path), path
+          assert_includes slack_forms(http).map { |_path, form| form["text"] }, "final answer"
+          assert_equal "final answer", stored_answer("slack", "CH1:1.000001")
+        end
+      end
+
+      { "post" => [ Net::HTTP::Post, 1 ], "reaction" => [ Net::HTTP::Put, nil ], "update" => [ Net::HTTP::Patch, nil ],
+        "delete" => [ Net::HTTP::Delete, nil ] }.each do |name, (klass, nth)|
+        should "Discord: deliver the final answer when the progress #{name} fails" do
+          adapter, message = discord_setup
+          posts = 0
+          http = FakeHttp.new do |request, _index|
+            posts += 1 if request.is_a?(Net::HTTP::Post)
+            failing = request.is_a?(klass) && (nth.nil? || posts == nth)
+            if request.is_a?(Net::HTTP::Get)
+              []
+            else
+              failing ? nil : { "id" => "P1" }
+            end
+          end
+          adapter.stubs(:build_http).returns(http)
+
+          adapter.handler.handle(message)
+
+          assert(http.requests.any? { |request| request.is_a?(klass) })
+          contents = http.requests.map { |request| request.body && JSON.parse(request.body)["content"] }
+          assert_includes contents, "final answer"
+          assert_equal "final answer", stored_answer("discord", "CH1:T1")
+        end
+      end
     end
   end
 

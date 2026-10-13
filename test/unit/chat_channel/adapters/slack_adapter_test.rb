@@ -5,6 +5,9 @@ require File.expand_path("../../../../test_helper", __FILE__)
 class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
   include FactoryBot::Syntax::Methods
 
+  Handle = RedmineAiHelper::ChatChannel::ProgressReporter::Handle
+  SlackApiErrorClass = RedmineAiHelper::ChatChannel::Adapters::SlackAdapter::SlackApiError
+
   setup do
     AiHelperChatAdapterSetting.delete_all
     create(:ai_helper_chat_adapter_setting,
@@ -1020,79 +1023,76 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
 
   SlackApiError = RedmineAiHelper::ChatChannel::Adapters::SlackAdapter::SlackApiError
 
-  def reaction_message(message_ts: "111.222", channel_id: "C123")
-    RedmineAiHelper::ChatChannel::IncomingMessage.new(
-      channel_type: "slack", channel_id: channel_id, thread_key: "#{channel_id}:100.0",
-      message_ts: message_ts, text: "hi"
-    )
-  end
+  context "progress messages (C-3)" do
+    should "declare its API and network failures as progress errors" do
+      errors = @adapter.progress_errors
+      [ RedmineAiHelper::ChatChannel::Adapters::SlackAdapter::SlackApiError,
+        JSON::ParserError, Net::ReadTimeout, SocketError ].each { |error| assert_includes errors, error }
+    end
 
-  context "processing reaction" do
-    should "add the hourglass reaction to the message itself" do
+    should "support progress and allow 3900 characters" do
+      assert @adapter.supports_progress?
+      assert_equal 3900, @adapter.max_message_length
+    end
+
+    should "post into the thread and return a handle built from the response ts" do
+      stub_slack_calls({ "ok" => true, "ts" => "300.000100", "channel" => "C123" })
+
+      handle = @adapter.post_progress(channel_id: "C123", thread_key: "C123:111.222", text: "Planning")
+
+      assert_equal "/api/chat.postMessage", slack_paths.first
+      assert_equal({ "channel" => "C123", "thread_ts" => "111.222", "text" => "Planning" }, slack_form(0))
+      assert_equal "C123", handle.channel_id
+      assert_equal "300.000100", handle.message_id
+    end
+
+    should "add the hourglass reaction to the progress message with reactions.add" do
       stub_slack_calls({ "ok" => true })
 
-      @adapter.show_processing(message: reaction_message)
+      @adapter.mark_progress(handle: Handle.new(channel_id: "C123", message_id: "300.000100"))
 
-      assert_equal [ "/api/reactions.add" ], slack_paths
-      assert_equal({ "channel" => "C123", "timestamp" => "111.222", "name" => "hourglass_flowing_sand" }, slack_form(0))
+      assert_equal "/api/reactions.add", slack_paths.first
+      assert_equal({ "channel" => "C123", "timestamp" => "300.000100", "name" => "hourglass_flowing_sand" }, slack_form(0))
     end
 
-    should "ignore already_reacted when adding" do
-      stub_slack_calls({ "ok" => false, "error" => "already_reacted" })
+    should "rewrite the message with chat.update" do
+      stub_slack_calls({ "ok" => true })
 
-      assert_nothing_raised { @adapter.show_processing(message: reaction_message) }
+      @adapter.update_progress(handle: Handle.new(channel_id: "C123", message_id: "300.000100"), text: "A\nB")
+
+      assert_equal "/api/chat.update", slack_paths.first
+      assert_equal({ "channel" => "C123", "ts" => "300.000100", "text" => "A\nB" }, slack_form(0))
     end
 
-    should "raise message_not_found and missing_scope when adding" do
-      %w[message_not_found missing_scope].each do |code|
-        stub_slack_calls({ "ok" => false, "error" => code })
+    should "delete the message with chat.delete" do
+      stub_slack_calls({ "ok" => true })
 
-        error = assert_raises(SlackApiError) { @adapter.show_processing(message: reaction_message) }
-        assert_equal code, error.code
+      @adapter.delete_progress(handle: Handle.new(channel_id: "C123", message_id: "300.000100"))
+
+      assert_equal "/api/chat.delete", slack_paths.first
+      assert_equal({ "channel" => "C123", "ts" => "300.000100" }, slack_form(0))
+    end
+
+    should "raise SlackApiError when posting fails" do
+      stub_slack_calls({ "ok" => false, "error" => "channel_not_found" })
+
+      error = assert_raises(SlackApiErrorClass) do
+        @adapter.post_progress(channel_id: "C123", thread_key: "C123:1.2", text: "a")
       end
+      assert_match(/channel_not_found/, error.message)
+      assert_no_match(/xoxb-secret/, error.message)
     end
 
-    should "raise ArgumentError when adding without a message_ts" do
-      assert_raises(ArgumentError) { @adapter.show_processing(message: reaction_message(message_ts: nil)) }
-    end
+    should "raise SlackApiError when updating or deleting fails" do
+      handle = Handle.new(channel_id: "C123", message_id: "1.2")
+      stub_slack_calls({ "ok" => false, "error" => "missing_scope" })
+      assert_raises(SlackApiErrorClass) { @adapter.mark_progress(handle: handle) }
 
-    should "remove the hourglass reaction with the same parameters" do
-      stub_slack_calls({ "ok" => true })
-
-      @adapter.clear_processing(message: reaction_message)
-
-      assert_equal [ "/api/reactions.remove" ], slack_paths
-      assert_equal({ "channel" => "C123", "timestamp" => "111.222", "name" => "hourglass_flowing_sand" }, slack_form(0))
-    end
-
-    should "ignore no_reaction when removing" do
-      stub_slack_calls({ "ok" => false, "error" => "no_reaction" })
-
-      assert_nothing_raised { @adapter.clear_processing(message: reaction_message) }
-    end
-
-    should "raise other errors when removing" do
       stub_slack_calls({ "ok" => false, "error" => "message_not_found" })
+      assert_raises(SlackApiErrorClass) { @adapter.update_progress(handle: handle, text: "a") }
 
-      error = assert_raises(SlackApiError) { @adapter.clear_processing(message: reaction_message) }
-      assert_equal "message_not_found", error.code
-    end
-
-    should "raise ArgumentError when removing without a message_ts" do
-      assert_raises(ArgumentError) { @adapter.clear_processing(message: reaction_message(message_ts: nil)) }
-    end
-
-    should "set the message's own ts for DM, channel and in-thread events" do
-      dispatcher = RecordingDispatcher.new
-      @adapter.dispatcher = dispatcher
-      @adapter.instance_variable_set(:@bot_user_id, "B001")
-      [
-        { "type" => "message", "channel_type" => "im", "user" => "U1", "channel" => "D1", "ts" => "1.1", "text" => "x" },
-        { "type" => "app_mention", "user" => "U1", "channel" => "C1", "ts" => "2.2", "text" => "<@B001> x" },
-        { "type" => "app_mention", "user" => "U1", "channel" => "C1", "ts" => "4.4", "thread_ts" => "3.3", "text" => "<@B001> x" }
-      ].each { |event| @adapter.send(:process_event, event) }
-
-      assert_equal %w[1.1 2.2 4.4], dispatcher.messages.map(&:message_ts)
+      stub_slack_calls({ "ok" => false, "error" => "cant_delete_message" })
+      assert_raises(SlackApiErrorClass) { @adapter.delete_progress(handle: handle) }
     end
   end
 end

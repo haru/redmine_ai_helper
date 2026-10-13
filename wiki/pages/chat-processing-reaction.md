@@ -1,14 +1,20 @@
 ---
 title: Chat Processing Reaction
 type: decision
-sources: [S045]
+sources: [S045, S046]
 updated: 2026-10-13
 ---
 
 # Chat Processing Reaction
 
-Slack and Discord messages get a ⏳ reaction on receipt, removed once the
-answer (or error) is posted. Feature 072, ADR-053 (S045).
+> **Removed in feature 073 (S046).** The ⏳ reaction on the question message,
+> the adapters' `show_processing` / `clear_processing`, `Gateway`'s reaction
+> handling and `IncomingMessage#origin_channel_id` are gone; the only ⏳ left is
+> the one on the progress message ([Chat Progress Message](./chat-progress-message.md)).
+> The sections below describe what feature 072 did, for history.
+
+Slack and Discord messages got a ⏳ reaction on receipt, removed once the
+answer (or error) was posted. Feature 072, ADR-053 (S045).
 
 ## Why it was restored
 

@@ -12,7 +12,7 @@ module RedmineAiHelper
     module Adapters
       # Slack adapter using Socket Mode: an outgoing WebSocket connection
       # obtained via apps.connections.open, so no public URL is required.
-      # Web API calls (auth.test, chat.postMessage) go through Net::HTTP
+      # Web API calls (auth.test, chat.*, reactions.*, conversations.*) go through Net::HTTP
       # directly. Tokens are never written to the log.
       class SlackAdapter < BaseAdapter
         # Raised when a Slack Web API call returns ok:false. Authentication
@@ -29,13 +29,14 @@ module RedmineAiHelper
           end
         end
 
-        # Reaction name used to mark a message as being processed.
-        PROCESSING_REACTION = "hourglass_flowing_sand"
+        # Reaction name that marks a progress message as work in progress.
+        PROGRESS_REACTION = "hourglass_flowing_sand"
         # Base URL of the Slack Web API.
         SLACK_API_BASE = "https://slack.com/api"
         # Open/read timeout for every Web API call (contract: 10 seconds).
         HTTP_TIMEOUT_SECONDS = 10
-        # Replies longer than this are split before posting (research.md R-008).
+        # Replies longer than this are split before posting (research.md R-008);
+        # a progress message drops its oldest lines instead.
         MAX_MESSAGE_LENGTH = 3900
         # Messages requested per history page (Slack's maximum for a full page).
         HISTORY_PAGE_LIMIT = 200
@@ -142,29 +143,70 @@ module RedmineAiHelper
         # @param text [String] the reply body (Markdown as-is)
         # @return [void]
         def send_message(channel_id:, thread_key:, text:)
-          thread_ts = thread_key.split(":", 2).last
+          thread_ts = thread_ts_of(thread_key)
           split_text(text).each do |chunk|
             api_call("chat.postMessage", token: settings.bot_token,
                      params: { channel: channel_id, thread_ts: thread_ts, text: chunk })
           end
         end
 
-        # Adds the hourglass reaction to the received message.
-        # @param message [RedmineAiHelper::ChatChannel::IncomingMessage] the message being processed
-        # @return [void]
-        # @raise [ArgumentError] when the message has no +message_ts+
-        # @raise [SlackApiError] on any Slack error except +already_reacted+
-        def show_processing(message:)
-          react("reactions.add", message, ignore: "already_reacted")
+        # Slack can rewrite and delete the bot's own messages.
+        # @return [Boolean]
+        def supports_progress?
+          true
         end
 
-        # Removes the hourglass reaction from the received message.
-        # @param message [RedmineAiHelper::ChatChannel::IncomingMessage] the processed message
+        # @return [Array<Class>] the failures a progress call may raise
+        def progress_errors
+          [ SlackApiError, JSON::ParserError, *NETWORK_ERRORS ]
+        end
+
+        # @return [Integer] the longest text of one progress message
+        def max_message_length
+          MAX_MESSAGE_LENGTH
+        end
+
+        # Posts the progress message into the thread (chat.postMessage).
+        # @param channel_id [String] the Slack channel id
+        # @param thread_key [String] "{channel_id}:{thread_ts}"
+        # @param text [String] the progress text
+        # @return [RedmineAiHelper::ChatChannel::ProgressReporter::Handle]
+        # @raise [SlackApiError] on any Slack error
+        def post_progress(channel_id:, thread_key:, text:)
+          body = api_call("chat.postMessage", token: settings.bot_token,
+                          params: { channel: channel_id, thread_ts: thread_ts_of(thread_key), text: text })
+          RedmineAiHelper::ChatChannel::ProgressReporter::Handle.new(channel_id: channel_id, message_id: body["ts"])
+        end
+
+        # Adds the hourglass reaction to the progress message (reactions.add).
+        # @param handle [RedmineAiHelper::ChatChannel::ProgressReporter::Handle] the posted message
         # @return [void]
-        # @raise [ArgumentError] when the message has no +message_ts+
-        # @raise [SlackApiError] on any Slack error except +no_reaction+
-        def clear_processing(message:)
-          react("reactions.remove", message, ignore: "no_reaction")
+        # @raise [SlackApiError] on any Slack error
+        def mark_progress(handle:)
+          api_call("reactions.add", token: settings.bot_token,
+                   params: { channel: handle.channel_id, timestamp: handle.message_id, name: PROGRESS_REACTION })
+          nil
+        end
+
+        # Rewrites the progress message (chat.update).
+        # @param handle [RedmineAiHelper::ChatChannel::ProgressReporter::Handle] the posted message
+        # @param text [String] the new full text
+        # @return [void]
+        # @raise [SlackApiError] on any Slack error
+        def update_progress(handle:, text:)
+          api_call("chat.update", token: settings.bot_token,
+                   params: { channel: handle.channel_id, ts: handle.message_id, text: text })
+          nil
+        end
+
+        # Deletes the progress message (chat.delete).
+        # @param handle [RedmineAiHelper::ChatChannel::ProgressReporter::Handle] the posted message
+        # @return [void]
+        # @raise [SlackApiError] on any Slack error
+        def delete_progress(handle:)
+          api_call("chat.delete", token: settings.bot_token,
+                   params: { channel: handle.channel_id, ts: handle.message_id })
+          nil
         end
 
         # @return [IssueLinkFormatter::Format]
@@ -185,7 +227,7 @@ module RedmineAiHelper
         # @param after [String, nil] only messages after this ts are returned
         # @return [Array<HistoryMessage>] ascending (oldest first)
         def fetch_thread_history(channel_id:, thread_key:, after: nil)
-          params = { channel: channel_id, ts: thread_key.split(":", 2).last,
+          params = { channel: channel_id, ts: thread_ts_of(thread_key),
                      inclusive: false, limit: HISTORY_PAGE_LIMIT }
           params[:oldest] = after if after.present?
           raw_messages = []
@@ -225,6 +267,12 @@ module RedmineAiHelper
         end
 
         private
+
+        # @param thread_key [String] "{channel_id}:{thread_ts}"
+        # @return [String] the Slack thread timestamp
+        def thread_ts_of(thread_key)
+          thread_key.split(":", 2).last
+        end
 
         # Fetches the bot's own user id and validates the bot token. The bot id
         # is kept as well: the gateway's own posts appear in the history with a
@@ -430,22 +478,6 @@ module RedmineAiHelper
           http.open_timeout = HTTP_TIMEOUT_SECONDS
           http.read_timeout = HTTP_TIMEOUT_SECONDS
           http
-        end
-
-        # Calls a reactions.* method for the processing mark.
-        # @param method [String] "reactions.add" or "reactions.remove"
-        # @param message [RedmineAiHelper::ChatChannel::IncomingMessage] the target message
-        # @param ignore [String] the Slack error code that is an expected state
-        # @return [void]
-        def react(method, message, ignore:)
-          raise ArgumentError, "message_ts is required for #{method}" if message.message_ts.nil?
-
-          api_call(method, token: settings.bot_token, params: {
-            channel: message.origin_channel_id, timestamp: message.message_ts, name: PROCESSING_REACTION
-          })
-          nil
-        rescue SlackApiError => e
-          raise unless e.code == ignore
         end
 
         # Calls a Slack Web API method. ok:false responses are raised as

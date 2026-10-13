@@ -12,6 +12,10 @@ module RedmineAiHelper
         super(params)
         @system_prompt = RedmineAiHelper::Util::SystemPrompt.new(params)
         @citations = []
+        @progress_proc = params[:progress_proc]
+        unless @progress_proc.nil? || @progress_proc.respond_to?(:call)
+          raise ArgumentError, "progress_proc must respond to #call"
+        end
       end
 
       # The web search sources of the last request; reset at the start of each
@@ -52,7 +56,7 @@ module RedmineAiHelper
         return chat(messages, option, callback) unless goal_json["generate_steps_required"]
 
         ai_helper_logger.debug "goal: #{goal}"
-        callback.call(I18n.t("ai_helper.chat.planning") + "\n") if callback
+        report_progress(I18n.t("ai_helper.chat.planning"), callback)
         steps = generate_steps(goal, messages)
         ai_helper_logger.debug "steps: #{steps}"
 
@@ -63,7 +67,7 @@ module RedmineAiHelper
         chat_room = execute_chat_room_steps(goal, steps, callback)
         @citations = chat_room.citations
 
-        callback.call(I18n.t("ai_helper.chat.generating_final_response") + "\n") if callback
+        report_progress(I18n.t("ai_helper.chat.generating_final_response"), callback)
 
         newmessages = messages + chat_room.messages
         newmessages << { role: "user", content: I18n.t("ai_helper.prompts.leader_agent.generate_final_response", execution_results: chat_room.execution_results_json) }
@@ -240,6 +244,18 @@ module RedmineAiHelper
         EOS
       end
 
+      # Sends a progress line to the streaming callback and, when one was
+      # given, to the progress proc. Only progress lines go through here; the
+      # final answer's chunks reach the callback alone.
+      # @param text [String] the progress line, without its trailing newline
+      # @param callback [#call, nil] the streaming callback
+      # @return [void]
+      def report_progress(text, callback)
+        line = "#{text}\n"
+        callback&.call(line)
+        @progress_proc&.call(line)
+      end
+
       def execute_chat_room_steps(goal, steps, callback)
         chat_room = RedmineAiHelper::ChatRoom.new(goal)
         agent_list = RedmineAiHelper::AgentList.instance
@@ -251,7 +267,7 @@ module RedmineAiHelper
         end
         chat_room.share_goal
         steps["steps"].each do |step|
-          callback.call("- " + step["description_for_human"] + "\n") if callback
+          report_progress("- #{step["description_for_human"]}", callback)
           agent_instance = agent_instances[step["agent"]]
           if step["requires_write"] && agent_instance && !agent_instance.can_write?
             chat_room.record_skipped_step(

@@ -3,6 +3,7 @@
 require "redmine_ai_helper/logger"
 require "redmine_ai_helper/chat_channel/context_importer"
 require "redmine_ai_helper/chat_channel/issue_link_formatter"
+require "redmine_ai_helper/chat_channel/progress_reporter"
 require "redmine_ai_helper/util/interactive_options_parser"
 
 module RedmineAiHelper
@@ -28,11 +29,13 @@ module RedmineAiHelper
 
       # Processes one normalized incoming message end to end. Errors are
       # reported back into the thread and logged; they are never swallowed
-      # silently (FR-011).
+      # silently (FR-011). The progress message the question may have caused
+      # is deleted last, after the answer or the error notice has been posted.
       # @param message [IncomingMessage] The message to process
       # @return [void]
       def handle(message)
         user = nil
+        reporter = ProgressReporter.new(adapter: @adapter, message: message)
         setting = adapter_settings(message)
         user = setting.service_account
         unless user
@@ -51,7 +54,7 @@ module RedmineAiHelper
         end
         return reply(message, guidance(:module_disabled, user), user) unless project.module_enabled?(:ai_helper)
 
-        answer = process_question(message, user, project)
+        answer = process_question(message, user, project, reporter)
         reply(message, answer.content, user, citations: answer.web_citations)
       rescue => e
         ai_helper_logger.error "chat channel processing failed: #{e.full_message}"
@@ -60,6 +63,11 @@ module RedmineAiHelper
         rescue => reply_error
           ai_helper_logger.error "chat channel: failed to post error notice: #{reply_error.full_message}"
         end
+      ensure
+        # One place for every path (answer, error notice, guidance), so the
+        # progress message can never outlive the question. nil when the
+        # reporter itself could not be built.
+        reporter&.finish
       end
 
       private
@@ -87,8 +95,9 @@ module RedmineAiHelper
       # permissions. The import runs before the question is appended, and
       # after the checks in #handle, so a question that is refused never
       # reaches the chat tool's history API (FR-013).
+      # @param reporter [ProgressReporter] receives the leader's progress lines
       # @return [AiHelperMessage] The assistant's answer
-      def process_question(message, user, project)
+      def process_question(message, user, project, reporter)
         conversation = AiHelperChannelConversation.find_or_create_conversation(
           channel_type: message.channel_type, thread_key: message.thread_key, user: user
         )
@@ -103,7 +112,7 @@ module RedmineAiHelper
         begin
           User.current = user
           I18n.locale = reply_locale(user)
-          answer = RedmineAiHelper::Llm.new.chat(conversation, NOOP_PROC, { project: project })
+          answer = RedmineAiHelper::Llm.new.chat(conversation, NOOP_PROC, { project: project, progress_proc: reporter })
         ensure
           User.current = User.anonymous
           I18n.locale = original_locale

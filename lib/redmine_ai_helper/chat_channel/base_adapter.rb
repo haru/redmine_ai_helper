@@ -1,8 +1,11 @@
 # frozen_string_literal: true
 
+require "net/http"
+require "openssl"
 require "redmine_ai_helper/logger"
 require "redmine_ai_helper/chat_channel/incoming_message"
 require "redmine_ai_helper/chat_channel/issue_link_formatter"
+require "redmine_ai_helper/chat_channel/progress_reporter"
 require "redmine_ai_helper/chat_channel/message_handler"
 
 module RedmineAiHelper
@@ -20,6 +23,10 @@ module RedmineAiHelper
       DEFAULT_RECEIVE_TIMEOUT_SECONDS = 30
       # Upper bound of the exponential reconnect backoff.
       MAX_BACKOFF_SECONDS = 60
+      # Failures of the network itself, as raised by Net::HTTP. Adapters add
+      # their API errors to these in #progress_errors.
+      NETWORK_ERRORS = [ Net::OpenTimeout, Net::ReadTimeout, Net::WriteTimeout, SocketError, SystemCallError,
+                        IOError, OpenSSL::SSL::SSLError ].freeze
 
       class << self
         # Adapter subclasses collected by the inherited hook. channel_type is
@@ -188,20 +195,67 @@ module RedmineAiHelper
         raise NotImplementedError, "#{self.class.name} must implement #send_message"
       end
 
-      # Marks the received message as being processed (e.g. an hourglass
-      # reaction). Does nothing by default. Implementations hide only expected
-      # states (such as "already reacted") and raise everything else; the
-      # caller (Gateway) logs the failure and carries on. Must never include
-      # the bot token in an exception message.
-      # @param message [IncomingMessage] the message being processed
-      # @return [void]
-      def show_processing(message:); end
+      # Whether the adapter can show a progress message that is posted once,
+      # rewritten as the task advances and deleted at the end (073 FR-010).
+      # Adapters returning true implement #post_progress, #mark_progress,
+      # #update_progress, #delete_progress and #max_message_length.
+      # @return [Boolean]
+      def supports_progress?
+        false
+      end
 
-      # Removes the mark set by #show_processing. Same contract as
-      # #show_processing; does nothing by default.
-      # @param message [IncomingMessage] the message that was processed
+      # Posts the progress message into the thread. Treats no error as
+      # expected: every failure is raised, and the caller logs it. Must never
+      # include the bot token in an exception message.
+      # @param channel_id [String] Channel identifier
+      # @param thread_key [String] Thread identifier
+      # @param text [String] Progress text
+      # @return [ProgressReporter::Handle] the posted message
+      def post_progress(channel_id:, thread_key:, text:)
+        raise NotImplementedError, "#{self.class.name} must implement #post_progress"
+      end
+
+      # Rewrites the progress message posted by #post_progress. Same error
+      # contract as #post_progress.
+      # @param handle [ProgressReporter::Handle] the posted message
+      # @param text [String] the new full text
       # @return [void]
-      def clear_processing(message:); end
+      def update_progress(handle:, text:)
+        raise NotImplementedError, "#{self.class.name} must implement #update_progress"
+      end
+
+      # Adds the hourglass reaction to the progress message posted by
+      # #post_progress, so it reads as work in progress. Same error contract
+      # as #post_progress. The reaction goes with the message when it is
+      # deleted.
+      # @param handle [ProgressReporter::Handle] the posted message
+      # @return [void]
+      def mark_progress(handle:)
+        raise NotImplementedError, "#{self.class.name} must implement #mark_progress"
+      end
+
+      # Deletes the progress message posted by #post_progress. Same error
+      # contract as #post_progress.
+      # @param handle [ProgressReporter::Handle] the posted message
+      # @return [void]
+      def delete_progress(handle:)
+        raise NotImplementedError, "#{self.class.name} must implement #delete_progress"
+      end
+
+      # The errors a progress call may raise because the chat tool or the
+      # network failed. ProgressReporter logs these and carries on; any other
+      # error is a bug and surfaces. Adapters returning true from
+      # #supports_progress? override this.
+      # @return [Array<Class>]
+      def progress_errors
+        []
+      end
+
+      # The longest text the chat tool accepts in one progress message.
+      # @return [Integer]
+      def max_message_length
+        raise NotImplementedError, "#{self.class.name} must implement #max_message_length"
+      end
 
       # The link format for this adapter. Returns PLAIN by default so that
       # adapters that do not declare a format still produce link-safe output.

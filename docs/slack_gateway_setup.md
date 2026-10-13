@@ -16,8 +16,8 @@ The integration uses Slack **Socket Mode**: the gateway process opens an outgoin
 3. Under **OAuth & Permissions → Bot Token Scopes**, add:
    - `app_mentions:read` — receive mentions in channels
    - `im:history` — receive direct messages, and read the recent messages of a DM
-   - `chat:write` — post replies
-   - `reactions:write` — show the "processing" reaction
+   - `chat:write` — post replies and progress messages
+   - `reactions:write` — mark progress messages with ⏳
    - `channels:history` — read the surrounding messages of public channels and their threads
    - `groups:history` — the same for private channels
    - `mpim:history` — the same for group direct messages
@@ -90,7 +90,7 @@ WantedBy=multi-user.target
 ## 4. Use it
 
 - In a bound channel, invite the bot (`/invite @your-bot`) and mention it: `@your-bot what are the open issues?`
-- The bot adds a ⏳ reaction to your message as soon as it receives it, removes it when processing ends, and posts the answer as a thread reply. This needs the `reactions:write` scope; without it the answer is still posted and the failure is logged. A ⏳ can stay behind if the gateway is killed before it finishes.
+- The bot posts the answer as a thread reply.
 - Follow-up questions in the same thread keep the conversation context. Anyone can continue the thread; every question runs under the **execution account's** Redmine permissions.
 - DMs to the bot are answered in the configured default project.
 

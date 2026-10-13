@@ -5,6 +5,8 @@ require File.expand_path("../../../../test_helper", __FILE__)
 class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
   include FactoryBot::Syntax::Methods
 
+  Handle = RedmineAiHelper::ChatChannel::ProgressReporter::Handle
+
   DiscordAdapter = RedmineAiHelper::ChatChannel::Adapters::DiscordAdapter
   DiscordApiError = DiscordAdapter::DiscordApiError
   DiscordRequestError = DiscordAdapter::DiscordRequestError
@@ -1240,93 +1242,96 @@ class ChatChannelDiscordAdapterTest < ActiveSupport::TestCase
     end
   end
 
-  def reaction_message(message_ts: "M1", channel_id: "C1", origin_channel_id: nil)
-    IncomingMessage.new(
-      channel_type: "discord", channel_id: channel_id, thread_key: "#{channel_id}:T1",
-      message_ts: message_ts, text: "hi", origin_channel_id: origin_channel_id
-    )
-  end
+  context "progress messages (C-4)" do
+    should "declare its API and network failures as progress errors" do
+      errors = @adapter.progress_errors
+      [ described_error = RedmineAiHelper::ChatChannel::Adapters::DiscordAdapter::DiscordApiError,
+        RedmineAiHelper::ChatChannel::Adapters::DiscordAdapter::DiscordRequestError,
+        JSON::ParserError, Net::ReadTimeout, SocketError ].each { |error| assert_includes errors, error }
+      assert_not_nil described_error
+    end
 
-  context "processing reaction" do
-    should "PUT the hourglass reaction on the origin channel" do
+    should "support progress and allow 1900 characters" do
+      assert @adapter.supports_progress?
+      assert_equal 1900, @adapter.max_message_length
+    end
+
+    should "post into the thread without a message reference in thread mode and return a handle" do
+      stub_discord_calls({ "id" => "P1" })
+
+      handle = @adapter.post_progress(channel_id: "C1", thread_key: "C1:T1", text: "Planning")
+
+      assert_instance_of Net::HTTP::Post, @discord_requests.first
+      assert_equal "/api/v10/channels/T1/messages", discord_paths.first
+      assert_equal({ "content" => "Planning", "allowed_mentions" => { "parse" => [] } },
+                   JSON.parse(@discord_requests.first.body))
+      assert_equal "T1", handle.channel_id
+      assert_equal "P1", handle.message_id
+    end
+
+    should "reference the question message in reply mode" do
+      @adapter.send(:record_reply_target, "D1:msg:A", "Q9")
+      stub_discord_calls({ "id" => "P2" })
+
+      handle = @adapter.post_progress(channel_id: "D1", thread_key: "D1:msg:A", text: "Planning")
+
+      assert_equal "/api/v10/channels/D1/messages", discord_paths.first
+      assert_equal(
+        { "content" => "Planning", "allowed_mentions" => { "parse" => [] }, "message_reference" => { "message_id" => "Q9" } },
+        JSON.parse(@discord_requests.first.body)
+      )
+      assert_equal "D1", handle.channel_id
+      assert_equal "P2", handle.message_id
+    end
+
+    should "add the hourglass reaction to the progress message with PUT" do
       stub_discord_calls({})
 
-      @adapter.show_processing(message: reaction_message(origin_channel_id: "T1"))
+      @adapter.mark_progress(handle: Handle.new(channel_id: "T1", message_id: "P1"))
 
       assert_instance_of Net::HTTP::Put, @discord_requests.first
-      assert_equal "/api/v10/channels/T1/messages/M1/reactions/%E2%8F%B3/@me", discord_paths.first
+      assert_equal "/api/v10/channels/T1/messages/P1/reactions/%E2%8F%B3/@me", discord_paths.first
     end
 
-    should "raise ArgumentError when adding without a message_ts" do
-      assert_raises(ArgumentError) { @adapter.show_processing(message: reaction_message(message_ts: nil)) }
+    should "rewrite the message with PATCH" do
+      stub_discord_calls({ "id" => "P1" })
+
+      @adapter.update_progress(handle: Handle.new(channel_id: "T1", message_id: "P1"), text: "A\nB")
+
+      assert_instance_of Net::HTTP::Patch, @discord_requests.first
+      assert_equal "/api/v10/channels/T1/messages/P1", discord_paths.first
+      assert_equal({ "content" => "A\nB", "allowed_mentions" => { "parse" => [] } },
+                   JSON.parse(@discord_requests.first.body))
     end
 
-    should "DELETE the hourglass reaction" do
-      stub_discord_calls({})
+    should "delete the message with DELETE and no body" do
+      Net::HTTP.any_instance.stubs(:request).with { |request| (@discord_requests = [ request ]); true }
+               .returns(http_response(204, {}))
 
-      @adapter.clear_processing(message: reaction_message)
+      @adapter.delete_progress(handle: Handle.new(channel_id: "T1", message_id: "P1"))
 
       assert_instance_of Net::HTTP::Delete, @discord_requests.first
-      assert_equal "/api/v10/channels/C1/messages/M1/reactions/%E2%8F%B3/@me", discord_paths.first
+      assert_equal "/api/v10/channels/T1/messages/P1", discord_paths.first
+      assert_nil @discord_requests.first.body
     end
 
-    should "raise 404 with code 10014, 10008 and 403 when removing" do
-      [ [ 404, 10_014 ], [ 404, 10_008 ], [ 403, 50_013 ] ].each do |status, code|
-        Net::HTTP.any_instance.stubs(:request).returns(http_response(status, { "code" => code }))
+    should "raise DiscordRequestError on a non-2xx response" do
+      handle = Handle.new(channel_id: "T1", message_id: "P1")
+      Net::HTTP.any_instance.stubs(:request).returns(http_response(403, { "code" => 50_013 }))
 
-        error = assert_raises(DiscordRequestError) { @adapter.clear_processing(message: reaction_message) }
-        assert_equal status, error.status
-        assert_equal code, error.code
-      end
+      assert_raises(DiscordRequestError) { @adapter.post_progress(channel_id: "C1", thread_key: "C1:T1", text: "a") }
+      assert_raises(DiscordRequestError) { @adapter.mark_progress(handle: handle) }
+      assert_raises(DiscordRequestError) { @adapter.update_progress(handle: handle, text: "a") }
+      assert_raises(DiscordRequestError) { @adapter.delete_progress(handle: handle) }
     end
 
-    should "not swallow a 401 when removing" do
-      Net::HTTP.any_instance.stubs(:request).returns(http_response(401, {}))
+    should "raise DiscordApiError on 401 without the token in the message" do
+      Net::HTTP.any_instance.stubs(:request).returns(http_response(401, { "message" => "401: Unauthorized" }))
 
-      assert_raises(DiscordApiError) { @adapter.clear_processing(message: reaction_message) }
-    end
-
-    should "raise ArgumentError when removing without a message_ts" do
-      assert_raises(ArgumentError) { @adapter.clear_processing(message: reaction_message(message_ts: nil)) }
-    end
-
-    context "origin_channel_id of dispatched messages" do
-      setup do
-        @dispatcher = RecordingDispatcher.new
-        @adapter.dispatcher = @dispatcher
+      error = assert_raises(DiscordApiError) do
+        @adapter.post_progress(channel_id: "C1", thread_key: "C1:T1", text: "a")
       end
-
-      should "be the thread id for a mention inside an existing thread" do
-        @adapter.stubs(:fetch_channel).returns({ "type" => 11, "parent_id" => "P1" })
-
-        @adapter.send(:process_message, guild_message(content: "<@BOT> more", channel_id: "T1"))
-
-        assert_equal "T1", @dispatcher.messages.first.origin_channel_id
-      end
-
-      should "equal channel_id for a DM" do
-        @adapter.send(:process_message, dm_message(id: "C", content: "hi"))
-
-        assert_equal "D1", @dispatcher.messages.first.origin_channel_id
-      end
-
-      should "equal channel_id when a new thread is created" do
-        @adapter.stubs(:fetch_channel).returns({ "type" => 0 })
-        @adapter.stubs(:create_thread).returns("M1")
-
-        @adapter.send(:process_message, guild_message(content: "<@BOT> hi"))
-
-        assert_equal "C1", @dispatcher.messages.first.origin_channel_id
-      end
-
-      should "equal channel_id in reply mode" do
-        @adapter.stubs(:fetch_channel).returns({ "type" => 0 })
-        @adapter.stubs(:create_thread).returns(nil)
-
-        @adapter.send(:process_message, guild_message(content: "<@BOT> hi"))
-
-        assert_equal "C1", @dispatcher.messages.first.origin_channel_id
-      end
+      assert_no_match(/#{BOT_TOKEN}/, error.message)
     end
   end
 end

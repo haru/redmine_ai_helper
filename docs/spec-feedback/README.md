@@ -90,3 +90,4 @@ A concrete, checkable rule to apply when writing future specifications.
 | [SF-007](./007-excluded-discord-from-shared-removal.md) | Excluded Discord from a feature to restore a reaction removed from both chat adapters | scope-gap | 072-restore-slack-processing-reaction | Not yet |
 | [SF-008](./008-lifecycle-written-without-reading-gateway-queue.md) | Reaction lifecycle requirements written without reading the gateway queue and shutdown code | convention-unknown | 072-restore-slack-processing-reaction | AGENTS.md |
 | [SF-009](./009-discord-error-code-claimed-from-docs-without-checking.md) | Discord reaction error claimed to come from the official docs without checking them | unconfirmed-assumption | 072-restore-slack-processing-reaction | AGENTS.md |
+| [SF-010](./010-contract-prescribed-rescue-of-all-standard-errors.md) | Contract prescribed rescuing every StandardError from the adapter calls | convention-unknown | 073-chat-channel-progress | AGENTS.md |

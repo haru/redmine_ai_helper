@@ -46,8 +46,9 @@ module RedmineAiHelper
           end
         end
 
-        # URL-encoded hourglass emoji (U+23F3) marking a message as processing.
-        PROCESSING_REACTION = "%E2%8F%B3"
+        # URL-encoded hourglass emoji (U+23F3) marking a progress message as work
+        # in progress.
+        PROGRESS_REACTION = "%E2%8F%B3"
         # Base URL of the Discord REST API (v10).
         DISCORD_API_BASE = "https://discord.com/api/v10"
         # Gateway API version and payload encoding. Both are required query
@@ -57,8 +58,11 @@ module RedmineAiHelper
         # Open/read timeout for every REST call (contract: 10 seconds).
         HTTP_TIMEOUT_SECONDS = 10
         # Replies longer than this are split before posting (Discord's hard
-        # limit is 2,000; 1,900 leaves headroom).
+        # limit is 2,000; 1,900 leaves headroom); a progress message drops its
+        # oldest lines instead.
         MAX_MESSAGE_LENGTH = 1900
+        # Progress messages parse no mentions, so a line can never ping anyone.
+        NO_MENTIONS = { parse: [] }.freeze
         # GUILD_MESSAGES (1<<9) + DIRECT_MESSAGES (1<<12) + MESSAGE_CONTENT
         # (1<<15). MESSAGE_CONTENT is privileged and must be enabled in the
         # Developer Portal: without it Discord blanks the body of every message
@@ -242,23 +246,65 @@ module RedmineAiHelper
           end
         end
 
-        # Adds the hourglass reaction to the received message.
-        # @param message [RedmineAiHelper::ChatChannel::IncomingMessage] the message being processed
+        # Discord can edit and delete the bot's own messages.
+        # @return [Boolean]
+        def supports_progress?
+          true
+        end
+
+        # @return [Array<Class>] the failures a progress call may raise
+        def progress_errors
+          [ DiscordApiError, DiscordRequestError, JSON::ParserError, *NETWORK_ERRORS ]
+        end
+
+        # @return [Integer] the longest text of one progress message
+        def max_message_length
+          MAX_MESSAGE_LENGTH
+        end
+
+        # Posts the progress message where the answer will go: into the thread
+        # in thread mode, or into the bound channel as a reply to the question
+        # in reply mode. The mention parsing is switched off so a progress
+        # line can never ping anyone.
+        # @param channel_id [String] the channel the conversation is bound to
+        # @param thread_key [String] "{cid}:{tid}" or "{cid}:msg:{root}"
+        # @param text [String] the progress text
+        # @return [RedmineAiHelper::ChatChannel::ProgressReporter::Handle]
+        # @raise [DiscordApiError, DiscordRequestError] on any Discord error
+        def post_progress(channel_id:, thread_key:, text:)
+          target, reply_to = resolve_destination(channel_id, thread_key)
+          body = { content: text, allowed_mentions: NO_MENTIONS }
+          body[:message_reference] = { message_id: reply_to } if reply_to
+          created = post_message(target, body)
+          RedmineAiHelper::ChatChannel::ProgressReporter::Handle.new(channel_id: target, message_id: created["id"])
+        end
+
+        # Adds the hourglass reaction to the progress message (PUT).
+        # @param handle [RedmineAiHelper::ChatChannel::ProgressReporter::Handle] the posted message
         # @return [void]
-        # @raise [ArgumentError] when the message has no +message_ts+
-        def show_processing(message:)
-          request(:put, reaction_path(message))
+        # @raise [DiscordApiError, DiscordRequestError] on any Discord error
+        def mark_progress(handle:)
+          request(:put, "#{progress_path(handle)}/reactions/#{PROGRESS_REACTION}/@me")
           nil
         end
 
-        # Removes the hourglass reaction from the received message. No error
-        # is ignored: the Discord docs define no error for a reaction that is
-        # already gone, and 10014 (Unknown Emoji) means a malformed emoji.
-        # @param message [RedmineAiHelper::ChatChannel::IncomingMessage] the processed message
+        # Rewrites the progress message (PATCH).
+        # @param handle [RedmineAiHelper::ChatChannel::ProgressReporter::Handle] the posted message
+        # @param text [String] the new full text
         # @return [void]
-        # @raise [ArgumentError] when the message has no +message_ts+
-        def clear_processing(message:)
-          request(:delete, reaction_path(message))
+        # @raise [DiscordApiError, DiscordRequestError] on any Discord error
+        def update_progress(handle:, text:)
+          request(:patch, progress_path(handle),
+                  body: { content: text, allowed_mentions: NO_MENTIONS })
+          nil
+        end
+
+        # Deletes the progress message (DELETE).
+        # @param handle [RedmineAiHelper::ChatChannel::ProgressReporter::Handle] the posted message
+        # @return [void]
+        # @raise [DiscordApiError, DiscordRequestError] on any Discord error
+        def delete_progress(handle:)
+          request(:delete, progress_path(handle))
           nil
         end
 
@@ -502,7 +548,7 @@ module RedmineAiHelper
             dispatch(IncomingMessage.new(
               channel_type: channel_type, channel_id: parent_id,
               thread_key: "#{parent_id}:#{channel_id}", message_ts: message_id, text: text,
-              dm: false, in_thread: true, origin_channel_id: channel_id
+              dm: false, in_thread: true
             ))
           else
             dispatch_with_thread(channel_id, message_id, text)
@@ -634,6 +680,12 @@ module RedmineAiHelper
           @reply_targets.delete(thread_key)
           @reply_targets[thread_key] = message_id
           @reply_targets.delete(@reply_targets.each_key.first) while @reply_targets.size > MAX_REPLY_TARGETS
+        end
+
+        # @param handle [RedmineAiHelper::ChatChannel::ProgressReporter::Handle] the posted message
+        # @return [String] the REST path of the progress message
+        def progress_path(handle)
+          "/channels/#{handle.channel_id}/messages/#{handle.message_id}"
         end
 
         # Parses a thread_key into the REST destination and the message to
@@ -791,7 +843,7 @@ module RedmineAiHelper
         # up to the cap; other non-2xx responses raise DiscordRequestError. The
         # token is never included in any message. Returns the parsed JSON body
         # ({} when the body is empty, e.g. 204).
-        # @param http_method [Symbol] :get, :post, :put or :delete
+        # @param http_method [Symbol] :get, :post, :put, :patch or :delete
         # @param path [String] the API path (leading slash)
         # @param body [Hash, nil] the JSON body for writes
         # @return [Hash] the parsed response body
@@ -820,23 +872,13 @@ module RedmineAiHelper
           end
         end
 
-        # The REST path of the processing reaction on the received message.
-        # @param message [RedmineAiHelper::ChatChannel::IncomingMessage] the target message
-        # @return [String]
-        # @raise [ArgumentError] when the message has no +message_ts+
-        def reaction_path(message)
-          raise ArgumentError, "message_ts is required for processing reactions" if message.message_ts.nil?
-
-          "/channels/#{message.origin_channel_id}/messages/#{message.message_ts}/reactions/#{PROCESSING_REACTION}/@me"
-        end
-
         # Builds a Net::HTTP request with the auth header and JSON body.
-        # @param http_method [Symbol] :get, :post, :put or :delete
+        # @param http_method [Symbol] :get, :post, :put, :patch or :delete
         # @param uri [URI] the request URI
         # @param body [Hash, nil] the JSON body for writes
         # @return [Net::HTTPRequest]
         def build_request(http_method, uri, body)
-          klass = { get: Net::HTTP::Get, post: Net::HTTP::Post, put: Net::HTTP::Put, delete: Net::HTTP::Delete }.fetch(http_method)
+          klass = { get: Net::HTTP::Get, post: Net::HTTP::Post, put: Net::HTTP::Put, patch: Net::HTTP::Patch, delete: Net::HTTP::Delete }.fetch(http_method)
           req = klass.new(uri.request_uri)
           req["Authorization"] = "Bot #{settings.bot_token}"
           if body
