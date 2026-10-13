@@ -46,6 +46,8 @@ module RedmineAiHelper
           end
         end
 
+        # URL-encoded hourglass emoji (U+23F3) marking a message as processing.
+        PROCESSING_REACTION = "%E2%8F%B3"
         # Base URL of the Discord REST API (v10).
         DISCORD_API_BASE = "https://discord.com/api/v10"
         # Gateway API version and payload encoding. Both are required query
@@ -238,6 +240,26 @@ module RedmineAiHelper
             body[:message_reference] = { message_id: reply_to } if reply_to && index.zero?
             post_message(target, body)
           end
+        end
+
+        # Adds the hourglass reaction to the received message.
+        # @param message [RedmineAiHelper::ChatChannel::IncomingMessage] the message being processed
+        # @return [void]
+        # @raise [ArgumentError] when the message has no +message_ts+
+        def show_processing(message:)
+          request(:put, reaction_path(message))
+          nil
+        end
+
+        # Removes the hourglass reaction from the received message. No error
+        # is ignored: the Discord docs define no error for a reaction that is
+        # already gone, and 10014 (Unknown Emoji) means a malformed emoji.
+        # @param message [RedmineAiHelper::ChatChannel::IncomingMessage] the processed message
+        # @return [void]
+        # @raise [ArgumentError] when the message has no +message_ts+
+        def clear_processing(message:)
+          request(:delete, reaction_path(message))
+          nil
         end
 
         # @return [IssueLinkFormatter::Format]
@@ -480,7 +502,7 @@ module RedmineAiHelper
             dispatch(IncomingMessage.new(
               channel_type: channel_type, channel_id: parent_id,
               thread_key: "#{parent_id}:#{channel_id}", message_ts: message_id, text: text,
-              dm: false, in_thread: true
+              dm: false, in_thread: true, origin_channel_id: channel_id
             ))
           else
             dispatch_with_thread(channel_id, message_id, text)
@@ -769,7 +791,7 @@ module RedmineAiHelper
         # up to the cap; other non-2xx responses raise DiscordRequestError. The
         # token is never included in any message. Returns the parsed JSON body
         # ({} when the body is empty, e.g. 204).
-        # @param http_method [Symbol] :get, :post or :put
+        # @param http_method [Symbol] :get, :post, :put or :delete
         # @param path [String] the API path (leading slash)
         # @param body [Hash, nil] the JSON body for writes
         # @return [Hash] the parsed response body
@@ -798,13 +820,23 @@ module RedmineAiHelper
           end
         end
 
+        # The REST path of the processing reaction on the received message.
+        # @param message [RedmineAiHelper::ChatChannel::IncomingMessage] the target message
+        # @return [String]
+        # @raise [ArgumentError] when the message has no +message_ts+
+        def reaction_path(message)
+          raise ArgumentError, "message_ts is required for processing reactions" if message.message_ts.nil?
+
+          "/channels/#{message.origin_channel_id}/messages/#{message.message_ts}/reactions/#{PROCESSING_REACTION}/@me"
+        end
+
         # Builds a Net::HTTP request with the auth header and JSON body.
-        # @param http_method [Symbol] :get, :post or :put
+        # @param http_method [Symbol] :get, :post, :put or :delete
         # @param uri [URI] the request URI
         # @param body [Hash, nil] the JSON body for writes
         # @return [Net::HTTPRequest]
         def build_request(http_method, uri, body)
-          klass = { get: Net::HTTP::Get, post: Net::HTTP::Post, put: Net::HTTP::Put }.fetch(http_method)
+          klass = { get: Net::HTTP::Get, post: Net::HTTP::Post, put: Net::HTTP::Put, delete: Net::HTTP::Delete }.fetch(http_method)
           req = klass.new(uri.request_uri)
           req["Authorization"] = "Bot #{settings.bot_token}"
           if body

@@ -57,6 +57,7 @@ a ratchet: it only ever increases, tracked toward 90%. See
 ## Specification & Design Reference
 - **Design docs in `specs/` are AUTHORITATIVE and MANDATORY** — never deviate without explicit user approval
 - For existing feature specifications and architectural decisions, consult `wiki/INDEX.md`
+- Before a spec states how existing code or an external API behaves (timing, status/error codes, idempotency), read that code or the official docs in the same step and cite it; write "not documented" when the docs are silent, and never design an ignored-error rule around an undocumented response (SF-008, SF-009)
 
 ## Architecture Overview
 

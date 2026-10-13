@@ -17,8 +17,20 @@ module RedmineAiHelper
       class SlackAdapter < BaseAdapter
         # Raised when a Slack Web API call returns ok:false. Authentication
         # errors are not retried: the gateway terminates with this error.
-        class SlackApiError < StandardError; end
+        class SlackApiError < StandardError
+          # @return [String, nil] the Slack +error+ string (e.g. "missing_scope")
+          attr_reader :code
 
+          # @param message [String] human-readable error (never the token)
+          # @param code [String, nil] Slack error string
+          def initialize(message = nil, code: nil)
+            super(message)
+            @code = code
+          end
+        end
+
+        # Reaction name used to mark a message as being processed.
+        PROCESSING_REACTION = "hourglass_flowing_sand"
         # Base URL of the Slack Web API.
         SLACK_API_BASE = "https://slack.com/api"
         # Open/read timeout for every Web API call (contract: 10 seconds).
@@ -135,6 +147,24 @@ module RedmineAiHelper
             api_call("chat.postMessage", token: settings.bot_token,
                      params: { channel: channel_id, thread_ts: thread_ts, text: chunk })
           end
+        end
+
+        # Adds the hourglass reaction to the received message.
+        # @param message [RedmineAiHelper::ChatChannel::IncomingMessage] the message being processed
+        # @return [void]
+        # @raise [ArgumentError] when the message has no +message_ts+
+        # @raise [SlackApiError] on any Slack error except +already_reacted+
+        def show_processing(message:)
+          react("reactions.add", message, ignore: "already_reacted")
+        end
+
+        # Removes the hourglass reaction from the received message.
+        # @param message [RedmineAiHelper::ChatChannel::IncomingMessage] the processed message
+        # @return [void]
+        # @raise [ArgumentError] when the message has no +message_ts+
+        # @raise [SlackApiError] on any Slack error except +no_reaction+
+        def clear_processing(message:)
+          react("reactions.remove", message, ignore: "no_reaction")
         end
 
         # @return [IssueLinkFormatter::Format]
@@ -402,6 +432,22 @@ module RedmineAiHelper
           http
         end
 
+        # Calls a reactions.* method for the processing mark.
+        # @param method [String] "reactions.add" or "reactions.remove"
+        # @param message [RedmineAiHelper::ChatChannel::IncomingMessage] the target message
+        # @param ignore [String] the Slack error code that is an expected state
+        # @return [void]
+        def react(method, message, ignore:)
+          raise ArgumentError, "message_ts is required for #{method}" if message.message_ts.nil?
+
+          api_call(method, token: settings.bot_token, params: {
+            channel: message.origin_channel_id, timestamp: message.message_ts, name: PROCESSING_REACTION
+          })
+          nil
+        rescue SlackApiError => e
+          raise unless e.code == ignore
+        end
+
         # Calls a Slack Web API method. ok:false responses are raised as
         # SlackApiError and never swallowed (FR-011). The token itself is
         # never logged.
@@ -416,7 +462,7 @@ module RedmineAiHelper
           request.set_form_data(params) unless params.empty?
           response = build_http(uri).request(request)
           body = JSON.parse(response.body)
-          raise SlackApiError, "Slack API #{method} failed: #{body["error"]}" unless body["ok"]
+          raise SlackApiError.new("Slack API #{method} failed: #{body["error"]}", code: body["error"]) unless body["ok"]
           body
         end
       end

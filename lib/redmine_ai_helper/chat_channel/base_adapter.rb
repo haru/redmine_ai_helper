@@ -188,6 +188,21 @@ module RedmineAiHelper
         raise NotImplementedError, "#{self.class.name} must implement #send_message"
       end
 
+      # Marks the received message as being processed (e.g. an hourglass
+      # reaction). Does nothing by default. Implementations hide only expected
+      # states (such as "already reacted") and raise everything else; the
+      # caller (Gateway) logs the failure and carries on. Must never include
+      # the bot token in an exception message.
+      # @param message [IncomingMessage] the message being processed
+      # @return [void]
+      def show_processing(message:); end
+
+      # Removes the mark set by #show_processing. Same contract as
+      # #show_processing; does nothing by default.
+      # @param message [IncomingMessage] the message that was processed
+      # @return [void]
+      def clear_processing(message:); end
+
       # The link format for this adapter. Returns PLAIN by default so that
       # adapters that do not declare a format still produce link-safe output.
       # @return [IssueLinkFormatter::Format]

@@ -1,8 +1,8 @@
 ---
 title: Chat Channel Gateway Architecture
 type: component
-sources: [S001, S002, S018, S019, S044]
-updated: 2026-10-12
+sources: [S001, S002, S018, S019, S044, S045]
+updated: 2026-10-13
 ---
 
 # Chat Channel Gateway Architecture
@@ -49,6 +49,12 @@ turned into an `IncomingMessage` and handled through `MessageHandler` (S001).
   `message.im`; channels are bound to projects in the Chat integrations tab
   (S002). History import adds more scopes — see
   [Chat History APIs](./chat-history-apis.md).
+
+## Processing reaction
+
+The gateway shows ⏳ on a received message from `Gateway#enqueue` and removes it
+in `worker_loop`'s `ensure` (S045). Details, error policy and the Discord
+thread target: [Chat Processing Reaction](./chat-processing-reaction.md).
 
 ## Adapter capability declaration
 
@@ -97,6 +103,8 @@ contain the list (ADR-052, S044). See
   controller and its security rules.
 - [Inbound Event Queue](./inbound-event-queue.md) — the event table, claiming,
   expiry, retention, and reply metadata.
+- [Chat Processing Reaction](./chat-processing-reaction.md) — the ⏳ mark
+  lifecycle: shown on receipt, always cleared after processing.
 - [Plugin Overview](./plugin-overview.md) — where the gateway sits among the
   plugin's features.
 

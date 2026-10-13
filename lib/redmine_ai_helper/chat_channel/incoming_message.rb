@@ -22,6 +22,11 @@ module RedmineAiHelper
       attr_reader :message_ts
       # @return [String] Question body with mention markup removed
       attr_reader :text
+      # @return [String] Identifier of the channel the message itself was
+      #   posted in; the target of processing reactions. Equals +channel_id+
+      #   unless the adapter passed a different value (a Discord thread whose
+      #   +channel_id+ is the parent channel).
+      attr_reader :origin_channel_id
 
       # @param channel_type [String] Adapter identifier (e.g. "slack")
       # @param channel_id [String] Channel identifier (DM channel id for DMs)
@@ -37,12 +42,22 @@ module RedmineAiHelper
       #   existing thread. Adapters that cannot tell (or that do not retrieve
       #   history at all) leave this at false, which keeps the import in
       #   channel mode or skips it entirely.
-      def initialize(channel_type:, channel_id:, thread_key:, text:, message_ts: nil, dm: false, in_thread: false)
+      # @param origin_channel_id [String, nil] Channel the message itself was
+      #   posted in. Defaults to +channel_id+ when nil.
+      # @raise [ArgumentError] when +origin_channel_id+ is given but is not a
+      #   non-empty String
+      def initialize(channel_type:, channel_id:, thread_key:, text:, message_ts: nil, dm: false, in_thread: false,
+                     origin_channel_id: nil)
+        unless origin_channel_id.nil? || (origin_channel_id.is_a?(String) && !origin_channel_id.empty?)
+          raise ArgumentError, "origin_channel_id must be a non-empty String"
+        end
+
         @channel_type = channel_type
         @channel_id = channel_id
         @thread_key = thread_key
         @message_ts = message_ts
         @text = text
+        @origin_channel_id = origin_channel_id || channel_id
         @dm = dm
         @in_thread = in_thread
         freeze

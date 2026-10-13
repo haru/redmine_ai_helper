@@ -802,4 +802,16 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
       assert_not @adapter.send(:stopped?)
     end
   end
+
+  context "processing reaction hooks" do
+    should "do nothing and return nil by default" do
+      adapter = ChatChannelBaseAdapterTest::FakeAdapter.new
+      message = RedmineAiHelper::ChatChannel::IncomingMessage.new(
+        channel_type: "fake_chat", channel_id: "C1", thread_key: "C1:1", text: "hi", message_ts: "1"
+      )
+
+      assert_nil adapter.show_processing(message: message)
+      assert_nil adapter.clear_processing(message: message)
+    end
+  end
 end
