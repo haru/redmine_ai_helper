@@ -34,6 +34,14 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
     URI.decode_www_form(@slack_requests[index].body.to_s).to_h
   end
 
+  def markdown_blocks(text)
+    [ { "type" => "markdown", "text" => text } ]
+  end
+
+  def blocks_of(index)
+    JSON.parse(slack_form(index)["blocks"])
+  end
+
   def slack_paths
     @slack_requests.map(&:path)
   end
@@ -912,30 +920,34 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
 
   context "web api operations" do
     should "post the reply into the thread" do
-      @adapter.expects(:api_call).with(
-        "chat.postMessage",
-        token: "xoxb-secret",
-        params: { channel: "C123", thread_ts: "111.222", text: "the answer" }
-      ).returns({ "ok" => true })
+      stub_slack_calls({ "ok" => true })
 
       @adapter.send_message(channel_id: "C123", thread_key: "C123:111.222", text: "the answer")
+
+      assert_equal [ "/api/chat.postMessage" ], slack_paths
+      assert_equal({ "channel" => "C123", "thread_ts" => "111.222", "text" => "the answer" },
+                   slack_form(0).except("blocks"))
+      assert_equal markdown_blocks("the answer"), blocks_of(0)
     end
 
     should "split long replies at paragraph boundaries" do
       first = "a" * 3000
       second = "b" * 2000
-      text = "#{first}\n\n#{second}"
-      calls = sequence("posts")
-      @adapter.expects(:api_call).with(
-        "chat.postMessage", token: "xoxb-secret",
-        params: { channel: "C123", thread_ts: "1.2", text: first }
-      ).in_sequence(calls).returns({ "ok" => true })
-      @adapter.expects(:api_call).with(
-        "chat.postMessage", token: "xoxb-secret",
-        params: { channel: "C123", thread_ts: "1.2", text: second }
-      ).in_sequence(calls).returns({ "ok" => true })
+      stub_slack_calls({ "ok" => true }, { "ok" => true })
 
-      @adapter.send_message(channel_id: "C123", thread_key: "C123:1.2", text: text)
+      @adapter.send_message(channel_id: "C123", thread_key: "C123:1.2", text: "#{first}\n\n#{second}")
+
+      assert_equal([ first, second ], (0..1).map { |i| slack_form(i)["text"] })
+      assert_equal([ markdown_blocks(first), markdown_blocks(second) ], (0..1).map { |i| blocks_of(i) })
+    end
+
+    should "not post a chunk that holds only whitespace" do
+      stub_slack_calls({ "ok" => true })
+
+      @adapter.send_message(channel_id: "C123", thread_key: "C123:1.2", text: "#{"a" * 3000}\n\n#{" \t" * 500}")
+
+      assert_equal 1, @slack_requests.size
+      assert_equal "a" * 3000, slack_form(0)["text"]
     end
 
     should "split on single newlines when there is no paragraph boundary" do
@@ -958,14 +970,119 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
     end
   end
 
+  context "markdown block replies" do
+    should "C-2: send text and a single markdown block for one chunk" do
+      stub_slack_calls({ "ok" => true })
+
+      @adapter.send_message(channel_id: "C123", thread_key: "C123:111.222", text: "# Title\n\n**bold**")
+
+      assert_equal "/api/chat.postMessage", slack_paths.first
+      form = slack_form(0)
+      assert_equal "C123", form["channel"]
+      assert_equal "111.222", form["thread_ts"]
+      assert_equal "# Title\n\n**bold**", form["text"]
+      assert_equal markdown_blocks("# Title\n\n**bold**"), blocks_of(0)
+    end
+
+    should "FR-005: give every chunk of a long reply its own markdown block" do
+      text = "#{"a" * 3000}\n\n#{"b" * 2000}"
+      stub_slack_calls({ "ok" => true }, { "ok" => true })
+
+      @adapter.send_message(channel_id: "C123", thread_key: "C123:1.2", text: text)
+
+      assert_equal 2, @slack_requests.size
+      [ 0, 1 ].each do |i|
+        assert_equal slack_form(i)["text"], blocks_of(i)[0]["text"]
+        assert_equal 1, blocks_of(i).size
+      end
+      assert_equal "a" * 3000, slack_form(0)["text"]
+      assert_equal "b" * 2000, slack_form(1)["text"]
+    end
+
+    should "FR-004: pass code blocks through unchanged" do
+      body = "```\n**not bold** #123\n```"
+      stub_slack_calls({ "ok" => true })
+
+      @adapter.send_message(channel_id: "C123", thread_key: "C123:1.2", text: body)
+
+      assert_equal body, blocks_of(0)[0]["text"]
+    end
+
+    should "FR-002: pass a table with full-width cells and issue links unchanged" do
+      table = "| 項目 | チケット |\n|---|---|\n| 日本語 | [#154](https://example.com/issues/154) |"
+      stub_slack_calls({ "ok" => true })
+
+      @adapter.send_message(channel_id: "C123", thread_key: "C123:1.2", text: table)
+
+      assert_equal table, blocks_of(0)[0]["text"]
+    end
+
+    should "FR-008: raise SlackApiError on invalid_blocks without retrying" do
+      stub_slack_calls({ "ok" => false, "error" => "invalid_blocks" })
+
+      error = assert_raises(SlackApiErrorClass) do
+        @adapter.send_message(channel_id: "C123", thread_key: "C123:1.2", text: "x")
+      end
+
+      assert_equal "invalid_blocks", error.code
+      assert_equal 1, @slack_requests.size
+    end
+
+    should "C-5: reject a blank or non-String body before calling Slack" do
+      stub_slack_calls
+      handle = Handle.new(channel_id: "C123", message_id: "300.000100")
+      [ "", " \n\t", nil, 123 ].each do |bad|
+        assert_raises(ArgumentError) { @adapter.send_message(channel_id: "C123", thread_key: "C123:1.2", text: bad) }
+        assert_raises(ArgumentError) { @adapter.post_progress(channel_id: "C123", thread_key: "C123:1.2", text: bad) }
+        assert_raises(ArgumentError) { @adapter.update_progress(handle: handle, text: bad) }
+      end
+      assert_empty @slack_requests
+    end
+
+    should "C-5: name the class, not the value, of a non-String body" do
+      error = assert_raises(ArgumentError) do
+        @adapter.post_progress(channel_id: "C123", thread_key: "C123:1.2", text: { body: "x" * 50 })
+      end
+
+      assert_includes error.message, "Hash"
+      assert_not_includes error.message, "x" * 50
+    end
+
+    should "C-3: send_plain_message posts text only, without blocks" do
+      stub_slack_calls({ "ok" => true })
+
+      @adapter.send_plain_message(channel_id: "C123", thread_key: "C123:111.222", text: "failed")
+
+      assert_equal({ "channel" => "C123", "thread_ts" => "111.222", "text" => "failed" }, slack_form(0))
+    end
+
+    should "C-3: send_plain_message splits long text and sends no blocks" do
+      stub_slack_calls({ "ok" => true }, { "ok" => true })
+
+      @adapter.send_plain_message(channel_id: "C123", thread_key: "C123:1.2",
+                                  text: "#{"a" * 3000}\n\n#{"b" * 2000}")
+
+      assert_equal 2, @slack_requests.size
+      (0..1).each { |i| assert_not slack_form(i).key?("blocks") }
+    end
+
+    should "C-3: send_plain_message raises SlackApiError on ok:false" do
+      stub_slack_calls({ "ok" => false, "error" => "channel_not_found" })
+
+      assert_raises(SlackApiErrorClass) do
+        @adapter.send_plain_message(channel_id: "C123", thread_key: "C123:1.2", text: "failed")
+      end
+    end
+  end
+
   context "issue link format" do
-    should "V-19: return SLACK format" do
-      assert_equal RedmineAiHelper::ChatChannel::IssueLinkFormatter::SLACK,
+    should "V-19: return MARKDOWN format" do
+      assert_equal RedmineAiHelper::ChatChannel::IssueLinkFormatter::MARKDOWN,
                    @adapter.issue_link_format
     end
 
     should "V-21: not cut a link syntax when the forced cut falls inside it" do
-      link = "<https://r.example.com/issues/1549|#1549>"
+      link = "[#1549](https://r.example.com/issues/1549)"
       pad_before = "x" * (RedmineAiHelper::ChatChannel::Adapters::SlackAdapter::MAX_MESSAGE_LENGTH - 10)
       text = "#{pad_before}#{link}"
 
@@ -990,7 +1107,7 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
 
     should "V-23: produce a finite number of chunks for a single link exceeding MAX_MESSAGE_LENGTH at offset 0" do
       long_url = "https://r.example.com/issues/#{'1' * (RedmineAiHelper::ChatChannel::Adapters::SlackAdapter::MAX_MESSAGE_LENGTH)}"
-      link = "<#{long_url}|#1>"
+      link = "[#1](#{long_url})"
       text = link
 
       chunks = @adapter.send(:split_text, text)
@@ -1041,7 +1158,8 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
       handle = @adapter.post_progress(channel_id: "C123", thread_key: "C123:111.222", text: "Planning")
 
       assert_equal "/api/chat.postMessage", slack_paths.first
-      assert_equal({ "channel" => "C123", "thread_ts" => "111.222", "text" => "Planning" }, slack_form(0))
+      assert_equal({ "channel" => "C123", "thread_ts" => "111.222", "text" => "Planning" }, slack_form(0).except("blocks"))
+      assert_equal markdown_blocks("Planning"), blocks_of(0)
       assert_equal "C123", handle.channel_id
       assert_equal "300.000100", handle.message_id
     end
@@ -1061,7 +1179,8 @@ class ChatChannelSlackAdapterTest < ActiveSupport::TestCase
       @adapter.update_progress(handle: Handle.new(channel_id: "C123", message_id: "300.000100"), text: "A\nB")
 
       assert_equal "/api/chat.update", slack_paths.first
-      assert_equal({ "channel" => "C123", "ts" => "300.000100", "text" => "A\nB" }, slack_form(0))
+      assert_equal({ "channel" => "C123", "ts" => "300.000100", "text" => "A\nB" }, slack_form(0).except("blocks"))
+      assert_equal markdown_blocks("A\nB"), blocks_of(0)
     end
 
     should "delete the message with chat.delete" do

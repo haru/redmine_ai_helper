@@ -195,6 +195,20 @@ module RedmineAiHelper
         raise NotImplementedError, "#{self.class.name} must implement #send_message"
       end
 
+      # Posts a failure notice through a path that the chat tool cannot
+      # reject for its formatting, so the notice is delivered even when the
+      # #send_message post was rejected. Used only for error notices.
+      # Defaults to #send_message; an adapter whose #send_message sends a
+      # rich payload the chat tool may reject (Slack's markdown blocks)
+      # overrides it.
+      # @param channel_id [String] Channel identifier
+      # @param thread_key [String] Thread identifier
+      # @param text [String] Notice body
+      # @return [void]
+      def send_plain_message(channel_id:, thread_key:, text:)
+        send_message(channel_id: channel_id, thread_key: thread_key, text: text)
+      end
+
       # Whether the adapter can show a progress message that is posted once,
       # rewritten as the task advances and deleted at the end (073 FR-010).
       # Adapters returning true implement #post_progress, #mark_progress,

@@ -1,7 +1,7 @@
 ---
 title: Chat Progress Message
 type: decision
-sources: [S046]
+sources: [S046, S047]
 updated: 2026-10-13
 ---
 
@@ -62,5 +62,11 @@ no-fallback rule; the rule is in AGENTS.md (CRF-022, SF-010).
 Telling progress from answer chunks by content, a typed callback, and Slack's
 assistant status API (S046). A killed gateway can leave a progress message
 behind; there is no sweep (S046).
+
+Slack progress posts and rewrites are sent as `markdown` blocks with the same text as the
+fallback `text`, so the progress list renders as Markdown (S047). The lines are joined with
+a single newline; whether a markdown block shows them on separate lines was not checked on a
+real workspace (S047). See
+[Slack Markdown Block Replies](./slack-markdown-block-replies.md).
 
 Related: [Chat Channel Gateway Architecture](./chat-channel-gateway-architecture.md).

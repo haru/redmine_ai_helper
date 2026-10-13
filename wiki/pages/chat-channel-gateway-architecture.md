@@ -1,7 +1,7 @@
 ---
 title: Chat Channel Gateway Architecture
 type: component
-sources: [S001, S002, S018, S019, S044, S045, S046]
+sources: [S001, S002, S018, S019, S044, S045, S046, S047]
 updated: 2026-10-13
 ---
 
@@ -98,6 +98,8 @@ contain the list (ADR-052, S044). See
 
 ## Related
 
+- [Slack Markdown Block Replies](./slack-markdown-block-replies.md) — how Slack
+  posts are sent (markdown blocks) and the shared markdown link format (S047).
 - [Chat Context Import](./chat-context-import.md) — how surrounding messages
   are pulled in and fed to the LLM.
 - [Chat History APIs](./chat-history-apis.md) — the Slack/Discord retrieval

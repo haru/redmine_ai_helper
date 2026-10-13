@@ -51,3 +51,4 @@ Sources are immutable inputs — the wiki never edits them.
 | S044 | specs/071-web-search-citations (research.md + plan.md) | feature-artifact | 2026-10-12 | 2026-10-12 | web-search-citations.md, multi-agent-architecture.md, llm-provider-layer.md, chat-sidebar.md, chat-channel-gateway-architecture.md, plugin-overview.md |
 | S045 | specs/072-restore-slack-processing-reaction (research.md + plan.md) | feature-artifact | 2026-10-13 | 2026-10-13 | chat-processing-reaction.md, chat-channel-gateway-architecture.md |
 | S046 | specs/073-chat-channel-progress (research.md + plan.md + contracts) | feature-artifact | 2026-10-13 | 2026-10-13 | chat-progress-message.md, chat-channel-gateway-architecture.md |
+| S047 | specs/074-slack-markdown-rendering (research.md + plan.md) + docs/adr/055-slack-markdown-block-replies.md | feature-artifact | 2026-10-13 | 2026-10-13 | slack-markdown-block-replies.md, chat-channel-gateway-architecture.md, chat-progress-message.md |

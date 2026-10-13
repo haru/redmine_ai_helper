@@ -136,18 +136,30 @@ module RedmineAiHelper
           ai_helper_logger.error "slack: failed to parse envelope: #{e.full_message}"
         end
 
-        # Posts a reply into the given thread, splitting texts longer than
-        # the Slack message limit at paragraph boundaries.
+        # Posts a reply into the given thread as a markdown block, splitting
+        # texts longer than the Slack message limit at paragraph boundaries.
+        # Every chunk carries its own markdown block; +text+ is the fallback
+        # for notifications.
         # @param channel_id [String] the Slack channel id
         # @param thread_key [String] "{channel_id}:{thread_ts}"
-        # @param text [String] the reply body (Markdown as-is)
+        # @param text [String] the reply body (Markdown as-is), not blank
         # @return [void]
+        # @raise [ArgumentError] when +text+ is blank or not a String
+        # @raise [SlackApiError] when Slack rejects the post (never retried)
         def send_message(channel_id:, thread_key:, text:)
-          thread_ts = thread_ts_of(thread_key)
-          split_text(text).each do |chunk|
-            api_call("chat.postMessage", token: settings.bot_token,
-                     params: { channel: channel_id, thread_ts: thread_ts, text: chunk })
-          end
+          post_chunks(channel_id, thread_key, text) { |chunk| markdown_params(chunk) }
+        end
+
+        # Posts a notice into the given thread as a +text+-only message,
+        # without a markdown block, so it does not depend on the block being
+        # accepted. Slack still reads +text+ as mrkdwn.
+        # @param channel_id [String] the Slack channel id
+        # @param thread_key [String] "{channel_id}:{thread_ts}"
+        # @param text [String] the notice body
+        # @return [void]
+        # @raise [SlackApiError] when Slack rejects the post
+        def send_plain_message(channel_id:, thread_key:, text:)
+          post_chunks(channel_id, thread_key, text) { |chunk| { text: chunk } }
         end
 
         # Slack can rewrite and delete the bot's own messages.
@@ -169,12 +181,13 @@ module RedmineAiHelper
         # Posts the progress message into the thread (chat.postMessage).
         # @param channel_id [String] the Slack channel id
         # @param thread_key [String] "{channel_id}:{thread_ts}"
-        # @param text [String] the progress text
+        # @param text [String] the progress text, not blank
         # @return [RedmineAiHelper::ChatChannel::ProgressReporter::Handle]
+        # @raise [ArgumentError] when +text+ is blank or not a String
         # @raise [SlackApiError] on any Slack error
         def post_progress(channel_id:, thread_key:, text:)
           body = api_call("chat.postMessage", token: settings.bot_token,
-                          params: { channel: channel_id, thread_ts: thread_ts_of(thread_key), text: text })
+                          params: { channel: channel_id, thread_ts: thread_ts_of(thread_key) }.merge(markdown_params(text)))
           RedmineAiHelper::ChatChannel::ProgressReporter::Handle.new(channel_id: channel_id, message_id: body["ts"])
         end
 
@@ -190,12 +203,13 @@ module RedmineAiHelper
 
         # Rewrites the progress message (chat.update).
         # @param handle [RedmineAiHelper::ChatChannel::ProgressReporter::Handle] the posted message
-        # @param text [String] the new full text
+        # @param text [String] the new full text, not blank
         # @return [void]
+        # @raise [ArgumentError] when +text+ is blank or not a String
         # @raise [SlackApiError] on any Slack error
         def update_progress(handle:, text:)
           api_call("chat.update", token: settings.bot_token,
-                   params: { channel: handle.channel_id, ts: handle.message_id, text: text })
+                   params: { channel: handle.channel_id, ts: handle.message_id }.merge(markdown_params(text)))
           nil
         end
 
@@ -211,7 +225,7 @@ module RedmineAiHelper
 
         # @return [IssueLinkFormatter::Format]
         def issue_link_format
-          IssueLinkFormatter::SLACK
+          IssueLinkFormatter::MARKDOWN
         end
 
         # Slack exposes both the thread replies and the channel history.
@@ -267,6 +281,40 @@ module RedmineAiHelper
         end
 
         private
+
+        # Posts +text+ into the thread with chat.postMessage, one request per
+        # chunk of #split_text.
+        # @param channel_id [String] the Slack channel id
+        # @param thread_key [String] "{channel_id}:{thread_ts}"
+        # @param text [String] the full body
+        # @yieldparam chunk [String] one chunk of +text+
+        # @yieldreturn [Hash] the body parameters of that chunk's request
+        # @return [void]
+        # @raise [ArgumentError] when +text+ is not a String
+        # @raise [SlackApiError] when Slack rejects a post
+        def post_chunks(channel_id, thread_key, text)
+          raise ArgumentError, "text must be a String, got #{text.class}" unless text.is_a?(String)
+
+          thread_ts = thread_ts_of(thread_key)
+          split_text(text).each do |chunk|
+            api_call("chat.postMessage", token: settings.bot_token,
+                     params: { channel: channel_id, thread_ts: thread_ts }.merge(yield(chunk)))
+          end
+        end
+
+        # The text and markdown block parameters of one message body. The
+        # callers never pass blank text on purpose: MessageHandler replaces a
+        # blank answer with guidance, #split_text drops whitespace-only
+        # chunks and ProgressReporter ignores blank lines.
+        # @param text [String] the Markdown body, not blank
+        # @return [Hash] +:text+ and +:blocks+ (JSON) form parameters
+        # @raise [ArgumentError] when +text+ is not a String or is blank
+        def markdown_params(text)
+          raise ArgumentError, "text must be a String, got #{text.class}" unless text.is_a?(String)
+          raise ArgumentError, "text must not be blank" if text.strip.empty?
+
+          { text: text, blocks: [ { type: "markdown", text: text } ].to_json }
+        end
 
         # @param thread_key [String] "{channel_id}:{thread_ts}"
         # @return [String] the Slack thread timestamp
@@ -449,7 +497,11 @@ module RedmineAiHelper
 
         # Splits a reply into chunks within the Slack message limit,
         # preferring paragraph boundaries, then line boundaries, then a hard
-        # cut. No content is ever dropped.
+        # cut. No visible content is dropped; a chunk holding only
+        # whitespace has nothing to show and is left out (#markdown_params
+        # rejects blank text).
+        # A cut can fall inside a code block or a table, which then renders
+        # broken across the two chunks (spec 074 Edge Cases, ADR-055).
         # @param text [String] the full reply
         # @return [Array<String>] the chunks to post in order
         def split_text(text)
@@ -465,8 +517,8 @@ module RedmineAiHelper
             chunks << remaining[0, cut]
             remaining = remaining[cut..].to_s.sub(/\A\n+/, "")
           end
-          chunks << remaining unless remaining.empty?
-          chunks
+          chunks << remaining
+          chunks.reject { |chunk| chunk.strip.empty? }
         end
 
         # Builds an HTTPS client with the contract timeouts.
