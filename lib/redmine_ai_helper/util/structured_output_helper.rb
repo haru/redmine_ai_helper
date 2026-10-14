@@ -52,15 +52,14 @@ module RedmineAiHelper
         # Parse structured JSON output from an LLM response and ensure it
         # conforms to the given schema.
         #
-        # String responses are JSON-parsed (with a single parse-fix retry when a
-        # chat_method is available). Hash/Array responses (e.g. from native
-        # structured output) are used directly. The parsed value is then
+        # The response (always a String in RubyLLM 2.x, including native structured
+        # output) is JSON-parsed, with a single parse-fix retry when a
+        # chat_method is available. The parsed value is then
         # conformed (wrapped/trimmed) and validated against the schema. On
         # validation violations, a single regeneration is requested via
         # chat_method when available; otherwise SchemaViolationError is raised.
         #
-        # @param response [String, Hash, Array] The raw LLM response or a
-        #   pre-parsed Hash/Array.
+        # @param response [String] The raw LLM response.
         # @param json_schema [Hash] The JSON schema.
         # @param chat_method [Proc, nil] A method to call for retries (receives
         #   the messages array, returns a String response).
@@ -162,29 +161,27 @@ module RedmineAiHelper
         # Unwrap a native response produced against a
         # {wrap_array_root_schema} payload back into a bare array.
         #
-        # Returns the response unchanged (String, Hash, or Array) when it is
+        # Returns the response unchanged when it is
         # not in the expected wrapped shape, so the normal parse pipeline can
         # still handle it (e.g. surface a JSON::ParserError or schema
         # violation instead of silently swallowing an unexpected shape).
-        # @param response [String, Hash, Array] The raw native response.
-        # @return [String, Hash, Array] The unwrapped array, or the response
-        #   unchanged.
+        # @param response [String] The raw native response.
+        # @return [String] The unwrapped array as a JSON string, or the response unchanged.
         def unwrap_array_root(response)
-          data = response.is_a?(String) ? parsed_json_or_nil(response) : response
+          data = parsed_json_or_nil(response)
           return response unless data.is_a?(Hash)
 
           wrapped = stringify_keys(data)
-          wrapped.key?(ARRAY_ROOT_PROPERTY) ? wrapped[ARRAY_ROOT_PROPERTY] : response
+          wrapped.key?(ARRAY_ROOT_PROPERTY) ? wrapped[ARRAY_ROOT_PROPERTY].to_json : response
         end
 
         private
 
         # Resolve the response into a Hash/Array, applying a single parse-fix
-        # retry for String responses when a chat_method is available.
+        # retry when a chat_method is available.
         # @return [Hash, Array]
         # @raise [JSON::ParserError] if parsing ultimately fails.
         def parsed_data_from(response, json_schema:, chat_method:, messages:)
-          return response if response.is_a?(Hash) || response.is_a?(Array)
           parse_json_from_response(response)
         rescue JSON::ParserError
           raise unless chat_method && messages
@@ -214,7 +211,7 @@ module RedmineAiHelper
             chat_method: chat_method,
             problem: schema_violation_problem(conformed, violations)
           )
-          reg_data = regenerated.is_a?(String) ? parse_json_from_response(regenerated) : regenerated
+          reg_data = parse_json_from_response(regenerated)
           reg_conformed = conform_to_schema(reg_data, json_schema)
           reg_violations = validate(reg_conformed, json_schema)
           return reg_conformed if reg_violations.empty?

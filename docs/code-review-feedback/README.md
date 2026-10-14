@@ -84,3 +84,34 @@ A concrete, checkable rule to apply when generating future code.
 
 | Entry | Title | Category | Source | Promoted to |
 |-------|-------|----------|--------|-------------|
+| [CRF-001](./001-azure-embed-provider-slug.md) | Azure embedding still used the :openai provider after the :azure migration | edge-case | Local AI review | Not yet |
+| [CRF-002](./002-secrets-in-rejected-config-log.md) | Rejected MCP server config was logged in full, including credentials | security | Local AI review | Not yet |
+| [CRF-003](./003-swallowed-mcp-and-structured-output-errors.md) | Errors swallowed or cached as empty results around MCP tools and structured output | error-handling | Local AI review | AGENTS.md |
+| [CRF-004](./004-end-user-dropped-by-responses-protocol.md) | Spec-assumed with_end_user does not send the user ID on the OpenAI Responses protocol | other | Local AI review | Not yet |
+| [CRF-005](./005-stale-dead-code-and-docs-after-migration.md) | Dead branches, stale comments and tests tied to the old API left after the RubyLLM 2.1 migration | doc-comment | Local AI review | AGENTS.md |
+| [CRF-006](./006-untested-paused-chat-guard.md) | Paused-chat guard added without a test that exercises it | test-gap | GitHub Copilot (PR #499) | AGENTS.md |
+| [CRF-007](./007-docs-not-updated-after-review-fix.md) | Docs kept describing behaviour that a review fix had changed | doc-comment | GitHub Copilot (PR #499) | AGENTS.md |
+| [CRF-008](./008-leader-lead-in-sentence-dropped.md) | Leader prompt lead-in sentence dropped when splitting the template | convention-violation | Local AI review | Not yet |
+| [CRF-009](./009-unvalidated-instructions-value-object.md) | Instructions value object and apply_instructions accepted invalid input silently | error-handling | Local AI review | AGENTS.md |
+| [CRF-010](./010-prompt-caching-test-gaps.md) | Prompt caching tests missed cache stability, explicit profiles and the end-to-end payload | test-gap | Local AI review | AGENTS.md |
+| [CRF-011](./011-cache-docs-overstated-behaviour.md) | Prompt caching docs and comments described behaviour more narrowly or strongly than the code | doc-comment | Local AI review | AGENTS.md |
+| [CRF-012](./012-prompt-caching-simplifications.md) | Hand-written branching where a single path or data mapping suffices | readability | Local AI review | Not yet |
+| [CRF-013](./013-settings-view-nil-model-profile.md) | Settings page crashed when web search was on and no main model profile was set | edge-case | Local AI review | Not yet |
+| [CRF-014](./014-web-search-truncated-answer-and-broad-rescue.md) | Truncated web search answers counted as success, and the rescue hid plugin errors | error-handling | Local AI review | Not yet |
+| [CRF-015](./015-citation-type-invariant-gaps.md) | Web citation types left invariants unenforced at their edges | convention-violation | Local AI review | Not yet |
+| [CRF-016](./016-web-search-docs-overstated-support.md) | Web search docs overstated OpenAI support and omitted the Think-model case | doc-comment | Local AI review | Not yet |
+| [CRF-017](./017-web-search-test-gaps.md) | Web search tests skipped the negative routing path, read-only mode and the real payload | test-gap | Local AI review | Not yet |
+| [CRF-018](./018-web-search-simplifications.md) | Repeated expressions and a dead initial value in the web search change | readability | Local AI review | Not yet |
+| [CRF-019](./019-regex-html-stripping-in-test.md) | Test stripped script blocks from HTML with a regular expression | test-gap | GitHub CodeQL (PR #505) | Not yet |
+| [CRF-020](./020-shutdown-race-widened-by-reaction-call.md) | A slow reaction call between the shutdown check and the queue push lost messages | edge-case | Local AI review | Not yet |
+| [CRF-021](./021-discord-unknown-emoji-ignored-as-missing-reaction.md) | Discord "Unknown Emoji" error ignored as if it meant a missing reaction | error-handling | Local AI review | Not yet |
+| [CRF-022](./022-progress-rescue-too-broad.md) | Progress reporter rescued every StandardError from the adapter and trusted its return value | error-handling | Local AI review | AGENTS.md |
+| [CRF-023](./023-progress-docs-inaccurate.md) | Progress docs described the plan line, the no-step case and permissions inaccurately | doc-comment | Local AI review | Not yet |
+| [CRF-024](./024-progress-test-gaps.md) | Progress tests could not fail or did not confirm the failure they simulated | test-gap | Local AI review | Not yet |
+| [CRF-025](./025-progress-docs-claims-corrected.md) | Progress docs and a test claimed behaviour the code does not have | doc-comment | User review | Not yet |
+| [CRF-026](./026-blank-slack-markdown-body.md) | Slack markdown body guard let blank and non-String text through | edge-case | Local AI review | Not yet |
+| [CRF-027](./027-delivery-failure-reported-as-generation-failure.md) | Answer delivery failure reported to the user as a generation failure | error-handling | Local AI review | Not yet |
+| [CRF-028](./028-slack-markdown-docs-overstated.md) | Plain-notice docs overstated the formatting, and a wiki link was broken | doc-comment | Local AI review | Not yet |
+| [CRF-029](./029-slack-markdown-test-gaps.md) | Slack markdown tests skipped the progress payload end to end and compared JSON strings | test-gap | Local AI review | Not yet |
+| [CRF-030](./030-mutable-unvalidated-link-format.md) | IssueLinkFormatter::Format was a mutable Struct without validation | convention-violation | Local AI review | Not yet |
+| [CRF-031](./031-duplicated-slack-chunk-posting.md) | Slack rich and plain senders duplicated the chunk-posting loop | readability | Local AI review | Not yet |

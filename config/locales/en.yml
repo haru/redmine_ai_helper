@@ -5,6 +5,7 @@ en:
   label_ai_helper_input_newline: "Press Shift + Enter for a new line."
   label_ai_helper_custom_command_hint: "Type '/' to use custom commands."
   label_ai_helper_start_new_chat: "Start a new chat"
+  label_ai_helper_citations: "Sources"
   label_ai_helper_free_input_option: "Other (type yourself)"
   label_ai_helper_read_only_suffix: " (Read-only)"
   ai_helper_summary: "Summarize with AI Helper"
@@ -52,6 +53,7 @@ en:
       tab_general: "General"
       tab_model: "Model"
       tab_vector: "Vector search"
+      web_search_unsupported_profile: "The current model profile does not support web search, so web search is not used."
       tab_channels: "Chat integrations"
     chat_channel:
       adapters:
@@ -79,6 +81,7 @@ en:
         default_project_not_configured: "No default project is configured for this chat integration. Please ask your administrator to configure it."
         module_disabled: "The AI helper module is disabled for the associated project."
         processing_failed: "An error occurred while generating the answer. Please check the AI helper log for details."
+        answer_delivery_failed: "The answer was generated but could not be posted to this thread, so it may be missing or cut off. Please check the AI helper log for details."
         history_unavailable: "The recent messages of this conversation could not be retrieved, so the answer below does not take them into account."
         empty_answer: "No answer could be provided."
       context:
@@ -298,6 +301,7 @@ en:
         base_uri: "Base URI"
         http_proxy: "HTTP Proxy"
         max_tokens: "Max tokens"
+        prompt_caching_enabled: "Prompt caching"
       ai_helper_setting:
         model_profile_id: "Model profile"
         additional_instructions: "Additional instructions"
@@ -324,6 +328,8 @@ en:
         all_projects_scope_description: "When enabled, data from projects without the AI Helper module also becomes a target for reading and updating, and is sent to the LLM. When disabled, data from projects without the AI Helper module is not a target for reading or updating."
         log_access_enabled: "Allow log file access"
         log_access_enabled_description: "When enabled, administrators can read the Redmine application log and the AI Helper log from the chat and the MCP server. The log contents are sent to the configured LLM provider, or to the MCP client when read through the MCP server. Log files may contain personal or sensitive information, so enable this only when needed."
+        web_search_enabled: "Enable web search"
+        web_search_enabled_description: "When enabled, the chat can search the web through the LLM provider and show the sources of the answer. The question and the content of issues, wiki pages and other data being viewed may be sent to the LLM provider and its search engine as search terms. Available with OpenAI (models using the Responses API), Anthropic and Gemini model profiles."
       ai_helper_project_setting:
         issue_draft_instructions: "Instructions for issue comment generation"
         subtask_instructions: "Instructions for subtask generation"

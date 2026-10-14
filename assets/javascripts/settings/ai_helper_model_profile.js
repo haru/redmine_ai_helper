@@ -105,18 +105,16 @@ const AiHelperModelProfile = (() => {
     }
 
     /**
-     * Show/hide the base URI, access key requirement, and organization ID
-     * fields based on the currently selected LLM type.
+     * Show/hide the base URI, access key requirement, organization ID, and
+     * prompt caching fields based on the currently selected LLM type.
      */
     function handleLlmTypeChange() {
       const selectedValue = llmTypeSelect.value;
-      const baseUriElement = document.getElementById('ai-helper-model-base-uri');
-      const accessKeyRequiredElement = document.querySelector('#ai-helper-mode-access-key .required');
-      const organizationIdElement = document.getElementById('ai-helper-model-organization-id');
 
-      setVisible(baseUriElement, isBaseUriRequired(selectedValue));
-      setVisible(accessKeyRequiredElement, selectedValue !== config.compatibleType);
-      setVisible(organizationIdElement, selectedValue === config.openaiType);
+      setVisible(document.getElementById('ai-helper-model-base-uri'), isBaseUriRequired(selectedValue));
+      setVisible(document.querySelector('#ai-helper-mode-access-key .required'), selectedValue !== config.compatibleType);
+      setVisible(document.getElementById('ai-helper-model-organization-id'), selectedValue === config.openaiType);
+      setVisible(document.getElementById('ai-helper-model-prompt-caching'), selectedValue === config.anthropicType);
     }
 
     if (llmTypeSelect) {

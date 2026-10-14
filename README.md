@@ -6,7 +6,7 @@
 [![codecov](https://codecov.io/gh/haru/redmine_ai_helper/graph/badge.svg?token=1HOSGRHVM9)](https://codecov.io/gh/haru/redmine_ai_helper)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/haru/redmine_ai_helper)
 ![Redmine](https://img.shields.io/badge/redmine->=6.0-blue?logo=redmine&logoColor=%23B32024&labelColor=f0f0f0&link=https%3A%2F%2Fwww.redmine.org)
-
+![Ruby](https://img.shields.io/badge/ruby->=3.2-blue?logo=ruby&logoColor=%23B32024&labelColor=f0f0f0&link=https%3A%2F%2Fwww.ruby-lang.org)
 
 - [Redmine AI Helper Plugin](#redmine-ai-helper-plugin)
 - [✨ Features](#-features)
@@ -304,6 +304,8 @@ When vector search is enabled, attachment contents are also incorporated into th
 
 # 📦 Installation
 
+**Requirements**: Redmine 6.0 or later and Ruby 3.2 or later. Ruby 3.1 is no longer supported.
+
 1. Extract the plugin to your Redmine plugins folder:
    ```bash
    cd {REDMINE_ROOT}/plugins/
@@ -334,7 +336,16 @@ When vector search is enabled, attachment contents are also incorporated into th
    - Access Key: Enter the API key for the AI service
    - Model name: Specify the AI model name (e.g., gpt-4.1-mini)
    - Temperature: Optionally set the temperature for the AI model (e.g., 0.7). Leave it blank to omit the parameter and use the AI service's default (required for models that reject temperature).
+   - Prompt caching (Anthropic only): Enabled by default. The system prompt, tool definitions and conversation history are cached by Anthropic (default 5-minute lifetime) to reduce input cost and latency. Uncheck it to disable caching for that profile. Other providers ignore this setting; OpenAI, Azure OpenAI and Gemini apply their own automatic prefix caching, and OpenAI-compatible servers may or may not. Cache read/write token counts reported by any provider are recorded in each Langfuse generation (`metadata.cache_read_input_tokens` / `cache_creation_input_tokens`).
 3. Select the model profile you created from the dropdown menu and save the settings.
+4. Optionally enable **Enable web search** on the General tab (disabled by default; system-wide, not per project). When enabled and the main model profile is OpenAI, Anthropic or Gemini, the chat can look up public information on the web through the LLM provider's own search tool and shows the sources (the title when the provider returns one, and the URL) under the answer, in the chat screen and in Slack/Discord replies. Notes:
+   - Only the chat uses web search (the screen chat and the chat gateway). Other features, such as issue summaries and inline completion, never send a search request.
+   - The model decides when to search and which search terms to use. The question and the content of issues, wiki pages and other data being viewed may be sent to the LLM provider and its search engine as search terms.
+   - Azure OpenAI and OpenAI-compatible profiles do not support it; the settings page shows a warning when it is enabled with such a profile, and no search request is sent.
+   - OpenAI models that RubyLLM sends to the Chat Completions API (the search-preview models and models whose name contains `audio` or `realtime`) have no web search tool, so a web search step fails with an error on them. Use a model served through the Responses API (e.g. `gpt-4o`, `gpt-5`).
+   - For steps that use the Think model, the Think model profile's provider decides. If it does not support web search, the step is answered without searching and shows no sources.
+   - Gemini returns Google redirect URLs as the source URLs, with the site's domain as the title.
+   - Search-related provider charges apply (billed by the LLM provider).
 
 
 ## Think Model Settings
@@ -443,10 +454,6 @@ Connect to external MCP servers to perform tasks such as sending issue summaries
             "headers": {
                "Authorization": "Bearer github_pat_xxxxxxxxxxxxxxx"
             }
-         },
-         "context7": {
-            "type": "sse",
-            "url": "https://mcp.context7.com/sse"
          }
       }
    }
@@ -455,13 +462,18 @@ Connect to external MCP servers to perform tasks such as sending issue summaries
 
 ### Transport Types
 
-Three transport types are supported. The `type` field can be omitted — it is inferred automatically from the other keys:
+Two transport types are supported. The `type` field can be omitted — it is inferred automatically from the other keys:
 
 | Type | Auto-detected when | Description |
 |------|--------------------|-------------|
 | `stdio` | `command` or `args` is present | Spawns a local process and communicates via stdin/stdout |
 | `http` | `url` is present (no `type` key) | MCP Streamable HTTP transport |
-| `sse` | `type: "sse"` is specified explicitly | Server-Sent Events transport |
+
+Notes:
+
+- Plain `http://` URLs are accepted only for loopback hosts (`localhost`, `127.0.0.1`, and `[::1]` written in brackets in the URL). Any other host requires `https://`.
+- Do not embed credentials in the URL (`https://user:pass@host/...`). Use the `headers` field instead.
+- The legacy SSE transport (`"type": "sse"`) is no longer supported. Servers that use it, and any other unsupported configuration, are skipped and an error is written to the AI Helper log (without the server's credentials). Use the Streamable HTTP transport (`"type": "http"`) instead.
 
 **STDIO example** (local process):
 ```json
@@ -630,7 +642,7 @@ langfuse:
 
 If you do not want the AI Helper to send anything outside your network, configure it as follows:
 
-- **LLM**: Use a locally hosted model, such as Ollama, through the OpenAI Compatible provider.
+- **LLM**: Use a locally hosted model through the OpenAI Compatible provider. The OpenAI Compatible provider communicates through the OpenAI Responses API (`/v1/responses`), so the server must support it; servers that only offer Chat Completions do not work.
 - **Vector search**: Use a locally hosted Qdrant, together with a local embedding model.
 - **Langfuse**: Use a self-hosted Langfuse instance, or leave Langfuse unconfigured.
 - **MCP servers**: Use only MCP servers that do not communicate externally.

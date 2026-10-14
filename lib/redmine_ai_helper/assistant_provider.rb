@@ -7,7 +7,7 @@ module RedmineAiHelper
     class << self
       # Returns an instance of the assistant using the LLM provider.
       # @param llm_provider [Object] The LLM provider that creates the chat.
-      # @param instructions [String] The instructions for the assistant.
+      # @param instructions [String, RedmineAiHelper::LlmClient::Instructions] The instructions for the assistant.
       # @param tools [Array] The tool classes to be used by the assistant.
       # @return [RedmineAiHelper::Assistant] An assistant instance.
       def get_assistant(llm_provider:, instructions:, tools: [])

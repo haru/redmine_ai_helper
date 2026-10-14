@@ -40,7 +40,7 @@ which uses two tokens).
    - **Send Messages** — post answers
    - **Send Messages in Threads** — answer inside threads
    - **Create Public Threads** — start a thread from a question
-   - **Add Reactions** — show the "processing" reaction (⏳)
+   - **Add Reactions** — mark progress messages with ⏳
    - **Read Message History** — follow reply chains for continued
      conversations, and read the messages around a mention
 3. Open the generated URL, choose the target server, and authorize. You need
@@ -95,8 +95,8 @@ heartbeat acknowledgements (zombie-connection detection). Stop it with
 ## 5. Use it
 
 - **In a bound channel**: mention the bot (`@YourBot how many open issues?`).
-  The bot adds a ⏳ reaction and posts the answer in a thread started from your
-  question. Continue by mentioning the bot again inside that thread.
+  The bot posts the answer in a thread started from your question. Continue by
+  mentioning the bot again inside that thread.
 - **In a direct message**: just send your question (no mention needed). The bot
   replies to your message; continue the conversation by replying to the bot's
   answer. A new, non-reply message starts a fresh conversation.

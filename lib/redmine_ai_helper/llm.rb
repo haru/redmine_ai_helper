@@ -18,7 +18,8 @@ module RedmineAiHelper
     # @param conversation [Conversation] The conversation object
     # @param proc [Proc] A block to be executed after the task is sent
     # @param option [Hash] Options for the task
-    # @return [AiHelperMessage] The AI's response
+    # @return [AiHelperMessage] The unsaved assistant message, with the web search
+    #   sources set via AiHelperMessage#web_citations= (empty on error)
     def chat(conversation, proc, option = {})
       task = conversation.messages.last.content
       ai_helper_logger.debug "#### ai_helper: chat start ####"
@@ -45,14 +46,20 @@ module RedmineAiHelper
         agent = RedmineAiHelper::Agents::LeaderAgent.new(option)
         langfuse.create_span(name: "user_request", input: task)
         answer = agent.perform_user_request(conversation.messages_for_openai, option, proc)
+        citations = agent.citations
         langfuse.finish_current_span(output: answer)
         langfuse.flush(output: answer)
       rescue => e
         ai_helper_logger.error "error: #{e.full_message}"
         answer = e.message
+        # Also reached after citations were assigned (e.g. the Langfuse flush failed);
+        # the error text must not carry the sources of the lost answer.
+        citations = []
       end
       ai_helper_logger.info "answer: #{answer}"
-      AiHelperMessage.new(role: "assistant", content: answer, conversation: conversation)
+      message = AiHelperMessage.new(role: "assistant", content: answer, conversation: conversation)
+      message.web_citations = citations
+      message
     end
 
     # Get the summary of the issue using IssueReadAgent with streaming support

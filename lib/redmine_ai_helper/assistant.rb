@@ -28,6 +28,8 @@ module RedmineAiHelper
       messages = @chat.messages
       last_user_message = messages.reverse.find { |m| m.role == :user }
       response = @chat.ask(last_user_message&.content || "")
+      raise "The chat was paused before completion and is waiting for input that cannot be provided" if @chat.waiting?
+
       [ response ]
     end
 
@@ -41,7 +43,9 @@ module RedmineAiHelper
     delegate :messages, to: :@chat
 
     # Set new instructions for the assistant.
-    # @param value [String] The new instructions.
+    # The value is only stored; it is not applied to the existing chat, whose
+    # system prompt is set by the LLM provider when the chat is created.
+    # @param value [String, RedmineAiHelper::LlmClient::Instructions] The new instructions.
     def instructions=(value)
       @instructions = value
     end

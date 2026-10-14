@@ -3,6 +3,7 @@
 require "redmine_ai_helper/logger"
 require "redmine_ai_helper/chat_channel/context_importer"
 require "redmine_ai_helper/chat_channel/issue_link_formatter"
+require "redmine_ai_helper/chat_channel/progress_reporter"
 require "redmine_ai_helper/util/interactive_options_parser"
 
 module RedmineAiHelper
@@ -28,11 +29,17 @@ module RedmineAiHelper
 
       # Processes one normalized incoming message end to end. Errors are
       # reported back into the thread and logged; they are never swallowed
-      # silently (FR-011).
+      # silently (FR-011). A failure after the answer was generated gets the
+      # answer_delivery_failed notice instead of processing_failed, since the
+      # answer exists but may be missing or cut off in the thread (074
+      # FR-011). The progress message the question may have caused is
+      # deleted last, after the answer or the error notice has been posted.
       # @param message [IncomingMessage] The message to process
       # @return [void]
       def handle(message)
         user = nil
+        answer = nil
+        reporter = ProgressReporter.new(adapter: @adapter, message: message)
         setting = adapter_settings(message)
         user = setting.service_account
         unless user
@@ -51,15 +58,23 @@ module RedmineAiHelper
         end
         return reply(message, guidance(:module_disabled, user), user) unless project.module_enabled?(:ai_helper)
 
-        answer = process_question(message, user, project)
-        reply(message, answer.content, user)
+        answer = process_question(message, user, project, reporter)
+        reply(message, answer.content, user, citations: answer.web_citations)
       rescue => e
-        ai_helper_logger.error "chat channel processing failed: #{e.full_message}"
+        failure = answer ? "failed to deliver the answer" : "processing failed"
+        ai_helper_logger.error "chat channel #{failure} on #{message.channel_type} thread #{message.thread_key}: " \
+                               "#{e.full_message}"
         begin
-          send_plain_reply(message, guidance(:processing_failed, user), user)
+          send_plain_reply(message, guidance(answer ? :answer_delivery_failed : :processing_failed, user), user)
         rescue => reply_error
-          ai_helper_logger.error "chat channel: failed to post error notice: #{reply_error.full_message}"
+          ai_helper_logger.error "chat channel: failed to post error notice on #{message.channel_type} thread " \
+                                 "#{message.thread_key}: #{reply_error.full_message}"
         end
+      ensure
+        # One place for every path (answer, error notice, guidance), so the
+        # progress message can never outlive the question. nil when the
+        # reporter itself could not be built.
+        reporter&.finish
       end
 
       private
@@ -87,8 +102,9 @@ module RedmineAiHelper
       # permissions. The import runs before the question is appended, and
       # after the checks in #handle, so a question that is refused never
       # reaches the chat tool's history API (FR-013).
+      # @param reporter [ProgressReporter] receives the leader's progress lines
       # @return [AiHelperMessage] The assistant's answer
-      def process_question(message, user, project)
+      def process_question(message, user, project, reporter)
         conversation = AiHelperChannelConversation.find_or_create_conversation(
           channel_type: message.channel_type, thread_key: message.thread_key, user: user
         )
@@ -102,8 +118,8 @@ module RedmineAiHelper
         original_locale = I18n.locale
         begin
           User.current = user
-          I18n.locale = user.language.presence || Setting.default_language
-          answer = RedmineAiHelper::Llm.new.chat(conversation, NOOP_PROC, { project: project })
+          I18n.locale = reply_locale(user)
+          answer = RedmineAiHelper::Llm.new.chat(conversation, NOOP_PROC, { project: project, progress_proc: reporter })
         ensure
           User.current = User.anonymous
           I18n.locale = original_locale
@@ -141,23 +157,28 @@ module RedmineAiHelper
       # removal logic (FR-003).
       # @param user [User, nil] the service account, for guidance localization;
       #   nil when called before the account is resolved (#handle's early guidance replies)
-      def reply(message, text, user = nil)
+      # @param citations [Array<RedmineAiHelper::WebCitation>] web search sources;
+      #   appended as a plain text list after the body has been converted, so
+      #   they never pass through IssueLinkFormatter
+      def reply(message, text, user = nil, citations: [])
         body = RedmineAiHelper::ChatChannel::IssueLinkFormatter
                 .new(@adapter.issue_link_format)
                 .format(strip_ui_options(text, user))
+        body = "#{body}\n\n#{citations_text(citations, user)}" unless citations.empty?
         @adapter.send_message(channel_id: message.channel_id, thread_key: message.thread_key,
                                text: body)
       end
 
-      # Posts a failure notice directly through the adapter, skipping
-      # IssueLinkFormatter. #handle's rescue clause uses this instead of
-      # #reply so that a failure inside link formatting or route generation
-      # cannot repeat itself on the retry and leave the user with no notice
-      # at all.
+      # Posts a failure notice through BaseAdapter#send_plain_message,
+      # skipping IssueLinkFormatter. #handle's rescue clause uses this instead
+      # of #reply so that the cause of the failure cannot repeat itself on the
+      # notice and leave the user with no notice at all: neither a failure
+      # inside link formatting or route generation, nor the chat tool
+      # rejecting the rich post (e.g. Slack's invalid_blocks).
       # @return [void]
       def send_plain_reply(message, text, user)
-        @adapter.send_message(channel_id: message.channel_id, thread_key: message.thread_key,
-                               text: strip_ui_options(text, user))
+        @adapter.send_plain_message(channel_id: message.channel_id, thread_key: message.thread_key,
+                                    text: strip_ui_options(text, user))
       end
 
       # Removes the UI control markup from text bound for a chat tool adapter
@@ -169,10 +190,25 @@ module RedmineAiHelper
         stripped.presence || guidance(:empty_answer, user)
       end
 
+      # The web search sources as a plain text list under a localized heading.
+      # @param citations [Array<RedmineAiHelper::WebCitation>]
+      # @param user [User, nil] the service account, for the heading's language
+      # @return [String]
+      def citations_text(citations, user)
+        lines = citations.map { |citation| citation.title ? "- #{citation.title}: #{citation.url}" : "- #{citation.url}" }
+        [ I18n.t(:label_ai_helper_citations, locale: reply_locale(user)), *lines ].join("\n")
+      end
+
       # Localized guidance text, preferring the service account's language.
       def guidance(key, user)
-        locale = user&.language.presence || Setting.default_language
-        I18n.t("ai_helper.chat_channel.errors.#{key}", locale: locale)
+        I18n.t("ai_helper.chat_channel.errors.#{key}", locale: reply_locale(user))
+      end
+
+      # The language of the replies: the service account's, else the default language.
+      # @param user [User, nil] the service account
+      # @return [String]
+      def reply_locale(user)
+        user&.language.presence || Setting.default_language
       end
     end
   end

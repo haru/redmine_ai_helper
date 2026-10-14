@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "instructions"
+
 module RedmineAiHelper
   # LLM provider implementations for different AI services.
   module LlmClient
@@ -56,7 +58,7 @@ module RedmineAiHelper
       end
 
       # Create a RubyLLM::Chat instance via the memoized context.
-      # @param instructions [String, nil] system prompt
+      # @param instructions [String, Instructions, nil] system prompt
       # @param tools [Array<Class>] tool classes to attach
       # @param schema [Hash, nil] native structured-output payload
       #   (`{ name:, schema:, strict: }`). When provided, `chat.with_schema` is
@@ -64,28 +66,39 @@ module RedmineAiHelper
       # @return [RubyLLM::Chat]
       def create_chat(instructions: nil, tools: [], schema: nil)
         chat = context.chat(model: model_name)
-        chat.with_instructions(instructions) if instructions
+        apply_instructions(chat, instructions)
         chat.with_tools(*tools) unless tools.empty?
         chat.with_temperature(temperature) if temperature
-        chat.with_schema(schema) if schema
+        chat.with_schema(prepare_schema(schema)) if schema
         apply_user_identifier(chat)
         chat
+      end
+
+      # Adjust the native structured-output payload for the provider's API
+      # requirements. The base implementation returns it unchanged.
+      # @param schema [Hash] payload (`{ name:, schema:, strict: }`)
+      # @return [Hash] the payload to pass to `chat.with_schema`
+      def prepare_schema(schema)
+        schema
       end
 
       # Whether the configured model supports native structured output.
       #
       # Returns false when the provider slug is unknown (Azure OpenAI,
       # OpenAI-compatible) or the model is not registered. Otherwise returns
-      # the model's `structured_output?` capability. Judgment failures fall to
-      # the safe (non-native) side.
+      # the model's `structured_output` capability.
       # @return [Boolean]
       def supports_structured_output?
         return false if ruby_llm_provider_slug.nil?
         model = RubyLLM.models.by_provider(ruby_llm_provider_slug).all.find { |m| m.id == model_name }
-        model&.structured_output? ? true : false
-      rescue => e
-        ai_helper_logger.warn "supports_structured_output? judgment failed, falling back to false: #{e.message}"
-        false
+        model&.supports?(:structured_output) ? true : false
+      end
+
+      # Whether the configured model profile's provider supports web search.
+      # @return [Boolean]
+      # @raise [ArgumentError] when the profile's llm_type is unknown
+      def supports_web_search?
+        RedmineAiHelper::LlmProvider.web_search_supported?(resolved_model_profile.llm_type)
       end
 
       # Generate an embedding vector for the given text via the memoized context.
@@ -100,7 +113,7 @@ module RedmineAiHelper
       def embed(text, embedding_model: AiHelperSetting.find_or_create.embedding_model)
         opts = {}
         if ruby_llm_provider_class.nil?
-          opts[:provider] = :openai
+          opts[:provider] = embedding_provider_slug
           opts[:assume_model_exists] = true
         end
         if embedding_model.blank?
@@ -112,19 +125,42 @@ module RedmineAiHelper
 
       protected
 
+      # Applies the system prompt to the chat as a single system message.
+      # No cache markers are added, so providers with automatic caching
+      # receive exactly the request they would without this feature.
+      # Providers with explicit prompt caching override this method.
+      # @param chat [RubyLLM::Chat] the chat instance to configure
+      # @param instructions [String, Instructions, nil] system prompt
+      # @return [void]
+      # @raise [ArgumentError] when +instructions+ is of any other type
+      def apply_instructions(chat, instructions)
+        instructions = Instructions.coerce(instructions)
+        chat.with_instructions(instructions.to_s) if instructions
+      end
+
+      # RubyLLM provider slug used for embedding requests when the provider has no
+      # RubyLLM provider class of its own. Override when the endpoint is not OpenAI.
+      # @return [Symbol]
+      def embedding_provider_slug
+        :openai
+      end
+
       # Applies the current user's Redmine ID to the chat request if the
       # send_user_id_enabled setting is active and the provider supports the field.
+      # The ID is sent as `safety_identifier` through provider options rather than
+      # with_end_user, because RubyLLM's OpenAI Responses protocol drops the value
+      # passed to with_end_user.
       # @param chat [RubyLLM::Chat] the chat instance to annotate
       # @return [RubyLLM::Chat] the same chat instance
       def apply_user_identifier(chat)
         return chat unless AiHelperSetting.send_user_id_enabled?
         return chat unless supports_user_identifier?
 
-        chat.with_params(user: User.current.id.to_s)
+        chat.with_provider_options(safety_identifier: User.current.id.to_s)
         chat
       end
 
-      # Returns whether this provider's API accepts the `user` request field.
+      # Returns whether this provider's API accepts the `safety_identifier` field.
       # Override to return false for providers that reject unknown top-level fields.
       # @return [Boolean]
       def supports_user_identifier?
@@ -232,12 +268,16 @@ module RedmineAiHelper
       end
 
       # Appends a single model to the RubyLLM model registry.
-      # RubyLLM 1.x does not expose a public API for adding individual models, so
-      # this method accesses the internal @models array directly.  It is isolated
+      # RubyLLM does not expose a public API for adding individual models, so
+      # this method accesses the internal @models array directly.  The array is
+      # replaced rather than mutated because RubyLLM caches its id index keyed on
+      # the array's identity; an in-place append would leave that index stale and
+      # the new model would not be found by Chat creation.  It is isolated
       # here so that any future public API can be adopted in a single place.
-      # @param model_info [RubyLLM::Model::Info] model to register
+      # @param model_info [RubyLLM::Model] model to register
       def append_to_model_registry(model_info)
-        RubyLLM.models.instance_variable_get(:@models) << model_info
+        registry = RubyLLM.models
+        registry.instance_variable_set(:@models, registry.instance_variable_get(:@models) + [ model_info ])
       end
     end
   end

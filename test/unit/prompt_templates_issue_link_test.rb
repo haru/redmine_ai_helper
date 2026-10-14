@@ -28,6 +28,30 @@ class PromptTemplatesIssueLinkTest < ActiveSupport::TestCase
     end
   end
 
+  context "split prompt templates" do
+    %w[
+      base_agent/current_time.yml
+      base_agent/current_time_ja.yml
+      leader_agent/system_prompt_context.yml
+      leader_agent/system_prompt_context_ja.yml
+    ].each do |relative_path|
+      should "#{relative_path} exists and is a valid prompt template" do
+        data = YAML.safe_load_file(File.join(PROMPT_DIR, relative_path))
+        assert_equal "prompt", data["_type"]
+        assert_includes data["input_variables"], "time"
+      end
+    end
+
+    %w[base_agent/system_prompt.yml base_agent/system_prompt_ja.yml
+       leader_agent/system_prompt.yml leader_agent/system_prompt_ja.yml].each do |relative_path|
+      should "#{relative_path} has no time input variable" do
+        data = YAML.safe_load_file(File.join(PROMPT_DIR, relative_path))
+        assert_not_includes data["input_variables"], "time"
+        assert_no_match(/\{time\}/, data["template"])
+      end
+    end
+  end
+
   context "non-chat-reply templates are unchanged" do
     should "inline_completion template is not affected" do
       content = File.read(File.join(PROMPT_DIR, "issue_read_agent/inline_completion.yml"))

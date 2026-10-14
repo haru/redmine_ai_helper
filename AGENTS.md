@@ -57,6 +57,7 @@ a ratchet: it only ever increases, tracked toward 90%. See
 ## Specification & Design Reference
 - **Design docs in `specs/` are AUTHORITATIVE and MANDATORY** — never deviate without explicit user approval
 - For existing feature specifications and architectural decisions, consult `wiki/INDEX.md`
+- Before a spec states how existing code or an external API behaves (timing, status/error codes, idempotency), read that code or the official docs in the same step and cite it; write "not documented" when the docs are silent, and never design an ignored-error rule around an undocumented response (SF-008, SF-009)
 
 ## Architecture Overview
 
@@ -76,11 +77,11 @@ Controller (AiHelperController)
 - **Read-only mode**: `BaseTools.define_function` accepts `write: true`. Write tools are dropped when `AiHelperSetting.read_only_mode?`. External MCP sub-agents are disabled wholesale. See ADR-005 and ADR-015.
 - **LLM providers**: OpenAI, Anthropic, Gemini, Azure OpenAI, OpenAI-compatible (`lib/redmine_ai_helper/llm_client/`); each provider subclass implements `configure_ruby_llm` (sets API keys) and optionally overrides `create_chat`
 - **Streaming**: `AiHelper::Streaming` concern provides SSE streaming via `stream_llm_response`; agents accept a `stream_proc` callback for incremental content delivery
-- **Langfuse observability**: `LangfuseWrapper` manages traces and spans at the orchestration level (`Llm` class); `BaseAgent#setup_langfuse_callbacks` registers `on_end_message` callbacks on `RubyLLM::Chat` instances to create Langfuse generations with token usage
+- **Langfuse observability**: `LangfuseWrapper` manages traces and spans at the orchestration level (`Llm` class); `BaseAgent#setup_langfuse_callbacks` registers `after_message` callbacks on `RubyLLM::Chat` instances to create Langfuse generations with token usage
 - **Custom commands**: Users define reusable commands (global/project/user scoped) stored in `AiHelperCustomCommand`. `CustomCommandExpander` expands `/command_name input` syntax with template variables (`{input}`, `{user_name}`, `{project_name}`, `{datetime}`)
 - **Image/multi-modal attachments**: Images attached to Issues, Wiki pages, and Board messages are sent to LLMs for visual understanding. `IssueTools`/`WikiTools`/`BoardTools` use `AttachmentImageHelper` to collect image paths; images are provided to the LLM via `BaseAgent#chat(with:)` or dedicated image tool parameters — disk paths are never embedded in the textual prompt/JSON sent to the LLM. Image detection uses Redmine's `Attachment#image?` (bmp, gif, jpg, jpe, jpeg, png, webp)
 
-Key agents: `IssueReadAgent`, `IssueWriteAgent`, `RepositoryAgent`, `WikiAgent`, `ProjectAgent`, `BoardAgent`, `SystemAgent`, `UserAgent`, `VersionAgent`, `DocumentationAgent`, `FileAgent`, `LeaderAgent`, `McpAgent`
+Key agents: `IssueReadAgent`, `IssueWriteAgent`, `RepositoryAgent`, `WikiAgent`, `ProjectAgent`, `BoardAgent`, `SystemAgent`, `UserAgent`, `VersionAgent`, `DocumentationAgent`, `FileAgent`, `LeaderAgent`, `McpAgent`, `WebSearchAgent`
 
 ### Tool System DSL Example
 ```ruby
@@ -132,9 +133,12 @@ Agents expose tools by overriding `available_tool_providers` to return an array 
 - Write comments in English
 - Logging: mixin `RedmineAiHelper::Logger`, use `ai_helper_logger` — **never** `Rails.logger`
 - Error handling: **NEVER implement fallback error handling**. Let errors surface immediately. No silent continues.
+- A `rescue` that turns failures into a result value (a "failed" flag, an error response) lists the error classes the external call can raise (API, network, parse) — never `StandardError` — and wraps only that call. Specs and contracts that prescribe such a rescue name the classes too. A value returned across an adapter or plugin boundary is checked with `is_a?` where it is first used, and a violation raises. A log line for a failed operation on a created resource names that resource's id (CRF-014, CRF-022, SF-010)
+- Value objects validate their documented invariants in `initialize` and raise `ArgumentError`. A method documented to accept a type union branches on the types explicitly and raises on anything else — do not let `to_s` or `&.` absorb unexpected values (CRF-003, CRF-009)
 
 ### Testing
 - **TDD**: Write tests before implementing features
+- Assert cross-call properties (e.g. a cache prefix) by equality: build two instances with every per-request input changed and `assert_equal` the stable part. For a value that crosses layers (agent → provider → request payload), add at least one test from the top-level entry point to the rendered payload. Every new `raise`/guard branch gets a test that drives it (CRF-006, CRF-010)
 - Framework: `shoulda` (context/should blocks) + `mocha` (mocking external servers only)
 - Test fixtures: `test/model_factory.rb` (FactoryBot)
 - Test structure: `test/unit/` (models, agents, tools), `test/unit/lib/` (lib classes), `test/functional/` (controllers), `test/integration/` (API)
@@ -156,7 +160,7 @@ Agents expose tools by overriding `available_tool_providers` to return an array 
 - Global settings: `AiHelperSetting` model
 - Project settings: `AiHelperProjectSetting` model
 - Model profiles: `AiHelperModelProfile` for LLM configurations
-- MCP endpoints: `config/ai_helper/config.json` (STDIO/HTTP/SSE)
+- MCP endpoints: `config/ai_helper/config.json` (STDIO/HTTP via RubyLLM's built-in MCP client)
 - Langfuse: `config/ai_helper/config.yml`
 - Prompt templates: `assets/prompt_templates/` (English and Japanese)
 
@@ -181,6 +185,7 @@ Agents expose tools by overriding `available_tool_providers` to return an array 
 - All docs/ content in English
 - ADRs are **append-only** — add new ones to supersede; never modify or delete past ADRs
 - Format: use template in `docs/adr/README.md`
+- Before documenting what a shared code path sends or records, check its behaviour for every provider/protocol that reaches it (read the library source), state guarantees with their actual scope, and when a fix changes behaviour, update docs/, wiki/, README and same-branch ADRs in the same change (CRF-005, CRF-007, CRF-011)
 
 ## Review Feedback Logs
 - When the user asks you to correct a specification (`specs/` artifacts such as spec.md, plan.md, tasks.md, or design docs), record the feedback with the `record-spec-feedback` skill after applying the fix.

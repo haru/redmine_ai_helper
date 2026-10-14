@@ -54,7 +54,7 @@ Agents expose tools by overriding `available_tool_providers` to return an array 
 ### Langfuse Observability
 
 - `LangfuseWrapper` manages traces and spans at the orchestration level (`Llm` class)
-- `BaseAgent#setup_langfuse_callbacks` registers `on_end_message` callbacks on `RubyLLM::Chat` instances to create Langfuse generations with token usage
+- `BaseAgent#setup_langfuse_callbacks` registers `after_message` callbacks on `RubyLLM::Chat` instances to create Langfuse generations with token usage
 - Configuration: `config/ai_helper/config.yml`
 
 ### Streaming
@@ -175,8 +175,7 @@ yard stats --list-undoc
 
 **MCP (Model Context Protocol):**
 - Dynamic agent generation per MCP server configuration
-- Transport layer supports STDIO and HTTP+SSE
-- Configuration in `config/ai_helper/mcp_servers/`
+- Transport layer supports STDIO and Streamable HTTP via RubyLLM's built-in MCP client (SSE is not supported)
 - MCP servers configured in `config/ai_helper/config.json`
 - `McpServerLoader` auto-generates `SubMcpAgent` classes per server
 
@@ -230,7 +229,7 @@ bundle exec rake redmine:plugins:migrate RAILS_ENV=production
 
 **Langfuse Integration:**
 - `LangfuseWrapper` manages traces and spans at the orchestration level (`Llm` class)
-- `BaseAgent#setup_langfuse_callbacks` registers `on_end_message` callbacks on `RubyLLM::Chat` instances to create Langfuse generations with token usage
+- `BaseAgent#setup_langfuse_callbacks` registers `after_message` callbacks on `RubyLLM::Chat` instances to create Langfuse generations with token usage
 - LLM observability for all providers via `langfuse_util/`
 - Trace conversations and agent interactions
 - Configuration: `config/ai_helper/config.yml`

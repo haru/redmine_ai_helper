@@ -23,6 +23,19 @@ class AiHelperSettingTest < ActiveSupport::TestCase
     AiHelperSetting.destroy_all
   end
 
+  context "web_search_enabled" do
+    should "default to false" do
+      assert_equal false, AiHelperSetting.web_search_enabled?
+    end
+
+    should "be true after being saved as true" do
+      @setting.model_profile.save!
+      @setting.web_search_enabled = true
+      @setting.save!
+      assert_equal true, AiHelperSetting.web_search_enabled?
+    end
+  end
+
   context "all_projects_scope" do
     should "default to false" do
       assert_equal false, @setting.all_projects_scope

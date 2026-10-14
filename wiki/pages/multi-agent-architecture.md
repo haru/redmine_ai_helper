@@ -1,8 +1,8 @@
 ---
 title: Multi-Agent Architecture
 type: concept
-sources: [S005, S008, S009, S016, S017]
-updated: 2026-08-07
+sources: [S005, S008, S009, S016, S017, S044]
+updated: 2026-10-12
 ---
 
 # Multi-Agent Architecture
@@ -51,6 +51,19 @@ AiHelperController  →  RedmineAiHelper::Llm  →  LeaderAgent  →  worker age
   routing itself still relies on backstory wording, not this check. See
   [Agent Write-Capability Routing](./agent-write-capability-routing.md) (S016).
 
+- **Web search**: `WebSearchAgent` is the only agent that enables the provider's
+  web search tool (`with_provider_tools(:web_search)`). It has no Redmine tools,
+  receives only the content of its task, and is offered to the leader only when
+  the `web_search_enabled` setting is on and the main model profile is OpenAI,
+  Anthropic or Gemini. For `use_think_model` steps the Think provider decides;
+  if it does not support web search, the step is answered without searching and
+  yields no sources. An answer the provider cut off (`max_tokens`,
+  `content_filter`, or `pause_turn` after RubyLLM's continuations) becomes an
+  error response. Its sources flow `WebSearchAgent#citations` →
+  `ChatRoom#citations` → `LeaderAgent#citations` → the `AiHelperMessage` that
+  `Llm#chat` returns (ADR-052, S044). Search terms are chosen by the model.
+  Details: [Web Search & Citations](./web-search-citations.md).
+
 ## Tool system
 
 Agents touch Redmine **only** through tools (S005). A `BaseTools` DSL declares
@@ -85,3 +98,5 @@ proxy settings ([Nginx SSE Proxy](./nginx-sse-proxy.md)).
   an alternate entry point that reuses this same agent stack.
 - [Agent Write-Capability Routing](./agent-write-capability-routing.md) — the
   `requires_write`/`can_write?` guard mentioned above.
+- [Web Search & Citations](./web-search-citations.md) — the dedicated search
+  agent and how sources reach the answer.

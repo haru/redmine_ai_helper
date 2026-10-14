@@ -942,6 +942,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
       # Verify LeaderAgent receives the expanded message
       leader_agent_mock = mock("leader_agent")
+      leader_agent_mock.stubs(:citations).returns([])
       leader_agent_mock.expects(:perform_user_request).with(
         includes({ role: "user", content: "Please summarize: issue #123" }),
         anything,
@@ -968,6 +969,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
 
       # Verify LeaderAgent receives the original message
       leader_agent_mock = mock("leader_agent")
+      leader_agent_mock.stubs(:citations).returns([])
       leader_agent_mock.expects(:perform_user_request).with(
         includes({ role: "user", content: "regular message" }),
         anything,
@@ -997,6 +999,8 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       ).returns(expander_mock)
 
       leader_agent_mock = mock("leader_agent")
+
+      leader_agent_mock.stubs(:citations).returns([])
       leader_agent_mock.stubs(:perform_user_request).returns("test answer")
       RedmineAiHelper::Agents::LeaderAgent.stubs(:new).returns(leader_agent_mock)
 
@@ -1023,6 +1027,8 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       RedmineAiHelper::CustomCommandExpander.stubs(:new).returns(expander_mock)
 
       leader_agent_mock = mock("leader_agent")
+
+      leader_agent_mock.stubs(:citations).returns([])
       leader_agent_mock.stubs(:perform_user_request).returns("test answer")
       RedmineAiHelper::Agents::LeaderAgent.stubs(:new).returns(leader_agent_mock)
 
@@ -1034,6 +1040,142 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       end).at_least_once
 
       @llm.chat(@conversation, nil, { controller_name: "issues", action_name: "show", content_id: 1 })
+    end
+  end
+
+  # Select a model profile of the given type as the main profile.
+  def use_profile(llm_type, enabled)
+    profile = AiHelperModelProfile.create!(
+      name: "p-#{llm_type}", llm_type: llm_type, llm_model: "gpt-4o", access_key: "k",
+      base_uri: ("http://localhost:11434/v1" if llm_type == "OpenAICompatible")
+    )
+    AiHelperSetting.find_or_create.update!(model_profile_id: profile.id, web_search_enabled: enabled)
+  end
+
+  # The tools section of the request body RubyLLM would build from a captured Provider#complete call.
+  def rendered_request(request)
+    provider = RedmineAiHelper::LlmProvider.get_llm_provider
+    chat = provider.context.chat(model: provider.model_name)
+    payload = chat.provider.render(
+      request[:messages], **request[:kwargs].slice(:tools, :temperature, :model, :provider_tools, :schema, :caching)
+    )
+    JSON.generate(payload[:tools] || [])
+  end
+
+  context "web search end to end" do
+    setup do
+      AiHelperConversation.delete_all
+      @llm = RedmineAiHelper::Llm.new({})
+      @conversation = AiHelperConversation.new(title: "t", user: User.find(1))
+      @conversation.messages << AiHelperMessage.new(content: "What is the latest Redmine release?", role: "user")
+      @step = {
+        "agent" => "web_search_agent", "step" => "Look up the latest Redmine release",
+        "description_for_human" => "Searching...", "use_think_model" => false, "requires_write" => false
+      }
+      RedmineAiHelper::Agents::LeaderAgent.any_instance.stubs(:generate_goal).returns({ "goal" => "GOAL-TEXT", "generate_steps_required" => true })
+      RedmineAiHelper::Agents::LeaderAgent.any_instance.stubs(:generate_steps).returns({ "steps" => [ @step ] })
+      @requests = []
+      requests = @requests
+      RubyLLM::Provider.any_instance.stubs(:complete).with do |messages, **kwargs|
+        requests << { messages: messages, kwargs: kwargs }
+        true
+      end.returns(RubyLLM::Message.new(
+        role: :assistant, content: "answer",
+        citations: [ { url: "https://example.com/a", title: "A" } ]
+      ))
+    end
+
+    should "send a web search tool only on the web search agent request and store the citations" do
+      use_profile("OpenAI", true)
+
+      message = @llm.chat(@conversation, nil, {})
+
+      web_requests = @requests.select { |r| r[:kwargs][:provider_tools].present? }
+      assert_equal 1, web_requests.size
+      assert_match(/web_search/, rendered_request(web_requests.first))
+      other = @requests - web_requests
+      assert_not_empty other
+      other.each { |r| assert_no_match(/web_search/, rendered_request(r)) }
+      assert_equal [ RedmineAiHelper::WebCitation.new(url: "https://example.com/a", title: "A") ], message.web_citations
+    end
+
+    should "send only the system prompt and the task on the web search request (FR-003c)" do
+      use_profile("OpenAI", true)
+
+      @llm.chat(@conversation, nil, {})
+
+      web_request = @requests.find { |r| r[:kwargs][:provider_tools].present? }
+      assert_equal [ :system, :user ], web_request[:messages].map(&:role)
+      user_text = web_request[:messages].last.content.to_s
+      assert_match "Look up the latest Redmine release", user_text
+      assert_no_match(/What is the latest Redmine release\?/, user_text)
+      assert_no_match(/GOAL-TEXT/, user_text)
+    end
+
+    should "use web search in read-only mode (FR-008)" do
+      use_profile("OpenAI", true)
+      AiHelperSetting.find_or_create.update!(read_only_mode: true)
+
+      message = @llm.chat(@conversation, nil, {})
+
+      assert_equal(1, @requests.count { |r| r[:kwargs][:provider_tools].present? })
+      assert_equal [ RedmineAiHelper::WebCitation.new(url: "https://example.com/a", title: "A") ], message.web_citations
+    end
+
+    should "stream progress and still store the citations" do
+      use_profile("OpenAI", true)
+      chunks = []
+
+      message = @llm.chat(@conversation, ->(chunk) { chunks << chunk }, {})
+
+      assert_not_empty chunks
+      assert_equal [ RedmineAiHelper::WebCitation.new(url: "https://example.com/a", title: "A") ], message.web_citations
+    end
+
+    should "send no web search tool at all when web search is disabled" do
+      use_profile("OpenAI", false)
+      RedmineAiHelper::Agents::LeaderAgent.any_instance.stubs(:generate_steps).returns({ "steps" => [] })
+
+      message = @llm.chat(@conversation, nil, {})
+
+      assert_not_empty @requests
+      @requests.each do |r|
+        assert_empty Array(r[:kwargs][:provider_tools])
+        assert_no_match(/web_search/, rendered_request(r))
+      end
+      assert_equal [], message.web_citations
+    end
+
+    should "send no web search tool on a profile without support even when enabled" do
+      use_profile("OpenAICompatible", true)
+      RedmineAiHelper::Agents::LeaderAgent.any_instance.stubs(:generate_steps).returns({ "steps" => [] })
+
+      @llm.chat(@conversation, nil, {})
+
+      assert_not_empty @requests
+      @requests.each { |r| assert_empty Array(r[:kwargs][:provider_tools]) }
+    end
+
+    [ [ "OpenAI", false, "disabled" ], [ "OpenAICompatible", true, "enabled on a profile without support" ] ].each do |llm_type, enabled, label|
+      should "refuse a web_search_agent step and send no request when web search is #{label}" do
+        use_profile(llm_type, enabled)
+
+        message = @llm.chat(@conversation, nil, {})
+
+        assert_equal "Agent is disabled: web_search_agent", message.content
+        @requests.each { |r| assert_empty Array(r[:kwargs][:provider_tools]) }
+        assert_equal [], message.web_citations
+      end
+    end
+
+    should "not set citations when the request fails" do
+      use_profile("OpenAI", true)
+      RedmineAiHelper::Agents::LeaderAgent.any_instance.stubs(:perform_user_request).raises(RuntimeError, "boom")
+
+      message = @llm.chat(@conversation, nil, {})
+
+      assert_equal "boom", message.content
+      assert_equal [], message.web_citations
     end
   end
 end

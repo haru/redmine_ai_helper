@@ -1,0 +1,27 @@
+---
+_type: prompt
+input_variables:
+  - time
+  - site_info
+  - current_page_info
+  - current_user
+  - current_user_info
+template: |-
+  The following is reference information for you.
+
+  ----
+
+  Reference information:
+  The current time is {time}. However, when discussing time with the user, consider the user's time zone. If the user's time zone is unknown, try to infer it from the user's language or conversation.
+  The information about this Redmine site defined in JSON is as follows.
+  In the JSON, current_project is the project currently displayed to the user. If the user refers to "the project" without specifying one, it means this project.
+
+  {site_info}
+
+  {current_page_info}
+
+  ----
+
+  The user you are talking to is "{current_user}".
+  The user's information is shown below.
+  {current_user_info}

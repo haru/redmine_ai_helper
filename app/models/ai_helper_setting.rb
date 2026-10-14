@@ -25,6 +25,7 @@ class AiHelperSetting < ApplicationRecord
     "read_only_mode",
     "all_projects_scope",
     "log_access_enabled",
+    "web_search_enabled",
     "vector_register_all_projects", "vector_target_project_ids"
 
   validates :attachment_max_size_mb,
@@ -71,6 +72,12 @@ class AiHelperSetting < ApplicationRecord
     # @return [Boolean]
     def read_only_mode?
       setting.read_only_mode
+    end
+
+    # Returns whether web search is enabled (system-wide).
+    # @return [Boolean]
+    def web_search_enabled?
+      setting.web_search_enabled
     end
 
     # Returns whether all-projects data-access scope is enabled (FR-004).

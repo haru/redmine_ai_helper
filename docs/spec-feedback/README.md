@@ -81,3 +81,15 @@ A concrete, checkable rule to apply when writing future specifications.
 
 | Entry | Title | Category | Feature | Promoted to |
 |-------|-------|----------|---------|-------------|
+| [SF-001](./001-assumed-azure-protocol.md) | Assumed Azure OpenAI keeps Chat Completions without asking | unconfirmed-assumption | 069-ruby-llm-2-1-migration | Not yet |
+| [SF-002](./002-added-langfuse-token-breakdown.md) | Added Langfuse token breakdown fields not recorded today | scope-creep | 069-ruby-llm-2-1-migration | Not yet |
+| [SF-003](./003-missed-leader-system-prompt.md) | Limited prompt reordering to the common agent prompt and missed the leader prompt | scope-gap | 070-prompt-caching | Not yet |
+| [SF-004](./004-citation-order-not-revisited-after-agent-decision.md) | Kept a citation order tied to the final answer after choosing a dedicated search agent | other | 071-web-search-citations | Not yet |
+| [SF-005](./005-settings-contract-assumed-model-profile-present.md) | Settings contract dereferenced the main model profile without checking it can be unset | convention-unknown | 071-web-search-citations | Not yet |
+| [SF-006](./006-web-search-contract-error-handling-scope.md) | Web search contract accepted cut-off answers and rescued every error in the agent | convention-unknown | 071-web-search-citations | Not yet |
+| [SF-007](./007-excluded-discord-from-shared-removal.md) | Excluded Discord from a feature to restore a reaction removed from both chat adapters | scope-gap | 072-restore-slack-processing-reaction | Not yet |
+| [SF-008](./008-lifecycle-written-without-reading-gateway-queue.md) | Reaction lifecycle requirements written without reading the gateway queue and shutdown code | convention-unknown | 072-restore-slack-processing-reaction | AGENTS.md |
+| [SF-009](./009-discord-error-code-claimed-from-docs-without-checking.md) | Discord reaction error claimed to come from the official docs without checking them | unconfirmed-assumption | 072-restore-slack-processing-reaction | AGENTS.md |
+| [SF-010](./010-contract-prescribed-rescue-of-all-standard-errors.md) | Contract prescribed rescuing every StandardError from the adapter calls | convention-unknown | 073-chat-channel-progress | AGENTS.md |
+| [SF-011](./011-failure-notice-included-in-markdown-formatting.md) | Included the failure notice in Slack Markdown formatting without reading its dedicated send path | convention-unknown | 074-slack-markdown-rendering | Not yet |
+| [SF-012](./012-delivery-failure-notice-text-not-revisited.md) | Kept the "error while generating" notice for a new answer-delivery failure | scope-gap | 074-slack-markdown-rendering | Not yet |

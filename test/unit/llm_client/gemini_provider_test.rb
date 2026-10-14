@@ -10,7 +10,7 @@ class RedmineAiHelper::LlmClient::GeminiProviderTest < ActiveSupport::TestCase
       @gemini_profile = AiHelperModelProfile.create!(
         name: "Test Gemini Profile",
         llm_type: "Gemini",
-        llm_model: "gemini-2.0-flash",
+        llm_model: "gemini-2.5-flash",
         access_key: "test_gemini_key",
         temperature: 0.5
       )
@@ -77,6 +77,10 @@ class RedmineAiHelper::LlmClient::GeminiProviderTest < ActiveSupport::TestCase
       should "return false" do
         assert_equal false, @provider.send(:supports_user_identifier?)
       end
+    end
+
+    should "send a split system prompt as one system message without cache markers" do
+      assert_single_uncached_system_message(@provider)
     end
   end
 end

@@ -3,6 +3,8 @@
 require File.expand_path("../../../test_helper", __FILE__)
 
 class ChatChannelGatewayTest < ActiveSupport::TestCase
+  include FactoryBot::Syntax::Methods
+
   # Records handled messages together with the thread that handled them.
   class RecordingHandler
     attr_reader :handled
@@ -359,6 +361,67 @@ class ChatChannelGatewayTest < ActiveSupport::TestCase
       ensure
         gateway_thread.join(5)
       end
+    end
+  end
+
+  # Adapter whose handler records the messages it handled.
+  class HandledGatewayAdapter < FakeGatewayAdapter
+    attr_reader :events
+
+    def initialize
+      super
+      @events = []
+    end
+  end
+
+  # Handler that records every message and can fail on one text.
+  class EventHandler
+    def initialize(adapter, fail_on: nil)
+      @adapter = adapter
+      @fail_on = fail_on
+    end
+
+    def handle(message)
+      @adapter.events << message.text
+      raise "handler failed" if message.text == @fail_on
+    end
+  end
+
+  context "queueing and shutdown" do
+    setup do
+      @adapter = HandledGatewayAdapter.new
+      @adapter.instance_variable_set(:@handler, EventHandler.new(@adapter))
+      @gateway.stubs(:build_enabled_adapters).returns([ @adapter ])
+    end
+
+    should "queue the message" do
+      queue = @gateway.instance_variable_get(:@queue)
+
+      @gateway.enqueue(@adapter, incoming("one"))
+
+      assert_equal 1, queue.size
+    end
+
+    should "process every queued message and continue after a handler failure" do
+      @adapter.instance_variable_set(:@handler, EventHandler.new(@adapter, fail_on: "boom"))
+      @adapter.messages_to_dispatch = [ incoming("a"), incoming("boom"), incoming("c") ]
+      @adapter.after_dispatch = -> { @gateway.shutdown }
+
+      @gateway.run
+
+      assert_equal %w[a boom c], @adapter.events
+    end
+
+    should "not queue after shutdown but drain earlier messages" do
+      @adapter.messages_to_dispatch = [ incoming("a"), incoming("b") ]
+      @adapter.after_dispatch = -> do
+        @gateway.shutdown
+        @gateway.enqueue(@adapter, incoming("late"))
+      end
+
+      @gateway.run
+
+      assert_equal %w[a b], @adapter.events
     end
   end
 end

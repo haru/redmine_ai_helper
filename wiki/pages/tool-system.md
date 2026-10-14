@@ -1,8 +1,8 @@
 ---
 title: Tool System
 type: component
-sources: [S008, S016, S026, S032, S033, S034, S036, S041]
-updated: 2026-10-08
+sources: [S008, S016, S026, S032, S033, S034, S036, S041, S042]
+updated: 2026-10-11
 ---
 
 # Tool System
@@ -94,6 +94,10 @@ providers' functions it may call — a per-agent permission boundary (S008).
 - LLM-supplied JSON filter keys may arrive as strings; tools **normalize nested
   hash keys** before use (S008).
 - `FileTools` reads localized prompt templates (`file_tools/analyze.yml`) (S008).
+
+## RubyLLM 2.x DSL rename
+
+`BaseTools.define_function` now calls RubyLLM's `parameters` (formerly `params`) when building tool classes (S042). See [RubyLLM 2.1 Migration](./ruby-llm-2-1-migration.md).
 
 ## Related
 

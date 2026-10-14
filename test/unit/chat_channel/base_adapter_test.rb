@@ -310,6 +310,16 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
     end
   end
 
+  context "send_plain_message" do
+    should "C-1: default to send_message with the same arguments" do
+      adapter = FakeAdapter.new
+
+      adapter.send_plain_message(channel_id: "C1", thread_key: "C1:T1", text: "notice")
+
+      assert_equal [ { channel_id: "C1", thread_key: "C1:T1", text: "notice" } ], adapter.sent_messages
+    end
+  end
+
   context "issue link format" do
     should "V-18: return PLAIN format when the adapter does not declare one" do
       adapter = FakeAdapter.new
@@ -325,15 +335,8 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
       assert format.pattern.match?(rendered)
     end
 
-    should "V-20: have render results that match the format's pattern for SLACK" do
-      format = RedmineAiHelper::ChatChannel::IssueLinkFormatter::SLACK
-      rendered = format.render("#1549", "https://r.example.com/issues/1549")
-
-      assert format.pattern.match?(rendered)
-    end
-
-    should "V-20: have render results that match the format's pattern for DISCORD" do
-      format = RedmineAiHelper::ChatChannel::IssueLinkFormatter::DISCORD
+    should "V-20: have render results that match the format's pattern for MARKDOWN" do
+      format = RedmineAiHelper::ChatChannel::IssueLinkFormatter::MARKDOWN
       rendered = format.render("#1549", "https://r.example.com/issues/1549")
 
       assert format.pattern.match?(rendered)
@@ -800,6 +803,52 @@ class ChatChannelBaseAdapterTest < ActiveSupport::TestCase
       @adapter.send(:clear_stop_flag)
 
       assert_not @adapter.send(:stopped?)
+    end
+  end
+
+  context "progress message hooks (C-2)" do
+    setup do
+      @adapter = ChatChannelBaseAdapterTest::FakeAdapter.new
+      @handle = RedmineAiHelper::ChatChannel::ProgressReporter::Handle.new(channel_id: "C1", message_id: "1.2")
+    end
+
+    should "not support progress messages by default (FR-010)" do
+      assert_equal false, @adapter.supports_progress?
+    end
+
+    should "declare no progress errors by default" do
+      assert_equal [], @adapter.progress_errors
+    end
+
+    should "have every adapter that supports progress implement the whole progress interface" do
+      RedmineAiHelper::ChatChannel::BaseAdapter.subclasses.each do |klass|
+        next unless klass.instance_method(:supports_progress?).owner != RedmineAiHelper::ChatChannel::BaseAdapter
+
+        %i[post_progress mark_progress update_progress delete_progress max_message_length progress_errors].each do |name|
+          assert_not_equal RedmineAiHelper::ChatChannel::BaseAdapter, klass.instance_method(name).owner,
+                           "#{klass} supports progress but does not implement #{name}"
+        end
+      end
+    end
+
+    should "raise NotImplementedError from post_progress" do
+      assert_raises(NotImplementedError) { @adapter.post_progress(channel_id: "C1", thread_key: "C1:1", text: "a") }
+    end
+
+    should "raise NotImplementedError from mark_progress" do
+      assert_raises(NotImplementedError) { @adapter.mark_progress(handle: @handle) }
+    end
+
+    should "raise NotImplementedError from update_progress" do
+      assert_raises(NotImplementedError) { @adapter.update_progress(handle: @handle, text: "a") }
+    end
+
+    should "raise NotImplementedError from delete_progress" do
+      assert_raises(NotImplementedError) { @adapter.delete_progress(handle: @handle) }
+    end
+
+    should "raise NotImplementedError from max_message_length" do
+      assert_raises(NotImplementedError) { @adapter.max_message_length }
     end
   end
 end

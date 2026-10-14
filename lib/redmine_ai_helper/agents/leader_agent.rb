@@ -11,7 +11,17 @@ module RedmineAiHelper
       def initialize(params = {})
         super(params)
         @system_prompt = RedmineAiHelper::Util::SystemPrompt.new(params)
+        @citations = []
+        @progress_proc = params[:progress_proc]
+        unless @progress_proc.nil? || @progress_proc.respond_to?(:call)
+          raise ArgumentError, "progress_proc must respond to #call"
+        end
       end
+
+      # The web search sources of the last request; reset at the start of each
+      # request, and empty when the leader answered without the chat room.
+      # @return [Array<RedmineAiHelper::WebCitation>]
+      attr_reader :citations
 
       # Get the agent's backstory
       # @return [String] The backstory prompt
@@ -28,19 +38,25 @@ module RedmineAiHelper
       end
 
       # Get the complete system prompt including backstory
-      # @return [String] The system prompt
+      # The fixed part holds the instructions, the backstory, the read-only
+      # notice and the web search unavailable notice; the variable part holds the time, site, page and user information.
+      # @return [RedmineAiHelper::LlmClient::Instructions] The system prompt
       def system_prompt
-        "#{@system_prompt.prompt}\n\n#{backstory}#{read_only_notice}"
+        RedmineAiHelper::LlmClient::Instructions.new(
+          fixed: "#{@system_prompt.fixed_prompt}\n\n#{backstory}#{read_only_notice}#{web_search_unavailable_notice}",
+          variable: @system_prompt.context_prompt
+        )
       end
 
       # Perform a user request by generating a goal and steps for the agents to follow.
       def perform_user_request(messages, option = {}, callback = nil)
+        @citations = []
         goal_json = generate_goal(messages)
         goal = goal_json["goal"]
         return chat(messages, option, callback) unless goal_json["generate_steps_required"]
 
         ai_helper_logger.debug "goal: #{goal}"
-        callback.call(I18n.t("ai_helper.chat.planning") + "\n") if callback
+        report_progress(I18n.t("ai_helper.chat.planning"), callback)
         steps = generate_steps(goal, messages)
         ai_helper_logger.debug "steps: #{steps}"
 
@@ -49,8 +65,9 @@ module RedmineAiHelper
         end
 
         chat_room = execute_chat_room_steps(goal, steps, callback)
+        @citations = chat_room.citations
 
-        callback.call(I18n.t("ai_helper.chat.generating_final_response") + "\n") if callback
+        report_progress(I18n.t("ai_helper.chat.generating_final_response"), callback)
 
         newmessages = messages + chat_room.messages
         newmessages << { role: "user", content: I18n.t("ai_helper.prompts.leader_agent.generate_final_response", execution_results: chat_room.execution_results_json) }
@@ -120,6 +137,14 @@ module RedmineAiHelper
 
       private
 
+      # Tells the leader that web search cannot be used, so it does not pretend to have searched.
+      # @return [String] The notice (after a blank line) when the web search agent is not available; an empty string otherwise.
+      def web_search_unavailable_notice
+        return "" if RedmineAiHelper::Agents::WebSearchAgent.new(project: @project).enabled?
+
+        "\n\n#{load_prompt("leader_agent/web_search_unavailable_notice").format}"
+      end
+
       # JSON schema for the generate_steps structured output.
       def generate_steps_json_schema
         {
@@ -152,10 +177,10 @@ module RedmineAiHelper
                   }
                 },
                 required: [ "agent", "step", "description_for_human", "use_think_model", "requires_write" ]
-              },
-              required: [ "steps" ]
+              }
             }
-          }
+          },
+          required: [ "steps" ]
         }
       end
 
@@ -219,6 +244,18 @@ module RedmineAiHelper
         EOS
       end
 
+      # Sends a progress line to the streaming callback and, when one was
+      # given, to the progress proc. Only progress lines go through here; the
+      # final answer's chunks reach the callback alone.
+      # @param text [String] the progress line, without its trailing newline
+      # @param callback [#call, nil] the streaming callback
+      # @return [void]
+      def report_progress(text, callback)
+        line = "#{text}\n"
+        callback&.call(line)
+        @progress_proc&.call(line)
+      end
+
       def execute_chat_room_steps(goal, steps, callback)
         chat_room = RedmineAiHelper::ChatRoom.new(goal)
         agent_list = RedmineAiHelper::AgentList.instance
@@ -230,7 +267,7 @@ module RedmineAiHelper
         end
         chat_room.share_goal
         steps["steps"].each do |step|
-          callback.call("- " + step["description_for_human"] + "\n") if callback
+          report_progress("- #{step["description_for_human"]}", callback)
           agent_instance = agent_instances[step["agent"]]
           if step["requires_write"] && agent_instance && !agent_instance.can_write?
             chat_room.record_skipped_step(

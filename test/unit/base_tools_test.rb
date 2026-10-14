@@ -193,7 +193,7 @@ class BaseToolsTest < ActiveSupport::TestCase
       should "generate correct JSON schema for simple properties" do
         tool_class = @simple_tool_class.tool_classes.first
         tool_instance = tool_class.new
-        schema = tool_instance.params_schema
+        schema = tool_instance.parameters_schema
 
         assert_equal "object", schema["type"]
         assert schema["properties"].key?("name")
@@ -206,7 +206,7 @@ class BaseToolsTest < ActiveSupport::TestCase
       should "generate correct JSON schema for array properties" do
         tool_class = @array_tool_class.tool_classes.first
         tool_instance = tool_class.new
-        schema = tool_instance.params_schema
+        schema = tool_instance.parameters_schema
 
         assert_equal "array", schema["properties"]["item_ids"]["type"]
         assert_equal "integer", schema["properties"]["item_ids"]["items"]["type"]
@@ -215,7 +215,7 @@ class BaseToolsTest < ActiveSupport::TestCase
       should "generate correct JSON schema for nested object properties" do
         tool_class = @nested_tool_class.tool_classes.first
         tool_instance = tool_class.new
-        schema = tool_instance.params_schema
+        schema = tool_instance.parameters_schema
         query_schema = schema["properties"]["query"]
 
         assert_equal "object", query_schema["type"]
@@ -227,7 +227,7 @@ class BaseToolsTest < ActiveSupport::TestCase
       should "generate correct JSON schema for enum properties" do
         tool_class = @enum_tool_class.tool_classes.first
         tool_instance = tool_class.new
-        schema = tool_instance.params_schema
+        schema = tool_instance.parameters_schema
 
         assert_equal [ "active", "inactive" ], schema["properties"]["status"]["enum"]
       end

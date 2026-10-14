@@ -1,8 +1,8 @@
 ---
 title: LLM Provider Layer
 type: component
-sources: [S009, S021, S037, S039]
-updated: 2026-10-08
+sources: [S009, S021, S037, S039, S042, S043, S044]
+updated: 2026-10-12
 ---
 
 # LLM Provider Layer
@@ -63,12 +63,16 @@ All inherit `RedmineAiHelper::LlmClient::BaseProvider` (S009):
 ## Provider quirks (gotchas)
 
 - **Anthropic & Gemini** override `supports_user_identifier?` → **false**: they
-  reject the `user` identifier field (S009).
+  have no `safety_identifier` field, so no user ID is sent (S009). Other providers send the ID as `safety_identifier` via `with_provider_options`, because RubyLLM's OpenAI Responses protocol drops `with_end_user` (S042, ADR-049).
 - **OpenAI-Compatible** (e.g. Ollama): `create_chat` forces `provider: :openai`
   and `assume_model_exists: true` to bypass model-list validation on custom
   endpoints, and sets `openai_use_system_role = true` (S009).
 - **Azure OpenAI**: deployment-based — `assume_model_exists: true`, with the
-  endpoint taken from the profile's `base_uri` (S009).
+  endpoint taken from the profile's `base_uri` (S009). Since RubyLLM 2.1 it uses
+  `provider: :azure` with `azure_api_base`/`azure_api_key` instead of `:openai` (S042).
+- **API style is left to RubyLLM** (no `protocol:` passed): OpenAI and
+  OpenAI-compatible use the Responses API, which some compatible servers lack
+  (S042). See [RubyLLM 2.1 Migration](./ruby-llm-2-1-migration.md).
 
 ## Configuration from the profile
 
@@ -94,4 +98,28 @@ injected into the prompt instead of calling the native API.
   [Think Model](./think-model.md) · [Vector Search](./vector-search.md) ·
   [Completion Request Timeout Policy](./completion-request-timeout-policy.md) ·
   [Embedding Connection Test](./embedding-connection-test.md) ·
-  [Model Profile Temperature Is Optional](./model-profile-optional-temperature.md)
+  [Model Profile Temperature Is Optional](./model-profile-optional-temperature.md) ·
+  [Prompt Caching](./prompt-caching.md)
+
+## Prompt caching and split system prompt
+
+`BaseProvider#apply_instructions` joins an `Instructions(fixed, variable)` value
+into one system message with no cache markers; `AnthropicProvider` overrides it
+to add `with_caching` and a cached fixed block when the profile's
+`prompt_caching_enabled` is true (S043). Full decision on
+[Prompt Caching & Split System Prompt](./prompt-caching.md).
+
+## Web search support
+
+`LlmProvider.web_search_supported?(llm_type)` is true for OpenAI, Anthropic and
+Gemini, false for Azure OpenAI and OpenAI-compatible, and raises
+`ArgumentError` for an unknown type. `BaseProvider#supports_web_search?` applies
+it to the provider's profile. `create_chat` never adds the search tool;
+only `WebSearchAgent` does (ADR-052, S044). See
+[Web Search & Citations](./web-search-citations.md).
+
+The check is by LLM type only. RubyLLM 2.1 routes OpenAI's search-preview
+models and model ids matching `audio`/`realtime` to Chat Completions, which has
+no `web_search` alias, so a web search step on those models raises
+`UnsupportedServerToolError` and becomes an error response; the settings page
+does not warn about them (S044).

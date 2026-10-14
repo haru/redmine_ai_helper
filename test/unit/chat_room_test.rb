@@ -150,5 +150,25 @@ class RedmineAiHelper::ChatRoomTest < ActiveSupport::TestCase
         assert_equal "Second task", parsed[1]["step"]
       end
     end
+
+    context "citations" do
+      should "merge citations of all agents in order and drop duplicate urls" do
+        a1 = RedmineAiHelper::WebCitation.new(url: "https://example.com/a", title: "first")
+        b = RedmineAiHelper::WebCitation.new(url: "https://example.com/b")
+        a2 = RedmineAiHelper::WebCitation.new(url: "https://example.com/a", title: "second")
+        agent1 = mock("agent1")
+        agent1.stubs(:citations).returns([ a1, b ])
+        agent2 = mock("agent2")
+        agent2.stubs(:citations).returns([ a2 ])
+        @chat_room.add_agent(agent1)
+        @chat_room.add_agent(agent2)
+
+        assert_equal [ a1, b ], @chat_room.citations
+      end
+
+      should "be empty without agents" do
+        assert_equal [], @chat_room.citations
+      end
+    end
   end
 end

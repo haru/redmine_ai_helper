@@ -120,7 +120,7 @@ class RedmineAiHelper::LlmClient::OpenAiProviderTest < ActiveSupport::TestCase
       end
 
       should "call list_models and register model when model is not in registry" do
-        fetched_model = RubyLLM::Model::Info.new(
+        fetched_model = RubyLLM::Model.new(
           id: @unregistered_model_id, provider: "openai", name: "GPT Unregistered Test"
         )
         mock_provider_instance = mock("RubyLLMProviderInstance")
@@ -145,6 +145,33 @@ class RedmineAiHelper::LlmClient::OpenAiProviderTest < ActiveSupport::TestCase
       chat = @provider.create_chat(instructions: "Test prompt")
 
       assert_equal mock_chat, chat
+    end
+
+    should "not pass protocol or reasoning options to context.chat so RubyLLM decides the API (FR-013)" do
+      mock_context = mock("RubyLLM::Context")
+      mock_chat = mock("RubyLLM::Chat")
+      mock_chat.stubs(:with_temperature)
+      mock_chat.expects(:with_provider_options).never
+      mock_context.expects(:chat).with(model: @setting.model_profile.llm_model).returns(mock_chat)
+      @provider.expects(:build_context).returns(mock_context)
+
+      @provider.create_chat
+    end
+
+    %w[gpt-6-luna gpt-6-sol gpt-5].each do |model_id|
+      should "let RubyLLM use the Responses API for #{model_id}" do
+        config = RubyLLM::Configuration.new
+        config.openai_api_key = "test_key"
+        openai = RubyLLM::Providers::OpenAI.new(config)
+        model = RubyLLM::Model.default(model_id, "openai")
+
+        assert_equal openai.protocols[:responses], openai.protocol_for(model)
+        assert_not_equal openai.protocols[:chat_completions], openai.protocol_for(model)
+      end
+    end
+
+    should "send a split system prompt as one system message without cache markers" do
+      assert_single_uncached_system_message(@provider)
     end
   end
 end

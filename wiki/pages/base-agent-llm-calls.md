@@ -1,8 +1,8 @@
 ---
 title: BaseAgent LLM Calls
 type: component
-sources: [S003, S005, S009, S021]
-updated: 2026-08-20
+sources: [S003, S005, S009, S021, S042, S043]
+updated: 2026-10-11
 ---
 
 # BaseAgent LLM Calls
@@ -69,6 +69,12 @@ for exactly this reason (S003).
 Consequently, applying the think model to the tool-using `@assistant` loop is
 **unsolved and out of scope**: it would require switching providers *and*
 sharing conversation history at once, with no good design yet (S003).
+
+## RubyLLM 2.x notes
+
+Langfuse generations are recorded from `after_message`, filtered to assistant
+messages, with token counts read from `message.tokens` (S042); `promptTokens` includes cache read/write tokens (S043). `system_prompt` now returns an `Instructions(fixed, variable)` value — see [Prompt Caching](./prompt-caching.md) (S043). See
+[RubyLLM 2.1 Migration](./ruby-llm-2-1-migration.md).
 
 ## Related
 

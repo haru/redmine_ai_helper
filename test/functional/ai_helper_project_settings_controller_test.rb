@@ -108,4 +108,18 @@ class AiHelperProjectSettingsControllerTest < ActionController::TestCase
       assert_redirected_to ai_helper_dashboard_path(id: @project, tab: "settings")
     end
   end
+
+  context "web search" do
+    should "not accept web_search_enabled as a project setting" do
+      AiHelperSetting.find_or_create.update!(web_search_enabled: false)
+
+      patch :update, params: {
+                       id: @project.id,
+                       setting: { issue_draft_instructions: "x", web_search_enabled: "1", lock_version: @settings.lock_version }
+                     }
+
+      assert_equal false, AiHelperSetting.find_or_create.web_search_enabled
+      assert_not @settings.reload.respond_to?(:web_search_enabled)
+    end
+  end
 end

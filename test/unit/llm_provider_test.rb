@@ -19,6 +19,24 @@ class LlmProviderTest < ActiveSupport::TestCase
       assert_equal expected_options, @llm_provider.option_for_select
     end
 
+    context "web_search_supported?" do
+      should "be true for OpenAI, Anthropic and Gemini" do
+        [ "OpenAI", "Anthropic", "Gemini" ].each do |type|
+          assert_equal true, @llm_provider.web_search_supported?(type), type
+        end
+      end
+
+      should "be false for Azure OpenAI and OpenAI compatible" do
+        [ "AzureOpenAi", "OpenAICompatible" ].each do |type|
+          assert_equal false, @llm_provider.web_search_supported?(type), type
+        end
+      end
+
+      should "raise ArgumentError for an unknown type" do
+        assert_raises(ArgumentError) { @llm_provider.web_search_supported?("Unknown") }
+      end
+    end
+
     context "get_think_llm_provider" do
       setup do
         @setting = AiHelperSetting.find_or_create

@@ -45,10 +45,24 @@ class RedmineAiHelper::AssistantTest < ActiveSupport::TestCase
 
         @mock_chat.stubs(:messages).returns([ mock_message ])
         @mock_chat.expects(:ask).with("test question").returns(mock_response)
+        @mock_chat.stubs(:waiting?).returns(false)
 
         result = @assistant.run(auto_tool_execution: true)
 
         assert_equal [ mock_response ], result
+      end
+
+      should "raise when the chat is paused waiting for input" do
+        mock_message = mock("Message")
+        mock_message.stubs(:role).returns(:user)
+        mock_message.stubs(:content).returns("test question")
+
+        @mock_chat.stubs(:messages).returns([ mock_message ])
+        @mock_chat.stubs(:ask).returns(mock("Response"))
+        @mock_chat.stubs(:waiting?).returns(true)
+
+        error = assert_raises(RuntimeError) { @assistant.run }
+        assert_match(/paused before completion/, error.message)
       end
     end
 

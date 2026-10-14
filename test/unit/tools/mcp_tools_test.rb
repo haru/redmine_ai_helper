@@ -6,8 +6,6 @@ class McpToolsTest < ActiveSupport::TestCase
   def setup
     @mock_client = create_mock_mcp_client
     @server_name = "test_server"
-    # Clear cache between tests
-    Tools::McpTools.instance_variable_set(:@mcp_tool_cache, nil)
   end
 
   context "McpTools" do
@@ -25,48 +23,30 @@ class McpToolsTest < ActiveSupport::TestCase
       assert_equal "Another tool", tools[1].description
     end
 
-    should "cache tool instances per server name" do
-      tools1 = Tools::McpTools.generate_tool_classes(
-        mcp_server_name: @server_name,
-        mcp_client: @mock_client
-      )
-
-      tools2 = Tools::McpTools.generate_tool_classes(
-        mcp_server_name: @server_name,
-        mcp_client: @mock_client
-      )
-
-      assert_same tools1, tools2
-    end
-
-    should "cache separately for different servers" do
-      other_client = create_mock_mcp_client(tool_name: "different_tool", tool_description: "Different tool")
-
-      tools1 = Tools::McpTools.generate_tool_classes(
-        mcp_server_name: "server1",
-        mcp_client: @mock_client
-      )
-
-      tools2 = Tools::McpTools.generate_tool_classes(
-        mcp_server_name: "server2",
-        mcp_client: other_client
-      )
-
-      assert_not_same tools1, tools2
-    end
-
-    should "return empty array when client.tools raises error" do
+    should "raise connection errors instead of returning an empty list" do
       error_client = Object.new
       error_client.define_singleton_method(:tools) do
-        raise StandardError, "Connection failed"
+        raise RubyLLM::MCP::Error, "connection refused"
       end
 
-      tools = Tools::McpTools.generate_tool_classes(
-        mcp_server_name: "error_server",
-        mcp_client: error_client
-      )
+      error = assert_raises(RubyLLM::MCP::Error) do
+        Tools::McpTools.generate_tool_classes(mcp_server_name: "unreachable_server", mcp_client: error_client)
+      end
+      assert_equal "connection refused", error.message
+    end
 
-      assert_equal [], tools
+    should "not cache a failed lookup so the next call can succeed" do
+      calls = 0
+      client = Object.new
+      client.define_singleton_method(:tools) do
+        calls += 1
+        raise StandardError, "Connection failed" if calls == 1
+
+        [ :tool ]
+      end
+
+      assert_raises(StandardError) { Tools::McpTools.generate_tool_classes(mcp_server_name: "s", mcp_client: client) }
+      assert_equal [ :tool ], Tools::McpTools.generate_tool_classes(mcp_server_name: "s", mcp_client: client)
     end
   end
 

@@ -27,7 +27,7 @@ class LangfuseCallbackTest < ActiveSupport::TestCase
 
       # Simulate messages in the chat instance (including the response as last element)
       user_msg = create_mock_message(role: :user, content: "What can you do?")
-      assistant_msg = create_mock_message(role: :assistant, content: "Hello, how can I help?", input_tokens: 10, output_tokens: 20)
+      assistant_msg = create_mock_message(role: :assistant, content: "Hello, how can I help?", tokens: tokens_of(10, 20))
 
       # Expect generation to be created with actual input messages (excluding the response)
       mock_span.expects(:create_generation).with(
@@ -51,11 +51,42 @@ class LangfuseCallbackTest < ActiveSupport::TestCase
       chat_instance = CallbackCapture.new([ user_msg, assistant_msg ])
       agent.send(:setup_langfuse_callbacks, chat_instance)
 
-      # Simulate on_end_message callback with assistant message
+      # Simulate after_message callback with assistant message
       chat_instance.fire_end_message(assistant_msg)
     end
 
-    should "use tool_calls as output when content is nil" do
+    context "cache token usage" do
+      should "report the total input including cache read and write, with a breakdown" do
+        usage = run_with_tokens(RubyLLM::Tokens.new(input: 120, output: 80, cache_read: 5200, cache_write: 300))
+
+        assert_equal(
+          { prompt_tokens: 5620, completion_tokens: 80, total_tokens: 5700, cache_read_tokens: 5200, cache_write_tokens: 300 },
+          usage
+        )
+      end
+
+      should "omit cache keys when the provider returned none" do
+        usage = run_with_tokens(RubyLLM::Tokens.new(input: 10, output: 20))
+
+        assert_equal({ prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 }, usage)
+      end
+
+      should "keep zero cache values" do
+        usage = run_with_tokens(RubyLLM::Tokens.new(input: 10, output: 20, cache_read: 0, cache_write: 0))
+
+        assert_equal 0, usage[:cache_read_tokens]
+        assert_equal 0, usage[:cache_write_tokens]
+        assert_equal 10, usage[:prompt_tokens]
+      end
+
+      should "report empty usage when input tokens are nil" do
+        usage = run_with_tokens(RubyLLM::Tokens.new)
+
+        assert_equal({}, usage)
+      end
+    end
+
+    should "use tool_calls as output when content is empty" do
       mock_langfuse = create_mock_langfuse
       mock_span = mock_langfuse.current_span
       mock_generation = mock("generation")
@@ -65,7 +96,7 @@ class LangfuseCallbackTest < ActiveSupport::TestCase
       tool_call.stubs(:to_h).returns({ id: "call_1", name: "get_issue", arguments: { issue_id: 1 } })
       # RubyLLM tool_calls is a Hash { call_id => ToolCall }
       assistant_msg = create_mock_message(
-        role: :assistant, content: nil, input_tokens: 15, output_tokens: 10,
+        role: :assistant, content: "", tokens: tokens_of(15, 10),
         tool_calls: { "call_1" => tool_call }
       )
 
@@ -104,9 +135,34 @@ class LangfuseCallbackTest < ActiveSupport::TestCase
       chat_instance = CallbackCapture.new
       agent.send(:setup_langfuse_callbacks, chat_instance)
 
-      # Simulate on_end_message callback with tool message
+      # Simulate after_message callback with tool message
       message = create_mock_message(role: :tool, content: "tool result")
       chat_instance.fire_end_message(message)
+    end
+
+    should "build input messages from all messages before the response as role/content pairs" do
+      mock_langfuse = create_mock_langfuse
+      mock_span = mock_langfuse.current_span
+      mock_generation = mock("generation")
+
+      system_msg = create_mock_message(role: :system, content: "You are helpful")
+      user_msg = create_mock_message(role: :user, content: "hi")
+      assistant_msg = create_mock_message(role: :assistant, content: "hello", tokens: tokens_of(1, 2))
+
+      mock_span.expects(:create_generation).with(
+        name: "chat",
+        messages: [ { role: "system", content: "You are helpful" }, { role: "user", content: "hi" } ],
+        model: "gpt-4",
+        temperature: 0.7,
+        max_tokens: 4096
+      ).returns(mock_generation)
+      mock_generation.expects(:finish).with(output: "hello", usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 })
+
+      agent = create_agent_with_langfuse(mock_langfuse)
+      chat_instance = CallbackCapture.new([ system_msg, user_msg, assistant_msg ])
+      agent.send(:setup_langfuse_callbacks, chat_instance)
+
+      chat_instance.fire_end_message(assistant_msg)
     end
 
     should "not register callback when langfuse is nil" do
@@ -126,7 +182,7 @@ class LangfuseCallbackTest < ActiveSupport::TestCase
       chat_instance = CallbackCapture.new
       agent.send(:setup_langfuse_callbacks, chat_instance)
 
-      # Simulate on_end_message callback - should not raise
+      # Simulate after_message callback - should not raise
       message = create_mock_message(role: :assistant, content: "response")
       assert_nothing_raised do
         chat_instance.fire_end_message(message)
@@ -139,7 +195,7 @@ class LangfuseCallbackTest < ActiveSupport::TestCase
       mock_generation = mock("generation")
 
       user_msg = create_mock_message(role: :user, content: "hello")
-      assistant_msg = create_mock_message(role: :assistant, content: "response without tokens", input_tokens: nil, output_tokens: nil)
+      assistant_msg = create_mock_message(role: :assistant, content: "response without tokens", tokens: RubyLLM::Tokens.new)
 
       mock_span.expects(:create_generation).returns(mock_generation)
       mock_generation.expects(:finish).with(
@@ -157,7 +213,7 @@ class LangfuseCallbackTest < ActiveSupport::TestCase
 
   private
 
-  # Simple object that captures RubyLLM-style on_end_message callback
+  # Simple object that captures RubyLLM-style after_message callback
   class CallbackCapture
     attr_reader :end_message_callback, :messages
 
@@ -165,7 +221,7 @@ class LangfuseCallbackTest < ActiveSupport::TestCase
       @messages = messages
     end
 
-    def on_end_message(&block)
+    def after_message(&block)
       @end_message_callback = block
       self
     end
@@ -190,12 +246,32 @@ class LangfuseCallbackTest < ActiveSupport::TestCase
     RedmineAiHelper::BaseAgent.new(project: @project, langfuse: langfuse)
   end
 
-  def create_mock_message(role:, content:, input_tokens: nil, output_tokens: nil, tool_calls: nil)
+  def run_with_tokens(tokens)
+    mock_langfuse = create_mock_langfuse
+    mock_generation = mock("generation")
+    user_msg = create_mock_message(role: :user, content: "q")
+    assistant_msg = create_mock_message(role: :assistant, content: "a", tokens: tokens)
+    mock_langfuse.current_span.stubs(:create_generation).returns(mock_generation)
+    captured = nil
+    mock_generation.expects(:finish).with { |args| captured = args[:usage] }
+
+    agent = create_agent_with_langfuse(mock_langfuse)
+    chat_instance = CallbackCapture.new([ user_msg, assistant_msg ])
+    agent.send(:setup_langfuse_callbacks, chat_instance)
+    chat_instance.fire_end_message(assistant_msg)
+    captured
+  end
+
+  # RubyLLM 2.x exposes token usage as message.tokens (input / output)
+  def tokens_of(input, output)
+    RubyLLM::Tokens.new(input: input, output: output)
+  end
+
+  def create_mock_message(role:, content:, tokens: RubyLLM::Tokens.new, tool_calls: nil)
     msg = mock("message")
     msg.stubs(:role).returns(role)
     msg.stubs(:content).returns(content)
-    msg.stubs(:input_tokens).returns(input_tokens)
-    msg.stubs(:output_tokens).returns(output_tokens)
+    msg.stubs(:tokens).returns(tokens)
     msg.stubs(:tool_calls).returns(tool_calls)
     msg
   end
@@ -205,7 +281,7 @@ class LangfuseCallbackTest < ActiveSupport::TestCase
     chat.stubs(:with_instructions).returns(chat)
     chat.stubs(:with_tools).returns(chat)
     chat.stubs(:with_temperature).returns(chat)
-    chat.stubs(:on_end_message).returns(chat)
+    chat.stubs(:after_message).returns(chat)
     chat.stubs(:messages).returns([])
     chat
   end

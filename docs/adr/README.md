@@ -62,7 +62,7 @@ Briefly describe alternatives that were rejected and why.
 | [007](./007-discord-adapter-connection-design.md) | Discord adapter connection design | Accepted (intent choice in decision 1 superseded by ADR-009) |
 | [008](./008-chat-channel-context-import.md) | Chat channel conversation context import | Accepted (decision 7 superseded by ADR-009) |
 | [009](./009-discord-message-content-intent-required.md) | Require the Discord MESSAGE_CONTENT intent in Identify | Accepted |
-| [010](./010-chat-channel-issue-link-rendering.md) | Render issue references as links on the shared gateway send path | Accepted |
+| [010](./010-chat-channel-issue-link-rendering.md) | Render issue references as links on the shared gateway send path | Accepted (Slack link format superseded by ADR-055) |
 | [011](./011-reset-i18n-locale-between-tests.md) | Reset `I18n.locale` before every test | Accepted |
 | [012](./012-slack-only-scope-for-websocket-transport-fixes.md) | Scope the WebSocket transport fixes to the Slack adapter, leaving the same latent defects in Discord | Accepted (scope decision superseded by ADR-014) |
 | [013](./013-slack-receive-inactivity-liveness-detection.md) | Replace Slack's self-initiated ping/pong-count liveness check with receive-inactivity monitoring | Accepted |
@@ -101,3 +101,10 @@ Briefly describe alternatives that were rejected and why.
 | [046](./046-streaming-renders-coalesced-per-animation-frame.md) | Streaming renders are coalesced to at most one per animation frame | Accepted |
 | [047](./047-version-write-tools-reject-disallowed-attributes.md) | Version write tools reject disallowed sharing and non-editable custom fields | Proposed |
 | [048](./048-version-write-tools-return-expected-failures-as-error-results.md) | Version tools return user-caused failures as error results and raise system failures | Proposed |
+| [049](./049-migrate-to-ruby-llm-2-1-and-require-ruby-3-2.md) | Migrate to RubyLLM 2.1 and require Ruby 3.2 or later | Proposed |
+| [050](./050-replace-ruby-llm-mcp-with-built-in-mcp-client.md) | Replace ruby_llm-mcp with RubyLLM's built-in MCP client | Proposed |
+| [051](./051-prompt-caching-with-split-system-prompt.md) | Prompt caching with a split system prompt | Proposed |
+| [052](./052-web-search-via-dedicated-agent.md) | Web search through a dedicated agent, with sources carried on the agent instances | Proposed |
+| [053](./053-processing-reaction-lifecycle.md) | Processing reaction lifecycle owned by the gateway | Proposed (superseded by ADR-054) |
+| [054](./054-chat-channel-progress-message.md) | Progress message for chat channel questions | Proposed |
+| [055](./055-slack-markdown-block-replies.md) | Slack replies as markdown blocks | Accepted |
