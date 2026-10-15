@@ -115,3 +115,6 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-029](./029-slack-markdown-test-gaps.md) | Slack markdown tests skipped the progress payload end to end and compared JSON strings | test-gap | Local AI review | Not yet |
 | [CRF-030](./030-mutable-unvalidated-link-format.md) | IssueLinkFormatter::Format was a mutable Struct without validation | convention-violation | Local AI review | Not yet |
 | [CRF-031](./031-duplicated-slack-chunk-posting.md) | Slack rich and plain senders duplicated the chunk-posting loop | readability | Local AI review | Not yet |
+| [CRF-032](./032-adr-cause-diverged-from-research.md) | ADR and CSS comments described a cause and alternatives that research did not record | doc-comment | Local AI review | AGENTS.md |
+| [CRF-033](./033-css-scanner-test-silent-misparse.md) | CSS source-scan test misparsed unsupported constructs silently and had bypassable negative checks | test-gap | Local AI review | AGENTS.md |
+| [CRF-034](./034-layout-css-test-duplication.md) | Layout CSS test re-parsed the stylesheet per lookup and duplicated selector constants | readability | Local AI review | Not yet |

@@ -108,3 +108,4 @@ Briefly describe alternatives that were rejected and why.
 | [053](./053-processing-reaction-lifecycle.md) | Processing reaction lifecycle owned by the gateway | Proposed (superseded by ADR-054) |
 | [054](./054-chat-channel-progress-message.md) | Progress message for chat channel questions | Proposed |
 | [055](./055-slack-markdown-block-replies.md) | Slack replies as markdown blocks | Accepted |
+| [056](./056-dashboard-health-report-frame-capped-by-viewport.md) | Cap the dashboard health report frame, not the pane, by viewport height | Accepted |
