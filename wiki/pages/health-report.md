@@ -1,8 +1,8 @@
 ---
 title: Project Health Report
 type: component
-sources: [S002, S003, S011, S038]
-updated: 2026-10-03
+sources: [S002, S003, S011, S038, S048]
+updated: 2026-10-15
 ---
 
 # Project Health Report
@@ -64,7 +64,8 @@ incremental UI updates as tokens arrive (S011).
   displays correctly regardless of Redmine's text-formatting setting; before
   feature 064 they went through format-dependent `textilizable` and broke on
   Textile setups — see
-  [Health Report Markdown Rendering](./health-report-markdown-rendering.md)
+  [Health Report Markdown Rendering](./health-report-markdown-rendering.md) ·
+  [Health Report Detail Pane Layout](./health-report-detail-pane-layout.md)
   (S038). Historically, S011 described client-side parsing by
   `AiHelperMarkdownParser` for this view; that no longer applies to saved
   reports (S011, S038).
@@ -94,4 +95,5 @@ Generate reports programmatically — e.g. on a cron schedule (S002).
   [Tool System](./tool-system.md) · [Think Model](./think-model.md) ·
   [Plugin Overview](./plugin-overview.md) ·
   [Health Report Editing](./health-report-editing.md) ·
-  [Health Report Markdown Rendering](./health-report-markdown-rendering.md)
+  [Health Report Markdown Rendering](./health-report-markdown-rendering.md) ·
+  [Health Report Detail Pane Layout](./health-report-detail-pane-layout.md)

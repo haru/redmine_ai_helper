@@ -93,3 +93,5 @@ A concrete, checkable rule to apply when writing future specifications.
 | [SF-010](./010-contract-prescribed-rescue-of-all-standard-errors.md) | Contract prescribed rescuing every StandardError from the adapter calls | convention-unknown | 073-chat-channel-progress | AGENTS.md |
 | [SF-011](./011-failure-notice-included-in-markdown-formatting.md) | Included the failure notice in Slack Markdown formatting without reading its dedicated send path | convention-unknown | 074-slack-markdown-rendering | Not yet |
 | [SF-012](./012-delivery-failure-notice-text-not-revisited.md) | Kept the "error while generating" notice for a new answer-delivery failure | scope-gap | 074-slack-markdown-rendering | Not yet |
+| [SF-013](./013-edit-form-state-assumed-unaffected.md) | Assumed the edit-form state was unaffected by the clipping bug without measuring it | unconfirmed-assumption | 075-fix-health-report-clipping | Not yet |
+| [SF-014](./014-fr-required-layout-not-expressible-in-css.md) | Required an exact "shrink to the remaining height" layout without checking that CSS can express it | unconfirmed-assumption | 075-fix-health-report-clipping | Not yet |

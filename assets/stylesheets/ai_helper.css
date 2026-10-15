@@ -323,74 +323,39 @@ table.ai-helper-sub-issues-table td {
   overflow-y: scroll !important;
 }
 
-/* Dashboard-only: stretch report detail area with viewport height */
+/*
+ * Dashboard-only: cap the report frame, not the detail pane, by the viewport
+ * height (ADR-056). The pane wraps its content, so the export links below the
+ * frame are never clipped; flex-start keeps it from stretching to the history
+ * pane's height. 340px is the pane's top offset plus the bottom margin, 14em is
+ * the typical fixed part around the frame (meta, links, pane padding and
+ * border) and 17em is the minimum frame height (about 10 lines).
+ */
 body.controller-ai_helper_dashboard.action-index .ai-helper-detail-pane {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  max-height: calc(100vh - 340px);
-  overflow: hidden;
-}
-
-body.controller-ai_helper_dashboard.action-index #ai-helper-health-report-detail-container {
-  flex: 1 1 auto;
-  display: flex;
-  min-height: 0;
-  max-height: 100%;
-  overflow: hidden;
-}
-
-body.controller-ai_helper_dashboard.action-index .ai-helper-health-report-detail {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-height: 0;
-  max-height: 100%;
-}
-
-/* Fill the flex container's width; otherwise it shrinks to the edit textarea */
-body.controller-ai_helper_dashboard.action-index .ai-helper-health-report-body {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-body.controller-ai_helper_dashboard.action-index .ai-helper-health-report-meta,
-body.controller-ai_helper_dashboard.action-index .ai-helper-health-report-detail .other-formats {
-  flex: 0 0 auto;
+  align-self: flex-start;
 }
 
 body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-content.has-report {
-  flex: 1 1 auto;
-  min-height: 360px;
+  min-height: 17em;
   height: auto !important;
-  max-height: 100%;
+  max-height: max(17em, calc(100vh - 340px - 14em));
   overflow-y: auto !important;
 }
 
+/* While the edit form is open, do not scroll inside the frame; the pane grows instead */
+body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-content.has-report:has(> .ai-helper-health-report-edit-form:not([hidden])) {
+  max-height: none;
+}
+
+/* Width 900px and below (stacked): undo flex-start so the pane keeps full width; the frame grows with its content from a 360px minimum */
 @media screen and (max-width: 900px) {
   body.controller-ai_helper_dashboard.action-index .ai-helper-detail-pane {
-    display: block;
-    max-height: none;
-    overflow: visible;
-  }
-
-  body.controller-ai_helper_dashboard.action-index #ai-helper-health-report-detail-container {
-    display: block;
-    max-height: none;
-    overflow: visible;
-  }
-
-  body.controller-ai_helper_dashboard.action-index .ai-helper-health-report-detail {
-    display: block;
-    max-height: none;
+    align-self: auto;
   }
 
   body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-content.has-report {
+    min-height: 360px;
     max-height: none;
-  }
-
-  body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-content.has-report {
-    height: auto !important;
   }
 }
 
