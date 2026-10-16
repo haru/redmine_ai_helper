@@ -36,11 +36,6 @@ export async function loadScriptAndFireDOMContentLoaded(relativePathFromRoot) {
   // DOMContentLoaded registration itself. A script may register more than
   // one DOMContentLoaded listener, so run all of them, in order.
   const domContentLoadedListeners = registered.filter(([type]) => type === "DOMContentLoaded").map(([, listener]) => listener);
-  for (const listener of domContentLoadedListeners) {
-    listener();
-  }
-  spy.mockRestore();
-  await new Promise((resolve) => setTimeout(resolve, 0));
 
   function removeRegisteredListeners() {
     for (const [type, listener, options] of registered) {
@@ -48,6 +43,20 @@ export async function loadScriptAndFireDOMContentLoaded(relativePathFromRoot) {
       document.removeEventListener(type, listener, options);
     }
   }
+
+  try {
+    for (const listener of domContentLoadedListeners) {
+      listener();
+    }
+  } catch (error) {
+    // The caller never receives the cleanup handle when the handler throws,
+    // so drop the listeners registered so far before rethrowing.
+    removeRegisteredListeners();
+    throw error;
+  } finally {
+    spy.mockRestore();
+  }
+  await new Promise((resolve) => setTimeout(resolve, 0));
 
   return { removeRegisteredListeners };
 }

@@ -7,9 +7,9 @@
 
 AI output is rendered as Markdown on the server by `AiHelperHelper#md_to_html`, which is used by every server-side display surface: the health report views (`render_health_report_markdown`), the chat history and the issue/wiki summaries. The `<table>` elements it produced carried no class, so Redmine's standard `table.list` styling (grey header row, borders, striped rows) never applied to them. Users reported that a stored health report showed coloured tables in the project overview but unstyled tables in the dashboard tab and the report detail page (feature 076).
 
-The overview looked different for a leftover reason: after page load, browser JavaScript re-parsed the raw Markdown stored in a hidden field and replaced the server-rendered body with `parser.parse(...)` output, whose tables do carry `class="list"`. Two such re-parses existed in `assets/javascripts/project_health/ai_helper_project_health.js`. ADR-044 already rejected client-side rendering for display ("HTML must come from ERB; server-side sanitization would be bypassed"), but the re-parse code had survived feature 064.
+The overview looked different for a leftover reason: after page load, browser JavaScript re-parsed the raw Markdown stored in a hidden field and replaced the server-rendered body with `parser.parse(...)` output, whose tables do carry `class="list"`. Two such re-parses existed in `assets/javascripts/project_health/ai_helper_project_health.js`. Feature 064 had already rejected client-side rendering for display because the HTML must come from ERB and a browser-side parser skips the server-side sanitization (`specs/064-health-report-edit/research.md`, "JS の `AiHelperMarkdownParser` でクライアント描画"); ADR-044 records the related decision to render stored reports as Markdown. The re-parse code had survived feature 064.
 
-Measurements and details: `specs/076-fix-health-report-table-style/research.md` (R-001 to R-004).
+Measurements and details: `specs/076-fix-health-report-table-style/research.md` (R-001 to R-004). ADR-044 is not changed (append-only); this ADR complements it.
 
 ## Decision
 
@@ -19,7 +19,7 @@ Measurements and details: `specs/076-fix-health-report-table-style/research.md` 
 
 ## Consequences
 
-- Every server-rendered AI output table gets Redmine's standard table styling, identically in all five health report displays, the chat history, the issue/wiki summaries and the chat streaming display.
+- Every server-rendered AI output table gets Redmine's standard table styling, identically in all the health report displays (the overview, the dashboard tab, the report detail page, the original report and the edit preview; R-002), the chat history, the issue/wiki summaries and the chat streaming display.
 - Column alignment follows the Markdown alignment hints everywhere; unspecified columns align left in LTR. The health report tab/detail/preview previously ignored the hints and forced everything left — that changes by design (approved during clarify, recorded in SF-016/SF-017).
 - Row striping follows Redmine's own rules: tables inside `.box` (health report) show no stripes, the chat and summary containers stripe even rows (`application.css`). View-dependent stripe differences are Redmine core behaviour and are not papered over by plugin CSS.
 - Non-table HTML is byte-identical to before: setting the attribute on the fragment avoids a measured drift from re-parsing (task-list `<li>` and the code-block `div.pre-wrapper` gained newlines, and `disabled=""` degraded to `disabled`).
@@ -33,7 +33,3 @@ Measurements and details: `specs/076-fix-health-report-table-style/research.md` 
 - Serialize the fragment and re-parse it to set the class: measured to change non-table HTML (see Consequences), violating "table styling must not change anything else" (FR-005).
 - Keep a plugin-specific class (e.g. `ai-helper-markdown-table`) instead of `list`, or add a shared container class to the three ERB templates plus the JS-generated one: both touch more code than extending the CSS selectors, for the same result.
 - Delete only the re-parse part of the second `DOMContentLoaded` handler and keep its export wiring: the wired IDs are not output anywhere, so the kept code would be dead.
-
-## Reference
-
-- Supersedes nothing; complements ADR-044, which rejected client-side rendering for display and is left unchanged (append-only).

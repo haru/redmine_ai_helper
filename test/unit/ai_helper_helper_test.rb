@@ -47,58 +47,22 @@ class AiHelperHelperTest < ActionView::TestCase
     | 5    | 6    | 7      | 8     |
   MD
 
-  # The md_to_html output captured before the table class change, with the only
-  # prescribed difference applied: <table> became <table class="list">. Every
-  # other character, including checked="" disabled="" and the pre-wrapper
-  # markup, must stay as it was.
-  PINNED_NON_TABLE_HTML = <<~HTML.freeze
-<h1>Heading 1</h1>
-<h2>Heading 2</h2>
-<p>Task list:</p>
-<ul class="contains-task-list">
-<li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" checked="" disabled=""> done task</li>
-<li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled=""> open task</li>
-</ul>
-<div class="pre-wrapper" data-controller="clipboard"><a class="copy-pre-content-link icon-only" title="Copy" data-action="clipboard#copyPre"><svg class="s18 icon-svg" aria-hidden="true"><use href="/assets/icons-0476c1d7.svg#icon--copy-pre-content"></use></svg></a><pre data-clipboard-target="pre"><code class="ruby syntaxhl" data-language="ruby"><span class="nb">puts</span> <span class="s2">"code block"</span>
-</code></pre></div>
-<div class="markdown-alert markdown-alert-note">
-<p class="markdown-alert-title"><svg class="s18 icon-svg" aria-hidden="true"><use href="/assets/icons-0476c1d7.svg#icon--help"></use></svg><span class="icon-label">Note</span></p>
-<p>This is an alert.</p>
-</div>
-<p>Footnote reference<sup><a href="#fn-1" id="fnref-1">1</a></sup>.</p>
-<p>See issue #123 for details.</p>
-<table class="list">
-<thead>
-<tr>
-<th>none</th>
-<th align="left">left</th>
-<th align="center">center</th>
-<th align="right">right</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>1</td>
-<td align="left">2</td>
-<td align="center">3</td>
-<td align="right">4</td>
-</tr>
-<tr>
-<td>5</td>
-<td align="left">6</td>
-<td align="center">7</td>
-<td align="right">8</td>
-</tr>
-</tbody>
-</table>
-#{' '}
-<ol>
-<li id="fn-1">
-<p>Footnote body. <a href="#fnref-1" aria-label="Back to reference 1">↩</a></p>
-</li>
-</ol>
-#{' '}
-  HTML
+  # Renders +text+ the way md_to_html did before the table class was added:
+  # same pipeline, same sanitization, no class on the tables. Built from the
+  # running Redmine so that the comparison does not depend on Redmine's
+  # asset digests or version-specific markup.
+  def render_without_table_class(text)
+    text = text.encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
+    if defined?(MarkdownPipeline)
+      MarkdownPipeline.call(text)[:output].to_s
+    else
+      html = MarkdownFilter.new(text, PIPELINE_CONFIG).call
+      fragment = Redmine::WikiFormatting::HtmlParser.parse(html)
+      SANITIZER.call(fragment)
+      SCRUBBERS.each { |scrubber| fragment.scrub!(scrubber) }
+      fragment.to_s
+    end
+  end
 
   context "md_to_html tables" do
     should "add the list class to the rendered table" do
@@ -119,23 +83,24 @@ class AiHelperHelperTest < ActionView::TestCase
       assert md_to_html("| none |\n|------|\n| 1    |").html_safe?
     end
 
-    should "replace the class of a raw HTML table in the body with list" do
-      markdown = %(<table class="x"><tr><td>raw</td></tr></table>)
+    should "set the class of a raw HTML table in the body to exactly list" do
+      markdown = %(<table class="list x"><tr><td>raw</td></tr></table>)
       html = md_to_html(markdown)
 
       assert_includes html, %(<table class="list">)
-      assert_not_includes html, %(class="x")
+      assert_not_includes html, "list x"
     end
 
     should "keep the output identical to the previous implementation except for the table class" do
+      baseline = render_without_table_class(NON_TABLE_FIXTURE)
       html = md_to_html(NON_TABLE_FIXTURE)
 
-      # The heredoc always ends with a newline, but the real output ends with
-      # the single space of the footnote separator.
-      assert_equal PINNED_NON_TABLE_HTML.chomp, html
-      # The alignment hints of th/td must survive (they are part of the pinned string).
+      # The searched region must exist: the fixture contains a table with alignments.
+      assert_includes baseline, "<table>"
+      assert_includes baseline, %(<th align="center">center</th>)
+      assert_equal baseline.gsub("<table>", %(<table class="list">)), html
+      # The alignment hints of th/td must survive.
       assert_includes html, %(<th align="left">left</th>)
-      assert_includes html, %(<th align="center">center</th>)
       assert_includes html, %(<th align="right">right</th>)
       assert_includes html, %(<td align="right">4</td>)
     end
@@ -143,7 +108,7 @@ class AiHelperHelperTest < ActionView::TestCase
 
   context "md_to_html Redmine 6.x pipeline branch" do
     teardown do
-      AiHelperHelper.send(:remove_const, :MarkdownPipeline) if AiHelperHelper.const_defined?(:MarkdownPipeline)
+      AiHelperHelper.send(:remove_const, :MarkdownPipeline) if AiHelperHelper.const_defined?(:MarkdownPipeline, false)
     end
 
     should "add the list class to tables when the pipeline returns a document fragment" do
@@ -163,9 +128,19 @@ class AiHelperHelperTest < ActionView::TestCase
         end
       end)
 
-      assert_raises(ArgumentError) do
-        md_to_html("text")
-      end
+      error = assert_raises(ArgumentError) { md_to_html("text") }
+      assert_match(/but got String/, error.message)
+    end
+
+    should "raise when the pipeline output is missing" do
+      AiHelperHelper.const_set(:MarkdownPipeline, Class.new do
+        def self.call(_text)
+          {}
+        end
+      end)
+
+      error = assert_raises(ArgumentError) { md_to_html("text") }
+      assert_match(/but got NilClass/, error.message)
     end
   end
 

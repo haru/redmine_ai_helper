@@ -267,7 +267,7 @@ This is a test report."
         get :health_report_show, params: { id: @project.id, report_id: @report.id }
 
         assert_response :success
-        assert_select ".ai-helper-health-report-body table.list td", text: "#123"
+        assert_select ".ai-helper-health-report-current table.list td", text: "1"
       end
 
       should "render the original report table with the list class" do

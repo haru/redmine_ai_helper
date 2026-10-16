@@ -23,7 +23,7 @@ edited as **Markdown, independent of Redmine's text-formatting setting**
   overview (S038).
 - `AiHelperHelper#md_to_html` is the format-independent CommonMark pipeline
   already used by chat, issue summary and wiki summary; it runs Redmine's
-  sanitizer/scrubber and absorbs Redmine 6.1/master differences. `#123`
+  sanitizer/scrubber and absorbs Redmine 6.x/7.x differences. `#123`
   references still become links (S038).
 - Rejected: calling `Redmine::WikiFormatting.to_html("common_mark", ...)`
   directly (duplicates `md_to_html`); client-side `AiHelperMarkdownParser`
@@ -42,8 +42,9 @@ edited as **Markdown, independent of Redmine's text-formatting setting**
 - Feature 076 removed the leftover browser-side re-parse of saved reports
   (hidden-field Markdown re-parsed into `#ai-helper-project-health-result` on
   load), the last surviving client-side rendering path; the hidden field and
-  the PDF/Markdown export handlers stay (S049). ADR-044's rejection of
-  client-side rendering is thereby fully enforced (ADR-057).
+  the PDF/Markdown export handlers stay (S049). Feature 064's rejection of
+  client-side rendering is thereby enforced for saved reports (ADR-057); the
+  freshly streamed report is still rendered by `AiHelperMarkdownParser`.
 - The table CSS of `ai_helper.css` extends to the chat and summary containers;
   columns without an explicit Markdown alignment use `text-align: start`
   there (RTL-safe), while the health report containers keep `left` and their

@@ -394,7 +394,10 @@ body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-conte
 
 /* Tables use Redmine's standard list classes for styling. The chat history
    and the issue/wiki summaries also render AI output through md_to_html, so
-   they share the same table rules as the health report containers. */
+   they share the same table rules as the health report containers.
+   #aihelper-chat-conversation holds both the server-rendered history
+   (md_to_html) and the answer being streamed (AiHelperMarkdownParser, which
+   emits table.list as well), so the streaming tables follow these rules too. */
 .ai-helper-streaming-content table.list,
 .ai-helper-final-content table.list,
 #aihelper-chat-conversation table.list,
@@ -416,11 +419,8 @@ body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-conte
    direction start; the health report containers keep their explicit left
    rules and RTL overrides in ai_helper_rtl.css. */
 .ai-helper-streaming-content table.list td,
-.ai-helper-final-content table.list td {
-  text-align: left !important;
-}
-
 .ai-helper-streaming-content table.list th,
+.ai-helper-final-content table.list td,
 .ai-helper-final-content table.list th {
   text-align: left !important;
 }

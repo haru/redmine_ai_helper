@@ -403,29 +403,25 @@ document.addEventListener('DOMContentLoaded', function() {
   // Set flag to indicate main script is loaded
   window.aiHelperProjectHealthLoaded = true;
 
-  // Wait for AiHelperMarkdownParser to be available
-  let parser;
-  try {
-    if (typeof AiHelperMarkdownParser !== 'undefined') {
-      parser = new AiHelperMarkdownParser();
-    } else {
-      return;
-    }
-  } catch {
-    return;
-  }
-
   initializeExistingReportDisplay();
   setupHealthReportObserver();
+
+  // Add event listeners to export links
+  document.addEventListener('click', handleProjectHealthExportClick);
+
+  // Only the streaming generation needs the Markdown parser. A missing parser
+  // script is a page setup error, so let it surface instead of silently
+  // skipping the initialization above.
+  if (typeof AiHelperMarkdownParser === 'undefined') {
+    throw new Error('AiHelperMarkdownParser is not loaded; the project health report cannot be generated.');
+  }
+  const parser = new AiHelperMarkdownParser();
 
   // Use event delegation so the handler survives DOM replacement
   // (e.g. after updateHealthReportHistory replaces the history container)
   document.addEventListener('click', function(e) {
     handleGenerateProjectHealthClick(e, parser);
   });
-
-  // Add event listeners to export links
-  document.addEventListener('click', handleProjectHealthExportClick);
 });
 
 } // End guard against multiple script loading

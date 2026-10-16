@@ -118,3 +118,6 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-032](./032-adr-cause-diverged-from-research.md) | ADR and CSS comments described a cause and alternatives that research did not record | doc-comment | Local AI review | AGENTS.md |
 | [CRF-033](./033-css-scanner-test-silent-misparse.md) | CSS source-scan test misparsed unsupported constructs silently and had bypassable negative checks | test-gap | Local AI review | AGENTS.md |
 | [CRF-034](./034-layout-css-test-duplication.md) | Layout CSS test re-parsed the stylesheet per lookup and duplicated selector constants | readability | Local AI review | Not yet |
+| [CRF-035](./035-environment-dependent-and-vacuous-table-tests.md) | Table class tests pinned Redmine-version markup, matched the wrong element and had narrow negative checks | test-gap | Local AI review | Not yet |
+| [CRF-036](./036-parser-guard-skipped-unrelated-init.md) | Early return for a missing Markdown parser silently skipped initialization that no longer needed it | error-handling | Local AI review | Not yet |
+| [CRF-037](./037-adr-misattributed-quote-and-stale-comments.md) | ADR quoted a decision from the wrong source; comments and promotion fields were inaccurate | doc-comment | Local AI review | Not yet |

@@ -391,26 +391,34 @@ describe("table rules for chat and summary containers (C-3)", () => {
     });
   });
 
-  it("adds no colour, font or border declarations for the chat and summary tables (C-3.6)", () => {
+  it("adds no colour, font, border or outline declarations for the chat and summary tables (C-3.6)", () => {
+    // Every table-related selector of the two containers, however it is spelled
+    // (table, table.list, thead, tr, td[align=left], ...), not just a fixed list.
+    const TABLE_PART = "(?:table|thead|tbody|tfoot|tr|td|th|caption)";
+    const STYLE_PROPS = /^(?:color|background|font|border|outline)/;
     [CHAT, SUMMARY].forEach((container) => {
-      ["table.list", "table.list th", "table.list td",
-        ...ALIGN_SHAPES.map((shape) => `table.list ${shape}`)].forEach((shape) => {
-        const rules = findRules(`${container} ${shape}`);
-        expect(rules.length).toBeGreaterThan(0);
-        rules.forEach((decls) => {
-          ["color", "background", "font-family", "border"].forEach((prop) => {
-            expect(decls[prop]).toBeUndefined();
-          });
+      const tableSelector = new RegExp(`^${container.replace(/[.#]/g, "\\$&")}\\s+${TABLE_PART}\\b`);
+      const rules = RULES.filter((rule) => rule.selectors.some((selector) => tableSelector.test(selector)));
+      // Guards against a vacuous pass: the scanned region must exist
+      expect(rules.length).toBeGreaterThan(0);
+      rules.forEach((rule) => {
+        Object.keys(declarationsOf(rule.body)).forEach((prop) => {
+          expect(prop, `${container}: ${rule.selectors.join(", ")}`).not.toMatch(STYLE_PROPS);
         });
       });
     });
   });
 
+  it("scans table selectors of both containers in the stylesheet (C-3.6 guard)", () => {
+    const tableSelector = /^#aihelper-chat-conversation\s+table\b/;
+    expect(RULES.some((rule) => rule.selectors.some((selector) => tableSelector.test(selector)))).toBe(true);
+  });
+
   it("keeps ai_helper_rtl.css free of the chat and summary table selectors (C-3.7)", () => {
-    const rtl = readFileSync(resolve(process.cwd(), "assets/stylesheets/ai_helper_rtl.css"), "utf8");
-    // Guards against a vacuous pass: the scanned file must contain selectors at all
-    expect(rtl).toMatch(/^[.#][\w-]+/m);
-    expect(rtl).not.toMatch(/aihelper-chat-conversation/);
-    expect(rtl).not.toMatch(/ai-helper-summary-body/);
+    const rtlRules = parseRules(readFileSync(resolve(process.cwd(), "assets/stylesheets/ai_helper_rtl.css"), "utf8"));
+    // Guards against a vacuous pass: the scanned file must contain rules at all
+    expect(rtlRules.length).toBeGreaterThan(0);
+    const selectors = rtlRules.flatMap((rule) => rule.selectors);
+    expect(selectors.filter((selector) => selector.includes(CHAT) || selector.includes(SUMMARY))).toEqual([]);
   });
 });

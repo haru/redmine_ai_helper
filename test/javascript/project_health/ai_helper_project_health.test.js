@@ -91,14 +91,16 @@ describe("ai_helper_project_health", () => {
   }
 
   describe("initialization guards", () => {
-    it("sets the loaded flag but wires nothing else when the markdown parser is unavailable", async () => {
+    it("still initializes the existing report and then fails loudly when the markdown parser is unavailable", async () => {
       delete window.AiHelperMarkdownParser;
-      addHealthContainer();
+      const { contentDiv } = addHealthContainer({ finalContent: true });
       addGenerateLink();
 
-      await load();
+      await expect(load()).rejects.toThrow(/AiHelperMarkdownParser/);
 
       expect(window.aiHelperProjectHealthLoaded).toBe(true);
+      expect(contentDiv.classList.contains("has-report")).toBe(true);
+      expect(container.querySelector(".other-formats")).not.toBeNull();
       document.getElementById("ai-helper-generate-project-health-link").dispatchEvent(
         new MouseEvent("click", { bubbles: true, cancelable: true }),
       );
@@ -109,9 +111,10 @@ describe("ai_helper_project_health", () => {
   describe("existing report display on load", () => {
     it("keeps the server-rendered body unchanged and adds has-report plus the PDF export button", async () => {
       const { contentDiv, resultDiv } = addHealthContainer({ finalContent: true });
-      // Distinctly server-rendered markup that the JS parser would never produce.
+      // Distinctly server-rendered markup that the JS parser would never produce (it always emits a <thead>).
       const serverRenderedBody = '<table class="list"><tbody><tr><td>server rendered</td></tr></tbody></table>';
       resultDiv.innerHTML = serverRenderedBody;
+      // The raw Markdown in the hidden field must NOT be re-parsed into the body.
       const hiddenField = document.createElement("input");
       hiddenField.type = "hidden";
       hiddenField.id = "ai-helper-health-report-content";
