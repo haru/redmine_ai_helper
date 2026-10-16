@@ -30,8 +30,9 @@ module RedmineAiHelper
       # the gem's default SSE notification stream.
       #
       # Overrides the private +StreamableHTTPTransport#handle_subscriptions_listen+
-      # (mcp 1.4.0, `streamable_http_transport.rb:840`), which +handle_modern+ calls
-      # for this method whenever +serves_subscriptions_listen?+ is truthy — the base
+      # (mcp 1.8.0, `streamable_http_transport.rb:1012`), which +handle_modern+ calls
+      # as `handle_subscriptions_listen(body, auth_info: ...)` for this method whenever
+      # +serves_subscriptions_listen?+ is truthy — the base
       # class default, left un-overridden by this class (see
       # `specs/052-fix-mcp14-subscriptions-listen/contracts/transport-internal.md`).
       #
@@ -40,10 +41,12 @@ module RedmineAiHelper
       # started — the request is answered and forgotten.
       #
       # @param body [Hash] the parsed JSON-RPC request, with symbol keys
+      # @param auth_info [Object, nil] OAuth auth info passed by the gem since mcp 1.8.0;
+      #   unused, because the method is rejected regardless of the caller
       # @return [Array(Integer, Hash, Array<String>)] a one-shot Rack triple: HTTP 404,
       #   a plain `application/json` header, and a single JSON-RPC "Method not found"
       #   (`-32601`) error body echoing the request `id` (`null` when absent)
-      def handle_subscriptions_listen(body)
+      def handle_subscriptions_listen(body, auth_info: nil) # rubocop:disable Lint/UnusedMethodArgument
         json = JSON.generate(
           jsonrpc: "2.0",
           id: body[:id],
