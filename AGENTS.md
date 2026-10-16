@@ -139,6 +139,7 @@ Agents expose tools by overriding `available_tool_providers` to return an array 
 ### Testing
 - **TDD**: Write tests before implementing features
 - Assert cross-call properties (e.g. a cache prefix) by equality: build two instances with every per-request input changed and `assert_equal` the stable part. For a value that crosses layers (agent → provider → request payload), add at least one test from the top-level entry point to the rendered payload. Every new `raise`/guard branch gets a test that drives it (CRF-006, CRF-010)
+- A test helper that parses source (CSS, templates, config) throws on constructs it does not model, with a test for that throw. Every negative assertion covers the equivalent spellings of what it forbids and asserts that the searched region was found (CRF-024, CRF-033)
 - Framework: `shoulda` (context/should blocks) + `mocha` (mocking external servers only)
 - Test fixtures: `test/model_factory.rb` (FactoryBot)
 - Test structure: `test/unit/` (models, agents, tools), `test/unit/lib/` (lib classes), `test/functional/` (controllers), `test/integration/` (API)
@@ -186,6 +187,7 @@ Agents expose tools by overriding `available_tool_providers` to return an array 
 - ADRs are **append-only** — add new ones to supersede; never modify or delete past ADRs
 - Format: use template in `docs/adr/README.md`
 - Before documenting what a shared code path sends or records, check its behaviour for every provider/protocol that reaches it (read the library source), state guarantees with their actual scope, and when a fix changes behaviour, update docs/, wiki/, README and same-branch ADRs in the same change (CRF-005, CRF-007, CRF-011)
+- When an ADR or comment summarises a research.md decision, take the cause, numbers and alternatives from the cited R-NNN section in the same step; every alternative listed must appear in research with the same reason (CRF-023, CRF-032)
 
 ## Review Feedback Logs
 - When the user asks you to correct a specification (`specs/` artifacts such as spec.md, plan.md, tasks.md, or design docs), record the feedback with the `record-spec-feedback` skill after applying the fix.
