@@ -106,9 +106,12 @@ describe("ai_helper_project_health", () => {
     });
   });
 
-  describe("existing report re-render on load", () => {
-    it("re-parses stored markdown and adds the PDF export button", async () => {
+  describe("existing report display on load", () => {
+    it("keeps the server-rendered body unchanged and adds has-report plus the PDF export button", async () => {
       const { contentDiv, resultDiv } = addHealthContainer({ finalContent: true });
+      // Distinctly server-rendered markup that the JS parser would never produce.
+      const serverRenderedBody = '<table class="list"><tbody><tr><td>server rendered</td></tr></tbody></table>';
+      resultDiv.innerHTML = serverRenderedBody;
       const hiddenField = document.createElement("input");
       hiddenField.type = "hidden";
       hiddenField.id = "ai-helper-health-report-content";
@@ -117,7 +120,7 @@ describe("ai_helper_project_health", () => {
 
       await load();
 
-      expect(resultDiv.innerHTML).toContain("<strong>bold report</strong>");
+      expect(resultDiv.innerHTML).toBe(serverRenderedBody);
       expect(contentDiv.classList.contains("has-report")).toBe(true);
       expect(container.querySelector(".other-formats")).not.toBeNull();
     });
@@ -205,175 +208,5 @@ describe("ai_helper_project_health", () => {
       expect(healthDiv.querySelectorAll(".other-formats").length).toBe(1);
       void resultDiv;
     });
-  });
-});
-
-// T042: characterization tests for project/_health_report_detail_pane.html.erb
-// (T032) and project/_health_report_show.html.erb (T033) extraction.
-
-describe("project/_health_report_detail_pane.html.erb extraction", () => {
-  let cleanup;
-  let elements;
-
-  function el(node) {
-    elements.push(node);
-    return node;
-  }
-
-  beforeEach(async () => {
-    elements = [];
-    delete window.AiHelperMarkdownParser;
-    delete window.aiHelperProjectHealthInitialized;
-    await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
-    await loadScript("assets/javascripts/project_health/ai_helper_project_health_actions");
-  });
-
-  afterEach(() => {
-    cleanup?.removeRegisteredListeners();
-    cleanup = undefined;
-    elements.forEach((node) => node.remove());
-    vi.unstubAllGlobals();
-  });
-
-  function addDetailPane({ markdownExportUrl = "/projects/test/ai_helper/project_health_markdown" } = {}) {
-    const detailPane = el(document.createElement("div"));
-    detailPane.className = "ai-helper-health-report-detail";
-    detailPane.dataset.config = JSON.stringify({ markdownExportUrl });
-    document.body.appendChild(detailPane);
-
-    const resultDiv = document.createElement("div");
-    resultDiv.id = "ai-helper-project-health-result";
-    detailPane.appendChild(resultDiv);
-
-    const hiddenField = document.createElement("input");
-    hiddenField.id = "ai-helper-health-report-content";
-    hiddenField.value = "**bold report**";
-    detailPane.appendChild(hiddenField);
-
-    const exportLink = document.createElement("a");
-    exportLink.id = "ai-helper-markdown-export-detail";
-    detailPane.appendChild(exportLink);
-
-    return { detailPane, resultDiv, hiddenField, exportLink };
-  }
-
-  it("re-parses the stored Markdown into the result div on load", async () => {
-    const { resultDiv } = addDetailPane();
-
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/project_health/ai_helper_project_health");
-
-    expect(resultDiv.innerHTML).toBe('<div class="ai-helper-final-content"><strong>bold report</strong></div>');
-  });
-
-  it("does nothing when the report content is empty", async () => {
-    const { resultDiv, hiddenField } = addDetailPane();
-    hiddenField.value = "";
-
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/project_health/ai_helper_project_health");
-
-    expect(resultDiv.innerHTML).toBe("");
-  });
-
-  it("submits a POST form with the Markdown content and CSRF token when the export link is clicked", async () => {
-    const { exportLink } = addDetailPane({ markdownExportUrl: "/export-url" });
-    const meta = el(document.createElement("meta"));
-    meta.name = "csrf-token";
-    meta.content = "test-token";
-    document.head.appendChild(meta);
-
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/project_health/ai_helper_project_health");
-
-    let submittedForm;
-    const submitSpy = vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(function () {
-      submittedForm = this;
-    });
-    exportLink.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-
-    expect(submittedForm.action).toContain("/export-url");
-    expect(submittedForm.method).toBe("post");
-    expect(submittedForm.elements["health_report_content"].value).toBe("**bold report**");
-    expect(submittedForm.elements["authenticity_token"].value).toBe("test-token");
-    submitSpy.mockRestore();
-  });
-});
-
-describe("project/_health_report_show.html.erb extraction", () => {
-  let cleanup;
-  let elements;
-
-  function el(node) {
-    elements.push(node);
-    return node;
-  }
-
-  beforeEach(async () => {
-    elements = [];
-    delete window.AiHelperMarkdownParser;
-    delete window.aiHelperProjectHealthInitialized;
-    await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
-    await loadScript("assets/javascripts/project_health/ai_helper_project_health_actions");
-  });
-
-  afterEach(() => {
-    cleanup?.removeRegisteredListeners();
-    cleanup = undefined;
-    elements.forEach((node) => node.remove());
-    vi.unstubAllGlobals();
-  });
-
-  function addShowPage() {
-    const container = el(document.createElement("div"));
-    document.body.appendChild(container);
-
-    const resultDiv = document.createElement("div");
-    resultDiv.id = "ai-helper-project-health-result";
-    container.appendChild(resultDiv);
-
-    const hiddenField = document.createElement("input");
-    hiddenField.id = "ai-helper-health-report-content";
-    hiddenField.value = "**bold report**";
-    container.appendChild(hiddenField);
-
-    const exportLink = document.createElement("a");
-    exportLink.id = "export-markdown-link";
-    container.appendChild(exportLink);
-
-    const exportForm = document.createElement("form");
-    exportForm.id = "markdown-export-form";
-    container.appendChild(exportForm);
-
-    return { resultDiv, hiddenField, exportLink, exportForm };
-  }
-
-  it("re-parses the stored Markdown into the result div on load", async () => {
-    const { resultDiv } = addShowPage();
-
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/project_health/ai_helper_project_health");
-
-    expect(resultDiv.innerHTML).toBe('<div class="ai-helper-final-content"><strong>bold report</strong></div>');
-  });
-
-  it("submits the pre-rendered export form when the export link is clicked", async () => {
-    const { exportLink, exportForm } = addShowPage();
-
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/project_health/ai_helper_project_health");
-
-    const submitSpy = vi.spyOn(exportForm, "submit").mockImplementation(() => {});
-    exportLink.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-
-    expect(submitSpy).toHaveBeenCalled();
-    submitSpy.mockRestore();
-  });
-
-  it("does nothing when the hidden content field is absent", async () => {
-    const container = el(document.createElement("div"));
-    document.body.appendChild(container);
-    const resultDiv = document.createElement("div");
-    resultDiv.id = "ai-helper-project-health-result";
-    container.appendChild(resultDiv);
-
-    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/project_health/ai_helper_project_health");
-
-    expect(resultDiv.innerHTML).toBe("");
   });
 });

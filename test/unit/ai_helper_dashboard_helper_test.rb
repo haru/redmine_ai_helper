@@ -33,6 +33,13 @@ class AiHelperDashboardHelperTest < ActionView::TestCase
       assert_includes html, %(<a href="/issues/1234">#1234</a>)
     end
 
+    should "render report tables with the standard list class" do
+      html = render_health_report_markdown("| col |\n|-----|\n| See #123 |")
+
+      assert_includes html, %(<table class="list">)
+      assert_includes html, %(<a href="/issues/123">#123</a>)
+    end
+
     should "sanitize script tags included in the body" do
       html = render_health_report_markdown("Safe text\n\n<script>alert('xss')</script>")
 

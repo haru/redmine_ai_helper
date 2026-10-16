@@ -1,8 +1,8 @@
 ---
 title: Health Report Markdown Rendering
 type: decision
-sources: [S038]
-updated: 2026-10-03
+sources: [S038, S049]
+updated: 2026-10-16
 ---
 
 # Health Report Markdown Rendering
@@ -28,6 +28,26 @@ edited as **Markdown, independent of Redmine's text-formatting setting**
 - Rejected: calling `Redmine::WikiFormatting.to_html("common_mark", ...)`
   directly (duplicates `md_to_html`); client-side `AiHelperMarkdownParser`
   (HTML must come from ERB, and it skips server-side sanitizing) (S038).
+
+## Tables & the removed client-side re-parse
+
+- `md_to_html` sets `class="list"` on every `<table>` of the parsed fragment
+  **after** sanitization (Redmine's sanitizer allowlist has no table `class`,
+  so a class written in the body cannot leak) and **before** `to_s`. Re-parsing
+  the serialized HTML was measured to drift non-table markup (newlines in
+  task-list `<li>` and the code-block `div.pre-wrapper`, `disabled=""` becoming
+  `disabled`), so the fragment attribute is set in place (S049, ADR-057).
+- The Redmine 6.x branch raises unless `MarkdownPipeline.call(text)[:output]`
+  is a `Nokogiri::XML::DocumentFragment` — no fallback (S049).
+- Feature 076 removed the leftover browser-side re-parse of saved reports
+  (hidden-field Markdown re-parsed into `#ai-helper-project-health-result` on
+  load), the last surviving client-side rendering path; the hidden field and
+  the PDF/Markdown export handlers stay (S049). ADR-044's rejection of
+  client-side rendering is thereby fully enforced (ADR-057).
+- The table CSS of `ai_helper.css` extends to the chat and summary containers;
+  columns without an explicit Markdown alignment use `text-align: start`
+  there (RTL-safe), while the health report containers keep `left` and their
+  RTL overrides (S049).
 
 ## Editor toolbar
 

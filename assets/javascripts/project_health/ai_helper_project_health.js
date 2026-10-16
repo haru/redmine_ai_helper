@@ -334,11 +334,10 @@ if (!window.aiHelperProjectHealthInitialized) {
 
 /**
  * If a health report is already rendered in the DOM (e.g. after a page
- * reload), ensure its "has-report" styling, Markdown formatting, and PDF
- * export button are all in place.
- * @param {AiHelperMarkdownParser} parser - The Markdown parser instance.
+ * reload), ensure its "has-report" styling and PDF export button are in
+ * place. The rendered body stays exactly as the server produced it.
  */
-function initializeExistingReportDisplay(parser) {
+function initializeExistingReportDisplay() {
   const resultDiv = document.getElementById('ai-helper-project-health-result');
   const contentDiv = document.querySelector('.ai-helper-project-health-content');
 
@@ -346,15 +345,6 @@ function initializeExistingReportDisplay(parser) {
     // Ensure the has-report class is applied for existing content
     if (contentDiv && !contentDiv.classList.contains('has-report')) {
       contentDiv.classList.add('has-report');
-    }
-
-    // textilizable() honors Redmine's text_formatting setting, which may be
-    // Textile and therefore breaks Markdown headings/tables. Re-parse the
-    // raw Markdown stored in the hidden field to render consistently.
-    const hiddenField = document.getElementById('ai-helper-health-report-content');
-    if (hiddenField && hiddenField.value) {
-      const formattedContent = parser.parse(hiddenField.value);
-      resultDiv.innerHTML = '<div class="ai-helper-final-content">' + formattedContent + '</div>';
     }
 
     addPdfExportButton();
@@ -425,7 +415,7 @@ document.addEventListener('DOMContentLoaded', function() {
     return;
   }
 
-  initializeExistingReportDisplay(parser);
+  initializeExistingReportDisplay();
   setupHealthReportObserver();
 
   // Use event delegation so the handler survives DOM replacement
@@ -436,67 +426,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Add event listeners to export links
   document.addEventListener('click', handleProjectHealthExportClick);
-});
-
-// --- extracted from project/_health_report_detail_pane.html.erb and
-// project/_health_report_show.html.erb (near-duplicate Markdown re-parse +
-// export wiring, unified here) ---
-document.addEventListener('DOMContentLoaded', function() {
-  const hiddenField = document.getElementById('ai-helper-health-report-content');
-  const resultDiv = document.getElementById('ai-helper-project-health-result');
-  if (!hiddenField || !resultDiv) { return; }
-  if (typeof AiHelperMarkdownParser === 'undefined') { return; }
-  const content = hiddenField.value;
-  if (!content) { return; }
-  const parser = new AiHelperMarkdownParser();
-  const formattedContent = parser.parse(content);
-  resultDiv.innerHTML = '<div class="ai-helper-final-content">' + formattedContent + '</div>';
-
-  // detail_pane variant: build and submit a form dynamically.
-  const detailExportLink = document.getElementById('ai-helper-markdown-export-detail');
-  if (detailExportLink) {
-    detailExportLink.addEventListener('click', function(e) {
-      e.preventDefault();
-      const markdownContent = hiddenField.value;
-      if (!markdownContent) { return; }
-
-      const detailPane = document.querySelector('.ai-helper-health-report-detail[data-config]');
-      const config = detailPane ? JSON.parse(detailPane.dataset.config || '{}') : {};
-
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = config.markdownExportUrl;
-
-      const contentField = document.createElement('input');
-      contentField.type = 'hidden';
-      contentField.name = 'health_report_content';
-      contentField.value = markdownContent;
-
-      const csrfToken = document.querySelector('meta[name="csrf-token"]');
-      if (csrfToken) {
-        const tokenField = document.createElement('input');
-        tokenField.type = 'hidden';
-        tokenField.name = 'authenticity_token';
-        tokenField.value = csrfToken.getAttribute('content');
-        form.appendChild(tokenField);
-      }
-
-      form.appendChild(contentField);
-      document.body.appendChild(form);
-      form.submit();
-      document.body.removeChild(form);
-    });
-  }
-
-  // show variant: submit the pre-rendered export form.
-  const showExportLink = document.getElementById('export-markdown-link');
-  const showExportForm = document.getElementById('markdown-export-form');
-  if (showExportLink && showExportForm) {
-    showExportLink.addEventListener('click', function(e) {
-      e.preventDefault();
-      showExportForm.submit();
-    });
-  }
 });
 
 } // End guard against multiple script loading

@@ -1,8 +1,8 @@
 ---
 title: AI Chat Sidebar
 type: component
-sources: [S013, S044]
-updated: 2026-10-12
+sources: [S013, S044, S049]
+updated: 2026-10-16
 ---
 
 # AI Chat Sidebar
@@ -59,8 +59,12 @@ format (S013) — the same method that folds in imported
   [Custom Commands](./custom-commands.md).
 - `AiHelperMarkdownParser` renders headers, lists, tables, code blocks, and
   **linkifies `#NNN`** into clickable Redmine issue links; its `sanitizeOutput`
-  strips dangerous tags and event handlers to prevent **XSS** (S013). The same
-  parser renders [health reports](./health-report.md) client-side.
+  strips dangerous tags and event handlers to prevent **XSS** (S013). It now
+  serves only streaming displays — saved [health reports](./health-report.md)
+  are server-rendered (S038), and the stored-report re-parse is gone (S049).
+- Stored AI answers (chat history) render through `md_to_html`, whose tables
+  carry Redmine's `list` class with Markdown-based column alignment, so the
+  history matches the streaming display (S049).
 
 - When web search is enabled, an answer's sources are rendered below it from the
   `ai_helper/chat/_citations` ERB partial (escaped, new tab with

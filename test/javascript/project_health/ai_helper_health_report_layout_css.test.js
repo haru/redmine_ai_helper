@@ -325,3 +325,92 @@ describe("dashboard detail pane (width <= 900px)", () => {
     });
   });
 });
+
+describe("table rules for chat and summary containers (C-3)", () => {
+  const CHAT = "#aihelper-chat-conversation";
+  const SUMMARY = ".ai-helper-summary-body";
+  const EXISTING = [".ai-helper-streaming-content", ".ai-helper-final-content"];
+  const ALL_CONTAINERS = [...EXISTING, CHAT, SUMMARY];
+  const CELLS = ["td", "th"];
+  const ALIGN_SHAPES = CELLS.flatMap((cell) =>
+    ["left", "right", "center"].map((align) => `${cell}[align=${align}]`));
+
+  /**
+   * Merges every rule matching the selector and fails when none was found, so
+   * that a missing rule cannot pass a property assertion vacuously.
+   * @param {string} selector a single selector of the plugin stylesheet
+   * @returns {Object<string, string>} the merged declarations
+   */
+  function mergedRule(selector) {
+    const rules = findRules(selector);
+    expect(rules.length).toBeGreaterThan(0);
+    return merge(rules);
+  }
+
+  it("gives every container's table.list the spacing and full width (C-3.1)", () => {
+    ALL_CONTAINERS.forEach((container) => {
+      const decls = mergedRule(`${container} table.list`);
+      expect(decls["margin-bottom"]).toBe("1em");
+      expect(decls.width).toBe("100%");
+    });
+  });
+
+  it("lets the header cells wrap in every container (C-3.2)", () => {
+    ALL_CONTAINERS.forEach((container) => {
+      const decls = mergedRule(`${container} table.list th`);
+      expect(decls["white-space"]).toBe("collapse");
+    });
+  });
+
+  it("honours the align hints of every cell in every container (C-3.3)", () => {
+    const expected = { left: "left !important", right: "right !important", center: "center !important" };
+    ALL_CONTAINERS.forEach((container) => {
+      ALIGN_SHAPES.forEach((shape) => {
+        const decls = mergedRule(`${container} table.list ${shape}`);
+        const align = shape.match(/\[align=(\w+)\]/)[1];
+        expect(decls["text-align"]).toBe(expected[align]);
+      });
+    });
+  });
+
+  it("keeps the default column alignment of the existing containers at left (C-3.4)", () => {
+    EXISTING.forEach((container) => {
+      CELLS.forEach((cell) => {
+        const decls = mergedRule(`${container} table.list ${cell}`);
+        expect(decls["text-align"]).toBe("left !important");
+      });
+    });
+  });
+
+  it("aligns the default columns of the chat and summary containers to the writing direction start (C-3.5)", () => {
+    [CHAT, SUMMARY].forEach((container) => {
+      CELLS.forEach((cell) => {
+        const decls = mergedRule(`${container} table.list ${cell}`);
+        expect(decls["text-align"]).toBe("start !important");
+      });
+    });
+  });
+
+  it("adds no colour, font or border declarations for the chat and summary tables (C-3.6)", () => {
+    [CHAT, SUMMARY].forEach((container) => {
+      ["table.list", "table.list th", "table.list td",
+        ...ALIGN_SHAPES.map((shape) => `table.list ${shape}`)].forEach((shape) => {
+        const rules = findRules(`${container} ${shape}`);
+        expect(rules.length).toBeGreaterThan(0);
+        rules.forEach((decls) => {
+          ["color", "background", "font-family", "border"].forEach((prop) => {
+            expect(decls[prop]).toBeUndefined();
+          });
+        });
+      });
+    });
+  });
+
+  it("keeps ai_helper_rtl.css free of the chat and summary table selectors (C-3.7)", () => {
+    const rtl = readFileSync(resolve(process.cwd(), "assets/stylesheets/ai_helper_rtl.css"), "utf8");
+    // Guards against a vacuous pass: the scanned file must contain selectors at all
+    expect(rtl).toMatch(/^[.#][\w-]+/m);
+    expect(rtl).not.toMatch(/aihelper-chat-conversation/);
+    expect(rtl).not.toMatch(/ai-helper-summary-body/);
+  });
+});

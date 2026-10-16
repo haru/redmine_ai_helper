@@ -14,20 +14,28 @@ module AiHelperHelper
 
   # Converts a given Markdown text to HTML using the Markdown pipeline.
   # Supports both Redmine 6.1 (MarkdownPipeline) and master (MarkdownFilter) versions.
+  # Every <table> of the output gets Redmine's standard "list" class so that the
+  # standard table styling applies wherever the HTML is rendered.
   def md_to_html(text)
     text = text.encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
 
-    if defined?(MarkdownPipeline)
-      MarkdownPipeline.call(text)[:output].to_s.html_safe # rubocop:disable Rails/OutputSafety
-    else
-      html = MarkdownFilter.new(text, PIPELINE_CONFIG).call
-      fragment = Redmine::WikiFormatting::HtmlParser.parse(html)
-      SANITIZER.call(fragment)
-      SCRUBBERS.each do |scrubber|
-        fragment.scrub!(scrubber)
+    fragment =
+      if defined?(MarkdownPipeline)
+        output = MarkdownPipeline.call(text)[:output]
+        unless output.is_a?(Nokogiri::XML::DocumentFragment)
+          raise ArgumentError, "MarkdownPipeline#call must return a Nokogiri::XML::DocumentFragment in :output, but got #{output.class}"
+        end
+        output
+      else
+        html = MarkdownFilter.new(text, PIPELINE_CONFIG).call
+        fragment = Redmine::WikiFormatting::HtmlParser.parse(html)
+        SANITIZER.call(fragment)
+        SCRUBBERS.each do |scrubber|
+          fragment.scrub!(scrubber)
+        end
+        fragment
       end
-      fragment.to_s.html_safe # rubocop:disable Rails/OutputSafety
-    end
+    set_list_class_on_tables(fragment).to_s.html_safe # rubocop:disable Rails/OutputSafety
   end
 
   # Convert bare "#1234" patterns in an HTML string into anchor tags pointing to
@@ -73,6 +81,17 @@ module AiHelperHelper
   end
 
   private
+
+  # Sets Redmine's standard "list" class on every <table> of the Nokogiri
+  # fragment, overwriting any existing class. Runs after sanitization, so a
+  # class written in the source body can never leak into the output.
+  # @api private
+  def set_list_class_on_tables(fragment)
+    fragment.css("table").each do |table|
+      table["class"] = "list"
+    end
+    fragment
+  end
 
   def excluded_ancestor?(node)
     node.ancestors.any? { |a| ISSUE_REFERENCE_EXCLUDED_TAGS.include?(a.name) }
