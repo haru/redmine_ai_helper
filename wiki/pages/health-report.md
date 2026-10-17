@@ -1,7 +1,7 @@
 ---
 title: Project Health Report
 type: component
-sources: [S002, S003, S011, S038, S048, S049, S050, S051]
+sources: [S002, S003, S011, S038, S048, S049, S050, S051, S052]
 updated: 2026-10-17
 ---
 
@@ -85,34 +85,9 @@ incremental UI updates as tokens arrive (S011).
 
 ## Charts
 
-Feature 078 lets a report body carry one-line chart directives that are drawn
-from the metrics stored with the report, never from numbers written by the LLM
-(S051, ADR-058).
-
-- **Syntax**: `{{ai_helper_chart(<type>, version=<version_id>)}}` or
-  `{{ai_helper_chart(<type>, period=<period_key>)}}` on a whole line (up to 3
-  leading spaces), outside fenced code blocks. Types: `status`, `tracker`,
-  `priority`, `assignee`, `open_closed`, `progress`. Period keys: `last_week`,
-  `last_month`, `all_time`, `recent` (S051).
-- **Forms**: shares of a whole are doughnuts; `assignee` is a horizontal bar
-  chart. Colors are Redmine's six issue-report colors; more than 7 items become
-  the top 6 plus "others" (S051).
-- **Where it is drawn**: Chart.js on screen (ERB emits a `<canvas>` with a data
-  attribute), rbpdf shapes in the PDF, a hand-built SVG in the Markdown export.
-  All three read the same resolved `Chart` object from
-  `RedmineAiHelper::HealthReportChart` (S051).
-- **Generation**: the prompt receives a `chart_guide` listing the types and
-  targets of the report's metrics. During streaming the directive lines are
-  hidden; after the `health_report_saved` SSE event the body is swapped for the
-  server-rendered one (S051).
-- **Unavailable charts** (unknown type/target, no stored metrics, comparison
-  reports) are replaced by a message with the reason (S051).
-- **Markdown export is a zip** (`<name>.md` + `charts/chart-<n>.svg`, n counting
-  only the drawable charts in order of appearance) for health
-  reports; comparison exports stay a single `.md` (S051).
-- The edit form has a collapsible help listing the syntax, types and the
-  report's targets; the preview needs `report_id` so it can resolve against that
-  report's metrics (S051).
+Feature 078 lets a report body carry one-line chart directives drawn from the
+metrics stored with the report (S051, ADR-058). Syntax, rendering paths,
+export zip and gotchas: [Health Report Charts](./health-report-charts.md).
 
 ## REST API
 
@@ -130,7 +105,8 @@ Generate reports programmatically — e.g. on a cron schedule (S002).
 
 ## Related
 
-- [Multi-Agent Architecture](./multi-agent-architecture.md) ·
+- [Health Report Charts](./health-report-charts.md) ·
+  [Multi-Agent Architecture](./multi-agent-architecture.md) ·
   [Tool System](./tool-system.md) · [Think Model](./think-model.md) ·
   [Plugin Overview](./plugin-overview.md) ·
   [Health Report Editing](./health-report-editing.md) ·

@@ -55,4 +55,5 @@ Sources are immutable inputs — the wiki never edits them.
 | S048 | specs/075-fix-health-report-clipping (research.md + plan.md) + docs/adr/056-dashboard-health-report-frame-capped-by-viewport.md | feature-artifact | 2026-10-15 | 2026-10-15 | health-report-detail-pane-layout.md, health-report.md |
 | S049 | specs/076-fix-health-report-table-style (research.md + plan.md) + docs/adr/057-ai-output-tables-styled-on-the-server.md | feature-artifact | 2026-10-16 | 2026-10-16 | health-report-markdown-rendering.md, health-report.md, chat-sidebar.md |
 | S050 | specs/077-fix-dashboard-health-report-error (research.md + plan.md) | feature-artifact | 2026-10-17 | 2026-10-17 | health-report-generation-completion.md, health-report.md, health-report-detail-pane-layout.md |
-| S051 | specs/078-health-report-charts (research.md + plan.md) + docs/adr/058-health-report-charts-placeholder-rendering.md | feature-artifact | 2026-10-17 | 2026-10-17 | health-report.md |
+| S051 | specs/078-health-report-charts (research.md + plan.md) + docs/adr/058-health-report-charts-placeholder-rendering.md | feature-artifact | 2026-10-17 | 2026-10-17 | health-report-charts.md, health-report.md |
+| S052 | docs/code-review-feedback/047-*.md to 052-*.md (review of feature 078) | file | 2026-10-17 | 2026-10-17 | health-report-charts.md, health-report.md |
