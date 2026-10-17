@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadScriptAndFireDOMContentLoaded } from "../support/dom_content_loaded.js";
 import { loadScript } from "../support/load_script.js";
+import { createDashboardDetailPane } from "../support/dashboard_detail_pane.js";
 
 class FakeEventSource {
   constructor(url) {
@@ -85,39 +86,14 @@ describe("ai_helper_project_health", () => {
     return link;
   }
 
+  function sendStop(source) {
+    source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+  }
+
   async function load() {
     await loadScript("assets/javascripts/project_health/ai_helper_project_health_actions");
     cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/project_health/ai_helper_project_health");
     return cleanup;
-  }
-
-  // Local DOM helper reproducing the dashboard detail pane structure of
-  // app/views/ai_helper/project/_health_report_body.html.erb:26-29: a
-  // selected report's pane has NO `.ai-helper-project-health` wrapper; the
-  // result area sits inside `.ai-helper-health-report-view`, which sits
-  // inside `.ai-helper-project-health-content`.
-  function addDashboardDetailPane({ withResult = true } = {}) {
-    const detailPane = document.createElement("div");
-    detailPane.className = "ai-helper-health-report-body";
-
-    const contentDiv = document.createElement("div");
-    contentDiv.className = "ai-helper-project-health-content has-report";
-
-    const viewDiv = document.createElement("div");
-    viewDiv.className = "ai-helper-health-report-view";
-
-    let resultDiv;
-    if (withResult) {
-      resultDiv = document.createElement("div");
-      resultDiv.id = "ai-helper-project-health-result";
-      viewDiv.appendChild(resultDiv);
-    }
-
-    contentDiv.appendChild(viewDiv);
-    detailPane.appendChild(contentDiv);
-    container.appendChild(detailPane);
-
-    return { detailPane, contentDiv, resultDiv };
   }
 
   describe("initialization guards", () => {
@@ -245,7 +221,7 @@ describe("ai_helper_project_health", () => {
 
   describe("dashboard detail pane generation (no .ai-helper-project-health)", () => {
     it("finalizes a finished generation without throwing and creates the hidden field inside .ai-helper-project-health-content", async () => {
-      const { contentDiv, resultDiv } = addDashboardDetailPane();
+      const { contentDiv, resultDiv } = createDashboardDetailPane(container);
       const link = addGenerateLink();
 
       await load();
@@ -254,7 +230,7 @@ describe("ai_helper_project_health", () => {
 
       expect(() => {
         source.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: "# Health" } }] }) });
-        source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+        sendStop(source);
       }).not.toThrow();
 
       const hiddenField = document.getElementById("ai-helper-health-report-content");
@@ -265,35 +241,61 @@ describe("ai_helper_project_health", () => {
     });
 
     it("keeps exactly one hidden field with the latest content after two consecutive generations", async () => {
-      const { contentDiv } = addDashboardDetailPane();
+      const { contentDiv } = createDashboardDetailPane(container);
       const link = addGenerateLink();
 
       await load();
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       const first = FakeEventSource.instances[0];
       first.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: "first report" } }] }) });
-      first.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+      sendStop(first);
 
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       const second = FakeEventSource.instances[1];
       second.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: "second report" } }] }) });
-      second.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+      sendStop(second);
 
       const hiddenFields = contentDiv.querySelectorAll("#ai-helper-health-report-content");
       expect(hiddenFields.length).toBe(1);
       expect(hiddenFields[0].value).toBe("second report");
     });
 
-    it("throws when the result element is not an HTMLElement or has no .ai-helper-project-health-content ancestor", async () => {
+    it("throws a distinct message when the result element is not an HTMLElement", async () => {
       await load();
       const parser = new window.AiHelperMarkdownParser();
 
       expect(() => window.finalizeStreamingContent({}, parser, "content")).toThrow(
-        /ai-helper-project-health-content/,
+        /result area must be an HTMLElement/,
       );
+    });
+
+    it("throws a distinct message when the result element has no .ai-helper-project-health-content ancestor", async () => {
+      await load();
+      const parser = new window.AiHelperMarkdownParser();
+
       expect(() => window.finalizeStreamingContent(document.createElement("div"), parser, "content")).toThrow(
-        /ai-helper-project-health-content/,
+        /result area must have a \.ai-helper-project-health-content ancestor/,
       );
+    });
+    it("validates the result area before replacing the report body", async () => {
+      const { resultDiv } = createDashboardDetailPane(container);
+      const link = addGenerateLink();
+
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const source = FakeEventSource.instances[0];
+
+      // Detaching the result area from its content container is the
+      // structural failure the guard exists for: the finalized body must
+      // not replace the page (nor the detached node) before the guard runs,
+      // or the pane would look finished while history, export links and the
+      // timestamp were never updated.
+      resultDiv.remove();
+      expect(() => sendStop(source)).toThrow(/ai-helper-project-health-content/);
+      // The click left the loader in the result area; a finalize that ran
+      // before the guard would have replaced it with the finished body.
+      expect(resultDiv.innerHTML).toContain("ai-helper-loader");
+      expect(resultDiv.innerHTML).not.toContain("ai-helper-final-content");
     });
   });
 });

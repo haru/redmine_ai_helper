@@ -22,10 +22,10 @@ FR-009, SC-006, User Story 2 scenarios 3-5 and the related Edge Cases were remov
 
 ## Root Cause
 
-The AI answered a clarification question ("should a confirmation dialog appear?") by inventing a replacement behaviour (a disabled link) and wrote "Redmine's existing look" into the spec without reading Redmine's `application.css`. Such a style does not exist, so the requirement could not be met without new CSS. The AI should have checked Redmine's stylesheet before promising a look, and should have asked whether the replacement behaviour was wanted at all.
+The AI answered a clarification question ("should a confirmation dialog appear?") by inventing a replacement behaviour (a disabled link) and wrote "Redmine's existing look" into the spec without reading Redmine's stylesheets (the disabled selectors it later cited live in `context_menu.css:50` for `#context-menu a.disabled` and `application.css:1900` for `button.tab-left.disabled`; there is no generic disabled-link style). Such a style does not exist, so the requirement could not be met without new CSS. The AI should have checked Redmine's stylesheets before promising a look, and should have asked whether the replacement behaviour was wanted at all.
 
 ## Prevention
 
-Before a spec says a UI state "looks like Redmine's existing X" (disabled, selected, error, etc.), grep Redmine's stylesheets for that state and name the selector in the spec. If none exists, write it as an open question instead of a requirement. When a clarification answer rejects option A, do not add behaviour B beyond what the user chose without confirming it.
+Before a spec says an element or UI state (table striping, disabled, selected, error, etc.) "looks like Redmine's existing X", grep Redmine's stylesheets for that element or state and name the selector in the spec. If none exists, write it as an open question instead of a requirement. When a clarification answer rejects option A, do not add behaviour B beyond what the user chose without confirming it.
 
 **Promoted to**: AGENTS.md

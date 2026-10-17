@@ -2,11 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadScriptAndFireDOMContentLoaded } from "../support/dom_content_loaded.js";
 import { stubAnimationFrames } from "../support/animation_frames.js";
 import { loadScript } from "../support/load_script.js";
+import { createDashboardDetailPane } from "../support/dashboard_detail_pane.js";
 
 class FakeEventSource {
   constructor(url) {
     this.url = url;
     this.closed = false;
+    this.closeCount = 0;
     this.onmessage = null;
     this.onerror = null;
     FakeEventSource.instances.push(this);
@@ -14,6 +16,7 @@ class FakeEventSource {
 
   close() {
     this.closed = true;
+    this.closeCount += 1;
   }
 }
 FakeEventSource.instances = [];
@@ -25,6 +28,20 @@ describe("ai_helper_project_health_actions", () => {
 
   function sendChunk(source, text) {
     source.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: text } }] }) });
+  }
+
+  function sendStop(source) {
+    source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+  }
+
+  // Runs one full generation through the generate link: click, one content
+  // chunk, stop. Returns the FakeEventSource of that generation.
+  function generateReport(link, text) {
+    link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    const source = FakeEventSource.instances[FakeEventSource.instances.length - 1];
+    sendChunk(source, text);
+    sendStop(source);
+    return source;
   }
 
   beforeEach(async () => {
@@ -51,6 +68,10 @@ describe("ai_helper_project_health_actions", () => {
           'meta[name="markdown-export-url"], meta[name="pdf-export-url"], meta[name="csrf-token"]',
       )
       .forEach((m) => m.remove());
+    // Restores every vi.spyOn mock (console.error, finalizeStreamingContent,
+    // form submit, ...) even when an assertion failed before the manual
+    // restore point, so no mock leaks into the next test.
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
     vi.useRealTimers();
   });
@@ -98,96 +119,79 @@ describe("ai_helper_project_health_actions", () => {
     return cleanup;
   }
 
-  // Local DOM helper reproducing the dashboard detail pane structure of
-  // app/views/ai_helper/project/_health_report_body.html.erb:26-29: a
-  // selected report's pane has NO `.ai-helper-project-health` wrapper; the
-  // result area sits inside `.ai-helper-health-report-view`, which sits
-  // inside `.ai-helper-project-health-content`.
-  function addDashboardDetailPane({ withResult = true } = {}) {
-    const detailPane = document.createElement("div");
-    detailPane.className = "ai-helper-health-report-body";
-
-    const contentDiv = document.createElement("div");
-    contentDiv.className = "ai-helper-project-health-content has-report";
-
-    const viewDiv = document.createElement("div");
-    viewDiv.className = "ai-helper-health-report-view";
-
-    let resultDiv;
-    if (withResult) {
-      resultDiv = document.createElement("div");
-      resultDiv.id = "ai-helper-project-health-result";
-      viewDiv.appendChild(resultDiv);
-    }
-
-    contentDiv.appendChild(viewDiv);
-    detailPane.appendChild(contentDiv);
-    container.appendChild(detailPane);
-
-    return { detailPane, contentDiv, resultDiv };
-  }
-
   // Local DOM helper reproducing the dashboard detail pane of
-  // app/views/ai_helper/project/_health_report_body.html.erb while an
-  // edited report's ORIGINAL body is being viewed: the result area is
-  // hidden and the pane still shows the previous report's metadata, edit
-  // UI, flash notice, and export links — the elements data-model.md lists
-  // as removed when a new generation starts.
-  function addDetailPaneWithPreviousReport() {
-    const detailPane = document.createElement("div");
-    detailPane.className = "ai-helper-health-report-body";
+  // app/views/ai_helper/project/_health_report_body.html.erb while the
+  // previous report is still on screen, in one of the two states the pane
+  // can be in (see specs/077-fix-dashboard-health-report-error/data-model.md):
+  // - default: the edited report's ORIGINAL body is being viewed — the
+  //   result area is hidden and the "show current" link is visible;
+  // - editFormOpen: the edit form is open, so startEdit has hidden the whole
+  //   `.ai-helper-health-report-view` and the form is visible.
+  // In both states the pane still shows the previous report's metadata,
+  // edit link, flash notice, and export links — the elements the
+  // data-model.md lists as removed when a new generation starts.
+  function addDetailPaneWithPreviousReport({ editFormOpen = false } = {}) {
+    const { detailPane, contentDiv, resultDiv } = createDashboardDetailPane(container);
+    const viewDiv = detailPane.querySelector(".ai-helper-health-report-view");
 
     const flash = document.createElement("div");
     flash.className = "flash notice";
     flash.textContent = "saved";
-    detailPane.appendChild(flash);
+    detailPane.insertBefore(flash, contentDiv);
 
     const meta = document.createElement("div");
     meta.className = "ai-helper-health-report-meta";
     meta.textContent = "created";
-    detailPane.appendChild(meta);
+    detailPane.insertBefore(meta, contentDiv);
 
     const contextual = document.createElement("div");
     contextual.className = "contextual";
-    detailPane.appendChild(contextual);
-
-    const contentDiv = document.createElement("div");
-    contentDiv.className = "ai-helper-project-health-content has-report";
-
-    const viewDiv = document.createElement("div");
-    viewDiv.className = "ai-helper-health-report-view";
-
-    const resultDiv = document.createElement("div");
-    resultDiv.id = "ai-helper-project-health-result";
-    resultDiv.textContent = "current body";
-    resultDiv.hidden = true; // "original report" view state
-    viewDiv.appendChild(resultDiv);
+    const editLink = document.createElement("a");
+    editLink.className = "icon icon-edit ai-helper-health-report-edit-link";
+    contextual.appendChild(editLink);
+    detailPane.insertBefore(contextual, contentDiv);
 
     const original = document.createElement("div");
     original.className = "ai-helper-health-report-original";
     original.textContent = "original body";
     viewDiv.appendChild(original);
 
+    // The ERB renders both toggle links inside one <p> (lines 38-42).
     const toggleParagraph = document.createElement("p");
     const showOriginal = document.createElement("a");
     showOriginal.className = "ai-helper-health-report-show-original";
     showOriginal.href = "#";
+    const showCurrent = document.createElement("a");
+    showCurrent.className = "ai-helper-health-report-show-current";
+    showCurrent.href = "#";
     toggleParagraph.appendChild(showOriginal);
+    toggleParagraph.appendChild(showCurrent);
     viewDiv.appendChild(toggleParagraph);
 
     const editForm = document.createElement("form");
     editForm.className = "ai-helper-health-report-edit-form";
-    contentDiv.appendChild(viewDiv);
     contentDiv.appendChild(editForm);
-    detailPane.appendChild(contentDiv);
 
     const otherFormats = document.createElement("p");
     otherFormats.className = "other-formats";
     detailPane.appendChild(otherFormats);
 
-    container.appendChild(detailPane);
+    if (editFormOpen) {
+      // startEdit() hides the read-only view as a whole and shows the form;
+      // the toggle links and the original keep their default ERB state.
+      viewDiv.hidden = true;
+      original.hidden = true;
+      showOriginal.hidden = false;
+      showCurrent.hidden = true;
+      editForm.hidden = false;
+    } else {
+      // toggleOriginal() hides the current body in favour of the original.
+      resultDiv.hidden = true;
+      original.hidden = false;
+      showOriginal.hidden = true;
+    }
 
-    return { detailPane, contentDiv, resultDiv };
+    return { detailPane, contentDiv, resultDiv, viewDiv, toggleParagraph };
   }
 
   describe("generate report click delegation", () => {
@@ -206,7 +210,6 @@ describe("ai_helper_project_health_actions", () => {
       expect(errorSpy).toHaveBeenCalled();
       expect(alertSpy).toHaveBeenCalled();
       expect(FakeEventSource.instances.length).toBe(0);
-      errorSpy.mockRestore();
     });
 
     it("ignores clicks that are not on the generate link", async () => {
@@ -277,7 +280,7 @@ describe("ai_helper_project_health_actions", () => {
       expect(resultDiv.innerHTML).toContain("ai-helper-cursor");
 
       sendChunk(source, "good");
-      source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+      sendStop(source);
 
       expect(source.closed).toBe(true);
       expect(resultDiv.innerHTML).toContain("ai-helper-final-content");
@@ -316,7 +319,6 @@ describe("ai_helper_project_health_actions", () => {
 
       expect(renderSpy).toHaveBeenCalledTimes(2);
       expect(renderSpy.mock.calls[1][2]).toBe("one two three four");
-      renderSpy.mockRestore();
     });
 
     it("cancels a pending streaming render when the stream finishes", async () => {
@@ -327,7 +329,7 @@ describe("ai_helper_project_health_actions", () => {
       const source = FakeEventSource.instances[0];
 
       sendChunk(source, "final text");
-      source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+      sendStop(source);
 
       expect(frames.pendingCount()).toBe(0);
       expect(resultDiv.innerHTML).toContain("ai-helper-final-content");
@@ -372,7 +374,7 @@ describe("ai_helper_project_health_actions", () => {
 
       expect(document.getElementById("ai-helper-health-report-content")).toBeNull();
 
-      source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+      sendStop(source);
 
       expect(document.getElementById("ai-helper-health-report-content").value).toBe("");
     });
@@ -382,15 +384,8 @@ describe("ai_helper_project_health_actions", () => {
       const link = addGenerateLink();
 
       await load();
-      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-      const first = FakeEventSource.instances[0];
-      first.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: "first" } }] }) });
-      first.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
-
-      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-      const second = FakeEventSource.instances[1];
-      second.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: "second" } }] }) });
-      second.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+      generateReport(link, "first");
+      generateReport(link, "second");
 
       expect(contentDiv.querySelectorAll("#ai-helper-health-report-content").length).toBe(1);
       expect(document.getElementById("ai-helper-health-report-content").value).toBe("second");
@@ -413,33 +408,35 @@ describe("ai_helper_project_health_actions", () => {
       );
 
       sendChunk(source, "after malformed");
-      source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+      sendStop(source);
       frames.flush();
 
       expect(resultDiv.innerHTML).toContain("after malformed");
       expect(resultDiv.innerHTML).toContain("ai-helper-final-content");
-      errorSpy.mockRestore();
     });
 
-    it("propagates finalize errors out of onmessage without logging a parse failure", async () => {
+    it("propagates finalize errors out of onmessage without logging a parse failure, leaving the stream closed", async () => {
       addHealthContainer();
       const link = addGenerateLink();
       const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       await load();
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       const source = FakeEventSource.instances[0];
-      const originalFinalize = window.finalizeStreamingContent;
-      window.finalizeStreamingContent = vi.fn(() => {
+      vi.spyOn(window, "finalizeStreamingContent").mockImplementation(() => {
         throw new Error("finalize boom");
       });
 
-      expect(() =>
-        source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) }),
-      ).toThrow("finalize boom");
+      expect(() => sendStop(source)).toThrow("finalize boom");
       expect(errorSpy).not.toHaveBeenCalled();
 
-      errorSpy.mockRestore();
-      window.finalizeStreamingContent = originalFinalize;
+      // The stream must be closed — and dropped as the current one — before
+      // finalize runs, so a failing finalize can never leave the generation
+      // half-alive: closing the source happens before the throwing call and
+      // a fresh click must not try to close the failed stream again.
+      expect(source.closed).toBe(true);
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      expect(source.closeCount).toBe(1);
+      expect(FakeEventSource.instances[1].closed).toBe(false);
     });
 
     it("re-throws non-SyntaxError failures raised while parsing the payload", async () => {
@@ -459,12 +456,24 @@ describe("ai_helper_project_health_actions", () => {
         }),
       ).toThrow(boom);
       expect(errorSpy).not.toHaveBeenCalled();
+    });
 
-      errorSpy.mockRestore();
+    it("propagates the TypeError raised when a well-formed JSON payload is not an object", async () => {
+      addHealthContainer();
+      const link = addGenerateLink();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const source = FakeEventSource.instances[0];
+
+      // JSON.parse("null") succeeds but yields null; reading .choices on it
+      // is a real bug and must surface, not be logged as a parse failure.
+      expect(() => source.onmessage({ data: "null" })).toThrow(TypeError);
+      expect(errorSpy).not.toHaveBeenCalled();
     });
 
     it("updates the master-detail history and selects the first report row when generation finishes in the dashboard detail pane", async () => {
-      addDashboardDetailPane();
+      createDashboardDetailPane(container);
       const link = addGenerateLink();
       const historyRow = document.createElement("div");
       historyRow.className = "ai-helper-report-row";
@@ -475,7 +484,7 @@ describe("ai_helper_project_health_actions", () => {
       await load();
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       const source = FakeEventSource.instances[0];
-      source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+      sendStop(source);
 
       // Real timers here: the production code chains a 1000ms and then a
       // 100ms setTimeout (see the project-overview variant below for why
@@ -501,7 +510,7 @@ describe("ai_helper_project_health_actions", () => {
       await load();
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       const source = FakeEventSource.instances[0];
-      source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+      sendStop(source);
 
       // Real timers here: the production code chains a 1000ms and then a
       // 100ms setTimeout, and combining vi.useFakeTimers() with the
@@ -516,7 +525,7 @@ describe("ai_helper_project_health_actions", () => {
     }, 10000);
 
     it("removes the previous report's details from the detail pane and un-hides the result area when generation starts", async () => {
-      const { detailPane, resultDiv } = addDetailPaneWithPreviousReport();
+      const { detailPane, resultDiv, toggleParagraph } = addDetailPaneWithPreviousReport();
       const link = addGenerateLink();
 
       await load();
@@ -527,14 +536,44 @@ describe("ai_helper_project_health_actions", () => {
       expect(detailPane.querySelector(".ai-helper-health-report-edit-form")).toBeNull();
       expect(detailPane.querySelector(".ai-helper-health-report-original")).toBeNull();
       expect(detailPane.querySelector(".ai-helper-health-report-show-original")).toBeNull();
+      // Both toggle links live in the same <p>; removing only the
+      // show-original link would leave the paragraph behind.
+      expect(detailPane.querySelector(".ai-helper-health-report-show-current")).toBeNull();
+      expect(toggleParagraph.isConnected).toBe(false);
       expect(detailPane.querySelector(".flash")).toBeNull();
       expect(detailPane.querySelector(".other-formats")).toBeNull();
       expect(resultDiv.hidden).toBe(false);
+      // The stream must be rendered into the element that is actually in
+      // the document, not into a node detached with its whole pane.
+      expect(document.getElementById("ai-helper-project-health-result")).toBe(resultDiv);
+      expect(detailPane.contains(resultDiv)).toBe(true);
+      expect(resultDiv.innerHTML).toContain("ai-helper-loader");
+    });
+
+    it("un-hides the report view so the stream is visible when generation starts with the edit form open", async () => {
+      const { detailPane, resultDiv, viewDiv } = addDetailPaneWithPreviousReport({ editFormOpen: true });
+      const link = addGenerateLink();
+
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+      // The edit form is removed, and both the result area and every
+      // element between it and the document are shown — startEdit hid the
+      // whole view, so un-hiding only the result area would still render
+      // the loader and the stream into an invisible element.
+      expect(detailPane.querySelector(".ai-helper-health-report-edit-form")).toBeNull();
+      expect(viewDiv.hidden).toBe(false);
+      expect(resultDiv.hidden).toBe(false);
+      for (let element = resultDiv; element; element = element.parentElement) {
+        expect(element.hidden).toBe(false);
+      }
+      expect(document.getElementById("ai-helper-project-health-result")).toBe(resultDiv);
+      expect(detailPane.contains(resultDiv)).toBe(true);
       expect(resultDiv.innerHTML).toContain("ai-helper-loader");
     });
 
     it("does not restore the removed details when the generation ends in an error", async () => {
-      const { detailPane, resultDiv } = addDetailPaneWithPreviousReport();
+      const { detailPane, resultDiv, viewDiv } = addDetailPaneWithPreviousReport();
       addMeta("error-message", "Generation failed");
       const link = addGenerateLink();
 
@@ -547,7 +586,50 @@ describe("ai_helper_project_health_actions", () => {
       expect(detailPane.querySelector(".ai-helper-health-report-edit-form")).toBeNull();
       expect(detailPane.querySelector(".other-formats")).toBeNull();
       expect(resultDiv.hidden).toBe(false);
+      expect(viewDiv.hidden).toBe(false);
+      expect(document.getElementById("ai-helper-project-health-result")).toBe(resultDiv);
+      expect(detailPane.contains(resultDiv)).toBe(true);
     });
+
+    it("generates into the dashboard's server-rendered no-report structure and refreshes the history", async () => {
+      // app/views/ai_helper_dashboard/_health_report.html.erb:61-71: the
+      // server renders .ai-helper-health-report-detail (hidden) >
+      // .ai-helper-project-health-content > #result + one hidden input,
+      // with NO .ai-helper-project-health wrapper on the dashboard tab.
+      const placeholder = document.createElement("div");
+      placeholder.className = "ai-helper-detail-placeholder";
+      container.appendChild(placeholder);
+      const reportDetail = document.createElement("div");
+      reportDetail.className = "ai-helper-health-report-detail";
+      reportDetail.style.display = "none";
+      const contentDiv = document.createElement("div");
+      contentDiv.className = "ai-helper-project-health-content";
+      const resultDiv = document.createElement("div");
+      resultDiv.id = "ai-helper-project-health-result";
+      const hiddenField = document.createElement("input");
+      hiddenField.id = "ai-helper-health-report-content";
+      hiddenField.value = "";
+      contentDiv.appendChild(resultDiv);
+      contentDiv.appendChild(hiddenField);
+      reportDetail.appendChild(contentDiv);
+      container.appendChild(reportDetail);
+      const link = addGenerateLink();
+      window.updateHealthReportHistory = vi.fn();
+
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      sendChunk(FakeEventSource.instances[0], "dashboard report");
+      sendStop(FakeEventSource.instances[0]);
+
+      expect(placeholder.style.display).toBe("none");
+      expect(reportDetail.style.display).toBe("block");
+      expect(resultDiv.innerHTML).toContain("ai-helper-final-content");
+      expect(document.querySelectorAll("#ai-helper-health-report-content").length).toBe(1);
+      expect(document.getElementById("ai-helper-health-report-content").value).toBe("dashboard report");
+
+      await new Promise((resolve) => setTimeout(resolve, 1100));
+      expect(window.updateHealthReportHistory).toHaveBeenCalledTimes(1);
+    }, 10000);
 
     it("removes nothing in the project overview structure (no .ai-helper-health-report-body)", async () => {
       const { healthDiv } = addHealthContainer();
@@ -578,7 +660,7 @@ describe("ai_helper_project_health_actions", () => {
 
       await load();
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-      FakeEventSource.instances[0].onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+      sendStop(FakeEventSource.instances[0]);
 
       await new Promise((resolve) => setTimeout(resolve, 1100));
 
@@ -625,7 +707,7 @@ describe("ai_helper_project_health_actions", () => {
 
       await load();
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-      FakeEventSource.instances[0].onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+      sendStop(FakeEventSource.instances[0]);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(fetchMock).not.toHaveBeenCalled();
@@ -642,7 +724,7 @@ describe("ai_helper_project_health_actions", () => {
 
       await expect(
         (async () => {
-          FakeEventSource.instances[0].onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+          sendStop(FakeEventSource.instances[0]);
           await new Promise((resolve) => setTimeout(resolve, 0));
         })(),
       ).resolves.toBeUndefined();
@@ -664,7 +746,7 @@ describe("ai_helper_project_health_actions", () => {
 
       await load();
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-      FakeEventSource.instances[0].onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+      sendStop(FakeEventSource.instances[0]);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       const meta = document.getElementById("ai-helper-project-health-meta");
@@ -685,7 +767,7 @@ describe("ai_helper_project_health_actions", () => {
 
       await load();
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-      FakeEventSource.instances[0].onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+      sendStop(FakeEventSource.instances[0]);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(document.getElementById("ai-helper-project-health-meta")).toBeNull();
@@ -702,7 +784,7 @@ describe("ai_helper_project_health_actions", () => {
 
       await expect(
         (async () => {
-          FakeEventSource.instances[0].onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+          sendStop(FakeEventSource.instances[0]);
           await new Promise((resolve) => setTimeout(resolve, 0));
         })(),
       ).resolves.toBeUndefined();
@@ -738,9 +820,6 @@ describe("ai_helper_project_health_actions", () => {
       expect(form.querySelector('input[name="health_report_content"]').value).toBe("exportable content");
       expect(form.querySelector('input[name="authenticity_token"]').value).toBe("tok-a");
       expect(submitSpy).toHaveBeenCalledTimes(1);
-
-      submitSpy.mockRestore();
-      appendChildSpy.mockRestore();
     });
 
     it("submits a PDF export form for the dynamically-added export link", async () => {
@@ -756,9 +835,6 @@ describe("ai_helper_project_health_actions", () => {
 
       expect(appendChildSpy.mock.calls.some(([node]) => node.tagName === "FORM")).toBe(true);
       expect(submitSpy).toHaveBeenCalledTimes(1);
-
-      submitSpy.mockRestore();
-      appendChildSpy.mockRestore();
     });
 
     it("submits a Markdown export form for the dynamically-added export link", async () => {
@@ -767,16 +843,14 @@ describe("ai_helper_project_health_actions", () => {
       await load();
       const markdownLink = container.querySelector("#ai-helper-markdown-export-link-dynamic");
 
-      const submitSpy = vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(() => {});
+      // Stub submit so jsdom does not attempt real navigation.
+      vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(() => {});
       const appendChildSpy = vi.spyOn(document.body, "appendChild");
 
       markdownLink.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 
       const form = appendChildSpy.mock.calls.find(([node]) => node.tagName === "FORM")?.[0];
       expect(form.querySelector('input[name="health_report_content"]').value).toBe("exportable content");
-
-      submitSpy.mockRestore();
-      appendChildSpy.mockRestore();
     });
 
     it("does not build a form when the report content is empty", async () => {
@@ -794,7 +868,6 @@ describe("ai_helper_project_health_actions", () => {
       pdfLink.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 
       expect(appendChildSpy.mock.calls.some(([node]) => node.tagName === "FORM")).toBe(false);
-      appendChildSpy.mockRestore();
     });
 
     it("ignores clicks on unrelated elements", async () => {
@@ -805,7 +878,6 @@ describe("ai_helper_project_health_actions", () => {
       container.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 
       expect(appendChildSpy.mock.calls.some(([node]) => node.tagName === "FORM")).toBe(false);
-      appendChildSpy.mockRestore();
     });
   });
 });

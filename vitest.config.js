@@ -20,7 +20,7 @@ export default defineConfig({
       // stage 3 (auto_completion): ~46.63% (1156/2479) -> 46
       // stage 4: 92.19% (2290/2484) -> 90
       // stage 5: 96.11% (2972/3092) raised to 95 to match Ruby coverage target
-      // stage 6 (077-fix-dashboard-health-report-error): 96.5% (3118/3231) -> 96
+      // stage 6 (077-fix-dashboard-health-report-error): 96.5% (3124/3237) -> 96
       thresholds: {
         lines: 96,
         perFile: false,

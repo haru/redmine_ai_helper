@@ -166,6 +166,11 @@ if (!window.aiHelperProjectHealthInitialized) {
    * @param {string} content - The full generated report content.
    */
   function finalizeStreamingContent(resultDiv, parser, content) {
+    // Validate the result area's structure before touching the DOM, so a
+    // failed guard leaves the page as it was instead of a finished-looking
+    // pane whose history, export links and timestamp were never updated.
+    hiddenFieldContainerOf(resultDiv);
+
     const formattedContent = parser.parse(content);
     const finalHTML = '<div class="ai-helper-final-content">' +
       formattedContent + '</div>';
@@ -251,29 +256,40 @@ if (!window.aiHelperProjectHealthInitialized) {
   }
 
   /**
+   * Find the `.ai-helper-project-health-content` ancestor that holds the
+   * hidden report-content field, validating the result area itself first.
+   * @param {HTMLElement} resultDiv - The report result container.
+   * @returns {HTMLElement} The `.ai-helper-project-health-content` ancestor.
+   * @throws {Error} If `resultDiv` is not an HTMLElement, or if it has no
+   *   `.ai-helper-project-health-content` ancestor.
+   */
+  function hiddenFieldContainerOf(resultDiv) {
+    if (!(resultDiv instanceof HTMLElement)) {
+      throw new Error('the report result area must be an HTMLElement');
+    }
+    const contentContainer = resultDiv.closest('.ai-helper-project-health-content');
+    if (!contentContainer) {
+      throw new Error(
+        'the report result area must have a .ai-helper-project-health-content ancestor',
+      );
+    }
+    return contentContainer;
+  }
+
+  /**
    * Store the report's markdown content in a hidden field for later export,
    * creating the field inside the result area's `.ai-helper-project-health-content`
    * ancestor if it doesn't exist yet. That ancestor exists in every layout
    * that can generate a report (project overview, dashboard placeholder,
    * dashboard detail pane), unlike `.ai-helper-project-health`, which the
-   * dashboard detail pane lacks.
+   * whole dashboard tab lacks.
    * @param {HTMLElement} resultDiv - The report result container.
    * @param {string} content - The report's raw markdown content.
    * @throws {Error} If `resultDiv` is not an HTMLElement or has no
    *   `.ai-helper-project-health-content` ancestor.
    */
   function updateHiddenReportContent(resultDiv, content) {
-    if (!(resultDiv instanceof HTMLElement)) {
-      throw new Error(
-        'updateHiddenReportContent requires an HTMLElement result area inside a .ai-helper-project-health-content ancestor',
-      );
-    }
-    const contentContainer = resultDiv.closest('.ai-helper-project-health-content');
-    if (!contentContainer) {
-      throw new Error(
-        'updateHiddenReportContent requires an HTMLElement result area inside a .ai-helper-project-health-content ancestor',
-      );
-    }
+    const contentContainer = hiddenFieldContainerOf(resultDiv);
     let hiddenField = document.getElementById('ai-helper-health-report-content');
     if (!hiddenField) {
       // Create hidden field if it doesn't exist

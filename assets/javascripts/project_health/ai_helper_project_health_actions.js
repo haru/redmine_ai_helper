@@ -12,7 +12,11 @@ let currentProjectHealthEventSource = null; // Keep track of current EventSource
  * a new generation starts, so stale metadata, edit UI, notices, and export
  * links of the previously selected report never mix with the new stream.
  * The removal is permanent: if the generation errors, the elements are not
- * restored. Outside a detail pane (project overview) this is a no-op.
+ * restored. The result area and its `.ai-helper-health-report-view` wrapper
+ * are un-hidden: the wrapper is hidden while the edit form is open and the
+ * area itself while the original is shown, so leaving either hidden would
+ * render the loader and the stream into an invisible element. Outside a
+ * detail pane (project overview, dashboard placeholder) this is a no-op.
  * @param {HTMLElement} resultDiv - The report result container.
  */
 function clearPreviousReportDetails(resultDiv) {
@@ -27,12 +31,20 @@ function clearPreviousReportDetails(resultDiv) {
   ).forEach((element) => element.remove());
 
   const showOriginalLink = reportBody.querySelector('.ai-helper-health-report-show-original');
-  if (showOriginalLink && showOriginalLink.parentElement) {
+  if (showOriginalLink) {
+    // Both toggle links live in one <p> (see
+    // app/views/ai_helper/project/_health_report_body.html.erb:38-42),
+    // so removing the parent takes the "show current" link with it.
     showOriginalLink.parentElement.remove();
   }
 
-  // The result area is hidden while the original report is shown.
+  // The result area is hidden while the original report is shown, and its
+  // whole view is hidden while the edit form is open.
   resultDiv.hidden = false;
+  const view = reportBody.querySelector('.ai-helper-health-report-view');
+  if (view) {
+    view.hidden = false;
+  }
 }
 
 /**
@@ -77,14 +89,15 @@ function handleGenerateProjectHealthClick(e, parser) {
     reportDetail.style.display = 'block';
   }
 
-  // Show loading state and add has-report class
-  const contentContainer = resultDiv.closest('.ai-helper-project-health-content');
-
-  // Drop the previous report's details so the new generation starts clean
-  // (no-op in the project overview, which has no detail pane).
+  // Drop the previous report's details so the new generation starts clean,
+  // and un-hide the view so the loader below is actually visible (no-op in
+  // the project overview and the dashboard placeholder, which have no
+  // detail pane).
   clearPreviousReportDetails(resultDiv);
 
+  // Show loading state and add has-report class
   resultDiv.innerHTML = '<div class="ai-helper-loader"></div>';
+  const contentContainer = resultDiv.closest('.ai-helper-project-health-content');
   if (contentContainer) {
     contentContainer.classList.add('has-report');
   }
@@ -114,8 +127,10 @@ function handleGenerateProjectHealthClick(e, parser) {
     try {
       data = JSON.parse(event.data);
     } catch (error) {
-      // Only JSON.parse failures are recoverable: log them and keep
-      // receiving. Everything else is a real bug and must surface.
+      // The try covers reading event.data and parsing it as JSON, but only
+      // JSON.parse's SyntaxError is recoverable: log it and keep receiving.
+      // Anything else — including a throwing event.data getter — is a real
+      // bug and must surface.
       if (error instanceof SyntaxError) {
         console.error('Failed to parse project health streaming event data:', error, event.data);
         return;
