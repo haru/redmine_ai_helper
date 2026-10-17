@@ -32,6 +32,7 @@ page files, not here.
 - [Prompt Caching & Split System Prompt](./pages/prompt-caching.md) — feature 070/ADR-051: Anthropic-only cache breakpoints, the `Instructions(fixed, variable)` split, why other providers get one system string, `prompt_caching_enabled`, and Langfuse cache-token accounting.
 - [Web Search & Citations](./pages/web-search-citations.md) — feature 071/ADR-052: one dedicated `WebSearchAgent`, type-only provider support check, task-text-only requests, `WebCitation` value objects carried to the saved message, and display on screen and gateway.
 - [Health Report Detail Pane Layout](./pages/health-report-detail-pane-layout.md) — ADR-056: why the dashboard report clipped export links (non-flex body wrapper), moving the viewport cap from the pane to the frame, the edit-form and ≤900px exceptions, and rejected alternatives.
+- [Health Report Generation Completion (Dashboard)](./pages/health-report-generation-completion.md) — feature 077: why dashboard generation threw on completion (missing `.ai-helper-project-health`), hidden field under `.ai-helper-project-health-content`, `try/catch` narrowed to `JSON.parse`, clearing the previous report's details, and rejected alternatives.
 
 ## component
 - [Chat Channel Gateway Architecture](./pages/chat-channel-gateway-architecture.md) — core + adapters structure, capability declaration, and gateway operational model.
