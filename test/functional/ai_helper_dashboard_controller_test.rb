@@ -251,6 +251,42 @@ This is a test report."
       end
     end
 
+    context "health report table styling" do
+      setup do
+        Role.find(1).add_permission! :view_ai_helper_health_reports
+
+        @report = AiHelperHealthReport.create!(
+          project: @project,
+          user: @user,
+          health_report: "Original table\n\n| col |\n|-----|\n| #123 |"
+        )
+        @report.update_content("Edited table\n\n| col |\n|-----|\n| 1 |", User.find(2))
+      end
+
+      should "render the body table with the list class on the detail page" do
+        get :health_report_show, params: { id: @project.id, report_id: @report.id }
+
+        assert_response :success
+        assert_select ".ai-helper-health-report-current table.list td", text: "1"
+      end
+
+      should "render the original report table with the list class" do
+        get :health_report_show, params: { id: @project.id, report_id: @report.id }
+
+        assert_response :success
+        assert_select ".ai-helper-health-report-original table.list td", text: "#123"
+      end
+
+      should "render the edit preview table with the list class" do
+        Role.find(1).add_permission! :edit_ai_helper_health_reports
+
+        post :health_report_preview, params: { id: @project.id, text: "| col |\n|-----|\n| 1 |" }
+
+        assert_response :success
+        assert_select "table.list td", text: "1"
+      end
+    end
+
     context "#health_report_destroy" do
       setup do
         @report = AiHelperHealthReport.create!(

@@ -249,6 +249,19 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_no_match(/<img/, context_html.to_s,
                         "context messages must not render an avatar image")
       end
+
+      should "render assistant answers containing a table with the list class" do
+        @conversation.messages << AiHelperMessage.new(
+          role: "assistant",
+          content: "| col |\n|-----|\n| 1   |"
+        )
+        @conversation.save!
+
+        get :conversation, params: { id: @project.id, conversation_id: @conversation.id }
+
+        assert_response :success
+        assert_select "table.list td", text: "1"
+      end
     end
 
     context "#history" do
@@ -339,6 +352,20 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         assert_template partial: "ai_helper/issues/_summary"
+      end
+
+      should "render summary tables with the list class and keep other elements" do
+        markdown = "## Summary heading\n\n- list item\n\n| col |\n|-----|\n| 1   |"
+        AiHelperSummaryCache.stubs(:issue_cache).with(issue_id: @issue.id).returns(
+          AiHelperSummaryCache.new(object_class: "Issue", object_id: @issue.id, content: markdown)
+        )
+
+        get :issue_summary, params: { id: @project.id, issue_id: @issue.id }
+
+        assert_response :success
+        assert_select ".ai-helper-summary-body table.list td", text: "1"
+        assert_select ".ai-helper-summary-body h2", text: "Summary heading"
+        assert_select ".ai-helper-summary-body ul li", text: "list item"
       end
 
       should "deny access for non-visible issue" do
@@ -483,6 +510,19 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         assert_template partial: "ai_helper/wiki/_summary_content"
+      end
+
+      should "render summary tables with the list class" do
+        markdown = "## Wiki heading\n\n| col |\n|-----|\n| 1   |"
+        AiHelperSummaryCache.stubs(:wiki_cache).returns(
+          AiHelperSummaryCache.new(object_class: "WikiPage", object_id: @wiki_page.id, content: markdown)
+        )
+
+        get :wiki_summary, params: { id: @wiki_page.id }
+
+        assert_response :success
+        assert_select ".ai-helper-summary-body table.list td", text: "1"
+        assert_select ".ai-helper-summary-body h2", text: "Wiki heading"
       end
 
       should "create summary when none exists" do

@@ -28,4 +28,4 @@ The AI read `BaseAgent#system_prompt` in `lib/redmine_ai_helper/base_agent.rb`, 
 
 When a requirement targets the output of a base-class method (prompts, payloads, settings), search for every override of that method (`grep -rn "def <method>"`) and every template that produces the same kind of output, and list each one explicitly in the requirement. Do not treat the locations named in an idea memo or request as exhaustive.
 
-**Promoted to**: Not yet
+**Promoted to**: AGENTS.md

@@ -42,4 +42,4 @@ adapter that commit touched. If it covers more than the request names (e.g. both
 exclude the others by assumption: either include them or put the inclusion/exclusion to the user as an
 explicit scope question before writing "out of scope" in the spec.
 
-**Promoted to**: Not yet
+**Promoted to**: AGENTS.md

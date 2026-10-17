@@ -1,8 +1,8 @@
 ---
 title: Project Health Report
 type: component
-sources: [S002, S003, S011, S038, S048]
-updated: 2026-10-15
+sources: [S002, S003, S011, S038, S048, S049]
+updated: 2026-10-16
 ---
 
 # Project Health Report
@@ -68,7 +68,9 @@ incremental UI updates as tokens arrive (S011).
   [Health Report Detail Pane Layout](./health-report-detail-pane-layout.md)
   (S038). Historically, S011 described client-side parsing by
   `AiHelperMarkdownParser` for this view; that no longer applies to saved
-  reports (S011, S038).
+  reports (S011, S038), and feature 076 deleted the last leftover re-parse so
+  tables now get Redmine's `table.list` styling on the server (S049,
+  [Health Report Markdown Rendering](./health-report-markdown-rendering.md)).
 - Export buttons are injected by `ai_helper_project_health.js` (S011). The
   master-detail view (`AiHelperMasterDetail`) originally built detail from row
   data attributes (S011); since 064 it fetches a server-rendered detail pane by
