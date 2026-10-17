@@ -6,28 +6,43 @@
 // ai_helper_project_health.js.
 
 /**
- * Fetch the server-rendered content of the saved report and swap it into
- * the result area, replacing the client-rendered body: the saved report's
- * charts only exist in the server-rendered markup. Export links are rebuilt
- * from the response's data attributes so they lead to the saved report's
- * own PDF / Markdown endpoints.
- * @param {HTMLElement} resultDiv - The report result container.
+ * Build the URL of the saved report's server-rendered content. Called before
+ * the result area is touched so a bad id or a missing meta tag fails while
+ * the page is still as it was.
  * @param {number} savedReportId - The saved report's id, taken from the
  *   health_report_saved SSE event.
- * @returns {Promise<void>} Resolves when the swap is done, rejects when the
- *   request fails. Resolves without swapping when the result area was
- *   detached from the document while the request was in flight.
- * @throws {Error} When the content-url meta tag is missing.
+ * @returns {string} The content URL.
+ * @throws {Error} When the id is not a positive integer or the content-url
+ *   meta tag is missing.
  */
-function swapInSavedReportContent(resultDiv, savedReportId) {
+function savedReportContentUrl(savedReportId) {
+  if (!Number.isInteger(savedReportId) || savedReportId <= 0) {
+    throw new Error('the saved report id must be a positive integer, got ' + JSON.stringify(savedReportId));
+  }
   const meta = document.querySelector('meta[name="ai-helper-health-report-content-url"]');
   if (!meta) {
     throw new Error(
       'the ai-helper-health-report-content-url meta tag is missing; the saved report content cannot be loaded',
     );
   }
-  const url = meta.getAttribute('content').replace('__REPORT_ID__', String(savedReportId));
-  return fetch(url, { credentials: 'same-origin' })
+  return meta.getAttribute('content').replace('__REPORT_ID__', String(savedReportId));
+}
+
+/**
+ * Fetch the server-rendered content of the saved report and swap it into
+ * the result area, replacing the client-rendered body: the saved report's
+ * charts only exist in the server-rendered markup. Export links are rebuilt
+ * from the response's data attributes so they lead to the saved report's
+ * own PDF / Markdown endpoints.
+ * @param {HTMLElement} resultDiv - The report result container.
+ * @param {string} contentUrl - The URL from savedReportContentUrl().
+ * @returns {Promise<void>} Resolves when the swap is done, rejects when the
+ *   request fails or the response lacks the content root or its export
+ *   URLs. Resolves without swapping when the result area was detached from
+ *   the document while the request was in flight.
+ */
+function swapInSavedReportContent(resultDiv, contentUrl) {
+  return fetch(contentUrl, { credentials: 'same-origin' })
     .then(function(response) {
       if (!response.ok) {
         throw new Error('Failed to load the saved report content (HTTP ' + response.status + ')');
@@ -48,23 +63,63 @@ function swapInSavedReportContent(resultDiv, savedReportId) {
 }
 
 /**
+ * Read a required export URL from the content root.
+ * @param {Element} contentRoot - The `.ai-helper-health-report-content` element.
+ * @param {string} attribute - The data attribute holding the URL.
+ * @returns {string} The URL.
+ * @throws {Error} When the attribute is missing or empty.
+ */
+function requiredExportUrl(contentRoot, attribute) {
+  const url = contentRoot.getAttribute(attribute);
+  if (!url) {
+    throw new Error('the saved report content has no ' + attribute);
+  }
+  return url;
+}
+
+/**
+ * Build one export link wrapped in a span.
+ * @param {string} href - The link target.
+ * @param {string} className - The Redmine export class (`text` or `pdf`).
+ * @param {string} label - The link text.
+ * @returns {HTMLSpanElement} The span holding the link.
+ */
+function exportLinkSpan(href, className, label) {
+  const span = document.createElement('span');
+  const link = document.createElement('a');
+  link.href = href;
+  link.className = className;
+  link.textContent = label;
+  span.appendChild(link);
+  return span;
+}
+
+/**
  * Build the export links for the swapped-in saved report from its data
  * attributes. The links deliberately carry no ids: the POST-based export
  * click handler selects its links by their `-dynamic` ids, and these links
- * navigate to the saved report's exports instead.
+ * navigate to the saved report's exports instead. POST-based links that the
+ * project overview's observer added during generation are removed first, so
+ * only the saved report's links remain.
  * @param {HTMLElement} resultDiv - The report result container holding the
  *   swapped-in `.ai-helper-health-report-content` root element.
+ * @throws {Error} When the content root or one of its export URLs is missing.
  */
 function addReportExportLinks(resultDiv) {
   const contentRoot = resultDiv.querySelector('.ai-helper-health-report-content');
   if (!contentRoot) {
-    return;
+    throw new Error('the saved report content has no .ai-helper-health-report-content root');
   }
-  const markdownUrl = contentRoot.getAttribute('data-markdown-url');
-  const pdfUrl = contentRoot.getAttribute('data-pdf-url');
-  if (!markdownUrl && !pdfUrl) {
-    return;
-  }
+  const markdownUrl = requiredExportUrl(contentRoot, 'data-markdown-url');
+  const pdfUrl = requiredExportUrl(contentRoot, 'data-pdf-url');
+
+  document.querySelectorAll('#ai-helper-pdf-export-link-dynamic, #ai-helper-markdown-export-link-dynamic')
+    .forEach(function(link) {
+      const row = link.closest('.other-formats');
+      if (row) {
+        row.remove();
+      }
+    });
 
   const contentContainer = hiddenFieldContainerOf(resultDiv);
   if (contentContainer.querySelector('.other-formats')) {
@@ -73,33 +128,34 @@ function addReportExportLinks(resultDiv) {
 
   const otherFormatsP = document.createElement('p');
   otherFormatsP.className = 'other-formats';
-
   const exportLabel = document.querySelector('meta[name="export-label"]');
   otherFormatsP.appendChild(
     document.createTextNode((exportLabel ? exportLabel.getAttribute('content') : 'Export to') + ' '),
   );
-
-  const markdownSpan = document.createElement('span');
-  const markdownLink = document.createElement('a');
-  markdownLink.href = markdownUrl || '#';
-  markdownLink.className = 'text';
-  markdownLink.textContent = 'Markdown';
-  markdownSpan.appendChild(markdownLink);
-  otherFormatsP.appendChild(markdownSpan);
-
+  otherFormatsP.appendChild(exportLinkSpan(markdownUrl, 'text', 'Markdown'));
   otherFormatsP.appendChild(document.createTextNode(' '));
-
-  const pdfSpan = document.createElement('span');
-  const pdfLink = document.createElement('a');
-  pdfLink.href = pdfUrl || '#';
-  pdfLink.className = 'pdf';
-  pdfLink.textContent = 'PDF';
-  pdfSpan.appendChild(pdfLink);
-  otherFormatsP.appendChild(pdfSpan);
-
+  otherFormatsP.appendChild(exportLinkSpan(pdfUrl, 'pdf', 'PDF'));
   contentContainer.appendChild(otherFormatsP);
+}
+
+/**
+ * Show the generic error message in the result area after swapping in the
+ * saved report failed, and log the cause. The client-rendered body would
+ * otherwise look finished while lacking its charts and export links.
+ * @param {HTMLElement} resultDiv - The report result container.
+ * @param {Error} error - The failure.
+ */
+function showSavedReportSwapError(resultDiv, error) {
+  console.error('Failed to swap in the saved health report:', error);
+  const errorMessage = document.querySelector('meta[name="error-message"]');
+  const box = document.createElement('div');
+  box.className = 'ai-helper-error';
+  box.textContent = errorMessage ? errorMessage.getAttribute('content') : 'Error';
+  resultDiv.replaceChildren(box);
 }
 
 // Make the entry point visible to ai_helper_project_health.js, which runs
 // inside its own load guard.
+window.savedReportContentUrl = savedReportContentUrl;
 window.swapInSavedReportContent = swapInSavedReportContent;
+window.showSavedReportSwapError = showSavedReportSwapError;

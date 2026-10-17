@@ -72,6 +72,16 @@ class HealthReportChartSvgRendererTest < ActiveSupport::TestCase
         assert_match(/\AM #{center_x} #{center_y - radius}/, first)
       end
 
+      should "go clockwise and set the large-arc flag for sectors over 180 degrees" do
+        svg = SvgRenderer.render(chart(:doughnut, [ item("A (1)", 1, 0), item("B (3)", 3, 1) ]))
+
+        first, second = elements(svg, "path").map { |path| path.attributes["d"] }
+        cx, cy, r = SvgRenderer::CENTER_X, SvgRenderer::CENTER_Y, SvgRenderer::RADIUS
+        # A quarter clockwise from 12 o'clock ends at 3 o'clock (right of the center).
+        assert_match(/\AM #{cx} #{cy - r} A #{r} #{r} 0 0 1 #{cx + r} #{cy} /, first)
+        assert_match(/\AM #{cx + r} #{cy} A #{r} #{r} 0 1 1 /, second)
+      end
+
       should "make the hole half the outer radius" do
         svg = SvgRenderer.render(chart(:doughnut, [ item("A (6)", 6, 0), item("B (2)", 2, 1) ]))
 

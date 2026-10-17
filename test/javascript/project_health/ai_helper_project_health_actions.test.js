@@ -1006,6 +1006,41 @@ describe("ai_helper_project_health_actions", () => {
       expect(finalizeSpy.mock.calls[0][3]).toBe(22);
     });
 
+    [
+      ["has no report_id", {}],
+      ["has a non-integer report_id", { report_id: "42" }],
+      ["has a non-positive report_id", { report_id: 0 }],
+    ].forEach(([name, payload]) => {
+      it(`throws when the health_report_saved payload ${name}`, async () => {
+        addHealthContainer();
+        const link = addGenerateLink();
+        await load();
+
+        const source = clickGenerate(link);
+
+        expect(() => source.emit("health_report_saved", { data: JSON.stringify(payload) })).toThrow(/report_id/);
+      });
+    });
+
+    it("shows the error message and logs when swapping in the saved report fails", async () => {
+      addMeta("error-message", "Something failed");
+      const { resultDiv } = addHealthContainer();
+      const link = addGenerateLink();
+      await load();
+      const failure = new Error("HTTP 500");
+      vi.spyOn(window, "finalizeStreamingContent").mockImplementation(() => Promise.reject(failure));
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      const source = clickGenerate(link);
+      source.emit("health_report_saved", { data: JSON.stringify({ report_id: 42 }) });
+      sendStop(source);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(resultDiv.querySelector(".ai-helper-error").textContent).toBe("Something failed");
+      expect(consoleError).toHaveBeenCalledWith(expect.any(String), failure);
+      consoleError.mockRestore();
+    });
+
     it("swaps in the server-rendered content after a full generation in the dashboard detail pane", async () => {
       addMeta(
         "ai-helper-health-report-content-url",

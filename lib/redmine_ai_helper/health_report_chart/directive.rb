@@ -17,8 +17,8 @@ module RedmineAiHelper
       # @param type [String] the chart type key as written in the directive
       # @param target_kind [Symbol, nil] :version, :period, or nil when the
       #   argument syntax is malformed
-      # @param target_value [String, nil] the version id or period key; must
-      #   be nil when target_kind is nil
+      # @param target_value [String, nil] the version id (digits) or period
+      #   key; must be nil exactly when target_kind is nil
       # @param source [String] the original line without surrounding whitespace
       # @raise [ArgumentError] when an attribute violates the documented invariants
       def initialize(type:, target_kind:, target_value:, source:)
@@ -27,8 +27,15 @@ module RedmineAiHelper
         unless VALID_TARGET_KINDS.include?(target_kind)
           raise ArgumentError, "target_kind must be nil, :version or :period"
         end
-        if target_kind.nil? && !target_value.nil?
-          raise ArgumentError, "target_value must be nil when target_kind is nil"
+        if target_kind.nil?
+          raise ArgumentError, "target_value must be nil when target_kind is nil" unless target_value.nil?
+        else
+          unless target_value.is_a?(String) && !target_value.empty?
+            raise ArgumentError, "target_value must be a non-empty String when target_kind is set"
+          end
+          if target_kind == :version && !target_value.match?(/\A\d+\z/)
+            raise ArgumentError, "a version target_value must be all digits"
+          end
         end
 
         @type = type

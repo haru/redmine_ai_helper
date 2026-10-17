@@ -93,6 +93,55 @@ class HealthReportChartMarkdownArchiveTest < ActiveSupport::TestCase
       assert_equal body, build_archive(body)["proj-health-report-20261017.md"]
     end
 
+    should "number only the drawable charts, in order of appearance" do
+      result = build_archive("{{ai_helper_chart(burndown, version=12)}}\n\n{{ai_helper_chart(status, version=12)}}")
+
+      assert_equal [ "charts/chart-1.svg", "proj-health-report-20261017.md" ], result.keys.sort
+      assert_includes result["proj-health-report-20261017.md"], "![Issues by Status - 1.0.0](charts/chart-1.svg)"
+      assert_includes result["charts/chart-1.svg"], "Issues by Status - 1.0.0"
+    end
+
+    should "keep the trailing newline of a body that ends with a directive line" do
+      md = build_archive("A\n\n{{ai_helper_chart(status, version=12)}}\n")["proj-health-report-20261017.md"]
+
+      assert_equal "A\n\n![Issues by Status - 1.0.0](charts/chart-1.svg)\n", md
+    end
+
+    should "replace a directive on the first line" do
+      md = build_archive("{{ai_helper_chart(status, version=12)}}\nB")["proj-health-report-20261017.md"]
+
+      assert_equal "![Issues by Status - 1.0.0](charts/chart-1.svg)\n\nB", md
+    end
+
+    should "keep the leading blank lines of the body when the body ends with a directive" do
+      md = build_archive("\n\nA\n{{ai_helper_chart(status, version=12)}}")["proj-health-report-20261017.md"]
+
+      assert_equal "\n\nA\n\n![Issues by Status - 1.0.0](charts/chart-1.svg)", md
+    end
+
+    should "replace two consecutive directive lines" do
+      md = build_archive("{{ai_helper_chart(status, version=12)}}\n{{ai_helper_chart(assignee, version=12)}}")["proj-health-report-20261017.md"]
+
+      assert_equal "![Issues by Status - 1.0.0](charts/chart-1.svg)\n\n![Issues by Assignee - 1.0.0](charts/chart-2.svg)", md
+    end
+
+    should "write unicode text around a directive as UTF-8" do
+      md = build_archive("日本語\n\n{{ai_helper_chart(status, version=12)}}")["proj-health-report-20261017.md"]
+
+      assert_equal "日本語\n\n![Issues by Status - 1.0.0](charts/chart-1.svg)", md
+      assert md.valid_encoding?
+    end
+
+    should "raise ArgumentError when the resolver is not a Resolver" do
+      assert_raises(ArgumentError) { MarkdownArchive.build("text", resolver: "resolver", base_name: "b") }
+    end
+
+    should "raise ArgumentError when a directive resolves to neither a Chart nor an Unavailable" do
+      Resolver.any_instance.stubs(:resolve).returns(nil)
+
+      assert_raises(ArgumentError) { build_archive("{{ai_helper_chart(status, version=12)}}") }
+    end
+
     should "keep unicode text intact" do
       assert_equal "日本語の本文\n", build_archive("日本語の本文\n")["proj-health-report-20261017.md"]
     end

@@ -29,6 +29,12 @@ class HealthReportChartChartTest < ActiveSupport::TestCase
     end
   end
 
+  context "Palette immutability" do
+    should "freeze every color triple so a returned rgb cannot repaint the palette" do
+      RedmineAiHelper::HealthReportChart::Palette::COLORS.each { |rgb| assert_predicate rgb, :frozen? }
+    end
+  end
+
   context "Item" do
     should "build the fill and border colors from its rgb value" do
       item = RedmineAiHelper::HealthReportChart::Item.new(label: "New (3)", value: 3, rgb: RED)
@@ -56,6 +62,23 @@ class HealthReportChartChartTest < ActiveSupport::TestCase
       assert_raises(ArgumentError) do
         RedmineAiHelper::HealthReportChart::Item.new(label: 3, value: 3, rgb: RED)
       end
+    end
+
+    should "raise ArgumentError when an rgb component is outside 0..255" do
+      [ [ 256, 0, 0 ], [ 0, -1, 0 ] ].each do |rgb|
+        assert_raises(ArgumentError) do
+          RedmineAiHelper::HealthReportChart::Item.new(label: "New", value: 3, rgb: rgb)
+        end
+      end
+    end
+
+    should "keep a frozen copy of rgb so the palette cannot be changed through the item" do
+      palette_color = RedmineAiHelper::HealthReportChart::Palette.color_at(0)
+      item = RedmineAiHelper::HealthReportChart::Item.new(label: "New", value: 3, rgb: palette_color)
+
+      assert_predicate item.rgb, :frozen?
+      assert_raises(FrozenError) { item.rgb[0] = 0 }
+      assert_equal [ 255, 99, 132 ], RedmineAiHelper::HealthReportChart::Palette.color_at(0)
     end
 
     should "raise ArgumentError when rgb is not three integers" do
@@ -104,6 +127,16 @@ class HealthReportChartChartTest < ActiveSupport::TestCase
       end
     end
 
+    should "freeze its items so they cannot exceed the limit afterwards" do
+      chart = RedmineAiHelper::HealthReportChart::Chart.new(title: "t", form: :bar, items: [ build_item ])
+
+      assert_raises(FrozenError) { chart.items << build_item }
+    end
+
+    should "share the item limit with the resolver" do
+      assert_equal 7, RedmineAiHelper::HealthReportChart::Chart::MAX_ITEMS
+    end
+
     should "be no_data? when there are no items" do
       chart = RedmineAiHelper::HealthReportChart::Chart.new(title: "t", form: :doughnut, items: [])
 
@@ -136,6 +169,10 @@ class HealthReportChartChartTest < ActiveSupport::TestCase
       assert_equal :doughnut, types["progress"][:form]
     end
 
+    should "freeze each type definition" do
+      RedmineAiHelper::HealthReportChart::ChartType.each_value { |definition| assert_predicate definition, :frozen? }
+    end
+
     should "give every type a locale title key and a variable/fixed item mode" do
       RedmineAiHelper::HealthReportChart::ChartType.each do |key, definition|
         assert_match(/\Aai_helper\.health_report_chart\.types\.#{key}\z/, definition[:title_key])
@@ -150,6 +187,26 @@ class HealthReportChartChartTest < ActiveSupport::TestCase
 
       assert_equal :unknown_type, unavailable.reason
       assert_equal "msg", unavailable.message
+    end
+
+    should "accept every documented reason" do
+      %i[comparison invalid_arguments unknown_type metrics_unavailable unknown_target data_missing].each do |reason|
+        assert_equal reason, RedmineAiHelper::HealthReportChart::Unavailable.new(reason: reason, message: "m").reason
+      end
+    end
+
+    should "raise ArgumentError for an undocumented reason" do
+      [ :typo, "unknown_type", nil ].each do |reason|
+        assert_raises(ArgumentError) { RedmineAiHelper::HealthReportChart::Unavailable.new(reason: reason, message: "m") }
+      end
+    end
+
+    should "raise ArgumentError when the message is empty or not a String" do
+      [ "", nil, :msg ].each do |message|
+        assert_raises(ArgumentError) do
+          RedmineAiHelper::HealthReportChart::Unavailable.new(reason: :unknown_type, message: message)
+        end
+      end
     end
   end
 

@@ -44,6 +44,21 @@ if (!window.aiHelperComparisonInitialized) {
     document.body.removeChild(form);
   }
 
+  /**
+   * Render comparison markdown. Comparison reports cannot draw charts, so
+   * directive lines become the explanatory message before parsing (R-012).
+   * @param {AiHelperMarkdownParser} parser - The markdown parser.
+   * @param {HTMLElement} resultDiv - The analysis container carrying the
+   *   data-chart-unavailable-message attribute.
+   * @param {string} text - The comparison markdown received so far.
+   * @returns {string} The rendered HTML.
+   * @throws {TypeError} When the container has no unavailable message.
+   */
+  function renderComparisonMarkdown(parser, resultDiv, text) {
+    return parser.parse(
+      AiHelperChartDirective.replaceForComparison(text, resultDiv.dataset.chartUnavailableMessage));
+  }
+
   document.addEventListener('DOMContentLoaded', function() {
     const resultDiv = document.getElementById('ai-helper-comparison-analysis');
     if (!resultDiv) {return;}
@@ -92,8 +107,7 @@ if (!window.aiHelperComparisonInitialized) {
         if (currentEventSource !== eventSource) {
           return;
         }
-        const formattedContent = parser.parse(
-          AiHelperChartDirective.replaceForComparison(content, resultDiv.dataset.chartUnavailableMessage));
+        const formattedContent = renderComparisonMarkdown(parser, resultDiv, content);
         resultDiv.innerHTML = '<div class="ai-helper-streaming-content">' +
           formattedContent +
           '<span class="ai-helper-cursor">|</span></div>';
@@ -117,8 +131,7 @@ if (!window.aiHelperComparisonInitialized) {
             renderer.cancel();
 
             // Render final content
-            const formattedContent = parser.parse(
-              AiHelperChartDirective.replaceForComparison(content, resultDiv.dataset.chartUnavailableMessage));
+            const formattedContent = renderComparisonMarkdown(parser, resultDiv, content);
             resultDiv.innerHTML = '<div class="ai-helper-final-content">' +
               formattedContent + '</div>';
 

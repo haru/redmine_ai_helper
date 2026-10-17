@@ -92,6 +92,40 @@ class AiHelperDashboardHelperTest < ActionView::TestCase
       assert_equal [ "rgb(255, 99, 132)", "rgb(54, 162, 235)" ], json["borderColors"]
     end
 
+    should "draw several directives in the order they appear" do
+      metrics = [
+        { version_id: 12, version_name: "1.0.0",
+          metrics: { issue_statistics: { by_status: { "New" => 3 }, open_issues: 2, closed_issues: 1 } } }
+      ].to_json
+      report = AiHelperHealthReport.create!(project: Project.find(1), user: User.find(1), health_report: "x", metrics: metrics)
+      body = "{{ai_helper_chart(open_closed, version=12)}}\n\nmiddle\n\n{{ai_helper_chart(status, version=12)}}"
+
+      html = render_health_report_markdown(body, report: report)
+
+      titles = html.scan(/aria-label="([^"]*)"/).flatten
+      assert_equal [ "Open vs Closed Issues - 1.0.0", "Issues by Status - 1.0.0" ], titles
+      assert_operator html.index("Open vs Closed"), :<, html.index("<p>middle</p>")
+    end
+
+    should "keep an issue-like name in a chart untouched by issue linking" do
+      metrics = [ { version_id: 12, version_name: "Sprint #12", metrics: { issue_statistics: { by_status: { "New" => 1 } } } } ].to_json
+      report = AiHelperHealthReport.create!(project: Project.find(1), user: User.find(1), health_report: "x", metrics: metrics)
+
+      html = render_health_report_markdown("{{ai_helper_chart(status, version=12)}}", report: report)
+
+      assert_includes html, %(aria-label="Issues by Status - Sprint #12")
+      assert_equal "Issues by Status - Sprint #12", extract_chart_json(html)["title"]
+      chart_div = html[/<div class="ai-helper-health-report-chart.*?<\/div>/m]
+      assert_not_nil chart_div, "the chart HTML must be present"
+      assert_no_match(/<a\b/i, chart_div)
+    end
+
+    should "raise when the resolver returns neither a Chart nor an Unavailable" do
+      RedmineAiHelper::HealthReportChart::Resolver.any_instance.stubs(:resolve).returns(nil)
+
+      assert_raises(ArgumentError) { render_health_report_markdown(DIRECTIVE_BODY, report: @report) }
+    end
+
     should "keep a body without chart directives unchanged" do
       text = "See #1234\n\n| col |\n|-----|\n| cell |"
 
@@ -166,20 +200,8 @@ class AiHelperDashboardHelperTest < ActionView::TestCase
   end
 
   context "ai_helper_chart_heads" do
-    setup do
-      @original_importmap = Rails.application.importmap
-    end
-
-    teardown do
-      Rails.instance_variable_set(:@_importmap, @original_importmap)
-    end
-
     should "emit chart.min exactly once when the importmap has no chart.js pin" do
-      importmap = Object.new
-      def importmap.instance_variable_get(_name)
-        { "other.lib" => Object.new }
-      end
-      Rails.application.stubs(importmap: importmap)
+      Rails.application.stubs(importmap: stub(packages: { "other.lib" => Object.new }))
 
       ai_helper_chart_heads
       heads = content_for(:header_tags)
@@ -192,15 +214,19 @@ class AiHelperDashboardHelperTest < ActionView::TestCase
     end
 
     should "emit nothing when the importmap pins chart.js" do
-      importmap = Object.new
-      def importmap.instance_variable_get(_name)
-        { "chart.js" => Object.new }
-      end
-      Rails.application.stubs(importmap: importmap)
+      Rails.application.stubs(importmap: stub(packages: { "chart.js" => Object.new }))
 
       ai_helper_chart_heads
 
       assert_nil content_for(:header_tags)
+    end
+
+    should "emit chart.min when the application has no importmap at all (Redmine 6.0.x)" do
+      Rails.application.stubs(:respond_to?).with(:importmap).returns(false)
+
+      ai_helper_chart_heads
+
+      assert_includes content_for(:header_tags), "chart.min"
     end
   end
 

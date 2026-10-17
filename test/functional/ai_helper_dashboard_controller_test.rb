@@ -451,6 +451,14 @@ This is a test report."
 
         assert_response :forbidden
       end
+
+      should "return 403 from the visibility check for an authorized user who cannot see the report" do
+        AiHelperHealthReport.any_instance.stubs(:visible?).returns(false)
+
+        get :health_report_content, params: { id: @project.id, report_id: @report.id }
+
+        assert_response :forbidden
+      end
     end
 
     context "#health_report_destroy" do

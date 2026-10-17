@@ -204,14 +204,20 @@ export default [
     },
   },
   {
-    // swapInSavedReportContent is declared in
+    // savedReportContentUrl, swapInSavedReportContent and
+    // showSavedReportSwapError are declared in
     // ai_helper_project_health_swap.js (split out purely to stay under
-    // max-lines, see ADR-027) and referenced here as a bare identifier,
-    // for the same split-file reason as the blocks above.
-    files: ["assets/javascripts/project_health/ai_helper_project_health.js"],
+    // max-lines, see ADR-027) and referenced from these files as bare
+    // identifiers, for the same split-file reason as the blocks above.
+    files: [
+      "assets/javascripts/project_health/ai_helper_project_health.js",
+      "assets/javascripts/project_health/ai_helper_project_health_actions.js",
+    ],
     languageOptions: {
       globals: {
+        savedReportContentUrl: "readonly",
         swapInSavedReportContent: "readonly",
+        showSavedReportSwapError: "readonly",
       },
     },
   },

@@ -172,13 +172,17 @@ if (!window.aiHelperProjectHealthInitialized) {
    *   report body (which carries the charts) is fetched and swapped in,
    *   and the export links are rebuilt for the saved report.
    * @returns {Promise<void>|undefined} The swap promise when a saved report
-   *   id was given, undefined otherwise.
+   *   id was given and the result area is still attached; undefined otherwise.
+   * @throws {Error} Before touching the DOM, when a saved report id is given
+   *   but is not a positive integer or the content-url meta tag is missing.
    */
   function finalizeStreamingContent(resultDiv, parser, content, savedReportId) {
     // Validate the result area's structure before touching the DOM, so a
     // failed guard leaves the page as it was instead of a finished-looking
     // pane whose history, export links and timestamp were never updated.
     hiddenFieldContainerOf(resultDiv);
+    const hasSavedReport = savedReportId !== null && savedReportId !== undefined;
+    const contentUrl = hasSavedReport ? savedReportContentUrl(savedReportId) : null;
 
     // Selecting another report while streaming replaces the whole detail
     // pane (AiHelperMasterDetail#renderReportDetail), detaching the result
@@ -209,11 +213,12 @@ if (!window.aiHelperProjectHealthInitialized) {
     // Final scroll to bottom
     scrollHealthContentToBottom();
 
-    if (savedReportId) {
+    if (hasSavedReport) {
       // The server-rendered body and the saved report's export links arrive
       // asynchronously. Adding the meta-tag based export links here too
-      // would duplicate them.
-      return swapInSavedReportContent(resultDiv, savedReportId);
+      // would duplicate them. refreshHealthReportHistory() above already
+      // refreshes the created-on metadata.
+      return swapInSavedReportContent(resultDiv, contentUrl);
     }
 
     // Add PDF export button after generation completes

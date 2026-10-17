@@ -59,6 +59,7 @@
   <div class="ai-helper-project-health-content<% if health_report && !health_report.is_a?(Hash) %> has-report<% end %>">
     <% if health_report && !health_report.is_a?(Hash) %>
       <div id="ai-helper-project-health-result" class="ai-helper-final-content">
+        <% ai_helper_chart_heads if persisted_report %>
         <%= render_health_report_markdown(health_report.to_s, report: persisted_report) %>
       </div>
       <!-- Hidden field to store the health report content for PDF generation -->

@@ -252,7 +252,8 @@ interpret them (or ignore them).
   is shown as a message with the reason instead of a chart.
 
 The Markdown export of a health report is a zip file (`<name>.md` plus
-`charts/chart-<n>.svg`) instead of a single `.md` file. Extract it and open the
+`charts/chart-<n>.svg`, where n numbers the charts that can be drawn, in order of
+appearance) instead of a single `.md` file. Extract it and open the
 `.md` file in a Markdown viewer to see the charts. This is a change from earlier
 releases and should be mentioned in the release notes.
 

@@ -51,8 +51,11 @@ class ProjectAgentTest < ActiveSupport::TestCase
 
         @agent.project_health_report(project: @project)
 
+        saved = AiHelperHealthReport.for_project(@project.id).sorted.first
+        assert_not_nil saved, "the report must have been saved"
+        assert_equal saved.metrics, captured[:metrics]
         expected_guide = RedmineAiHelper::HealthReportChart::PromptGuide.build(
-          RedmineAiHelper::HealthReportChart::Resolver.new(captured[:metrics])
+          RedmineAiHelper::HealthReportChart::Resolver.new(saved.metrics)
         )
         assert_equal expected_guide, captured[:chart_guide]
         assert_includes captured[:chart_guide], "Available targets:"
@@ -69,8 +72,10 @@ class ProjectAgentTest < ActiveSupport::TestCase
           assert_not_includes rendered, "{chart_guide}", name
         end
         %w[health_report_comparison health_report_comparison_ja].each do |name|
-          template = RedmineAiHelper::Util::PromptLoader.load_template("project_agent/#{name}")
-          assert_includes template.format, "{{ai_helper_chart(...)}}", name
+          rendered = RedmineAiHelper::Util::PromptLoader.load_template("project_agent/#{name}").format
+          instruction = rendered.lines.find { |line| line.include?("{{ai_helper_chart(...)}}") }
+          assert_not_nil instruction, "#{name} must mention the directive syntax"
+          assert_match(/Do not write chart directives|書かないでください/, instruction, name)
         end
       end
 

@@ -47,8 +47,15 @@ module AiHelperDashboardHelper
   # @param resolver [RedmineAiHelper::HealthReportChart::Resolver] resolver built
   #   from the report's stored metrics
   # @return [String] the partial's HTML for the Chart or Unavailable state
+  # @raise [ArgumentError] when the resolver returns neither a Chart nor an Unavailable
   def chart_html(directive, resolver)
-    render "ai_helper/project/health_report_chart", resolved: resolver.resolve(directive)
+    resolved = resolver.resolve(directive)
+    case resolved
+    when RedmineAiHelper::HealthReportChart::Chart, RedmineAiHelper::HealthReportChart::Unavailable
+      render "ai_helper/project/health_report_chart", resolved: resolved
+    else
+      raise ArgumentError, "expected a Chart or an Unavailable, got #{resolved.class}"
+    end
   end
 
   # An unpredictable paragraph marker made of lowercase letters and digits
@@ -59,12 +66,14 @@ module AiHelperDashboardHelper
   end
 
   # Emit the Chart.js classic asset into the page head exactly once, but only
-  # when Redmine's importmap does not pin chart.js (Redmine 6.x). On Redmine 7
-  # the chart.js importmap pin is used by the dynamic import instead (R-007).
+  # when Redmine's importmap does not pin chart.js: Redmine 6.1.x has an
+  # importmap without the pin and Redmine 6.0.x has no importmap at all. On
+  # Redmine 7 the chart.js importmap pin is used by the dynamic import
+  # instead (R-007).
   # @return [void]
   def ai_helper_chart_heads
     return if @ai_helper_chart_heads_included # rubocop:disable Rails/HelperInstanceVariable
-    return if Rails.application.importmap.instance_variable_get(:@packages).key?("chart.js")
+    return if Rails.application.respond_to?(:importmap) && Rails.application.importmap.packages.key?("chart.js")
 
     content_for :header_tags do
       javascript_include_tag "chart.min"

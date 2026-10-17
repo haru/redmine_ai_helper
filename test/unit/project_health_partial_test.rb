@@ -41,6 +41,44 @@ class ProjectHealthPartialTest < ActionView::TestCase
     assert_includes html, 'meta name="ai-helper-project-health-created-label"'
   end
 
+  context "charts on every server-rendered call site" do
+    setup do
+      Role.find(1).add_permission! :view_ai_helper_health_reports
+      @chart_report = AiHelperHealthReport.create!(
+        project: @project, user: @user,
+        health_report: "Before\n\n{{ai_helper_chart(open_closed, version=12)}}\n\nAfter",
+        metrics: [ { version_id: 12, version_name: "1.0.0",
+                     metrics: { issue_statistics: { open_issues: 2, closed_issues: 1 } } } ].to_json
+      )
+    end
+
+    should "draw the chart and load Chart.js on the project overview" do
+      Rails.application.stubs(importmap: stub(packages: {}))
+
+      html = render(partial: "ai_helper/project/health_report", locals: { project: @project })
+
+      assert_select Nokogiri::HTML::DocumentFragment.parse(html), "canvas[data-ai-helper-chart]", 1
+      assert_includes view.content_for(:header_tags).to_s, "chart.min"
+    end
+
+    should "draw the chart in the shared body partial" do
+      html = render(partial: "ai_helper/project/health_report_body", locals: { health_report: @chart_report })
+
+      assert_select Nokogiri::HTML::DocumentFragment.parse(html),
+                    ".ai-helper-health-report-current canvas[data-ai-helper-chart]", 1
+    end
+
+    should "draw the chart in the original body of an edited report" do
+      @chart_report.update_content("Edited without chart", User.find(2))
+
+      html = render(partial: "ai_helper/project/health_report_body", locals: { health_report: @chart_report })
+
+      fragment = Nokogiri::HTML::DocumentFragment.parse(html)
+      assert_select fragment, ".ai-helper-health-report-original canvas[data-ai-helper-chart]", 1
+      assert_select fragment, ".ai-helper-health-report-current canvas[data-ai-helper-chart]", 0
+    end
+  end
+
   should "export a stored report on the overview from the record-based endpoints" do
     report = AiHelperHealthReport.create!(project: @project, user: @user, health_report: "Stored body")
 

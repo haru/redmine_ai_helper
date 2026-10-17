@@ -119,7 +119,7 @@ function handleGenerateProjectHealthClick(e, parser) {
   // server-rendered body when the stream finishes.
   let savedReportId = null;
   eventSource.addEventListener('health_report_saved', function(event) {
-    savedReportId = JSON.parse(event.data).report_id;
+    savedReportId = savedReportIdOf(event);
   });
   const renderer = new AiHelperFrameRenderer(function() {
     // A newer generation may have replaced this stream since scheduling.
@@ -154,7 +154,7 @@ function handleGenerateProjectHealthClick(e, parser) {
       eventSource.close();
       currentProjectHealthEventSource = null;
       renderer.cancel();
-      finalizeStreamingContent(resultDiv, parser, content, savedReportId);
+      finishGeneration(resultDiv, parser, content, savedReportId);
     }
   };
 
@@ -176,6 +176,37 @@ function handleGenerateProjectHealthClick(e, parser) {
     // Remove PDF button if it exists on error
     removePdfExportButton();
   };
+}
+
+/**
+ * Read the saved report's id from a health_report_saved SSE event.
+ * @param {MessageEvent} event - The named SSE event.
+ * @returns {number} The positive integer report id.
+ * @throws {Error} When the payload carries no positive integer report_id.
+ */
+function savedReportIdOf(event) {
+  const reportId = JSON.parse(event.data).report_id;
+  if (!Number.isInteger(reportId) || reportId <= 0) {
+    throw new Error('health_report_saved carried an invalid report_id: ' + JSON.stringify(reportId));
+  }
+  return reportId;
+}
+
+/**
+ * Render the finished report and, when the server saved it, report a failed
+ * swap to the server-rendered body in the result area.
+ * @param {HTMLElement} resultDiv - The report result container.
+ * @param {AiHelperMarkdownParser} parser - Parser for the final markdown.
+ * @param {string} content - The full generated report content.
+ * @param {number|null} savedReportId - The saved report's id, if any.
+ */
+function finishGeneration(resultDiv, parser, content, savedReportId) {
+  const swapped = finalizeStreamingContent(resultDiv, parser, content, savedReportId);
+  if (swapped) {
+    swapped.catch(function(error) {
+      showSavedReportSwapError(resultDiv, error);
+    });
+  }
 }
 
 /**

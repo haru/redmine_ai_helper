@@ -2,22 +2,27 @@
 
 require "zip"
 require "redmine_ai_helper/health_report_chart/scanner"
+require "redmine_ai_helper/health_report_chart/resolver"
 require "redmine_ai_helper/health_report_chart/chart"
 require "redmine_ai_helper/health_report_chart/svg_renderer"
 
 module RedmineAiHelper
   module HealthReportChart
     # Builds the Markdown export zip: <base>.md plus charts/chart-<n>.svg,
-    # where n is the directive's order of appearance (R-010). Directives that
-    # can be drawn become image references; those that cannot become a
-    # one-line blockquote with the reason.
+    # where n numbers only the drawable charts, in order of appearance
+    # (R-010); a directive that cannot be drawn gets no file. Drawable
+    # directives become image references; the others become a one-line
+    # blockquote with the reason.
     module MarkdownArchive
       class << self
         # @param markdown [String] the report body (with chart directives)
         # @param resolver [Resolver] resolves directives to charts
         # @param base_name [String] file name without extension
         # @return [String] the zip file as a binary string
+        # @raise [ArgumentError] when resolver is not a Resolver
         def build(markdown, resolver:, base_name:)
+          raise ArgumentError, "resolver must be a Resolver" unless resolver.is_a?(Resolver)
+
           svgs = []
           document = replace_directives(markdown) { |directive| replacement(resolver.resolve(directive), svgs) }
 
@@ -44,7 +49,7 @@ module RedmineAiHelper
           return markdown if parts.length == 1 && parts.first.is_a?(String)
 
           pieces = parts.each_with_index.map do |part, index|
-            next trim_text(part, parts[index - 1], parts[index + 1]) if part.is_a?(String)
+            next trim_text(part, index.zero? ? nil : parts[index - 1], parts[index + 1]) if part.is_a?(String)
 
             yield part
           end
@@ -63,10 +68,15 @@ module RedmineAiHelper
         end
 
         def replacement(resolved, svgs)
-          return "> #{resolved.message}" if resolved.is_a?(Unavailable)
-
-          svgs << SvgRenderer.render(resolved)
-          "![#{escape_title(resolved.title)}](charts/chart-#{svgs.length}.svg)"
+          case resolved
+          when Unavailable
+            "> #{resolved.message}"
+          when Chart
+            svgs << SvgRenderer.render(resolved)
+            "![#{escape_title(resolved.title)}](charts/chart-#{svgs.length}.svg)"
+          else
+            raise ArgumentError, "expected a Chart or an Unavailable, got #{resolved.class}"
+          end
         end
 
         def escape_title(title)

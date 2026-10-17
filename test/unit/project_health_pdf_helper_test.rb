@@ -19,13 +19,20 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
   # Records the drawing calls made on the PDF object while still running
   # them, so tests can assert which shapes the chart renderer drew.
   module PdfCallRecorder
+    class << self
+      attr_accessor :recording
+    end
+
     def self.calls
       @calls ||= []
     end
 
-    %i[Rect PieSector Circle setAlpha AddPage].each do |name|
+    # rbpdf's snake_case names are aliases bound to the original methods, so
+    # they are recorded separately under the CamelCase name.
+    { Rect: :Rect, PieSector: :PieSector, Circle: :Circle, setAlpha: :setAlpha,
+      AddPage: :AddPage, add_page: :AddPage }.each do |name, recorded_as|
       define_method(name) do |*args, **kwargs, &block|
-        PdfCallRecorder.calls << [ name, args ]
+        PdfCallRecorder.calls << [ recorded_as, args ] if PdfCallRecorder.recording
         super(*args, **kwargs, &block)
       end
     end
@@ -178,6 +185,11 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
       setup do
         Redmine::Export::PDF::ITCPDF.prepend(PdfCallRecorder)
         PdfCallRecorder.calls.clear
+        PdfCallRecorder.recording = true
+      end
+
+      teardown do
+        PdfCallRecorder.recording = false
       end
 
       should "produce the same output for a body without directives with or without a resolver" do
@@ -281,13 +293,49 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
         assert_includes pdf_text(pdf), l("ai_helper.health_report_chart.errors.metrics_unavailable")
       end
 
-      should "add a page before drawing a chart that does not fit" do
-        filler = (1..60).map { |i| "Line #{i}" }.join("\n\n")
-        render_with_charts("#{filler}\n\n{{ai_helper_chart(status, version=12)}}")
+      should "add a page before drawing a chart that does not fit below the cursor" do
+        pdf = Redmine::Export::PDF::ITCPDF.new(current_language)
+        pdf.add_page
+        # Leave less room than the doughnut needs, but enough for its title
+        # cell, so only the explicit check can move the chart.
+        pdf.set_y(pdf.get_page_height - pdf.get_break_margin - 20)
+        chart = RedmineAiHelper::HealthReportChart::Resolver.new(CHART_METRICS)
+                                                            .resolve(RedmineAiHelper::HealthReportChart::Scanner.split("{{ai_helper_chart(status, version=12)}}").first)
+        PdfCallRecorder.calls.clear
 
-        # The filler already pushes the cursor near the page bottom, so the
-        # chart is moved to a new page rather than split across two.
-        assert_operator calls_named(:AddPage).length, :>=, 2
+        send(:render_pdf_chart, pdf, chart, 10, "L")
+
+        names = PdfCallRecorder.calls.map(&:first)
+        assert_equal :AddPage, names.first, "a page must be added before any chart shape"
+        sector_center_y = calls_named(:PieSector).first[1][1]
+        assert_operator sector_center_y, :<, 80, "the doughnut must be drawn at the top of the new page"
+      end
+
+      should "not add a page when the chart fits below the cursor" do
+        pdf = Redmine::Export::PDF::ITCPDF.new(current_language)
+        pdf.add_page
+        chart = RedmineAiHelper::HealthReportChart::Resolver.new(CHART_METRICS)
+                                                            .resolve(RedmineAiHelper::HealthReportChart::Scanner.split("{{ai_helper_chart(status, version=12)}}").first)
+        PdfCallRecorder.calls.clear
+
+        send(:render_pdf_chart, pdf, chart, 10, "L")
+
+        assert_empty calls_named(:AddPage)
+        assert_not_empty calls_named(:PieSector)
+      end
+
+      should "raise ArgumentError when the charts option is not a Resolver" do
+        assert_raises(ArgumentError) { project_health_to_pdf(@project, "Body", charts: "resolver") }
+      end
+
+      should "raise ArgumentError when the body is neither a String nor nil" do
+        assert_raises(ArgumentError) { project_health_to_pdf(@project, 12) }
+      end
+
+      should "raise ArgumentError when a resolved directive is neither a Chart nor an Unavailable" do
+        RedmineAiHelper::HealthReportChart::Resolver.any_instance.stubs(:resolve).returns(nil)
+
+        assert_raises(ArgumentError) { render_with_charts("{{ai_helper_chart(status, version=12)}}") }
       end
 
       should "draw charts outside the rescue that falls back to plain text" do

@@ -107,7 +107,8 @@ from the metrics stored with the report, never from numbers written by the LLM
   server-rendered one (S051).
 - **Unavailable charts** (unknown type/target, no stored metrics, comparison
   reports) are replaced by a message with the reason (S051).
-- **Markdown export is a zip** (`<name>.md` + `charts/chart-<n>.svg`) for health
+- **Markdown export is a zip** (`<name>.md` + `charts/chart-<n>.svg`, n counting
+  only the drawable charts in order of appearance) for health
   reports; comparison exports stay a single `.md` (S051).
 - The edit form has a collapsible help listing the syntax, types and the
   report's targets; the preview needs `report_id` so it can resolve against that

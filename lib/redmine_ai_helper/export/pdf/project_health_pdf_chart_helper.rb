@@ -6,8 +6,9 @@ require "redmine_ai_helper/health_report_chart/palette"
 module RedmineAiHelper
   module Export
     module PDF
-      # Draws resolved health report charts into a PDF with rbpdf shapes and
-      # text. Used by ProjectHealthPdfHelper; the doughnut starts at 12 o'clock
+      # Splits a health report body at its chart directives and draws the
+      # resolved charts into a PDF with rbpdf shapes and text. Used by
+      # ProjectHealthPdfHelper; the doughnut starts at 12 o'clock
       # and goes clockwise with a hole of half the outer radius, like the screen
       # and SVG renderers (R-004).
       module ProjectHealthPdfChartHelper
@@ -15,18 +16,47 @@ module RedmineAiHelper
 
         private
 
+        # Draw the body split at chart directives. Text parts go through the
+        # existing text pipeline unchanged; directives are drawn outside its
+        # rescue so a drawing failure is not hidden by the plain-text fallback.
+        def render_pdf_body(pdf, project, health_report, charts, left_margin, is_rtl, text_align)
+          parts =
+            case health_report
+            when String then RedmineAiHelper::HealthReportChart::Scanner.split(health_report)
+            when nil then [ nil ]
+            else raise ArgumentError, "health_report must be a String or nil"
+            end
+          parts.each do |part|
+            if part.is_a?(RedmineAiHelper::HealthReportChart::Directive)
+              render_pdf_chart(pdf, charts.resolve(part), left_margin, text_align)
+            else
+              render_pdf_report_content(pdf, project, part, left_margin, is_rtl, text_align)
+            end
+          end
+        end
+
+        # @raise [ArgumentError] when resolved is neither a Chart nor an Unavailable
         def render_pdf_chart(pdf, resolved, left_margin, text_align)
-          if resolved.is_a?(RedmineAiHelper::HealthReportChart::Unavailable)
+          case resolved
+          when RedmineAiHelper::HealthReportChart::Unavailable
             add_simple_paragraph_to_pdf(pdf, resolved.message, left_margin, text_align)
-          elsif resolved.no_data?
-            draw_pdf_chart_title(pdf, resolved.title, left_margin)
+          when RedmineAiHelper::HealthReportChart::Chart
+            render_pdf_drawable_chart(pdf, resolved, left_margin, text_align)
+          else
+            raise ArgumentError, "expected a Chart or an Unavailable, got #{resolved.class}"
+          end
+        end
+
+        def render_pdf_drawable_chart(pdf, chart, left_margin, text_align)
+          if chart.no_data?
+            draw_pdf_chart_title(pdf, chart.title, left_margin)
             pdf.SetFontStyle("", 10)
             pdf.cell(0, 5, l(:label_no_data), 0, 1, text_align)
             pdf.ln(3)
-          elsif resolved.form == :doughnut
-            draw_pdf_doughnut(pdf, resolved, left_margin)
+          elsif chart.form == :doughnut
+            draw_pdf_doughnut(pdf, chart, left_margin)
           else
-            draw_pdf_bar_chart(pdf, resolved, left_margin)
+            draw_pdf_bar_chart(pdf, chart, left_margin)
           end
         end
 
@@ -42,11 +72,16 @@ module RedmineAiHelper
           pdf.cell(0, 6, title, 0, 1, "L")
         end
 
-        # Fill with the shared alpha, then restore opacity for the border.
-        def with_chart_colors(pdf, rgb)
+        # Draw one shape twice in the item's color: first filled with the
+        # shared fill alpha (style "F"), then its border opaque (style "D").
+        # The block receives the style and draws the shape.
+        def draw_with_chart_colors(pdf, rgb)
           pdf.SetFillColor(*rgb)
           pdf.SetDrawColor(*rgb)
-          yield
+          pdf.setAlpha(RedmineAiHelper::HealthReportChart::Palette::FILL_ALPHA)
+          yield "F"
+          pdf.setAlpha(1)
+          yield "D"
         end
 
         def draw_pdf_doughnut(pdf, chart, left_margin)
@@ -69,11 +104,8 @@ module RedmineAiHelper
           start_angle = 0.0
           slices.each do |item|
             end_angle = start_angle + (360.0 * item.value / total)
-            with_chart_colors(pdf, item.rgb) do
-              pdf.setAlpha(RedmineAiHelper::HealthReportChart::Palette::FILL_ALPHA)
-              draw_pdf_slice(pdf, slices.length == 1, center_x, center_y, radius, start_angle, end_angle, "F")
-              pdf.setAlpha(1)
-              draw_pdf_slice(pdf, slices.length == 1, center_x, center_y, radius, start_angle, end_angle, "D")
+            draw_with_chart_colors(pdf, item.rgb) do |style|
+              draw_pdf_slice(pdf, slices.length == 1, center_x, center_y, radius, start_angle, end_angle, style)
             end
             start_angle = end_angle
           end
@@ -93,12 +125,7 @@ module RedmineAiHelper
           pdf.SetFontStyle("", 9)
           chart.items.each_with_index do |item, index|
             row_y = y + (index * 6)
-            with_chart_colors(pdf, item.rgb) do
-              pdf.setAlpha(RedmineAiHelper::HealthReportChart::Palette::FILL_ALPHA)
-              pdf.Rect(x, row_y + 1, 3, 3, "F")
-              pdf.setAlpha(1)
-              pdf.Rect(x, row_y + 1, 3, 3, "D")
-            end
+            draw_with_chart_colors(pdf, item.rgb) { |style| pdf.Rect(x, row_y + 1, 3, 3, style) }
             pdf.set_xy(x + 5, row_y)
             pdf.cell(0, 5, item.label, 0, 0, "L")
           end
@@ -119,12 +146,7 @@ module RedmineAiHelper
             width = max_width * item.value / max_value
             bar_y = pdf.get_y
             if width > 0
-              with_chart_colors(pdf, item.rgb) do
-                pdf.setAlpha(RedmineAiHelper::HealthReportChart::Palette::FILL_ALPHA)
-                pdf.Rect(left_margin, bar_y, width, 4, "F")
-                pdf.setAlpha(1)
-                pdf.Rect(left_margin, bar_y, width, 4, "D")
-              end
+              draw_with_chart_colors(pdf, item.rgb) { |style| pdf.Rect(left_margin, bar_y, width, 4, style) }
             end
             pdf.set_y(bar_y + 6)
           end

@@ -15,6 +15,16 @@ class HealthReportChartScannerTest < ActiveSupport::TestCase
       assert_equal markdown, parts.join
     end
 
+    should "return [markdown] for an empty body" do
+      assert_equal [ "" ], split("")
+    end
+
+    should "raise ArgumentError for a body that is not a String" do
+      [ nil, 12, [ "x" ] ].each do |body|
+        assert_raises(ArgumentError) { split(body) }
+      end
+    end
+
     context "judgment table (contracts/chart-directive.md)" do
       should "a plain directive line becomes a Directive" do
         parts = split(DIRECTIVE_LINE)
@@ -117,7 +127,7 @@ class HealthReportChartScannerTest < ActiveSupport::TestCase
         assert_round_trip(parts, markdown)
       end
 
-      should "-like: a directive line after an unclosed fence stays a plain string" do
+      should "a directive line after an unclosed fence stays a plain string" do
         markdown = "```\n#{DIRECTIVE_LINE}"
         parts = split(markdown)
 
@@ -162,6 +172,47 @@ class HealthReportChartScannerTest < ActiveSupport::TestCase
         assert_equal "~~~\ntext\n~~~\n", parts[0]
         assert_kind_of RedmineAiHelper::HealthReportChart::Directive, parts[1]
         assert_round_trip(parts, markdown)
+      end
+    end
+
+    context "boundary rules shared with the JS scanner" do
+      should "not open a backtick fence whose info string contains a backtick" do
+        markdown = "```a`b\n#{DIRECTIVE_LINE}"
+        parts = split(markdown)
+
+        assert_equal "```a`b\n", parts[0]
+        assert_directive_at(parts, 1, type: "status", target_kind: :version, target_value: "12", source: DIRECTIVE_LINE)
+      end
+
+      should "not close a fence with a line that has text after the fence" do
+        markdown = "```\n``` x\n#{DIRECTIVE_LINE}\n```"
+
+        assert_single_string(split(markdown), markdown)
+      end
+
+      should "not treat a fence line with four leading spaces as a fence" do
+        markdown = "    ```\n#{DIRECTIVE_LINE}"
+        parts = split(markdown)
+
+        assert_equal "    ```\n", parts[0]
+        assert_directive_at(parts, 1, type: "status", target_kind: :version, target_value: "12", source: DIRECTIVE_LINE)
+      end
+
+      should "not accept a leading tab before a directive" do
+        markdown = "\t#{DIRECTIVE_LINE}"
+
+        assert_single_string(split(markdown), markdown)
+      end
+
+      should "accept a trailing tab after a directive" do
+        assert_directive_at(split("#{DIRECTIVE_LINE}\t"), 0, type: "status", target_kind: :version,
+                            target_value: "12", source: DIRECTIVE_LINE)
+      end
+
+      should "treat a directive line ending with a newline like one without it" do
+        parts = split("{{ai_helper_chart(status, version=12)\n")
+
+        assert_single_string(parts, "{{ai_helper_chart(status, version=12)\n")
       end
     end
 
@@ -234,6 +285,16 @@ class HealthReportChartScannerTest < ActiveSupport::TestCase
       assert_raises(ArgumentError) do
         build_directive(target_kind: :milestone, target_value: "12")
       end
+    end
+
+    should "raise ArgumentError when target_kind is set but target_value is not a non-empty String" do
+      [ nil, "", 12 ].each do |value|
+        assert_raises(ArgumentError) { build_directive(target_kind: :period, target_value: value) }
+      end
+    end
+
+    should "raise ArgumentError when a version target_value is not all digits" do
+      assert_raises(ArgumentError) { build_directive(target_kind: :version, target_value: "v12") }
     end
 
     should "raise ArgumentError when target_kind is nil but target_value is present" do

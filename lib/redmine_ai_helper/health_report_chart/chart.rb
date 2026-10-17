@@ -19,17 +19,20 @@ module RedmineAiHelper
     #   remainder into "others"; :fixed keeps the documented fixed order and
     #   never groups.
     ChartType = {
-      "status" => { title_key: "ai_helper.health_report_chart.types.status", form: :doughnut, kind: :hash, key: "by_status", item_mode: :variable },
-      "tracker" => { title_key: "ai_helper.health_report_chart.types.tracker", form: :doughnut, kind: :hash, key: "by_tracker", item_mode: :variable },
-      "priority" => { title_key: "ai_helper.health_report_chart.types.priority", form: :doughnut, kind: :hash, key: "by_priority", item_mode: :variable },
-      "assignee" => { title_key: "ai_helper.health_report_chart.types.assignee", form: :bar, kind: :hash, key: "by_assigned_to", item_mode: :variable },
-      "open_closed" => { title_key: "ai_helper.health_report_chart.types.open_closed", form: :doughnut, kind: :open_closed, item_mode: :fixed },
-      "progress" => { title_key: "ai_helper.health_report_chart.types.progress", form: :doughnut, kind: :progress, item_mode: :fixed }
+      "status" => { title_key: "ai_helper.health_report_chart.types.status", form: :doughnut, kind: :hash, key: "by_status", item_mode: :variable }.freeze,
+      "tracker" => { title_key: "ai_helper.health_report_chart.types.tracker", form: :doughnut, kind: :hash, key: "by_tracker", item_mode: :variable }.freeze,
+      "priority" => { title_key: "ai_helper.health_report_chart.types.priority", form: :doughnut, kind: :hash, key: "by_priority", item_mode: :variable }.freeze,
+      "assignee" => { title_key: "ai_helper.health_report_chart.types.assignee", form: :bar, kind: :hash, key: "by_assigned_to", item_mode: :variable }.freeze,
+      "open_closed" => { title_key: "ai_helper.health_report_chart.types.open_closed", form: :doughnut, kind: :open_closed, item_mode: :fixed }.freeze,
+      "progress" => { title_key: "ai_helper.health_report_chart.types.progress", form: :doughnut, kind: :progress, item_mode: :fixed }.freeze
     }.freeze
 
     # A drawable chart: the title, the form and the ordered items. The three
     # renderers (screen, PDF, SVG) take only this object as input (FR-019).
     class Chart
+      # The maximum number of items: the top 6 plus "others" (R-005).
+      MAX_ITEMS = 7
+
       attr_reader :title, :form, :items
 
       # @param title [String] non-empty display title
@@ -39,12 +42,12 @@ module RedmineAiHelper
       def initialize(title:, form:, items:)
         raise ArgumentError, "title must be a non-empty String" unless title.is_a?(String) && !title.empty?
         raise ArgumentError, "form must be :doughnut or :bar" unless [ :doughnut, :bar ].include?(form)
-        raise ArgumentError, "items must be an Array of at most 7 items" unless items.is_a?(Array) && items.length <= 7
+        raise ArgumentError, "items must be an Array of at most #{MAX_ITEMS} items" unless items.is_a?(Array) && items.length <= MAX_ITEMS
         items.each { |item| raise ArgumentError, "items must be Item objects" unless item.is_a?(Item) }
 
-        @title = title
+        @title = title.dup.freeze
         @form = form
-        @items = items
+        @items = items.dup.freeze
       end
 
       # True when the chart has nothing to draw (no items, or all values 0).
@@ -68,13 +71,13 @@ module RedmineAiHelper
         unless value.is_a?(Integer) && value >= 0
           raise ArgumentError, "value must be an Integer of 0 or more"
         end
-        unless rgb.is_a?(Array) && rgb.length == 3 && rgb.all?(Integer)
-          raise ArgumentError, "rgb must be [r, g, b] integers"
+        unless rgb.is_a?(Array) && rgb.length == 3 && rgb.all? { |c| c.is_a?(Integer) && c.between?(0, 255) }
+          raise ArgumentError, "rgb must be [r, g, b] integers in 0..255"
         end
 
         @label = label
         @value = value
-        @rgb = rgb
+        @rgb = rgb.dup.freeze
       end
 
       # The CSS fill color with the shared fill alpha.
@@ -92,11 +95,19 @@ module RedmineAiHelper
 
     # A chart directive that cannot be drawn, with the localized reason.
     class Unavailable
+      # The documented reasons (data-model.md), in the order Resolver checks them.
+      REASONS = %i[comparison invalid_arguments unknown_type metrics_unavailable unknown_target data_missing].freeze
+
       attr_reader :reason, :message
 
-      # @param reason [Symbol] one of the reasons in data-model.md's table
+      # @param reason [Symbol] one of REASONS
       # @param message [String] the localized "cannot draw" message
+      # @raise [ArgumentError] when the reason is undocumented or the message
+      #   is not a non-empty String
       def initialize(reason:, message:)
+        raise ArgumentError, "reason must be one of #{REASONS.inspect}" unless REASONS.include?(reason)
+        raise ArgumentError, "message must be a non-empty String" unless message.is_a?(String) && !message.empty?
+
         @reason = reason
         @message = message
       end

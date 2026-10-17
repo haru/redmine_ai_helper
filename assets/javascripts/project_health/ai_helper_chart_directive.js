@@ -49,7 +49,8 @@ function fenceCloses(line, fence) {
 /**
  * Tell whether a trailing line still being received must stay hidden: it is
  * either a non-empty prefix of "{{ai_helper_chart(" (a directive still
- * arriving) or starts with it (a complete directive without its newline).
+ * arriving) or starts with it (a directive whose closing ")}}" has not
+ * arrived yet; complete directives are removed before this check).
  * @param {string} line - The last line of the body, without its newline.
  * @returns {boolean} True when the line must be hidden.
  */
@@ -107,13 +108,8 @@ function mapLinesOutsideFences(markdown, transform) {
  */
 function stripForStreaming(markdown) {
   return mapLinesOutsideFences(markdown, function (line, isLastLine) {
-    if (DIRECTIVE_PATTERN.test(line)) {
-      return null;
-    }
-    if (isLastLine && hidesPartialDirective(line)) {
-      return null;
-    }
-    return line;
+    const hidden = DIRECTIVE_PATTERN.test(line) || (isLastLine && hidesPartialDirective(line));
+    return hidden ? null : line;
   });
 }
 

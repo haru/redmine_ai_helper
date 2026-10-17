@@ -137,12 +137,14 @@ Agents expose tools by overriding `available_tool_providers` to return an array 
 - Logging: mixin `RedmineAiHelper::Logger`, use `ai_helper_logger` — **never** `Rails.logger`
 - Error handling: **NEVER implement fallback error handling**. Let errors surface immediately. No silent continues.
 - A `rescue` that turns failures into a result value (a "failed" flag, an error response) lists the error classes the external call can raise (API, network, parse) — never `StandardError` — and wraps only that call. Specs and contracts that prescribe such a rescue name the classes too. A value returned across an adapter or plugin boundary is checked with `is_a?` where it is first used, and a violation raises. A log line for a failed operation on a created resource names that resource's id (CRF-014, CRF-022, SF-010)
+- A method that returns a union is consumed with `case`/`when` over every member and an `else` that raises. Data read back from the database or a file is boundary input: validate its element types (CRF-050)
 - Value objects validate their documented invariants in `initialize` and raise `ArgumentError`. A method documented to accept a type union branches on the types explicitly and raises on anything else — do not let `to_s` or `&.` absorb unexpected values (CRF-003, CRF-009)
 
 ### Testing
 - **TDD**: Write tests before implementing features
 - Assert cross-call properties (e.g. a cache prefix) by equality: build two instances with every per-request input changed and `assert_equal` the stable part. For a value that crosses layers (agent → provider → request payload), add at least one test from the top-level entry point to the rendered payload. Every new `raise`/guard branch gets a test that drives it (CRF-006, CRF-010)
 - A test helper that parses source (CSS, templates, config) throws on constructs it does not model, with a test for that throw. Every negative assertion covers the equivalent spellings of what it forbids and asserts that the searched region was found (CRF-024, CRF-033)
+- For every new guard or branch, run its test once with the guard removed and confirm it fails. When the expected outcome can also come from another layer (framework page breaks, `authorize`), arrange the input so only the guard can produce it (CRF-051)
 - Framework: `shoulda` (context/should blocks) + `mocha` (mocking external servers only)
 - Test fixtures: `test/model_factory.rb` (FactoryBot)
 - Test structure: `test/unit/` (models, agents, tools), `test/unit/lib/` (lib classes), `test/functional/` (controllers), `test/integration/` (API)

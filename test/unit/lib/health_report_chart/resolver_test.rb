@@ -210,6 +210,60 @@ class HealthReportChartResolverTest < ActiveSupport::TestCase
     end
   end
 
+  context "input validation" do
+    should "raise ArgumentError for metrics that are neither a String nor nil" do
+      [ { "a" => 1 }, 12, [] ].each do |metrics|
+        assert_raises(ArgumentError) { RedmineAiHelper::HealthReportChart::Resolver.new(metrics) }
+      end
+    end
+
+    should "raise ArgumentError when resolving something that is not a Directive" do
+      resolver = RedmineAiHelper::HealthReportChart::Resolver.new(METRICS)
+
+      [ nil, "{{ai_helper_chart(status, version=12)}}" ].each do |directive|
+        assert_raises(ArgumentError) { resolver.resolve(directive) }
+      end
+    end
+
+    should "report data_missing when a variable type has a count that is not a non-negative Integer" do
+      [ "3", nil, 1.5, -1 ].each do |count|
+        metrics = [ { version_id: 12, version_name: "1.0.0", metrics: { issue_statistics: { by_status: { "New" => count } } } } ].to_json
+
+        assert_equal :data_missing,
+                     resolve({ type: "status", target_kind: :version, target_value: "12" }, metrics).reason, count.inspect
+      end
+    end
+
+    should "report data_missing when a fixed type has a negative count" do
+      metrics = [ { version_id: 12, version_name: "1.0.0", metrics: { issue_statistics: { open_issues: -1, closed_issues: 2 } } } ].to_json
+
+      assert_equal :data_missing, resolve({ type: "open_closed", target_kind: :version, target_value: "12" }, metrics).reason
+    end
+
+    should "report unknown_target for an unknown period key, naming it" do
+      result = resolve({ type: "status", target_kind: :period, target_value: "foo" })
+
+      assert_equal :unknown_target, result.reason
+      assert_includes result.message, "period=foo"
+    end
+
+    should "not match a version id written with a leading zero" do
+      assert_equal :unknown_target, resolve({ type: "status", target_kind: :version, target_value: "012" }).reason
+    end
+
+    should "ignore elements whose version_id is not an Integer or whose version_name is not a String" do
+      metrics = [
+        { version_id: "12", version_name: "1.0.0", metrics: {} },
+        { version_id: 13, metrics: {} }
+      ].to_json
+      resolver = RedmineAiHelper::HealthReportChart::Resolver.new(metrics)
+
+      assert_empty resolver.targets
+      assert_equal :unknown_target, resolve({ type: "status", target_kind: :version, target_value: "12" }, metrics).reason
+      assert_equal :unknown_target, resolve({ type: "status", target_kind: :version, target_value: "13" }, metrics).reason
+    end
+  end
+
   context "Resolver.comparison" do
     should "always resolve to the comparison reason" do
       resolver = RedmineAiHelper::HealthReportChart::Resolver.comparison
@@ -218,6 +272,15 @@ class HealthReportChartResolverTest < ActiveSupport::TestCase
                    resolver.resolve(build_directive(type: "status", target_kind: :version, target_value: "12")).reason
       assert_equal :comparison,
                    resolver.resolve(build_directive(type: "burndown", target_kind: nil, target_value: nil)).reason
+    end
+  end
+
+  context "Resolver.comparison_message" do
+    should "equal the message every comparison directive resolves to" do
+      directive = build_directive(type: "status", target_kind: :version, target_value: "12")
+
+      assert_equal RedmineAiHelper::HealthReportChart::Resolver.comparison.resolve(directive).message,
+                   RedmineAiHelper::HealthReportChart::Resolver.comparison_message
     end
   end
 

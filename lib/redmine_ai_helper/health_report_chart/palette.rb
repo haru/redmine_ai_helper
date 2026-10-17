@@ -9,7 +9,7 @@ module RedmineAiHelper
       COLORS = [
         [ 255, 99, 132 ], [ 54, 162, 235 ], [ 255, 206, 86 ],
         [ 75, 192, 192 ], [ 153, 102, 255 ], [ 255, 159, 64 ]
-      ].freeze
+      ].map(&:freeze).freeze
       # The opacity used to fill slices and bars (borders are opaque).
       FILL_ALPHA = 0.2
 

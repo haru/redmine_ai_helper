@@ -473,7 +473,9 @@ class AiHelperController < ApplicationController
     end
   end
 
-  # Generate a Markdown zip (body plus chart SVGs) from current health report content
+  # Generate a Markdown zip from posted report content. The body has no stored
+  # metrics, so every chart directive becomes a "cannot draw" blockquote and
+  # the zip holds only the .md file (R-010).
   # @return [void]
   def project_health_markdown
     health_report_content = params[:health_report_content]

@@ -46,8 +46,8 @@ class AiHelperDashboardController < ApplicationController
   end
 
   # Return the stored report body wrapped in the content container (no
-  # layout), used by the browser to swap in the finished report right after
-  # generation and to refresh charts without a full page reload.
+  # layout), used by the browser to swap in the saved report right after
+  # generation (R-008).
   def health_report_content
     return render_403 unless @health_report.visible?(@user)
 

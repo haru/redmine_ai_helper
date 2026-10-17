@@ -6,25 +6,24 @@ module RedmineAiHelper
   module HealthReportChart
     # Splits a report body into plain text chunks and chart directives.
     # A chart directive is a single line matching the documented pattern and
-    # standing outside fenced code blocks (``` or ~~~). Lines inside a fence,
-    # inline code, lists, quotes and indented code blocks never match because
-    # the pattern anchors the line start; only fences need explicit tracking.
+    # standing outside fenced code blocks (``` or ~~~). Inline code, list
+    # items, quotes and indented code blocks never match because the pattern
+    # anchors the line start; lines inside fenced code blocks are excluded by
+    # explicit fence tracking.
     module Scanner
       # A directive occupies a whole line: up to three leading spaces (four
       # would be an indented code block), the directive itself, then only
       # spaces/tabs before the end of the line.
       DIRECTIVE_PATTERN = /\A {0,3}\{\{ai_helper_chart\((?<args>[^()\n]*)\)\}\}[ \t]*\z/
-      # A valid target argument: version=<digits> or period=<lowercase key>.
+      # A valid version target: version=<digits>.
       VERSION_TARGET_PATTERN = /\Aversion\s*=\s*(\d+)\z/
       # A valid period target: period=<lowercase key>.
       PERIOD_TARGET_PATTERN = /\Aperiod\s*=\s*([a-z_]+)\z/
-      # An opening fence line: up to three spaces, then 3+ backticks (whose
-      # info string must not contain a backtick) or 3+ tildes.
+      # An opening backtick fence: up to three spaces, then 3+ backticks
+      # whose info string contains no backtick.
       FENCE_OPEN_BACKTICK_PATTERN = /\A {0,3}(`{3,})[^`]*\z/
       # An opening tilde fence: up to three spaces, then 3+ tildes.
       FENCE_OPEN_TILDE_PATTERN = /\A {0,3}(~{3,})/
-      # sprintf template of the closing fence pattern; %s is the fence run.
-      FENCE_CLOSE_TEMPLATE = "\\A {0,3}%s[ \\t]*\\z"
 
       class << self
         # Split the body into text chunks and Directive objects, preserving
@@ -32,7 +31,11 @@ module RedmineAiHelper
         # [markdown] (a single string equal to the input).
         # @param markdown [String] the report body
         # @return [Array<String, RedmineAiHelper::HealthReportChart::Directive>]
+        # @raise [ArgumentError] when markdown is not a String
         def split(markdown)
+          raise ArgumentError, "markdown must be a String" unless markdown.is_a?(String)
+          return [ markdown ] if markdown.empty?
+
           parts = []
           buffer = +""
           pending_newline = false
@@ -50,7 +53,7 @@ module RedmineAiHelper
             if fence
               fence = nil if fence_closes?(line, fence)
               buffer << line << newline
-            elsif (opened = fence_opens?(line))
+            elsif (opened = opening_fence(line))
               fence = opened
               buffer << line << newline
             elsif (match = line.match(DIRECTIVE_PATTERN))
@@ -96,7 +99,7 @@ module RedmineAiHelper
         end
 
         # @return [Hash, nil] {char:, length:} when the line opens a fence
-        def fence_opens?(line)
+        def opening_fence(line)
           if (match = line.match(FENCE_OPEN_BACKTICK_PATTERN))
             { char: "`", length: match[1].length }
           elsif (match = line.match(FENCE_OPEN_TILDE_PATTERN))
@@ -107,8 +110,7 @@ module RedmineAiHelper
         # A fence is closed by a line of the same character, at least as
         # long as the opening, followed only by whitespace.
         def fence_closes?(line, fence)
-          pattern = format(FENCE_CLOSE_TEMPLATE, Regexp.escape(fence[:char]) + "{#{fence[:length]},}")
-          !line.match(/#{pattern}/).nil?
+          line.match?(/\A {0,3}#{Regexp.escape(fence[:char])}{#{fence[:length]},}[ \t]*\z/)
         end
       end
     end

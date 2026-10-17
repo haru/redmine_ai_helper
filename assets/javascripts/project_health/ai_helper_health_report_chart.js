@@ -29,8 +29,8 @@ function datasetOf(payload) {
 }
 
 /**
- * Build the Chart.js configuration for a doughnut chart: half-transparent
- * ring with the legend on the right.
+ * Build the Chart.js configuration for a doughnut chart: a ring whose hole
+ * is half the radius (cutout 50%), with the legend on the right.
  * @param {{title: string, labels: string[]}} payload - The parsed payload.
  * @returns {object} The Chart.js configuration.
  */
@@ -109,21 +109,33 @@ function drawCanvas(canvas) {
     new ChartClass(canvas, config);
     return;
   }
-  loadChart().then(function (loaded) {
-    new loaded(canvas, config);
-  });
+  window.AiHelperHealthReportChart.loadChart().then(
+    function (loaded) {
+      new loaded(canvas, config);
+    },
+    function (error) {
+      // Leave the canvas undrawn-looking so a later insertion can retry, and
+      // surface the failure instead of an unexplained blank chart.
+      canvas.removeAttribute("data-ai-helper-chart-rendered");
+      console.error("Failed to load Chart.js for a health report chart:", error);
+    },
+  );
 }
 
 /**
- * Draw every not-yet-rendered chart canvas inside the given element.
+ * Draw every not-yet-rendered chart canvas inside the given element,
+ * including the element itself when it is a chart canvas.
  * @param {Element|Document} root - The element (or document) to search for
  *   chart canvases.
  * @throws {SyntaxError} When any canvas payload is not valid JSON.
  * @throws {Error} When any canvas payload's form is unsupported.
  */
 function renderWithin(root) {
-  const canvases = root.querySelectorAll("canvas[data-ai-helper-chart]");
-  Array.prototype.forEach.call(canvases, function (canvas) {
+  const canvases = Array.prototype.slice.call(root.querySelectorAll("canvas[data-ai-helper-chart]"));
+  if (root instanceof Element && root.matches("canvas[data-ai-helper-chart]")) {
+    canvases.unshift(root);
+  }
+  canvases.forEach(function (canvas) {
     if (canvas.hasAttribute("data-ai-helper-chart-rendered")) {
       return;
     }

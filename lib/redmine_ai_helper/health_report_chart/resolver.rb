@@ -25,7 +25,7 @@ module RedmineAiHelper
 
       # The maximum number of items before grouping the remainder into
       # "others" (7 items = top 6 + others).
-      MAX_ITEMS = 7
+      MAX_ITEMS = Chart::MAX_ITEMS
 
       # A target that can be addressed by a chart directive, built from the
       # stored metrics. Shown in the edit-form help and the LLM guide.
@@ -33,28 +33,30 @@ module RedmineAiHelper
 
       # @param metrics_json [String, nil] the stored metrics JSON; nil means
       #   the body has no stored metrics
-      def initialize(metrics_json)
-        @comparison_mode = false
-        @data = nil
-        @data = JSON.parse(metrics_json) if metrics_json.is_a?(String)
-      rescue JSON::ParserError
-        @data = nil
+      # @param comparison [Boolean] true for a comparison report body
+      # @raise [ArgumentError] when metrics_json is neither a String nor nil
+      def initialize(metrics_json, comparison: false)
+        @comparison_mode = comparison
+        @data =
+          case metrics_json
+          when String then parse_metrics(metrics_json)
+          when nil then nil
+          else raise ArgumentError, "metrics_json must be a String or nil"
+          end
       end
 
       # A resolver for comparison report bodies: every directive resolves to
       # the +comparison+ reason, whatever the arguments and metrics are.
       # @return [Resolver]
       def self.comparison
-        resolver = new(nil)
-        resolver.send(:comparison_mode=, true)
-        resolver
+        new(nil, comparison: true)
       end
 
       # The localized message shown in place of a chart directive in a
       # comparison report.
       # @return [String]
       def self.comparison_message
-        comparison.resolve(nil).message
+        comparison.send(:unavailable, :comparison).message
       end
 
       # Resolve a directive into a Chart or an Unavailable. The reason is
@@ -62,8 +64,10 @@ module RedmineAiHelper
       # unknown_type, metrics_unavailable, unknown_target, data_missing.
       # @param directive [Directive] the parsed chart directive
       # @return [Chart, Unavailable]
+      # @raise [ArgumentError] when directive is not a Directive
       def resolve(directive)
-        return comparison_unavailable if @comparison_mode
+        raise ArgumentError, "directive must be a Directive" unless directive.is_a?(Directive)
+        return unavailable(:comparison) if @comparison_mode
         return unavailable(:invalid_arguments) unless directive.valid_arguments?
         return unavailable(:unknown_type, type: directive.type) unless ChartType.key?(directive.type)
         return unavailable(:metrics_unavailable) unless usable_data?
@@ -84,8 +88,8 @@ module RedmineAiHelper
         @data.filter_map do |element|
           next unless element.is_a?(Hash)
 
-          if element["version_id"]
-            Target.new(identifier: "version=#{element["version_id"]}", display_name: element["version_name"].to_s)
+          if version_element?(element)
+            Target.new(identifier: "version=#{element["version_id"]}", display_name: element["version_name"])
           elsif (key = PERIOD_NAME_TO_KEY[element["period_name"]])
             Target.new(identifier: "period=#{key}", display_name: period_display_name(key))
           end
@@ -94,10 +98,15 @@ module RedmineAiHelper
 
       private
 
-      attr_writer :comparison_mode
+      def parse_metrics(json)
+        JSON.parse(json)
+      rescue JSON::ParserError
+        nil
+      end
 
-      def comparison_unavailable
-        Unavailable.new(reason: :comparison, message: unavailable_message(:comparison))
+      # A version element is addressable only with an Integer id and a String name.
+      def version_element?(element)
+        element["version_id"].is_a?(Integer) && element["version_name"].is_a?(String)
       end
 
       def unavailable(reason, **interpolations)
@@ -118,7 +127,7 @@ module RedmineAiHelper
           next unless element.is_a?(Hash)
 
           if directive.target_kind == :version
-            return element if element["version_id"].to_s == directive.target_value
+            return element if version_element?(element) && element["version_id"].to_s == directive.target_value
           elsif PERIOD_NAME_TO_KEY[element["period_name"]] == directive.target_value
             return element
           end
@@ -144,7 +153,7 @@ module RedmineAiHelper
 
       def target_display_name(directive, element)
         if directive.target_kind == :version
-          element["version_name"].to_s
+          element["version_name"]
         else
           period_display_name(directive.target_value)
         end
@@ -158,39 +167,40 @@ module RedmineAiHelper
       # @return [Hash, Array, nil] {name => count} for :hash kinds, or the
       #   fixed [name, count] pairs; nil when the values are missing
       def extract_values(definition, element)
-        statistics = element["metrics"].is_a?(Hash) ? element["metrics"] : {}
+        metrics = element["metrics"].is_a?(Hash) ? element["metrics"] : {}
+        issue_statistics = metrics["issue_statistics"].is_a?(Hash) ? metrics["issue_statistics"] : {}
         case definition[:kind]
         when :hash
-          issue_statistics = statistics["issue_statistics"].is_a?(Hash) ? statistics["issue_statistics"] : {}
           values = issue_statistics[definition[:key]]
-          values.is_a?(Hash) ? values.dup : nil
+          return nil unless values.is_a?(Hash) && values.values.all? { |count| count?(count) }
+
+          values.dup
         when :open_closed
-          issue_statistics = statistics["issue_statistics"].is_a?(Hash) ? statistics["issue_statistics"] : {}
           open_issues = issue_statistics["open_issues"]
           closed_issues = issue_statistics["closed_issues"]
-          return nil unless open_issues.is_a?(Integer) && closed_issues.is_a?(Integer)
+          return nil unless count?(open_issues) && count?(closed_issues)
 
           [ [ l(:label_open_issues), open_issues ], [ l(:label_closed_issues), closed_issues ] ]
         when :progress
-          distribution = statistics.dig("progress_metrics", "completion_distribution")
+          distribution = metrics.dig("progress_metrics", "completion_distribution")
           return nil unless distribution.is_a?(Hash)
 
           [ :not_started, :in_progress, :completed ].map do |key|
             value = distribution[key.to_s]
-            return nil unless value.is_a?(Integer)
+            return nil unless count?(value)
 
             [ l("ai_helper.health_report_chart.items.#{key}"), value ]
           end
         end
       end
 
+      # A stored count is usable only as a non-negative Integer.
+      def count?(value)
+        value.is_a?(Integer) && value >= 0
+      end
+
       def build_items(definition, values)
-        pairs =
-          if definition[:item_mode] == :variable
-            variable_pairs(values)
-          else
-            values
-          end
+        pairs = definition[:item_mode] == :variable ? variable_pairs(values) : values
         pairs.each_with_index.map do |(name, count), index|
           Item.new(label: item_label(name, count), value: count, rgb: Palette.color_at(index))
         end
@@ -203,8 +213,8 @@ module RedmineAiHelper
         sorted = values.sort_by { |name, count| [ -count, name ] }
         return sorted if sorted.length <= MAX_ITEMS
 
-        top = sorted[0, 6]
-        others_count = sorted[6..].sum { |_, count| count }
+        top = sorted.first(MAX_ITEMS - 1)
+        others_count = sorted.drop(MAX_ITEMS - 1).sum { |_, count| count }
         top + [ [ l("ai_helper.health_report_chart.items.other"), others_count ] ]
       end
 

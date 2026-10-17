@@ -130,6 +130,50 @@ describe("AiHelperHealthReportChart", () => {
     });
   });
 
+  describe("drawing through the dynamic import (Redmine 7.x)", () => {
+    it("marks the canvas before the import resolves and draws it once with the module's class", async () => {
+      vi.unstubAllGlobals();
+      const StubChart = (await import("chart.js")).default;
+      StubChart.calls = [];
+      const canvas = addCanvas(basePayload);
+
+      window.AiHelperHealthReportChart.renderWithin(root);
+      expect(canvas.hasAttribute("data-ai-helper-chart-rendered")).toBe(true);
+      window.AiHelperHealthReportChart.renderWithin(root);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(StubChart.calls.length).toBe(1);
+      expect(StubChart.calls[0].canvas).toBe(canvas);
+      expect(StubChart.calls[0].config.type).toBe("doughnut");
+    });
+
+    it("clears the rendered mark and logs the error when Chart.js cannot be loaded", async () => {
+      vi.unstubAllGlobals();
+      const failure = new Error("chart.js unavailable");
+      vi.spyOn(window.AiHelperHealthReportChart, "loadChart").mockRejectedValue(failure);
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      const canvas = addCanvas(basePayload);
+
+      window.AiHelperHealthReportChart.renderWithin(root);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(canvas.hasAttribute("data-ai-helper-chart-rendered")).toBe(false);
+      expect(consoleError).toHaveBeenCalledWith(expect.any(String), failure);
+      consoleError.mockRestore();
+    });
+  });
+
+  describe("renderWithin on a canvas itself", () => {
+    it("draws the root when the root is an undrawn chart canvas", () => {
+      const canvas = addCanvas(basePayload);
+
+      window.AiHelperHealthReportChart.renderWithin(canvas);
+
+      expect(FakeChart.calls.length).toBe(1);
+      expect(FakeChart.calls[0].canvas).toBe(canvas);
+    });
+  });
+
   describe("loadChart", () => {
     it("resolves with window.Chart when it is already loaded", async () => {
       expect(await window.AiHelperHealthReportChart.loadChart()).toBe(FakeChart);

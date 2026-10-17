@@ -1325,6 +1325,37 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_response :success
         assert_not_includes @response.body, "health_report_saved"
       end
+
+      should "not send health_report_saved when only an older report has the same body" do
+        content = "Generated health report"
+        llm_mock = mock("RedmineAiHelper::Llm")
+        llm_mock.stubs(:project_health_report).returns(content)
+        RedmineAiHelper::Llm.stubs(:new).returns(llm_mock)
+        AiHelperHealthReport.create!(project: @project, user: @user, health_report: content, created_at: 2.days.ago)
+        AiHelperHealthReport.create!(project: @project, user: @user, health_report: "A newer, different body")
+        Rails.cache.stubs(:delete)
+        Rails.cache.stubs(:write)
+
+        get :generate_project_health, params: { id: @project.id }
+
+        assert_response :success
+        assert_not_includes @response.body, "health_report_saved"
+      end
+
+      should "not send health_report_saved for another user's report with the same body" do
+        content = "Generated health report"
+        llm_mock = mock("RedmineAiHelper::Llm")
+        llm_mock.stubs(:project_health_report).returns(content)
+        RedmineAiHelper::Llm.stubs(:new).returns(llm_mock)
+        AiHelperHealthReport.create!(project: @project, user: User.find(2), health_report: content)
+        Rails.cache.stubs(:delete)
+        Rails.cache.stubs(:write)
+
+        get :generate_project_health, params: { id: @project.id }
+
+        assert_response :success
+        assert_not_includes @response.body, "health_report_saved"
+      end
     end
 
     context "private methods and error handling" do

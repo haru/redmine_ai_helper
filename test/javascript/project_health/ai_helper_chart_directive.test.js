@@ -107,6 +107,42 @@ describe("AiHelperChartDirective", () => {
       });
     }
 
+    // Fence and whitespace boundary rules, the same inputs as the Ruby
+    // Scanner tests ("fenced code blocks" and "boundary rules shared with
+    // the JS scanner" in scanner_test.rb).
+    const D = "{{ai_helper_chart(status, version=12)}}";
+    const boundaryCases = [
+      { name: "keeps a directive inside a fence with an info string", input: `\`\`\`ruby\n${D}\n\`\`\``, expected: `\`\`\`ruby\n${D}\n\`\`\`` },
+      { name: "keeps a directive inside an unclosed fence until the end", input: `~~~\n${D}\nmore`, expected: `~~~\n${D}\nmore` },
+      { name: "does not close a fence with a shorter closing line", input: `\`\`\`\`\n${D}\n\`\`\`\nmore\n\`\`\`\``, expected: `\`\`\`\`\n${D}\n\`\`\`\nmore\n\`\`\`\`` },
+      { name: "allows up to three leading spaces on a fence line", input: ` \`\`\`\n${D}\n \`\`\``, expected: ` \`\`\`\n${D}\n \`\`\`` },
+      { name: "closes a tilde fence with a tilde line", input: `~~~\ntext\n~~~\n${D}`, expected: "~~~\ntext\n~~~" },
+      { name: "does not open a backtick fence whose info string has a backtick", input: `\`\`\`a\`b\n${D}`, expected: "```a`b" },
+      { name: "does not close a fence with text after the fence", input: `\`\`\`\n\`\`\` x\n${D}\n\`\`\``, expected: `\`\`\`\n\`\`\` x\n${D}\n\`\`\`` },
+      { name: "does not treat a four-space fence line as a fence", input: `    \`\`\`\n${D}`, expected: "    ```" },
+      { name: "keeps a directive with a leading tab", input: `\t${D}`, expected: `\t${D}` },
+      { name: "removes a directive with a trailing tab", input: `${D}\t`, expected: "" },
+    ];
+
+    for (const c of boundaryCases) {
+      it(c.name, () => {
+        expect(window.AiHelperChartDirective.stripForStreaming(c.input)).toBe(c.expected);
+      });
+    }
+
+    describe("trailing line still being received", () => {
+      [
+        ["a single brace", "text\n{", "text"],
+        ["a prefix after three spaces", "text\n   {{ai", "text"],
+        ["a prefix after four spaces (indented code)", "text\n    {{ai", "text\n    {{ai"],
+        ["a prefix inside a fence", "```\n{{ai_he", "```\n{{ai_he"],
+      ].forEach(([name, input, expected]) => {
+        it(`handles ${name}`, () => {
+          expect(window.AiHelperChartDirective.stripForStreaming(input)).toBe(expected);
+        });
+      });
+    });
+
     it("returns a body without directives unchanged", () => {
       const markdown = "# Heading\n\nBody with **bold** text.";
 
