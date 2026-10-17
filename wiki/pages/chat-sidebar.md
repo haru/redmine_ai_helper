@@ -64,7 +64,9 @@ format (S013) — the same method that folds in imported
   are server-rendered (S038), and the stored-report re-parse is gone (S049).
 - Stored AI answers (chat history) render through `md_to_html`, whose tables
   carry Redmine's `list` class with Markdown-based column alignment, so the
-  history matches the streaming display (S049).
+  history matches the streaming display (S049). Both renderers emit
+  `align="left"` for an explicit `:---` column and no attribute for a column
+  without a hint, so explicit left columns stay left in RTL layouts too.
 
 - When web search is enabled, an answer's sources are rendered below it from the
   `ai_helper/chat/_citations` ERB partial (escaped, new tab with

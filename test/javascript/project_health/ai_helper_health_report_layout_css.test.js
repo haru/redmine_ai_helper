@@ -397,7 +397,7 @@ describe("table rules for chat and summary containers (C-3)", () => {
     const TABLE_PART = "(?:table|thead|tbody|tfoot|tr|td|th|caption)";
     const STYLE_PROPS = /^(?:color|background|font|border|outline)/;
     [CHAT, SUMMARY].forEach((container) => {
-      const tableSelector = new RegExp(`^${container.replace(/[.#]/g, "\\$&")}\\s+${TABLE_PART}\\b`);
+      const tableSelector = new RegExp(`^${container.replace(/[\\^$.*+?()[\]{}|#]/g, "\\$&")}\\s+${TABLE_PART}\\b`);
       const rules = RULES.filter((rule) => rule.selectors.some((selector) => tableSelector.test(selector)));
       // Guards against a vacuous pass: the scanned region must exist
       expect(rules.length).toBeGreaterThan(0);

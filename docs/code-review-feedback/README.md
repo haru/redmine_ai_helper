@@ -121,3 +121,5 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-035](./035-environment-dependent-and-vacuous-table-tests.md) | Table class tests pinned Redmine-version markup, matched the wrong element and had narrow negative checks | test-gap | Local AI review | Not yet |
 | [CRF-036](./036-parser-guard-skipped-unrelated-init.md) | Early return for a missing Markdown parser silently skipped initialization that no longer needed it | error-handling | Local AI review | Not yet |
 | [CRF-037](./037-adr-misattributed-quote-and-stale-comments.md) | ADR quoted a decision from the wrong source; comments and promotion fields were inaccurate | doc-comment | Local AI review | Not yet |
+| [CRF-038](./038-streaming-parser-dropped-explicit-left-alignment.md) | Streaming Markdown parser dropped explicit left alignment, breaking RTL parity with the server renderer | edge-case | GitHub Copilot (PR #525) | Not yet |
+| [CRF-039](./039-adr-called-streaming-display-server-rendered.md) | ADR listed the browser-rendered streaming display among server-rendered tables | doc-comment | GitHub Copilot (PR #525) | Not yet |
