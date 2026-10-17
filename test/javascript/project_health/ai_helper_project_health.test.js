@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadScriptAndFireDOMContentLoaded } from "../support/dom_content_loaded.js";
 import { loadScript } from "../support/load_script.js";
+import { createDashboardDetailPane } from "../support/dashboard_detail_pane.js";
 
 class FakeEventSource {
   constructor(url) {
@@ -31,6 +32,7 @@ describe("ai_helper_project_health", () => {
     delete window.AiHelperMarkdownParser;
     delete window.updateHealthReportHistory;
     await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
+    await loadScript("assets/javascripts/shared/ai_helper_frame_renderer");
   });
 
   afterEach(() => {
@@ -82,6 +84,10 @@ describe("ai_helper_project_health", () => {
     link.href = "/projects/1/ai_helper/project_health/generate";
     container.appendChild(link);
     return link;
+  }
+
+  function sendStop(source) {
+    source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
   }
 
   async function load() {
@@ -210,6 +216,124 @@ describe("ai_helper_project_health", () => {
 
       expect(healthDiv.querySelectorAll(".other-formats").length).toBe(1);
       void resultDiv;
+    });
+  });
+
+  describe("dashboard detail pane generation (no .ai-helper-project-health)", () => {
+    it("finalizes a finished generation without throwing and creates the hidden field inside .ai-helper-project-health-content", async () => {
+      const { contentDiv, resultDiv } = createDashboardDetailPane(container);
+      const link = addGenerateLink();
+
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const source = FakeEventSource.instances[0];
+
+      expect(() => {
+        source.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: "# Health" } }] }) });
+        sendStop(source);
+      }).not.toThrow();
+
+      const hiddenField = document.getElementById("ai-helper-health-report-content");
+      expect(hiddenField).not.toBeNull();
+      expect(hiddenField.parentElement).toBe(contentDiv);
+      expect(hiddenField.value).toBe("# Health");
+      expect(resultDiv.innerHTML).toContain("ai-helper-final-content");
+    });
+
+    it("keeps exactly one hidden field with the latest content after two consecutive generations", async () => {
+      const { contentDiv } = createDashboardDetailPane(container);
+      const link = addGenerateLink();
+
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const first = FakeEventSource.instances[0];
+      first.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: "first report" } }] }) });
+      sendStop(first);
+
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const second = FakeEventSource.instances[1];
+      second.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: "second report" } }] }) });
+      sendStop(second);
+
+      const hiddenFields = contentDiv.querySelectorAll("#ai-helper-health-report-content");
+      expect(hiddenFields.length).toBe(1);
+      expect(hiddenFields[0].value).toBe("second report");
+    });
+
+    it("only refreshes the history when the whole detail pane was replaced during streaming", async () => {
+      const { detailPane, contentDiv, resultDiv } = createDashboardDetailPane(container);
+      const link = addGenerateLink();
+      window.updateHealthReportHistory = vi.fn();
+
+      await load();
+      vi.useFakeTimers();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const source = FakeEventSource.instances[0];
+      source.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: "new report" } }] }) });
+
+      // AiHelperMasterDetail#renderReportDetail replaces the detail
+      // container's innerHTML when another report is selected, detaching
+      // the whole pane — the result area keeps its
+      // .ai-helper-project-health-content ancestor inside the detached
+      // subtree, so the structural guard alone cannot catch this.
+      detailPane.remove();
+      const currentPane = createDashboardDetailPane(container);
+      const currentHiddenField = document.createElement("input");
+      currentHiddenField.type = "hidden";
+      currentHiddenField.id = "ai-helper-health-report-content";
+      currentHiddenField.value = "selected report";
+      currentPane.contentDiv.appendChild(currentHiddenField);
+
+      expect(() => sendStop(source)).not.toThrow();
+
+      expect(resultDiv.innerHTML).not.toContain("ai-helper-final-content");
+      expect(contentDiv.querySelector("#ai-helper-health-report-content")).toBeNull();
+      expect(document.querySelectorAll("#ai-helper-health-report-content").length).toBe(1);
+      expect(currentHiddenField.value).toBe("selected report");
+      expect(currentPane.resultDiv.innerHTML).not.toContain("new report");
+
+      // The new report was saved on the server, so the history list must
+      // still pick it up.
+      vi.advanceTimersByTime(1000);
+      expect(window.updateHealthReportHistory).toHaveBeenCalledTimes(1);
+    });
+
+    it("throws a distinct message when the result element is not an HTMLElement", async () => {
+      await load();
+      const parser = new window.AiHelperMarkdownParser();
+
+      expect(() => window.finalizeStreamingContent({}, parser, "content")).toThrow(
+        /result area must be an HTMLElement/,
+      );
+    });
+
+    it("throws a distinct message when the result element has no .ai-helper-project-health-content ancestor", async () => {
+      await load();
+      const parser = new window.AiHelperMarkdownParser();
+
+      expect(() => window.finalizeStreamingContent(document.createElement("div"), parser, "content")).toThrow(
+        /result area must have a \.ai-helper-project-health-content ancestor/,
+      );
+    });
+    it("validates the result area before replacing the report body", async () => {
+      const { resultDiv } = createDashboardDetailPane(container);
+      const link = addGenerateLink();
+
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const source = FakeEventSource.instances[0];
+
+      // Detaching the result area from its content container is the
+      // structural failure the guard exists for: the finalized body must
+      // not replace the page (nor the detached node) before the guard runs,
+      // or the pane would look finished while history, export links and the
+      // timestamp were never updated.
+      resultDiv.remove();
+      expect(() => sendStop(source)).toThrow(/ai-helper-project-health-content/);
+      // The click left the loader in the result area; a finalize that ran
+      // before the guard would have replaced it with the finished body.
+      expect(resultDiv.innerHTML).toContain("ai-helper-loader");
+      expect(resultDiv.innerHTML).not.toContain("ai-helper-final-content");
     });
   });
 });

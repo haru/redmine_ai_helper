@@ -8,6 +8,46 @@
 let currentProjectHealthEventSource = null; // Keep track of current EventSource
 
 /**
+ * Remove the previous report's details from a dashboard detail pane before
+ * a new generation starts, so stale metadata, edit UI, notices, and export
+ * links of the previously selected report never mix with the new stream.
+ * The removal is permanent: if the generation errors, the elements are not
+ * restored. The result area and its `.ai-helper-health-report-view` wrapper
+ * are un-hidden: the wrapper is hidden while the edit form is open and the
+ * area itself while the original is shown, so leaving either hidden would
+ * render the loader and the stream into an invisible element. Outside a
+ * detail pane (project overview, dashboard placeholder) this is a no-op.
+ * @param {HTMLElement} resultDiv - The report result container.
+ */
+function clearPreviousReportDetails(resultDiv) {
+  const reportBody = resultDiv.closest('.ai-helper-health-report-body');
+  if (!reportBody) {
+    return;
+  }
+
+  reportBody.querySelectorAll(
+    '.ai-helper-health-report-meta, .contextual, .ai-helper-health-report-edit-form, ' +
+    '.ai-helper-health-report-original, .flash, .other-formats',
+  ).forEach((element) => element.remove());
+
+  const showOriginalLink = reportBody.querySelector('.ai-helper-health-report-show-original');
+  if (showOriginalLink) {
+    // Both toggle links live in one <p> (see
+    // app/views/ai_helper/project/_health_report_body.html.erb:38-42),
+    // so removing the parent takes the "show current" link with it.
+    showOriginalLink.parentElement.remove();
+  }
+
+  // The result area is hidden while the original report is shown, and its
+  // whole view is hidden while the edit form is open.
+  resultDiv.hidden = false;
+  const view = reportBody.querySelector('.ai-helper-health-report-view');
+  if (view) {
+    view.hidden = false;
+  }
+}
+
+/**
  * Handle a click on the "generate project health report" link (via event
  * delegation, so it survives DOM replacement): start (or restart) an
  * EventSource-based streaming request and render the result as it arrives.
@@ -49,9 +89,15 @@ function handleGenerateProjectHealthClick(e, parser) {
     reportDetail.style.display = 'block';
   }
 
+  // Drop the previous report's details so the new generation starts clean,
+  // and un-hide the view so the loader below is actually visible (no-op in
+  // the project overview and the dashboard placeholder, which have no
+  // detail pane).
+  clearPreviousReportDetails(resultDiv);
+
   // Show loading state and add has-report class
-  const contentContainer = resultDiv.closest('.ai-helper-project-health-content');
   resultDiv.innerHTML = '<div class="ai-helper-loader"></div>';
+  const contentContainer = resultDiv.closest('.ai-helper-project-health-content');
   if (contentContainer) {
     contentContainer.classList.add('has-report');
   }
@@ -77,21 +123,31 @@ function handleGenerateProjectHealthClick(e, parser) {
   });
 
   eventSource.onmessage = function(event) {
+    // Read the payload once, outside the try, so only JSON.parse is guarded.
+    const rawData = event.data;
+    let data;
     try {
-      const data = JSON.parse(event.data);
-      if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
-        content += data.choices[0].delta.content;
-        renderer.schedule();
-      }
-
-      if (data.choices && data.choices[0] && data.choices[0].finish_reason === 'stop') {
-        eventSource.close();
-        currentProjectHealthEventSource = null;
-        renderer.cancel();
-        finalizeStreamingContent(resultDiv, parser, content);
-      }
+      data = JSON.parse(rawData);
     } catch (error) {
-      console.error('Failed to parse project health streaming event data:', error, event.data);
+      // Only JSON.parse's SyntaxError is recoverable: log it and keep
+      // receiving. Anything else is a real bug and must surface.
+      if (error instanceof SyntaxError) {
+        console.error('Failed to parse project health streaming event data:', error, rawData);
+        return;
+      }
+      throw error;
+    }
+
+    if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
+      content += data.choices[0].delta.content;
+      renderer.schedule();
+    }
+
+    if (data.choices && data.choices[0] && data.choices[0].finish_reason === 'stop') {
+      eventSource.close();
+      currentProjectHealthEventSource = null;
+      renderer.cancel();
+      finalizeStreamingContent(resultDiv, parser, content);
     }
   };
 

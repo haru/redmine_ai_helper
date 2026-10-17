@@ -1,8 +1,8 @@
 ---
 title: Project Health Report
 type: component
-sources: [S002, S003, S011, S038, S048, S049]
-updated: 2026-10-16
+sources: [S002, S003, S011, S038, S048, S049, S050]
+updated: 2026-10-17
 ---
 
 # Project Health Report
@@ -11,8 +11,8 @@ Generates a comprehensive overview of a project's status — metrics such as ope
 issues, closed issues, and overall health (S002). Reports can be exported to
 Markdown and PDF (S002).
 
-> Provenance: implementation detail below is from the DeepWiki auto-generated
-> doc (S011); `ProjectTools#get_metrics` is corroborated by the README (S002).
+> Provenance: detail below is from the DeepWiki doc (S011); `get_metrics` is
+> corroborated by the README (S002).
 
 ## Generation
 
@@ -65,7 +65,8 @@ incremental UI updates as tokens arrive (S011).
   feature 064 they went through format-dependent `textilizable` and broke on
   Textile setups — see
   [Health Report Markdown Rendering](./health-report-markdown-rendering.md) ·
-  [Health Report Detail Pane Layout](./health-report-detail-pane-layout.md)
+  [Health Report Detail Pane Layout](./health-report-detail-pane-layout.md) ·
+  [Health Report Generation Completion](./health-report-generation-completion.md)
   (S038). Historically, S011 described client-side parsing by
   `AiHelperMarkdownParser` for this view; that no longer applies to saved
   reports (S011, S038), and feature 076 deleted the last leftover re-parse so
@@ -75,6 +76,9 @@ incremental UI updates as tokens arrive (S011).
   master-detail view (`AiHelperMasterDetail`) originally built detail from row
   data attributes (S011); since 064 it fetches a server-rendered detail pane by
   XHR instead (S038).
+- Dashboard generation completion: see
+  [Health Report Generation Completion](./health-report-generation-completion.md)
+  (S050).
 - Saved reports get a record-based Markdown export
   (`.../health_reports/:report_id/markdown`) and an edited notice in PDF; the
   body-POST exports remain only for unsaved streamed reports (S038).
@@ -98,4 +102,5 @@ Generate reports programmatically — e.g. on a cron schedule (S002).
   [Plugin Overview](./plugin-overview.md) ·
   [Health Report Editing](./health-report-editing.md) ·
   [Health Report Markdown Rendering](./health-report-markdown-rendering.md) ·
-  [Health Report Detail Pane Layout](./health-report-detail-pane-layout.md)
+  [Health Report Detail Pane Layout](./health-report-detail-pane-layout.md) ·
+  [Health Report Generation Completion](./health-report-generation-completion.md)

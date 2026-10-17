@@ -123,3 +123,10 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-037](./037-adr-misattributed-quote-and-stale-comments.md) | ADR quoted a decision from the wrong source; comments and promotion fields were inaccurate | doc-comment | Local AI review | Not yet |
 | [CRF-038](./038-streaming-parser-dropped-explicit-left-alignment.md) | Streaming Markdown parser dropped explicit left alignment, breaking RTL parity with the server renderer | edge-case | GitHub Copilot (PR #525) | Not yet |
 | [CRF-039](./039-adr-called-streaming-display-server-rendered.md) | ADR listed the browser-rendered streaming display among server-rendered tables | doc-comment | GitHub Copilot (PR #525) | Not yet |
+| [CRF-040](./040-generation-cleanup-left-edit-view-hidden.md) | Generation cleanup un-hid the result area but not the view that startEdit had hidden | edge-case | Local AI review | Not yet |
+| [CRF-041](./041-finalize-mutated-dom-before-guard.md) | Finalize mutated the DOM before the guard that could reject it | error-handling | Local AI review | Not yet |
+| [CRF-042](./042-test-dom-derived-from-code-not-erb.md) | Test DOM and assertions were derived from the code instead of the real markup | test-gap | Local AI review | Not yet |
+| [CRF-043](./043-comments-described-narrower-scopes.md) | Comments described narrower scopes than the code they annotate | doc-comment | Local AI review | Not yet |
+| [CRF-044](./044-promoted-feedback-rules-narrowed.md) | Promoted feedback rules were narrowed, half-dropped and mis-cited | doc-comment | Local AI review | Not yet |
+| [CRF-045](./045-finalize-accepted-detached-pane.md) | Finalize accepted a result area detached together with its whole pane | edge-case | GitHub Copilot (PR #526) | Not yet |
+| [CRF-046](./046-sse-try-wrapped-data-read.md) | SSE try block wrapped reading the event data, not only the parse | error-handling | GitHub Copilot (PR #526) | Not yet |

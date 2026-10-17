@@ -67,4 +67,5 @@ Pure CSS fix in `assets/stylesheets/ai_helper.css`; no DB, Ruby, ERB or JS chang
 [Project Health Report](./health-report.md) ·
 [Health Report Editing](./health-report-editing.md) ·
 [Health Report Markdown Rendering](./health-report-markdown-rendering.md) ·
+[Health Report Generation Completion](./health-report-generation-completion.md) ·
 [JavaScript Quality Tooling](./js-quality-tooling.md)

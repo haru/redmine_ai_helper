@@ -59,6 +59,7 @@ a ratchet: it only ever increases, tracked toward 90%. See
 - For existing feature specifications and architectural decisions, consult `wiki/INDEX.md`
 - Before a spec states how existing code or an external API behaves (timing, status/error codes, idempotency), read that code or the official docs in the same step and cite it; write "not documented" when the docs are silent, and never design an ignored-error rule around an undocumented response (SF-008, SF-009)
 - When a bug's cause is in a shared code path, grep every caller of that path in the same step and check each one for the same defect; never write a caller as "must not change" until it is confirmed unaffected — include affected callers or ask the user about scope (SF-003, SF-007, SF-015)
+- Before a spec says an element or UI state (table striping, a disabled/selected/error state, etc.) looks "like Redmine's existing X", grep Redmine's stylesheets for that element or state and name the selector in the spec; when none exists, ask the user instead of writing it as a requirement (SF-017, SF-018). When a clarification answer rejects a proposed behaviour, do not add a different behaviour the user did not choose without confirming it (SF-018)
 
 ## Architecture Overview
 

@@ -31,4 +31,4 @@ The AI described Redmine's table style from general knowledge of the issue list,
 
 When a spec describes how Redmine core styles an element, read the matching rules in Redmine's `app/assets/stylesheets/application.css`, including rules scoped by an ancestor such as `.box`, and cite the lines. A success criterion that compares a style across views must first check, by measurement or by those rules, that the core CSS gives the same value in each view's container.
 
-**Promoted to**: Not yet
+**Promoted to**: AGENTS.md
