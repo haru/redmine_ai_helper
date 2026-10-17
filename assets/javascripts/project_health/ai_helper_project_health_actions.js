@@ -8,6 +8,34 @@
 let currentProjectHealthEventSource = null; // Keep track of current EventSource
 
 /**
+ * Remove the previous report's details from a dashboard detail pane before
+ * a new generation starts, so stale metadata, edit UI, notices, and export
+ * links of the previously selected report never mix with the new stream.
+ * The removal is permanent: if the generation errors, the elements are not
+ * restored. Outside a detail pane (project overview) this is a no-op.
+ * @param {HTMLElement} resultDiv - The report result container.
+ */
+function clearPreviousReportDetails(resultDiv) {
+  const reportBody = resultDiv.closest('.ai-helper-health-report-body');
+  if (!reportBody) {
+    return;
+  }
+
+  reportBody.querySelectorAll(
+    '.ai-helper-health-report-meta, .contextual, .ai-helper-health-report-edit-form, ' +
+    '.ai-helper-health-report-original, .flash, .other-formats',
+  ).forEach((element) => element.remove());
+
+  const showOriginalLink = reportBody.querySelector('.ai-helper-health-report-show-original');
+  if (showOriginalLink && showOriginalLink.parentElement) {
+    showOriginalLink.parentElement.remove();
+  }
+
+  // The result area is hidden while the original report is shown.
+  resultDiv.hidden = false;
+}
+
+/**
  * Handle a click on the "generate project health report" link (via event
  * delegation, so it survives DOM replacement): start (or restart) an
  * EventSource-based streaming request and render the result as it arrives.
@@ -51,6 +79,11 @@ function handleGenerateProjectHealthClick(e, parser) {
 
   // Show loading state and add has-report class
   const contentContainer = resultDiv.closest('.ai-helper-project-health-content');
+
+  // Drop the previous report's details so the new generation starts clean
+  // (no-op in the project overview, which has no detail pane).
+  clearPreviousReportDetails(resultDiv);
+
   resultDiv.innerHTML = '<div class="ai-helper-loader"></div>';
   if (contentContainer) {
     contentContainer.classList.add('has-report');
@@ -77,21 +110,29 @@ function handleGenerateProjectHealthClick(e, parser) {
   });
 
   eventSource.onmessage = function(event) {
+    let data;
     try {
-      const data = JSON.parse(event.data);
-      if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
-        content += data.choices[0].delta.content;
-        renderer.schedule();
-      }
-
-      if (data.choices && data.choices[0] && data.choices[0].finish_reason === 'stop') {
-        eventSource.close();
-        currentProjectHealthEventSource = null;
-        renderer.cancel();
-        finalizeStreamingContent(resultDiv, parser, content);
-      }
+      data = JSON.parse(event.data);
     } catch (error) {
-      console.error('Failed to parse project health streaming event data:', error, event.data);
+      // Only JSON.parse failures are recoverable: log them and keep
+      // receiving. Everything else is a real bug and must surface.
+      if (error instanceof SyntaxError) {
+        console.error('Failed to parse project health streaming event data:', error, event.data);
+        return;
+      }
+      throw error;
+    }
+
+    if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
+      content += data.choices[0].delta.content;
+      renderer.schedule();
+    }
+
+    if (data.choices && data.choices[0] && data.choices[0].finish_reason === 'stop') {
+      eventSource.close();
+      currentProjectHealthEventSource = null;
+      renderer.cancel();
+      finalizeStreamingContent(resultDiv, parser, content);
     }
   };
 

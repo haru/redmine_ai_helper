@@ -98,6 +98,98 @@ describe("ai_helper_project_health_actions", () => {
     return cleanup;
   }
 
+  // Local DOM helper reproducing the dashboard detail pane structure of
+  // app/views/ai_helper/project/_health_report_body.html.erb:26-29: a
+  // selected report's pane has NO `.ai-helper-project-health` wrapper; the
+  // result area sits inside `.ai-helper-health-report-view`, which sits
+  // inside `.ai-helper-project-health-content`.
+  function addDashboardDetailPane({ withResult = true } = {}) {
+    const detailPane = document.createElement("div");
+    detailPane.className = "ai-helper-health-report-body";
+
+    const contentDiv = document.createElement("div");
+    contentDiv.className = "ai-helper-project-health-content has-report";
+
+    const viewDiv = document.createElement("div");
+    viewDiv.className = "ai-helper-health-report-view";
+
+    let resultDiv;
+    if (withResult) {
+      resultDiv = document.createElement("div");
+      resultDiv.id = "ai-helper-project-health-result";
+      viewDiv.appendChild(resultDiv);
+    }
+
+    contentDiv.appendChild(viewDiv);
+    detailPane.appendChild(contentDiv);
+    container.appendChild(detailPane);
+
+    return { detailPane, contentDiv, resultDiv };
+  }
+
+  // Local DOM helper reproducing the dashboard detail pane of
+  // app/views/ai_helper/project/_health_report_body.html.erb while an
+  // edited report's ORIGINAL body is being viewed: the result area is
+  // hidden and the pane still shows the previous report's metadata, edit
+  // UI, flash notice, and export links — the elements data-model.md lists
+  // as removed when a new generation starts.
+  function addDetailPaneWithPreviousReport() {
+    const detailPane = document.createElement("div");
+    detailPane.className = "ai-helper-health-report-body";
+
+    const flash = document.createElement("div");
+    flash.className = "flash notice";
+    flash.textContent = "saved";
+    detailPane.appendChild(flash);
+
+    const meta = document.createElement("div");
+    meta.className = "ai-helper-health-report-meta";
+    meta.textContent = "created";
+    detailPane.appendChild(meta);
+
+    const contextual = document.createElement("div");
+    contextual.className = "contextual";
+    detailPane.appendChild(contextual);
+
+    const contentDiv = document.createElement("div");
+    contentDiv.className = "ai-helper-project-health-content has-report";
+
+    const viewDiv = document.createElement("div");
+    viewDiv.className = "ai-helper-health-report-view";
+
+    const resultDiv = document.createElement("div");
+    resultDiv.id = "ai-helper-project-health-result";
+    resultDiv.textContent = "current body";
+    resultDiv.hidden = true; // "original report" view state
+    viewDiv.appendChild(resultDiv);
+
+    const original = document.createElement("div");
+    original.className = "ai-helper-health-report-original";
+    original.textContent = "original body";
+    viewDiv.appendChild(original);
+
+    const toggleParagraph = document.createElement("p");
+    const showOriginal = document.createElement("a");
+    showOriginal.className = "ai-helper-health-report-show-original";
+    showOriginal.href = "#";
+    toggleParagraph.appendChild(showOriginal);
+    viewDiv.appendChild(toggleParagraph);
+
+    const editForm = document.createElement("form");
+    editForm.className = "ai-helper-health-report-edit-form";
+    contentDiv.appendChild(viewDiv);
+    contentDiv.appendChild(editForm);
+    detailPane.appendChild(contentDiv);
+
+    const otherFormats = document.createElement("p");
+    otherFormats.className = "other-formats";
+    detailPane.appendChild(otherFormats);
+
+    container.appendChild(detailPane);
+
+    return { detailPane, contentDiv, resultDiv };
+  }
+
   describe("generate report click delegation", () => {
     it("shows an error and does not stream when the result div is missing", async () => {
       addHealthContainer({ withResult: false });
@@ -170,7 +262,7 @@ describe("ai_helper_project_health_actions", () => {
 
     it("streams content, finalizes on stop, stores the content, and refreshes metadata", async () => {
       addMeta("ai-helper-project-health-metadata-url", "/metadata");
-      const { resultDiv } = addHealthContainer();
+      const { contentDiv, resultDiv } = addHealthContainer();
       const link = addGenerateLink();
       const fetchMock = vi.fn(async () => ({ status: 204 }));
       vi.stubGlobal("fetch", fetchMock);
@@ -190,6 +282,7 @@ describe("ai_helper_project_health_actions", () => {
       expect(source.closed).toBe(true);
       expect(resultDiv.innerHTML).toContain("ai-helper-final-content");
       expect(document.getElementById("ai-helper-health-report-content").value).toBe("Report: good");
+      expect(document.getElementById("ai-helper-health-report-content").parentElement).toBe(contentDiv);
       expect(container.querySelector(".other-formats")).not.toBeNull();
 
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -284,15 +377,116 @@ describe("ai_helper_project_health_actions", () => {
       expect(document.getElementById("ai-helper-health-report-content").value).toBe("");
     });
 
-    it("ignores malformed SSE payloads without throwing", async () => {
-      addHealthContainer();
+    it("keeps one hidden field and one export link pair after two consecutive overview generations", async () => {
+      const { contentDiv, healthDiv } = addHealthContainer();
       const link = addGenerateLink();
+
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const first = FakeEventSource.instances[0];
+      first.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: "first" } }] }) });
+      first.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const second = FakeEventSource.instances[1];
+      second.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: "second" } }] }) });
+      second.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+
+      expect(contentDiv.querySelectorAll("#ai-helper-health-report-content").length).toBe(1);
+      expect(document.getElementById("ai-helper-health-report-content").value).toBe("second");
+      expect(healthDiv.querySelectorAll(".other-formats").length).toBe(1);
+    });
+
+    it("logs a parse failure and keeps receiving after a malformed SSE payload", async () => {
+      const { resultDiv } = addHealthContainer();
+      const link = addGenerateLink();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       await load();
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       const source = FakeEventSource.instances[0];
 
       expect(() => source.onmessage({ data: "not json" })).not.toThrow();
+      expect(errorSpy).toHaveBeenCalledWith(
+        "Failed to parse project health streaming event data:",
+        expect.any(SyntaxError),
+        "not json",
+      );
+
+      sendChunk(source, "after malformed");
+      source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+      frames.flush();
+
+      expect(resultDiv.innerHTML).toContain("after malformed");
+      expect(resultDiv.innerHTML).toContain("ai-helper-final-content");
+      errorSpy.mockRestore();
     });
+
+    it("propagates finalize errors out of onmessage without logging a parse failure", async () => {
+      addHealthContainer();
+      const link = addGenerateLink();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const source = FakeEventSource.instances[0];
+      const originalFinalize = window.finalizeStreamingContent;
+      window.finalizeStreamingContent = vi.fn(() => {
+        throw new Error("finalize boom");
+      });
+
+      expect(() =>
+        source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) }),
+      ).toThrow("finalize boom");
+      expect(errorSpy).not.toHaveBeenCalled();
+
+      errorSpy.mockRestore();
+      window.finalizeStreamingContent = originalFinalize;
+    });
+
+    it("re-throws non-SyntaxError failures raised while parsing the payload", async () => {
+      addHealthContainer();
+      const link = addGenerateLink();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const source = FakeEventSource.instances[0];
+
+      const boom = new TypeError("data access failed");
+      expect(() =>
+        source.onmessage({
+          get data() {
+            throw boom;
+          },
+        }),
+      ).toThrow(boom);
+      expect(errorSpy).not.toHaveBeenCalled();
+
+      errorSpy.mockRestore();
+    });
+
+    it("updates the master-detail history and selects the first report row when generation finishes in the dashboard detail pane", async () => {
+      addDashboardDetailPane();
+      const link = addGenerateLink();
+      const historyRow = document.createElement("div");
+      historyRow.className = "ai-helper-report-row";
+      container.appendChild(historyRow);
+      const masterDetailInstance = { selectedReportId: "old", selectReport: vi.fn() };
+      window.updateHealthReportHistory = vi.fn((callback) => callback(masterDetailInstance));
+
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const source = FakeEventSource.instances[0];
+      source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+
+      // Real timers here: the production code chains a 1000ms and then a
+      // 100ms setTimeout (see the project-overview variant below for why
+      // fake timers are not used in this suite).
+      await new Promise((resolve) => setTimeout(resolve, 1100));
+      expect(window.updateHealthReportHistory).toHaveBeenCalledTimes(1);
+
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      expect(masterDetailInstance.selectedReportId).toBeNull();
+      expect(masterDetailInstance.selectReport).toHaveBeenCalledWith(historyRow);
+    }, 10000);
 
     it("re-initializes master-detail history and selects the first report after streaming stops", async () => {
       addHealthContainer();
@@ -320,6 +514,57 @@ describe("ai_helper_project_health_actions", () => {
       expect(masterDetailInstance.selectedReportId).toBeNull();
       expect(masterDetailInstance.selectReport).toHaveBeenCalledWith(historyRow);
     }, 10000);
+
+    it("removes the previous report's details from the detail pane and un-hides the result area when generation starts", async () => {
+      const { detailPane, resultDiv } = addDetailPaneWithPreviousReport();
+      const link = addGenerateLink();
+
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+      expect(detailPane.querySelector(".ai-helper-health-report-meta")).toBeNull();
+      expect(detailPane.querySelector(".contextual")).toBeNull();
+      expect(detailPane.querySelector(".ai-helper-health-report-edit-form")).toBeNull();
+      expect(detailPane.querySelector(".ai-helper-health-report-original")).toBeNull();
+      expect(detailPane.querySelector(".ai-helper-health-report-show-original")).toBeNull();
+      expect(detailPane.querySelector(".flash")).toBeNull();
+      expect(detailPane.querySelector(".other-formats")).toBeNull();
+      expect(resultDiv.hidden).toBe(false);
+      expect(resultDiv.innerHTML).toContain("ai-helper-loader");
+    });
+
+    it("does not restore the removed details when the generation ends in an error", async () => {
+      const { detailPane, resultDiv } = addDetailPaneWithPreviousReport();
+      addMeta("error-message", "Generation failed");
+      const link = addGenerateLink();
+
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      FakeEventSource.instances[0].onerror();
+
+      expect(resultDiv.innerHTML).toContain("Generation failed");
+      expect(detailPane.querySelector(".ai-helper-health-report-meta")).toBeNull();
+      expect(detailPane.querySelector(".ai-helper-health-report-edit-form")).toBeNull();
+      expect(detailPane.querySelector(".other-formats")).toBeNull();
+      expect(resultDiv.hidden).toBe(false);
+    });
+
+    it("removes nothing in the project overview structure (no .ai-helper-health-report-body)", async () => {
+      const { healthDiv } = addHealthContainer();
+      const meta = document.createElement("div");
+      meta.className = "ai-helper-health-report-meta";
+      healthDiv.appendChild(meta);
+      const contextual = document.createElement("div");
+      contextual.className = "contextual";
+      healthDiv.appendChild(contextual);
+      const link = addGenerateLink();
+
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+      expect(healthDiv.querySelector(".ai-helper-health-report-meta")).toBe(meta);
+      expect(healthDiv.querySelector(".contextual")).toBe(contextual);
+    });
 
     it("refreshes metadata directly when updateHealthReportHistory yields no instance", async () => {
       addMeta("ai-helper-project-health-metadata-url", "/metadata");

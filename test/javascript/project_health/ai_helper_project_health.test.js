@@ -31,6 +31,7 @@ describe("ai_helper_project_health", () => {
     delete window.AiHelperMarkdownParser;
     delete window.updateHealthReportHistory;
     await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
+    await loadScript("assets/javascripts/shared/ai_helper_frame_renderer");
   });
 
   afterEach(() => {
@@ -88,6 +89,35 @@ describe("ai_helper_project_health", () => {
     await loadScript("assets/javascripts/project_health/ai_helper_project_health_actions");
     cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/project_health/ai_helper_project_health");
     return cleanup;
+  }
+
+  // Local DOM helper reproducing the dashboard detail pane structure of
+  // app/views/ai_helper/project/_health_report_body.html.erb:26-29: a
+  // selected report's pane has NO `.ai-helper-project-health` wrapper; the
+  // result area sits inside `.ai-helper-health-report-view`, which sits
+  // inside `.ai-helper-project-health-content`.
+  function addDashboardDetailPane({ withResult = true } = {}) {
+    const detailPane = document.createElement("div");
+    detailPane.className = "ai-helper-health-report-body";
+
+    const contentDiv = document.createElement("div");
+    contentDiv.className = "ai-helper-project-health-content has-report";
+
+    const viewDiv = document.createElement("div");
+    viewDiv.className = "ai-helper-health-report-view";
+
+    let resultDiv;
+    if (withResult) {
+      resultDiv = document.createElement("div");
+      resultDiv.id = "ai-helper-project-health-result";
+      viewDiv.appendChild(resultDiv);
+    }
+
+    contentDiv.appendChild(viewDiv);
+    detailPane.appendChild(contentDiv);
+    container.appendChild(detailPane);
+
+    return { detailPane, contentDiv, resultDiv };
   }
 
   describe("initialization guards", () => {
@@ -210,6 +240,60 @@ describe("ai_helper_project_health", () => {
 
       expect(healthDiv.querySelectorAll(".other-formats").length).toBe(1);
       void resultDiv;
+    });
+  });
+
+  describe("dashboard detail pane generation (no .ai-helper-project-health)", () => {
+    it("finalizes a finished generation without throwing and creates the hidden field inside .ai-helper-project-health-content", async () => {
+      const { contentDiv, resultDiv } = addDashboardDetailPane();
+      const link = addGenerateLink();
+
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const source = FakeEventSource.instances[0];
+
+      expect(() => {
+        source.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: "# Health" } }] }) });
+        source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+      }).not.toThrow();
+
+      const hiddenField = document.getElementById("ai-helper-health-report-content");
+      expect(hiddenField).not.toBeNull();
+      expect(hiddenField.parentElement).toBe(contentDiv);
+      expect(hiddenField.value).toBe("# Health");
+      expect(resultDiv.innerHTML).toContain("ai-helper-final-content");
+    });
+
+    it("keeps exactly one hidden field with the latest content after two consecutive generations", async () => {
+      const { contentDiv } = addDashboardDetailPane();
+      const link = addGenerateLink();
+
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const first = FakeEventSource.instances[0];
+      first.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: "first report" } }] }) });
+      first.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const second = FakeEventSource.instances[1];
+      second.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: "second report" } }] }) });
+      second.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+
+      const hiddenFields = contentDiv.querySelectorAll("#ai-helper-health-report-content");
+      expect(hiddenFields.length).toBe(1);
+      expect(hiddenFields[0].value).toBe("second report");
+    });
+
+    it("throws when the result element is not an HTMLElement or has no .ai-helper-project-health-content ancestor", async () => {
+      await load();
+      const parser = new window.AiHelperMarkdownParser();
+
+      expect(() => window.finalizeStreamingContent({}, parser, "content")).toThrow(
+        /ai-helper-project-health-content/,
+      );
+      expect(() => window.finalizeStreamingContent(document.createElement("div"), parser, "content")).toThrow(
+        /ai-helper-project-health-content/,
+      );
     });
   });
 });

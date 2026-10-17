@@ -172,7 +172,7 @@ if (!window.aiHelperProjectHealthInitialized) {
     resultDiv.innerHTML = finalHTML;
 
     // Store the markdown content in hidden field for PDF generation
-    updateHiddenReportContent(content);
+    updateHiddenReportContent(resultDiv, content);
 
     // Update health report history in master-detail layout
     refreshHealthReportHistory();
@@ -252,17 +252,35 @@ if (!window.aiHelperProjectHealthInitialized) {
 
   /**
    * Store the report's markdown content in a hidden field for later export,
-   * creating the field if it doesn't exist yet.
+   * creating the field inside the result area's `.ai-helper-project-health-content`
+   * ancestor if it doesn't exist yet. That ancestor exists in every layout
+   * that can generate a report (project overview, dashboard placeholder,
+   * dashboard detail pane), unlike `.ai-helper-project-health`, which the
+   * dashboard detail pane lacks.
+   * @param {HTMLElement} resultDiv - The report result container.
    * @param {string} content - The report's raw markdown content.
+   * @throws {Error} If `resultDiv` is not an HTMLElement or has no
+   *   `.ai-helper-project-health-content` ancestor.
    */
-  function updateHiddenReportContent(content) {
+  function updateHiddenReportContent(resultDiv, content) {
+    if (!(resultDiv instanceof HTMLElement)) {
+      throw new Error(
+        'updateHiddenReportContent requires an HTMLElement result area inside a .ai-helper-project-health-content ancestor',
+      );
+    }
+    const contentContainer = resultDiv.closest('.ai-helper-project-health-content');
+    if (!contentContainer) {
+      throw new Error(
+        'updateHiddenReportContent requires an HTMLElement result area inside a .ai-helper-project-health-content ancestor',
+      );
+    }
     let hiddenField = document.getElementById('ai-helper-health-report-content');
     if (!hiddenField) {
       // Create hidden field if it doesn't exist
       hiddenField = document.createElement('input');
       hiddenField.type = 'hidden';
       hiddenField.id = 'ai-helper-health-report-content';
-      document.querySelector('.ai-helper-project-health').appendChild(hiddenField);
+      contentContainer.appendChild(hiddenField);
     }
     // Safely set the value to prevent XSS
     hiddenField.value = content;
