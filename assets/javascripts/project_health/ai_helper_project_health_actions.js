@@ -123,16 +123,16 @@ function handleGenerateProjectHealthClick(e, parser) {
   });
 
   eventSource.onmessage = function(event) {
+    // Read the payload once, outside the try, so only JSON.parse is guarded.
+    const rawData = event.data;
     let data;
     try {
-      data = JSON.parse(event.data);
+      data = JSON.parse(rawData);
     } catch (error) {
-      // The try covers reading event.data and parsing it as JSON, but only
-      // JSON.parse's SyntaxError is recoverable: log it and keep receiving.
-      // Anything else — including a throwing event.data getter — is a real
-      // bug and must surface.
+      // Only JSON.parse's SyntaxError is recoverable: log it and keep
+      // receiving. Anything else is a real bug and must surface.
       if (error instanceof SyntaxError) {
-        console.error('Failed to parse project health streaming event data:', error, event.data);
+        console.error('Failed to parse project health streaming event data:', error, rawData);
         return;
       }
       throw error;

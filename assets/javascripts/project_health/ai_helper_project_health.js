@@ -171,6 +171,18 @@ if (!window.aiHelperProjectHealthInitialized) {
     // pane whose history, export links and timestamp were never updated.
     hiddenFieldContainerOf(resultDiv);
 
+    // Selecting another report while streaming replaces the whole detail
+    // pane (AiHelperMasterDetail#renderReportDetail), detaching the result
+    // area together with its content container, so the guard above still
+    // passes. Rendering into the detached pane is pointless, and the
+    // hidden-field lookup by id would overwrite the newly shown pane's
+    // field. The report itself was saved on the server, so only the
+    // history list is refreshed.
+    if (!resultDiv.isConnected) {
+      refreshHealthReportHistory();
+      return;
+    }
+
     const formattedContent = parser.parse(content);
     const finalHTML = '<div class="ai-helper-final-content">' +
       formattedContent + '</div>';

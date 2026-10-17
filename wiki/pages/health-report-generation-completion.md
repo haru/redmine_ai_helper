@@ -41,6 +41,17 @@ change (S050).
   link, edit form, original block + its toggle `<p>`, `.flash`, `.other-formats`)
   and un-hide the result area (and the view wrapper, hidden while the edit form is
   open) so the stream is visible. A no-op outside a detail pane (S050).
+- **A result area detached from the document is not finalized.** Selecting another
+  report while streaming replaces the whole detail pane, so the result area keeps
+  its `.ai-helper-project-health-content` ancestor inside the detached subtree and
+  passes the structural guard. `finalizeStreamingContent` checks
+  `resultDiv.isConnected`; when detached it skips the body, hidden field, export
+  links and metadata (the hidden-field lookup by id would otherwise overwrite the
+  newly shown pane's field) and only refreshes the history list, since the report
+  was saved on the server. The stream is not closed on pane replacement, because
+  closing it could stop the server-side generation (PR #526 review).
+- `onmessage` reads `event.data` once, before the `try`, so only `JSON.parse` is
+  guarded and the logged payload is that saved value (PR #526 review).
 - Export links are **not** added by this path in the dashboard: `addPdfExportButton`
   is unchanged; the id-bearing links arrive when the detail pane reloads after
   completion (S050).

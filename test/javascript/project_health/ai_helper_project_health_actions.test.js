@@ -458,6 +458,52 @@ describe("ai_helper_project_health_actions", () => {
       expect(errorSpy).not.toHaveBeenCalled();
     });
 
+    it("re-throws a SyntaxError raised while reading the event data instead of logging it as a parse failure", async () => {
+      addHealthContainer();
+      const link = addGenerateLink();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const source = FakeEventSource.instances[0];
+
+      // Only JSON.parse's SyntaxError is recoverable; the same error class
+      // thrown by the data getter is a real failure. The getter throws only
+      // on its first read, so a handler that re-reads the data while
+      // logging would swallow the error instead of surfacing it.
+      const boom = new SyntaxError("data getter failed");
+      let reads = 0;
+      expect(() =>
+        source.onmessage({
+          get data() {
+            reads += 1;
+            if (reads === 1) {
+              throw boom;
+            }
+            return "not json";
+          },
+        }),
+      ).toThrow(boom);
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+
+    it("reads the event data exactly once per message", async () => {
+      addHealthContainer();
+      const link = addGenerateLink();
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const source = FakeEventSource.instances[0];
+
+      let reads = 0;
+      source.onmessage({
+        get data() {
+          reads += 1;
+          return "not json";
+        },
+      });
+      expect(reads).toBe(1);
+    });
+
     it("propagates the TypeError raised when a well-formed JSON payload is not an object", async () => {
       addHealthContainer();
       const link = addGenerateLink();

@@ -260,6 +260,44 @@ describe("ai_helper_project_health", () => {
       expect(hiddenFields[0].value).toBe("second report");
     });
 
+    it("only refreshes the history when the whole detail pane was replaced during streaming", async () => {
+      const { detailPane, contentDiv, resultDiv } = createDashboardDetailPane(container);
+      const link = addGenerateLink();
+      window.updateHealthReportHistory = vi.fn();
+
+      await load();
+      vi.useFakeTimers();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const source = FakeEventSource.instances[0];
+      source.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: "new report" } }] }) });
+
+      // AiHelperMasterDetail#renderReportDetail replaces the detail
+      // container's innerHTML when another report is selected, detaching
+      // the whole pane — the result area keeps its
+      // .ai-helper-project-health-content ancestor inside the detached
+      // subtree, so the structural guard alone cannot catch this.
+      detailPane.remove();
+      const currentPane = createDashboardDetailPane(container);
+      const currentHiddenField = document.createElement("input");
+      currentHiddenField.type = "hidden";
+      currentHiddenField.id = "ai-helper-health-report-content";
+      currentHiddenField.value = "selected report";
+      currentPane.contentDiv.appendChild(currentHiddenField);
+
+      expect(() => sendStop(source)).not.toThrow();
+
+      expect(resultDiv.innerHTML).not.toContain("ai-helper-final-content");
+      expect(contentDiv.querySelector("#ai-helper-health-report-content")).toBeNull();
+      expect(document.querySelectorAll("#ai-helper-health-report-content").length).toBe(1);
+      expect(currentHiddenField.value).toBe("selected report");
+      expect(currentPane.resultDiv.innerHTML).not.toContain("new report");
+
+      // The new report was saved on the server, so the history list must
+      // still pick it up.
+      vi.advanceTimersByTime(1000);
+      expect(window.updateHealthReportHistory).toHaveBeenCalledTimes(1);
+    });
+
     it("throws a distinct message when the result element is not an HTMLElement", async () => {
       await load();
       const parser = new window.AiHelperMarkdownParser();

@@ -128,3 +128,5 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-042](./042-test-dom-derived-from-code-not-erb.md) | Test DOM and assertions were derived from the code instead of the real markup | test-gap | Local AI review | Not yet |
 | [CRF-043](./043-comments-described-narrower-scopes.md) | Comments described narrower scopes than the code they annotate | doc-comment | Local AI review | Not yet |
 | [CRF-044](./044-promoted-feedback-rules-narrowed.md) | Promoted feedback rules were narrowed, half-dropped and mis-cited | doc-comment | Local AI review | Not yet |
+| [CRF-045](./045-finalize-accepted-detached-pane.md) | Finalize accepted a result area detached together with its whole pane | edge-case | GitHub Copilot (PR #526) | Not yet |
+| [CRF-046](./046-sse-try-wrapped-data-read.md) | SSE try block wrapped reading the event data, not only the parse | error-handling | GitHub Copilot (PR #526) | Not yet |
