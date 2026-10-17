@@ -67,16 +67,31 @@ gh pr create --base main --title "Release <version>" --body "Release <version>"
 
 ### Title
 
+**The PR title is copied verbatim into the release notes.** Readers are plugin users and administrators, not developers. Write the title for them: it must make sense without seeing the code, the branch, or the PR description.
+
+Title rules:
+- Describe the **user-visible effect** (what the user can now do, or what problem no longer occurs), not the implementation. Use the vocabulary of the UI and features (e.g. "health report", "model profile", "custom commands"), not class, method, file, or gem names.
+- Start with an imperative verb (`Add`, `Fix`, `Improve`, `Support`, `Allow`, `Remove`). For bug fixes, state the symptom that is fixed, e.g. `Fix health report tables rendering without borders`.
+- Be specific enough to stand alone in a list of ~20 entries; avoid vague titles such as `Fix bug`, `Update settings`, `Refactor agents`.
+- One line, ideally under 70 characters. No issue numbers, no branch or spec numbers (e.g. `076-`), no author names, no emojis, no trailing period.
+- Changes with no user-visible effect (refactoring, tests, CI, internal docs) get a plain, honest title such as `Refactor ...` / `Improve test coverage for ...`; do not inflate them into features.
+
+Good: `Add model profile copy to the admin settings screen`
+Bad: `Implement ModelProfilesController#copy and add 010 spec`
+
+How to derive the title:
+
 **If the branch is a Spec Kit branch** (branch name matches pattern used by speckit, e.g., `feature/NNN-*` or follows the speckit branch convention):
-1. Locate the corresponding `spec.md` file under `.specify/` (e.g., `.specify/<branch-folder>/spec.md`)
-2. Read the spec.md and derive a concise English title from the feature description
-3. Title should be imperative and descriptive, e.g., `Add vector model profile support`
+1. Locate the corresponding `spec.md` file under `specs/<branch-folder>/` (fall back to `.specify/<branch-folder>/`)
+2. Read the user stories / summary in spec.md and identify what the user gains or what is fixed
+3. Write the title following the rules above
 
 **If the branch is NOT a Spec Kit branch**:
 1. Run `git log develop..HEAD --oneline` to list commits on this branch
 2. Run `git diff develop...HEAD --stat` to see changed files
-3. Derive a concise, imperative English title summarizing the changes
-4. Example: `Fix issue summary cache invalidation`
+3. Work out the user-visible effect of the changes, then write the title following the rules above
+
+Before creating the PR, re-read the title as an end user scanning the release notes: if it needs the code to be understood, rewrite it.
 
 ### Related GitHub Issue
 
@@ -151,6 +166,6 @@ gh pr create \
 ## Error Handling
 
 - If `git log` or `git diff` returns empty (branch has no commits ahead of base), inform the user there is nothing to PR.
-- If the spec.md file cannot be found for a Spec Kit branch, fall back to deriving the title from git commits.
+- If the spec.md file cannot be found for a Spec Kit branch, fall back to deriving the title from git commits (still following the release-notes title rules).
 - If label creation fails (label does not exist), omit that label and proceed.
 - If the PR already exists for this branch, report the existing PR URL instead of creating a duplicate.
