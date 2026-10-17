@@ -26,6 +26,21 @@ class HealthReportChartPromptGuideTest < ActiveSupport::TestCase
       assert_includes guide, "do not copy the numbers"
     end
 
+    should "ask for a one or two sentence reading of each chart" do
+      guide = PromptGuide.build(Resolver.new(METRICS))
+
+      assert_includes guide, "one or two sentences"
+      assert_includes guide, "before or after each chart"
+      assert_includes guide, "skew, a bottleneck, or the progress made"
+      assert_includes guide, "only the figures needed for the reading"
+    end
+
+    should "not tell the model which form a chart is drawn in" do
+      guide = PromptGuide.build(Resolver.new(METRICS))
+
+      %w[doughnut pie stacked tile bar\ chart].each { |word| assert_not_includes guide.downcase, word }
+    end
+
     should "list every chart type with its key and English title" do
       guide = PromptGuide.build(Resolver.new(METRICS))
 

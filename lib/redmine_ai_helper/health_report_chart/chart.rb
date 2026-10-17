@@ -11,6 +11,9 @@ module RedmineAiHelper
     # ordered. Keys and values are plain strings/symbols so the hash works
     # on parsed JSON data directly.
     #
+    # - form: :bar (count-ordered horizontal bars), :stacked (one stacked
+    #   horizontal bar of ordered stages) or :tile (a number tile, no chart)
+    #   (R-004)
     # - kind: :hash reads a {name => count} mapping at
     #   metrics.issue_statistics.<key>; :open_closed reads open_issues /
     #   closed_issues; :progress reads
@@ -19,12 +22,12 @@ module RedmineAiHelper
     #   remainder into "others"; :fixed keeps the documented fixed order and
     #   never groups.
     ChartType = {
-      "status" => { title_key: "ai_helper.health_report_chart.types.status", form: :doughnut, kind: :hash, key: "by_status", item_mode: :variable }.freeze,
-      "tracker" => { title_key: "ai_helper.health_report_chart.types.tracker", form: :doughnut, kind: :hash, key: "by_tracker", item_mode: :variable }.freeze,
-      "priority" => { title_key: "ai_helper.health_report_chart.types.priority", form: :doughnut, kind: :hash, key: "by_priority", item_mode: :variable }.freeze,
+      "status" => { title_key: "ai_helper.health_report_chart.types.status", form: :bar, kind: :hash, key: "by_status", item_mode: :variable }.freeze,
+      "tracker" => { title_key: "ai_helper.health_report_chart.types.tracker", form: :bar, kind: :hash, key: "by_tracker", item_mode: :variable }.freeze,
+      "priority" => { title_key: "ai_helper.health_report_chart.types.priority", form: :bar, kind: :hash, key: "by_priority", item_mode: :variable }.freeze,
       "assignee" => { title_key: "ai_helper.health_report_chart.types.assignee", form: :bar, kind: :hash, key: "by_assigned_to", item_mode: :variable }.freeze,
-      "open_closed" => { title_key: "ai_helper.health_report_chart.types.open_closed", form: :doughnut, kind: :open_closed, item_mode: :fixed }.freeze,
-      "progress" => { title_key: "ai_helper.health_report_chart.types.progress", form: :doughnut, kind: :progress, item_mode: :fixed }.freeze
+      "open_closed" => { title_key: "ai_helper.health_report_chart.types.open_closed", form: :tile, kind: :open_closed, item_mode: :fixed }.freeze,
+      "progress" => { title_key: "ai_helper.health_report_chart.types.progress", form: :stacked, kind: :progress, item_mode: :fixed }.freeze
     }.freeze
 
     # A drawable chart: the title, the form and the ordered items. The three
@@ -33,20 +36,31 @@ module RedmineAiHelper
       # The maximum number of items: the top 6 plus "others" (R-005).
       MAX_ITEMS = 7
 
-      attr_reader :title, :form, :items
+      # The drawing forms (R-004).
+      FORMS = %i[bar stacked tile].freeze
+
+      attr_reader :title, :form, :items, :summary
 
       # @param title [String] non-empty display title
-      # @param form [Symbol] :doughnut or :bar
+      # @param form [Symbol] one of FORMS
       # @param items [Array<Item>] at most 7 items in display order
+      # @param summary [String, nil] the number shown by a :tile chart; must be
+      #   a non-empty String for :tile and nil for the other forms
       # @raise [ArgumentError] when an attribute violates the documented invariants
-      def initialize(title:, form:, items:)
+      def initialize(title:, form:, items:, summary: nil)
         raise ArgumentError, "title must be a non-empty String" unless title.is_a?(String) && !title.empty?
-        raise ArgumentError, "form must be :doughnut or :bar" unless [ :doughnut, :bar ].include?(form)
+        raise ArgumentError, "form must be one of #{FORMS.inspect}" unless FORMS.include?(form)
+        if form == :tile
+          raise ArgumentError, "a :tile chart needs a non-empty String summary" unless summary.is_a?(String) && !summary.empty?
+        elsif !summary.nil?
+          raise ArgumentError, "only a :tile chart has a summary"
+        end
         raise ArgumentError, "items must be an Array of at most #{MAX_ITEMS} items" unless items.is_a?(Array) && items.length <= MAX_ITEMS
         items.each { |item| raise ArgumentError, "items must be Item objects" unless item.is_a?(Item) }
 
         @title = title.dup.freeze
         @form = form
+        @summary = summary&.dup&.freeze
         @items = items.dup.freeze
       end
 

@@ -170,15 +170,50 @@ class HealthReportChartResolverTest < ActiveSupport::TestCase
       assert_equal [ "a (7)", "b (6)", "c (5)", "d (4)", "e (3)", "f (2)", "g (1)" ], chart.items.map(&:label)
     end
 
-    should "use the bar form for assignee and the doughnut form for the ratio types" do
-      assert_equal :bar, resolve({ type: "assignee", target_kind: :version, target_value: "12" }).form
-      assert_equal :doughnut, resolve({ type: "open_closed", target_kind: :version, target_value: "12" }).form
+    should "use the bar form for the count types, the stacked form for progress and the tile form for open_closed" do
+      %w[status tracker priority assignee].each do |type|
+        assert_equal :bar, resolve({ type: type, target_kind: :version, target_value: "12" }).form, type
+      end
+      assert_equal :stacked, resolve({ type: "progress", target_kind: :version, target_value: "12" }).form
+      assert_equal :tile, resolve({ type: "open_closed", target_kind: :version, target_value: "12" }).form
+    end
+
+    should "give the open_closed tile a summary with the closed count, the total and the rounded rate" do
+      chart = resolve({ type: "open_closed", target_kind: :version, target_value: "12" })
+
+      # METRICS has 10 open and 5 closed issues.
+      assert_equal I18n.t("ai_helper.health_report_chart.tile_summary", closed: 5, total: 15, rate: 33), chart.summary
+      assert_match(/5.*15.*33/, chart.summary)
+    end
+
+    should "round the tile rate to the nearest integer" do
+      metrics = [ { version_id: 12, version_name: "1.0.0", metrics: { issue_statistics: { open_issues: 1, closed_issues: 2 } } } ].to_json
+
+      assert_includes resolve({ type: "open_closed", target_kind: :version, target_value: "12" }, metrics).summary, "67"
+    end
+
+    should "not give a summary to non-tile charts" do
+      assert_nil resolve({ type: "status", target_kind: :version, target_value: "12" }).summary
+      assert_nil resolve({ type: "progress", target_kind: :version, target_value: "12" }).summary
+    end
+
+    should "make an open_closed tile with 0 issues a no_data chart" do
+      metrics = [ { version_id: 12, version_name: "1.0.0", metrics: { issue_statistics: { open_issues: 0, closed_issues: 0 } } } ].to_json
+
+      chart = resolve({ type: "open_closed", target_kind: :version, target_value: "12" }, metrics)
+      assert_predicate chart, :no_data?
     end
 
     should "keep the fixed open/closed order and never group" do
       chart = resolve({ type: "open_closed", target_kind: :version, target_value: "12" })
 
       assert_equal [ "open (10)", "closed (5)" ], chart.items.map(&:label)
+    end
+
+    should "color progress by meaning: red not started, blue in progress, green completed" do
+      chart = resolve({ type: "progress", target_kind: :version, target_value: "12" })
+
+      assert_equal [ [ 255, 99, 132 ], [ 54, 162, 235 ], [ 76, 175, 80 ] ], chart.items.map(&:rgb)
     end
 
     should "keep the fixed progress order" do

@@ -1,7 +1,7 @@
 ---
 title: Health Report Charts
 type: component
-sources: [S051, S052]
+sources: [S051, S052, S053]
 updated: 2026-10-17
 ---
 
@@ -25,6 +25,14 @@ screen, in the PDF, and in the Markdown export. Part of the
   (S051, S052).
 - Alternatives rejected: PNG attachments (permissions, old reports, fonts) and
   Mermaid (Node/Chromium for PDF, LLM writes numbers) (S051).
+
+## Forms
+
+The form is chosen per information, not by a proportion-means-pie rule (S053,
+ADR-059): `status`/`tracker`/`priority`/`assignee` are count-ordered horizontal
+bars, `progress` is one stacked bar of its three stages, and `open_closed` is a
+number tile built from ERB HTML (no canvas). There are no doughnuts. The LLM is
+asked to write one or two sentences interpreting each chart (S053).
 
 ## Behaviour worth remembering
 

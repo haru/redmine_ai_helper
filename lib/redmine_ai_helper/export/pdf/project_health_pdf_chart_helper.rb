@@ -7,10 +7,9 @@ module RedmineAiHelper
   module Export
     module PDF
       # Splits a health report body at its chart directives and draws the
-      # resolved charts into a PDF with rbpdf shapes and text. Used by
-      # ProjectHealthPdfHelper; the doughnut starts at 12 o'clock
-      # and goes clockwise with a hole of half the outer radius, like the screen
-      # and SVG renderers (R-004).
+      # resolved charts into a PDF with rbpdf shapes and text: horizontal
+      # bars, one stacked bar, or a number tile, like the screen and SVG
+      # renderers (R-004). Used by ProjectHealthPdfHelper.
       module ProjectHealthPdfChartHelper
         include Redmine::I18n
 
@@ -53,10 +52,19 @@ module RedmineAiHelper
             pdf.SetFontStyle("", 10)
             pdf.cell(0, 5, l(:label_no_data), 0, 1, text_align)
             pdf.ln(3)
-          elsif chart.form == :doughnut
-            draw_pdf_doughnut(pdf, chart, left_margin)
           else
-            draw_pdf_bar_chart(pdf, chart, left_margin)
+            draw_pdf_chart_form(pdf, chart, left_margin)
+          end
+        end
+
+        # Draw a chart that has data in its form.
+        # @raise [ArgumentError] for a form this helper cannot draw
+        def draw_pdf_chart_form(pdf, chart, left_margin)
+          case chart.form
+          when :bar then draw_pdf_bar_chart(pdf, chart, left_margin)
+          when :stacked then draw_pdf_stacked_bar(pdf, chart, left_margin)
+          when :tile then draw_pdf_tile(pdf, chart, left_margin)
+          else raise ArgumentError, "cannot draw the chart form #{chart.form.inspect}"
           end
         end
 
@@ -84,52 +92,48 @@ module RedmineAiHelper
           yield "D"
         end
 
-        def draw_pdf_doughnut(pdf, chart, left_margin)
-          radius = 22.0
+        # One stacked horizontal bar: a segment per non-zero item, left to
+        # right in item order, widths proportional to the values; a legend of
+        # every item (zero counts included) follows below the bar.
+        def draw_pdf_stacked_bar(pdf, chart, left_margin)
           legend_height = chart.items.length * 6
-          figure_height = [ (radius * 2) + 4, legend_height ].max
-          ensure_pdf_chart_space(pdf, 6 + figure_height + 4)
+          ensure_pdf_chart_space(pdf, 6 + 8 + legend_height + 3)
           draw_pdf_chart_title(pdf, chart.title, left_margin)
 
-          center_x = left_margin + radius + 2
-          center_y = pdf.get_y + radius + 2
-          draw_pdf_doughnut_slices(pdf, chart, center_x, center_y, radius)
-          draw_pdf_doughnut_legend(pdf, chart, left_margin + (radius * 2) + 10, pdf.get_y + 2)
-          pdf.set_y(pdf.get_y + figure_height + 4)
-        end
-
-        def draw_pdf_doughnut_slices(pdf, chart, center_x, center_y, radius)
           total = chart.items.sum(&:value).to_f
-          slices = chart.items.select { |item| item.value > 0 }
-          start_angle = 0.0
-          slices.each do |item|
-            end_angle = start_angle + (360.0 * item.value / total)
-            draw_with_chart_colors(pdf, item.rgb) do |style|
-              draw_pdf_slice(pdf, slices.length == 1, center_x, center_y, radius, start_angle, end_angle, style)
-            end
-            start_angle = end_angle
+          bar_width = 160.0
+          bar_y = pdf.get_y + 1
+          x = left_margin
+          chart.items.select { |item| item.value > 0 }.each do |item|
+            width = bar_width * item.value / total
+            draw_with_chart_colors(pdf, item.rgb) { |style| pdf.Rect(x, bar_y, width, 6, style) }
+            x += width
           end
-          pdf.SetFillColor(255, 255, 255)
-          pdf.Circle(center_x, center_y, radius * 0.5, 0, 360, "F")
-        end
-
-        def draw_pdf_slice(pdf, full_ring, center_x, center_y, radius, start_angle, end_angle, style)
-          if full_ring
-            pdf.Circle(center_x, center_y, radius, 0, 360, style)
-          else
-            pdf.PieSector(center_x, center_y, radius, start_angle, end_angle, style)
-          end
-        end
-
-        def draw_pdf_doughnut_legend(pdf, chart, x, y)
-          pdf.SetFontStyle("", 9)
-          chart.items.each_with_index do |item, index|
-            row_y = y + (index * 6)
-            draw_with_chart_colors(pdf, item.rgb) { |style| pdf.Rect(x, row_y + 1, 3, 3, style) }
-            pdf.set_xy(x + 5, row_y)
-            pdf.cell(0, 5, item.label, 0, 0, "L")
-          end
+          pdf.set_y(bar_y + 9)
+          draw_pdf_stacked_legend(pdf, chart, left_margin)
           pdf.SetDrawColor(0, 0, 0)
+          pdf.ln(3)
+        end
+
+        def draw_pdf_stacked_legend(pdf, chart, left_margin)
+          pdf.SetFontStyle("", 9)
+          chart.items.each do |item|
+            row_y = pdf.get_y
+            draw_with_chart_colors(pdf, item.rgb) { |style| pdf.Rect(left_margin, row_y + 1, 3, 3, style) }
+            pdf.set_xy(left_margin + 5, row_y)
+            pdf.cell(0, 5, item.label, 0, 1, "L")
+          end
+        end
+
+        # A number tile: the title and the summary as text, no shapes.
+        def draw_pdf_tile(pdf, chart, left_margin)
+          ensure_pdf_chart_space(pdf, 6 + 10 + 3)
+          draw_pdf_chart_title(pdf, chart.title, left_margin)
+          pdf.set_x(left_margin)
+          pdf.SetFontStyle("B", 14)
+          pdf.cell(0, 9, chart.summary, 0, 1, "L")
+          pdf.SetFontStyle("", 10)
+          pdf.ln(3)
         end
 
         def draw_pdf_bar_chart(pdf, chart, left_margin)

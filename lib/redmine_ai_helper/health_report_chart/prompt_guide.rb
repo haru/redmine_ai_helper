@@ -34,7 +34,10 @@ module RedmineAiHelper
             "You can place charts in the report. Write a chart directive on a single line, surrounded by blank lines:",
             "{{ai_helper_chart(<type>, version=<id>)}} or {{ai_helper_chart(<type>, period=<key>)}}",
             "Do not write a directive inside tables, lists, or code blocks.",
-            "The chart values are filled in automatically from the metrics, so do not copy the numbers into the text."
+            "The chart values are filled in automatically from the metrics, so do not copy the numbers into the text.",
+            "Write one or two sentences before or after each chart that say what it shows to the reader " \
+            "(for example a skew, a bottleneck, or the progress made). " \
+            "Mention only the figures needed for the reading, taken from the metrics."
           ]
         end
 

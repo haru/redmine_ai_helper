@@ -45,7 +45,7 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
         issue_statistics: {
           by_status: { "New" => 3, "Closed" => 5, "Resolved" => 0 },
           by_assigned_to: { "Alice" => 6, "Bob" => 2 },
-          open_issues: 10, closed_issues: 0
+          open_issues: 10, closed_issues: 5
         },
         progress_metrics: { completion_distribution: { not_started: 3, in_progress: 2, completed: 5 } }
       }
@@ -202,24 +202,23 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
         assert_equal plain, charted
       end
 
-      should "draw a doughnut with one sector per non-zero item clockwise from 12 o'clock" do
+      should "draw status as horizontal bars in count order, with zero counts labelled but not drawn" do
         pdf = render_with_charts("Before\n\n{{ai_helper_chart(status, version=12)}}\n\nAfter")
 
-        fills = calls_named(:PieSector).select { |_, args| args[5] == "F" }
-        borders = calls_named(:PieSector).select { |_, args| args[5] == "D" }
-        # New (3) and Closed (5) are drawn; Resolved (0) has no sector.
-        assert_equal 2, fills.length
-        assert_equal 2, borders.length
-        closed_start, closed_end = fills.first[1][3], fills.first[1][4]
-        new_start = fills.last[1][3]
-        assert_equal 0, closed_start
-        assert_in_delta 225.0, closed_end, 0.001
-        assert_in_delta closed_end, new_start, 0.001
-        assert_includes pdf_text(pdf), "Before"
-        assert_includes pdf_text(pdf), "After"
+        text = pdf_text(pdf)
+        assert_includes text, "Before"
+        assert_includes text, "After"
+        assert_operator text.index("Closed (5)"), :<, text.index("New (3)"), "items are ordered by count"
+        assert_includes text, "Resolved (0)"
+        # Closed and New get an alpha fill rect plus a border rect; Resolved (0) gets none.
+        assert_equal 4, calls_named(:Rect).length
+        widths = calls_named(:Rect).map { |_, args| args[2] }.uniq.sort
+        assert_in_delta widths.last * 3 / 5.0, widths.first, 0.001
+        assert_empty calls_named(:PieSector)
+        assert_empty calls_named(:Circle)
       end
 
-      should "fill sectors with alpha 0.2 and restore alpha 1 for the borders" do
+      should "fill with alpha 0.2 and restore alpha 1 for the borders" do
         render_with_charts("{{ai_helper_chart(status, version=12)}}")
 
         alphas = calls_named(:setAlpha).map { |_, args| args.first }
@@ -227,31 +226,45 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
         assert alphas.each_cons(2).any? { |a, b| (a - 0.2).abs < 1e-9 && b == 1 }, "alpha 1 must follow the 0.2 fill"
       end
 
-      should "overlay a white hole of half the outer radius" do
-        render_with_charts("{{ai_helper_chart(status, version=12)}}")
+      should "draw progress as one stacked bar with segments in stage order and a legend" do
+        pdf = render_with_charts("{{ai_helper_chart(progress, version=12)}}")
 
-        sector_radius = calls_named(:PieSector).first[1][2]
-        hole = calls_named(:Circle).last[1]
-        assert_in_delta sector_radius * 0.5, hole[2], 0.001
-      end
-
-      should "draw a full ring when one item occupies the whole chart" do
-        metrics = [
-          { version_id: 12, version_name: "1.0.0", metrics: { issue_statistics: { by_status: { "Only" => 4 } } } }
-        ].to_json
-
-        render_with_charts("{{ai_helper_chart(status, version=12)}}", metrics)
-
+        text = pdf_text(pdf)
+        %w[Not\ started\ (3) In\ progress\ (2) Completed\ (5)].each { |label| assert_includes text, label }
+        assert_operator text.index("Not started (3)"), :<, text.index("In progress (2)")
+        assert_operator text.index("In progress (2)"), :<, text.index("Completed (5)")
+        fills = calls_named(:Rect).each_slice(1).map(&:first).select { |_, args| args[3] > 3 }
+        # Three bar segments (fill + border each) of different heights than the 3 mm swatches.
+        assert_equal 6, fills.length
+        segment_fills = fills.each_slice(2).map(&:first)
+        widths = segment_fills.map { |_, args| args[2] }
+        xs = segment_fills.map { |_, args| args[0] }
+        assert_in_delta widths[0] * 2 / 3.0, widths[1], 0.01
+        assert_in_delta widths[0] * 5 / 3.0, widths[2], 0.01
+        assert_in_delta xs[0] + widths[0], xs[1], 0.01
+        assert_in_delta xs[1] + widths[1], xs[2], 0.01
         assert_empty calls_named(:PieSector)
-        assert_operator calls_named(:Circle).length, :>=, 2
       end
 
-      should "list zero-count items in the legend without a sector" do
-        pdf = render_with_charts("{{ai_helper_chart(status, version=12)}}")
+      should "list a zero-count stage in the legend without a segment" do
+        metrics = [ { version_id: 12, version_name: "1.0.0",
+                      metrics: { progress_metrics: { completion_distribution: { not_started: 0, in_progress: 2, completed: 2 } } } } ].to_json
 
-        assert_includes pdf_text(pdf), "Resolved (0)"
-        # Three legend swatches, each an alpha fill rect plus a border rect.
-        assert_equal 6, calls_named(:Rect).length
+        pdf = render_with_charts("{{ai_helper_chart(progress, version=12)}}", metrics)
+
+        assert_includes pdf_text(pdf), "Not started (0)"
+        segments = calls_named(:Rect).select { |_, args| args[3] > 3 }
+        assert_equal 4, segments.length
+      end
+
+      should "write the open_closed tile as a title and a number, without drawing shapes" do
+        pdf = render_with_charts("{{ai_helper_chart(open_closed, version=12)}}")
+
+        text = pdf_text(pdf)
+        assert_includes text, "Open vs Closed Issues - 1.0.0"
+        assert_includes text, I18n.t("ai_helper.health_report_chart.tile_summary", closed: 5, total: 15, rate: 33)
+        assert_empty calls_named(:Rect)
+        assert_empty calls_named(:PieSector)
       end
 
       should "draw a horizontal bar per item below its label row" do
@@ -260,7 +273,6 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
         text = pdf_text(pdf)
         assert_includes text, "Alice (6)"
         assert_includes text, "Bob (2)"
-        # Two items, each with an alpha fill rect and a border rect.
         assert_equal 4, calls_named(:Rect).length
         widths = calls_named(:Rect).map { |_, args| args[2] }.uniq.sort
         assert_in_delta widths.last / 3.0, widths.first, 0.001
@@ -274,7 +286,7 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
         pdf = render_with_charts("{{ai_helper_chart(status, version=12)}}", metrics)
 
         assert_includes pdf_text(pdf), l(:label_no_data)
-        assert_empty calls_named(:PieSector)
+        assert_empty calls_named(:Rect)
       end
 
       should "write the unavailable message as a paragraph" do
@@ -296,7 +308,7 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
       should "add a page before drawing a chart that does not fit below the cursor" do
         pdf = Redmine::Export::PDF::ITCPDF.new(current_language)
         pdf.add_page
-        # Leave less room than the doughnut needs, but enough for its title
+        # Leave less room than the chart needs, but enough for its title
         # cell, so only the explicit check can move the chart.
         pdf.set_y(pdf.get_page_height - pdf.get_break_margin - 20)
         chart = RedmineAiHelper::HealthReportChart::Resolver.new(CHART_METRICS)
@@ -307,8 +319,8 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
 
         names = PdfCallRecorder.calls.map(&:first)
         assert_equal :AddPage, names.first, "a page must be added before any chart shape"
-        sector_center_y = calls_named(:PieSector).first[1][1]
-        assert_operator sector_center_y, :<, 80, "the doughnut must be drawn at the top of the new page"
+        first_bar_y = calls_named(:Rect).first[1][1]
+        assert_operator first_bar_y, :<, 80, "the chart must be drawn at the top of the new page"
       end
 
       should "not add a page when the chart fits below the cursor" do
@@ -321,7 +333,7 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
         send(:render_pdf_chart, pdf, chart, 10, "L")
 
         assert_empty calls_named(:AddPage)
-        assert_not_empty calls_named(:PieSector)
+        assert_not_empty calls_named(:Rect)
       end
 
       should "raise ArgumentError when the charts option is not a Resolver" do
@@ -343,11 +355,11 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
 
         render_with_charts("Text\n\n{{ai_helper_chart(status, version=12)}}")
 
-        assert_operator calls_named(:PieSector).length, :>, 0
+        assert_operator calls_named(:Rect).length, :>, 0
       end
 
       should "not rescue a failure raised while drawing a chart" do
-        Redmine::Export::PDF::ITCPDF.any_instance.stubs(:PieSector).raises(RuntimeError.new("draw failed"))
+        Redmine::Export::PDF::ITCPDF.any_instance.stubs(:Rect).raises(RuntimeError.new("draw failed"))
 
         error = assert_raises(RuntimeError) { render_with_charts("{{ai_helper_chart(status, version=12)}}") }
         assert_equal "draw failed", error.message

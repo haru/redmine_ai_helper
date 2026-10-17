@@ -14,8 +14,8 @@ class HealthReportChartSvgRendererTest < ActiveSupport::TestCase
     Item.new(label: label, value: value, rgb: RedmineAiHelper::HealthReportChart::Palette.color_at(index))
   end
 
-  def chart(form, items, title: "Title")
-    Chart.new(title: title, form: form, items: items)
+  def chart(form, items, title: "Title", summary: nil)
+    Chart.new(title: title, form: form, items: items, summary: summary)
   end
 
   def parse(svg)
@@ -33,7 +33,7 @@ class HealthReportChartSvgRendererTest < ActiveSupport::TestCase
     end
 
     should "return a well-formed SVG document with sans-serif text" do
-      svg = SvgRenderer.render(chart(:doughnut, [ item("New (3)", 3) ]))
+      svg = SvgRenderer.render(chart(:bar, [ item("New (3)", 3) ]))
 
       document = parse(svg)
       assert_equal "svg", document.root.name
@@ -42,7 +42,7 @@ class HealthReportChartSvgRendererTest < ActiveSupport::TestCase
     end
 
     should "escape the title and labels" do
-      svg = SvgRenderer.render(chart(:doughnut, [ item("<b>&\"x\" (1)", 1) ], title: "A<script> & B"))
+      svg = SvgRenderer.render(chart(:bar, [ item("<b>&\"x\" (1)", 1) ], title: "A<script> & B"))
 
       assert_not_includes svg, "<script>"
       assert_not_includes svg, "<b>"
@@ -51,62 +51,56 @@ class HealthReportChartSvgRendererTest < ActiveSupport::TestCase
       assert_includes texts, "<b>&\"x\" (1)"
     end
 
-    context "doughnut" do
-      should "draw a ring sector path per non-zero item with outer and inner arcs" do
-        svg = SvgRenderer.render(chart(:doughnut, [ item("A (6)", 6, 0), item("B (2)", 2, 1), item("C (0)", 0, 2) ]))
+    context "stacked" do
+      should "draw one segment per non-zero item left to right with widths proportional to the values" do
+        svg = SvgRenderer.render(chart(:stacked, [ item("A (1)", 1, 0), item("B (3)", 3, 1), item("C (0)", 0, 2) ]))
 
-        paths = elements(svg, "path")
-        assert_equal 2, paths.length
-        paths.each { |path| assert_equal 2, path.attributes["d"].scan("A").length }
-        assert_equal "0.2", paths.first.attributes["fill-opacity"]
-        assert_equal "rgb(255, 99, 132)", paths.first.attributes["stroke"]
-        assert_equal "rgb(255, 99, 132)", paths.first.attributes["fill"]
+        segments = elements(svg, "rect").select { |r| r.attributes["height"].to_f > 12 }
+        assert_equal 2, segments.length
+        widths = segments.map { |r| r.attributes["width"].to_f }
+        assert_in_delta widths[0] * 3, widths[1], 0.01
+        assert_in_delta SvgRenderer::BAR_MAX_WIDTH, widths.sum, 0.01
+        xs = segments.map { |r| r.attributes["x"].to_f }
+        assert_in_delta xs[0] + widths[0], xs[1], 0.01
+        assert_equal "0.2", segments.first.attributes["fill-opacity"]
+        assert_equal "rgb(255, 99, 132)", segments.first.attributes["stroke"]
       end
 
-      should "start the first sector at 12 o'clock and go clockwise" do
-        svg = SvgRenderer.render(chart(:doughnut, [ item("A (1)", 1, 0), item("B (1)", 1, 1) ]))
+      should "list every item, including zero counts, in a legend with swatches" do
+        svg = SvgRenderer.render(chart(:stacked, [ item("A (1)", 1, 0), item("C (0)", 0, 1) ]))
 
-        first = elements(svg, "path").first.attributes["d"]
-        # The first point is the outer radius straight above the center.
-        center_x, center_y, radius = SvgRenderer::CENTER_X, SvgRenderer::CENTER_Y, SvgRenderer::RADIUS
-        assert_match(/\AM #{center_x} #{center_y - radius}/, first)
-      end
-
-      should "go clockwise and set the large-arc flag for sectors over 180 degrees" do
-        svg = SvgRenderer.render(chart(:doughnut, [ item("A (1)", 1, 0), item("B (3)", 3, 1) ]))
-
-        first, second = elements(svg, "path").map { |path| path.attributes["d"] }
-        cx, cy, r = SvgRenderer::CENTER_X, SvgRenderer::CENTER_Y, SvgRenderer::RADIUS
-        # A quarter clockwise from 12 o'clock ends at 3 o'clock (right of the center).
-        assert_match(/\AM #{cx} #{cy - r} A #{r} #{r} 0 0 1 #{cx + r} #{cy} /, first)
-        assert_match(/\AM #{cx + r} #{cy} A #{r} #{r} 0 1 1 /, second)
-      end
-
-      should "make the hole half the outer radius" do
-        svg = SvgRenderer.render(chart(:doughnut, [ item("A (6)", 6, 0), item("B (2)", 2, 1) ]))
-
-        d = elements(svg, "path").first.attributes["d"]
-        assert_includes d, "A #{SvgRenderer::RADIUS / 2} #{SvgRenderer::RADIUS / 2}"
-      end
-
-      should "draw two circles when one item occupies the whole chart" do
-        svg = SvgRenderer.render(chart(:doughnut, [ item("A (4)", 4, 0), item("B (0)", 0, 1) ]))
-
-        assert_empty elements(svg, "path")
-        circles = elements(svg, "circle")
-        assert_equal 2, circles.length
-        assert_equal "0.2", circles.first.attributes["fill-opacity"]
-        assert_equal "white", circles.last.attributes["fill"]
-        assert_equal SvgRenderer::RADIUS / 2.0, circles.last.attributes["r"].to_f
-      end
-
-      should "draw a legend swatch and label for every item including zero counts" do
-        svg = SvgRenderer.render(chart(:doughnut, [ item("A (6)", 6, 0), item("C (0)", 0, 1) ]))
-
-        assert_equal 2, elements(svg, "rect").length
         texts = elements(svg, "text").map(&:text)
-        assert_includes texts, "A (6)"
+        assert_includes texts, "A (1)"
         assert_includes texts, "C (0)"
+        swatches = elements(svg, "rect").select { |r| r.attributes["height"].to_f <= 12 }
+        assert_equal 2, swatches.length
+      end
+
+      should "never draw circles or arcs" do
+        svg = SvgRenderer.render(chart(:stacked, [ item("A (1)", 1, 0), item("B (1)", 1, 1) ]))
+
+        assert_empty elements(svg, "circle")
+        assert_empty elements(svg, "path")
+      end
+    end
+
+    context "tile" do
+      should "write the title and the summary as text without shapes" do
+        svg = SvgRenderer.render(chart(:tile, [ item("Open (10)", 10, 0), item("Closed (5)", 5, 1) ], title: "Open vs Closed", summary: "5 of 15 closed (33%)"))
+
+        texts = elements(svg, "text").map(&:text)
+        assert_includes texts, "Open vs Closed"
+        assert_includes texts, "5 of 15 closed (33%)"
+        assert_empty elements(svg, "rect")
+        assert_empty elements(svg, "path")
+        assert_empty elements(svg, "circle")
+      end
+
+      should "escape the summary" do
+        svg = SvgRenderer.render(chart(:tile, [ item("Open (1)", 1) ], summary: "<b>1 & 2</b>"))
+
+        assert_not_includes svg, "<b>"
+        assert_includes elements(svg, "text").map(&:text), "<b>1 & 2</b>"
       end
     end
 
@@ -133,7 +127,7 @@ class HealthReportChartSvgRendererTest < ActiveSupport::TestCase
     end
 
     should "write the title and no-data message for a chart without data" do
-      svg = SvgRenderer.render(chart(:doughnut, [], title: "Empty"))
+      svg = SvgRenderer.render(chart(:bar, [], title: "Empty"))
 
       texts = elements(svg, "text").map(&:text)
       assert_includes texts, "Empty"

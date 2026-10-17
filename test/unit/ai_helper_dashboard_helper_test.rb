@@ -84,7 +84,7 @@ class AiHelperDashboardHelperTest < ActionView::TestCase
       assert_not_includes html, "ai_helper_chart"
 
       json = extract_chart_json(html)
-      assert_equal "doughnut", json["form"]
+      assert_equal "bar", json["form"]
       assert_equal "Issues by Status - 1.0.0", json["title"]
       assert_equal [ "New (3)", "Closed (1)" ], json["labels"]
       assert_equal [ 3, 1 ], json["values"]
@@ -92,19 +92,58 @@ class AiHelperDashboardHelperTest < ActionView::TestCase
       assert_equal [ "rgb(255, 99, 132)", "rgb(54, 162, 235)" ], json["borderColors"]
     end
 
+    should "render progress as a canvas with the stacked form" do
+      metrics = [ { version_id: 12, version_name: "1.0.0",
+                    metrics: { progress_metrics: { completion_distribution: { not_started: 3, in_progress: 2, completed: 5 } } } } ].to_json
+      report = AiHelperHealthReport.create!(project: Project.find(1), user: User.find(1), health_report: "x", metrics: metrics)
+
+      html = render_health_report_markdown("{{ai_helper_chart(progress, version=12)}}", report: report)
+
+      json = extract_chart_json(html)
+      assert_equal "stacked", json["form"]
+      assert_equal [ 3, 2, 5 ], json["values"]
+    end
+
+    should "render open_closed as a number tile without a canvas" do
+      metrics = [ { version_id: 12, version_name: "1.0.0", metrics: { issue_statistics: { open_issues: 10, closed_issues: 5 } } } ].to_json
+      report = AiHelperHealthReport.create!(project: Project.find(1), user: User.find(1), health_report: "x", metrics: metrics)
+
+      html = render_health_report_markdown("{{ai_helper_chart(open_closed, version=12)}}", report: report)
+
+      fragment = Nokogiri::HTML::DocumentFragment.parse(html)
+      assert_select fragment, "div.ai-helper-health-report-chart.box" do
+        assert_select "p strong", text: "Open vs Closed Issues - 1.0.0"
+        assert_select "h2", text: I18n.t("ai_helper.health_report_chart.tile_summary", closed: 5, total: 15, rate: 33)
+      end
+      assert_select fragment, "canvas", 0
+      assert_not_includes html, "data-ai-helper-chart"
+    end
+
+    should "escape the tile summary and title" do
+      metrics = [ { version_id: 12, version_name: "<i>x</i>", metrics: { issue_statistics: { open_issues: 1, closed_issues: 1 } } } ].to_json
+      report = AiHelperHealthReport.create!(project: Project.find(1), user: User.find(1), health_report: "x", metrics: metrics)
+
+      html = render_health_report_markdown("{{ai_helper_chart(open_closed, version=12)}}", report: report)
+
+      assert_not_includes html, "<i>x</i>"
+      assert_includes html, "&lt;i&gt;x&lt;/i&gt;"
+    end
+
     should "draw several directives in the order they appear" do
       metrics = [
         { version_id: 12, version_name: "1.0.0",
-          metrics: { issue_statistics: { by_status: { "New" => 3 }, open_issues: 2, closed_issues: 1 } } }
+          metrics: { issue_statistics: { by_status: { "New" => 3 }, by_tracker: { "Bug" => 2 }, open_issues: 2, closed_issues: 1 } } }
       ].to_json
       report = AiHelperHealthReport.create!(project: Project.find(1), user: User.find(1), health_report: "x", metrics: metrics)
-      body = "{{ai_helper_chart(open_closed, version=12)}}\n\nmiddle\n\n{{ai_helper_chart(status, version=12)}}"
+      body = "{{ai_helper_chart(tracker, version=12)}}\n\nmiddle\n\n{{ai_helper_chart(status, version=12)}}\n\n{{ai_helper_chart(open_closed, version=12)}}"
 
       html = render_health_report_markdown(body, report: report)
 
       titles = html.scan(/aria-label="([^"]*)"/).flatten
-      assert_equal [ "Open vs Closed Issues - 1.0.0", "Issues by Status - 1.0.0" ], titles
-      assert_operator html.index("Open vs Closed"), :<, html.index("<p>middle</p>")
+      assert_equal [ "Issues by Tracker - 1.0.0", "Issues by Status - 1.0.0" ], titles
+      assert_operator html.index("Issues by Tracker"), :<, html.index("<p>middle</p>")
+      assert_operator html.index("<p>middle</p>"), :<, html.index("Issues by Status")
+      assert_operator html.index("Issues by Status"), :<, html.index("Open vs Closed Issues")
     end
 
     should "keep an issue-like name in a chart untouched by issue linking" do

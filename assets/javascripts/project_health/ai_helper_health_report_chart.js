@@ -7,14 +7,25 @@
 
 // Chart.js option builders per payload form. The payload is the JSON stored
 // in the canvas' data-ai-helper-chart attribute.
+// Upper limit (px) of one bar's thickness. Without it a chart with a single
+// item stretches its bar over the whole canvas height.
+const MAX_BAR_THICKNESS = 48;
+
+// Container height (px) of a horizontal bar chart: room for the title and the
+// value axis plus one row per bar, so the height follows the bar count.
+const BAR_CHART_BASE_HEIGHT = 80;
+const BAR_CHART_ROW_HEIGHT = 36;
+// Container height (px) of the single stacked bar: title, bar, axis, legend.
+const STACKED_CHART_HEIGHT = 170;
+
 const FORM_CONFIG_BUILDERS = {
-  doughnut: buildDoughnutConfig,
   bar: buildBarConfig,
+  stacked: buildStackedConfig,
 };
 
 /**
- * Build the single dataset shared by every form: per-item colors, border
- * width 1.
+ * Build the single dataset of a bar chart: per-item colors, border width 1,
+ * capped bar thickness.
  * @param {{values: number[], fillColors: string[], borderColors: string[]}} payload
  *   The parsed chart payload.
  * @returns {object} The Chart.js dataset.
@@ -25,24 +36,44 @@ function datasetOf(payload) {
     backgroundColor: payload.fillColors,
     borderColor: payload.borderColors,
     borderWidth: 1,
+    maxBarThickness: MAX_BAR_THICKNESS,
   };
 }
 
 /**
- * Build the Chart.js configuration for a doughnut chart: a ring whose hole
- * is half the radius (cutout 50%), with the legend on the right.
- * @param {{title: string, labels: string[]}} payload - The parsed payload.
+ * Build the Chart.js configuration for one stacked horizontal bar: a dataset
+ * per item so every segment keeps its own color and legend entry, with the
+ * legend at the bottom.
+ * @param {{title: string, labels: string[], values: number[], fillColors: string[],
+ *   borderColors: string[]}} payload - The parsed payload.
  * @returns {object} The Chart.js configuration.
  */
-function buildDoughnutConfig(payload) {
+function buildStackedConfig(payload) {
   return {
-    type: "doughnut",
-    data: { labels: payload.labels, datasets: [datasetOf(payload)] },
+    type: "bar",
+    data: {
+      labels: [""],
+      datasets: payload.labels.map(function (label, index) {
+        return {
+          label: label,
+          data: [payload.values[index]],
+          backgroundColor: payload.fillColors[index],
+          borderColor: payload.borderColors[index],
+          borderWidth: 1,
+          maxBarThickness: MAX_BAR_THICKNESS,
+        };
+      }),
+    },
     options: {
-      cutout: "50%",
+      indexAxis: "y",
+      maintainAspectRatio: false,
       plugins: {
         title: { display: true, text: payload.title },
-        legend: { display: true, position: "right" },
+        legend: { display: true, position: "bottom" },
+      },
+      scales: {
+        x: { stacked: true, ticks: { precision: 0 } },
+        y: { stacked: true },
       },
     },
   };
@@ -60,6 +91,7 @@ function buildBarConfig(payload) {
     data: { labels: payload.labels, datasets: [datasetOf(payload)] },
     options: {
       indexAxis: "y",
+      maintainAspectRatio: false,
       plugins: {
         title: { display: true, text: payload.title },
         legend: { display: false },
@@ -69,6 +101,21 @@ function buildBarConfig(payload) {
       },
     },
   };
+}
+
+/**
+ * Give the canvas' container the chart's height. Chart.js fills a dedicated,
+ * relatively positioned container when the aspect ratio is not kept.
+ * @param {HTMLCanvasElement} canvas - The canvas to size the container of.
+ * @param {{form: string, labels: string[]}} payload - The parsed payload.
+ */
+function sizeContainer(canvas, payload) {
+  const container = canvas.parentElement;
+  const height = payload.form === "stacked"
+    ? STACKED_CHART_HEIGHT
+    : BAR_CHART_BASE_HEIGHT + BAR_CHART_ROW_HEIGHT * payload.labels.length;
+  container.style.position = "relative";
+  container.style.height = `${height}px`;
 }
 
 /**
@@ -100,6 +147,7 @@ function drawCanvas(canvas) {
     throw new Error(`Unsupported chart form: ${payload.form}`);
   }
   const config = builder(payload);
+  sizeContainer(canvas, payload);
   // Mark before drawing so the MutationObserver never re-processes the
   // canvas while a slow loadChart() is still in flight.
   canvas.setAttribute("data-ai-helper-chart-rendered", "");

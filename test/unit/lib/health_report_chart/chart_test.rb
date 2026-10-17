@@ -90,10 +90,10 @@ class HealthReportChartChartTest < ActiveSupport::TestCase
 
   context "Chart" do
     should "accept a valid chart" do
-      chart = RedmineAiHelper::HealthReportChart::Chart.new(title: "Issues by Status - 1.0", form: :doughnut, items: [ build_item ])
+      chart = RedmineAiHelper::HealthReportChart::Chart.new(title: "Issues by Status - 1.0", form: :bar, items: [ build_item ])
 
       assert_equal "Issues by Status - 1.0", chart.title
-      assert_equal :doughnut, chart.form
+      assert_equal :bar, chart.form
       assert_equal 1, chart.items.length
       assert_not chart.no_data?
     end
@@ -101,14 +101,14 @@ class HealthReportChartChartTest < ActiveSupport::TestCase
     should "raise ArgumentError when the title is empty, nil or not a String" do
       [ "", nil, 12 ].each do |title|
         error = assert_raises(ArgumentError) do
-          RedmineAiHelper::HealthReportChart::Chart.new(title: title, form: :doughnut, items: [])
+          RedmineAiHelper::HealthReportChart::Chart.new(title: title, form: :bar, items: [])
         end
         assert_match(/title/, error.message)
       end
     end
 
-    should "raise ArgumentError when the form is not :doughnut or :bar" do
-      [ :pie, "doughnut", nil ].each do |form|
+    should "raise ArgumentError when the form is not :bar, :stacked or :tile" do
+      [ :doughnut, :pie, "bar", nil ].each do |form|
         assert_raises(ArgumentError) do
           RedmineAiHelper::HealthReportChart::Chart.new(title: "t", form: form, items: [])
         end
@@ -137,20 +137,46 @@ class HealthReportChartChartTest < ActiveSupport::TestCase
       assert_equal 7, RedmineAiHelper::HealthReportChart::Chart::MAX_ITEMS
     end
 
+    should "accept :stacked without a summary" do
+      chart = RedmineAiHelper::HealthReportChart::Chart.new(title: "t", form: :stacked, items: [ build_item(1) ])
+
+      assert_equal :stacked, chart.form
+      assert_nil chart.summary
+    end
+
+    should "require a non-empty String summary for :tile and keep it" do
+      chart = RedmineAiHelper::HealthReportChart::Chart.new(title: "t", form: :tile, items: [ build_item(1) ], summary: "5 / 15")
+
+      assert_equal "5 / 15", chart.summary
+      [ nil, "", 5 ].each do |summary|
+        assert_raises(ArgumentError) do
+          RedmineAiHelper::HealthReportChart::Chart.new(title: "t", form: :tile, items: [ build_item(1) ], summary: summary)
+        end
+      end
+    end
+
+    should "raise ArgumentError when a summary is given for a form that does not show one" do
+      %i[bar stacked].each do |form|
+        assert_raises(ArgumentError) do
+          RedmineAiHelper::HealthReportChart::Chart.new(title: "t", form: form, items: [ build_item(1) ], summary: "x")
+        end
+      end
+    end
+
     should "be no_data? when there are no items" do
-      chart = RedmineAiHelper::HealthReportChart::Chart.new(title: "t", form: :doughnut, items: [])
+      chart = RedmineAiHelper::HealthReportChart::Chart.new(title: "t", form: :bar, items: [])
 
       assert chart.no_data?
     end
 
     should "be no_data? when every value is 0" do
-      chart = RedmineAiHelper::HealthReportChart::Chart.new(title: "t", form: :doughnut, items: [ build_item(0), build_item(0) ])
+      chart = RedmineAiHelper::HealthReportChart::Chart.new(title: "t", form: :bar, items: [ build_item(0), build_item(0) ])
 
       assert chart.no_data?
     end
 
     should "not be no_data? when any value is positive" do
-      chart = RedmineAiHelper::HealthReportChart::Chart.new(title: "t", form: :doughnut, items: [ build_item(0), build_item(2) ])
+      chart = RedmineAiHelper::HealthReportChart::Chart.new(title: "t", form: :bar, items: [ build_item(0), build_item(2) ])
 
       assert_not chart.no_data?
     end
@@ -162,11 +188,11 @@ class HealthReportChartChartTest < ActiveSupport::TestCase
 
       assert_equal %w[assignee open_closed priority progress status tracker], types.keys.sort
       assert_equal :bar, types["assignee"][:form]
-      assert_equal :doughnut, types["status"][:form]
-      assert_equal :doughnut, types["tracker"][:form]
-      assert_equal :doughnut, types["priority"][:form]
-      assert_equal :doughnut, types["open_closed"][:form]
-      assert_equal :doughnut, types["progress"][:form]
+      assert_equal :bar, types["status"][:form]
+      assert_equal :bar, types["tracker"][:form]
+      assert_equal :bar, types["priority"][:form]
+      assert_equal :tile, types["open_closed"][:form]
+      assert_equal :stacked, types["progress"][:form]
     end
 
     should "freeze each type definition" do

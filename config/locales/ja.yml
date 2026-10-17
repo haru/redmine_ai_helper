@@ -146,6 +146,7 @@ ja:
         comparison: "比較レポートではチャートを描けません"
       unavailable: "チャートを描けません: "
       item_label: "%{name} (%{count})"
+      tile_summary: "%{total}件中%{closed}件が完了 (%{rate}%%)"
       help:
         title: "チャート指定の書き方"
         syntax: "チャート指定は 1 行で、前後を空行で区切って書きます: {{ai_helper_chart(種類, version=<バージョンID>)}} または {{ai_helper_chart(種類, period=<期間>)}}。表・リスト・コードブロックの中には書けません。数値を本文に書き写す必要はありません。"

@@ -46,9 +46,9 @@ class ProjectHealthPartialTest < ActionView::TestCase
       Role.find(1).add_permission! :view_ai_helper_health_reports
       @chart_report = AiHelperHealthReport.create!(
         project: @project, user: @user,
-        health_report: "Before\n\n{{ai_helper_chart(open_closed, version=12)}}\n\nAfter",
+        health_report: "Before\n\n{{ai_helper_chart(status, version=12)}}\n\nAfter",
         metrics: [ { version_id: 12, version_name: "1.0.0",
-                     metrics: { issue_statistics: { open_issues: 2, closed_issues: 1 } } } ].to_json
+                     metrics: { issue_statistics: { by_status: { "New" => 2, "Closed" => 1 } } } } ].to_json
       )
     end
 

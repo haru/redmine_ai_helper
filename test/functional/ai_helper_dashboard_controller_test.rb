@@ -313,9 +313,9 @@ This is a test report."
         @report = AiHelperHealthReport.create!(
           project: @project,
           user: @user,
-          health_report: "Report body\n\n{{ai_helper_chart(open_closed, version=12)}}\n\nAfter",
+          health_report: "Report body\n\n{{ai_helper_chart(status, version=12)}}\n\nAfter",
           metrics: [ { version_id: 12, version_name: "1.0.0",
-                       metrics: { issue_statistics: { open_issues: 10, closed_issues: 5 } } } ].to_json
+                       metrics: { issue_statistics: { by_status: { "New" => 10, "Closed" => 5 }, open_issues: 10, closed_issues: 5 } } } ].to_json
         )
       end
 
@@ -324,8 +324,8 @@ This is a test report."
 
         assert_response :success
         text = pdf_text(response.body)
-        assert_includes text, "Open vs Closed Issues - 1.0.0"
-        assert_includes text, "#{l(:label_open_issues)} (10)"
+        assert_includes text, "Issues by Status - 1.0.0"
+        assert_includes text, "New (10)"
         assert_not_includes text, "{{ai_helper_chart"
       end
 
@@ -410,9 +410,9 @@ This is a test report."
         @report = AiHelperHealthReport.create!(
           project: @project,
           user: @user,
-          health_report: "Report body\n\n{{ai_helper_chart(open_closed, version=12)}}\n\nAfter",
+          health_report: "Report body\n\n{{ai_helper_chart(status, version=12)}}\n\nAfter",
           metrics: [ { version_id: 12, version_name: "1.0.0",
-                       metrics: { issue_statistics: { open_issues: 10, closed_issues: 5 } } } ].to_json
+                       metrics: { issue_statistics: { by_status: { "New" => 10, "Closed" => 5 }, open_issues: 10, closed_issues: 5 } } } ].to_json
         )
       end
 
@@ -1675,7 +1675,7 @@ This is a test report."
         @report = AiHelperHealthReport.create!(
           project: @project, user: @user, health_report: "AI body",
           metrics: [ { version_id: 12, version_name: "1.0.0",
-                       metrics: { issue_statistics: { open_issues: 10, closed_issues: 5 } } } ].to_json
+                       metrics: { issue_statistics: { by_status: { "New" => 10, "Closed" => 5 }, open_issues: 10, closed_issues: 5 } } } ].to_json
         )
       end
 
@@ -1714,12 +1714,12 @@ This is a test report."
       should "render chart directives from the report's stored metrics" do
         post :health_report_preview, params: {
           id: @project.id, report_id: @report.id,
-          text: "Before\n\n{{ai_helper_chart(open_closed, version=12)}}\n\nAfter"
+          text: "Before\n\n{{ai_helper_chart(status, version=12)}}\n\nAfter"
         }
 
         assert_response :success
         assert_includes response.body, "data-ai-helper-chart"
-        assert_includes response.body, "Open vs Closed Issues - 1.0.0"
+        assert_includes response.body, "Issues by Status - 1.0.0"
         assert_not_includes response.body, "{{ai_helper_chart"
       end
 
@@ -1760,16 +1760,16 @@ This is a test report."
       should "put the chart svgs in the zip and replace the directive with an image" do
         chart_report = AiHelperHealthReport.create!(
           project: @project, user: @user,
-          health_report: "Before\n\n{{ai_helper_chart(open_closed, version=12)}}\n\nAfter",
+          health_report: "Before\n\n{{ai_helper_chart(status, version=12)}}\n\nAfter",
           metrics: [ { version_id: 12, version_name: "1.0.0",
-                       metrics: { issue_statistics: { open_issues: 10, closed_issues: 5 } } } ].to_json
+                       metrics: { issue_statistics: { by_status: { "New" => 10, "Closed" => 5 }, open_issues: 10, closed_issues: 5 } } } ].to_json
         )
 
         get :health_report_markdown, params: { id: @project.id, report_id: chart_report.id }
 
         entries = zip_entries(response.body)
         markdown = entries["#{@project.identifier}-health-report-#{chart_report.created_at.strftime("%Y%m%d")}.md"]
-        assert_equal "Before\n\n![Open vs Closed Issues - 1.0.0](charts/chart-1.svg)\n\nAfter", markdown
+        assert_equal "Before\n\n![Issues by Status - 1.0.0](charts/chart-1.svg)\n\nAfter", markdown
         assert_includes entries["charts/chart-1.svg"], "<svg"
       end
 

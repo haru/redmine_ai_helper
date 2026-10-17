@@ -243,9 +243,9 @@ interpret them (or ignore them).
 
 - The directive must occupy a whole line (up to 3 leading spaces) outside fenced
   code blocks. Spaces around the comma and `=` are ignored.
-- `<type>`: `status`, `tracker`, `priority`, `assignee`, `open_closed`, `progress`
-  (issues by status / tracker / priority / assignee, open vs closed, progress
-  distribution).
+- `<type>`: `status`, `tracker`, `priority`, `assignee` (horizontal bars by
+  count), `progress` (one stacked bar of not started / in progress / completed)
+  and `open_closed` (a number tile with the completion rate, not a chart).
 - `<version_id>`: the numeric id of a version in the report's stored metrics.
 - `<period_key>`: `last_week`, `last_month`, `all_time` or `recent`.
 - A directive that cannot be drawn (unknown type or target, no stored metrics)

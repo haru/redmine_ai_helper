@@ -101,3 +101,5 @@ A concrete, checkable rule to apply when writing future specifications.
 | [SF-018](./018-disabled-link-required-without-checking-redmine-css.md) | Required a visibly disabled link without checking that Redmine has a style for it | unconfirmed-assumption | 077-fix-dashboard-health-report-error | AGENTS.md |
 | [SF-019](./019-streaming-placeholder-visibility-assumed.md) | Allowed raw chart directives to show during streaming without asking | unconfirmed-assumption | 078-health-report-charts | Not yet |
 | [SF-020](./020-chart-form-chosen-for-implementation-ease.md) | Chose one chart form for every chart type for implementation ease without asking | unconfirmed-assumption | 078-health-report-charts | AGENTS.md |
+| [SF-021](./021-chart-form-heuristic-applied-mechanically.md) | Applied a chart-form heuristic to every type without checking what each chart tells the reader | intent-misread | 078-health-report-charts | Not yet |
+| [SF-022](./022-semantic-color-ignored-for-ordered-stages.md) | Assigned palette colors by position to stages that carry a meaning | unconfirmed-assumption | 078-health-report-charts | Not yet |

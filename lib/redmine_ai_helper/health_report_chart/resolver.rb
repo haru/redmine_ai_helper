@@ -144,10 +144,12 @@ module RedmineAiHelper
         values = extract_values(definition, element)
         return unavailable(:data_missing) if values.nil?
 
+        items = build_items(definition, values)
         Chart.new(
           title: "#{l(definition[:title_key])} - #{target_display_name(directive, element)}",
           form: definition[:form],
-          items: build_items(definition, values)
+          items: items,
+          summary: definition[:form] == :tile ? tile_summary(values) : nil
         )
       end
 
@@ -194,6 +196,17 @@ module RedmineAiHelper
         end
       end
 
+      # The number shown by an open/closed tile: closed of total and the
+      # rounded completion rate. Called only for the :open_closed kind, whose
+      # fixed values are [[open label, open], [closed label, closed]].
+      def tile_summary(values)
+        open_issues = values[0][1]
+        closed_issues = values[1][1]
+        total = open_issues + closed_issues
+        rate = total.zero? ? 0 : (closed_issues * 100.0 / total).round
+        l("ai_helper.health_report_chart.tile_summary", closed: closed_issues, total: total, rate: rate)
+      end
+
       # A stored count is usable only as a non-negative Integer.
       def count?(value)
         value.is_a?(Integer) && value >= 0
@@ -202,7 +215,8 @@ module RedmineAiHelper
       def build_items(definition, values)
         pairs = definition[:item_mode] == :variable ? variable_pairs(values) : values
         pairs.each_with_index.map do |(name, count), index|
-          Item.new(label: item_label(name, count), value: count, rgb: Palette.color_at(index))
+          rgb = definition[:kind] == :progress ? Palette::PROGRESS_COLORS.fetch(index) : Palette.color_at(index)
+          Item.new(label: item_label(name, count), value: count, rgb: rgb)
         end
       end
 
