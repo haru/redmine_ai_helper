@@ -182,6 +182,13 @@ describe("ai_helper_comparison", () => {
     sendChunk(source, "text");
 
     expect(() => frames.flush()).toThrow(TypeError);
+
+    // The final frame is no longer guarded by the bare catch either: a
+    // render failure there must surface instead of leaving the cursor
+    // frame stuck without exports or console output (CRF-047).
+    expect(() => source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) })).toThrow(TypeError);
+    expect(resultDiv.innerHTML).not.toContain("ai-helper-final-content");
+    expect(source.closed).toBe(true);
   });
 
   it("coalesces chunks that arrive within one animation frame into a single render", async () => {
@@ -237,15 +244,22 @@ describe("ai_helper_comparison", () => {
     expect(resultDiv.innerHTML).toContain("ai-helper-error");
   });
 
-  it("ignores malformed SSE payloads without throwing", async () => {
+  it("logs a malformed SSE payload as a parse failure and keeps receiving", async () => {
     const resultDiv = addResultDiv();
     addExportUi();
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
     await load();
     const source = FakeEventSource.instances[0];
 
     expect(() => source.onmessage({ data: "not json" })).not.toThrow();
+    expect(consoleError).toHaveBeenCalledWith(
+      "Failed to parse comparison streaming event data:",
+      expect.any(SyntaxError),
+      "not json",
+    );
     expect(resultDiv.innerHTML).toContain("ai-helper-loader");
+    consoleError.mockRestore();
   });
 
   it("shows a translated error message and closes the stream on error", async () => {

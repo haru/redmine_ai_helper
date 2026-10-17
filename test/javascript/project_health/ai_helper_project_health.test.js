@@ -341,9 +341,10 @@ describe("ai_helper_project_health", () => {
         /result area must have a \.ai-helper-project-health-content ancestor/,
       );
     });
-    it("validates the result area before replacing the report body", async () => {
+    it("shows the swap error box when the result area fails the structural guard", async () => {
       const { resultDiv } = createDashboardDetailPane(container);
       const link = addGenerateLink();
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
       await load();
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
@@ -351,15 +352,16 @@ describe("ai_helper_project_health", () => {
 
       // Detaching the result area from its content container is the
       // structural failure the guard exists for: the finalized body must
-      // not replace the page (nor the detached node) before the guard runs,
-      // or the pane would look finished while history, export links and the
-      // timestamp were never updated.
+      // not replace the page (nor the detached node) before the guard runs.
+      // The synchronous throw is no longer left to propagate out of
+      // onmessage (a .catch would never see it); finishGeneration reports
+      // it through showSavedReportSwapError instead (CRF-047).
       resultDiv.remove();
-      expect(() => sendStop(source)).toThrow(/ai-helper-project-health-content/);
-      // The click left the loader in the result area; a finalize that ran
-      // before the guard would have replaced it with the finished body.
-      expect(resultDiv.innerHTML).toContain("ai-helper-loader");
+      expect(() => sendStop(source)).not.toThrow();
+      expect(resultDiv.querySelector(".ai-helper-error")).not.toBeNull();
       expect(resultDiv.innerHTML).not.toContain("ai-helper-final-content");
+      expect(consoleError).toHaveBeenCalledWith(expect.any(String), expect.any(Error));
+      consoleError.mockRestore();
     });
   });
 

@@ -29,7 +29,17 @@ module RedmineAiHelper
 
       # A target that can be addressed by a chart directive, built from the
       # stored metrics. Shown in the edit-form help and the LLM guide.
-      Target = Data.define(:identifier, :display_name)
+      Target = Data.define(:identifier, :display_name) do
+        # @param identifier [String] non-empty "kind=value" expression
+        # @param display_name [String] non-empty display name
+        # @raise [ArgumentError] when an attribute violates the invariants
+        def initialize(identifier:, display_name:)
+          raise ArgumentError, "identifier must be a non-empty String" unless identifier.is_a?(String) && !identifier.empty?
+          raise ArgumentError, "display_name must be a non-empty String" unless display_name.is_a?(String) && !display_name.empty?
+
+          super
+        end
+      end
 
       # @param metrics_json [String, nil] the stored metrics JSON; nil means
       #   the body has no stored metrics
@@ -104,9 +114,12 @@ module RedmineAiHelper
         nil
       end
 
-      # A version element is addressable only with an Integer id and a String name.
+      # A version element is addressable only with a positive Integer id and
+      # a non-empty String name, so a corrupt stored value never reaches the
+      # LLM guide as "version=-1 ()".
       def version_element?(element)
-        element["version_id"].is_a?(Integer) && element["version_name"].is_a?(String)
+        element["version_id"].is_a?(Integer) && element["version_id"] >= 1 &&
+          element["version_name"].is_a?(String) && !element["version_name"].empty?
       end
 
       def unavailable(reason, **interpolations)
@@ -184,7 +197,8 @@ module RedmineAiHelper
 
           [ [ l(:label_open_issues), open_issues ], [ l(:label_closed_issues), closed_issues ] ]
         when :progress
-          distribution = metrics.dig("progress_metrics", "completion_distribution")
+          progress_metrics = metrics["progress_metrics"].is_a?(Hash) ? metrics["progress_metrics"] : {}
+          distribution = progress_metrics["completion_distribution"]
           return nil unless distribution.is_a?(Hash)
 
           [ :not_started, :in_progress, :completed ].map do |key|
@@ -193,6 +207,10 @@ module RedmineAiHelper
 
             [ l("ai_helper.health_report_chart.items.#{key}"), value ]
           end
+        else
+          # Unreachable while every ChartType kind is one of the kinds above;
+          # the ChartType shape test keeps that true (CRF-010).
+          raise ArgumentError, "unknown chart kind: #{definition[:kind].inspect}"
         end
       end
 

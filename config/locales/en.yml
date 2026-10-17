@@ -147,6 +147,7 @@ en:
       unavailable: "Cannot draw the chart: "
       item_label: "%{name} (%{count})"
       tile_summary: "%{closed} of %{total} closed (%{rate}%%)"
+      draw_failed: "The chart could not be drawn."
       help:
         title: "Chart directives"
         syntax: "Write a chart directive on a single line, surrounded by blank lines: {{ai_helper_chart(type, version=<version_id>)}} or {{ai_helper_chart(type, period=<period>)}}. Do not place it inside tables, lists, or code blocks. There is no need to copy the numbers into the text."

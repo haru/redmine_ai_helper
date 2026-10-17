@@ -29,6 +29,34 @@ class HealthReportChartChartTest < ActiveSupport::TestCase
     end
   end
 
+  context "ChartType definitions" do
+    # Resolver#extract_values switches over definition[:kind]; a definition
+    # with a kind outside that switch would turn every chart of its type
+    # silently into data_missing. This test is the guard that keeps every
+    # definition inside the switch (CRF-050).
+    should "keep every type inside the forms, kinds and item modes the resolver understands" do
+      kinds = %i[hash open_closed progress]
+      item_modes = %i[variable fixed]
+
+      RedmineAiHelper::HealthReportChart::ChartType.each do |key, definition|
+        assert RedmineAiHelper::HealthReportChart::Chart::FORMS.include?(definition[:form]),
+               "#{key}: unknown form #{definition[:form].inspect}"
+        assert kinds.include?(definition[:kind]),
+               "#{key}: unknown kind #{definition[:kind].inspect}"
+        assert item_modes.include?(definition[:item_mode]),
+               "#{key}: unknown item_mode #{definition[:item_mode].inspect}"
+        assert definition[:title_key].is_a?(String) && !definition[:title_key].empty?,
+               "#{key}: title_key must be a non-empty String"
+        assert I18n.exists?(definition[:title_key]),
+               "#{key}: title_key #{definition[:title_key]} has no translation"
+        if definition[:kind] == :hash
+          assert definition[:key].is_a?(String) && !definition[:key].empty?,
+                 "#{key}: the :hash kind needs the metrics key to read"
+        end
+      end
+    end
+  end
+
   context "Palette immutability" do
     should "freeze every color triple so a returned rgb cannot repaint the palette" do
       RedmineAiHelper::HealthReportChart::Palette::COLORS.each { |rgb| assert_predicate rgb, :frozen? }

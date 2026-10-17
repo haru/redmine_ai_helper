@@ -32,6 +32,12 @@
 %>
 
 
+<% # chart.min must be in the head on every branch of this partial: after the
+   # first generation the swapped-in server-rendered body contains chart
+   # canvases even when this render showed only the placeholder or an error
+   # (R-007, CRF-048). %>
+<% ai_helper_chart_heads %>
+
 <div class="ai-helper-project-health box"<%= ' dir="rtl"'.html_safe if l(:direction) == 'rtl' %>>
   <h3><%= sprite_icon("ai-helper-robot", t('ai_helper.project_health.title'), plugin: :redmine_ai_helper) %></h3>
   <div class="contextual">
@@ -59,7 +65,6 @@
   <div class="ai-helper-project-health-content<% if health_report && !health_report.is_a?(Hash) %> has-report<% end %>">
     <% if health_report && !health_report.is_a?(Hash) %>
       <div id="ai-helper-project-health-result" class="ai-helper-final-content">
-        <% ai_helper_chart_heads if persisted_report %>
         <%= render_health_report_markdown(health_report.to_s, report: persisted_report) %>
       </div>
       <!-- Hidden field to store the health report content for PDF generation -->

@@ -1,9 +1,11 @@
 // Draw the charts that the server rendered as <canvas data-ai-helper-chart>
 // elements inside a health report (see _health_report_chart.html.erb).
 // Chart.js comes either from Redmine's global (chart.min, Redmine 6.x) or
-// from the importmap's dynamic import (Redmine 7.x). Newly added subtrees
-// are drawn too, so charts appear when a report arrives over streaming or
-// through an Ajax update.
+// from the importmap's dynamic import (Redmine 7.x). Chart directives are
+// stripped while a report is still streaming; the canvases first appear in
+// the server-rendered body that is swapped in when the generation finishes
+// (or that ships with the page on reload), so newly added subtrees are
+// drawn too.
 
 // Chart.js option builders per payload form. The payload is the JSON stored
 // in the canvas' data-ai-helper-chart attribute.
@@ -138,7 +140,7 @@ function loadChart() {
  * payload surfaces immediately instead of inside a promise.
  * @param {HTMLCanvasElement} canvas - The canvas carrying the payload.
  * @throws {SyntaxError} When the payload is not valid JSON.
- * @throws {Error} When the payload's form is not doughnut or bar.
+ * @throws {Error} When the payload's form is not bar or stacked.
  */
 function drawCanvas(canvas) {
   const payload = JSON.parse(canvas.getAttribute("data-ai-helper-chart"));
@@ -157,26 +159,46 @@ function drawCanvas(canvas) {
     new ChartClass(canvas, config);
     return;
   }
-  window.AiHelperHealthReportChart.loadChart().then(
-    function (loaded) {
-      new loaded(canvas, config);
-    },
-    function (error) {
-      // Leave the canvas undrawn-looking so a later insertion can retry, and
-      // surface the failure instead of an unexplained blank chart.
-      canvas.removeAttribute("data-ai-helper-chart-rendered");
-      console.error("Failed to load Chart.js for a health report chart:", error);
-    },
-  );
+  // .then().catch() instead of .then(onFulfilled, onRejected) so a failure
+  // inside the fulfilled handler (the Chart constructor) is caught too.
+  window.AiHelperHealthReportChart.loadChart().then(function (loaded) {
+    new loaded(canvas, config);
+  }).catch(function (error) {
+    // The canvas is marked failed so it is never re-processed, and the
+    // failure is shown next to it instead of an unexplained blank box.
+    canvas.setAttribute("data-ai-helper-chart-failed", "");
+    reportCanvasFailure(canvas, error);
+  });
+}
+
+/**
+ * Report one canvas' drawing failure: log it and show a visible warning
+ * next to the chart, so a broken payload or a failed Chart.js load never
+ * looks like an ordinary blank chart.
+ * @param {HTMLCanvasElement} canvas - The canvas that failed to draw.
+ * @param {Error} error - The failure.
+ */
+function reportCanvasFailure(canvas, error) {
+  console.error("Failed to draw a health report chart:", error);
+  const container = canvas.parentElement;
+  if (!container || !container.parentElement) {
+    return;
+  }
+  const message = container.getAttribute("data-chart-error-message") || "Failed to draw the chart.";
+  const warning = document.createElement("p");
+  warning.className = "warning";
+  warning.textContent = message;
+  container.parentElement.insertBefore(warning, container.nextSibling);
 }
 
 /**
  * Draw every not-yet-rendered chart canvas inside the given element,
- * including the element itself when it is a chart canvas.
+ * including the element itself when it is a chart canvas. A canvas that
+ * fails to draw is reported and skipped; the other canvases are still
+ * drawn.
  * @param {Element|Document} root - The element (or document) to search for
  *   chart canvases.
- * @throws {SyntaxError} When any canvas payload is not valid JSON.
- * @throws {Error} When any canvas payload's form is unsupported.
+ * @returns {void}
  */
 function renderWithin(root) {
   const canvases = Array.prototype.slice.call(root.querySelectorAll("canvas[data-ai-helper-chart]"));
@@ -184,16 +206,21 @@ function renderWithin(root) {
     canvases.unshift(root);
   }
   canvases.forEach(function (canvas) {
-    if (canvas.hasAttribute("data-ai-helper-chart-rendered")) {
+    if (canvas.hasAttribute("data-ai-helper-chart-rendered") || canvas.hasAttribute("data-ai-helper-chart-failed")) {
       return;
     }
-    drawCanvas(canvas);
+    try {
+      drawCanvas(canvas);
+    } catch (error) {
+      canvas.setAttribute("data-ai-helper-chart-failed", "");
+      reportCanvasFailure(canvas, error);
+    }
   });
 }
 
 /**
  * Draw the whole document once loaded and keep drawing every subtree added
- * afterwards (streaming results, Ajax-refreshed panes, previews).
+ * afterwards (swapped-in saved reports, Ajax-refreshed panes, previews).
  * @returns {void}
  */
 function startChartRendering() {

@@ -72,16 +72,93 @@ describe("AiHelperHealthReportChart", () => {
       expect(FakeChart.calls.length).toBe(0);
     });
 
-    it("throws when the data attribute does not hold valid JSON", () => {
+    it("reports an invalid JSON payload on the canvas instead of throwing", () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
       addCanvas("{not json");
 
-      expect(() => window.AiHelperHealthReportChart.renderWithin(root)).toThrow(SyntaxError);
+      window.AiHelperHealthReportChart.renderWithin(root);
+
+      const canvas = root.querySelector("canvas");
+      expect(canvas.hasAttribute("data-ai-helper-chart-failed")).toBe(true);
+      expect(FakeChart.calls.length).toBe(0);
+      expect(consoleError).toHaveBeenCalledWith(expect.any(String), expect.any(SyntaxError));
+      consoleError.mockRestore();
     });
 
-    it("throws when the form is not bar or stacked (doughnut is no longer supported)", () => {
+    it("reports an unsupported form on the canvas instead of throwing", () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
       addCanvas({ ...basePayload, form: "doughnut" });
 
-      expect(() => window.AiHelperHealthReportChart.renderWithin(root)).toThrow(/form/i);
+      window.AiHelperHealthReportChart.renderWithin(root);
+
+      expect(root.querySelector("canvas").hasAttribute("data-ai-helper-chart-failed")).toBe(true);
+      expect(FakeChart.calls.length).toBe(0);
+      expect(consoleError).toHaveBeenCalledWith(expect.any(String), expect.any(Error));
+      consoleError.mockRestore();
+    });
+
+    it("shows the container's localized draw-failure message next to a broken canvas", () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const wrapper = document.createElement("div");
+      wrapper.setAttribute("data-chart-error-message", "描画できませんでした");
+      const canvas = document.createElement("canvas");
+      canvas.setAttribute("data-ai-helper-chart", "{not json");
+      wrapper.appendChild(canvas);
+      root.appendChild(wrapper);
+
+      window.AiHelperHealthReportChart.renderWithin(root);
+
+      const warnings = root.querySelectorAll("p.warning");
+      expect(warnings.length).toBe(1);
+      expect(warnings[0].textContent).toBe("描画できませんでした");
+      console.error.mockRestore();
+    });
+
+    it("falls back to a generic message when the container has none", () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const wrapper = document.createElement("div");
+      const canvas = document.createElement("canvas");
+      canvas.setAttribute("data-ai-helper-chart", "{not json");
+      wrapper.appendChild(canvas);
+      root.appendChild(wrapper);
+
+      window.AiHelperHealthReportChart.renderWithin(root);
+
+      const warnings = root.querySelectorAll("p.warning");
+      expect(warnings.length).toBe(1);
+      expect(warnings[0].textContent).toBe("Failed to draw the chart.");
+      console.error.mockRestore();
+    });
+
+    it("draws the canvases after a broken one", () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      addCanvas("{not json");
+      const good = addCanvas(basePayload);
+
+      window.AiHelperHealthReportChart.renderWithin(root);
+
+      expect(FakeChart.calls.length).toBe(1);
+      expect(FakeChart.calls[0].canvas).toBe(good);
+      expect(good.hasAttribute("data-ai-helper-chart-rendered")).toBe(true);
+      expect(consoleError).toHaveBeenCalledTimes(1);
+      consoleError.mockRestore();
+    });
+
+    it("never processes a canvas that already failed", () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const wrapper = document.createElement("div");
+      const canvas = document.createElement("canvas");
+      canvas.setAttribute("data-ai-helper-chart", "{not json");
+      wrapper.appendChild(canvas);
+      root.appendChild(wrapper);
+      window.AiHelperHealthReportChart.renderWithin(root);
+      expect(root.querySelectorAll("p.warning").length).toBe(1);
+
+      window.AiHelperHealthReportChart.renderWithin(root);
+
+      expect(root.querySelectorAll("p.warning").length).toBe(1);
+      expect(canvas.getAttribute("data-ai-helper-chart-failed")).toBe("");
+      console.error.mockRestore();
     });
 
     it("builds a stacked bar chart with one dataset per item and the legend at the bottom", () => {
@@ -208,18 +285,49 @@ describe("AiHelperHealthReportChart", () => {
       expect(StubChart.calls[0].config.type).toBe("bar");
     });
 
-    it("clears the rendered mark and logs the error when Chart.js cannot be loaded", async () => {
+    it("marks the canvas failed, logs the error and shows a warning when Chart.js cannot be loaded", async () => {
       vi.unstubAllGlobals();
       const failure = new Error("chart.js unavailable");
       vi.spyOn(window.AiHelperHealthReportChart, "loadChart").mockRejectedValue(failure);
       const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
-      const canvas = addCanvas(basePayload);
+      const wrapper = document.createElement("div");
+      const canvas = document.createElement("canvas");
+      canvas.setAttribute("data-ai-helper-chart", JSON.stringify(basePayload));
+      wrapper.appendChild(canvas);
+      root.appendChild(wrapper);
 
       window.AiHelperHealthReportChart.renderWithin(root);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      expect(canvas.hasAttribute("data-ai-helper-chart-rendered")).toBe(false);
+      expect(canvas.hasAttribute("data-ai-helper-chart-rendered")).toBe(true);
+      expect(canvas.hasAttribute("data-ai-helper-chart-failed")).toBe(true);
       expect(consoleError).toHaveBeenCalledWith(expect.any(String), failure);
+      expect(root.querySelectorAll("p.warning").length).toBe(1);
+      consoleError.mockRestore();
+    });
+
+    it("reports a failure thrown by the Chart constructor of the dynamically loaded module", async () => {
+      vi.unstubAllGlobals();
+      const failure = new Error("constructor boom");
+      const throwingStub = class {
+        constructor() {
+          throw failure;
+        }
+      };
+      vi.spyOn(window.AiHelperHealthReportChart, "loadChart").mockResolvedValue(throwingStub);
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      const wrapper = document.createElement("div");
+      const canvas = document.createElement("canvas");
+      canvas.setAttribute("data-ai-helper-chart", JSON.stringify(basePayload));
+      wrapper.appendChild(canvas);
+      root.appendChild(wrapper);
+
+      window.AiHelperHealthReportChart.renderWithin(root);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(canvas.hasAttribute("data-ai-helper-chart-failed")).toBe(true);
+      expect(consoleError).toHaveBeenCalledWith(expect.any(String), failure);
+      expect(root.querySelectorAll("p.warning").length).toBe(1);
       consoleError.mockRestore();
     });
   });

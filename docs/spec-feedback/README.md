@@ -103,3 +103,4 @@ A concrete, checkable rule to apply when writing future specifications.
 | [SF-020](./020-chart-form-chosen-for-implementation-ease.md) | Chose one chart form for every chart type for implementation ease without asking | unconfirmed-assumption | 078-health-report-charts | AGENTS.md |
 | [SF-021](./021-chart-form-heuristic-applied-mechanically.md) | Applied a chart-form heuristic to every type without checking what each chart tells the reader | intent-misread | 078-health-report-charts | Not yet |
 | [SF-022](./022-semantic-color-ignored-for-ordered-stages.md) | Assigned palette colors by position to stages that carry a meaning | unconfirmed-assumption | 078-health-report-charts | Not yet |
+| [SF-023](./023-research-kept-doughnut-api-after-adr.md) | Research R-009 kept the doughnut drawing API after ADR-059 dropped donut charts | scope-gap | 078-health-report-charts | Not yet |

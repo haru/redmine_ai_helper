@@ -23,7 +23,7 @@ class HealthReportChartPromptGuideTest < ActiveSupport::TestCase
       assert_includes guide, "single line"
       assert_includes guide, "blank lines"
       assert_includes guide, "tables, lists, or code blocks"
-      assert_includes guide, "do not copy the numbers"
+      assert_includes guide, "never restate the full breakdown of numbers"
     end
 
     should "ask for a one or two sentence reading of each chart" do
@@ -32,7 +32,7 @@ class HealthReportChartPromptGuideTest < ActiveSupport::TestCase
       assert_includes guide, "one or two sentences"
       assert_includes guide, "before or after each chart"
       assert_includes guide, "skew, a bottleneck, or the progress made"
-      assert_includes guide, "only the figures needed for the reading"
+      assert_includes guide, "Quote only the one or two figures that the interpretation needs"
     end
 
     should "not tell the model which form a chart is drawn in" do

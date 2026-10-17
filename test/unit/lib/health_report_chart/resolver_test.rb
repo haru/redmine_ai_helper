@@ -243,6 +243,18 @@ class HealthReportChartResolverTest < ActiveSupport::TestCase
 
       assert_equal :data_missing, resolve({ type: "progress", target_kind: :version, target_value: "12" }, metrics).reason
     end
+
+    should "report data_missing for progress when progress_metrics is missing" do
+      metrics = [ { version_id: 12, version_name: "1.0.0", metrics: { issue_statistics: {} } } ].to_json
+
+      assert_equal :data_missing, resolve({ type: "progress", target_kind: :version, target_value: "12" }, metrics).reason
+    end
+
+    should "report data_missing for progress when progress_metrics is not a Hash" do
+      metrics = [ { version_id: 12, version_name: "1.0.0", metrics: { progress_metrics: "n/a" } } ].to_json
+
+      assert_equal :data_missing, resolve({ type: "progress", target_kind: :version, target_value: "12" }, metrics).reason
+    end
   end
 
   context "input validation" do
@@ -296,6 +308,52 @@ class HealthReportChartResolverTest < ActiveSupport::TestCase
       assert_empty resolver.targets
       assert_equal :unknown_target, resolve({ type: "status", target_kind: :version, target_value: "12" }, metrics).reason
       assert_equal :unknown_target, resolve({ type: "status", target_kind: :version, target_value: "13" }, metrics).reason
+    end
+
+    should "ignore version elements with a non-positive id or an empty name" do
+      metrics = [
+        { version_id: -1, version_name: "", metrics: { issue_statistics: { by_status: { "New" => 1 } } } },
+        { version_id: 0, version_name: "Zero", metrics: { issue_statistics: { by_status: { "New" => 1 } } } },
+        { version_id: 13, version_name: "", metrics: { issue_statistics: { by_status: { "New" => 1 } } } },
+        { version_id: 14, version_name: "Real", metrics: { issue_statistics: { by_status: { "New" => 1 } } } }
+      ].to_json
+      resolver = RedmineAiHelper::HealthReportChart::Resolver.new(metrics)
+
+      # The corrupt elements must not reach the LLM guide as "version=-1 ()".
+      assert_equal [ "version=14" ], resolver.targets.map(&:identifier)
+      assert_equal "Real", resolver.targets.first.display_name
+      [ "0", "13" ].each do |value|
+        assert_equal :unknown_target,
+                     resolve({ type: "status", target_kind: :version, target_value: value }, metrics).reason
+      end
+    end
+
+    should "reject a Target whose identifier or display name is not a non-empty String" do
+      [ [ "", "1.0.0" ], [ "version=12", "" ], [ 12, "1.0.0" ], [ "version=12", 12 ] ].each do |identifier, display_name|
+        assert_raises(ArgumentError) do
+          RedmineAiHelper::HealthReportChart::Resolver::Target.new(identifier: identifier, display_name: display_name)
+        end
+      end
+    end
+
+    should "treat a non-Hash issue_statistics as missing values" do
+      metrics = [ { version_id: 12, version_name: "1.0.0", metrics: { issue_statistics: "corrupt" } } ].to_json
+
+      assert_equal :data_missing, resolve({ type: "status", target_kind: :version, target_value: "12" }, metrics).reason
+      assert_equal :data_missing, resolve({ type: "open_closed", target_kind: :version, target_value: "12" }, metrics).reason
+    end
+
+    should "skip non-Hash elements of the metrics array" do
+      good = { version_id: 12, version_name: "1.0.0",
+               metrics: { issue_statistics: { by_status: { "New" => 1 }, open_issues: 1, closed_issues: 0 } } }
+      metrics = [ "corrupt", 12, good ].to_json
+      resolver = RedmineAiHelper::HealthReportChart::Resolver.new(metrics)
+
+      assert_equal [ "version=12" ], resolver.targets.map(&:identifier)
+      assert_instance_of RedmineAiHelper::HealthReportChart::Chart,
+                         resolve({ type: "status", target_kind: :version, target_value: "12" }, metrics)
+      assert_equal :unknown_target,
+                   resolve({ type: "status", target_kind: :period, target_value: "last_week" }, metrics).reason
     end
   end
 

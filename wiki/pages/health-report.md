@@ -57,9 +57,11 @@ incremental UI updates as tokens arrive (S011).
 ## Export & UI
 
 - **PDF** (individual reports and comparisons) via `ProjectHealthPdfHelper`
-  (ITCPDF); **Markdown** raw downloads via the controller (S002, S011).
+  (ITCPDF); the **Markdown** download is a **zip archive** holding the Markdown
+  file — chart directives replaced with relative links to the bundled chart
+  SVGs — plus the SVG images (feature 078, FR-016; S002, S011).
 - `AiHelperDashboardController` handles report display, history pagination, PDF
-  endpoints, and Markdown export (S011).
+  endpoints, and the Markdown zip export (S011).
 - Saved reports are rendered **server-side** with `md_to_html`, so Markdown
   displays correctly regardless of Redmine's text-formatting setting; before
   feature 064 they went through format-dependent `textilizable` and broke on

@@ -7,7 +7,9 @@ module RedmineAiHelper
     # Builds the English instructions that tell the LLM how to place chart
     # directives in a health report (FR-004, FR-005). The LLM only chooses
     # the chart type and its position; the values are drawn from the stored
-    # metrics at display time, so it is told not to copy numbers.
+    # metrics at display time, so it is told not to copy the numbers into
+    # the text and to write one or two sentences that interpret each chart
+    # for the reader instead.
     module PromptGuide
       # The instruction used when the report has no chartable targets.
       NO_TARGETS = "No chart can be drawn for this report. Do not write any chart directives."
@@ -34,10 +36,10 @@ module RedmineAiHelper
             "You can place charts in the report. Write a chart directive on a single line, surrounded by blank lines:",
             "{{ai_helper_chart(<type>, version=<id>)}} or {{ai_helper_chart(<type>, period=<key>)}}",
             "Do not write a directive inside tables, lists, or code blocks.",
-            "The chart values are filled in automatically from the metrics, so do not copy the numbers into the text.",
+            "The chart itself shows the values, so never restate the full breakdown of numbers in the text.",
             "Write one or two sentences before or after each chart that say what it shows to the reader " \
             "(for example a skew, a bottleneck, or the progress made). " \
-            "Mention only the figures needed for the reading, taken from the metrics."
+            "Quote only the one or two figures that the interpretation needs; the chart shows the rest."
           ]
         end
 

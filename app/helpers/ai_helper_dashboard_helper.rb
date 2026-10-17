@@ -20,15 +20,19 @@ module AiHelperDashboardHelper
     return linkify_issue_references(md_to_html(text)) unless parts.any?(RedmineAiHelper::HealthReportChart::Directive)
 
     resolver = RedmineAiHelper::HealthReportChart::Resolver.new(report&.metrics)
-    directives = parts.select { |part| part.is_a?(RedmineAiHelper::HealthReportChart::Directive) }
+    directives = []
     markers = []
     marked = parts.map do |part|
-      if part.is_a?(RedmineAiHelper::HealthReportChart::Directive)
+      case part
+      when RedmineAiHelper::HealthReportChart::Directive
+        directives << part
         marker = chart_marker
         markers << marker
         "\n\n#{marker}\n\n"
-      else
+      when String
         part
+      else
+        raise ArgumentError, "expected a String or a Directive, got #{part.class}"
       end
     end.join
 

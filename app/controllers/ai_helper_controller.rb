@@ -14,6 +14,10 @@ class AiHelperController < ApplicationController
   include AiHelper::Streaming
   include AiHelperHelper
   include RedmineAiHelper::Export::PDF::ProjectHealthPdfHelper
+  # include_all_helpers is off in Redmine, so the health report view needs
+  # the dashboard chart helpers (ai_helper_chart_heads) declared explicitly
+  # for the project_health render.
+  helper AiHelperDashboardHelper
 
   # Valid scope values for similar issue search.
   # @return [Array<String>] allowed values: "current", "with_subprojects", "all"
@@ -703,12 +707,17 @@ class AiHelperController < ApplicationController
   # Send the health_report_saved SSE event when the latest report saved by
   # the LLM call for this project and user holds exactly the body the LLM
   # returned (R-008). When no matching report exists, for example when the
-  # LLM raised before saving, nothing is sent.
+  # LLM raised before saving, nothing is sent; a record with a different
+  # body is logged so it is not mistaken for the silent no-report path.
   # @param content [String] the body returned by the LLM
   # @return [void]
   def send_health_report_saved_event(content)
     report = AiHelperHealthReport.for_project(@project.id).by_user(User.current.id).sorted.first
-    return unless report && report.health_report == content
+    if report && report.health_report != content
+      ai_helper_logger.warn "health report #{report.id} of project #{@project.id} does not match the generated body; not sending the health_report_saved event"
+      return
+    end
+    return unless report
 
     response.stream.write("event: health_report_saved\ndata: {\"report_id\": #{report.id}}\n\n")
   end

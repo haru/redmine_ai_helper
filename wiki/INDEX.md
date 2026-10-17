@@ -33,7 +33,7 @@ page files, not here.
 - [Web Search & Citations](./pages/web-search-citations.md) — feature 071/ADR-052: one dedicated `WebSearchAgent`, type-only provider support check, task-text-only requests, `WebCitation` value objects carried to the saved message, and display on screen and gateway.
 - [Health Report Detail Pane Layout](./pages/health-report-detail-pane-layout.md) — ADR-056: why the dashboard report clipped export links (non-flex body wrapper), moving the viewport cap from the pane to the frame, the edit-form and ≤900px exceptions, and rejected alternatives.
 - [Health Report Generation Completion (Dashboard)](./pages/health-report-generation-completion.md) — feature 077: why dashboard generation threw on completion (missing `.ai-helper-project-health`), hidden field under `.ai-helper-project-health-content`, `try/catch` narrowed to `JSON.parse`, clearing the previous report's details, and rejected alternatives.
-- [Health Report Charts](./pages/health-report-charts.md) — feature 078/ADR-058: chart directives resolved from stored metrics and drawn on screen, in PDF and as SVG zip; Redmine 6.0 importmap, rbpdf alias and observer gotchas.
+- [Health Report Charts](./pages/health-report-charts.md) — feature 078/ADR-058/ADR-059: chart directives resolved from stored metrics and drawn on screen, in PDF and as SVG zip; each chart's form chosen by what helps the reader (bars, stacked bar, number tile — no doughnuts); Redmine 6.0 importmap, rbpdf alias and observer gotchas.
 
 ## component
 - [Chat Channel Gateway Architecture](./pages/chat-channel-gateway-architecture.md) — core + adapters structure, capability declaration, and gateway operational model.

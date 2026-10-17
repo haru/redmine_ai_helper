@@ -114,12 +114,15 @@ function handleGenerateProjectHealthClick(e, parser) {
   currentProjectHealthEventSource = new EventSource(url);
   const eventSource = currentProjectHealthEventSource;
   let content = '';
-  // The id of the report the server saved for this generation, delivered
-  // via a named SSE event before the stop chunk. Used to swap in the
-  // server-rendered body when the stream finishes.
-  let savedReportId = null;
+  // The saved report for this generation, delivered via a named SSE event
+  // before the stop chunk. Used to swap in the server-rendered body when
+  // the stream finishes. A failure to read the event is kept separate: the
+  // event being absent is a normal path (the body was an error message),
+  // while a present-but-invalid event means the swap cannot happen and
+  // must be reported (CRF-047).
+  const saved = { id: null, failure: null };
   eventSource.addEventListener('health_report_saved', function(event) {
-    savedReportId = savedReportIdOf(event);
+    readSavedReportEvent(event, saved);
   });
   const renderer = new AiHelperFrameRenderer(function() {
     // A newer generation may have replaced this stream since scheduling.
@@ -154,7 +157,7 @@ function handleGenerateProjectHealthClick(e, parser) {
       eventSource.close();
       currentProjectHealthEventSource = null;
       renderer.cancel();
-      finishGeneration(resultDiv, parser, content, savedReportId);
+      finishGeneration(resultDiv, parser, content, saved.id, saved.failure);
     }
   };
 
@@ -193,15 +196,50 @@ function savedReportIdOf(event) {
 }
 
 /**
+ * Read a health_report_saved SSE event into the generation's saved-report
+ * record. A read failure is captured in the record instead of thrown, so
+ * the stream continues and finishGeneration can report the swap failure:
+ * an invalid event must never silently degrade to a chartless body
+ * (CRF-047).
+ * @param {MessageEvent} event - The named SSE event.
+ * @param {{id: number|null, failure: Error|null}} saved - Record filled
+ *   with the saved report id, or with the failure raised while reading it.
+ * @returns {void}
+ */
+function readSavedReportEvent(event, saved) {
+  try {
+    saved.id = savedReportIdOf(event);
+  } catch (error) {
+    console.error('Invalid health_report_saved event:', error);
+    saved.failure = error;
+  }
+}
+
+/**
  * Render the finished report and, when the server saved it, report a failed
- * swap to the server-rendered body in the result area.
+ * swap to the server-rendered body in the result area. A failure raised
+ * synchronously by finalizeStreamingContent is reported the same way: a
+ * .catch below would only see a rejected return promise, never a throw
+ * (CRF-047).
  * @param {HTMLElement} resultDiv - The report result container.
  * @param {AiHelperMarkdownParser} parser - Parser for the final markdown.
  * @param {string} content - The full generated report content.
  * @param {number|null} savedReportId - The saved report's id, if any.
+ * @param {Error|null} savedReportEventFailure - The failure raised while
+ *   reading the health_report_saved event, if any.
  */
-function finishGeneration(resultDiv, parser, content, savedReportId) {
-  const swapped = finalizeStreamingContent(resultDiv, parser, content, savedReportId);
+function finishGeneration(resultDiv, parser, content, savedReportId, savedReportEventFailure) {
+  if (savedReportEventFailure) {
+    showSavedReportSwapError(resultDiv, savedReportEventFailure);
+    return;
+  }
+  let swapped;
+  try {
+    swapped = finalizeStreamingContent(resultDiv, parser, content, savedReportId);
+  } catch (error) {
+    showSavedReportSwapError(resultDiv, error);
+    return;
+  }
   if (swapped) {
     swapped.catch(function(error) {
       showSavedReportSwapError(resultDiv, error);

@@ -26,10 +26,16 @@ module RedmineAiHelper
             else raise ArgumentError, "health_report must be a String or nil"
             end
           parts.each do |part|
-            if part.is_a?(RedmineAiHelper::HealthReportChart::Directive)
+            case part
+            when RedmineAiHelper::HealthReportChart::Directive
               render_pdf_chart(pdf, charts.resolve(part), left_margin, text_align)
-            else
+            when String
               render_pdf_report_content(pdf, project, part, left_margin, is_rtl, text_align)
+            when nil
+              # An empty body splits into the single nil part; nothing to draw.
+              nil
+            else
+              raise ArgumentError, "expected a String, a Directive or nil, got #{part.class}"
             end
           end
         end

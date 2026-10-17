@@ -136,3 +136,9 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-050](./050-value-object-and-union-checks-incomplete.md) | New chart value objects and Chart\|Unavailable results skipped the CRF-003/CRF-009 checks | convention-violation | Local AI review | AGENTS.md |
 | [CRF-051](./051-chart-tests-vacuous-or-one-sided.md) | Chart tests passed without the guard, diverged between Ruby and JS, and skipped call sites | test-gap | Local AI review | AGENTS.md |
 | [CRF-052](./052-chart-comments-described-other-behaviour.md) | Chart comments and docs described behaviour the code does not have | doc-comment | Local AI review | Not yet |
+| [CRF-053](./053-html-block-directives-caused-500.md) | Directives inside CommonMark HTML blocks made every report render fail with HTTP 500 | edge-case | Local AI review | Not yet |
+| [CRF-054](./054-stream-and-chart-failures-swallowed.md) | Stream completion, swap and chart failures were swallowed or invisible in the browser and the controller | error-handling | Local AI review | Not yet |
+| [CRF-055](./055-union-and-value-object-checks-missed-again.md) | Union returns and late-added value objects skipped the case/else and invariant checks again | convention-violation | Local AI review | Not yet |
+| [CRF-056](./056-chart-heads-only-in-one-erb-branch.md) | Chart heads were loaded only in the saved-report branch of the overview partial | edge-case | Local AI review | Not yet |
+| [CRF-057](./057-guard-and-sse-contract-test-gaps.md) | Resolver guards were unreachable from tests and the SSE contract was tested only through stubs | test-gap | Local AI review | Not yet |
+| [CRF-058](./058-doughnut-era-and-pre-swap-docs-survived.md) | Doughnut-era and pre-swap docs survived in specs, wiki and comments | doc-comment | Local AI review | Not yet |

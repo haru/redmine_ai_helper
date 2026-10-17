@@ -181,6 +181,32 @@ class AiHelperDashboardHelperTest < ActionView::TestCase
                    render_health_report_markdown(fenced, report: @report)
     end
 
+    should "keep a directive inside a raw HTML block unchanged through the real pipeline" do
+      # A raw HTML block of CommonMark type 1-5 does not end at a blank line,
+      # so a marker inserted for the directive would never become a paragraph
+      # and the render used to raise (HTTP 500). The scanner no longer
+      # recognizes directives inside such blocks (CRF-051: no md_to_html
+      # stub here — the stubbed test cannot see this route).
+      body = "Intro\n\n<pre>\n{{ai_helper_chart(status, version=12)}}\n</pre>\n"
+
+      html = render_health_report_markdown(body, report: @report)
+
+      assert_includes html, "Intro"
+      assert_includes html, "{{ai_helper_chart(status, version=12)}}"
+      assert_not_includes html, "ai-helper-health-report-chart"
+      assert_not_includes html, "aihelperchart"
+    end
+
+    should "keep a directive inside an HTML comment unchanged through the real pipeline" do
+      body = "Intro\n\n<!--\n{{ai_helper_chart(status, version=12)}}\n-->\n\nAfter"
+
+      html = render_health_report_markdown(body, report: @report)
+
+      assert_includes html, "<p>After</p>"
+      assert_not_includes html, "ai-helper-health-report-chart"
+      assert_not_includes html, "aihelperchart"
+    end
+
     should "render an unknown chart type as a warning paragraph" do
       body = "{{ai_helper_chart(burndown, version=12)}}"
 

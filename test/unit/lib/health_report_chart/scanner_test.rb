@@ -175,6 +175,101 @@ class HealthReportChartScannerTest < ActiveSupport::TestCase
       end
     end
 
+    context "raw HTML blocks (CommonMark types 1-5)" do
+      should "keep a directive inside a pre block a plain string" do
+        markdown = "Intro\n\n<pre>\n#{DIRECTIVE_LINE}\n</pre>\n"
+        parts = split(markdown)
+
+        assert_single_string(parts, markdown)
+      end
+
+      should "keep a directive inside an HTML comment a plain string" do
+        markdown = "<!--\n#{DIRECTIVE_LINE}\n-->"
+
+        assert_single_string(split(markdown), markdown)
+      end
+
+      should "keep a directive inside script, style and textarea blocks a plain string" do
+        [ [ "<script>", "</script>" ], [ "<style>", "</style>" ], [ "<textarea>", "</textarea>" ] ].each do |opening, closing|
+          markdown = "#{opening}\n#{DIRECTIVE_LINE}\n#{closing}"
+
+          assert_single_string(split(markdown), markdown)
+        end
+      end
+
+      should "keep a directive inside a processing instruction, a declaration and a CDATA section plain strings" do
+        {
+          "<?php" => "?>",
+          "<!DOCTYPE" => "html>",
+          "<![CDATA[" => "]]>"
+        }.each do |opening, closing|
+          markdown = "#{opening}\n#{DIRECTIVE_LINE}\n#{closing}"
+
+          assert_single_string(split(markdown), markdown)
+        end
+      end
+
+      should "keep a directive after an unterminated HTML block a plain string until the end of the body" do
+        markdown = "<pre>\n#{DIRECTIVE_LINE}"
+
+        assert_single_string(split(markdown), markdown)
+      end
+
+      should "close the HTML block on its opening line when it ends there" do
+        markdown = "<pre>code</pre>\n#{DIRECTIVE_LINE}"
+        parts = split(markdown)
+
+        assert_equal "<pre>code</pre>\n", parts[0]
+        assert_directive_at(parts, 1, type: "status", target_kind: :version, target_value: "12", source: DIRECTIVE_LINE)
+      end
+
+      should "recognize a directive after the HTML block closed" do
+        markdown = "<pre>\ncode\n</pre>\n\n#{DIRECTIVE_LINE}"
+        parts = split(markdown)
+
+        assert_equal "<pre>\ncode\n</pre>\n\n", parts[0]
+        assert_directive_at(parts, 1, type: "status", target_kind: :version, target_value: "12", source: DIRECTIVE_LINE)
+      end
+
+      should "not open an HTML block inside a fenced code block" do
+        markdown = "```\n<pre>\n#{DIRECTIVE_LINE}\n</pre>\n```\n#{DIRECTIVE_LINE}"
+        parts = split(markdown)
+
+        assert_equal "```\n<pre>\n#{DIRECTIVE_LINE}\n</pre>\n```\n", parts[0]
+        assert_directive_at(parts, 1, type: "status", target_kind: :version, target_value: "12", source: DIRECTIVE_LINE)
+      end
+
+      should "not open a fenced code block inside an HTML block" do
+        markdown = "<pre>\n```\n#{DIRECTIVE_LINE}\n```\n</pre>"
+
+        assert_single_string(split(markdown), markdown)
+      end
+
+      should "not treat the case-insensitive opening tags differently from lowercase ones" do
+        markdown = "<PRE>\n#{DIRECTIVE_LINE}\n</PRE>"
+
+        assert_single_string(split(markdown), markdown)
+      end
+
+      should "not treat a lookalike tag as an HTML block" do
+        markdown = "<preview>\n#{DIRECTIVE_LINE}"
+        parts = split(markdown)
+
+        assert_equal "<preview>\n", parts[0]
+        assert_directive_at(parts, 1, type: "status", target_kind: :version, target_value: "12", source: DIRECTIVE_LINE)
+      end
+
+      should "still recognize a directive between the blank lines of a type 6 block" do
+        markdown = "<details>\n\n#{DIRECTIVE_LINE}\n\n</details>"
+        parts = split(markdown)
+
+        assert_equal 3, parts.length
+        assert_equal "<details>\n\n", parts[0]
+        assert_directive_at(parts, 1, type: "status", target_kind: :version, target_value: "12", source: DIRECTIVE_LINE)
+        assert_equal "\n\n</details>", parts[2]
+      end
+    end
+
     context "boundary rules shared with the JS scanner" do
       should "not open a backtick fence whose info string contains a backtick" do
         markdown = "```a`b\n#{DIRECTIVE_LINE}"

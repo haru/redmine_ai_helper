@@ -49,9 +49,14 @@ module RedmineAiHelper
           return markdown if parts.length == 1 && parts.first.is_a?(String)
 
           pieces = parts.each_with_index.map do |part, index|
-            next trim_text(part, index.zero? ? nil : parts[index - 1], parts[index + 1]) if part.is_a?(String)
-
-            yield part
+            case part
+            when String
+              trim_text(part, index.zero? ? nil : parts[index - 1], parts[index + 1])
+            when Directive
+              yield part
+            else
+              raise ArgumentError, "expected a String or a Directive, got #{part.class}"
+            end
           end
           result = pieces.reject(&:empty?).join("\n\n")
           markdown.end_with?("\n") && !result.end_with?("\n") ? "#{result}\n" : result
@@ -59,11 +64,23 @@ module RedmineAiHelper
 
         private
 
+        # True only for a Directive part. nil is the out-of-range neighbor
+        # (the body starts or ends with a directive), not a part.
+        # @raise [ArgumentError] when the part is neither a String, a
+        #   Directive nor nil
+        def directive_part?(part)
+          case part
+          when Directive then true
+          when String, nil then false
+          else raise ArgumentError, "expected a String, a Directive or nil, got #{part.class}"
+          end
+        end
+
         # Drop the newlines that touched a directive line; the join adds the
         # blank lines back.
         def trim_text(text, previous, following)
-          text = text.sub(/\A\n+/, "") if previous.is_a?(Directive)
-          text = text.sub(/\n+\z/, "") if following.is_a?(Directive)
+          text = text.sub(/\A\n+/, "") if directive_part?(previous)
+          text = text.sub(/\n+\z/, "") if directive_part?(following)
           text
         end
 

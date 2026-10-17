@@ -2,7 +2,10 @@
     number tile, no data, unavailable) (contracts/http-and-dom.md).
     The canvas payload travels in a data attribute so that it is never touched
     by linkify_issue_references, and every value is ERB-escaped here. Only
-    Redmine's existing classes are used (no new CSS). %>
+    Redmine's existing classes are used (no new CSS).
+    The localized draw-failure message travels with the canvas: when Chart.js
+    cannot draw it, the JS shows this text instead of an unexplained blank
+    box. %>
 <% if resolved.is_a?(RedmineAiHelper::HealthReportChart::Chart) %>
   <% if resolved.no_data? %>
 <div class="ai-helper-health-report-chart">
@@ -15,7 +18,8 @@
   <h2><%= resolved.summary %></h2>
 </div>
   <% else %>
-<div class="ai-helper-health-report-chart issue-report-graph">
+<div class="ai-helper-health-report-chart issue-report-graph"
+     data-chart-error-message="<%= l("ai_helper.health_report_chart.draw_failed") %>">
   <canvas role="img" aria-label="<%= resolved.title %>"
           data-ai-helper-chart="<%= { form: resolved.form.to_s,
                                       title: resolved.title,

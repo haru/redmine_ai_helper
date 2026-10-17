@@ -59,6 +59,18 @@ if (!window.aiHelperComparisonInitialized) {
       AiHelperChartDirective.replaceForComparison(text, resultDiv.dataset.chartUnavailableMessage));
   }
 
+  /**
+   * Store the finished comparison content in the hidden field the export
+   * links read from.
+   * @param {string} content - The finished, un-rendered comparison markdown.
+   */
+  function updateComparisonContent(content) {
+    const hiddenField = document.getElementById('ai-helper-comparison-content');
+    if (hiddenField) {
+      hiddenField.value = content;
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', function() {
     const resultDiv = document.getElementById('ai-helper-comparison-analysis');
     if (!resultDiv) {return;}
@@ -117,39 +129,53 @@ if (!window.aiHelperComparisonInitialized) {
       });
 
       eventSource.onmessage = function(event) {
+        // Read the payload once, outside the try, so only JSON.parse is
+        // guarded and the logged payload is that saved value.
+        const rawData = event.data;
+        let data;
         try {
-          const data = JSON.parse(event.data);
+          data = JSON.parse(rawData);
+        } catch (error) {
+          // Only JSON.parse's SyntaxError is recoverable: log it and keep
+          // receiving. Anything else is a real bug and must surface — the
+          // former bare catch here swallowed render failures of the final
+          // frame too, leaving the cursor frame stuck without exports or
+          // console output (CRF-047).
+          if (error instanceof SyntaxError) {
+            console.error('Failed to parse comparison streaming event data:', error, rawData);
+            return;
+          }
+          throw error;
+        }
 
-          if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
-            content += data.choices[0].delta.content;
-            renderer.schedule();
+        if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
+          content += data.choices[0].delta.content;
+          renderer.schedule();
+        }
+
+        if (data.choices && data.choices[0] && data.choices[0].finish_reason === 'stop') {
+          eventSource.close();
+          currentEventSource = null;
+          renderer.cancel();
+
+          // Render final content. A failure here propagates: the exports
+          // and the hidden field below depend on it.
+          const formattedContent = renderComparisonMarkdown(parser, resultDiv, content);
+          resultDiv.innerHTML = '<div class="ai-helper-final-content">' +
+            formattedContent + '</div>';
+
+          // Final scroll to bottom
+          if (resultDiv) {
+            resultDiv.scrollTop = resultDiv.scrollHeight;
           }
 
-          if (data.choices && data.choices[0] && data.choices[0].finish_reason === 'stop') {
-            eventSource.close();
-            currentEventSource = null;
-            renderer.cancel();
+          // Store content in hidden field for export
+          updateComparisonContent(content);
 
-            // Render final content
-            const formattedContent = renderComparisonMarkdown(parser, resultDiv, content);
-            resultDiv.innerHTML = '<div class="ai-helper-final-content">' +
-              formattedContent + '</div>';
-
-            // Final scroll to bottom
-            if (resultDiv) {
-              resultDiv.scrollTop = resultDiv.scrollHeight;
-            }
-
-            // Store content in hidden field for export
-            updateComparisonContent(content);
-
-            // Show export buttons
-            if (exportDiv) {
-              exportDiv.style.display = 'block';
-            }
+          // Show export buttons
+          if (exportDiv) {
+            exportDiv.style.display = 'block';
           }
-        } catch {
-          // Error handling done in onerror
         }
       };
 
@@ -162,18 +188,6 @@ if (!window.aiHelperComparisonInitialized) {
         const errorText = errorMessage ? errorMessage.getAttribute('content') : 'Error';
         resultDiv.innerHTML = '<div class="ai-helper-error">' + errorText + '</div>';
       };
-    }
-
-    /**
-     * Store the finished comparison content in the hidden field the export
-     * links read from.
-     * @param {string} content - The finished, un-rendered comparison markdown.
-     */
-    function updateComparisonContent(content) {
-      const hiddenField = document.getElementById('ai-helper-comparison-content');
-      if (hiddenField) {
-        hiddenField.value = content;
-      }
     }
 
     // Add event listeners for export links

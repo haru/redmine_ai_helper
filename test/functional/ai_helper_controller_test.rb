@@ -1316,7 +1316,50 @@ class AiHelperControllerTest < ActionController::TestCase
         llm_mock = mock("RedmineAiHelper::Llm")
         llm_mock.stubs(:project_health_report).returns("Generated health report")
         RedmineAiHelper::Llm.stubs(:new).returns(llm_mock)
-        AiHelperHealthReport.create!(project: @project, user: @user, health_report: "A different body")
+        report = AiHelperHealthReport.create!(project: @project, user: @user, health_report: "A different body")
+        Rails.cache.stubs(:delete)
+        Rails.cache.stubs(:write)
+        logger_mock = mock("ai_helper_logger")
+        logger_mock.stubs(:info)
+        logger_mock.stubs(:error)
+        logger_mock.expects(:warn).with do |message|
+          message.include?("health report #{report.id}") && message.include?("project #{@project.id}")
+        end
+        @controller.stubs(:ai_helper_logger).returns(logger_mock)
+
+        get :generate_project_health, params: { id: @project.id }
+
+        assert_response :success
+        assert_not_includes @response.body, "health_report_saved"
+      end
+
+      should "send health_report_saved for the report the real Llm and ProjectAgent saved" do
+        # The cross-layer contract (R-008): Llm#project_health_report returns
+        # exactly the body ProjectAgent saved, so the event's id points at a
+        # record whose body equals what was streamed. Only the LLM call and
+        # the metrics tool are stubbed; prompt build, save and the event stay
+        # real.
+        RedmineAiHelper::Tools::ProjectTools.any_instance.stubs(:get_metrics)
+            .returns({ issue_statistics: { total_issues: 0 } })
+        content = "Generated health report body"
+        RedmineAiHelper::Agents::ProjectAgent.any_instance.stubs(:think_chat).returns(content)
+        Rails.cache.stubs(:delete)
+        Rails.cache.stubs(:write)
+
+        get :generate_project_health, params: { id: @project.id }
+
+        assert_response :success
+        saved = AiHelperHealthReport.for_project(@project.id).by_user(@user.id).sorted.first
+        assert_not_nil saved, "the agent should have saved the generated report"
+        assert_equal content, saved.health_report
+        assert_includes @response.body, %(data: {"report_id": #{saved.id}})
+      end
+
+      should "not send health_report_saved when the LLM call raises and nothing is saved" do
+        RedmineAiHelper::Tools::ProjectTools.any_instance.stubs(:get_metrics)
+            .returns({ issue_statistics: { total_issues: 0 } })
+        RedmineAiHelper::Agents::ProjectAgent.any_instance.stubs(:think_chat)
+            .raises(StandardError, "LLM unavailable")
         Rails.cache.stubs(:delete)
         Rails.cache.stubs(:write)
 
@@ -1324,6 +1367,7 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         assert_not_includes @response.body, "health_report_saved"
+        assert_includes @response.body, "LLM unavailable"
       end
 
       should "not send health_report_saved when only an older report has the same body" do

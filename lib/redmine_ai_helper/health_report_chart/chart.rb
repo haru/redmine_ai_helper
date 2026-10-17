@@ -71,7 +71,8 @@ module RedmineAiHelper
       end
     end
 
-    # One slice/bar of a chart. The label is fully formatted ("Name (3)");
+    # One labeled count of a chart: a bar, a stacked segment, or a tile
+    # figure. The label is fully formatted ("Name (3)");
     # the colors are derived from the palette rgb assigned by the Resolver.
     class Item
       attr_reader :label, :value, :rgb

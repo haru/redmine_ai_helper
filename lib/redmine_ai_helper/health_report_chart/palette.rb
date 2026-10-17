@@ -14,7 +14,8 @@ module RedmineAiHelper
       # started, in progress, completed). Completed is green: the palette's
       # yellow reads as a warning and its teal is not clearly green.
       PROGRESS_COLORS = [ [ 255, 99, 132 ], [ 54, 162, 235 ], [ 76, 175, 80 ] ].map(&:freeze).freeze
-      # The opacity used to fill slices and bars (borders are opaque).
+      # The opacity used to fill the bars and stacked segments (borders are
+      # opaque).
       FILL_ALPHA = 0.2
 
       class << self

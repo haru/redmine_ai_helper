@@ -428,19 +428,22 @@ describe("ai_helper_project_health_actions", () => {
       expect(resultDiv.innerHTML).toContain("ai-helper-final-content");
     });
 
-    it("propagates finalize errors out of onmessage without logging a parse failure, leaving the stream closed", async () => {
-      addHealthContainer();
+    it("shows the swap error box when finalizeStreamingContent throws synchronously, leaving the stream closed", async () => {
+      addMeta("error-message", "Something failed");
+      const { resultDiv } = addHealthContainer();
       const link = addGenerateLink();
       const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       await load();
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       const source = FakeEventSource.instances[0];
+      const failure = new Error("finalize boom");
       vi.spyOn(window, "finalizeStreamingContent").mockImplementation(() => {
-        throw new Error("finalize boom");
+        throw failure;
       });
 
-      expect(() => sendStop(source)).toThrow("finalize boom");
-      expect(errorSpy).not.toHaveBeenCalled();
+      expect(() => sendStop(source)).not.toThrow();
+      expect(resultDiv.querySelector(".ai-helper-error").textContent).toBe("Something failed");
+      expect(errorSpy).toHaveBeenCalledWith(expect.any(String), failure);
 
       // The stream must be closed — and dropped as the current one — before
       // finalize runs, so a failing finalize can never leave the generation
@@ -450,6 +453,7 @@ describe("ai_helper_project_health_actions", () => {
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       expect(source.closeCount).toBe(1);
       expect(FakeEventSource.instances[1].closed).toBe(false);
+      errorSpy.mockRestore();
     });
 
     it("re-throws non-SyntaxError failures raised while parsing the payload", async () => {
@@ -1011,14 +1015,25 @@ describe("ai_helper_project_health_actions", () => {
       ["has a non-integer report_id", { report_id: "42" }],
       ["has a non-positive report_id", { report_id: 0 }],
     ].forEach(([name, payload]) => {
-      it(`throws when the health_report_saved payload ${name}`, async () => {
-        addHealthContainer();
+      it(`logs the failure when the health_report_saved payload ${name} and shows the swap error instead of a chartless body`, async () => {
+        addMeta("error-message", "Something failed");
+        const { resultDiv } = addHealthContainer();
         const link = addGenerateLink();
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+        const finalizeSpy = vi.spyOn(window, "finalizeStreamingContent").mockImplementation(() => {});
         await load();
 
         const source = clickGenerate(link);
 
-        expect(() => source.emit("health_report_saved", { data: JSON.stringify(payload) })).toThrow(/report_id/);
+        expect(() => source.emit("health_report_saved", { data: JSON.stringify(payload) })).not.toThrow();
+        expect(consoleError).toHaveBeenCalledWith(expect.any(String), expect.any(Error));
+
+        sendStop(source);
+
+        expect(resultDiv.querySelector(".ai-helper-error").textContent).toBe("Something failed");
+        expect(finalizeSpy).not.toHaveBeenCalled();
+        consoleError.mockRestore();
+        finalizeSpy.mockRestore();
       });
     });
 
