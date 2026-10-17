@@ -1188,7 +1188,46 @@ class AiHelperControllerTest < ActionController::TestCase
       end
     end
 
+    context "#project_health_markdown" do
+      should "export the posted body as a zip with unavailable chart directives" do
+        post :project_health_markdown, params: { id: @project.id, health_report_content: "Text\n\n{{ai_helper_chart(status, version=12)}}\n\nMore" }
+
+        assert_response :success
+        assert_equal "application/zip", response.media_type
+        base = "#{@project.identifier}-health-report-#{Date.current.strftime("%Y%m%d")}"
+        assert_includes response.headers["Content-Disposition"], "#{base}.zip"
+        entries = {}
+        Zip::InputStream.open(StringIO.new(response.body)) do |io|
+          while (entry = io.get_next_entry)
+            entries[entry.name] = io.read.force_encoding("UTF-8")
+          end
+        end
+        assert_equal [ "#{base}.md" ], entries.keys
+        message = I18n.t("ai_helper.health_report_chart.unavailable") +
+                  I18n.t("ai_helper.health_report_chart.errors.metrics_unavailable")
+        assert_equal "Text\n\n> #{message}\n\nMore", entries["#{base}.md"]
+      end
+
+      should "redirect when the body is blank" do
+        post :project_health_markdown, params: { id: @project.id, health_report_content: "" }
+
+        assert_response :redirect
+      end
+    end
+
     context "#project_health_pdf" do
+      should "report body chart directives as having no metrics" do
+        post :project_health_pdf, params: { id: @project.id, health_report_content: "Text\n\n{{ai_helper_chart(status, version=12)}}\n\nMore" }
+
+        assert_response :success
+        inflated = response.body.b.scan(/stream\r?\n(.*?)endstream/m).map do |(data)|
+          Zlib::Inflate.inflate(data)
+        rescue Zlib::Error
+          data
+        end.join.delete("\x00").gsub(/\\([()])/, '\1')
+        assert_includes inflated, I18n.t("ai_helper.health_report_chart.errors.metrics_unavailable")
+      end
+
       should "generate PDF from health report content" do
         health_content = "# Test Health Report\n\nThis is a test report."
 
@@ -1249,6 +1288,42 @@ class AiHelperControllerTest < ActionController::TestCase
 
         assert_response :success
         assert_match(/data:/, @response.body)
+      end
+
+      should "send health_report_saved with the report id before finish_reason stop" do
+        content = "Generated health report"
+        llm_mock = mock("RedmineAiHelper::Llm")
+        llm_mock.stubs(:project_health_report).returns(content)
+        RedmineAiHelper::Llm.stubs(:new).returns(llm_mock)
+        report = AiHelperHealthReport.create!(project: @project, user: @user, health_report: content)
+        Rails.cache.stubs(:delete)
+        Rails.cache.stubs(:write)
+
+        get :generate_project_health, params: { id: @project.id }
+
+        assert_response :success
+        body = @response.body
+        saved_index = body.index("event: health_report_saved")
+        stop_index = body.index('"finish_reason":"stop"')
+
+        assert_not_nil saved_index, "health_report_saved event was not sent"
+        assert_not_nil stop_index
+        assert_operator saved_index, :<, stop_index
+        assert_includes body, %(data: {"report_id": #{report.id}})
+      end
+
+      should "not send health_report_saved when the stored body differs from the LLM result" do
+        llm_mock = mock("RedmineAiHelper::Llm")
+        llm_mock.stubs(:project_health_report).returns("Generated health report")
+        RedmineAiHelper::Llm.stubs(:new).returns(llm_mock)
+        AiHelperHealthReport.create!(project: @project, user: @user, health_report: "A different body")
+        Rails.cache.stubs(:delete)
+        Rails.cache.stubs(:write)
+
+        get :generate_project_health, params: { id: @project.id }
+
+        assert_response :success
+        assert_not_includes @response.body, "health_report_saved"
       end
     end
 

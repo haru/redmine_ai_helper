@@ -9,7 +9,17 @@ class FakeEventSource {
     this.closed = false;
     this.onmessage = null;
     this.onerror = null;
+    this.listeners = {};
     FakeEventSource.instances.push(this);
+  }
+
+  addEventListener(name, listener) {
+    this.listeners[name] = this.listeners[name] || [];
+    this.listeners[name].push(listener);
+  }
+
+  emit(name, event) {
+    (this.listeners[name] || []).forEach((listener) => listener(event));
   }
 
   close() {
@@ -33,6 +43,8 @@ describe("ai_helper_project_health", () => {
     delete window.updateHealthReportHistory;
     await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
     await loadScript("assets/javascripts/shared/ai_helper_frame_renderer");
+    await loadScript("assets/javascripts/project_health/ai_helper_chart_directive");
+    await loadScript("assets/javascripts/project_health/ai_helper_project_health_swap");
   });
 
   afterEach(() => {
@@ -42,7 +54,8 @@ describe("ai_helper_project_health", () => {
     document
       .querySelectorAll(
         'meta[name^="ai-helper-project-health"], meta[name="error-message"], meta[name="export-label"], ' +
-          'meta[name="markdown-export-url"], meta[name="pdf-export-url"], meta[name="csrf-token"]',
+          'meta[name="markdown-export-url"], meta[name="pdf-export-url"], meta[name="csrf-token"], ' +
+          'meta[name="ai-helper-health-report-content-url"]',
       )
       .forEach((m) => m.remove());
     vi.unstubAllGlobals();
@@ -92,6 +105,7 @@ describe("ai_helper_project_health", () => {
 
   async function load() {
     await loadScript("assets/javascripts/project_health/ai_helper_project_health_actions");
+    await loadScript("assets/javascripts/project_health/ai_helper_project_health_swap");
     cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/project_health/ai_helper_project_health");
     return cleanup;
   }
@@ -111,6 +125,18 @@ describe("ai_helper_project_health", () => {
         new MouseEvent("click", { bubbles: true, cancelable: true }),
       );
       expect(FakeEventSource.instances.length).toBe(0);
+    });
+
+    it("still initializes the existing report and then fails loudly when the chart directive module is unavailable", async () => {
+      delete window.AiHelperChartDirective;
+      const { contentDiv } = addHealthContainer({ finalContent: true });
+      addGenerateLink();
+
+      await expect(load()).rejects.toThrow(/AiHelperChartDirective/);
+
+      expect(window.aiHelperProjectHealthLoaded).toBe(true);
+      expect(contentDiv.classList.contains("has-report")).toBe(true);
+      expect(container.querySelector(".other-formats")).not.toBeNull();
     });
   });
 
@@ -334,6 +360,201 @@ describe("ai_helper_project_health", () => {
       // before the guard would have replaced it with the finished body.
       expect(resultDiv.innerHTML).toContain("ai-helper-loader");
       expect(resultDiv.innerHTML).not.toContain("ai-helper-final-content");
+    });
+  });
+
+  describe("chart directive stripping", () => {
+    it("strips chart directives through stripForStreaming before parsing in appendStreamingChunk", async () => {
+      const { resultDiv } = addHealthContainer();
+      await load();
+
+      const order = [];
+      const stripSpy = vi.fn((markdown) => {
+        order.push("strip");
+        return markdown.replace(/^\{\{ai_helper_chart.*\n/m, "");
+      });
+      const parseSpy = vi.fn((markdown) => {
+        order.push("parse");
+        return "<p>" + markdown + "</p>";
+      });
+      vi.stubGlobal("AiHelperChartDirective", { stripForStreaming: stripSpy });
+
+      window.appendStreamingChunk(
+        resultDiv,
+        { parse: parseSpy },
+        "before\n{{ai_helper_chart(target: issues)}}\nafter",
+      );
+
+      expect(order).toEqual(["strip", "parse"]);
+      expect(parseSpy).toHaveBeenCalledWith("before\nafter");
+      expect(resultDiv.innerHTML).toContain("before\nafter");
+      expect(resultDiv.innerHTML).not.toContain("ai_helper_chart");
+    });
+
+    it("strips chart directives through stripForStreaming before parsing in finalizeStreamingContent", async () => {
+      const { resultDiv } = addHealthContainer();
+      await load();
+
+      const order = [];
+      const stripSpy = vi.fn(() => {
+        order.push("strip");
+        return "stripped body";
+      });
+      const parseSpy = vi.fn((markdown) => {
+        order.push("parse");
+        return "<p>" + markdown + "</p>";
+      });
+      vi.stubGlobal("AiHelperChartDirective", { stripForStreaming: stripSpy });
+
+      window.finalizeStreamingContent(resultDiv, { parse: parseSpy }, "raw {{ai_helper_chart(x)}}");
+
+      expect(order).toEqual(["strip", "parse"]);
+      expect(parseSpy).toHaveBeenCalledWith("stripped body");
+      expect(resultDiv.innerHTML).toContain("ai-helper-final-content");
+      expect(resultDiv.innerHTML).toContain("stripped body");
+      expect(resultDiv.innerHTML).not.toContain("ai_helper_chart");
+    });
+  });
+
+  describe("saved report content swap", () => {
+    const SERVER_HTML =
+      '<div class="ai-helper-health-report-content" data-pdf-url="/projects/ecookbook/ai_helper/health_reports/42.pdf" ' +
+      'data-markdown-url="/projects/ecookbook/ai_helper/health_reports/42.md"><p>server rendered report</p></div>';
+
+    function stubFetchWithServerHtml() {
+      const fetchMock = vi.fn(async () => ({ ok: true, status: 200, text: async () => SERVER_HTML }));
+      vi.stubGlobal("fetch", fetchMock);
+      return fetchMock;
+    }
+
+    it("fetches the saved report content, swaps it in, and builds export links without ids", async () => {
+      addMeta(
+        "ai-helper-health-report-content-url",
+        "/projects/ecookbook/ai_helper/health_reports/__REPORT_ID__/content",
+      );
+      addMeta("export-label", "Exporter");
+      const { contentDiv, resultDiv } = addHealthContainer();
+      const fetchMock = stubFetchWithServerHtml();
+
+      await load();
+      const returned = window.finalizeStreamingContent(
+        resultDiv,
+        new window.AiHelperMarkdownParser(),
+        "client draft",
+        42,
+      );
+      expect(returned).toBeInstanceOf(Promise);
+      await returned;
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/projects/ecookbook/ai_helper/health_reports/42/content",
+        expect.objectContaining({ credentials: "same-origin" }),
+      );
+      expect(resultDiv.innerHTML).toBe(SERVER_HTML);
+
+      const formats = contentDiv.querySelector(".other-formats");
+      expect(formats).not.toBeNull();
+      expect(formats.textContent).toContain("Exporter");
+      expect(formats.querySelector("a.pdf").getAttribute("href")).toBe(
+        "/projects/ecookbook/ai_helper/health_reports/42.pdf",
+      );
+      expect(formats.querySelector("a.text").getAttribute("href")).toBe(
+        "/projects/ecookbook/ai_helper/health_reports/42.md",
+      );
+      // No ids: the POST-based export click handler keys on the -dynamic
+      // ids, and these links must navigate instead.
+      expect(formats.querySelector("a.pdf").id).toBe("");
+      expect(formats.querySelector("a.text").id).toBe("");
+    });
+
+    it("does not route clicks on the swapped-in export links through the POST handlers", async () => {
+      addMeta("ai-helper-health-report-content-url", "/__REPORT_ID__/content");
+      const { contentDiv, resultDiv } = addHealthContainer();
+      stubFetchWithServerHtml();
+
+      await load();
+      await window.finalizeStreamingContent(resultDiv, new window.AiHelperMarkdownParser(), "draft", 42);
+
+      const pdfLink = contentDiv.querySelector(".other-formats a.pdf");
+      window.handleProjectHealthExportClick({ target: pdfLink, preventDefault: vi.fn() });
+
+      expect(document.body.querySelectorAll("form").length).toBe(0);
+    });
+
+    it("does not fetch the saved content and returns undefined when no report id is given", async () => {
+      addMeta("ai-helper-health-report-content-url", "/__REPORT_ID__/content");
+      const { resultDiv } = addHealthContainer();
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
+
+      await load();
+      expect(
+        window.finalizeStreamingContent(resultDiv, new window.AiHelperMarkdownParser(), "draft"),
+      ).toBeUndefined();
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(resultDiv.innerHTML).toContain("ai-helper-final-content");
+    });
+
+    it("does not swap when the result area was detached while the content request was in flight", async () => {
+      addMeta("ai-helper-health-report-content-url", "/__REPORT_ID__/content");
+      const { resultDiv } = addHealthContainer();
+      let resolveFetch;
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(() => new Promise((resolve) => { resolveFetch = resolve; })),
+      );
+
+      await load();
+      const returned = window.finalizeStreamingContent(
+        resultDiv,
+        new window.AiHelperMarkdownParser(),
+        "draft",
+        42,
+      );
+      resultDiv.remove();
+      resolveFetch({ ok: true, status: 200, text: async () => SERVER_HTML });
+
+      await returned;
+
+      expect(resultDiv.innerHTML).not.toContain("server rendered report");
+      expect(resultDiv.innerHTML).toContain("ai-helper-final-content");
+    });
+
+    it("rejects when the saved content request responds with an error status", async () => {
+      addMeta("ai-helper-health-report-content-url", "/__REPORT_ID__/content");
+      const { resultDiv } = addHealthContainer();
+      vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 403 })));
+
+      await load();
+      await expect(
+        window.finalizeStreamingContent(resultDiv, new window.AiHelperMarkdownParser(), "draft", 42),
+      ).rejects.toThrow(/403/);
+    });
+
+    it("rejects when the saved content request fails", async () => {
+      addMeta("ai-helper-health-report-content-url", "/__REPORT_ID__/content");
+      const { resultDiv } = addHealthContainer();
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => {
+          throw new TypeError("network down");
+        }),
+      );
+
+      await load();
+      await expect(
+        window.finalizeStreamingContent(resultDiv, new window.AiHelperMarkdownParser(), "draft", 42),
+      ).rejects.toThrow("network down");
+    });
+
+    it("throws when the content-url meta tag is missing", async () => {
+      const { resultDiv } = addHealthContainer();
+      await load();
+
+      expect(() =>
+        window.finalizeStreamingContent(resultDiv, new window.AiHelperMarkdownParser(), "draft", 42),
+      ).toThrow(/content-url meta/);
     });
   });
 });

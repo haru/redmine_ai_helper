@@ -34,7 +34,9 @@ describe("ai_helper_comparison", () => {
     vi.stubGlobal("EventSource", FakeEventSource);
     delete window.aiHelperComparisonInitialized;
     delete window.AiHelperMarkdownParser;
+    delete window.AiHelperChartDirective;
     await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
+    await loadScript("assets/javascripts/project_health/ai_helper_chart_directive");
     await loadScript("assets/javascripts/shared/ai_helper_frame_renderer");
     frames = stubAnimationFrames();
   });
@@ -55,9 +57,10 @@ describe("ai_helper_comparison", () => {
     return meta;
   }
 
-  function addResultDiv({ analysisUrl = "/comparisons/1/analyze", omitAnalysisUrl = false } = {}) {
+  function addResultDiv({ analysisUrl = "/comparisons/1/analyze", omitAnalysisUrl = false, chartMessage = "Charts unavailable" } = {}) {
     const resultDiv = document.createElement("div");
     resultDiv.id = "ai-helper-comparison-analysis";
+    resultDiv.dataset.chartUnavailableMessage = chartMessage;
     if (!omitAnalysisUrl) {resultDiv.dataset.analysisUrl = analysisUrl;}
     container.appendChild(resultDiv);
     return resultDiv;
@@ -144,6 +147,41 @@ describe("ai_helper_comparison", () => {
     expect(hiddenField.value).toBe("Analysis: better");
     expect(exportDiv.style.display).toBe("block");
     expect(source.closed).toBe(true);
+  });
+
+  it("replaces chart directives with the unavailable message before parsing, while streaming and at the end", async () => {
+    const resultDiv = addResultDiv({ chartMessage: "NO-CHARTS-HERE" });
+    const { hiddenField } = addExportUi();
+    const replaceSpy = vi.spyOn(window.AiHelperChartDirective, "replaceForComparison");
+
+    await load();
+    const source = FakeEventSource.instances[0];
+    const body = "Intro\n\n{{ai_helper_chart(status, version=12)}}\n\nOutro";
+
+    sendChunk(source, body);
+    frames.flush();
+    expect(replaceSpy).toHaveBeenCalledWith(body, "NO-CHARTS-HERE");
+    expect(resultDiv.innerHTML).toContain("NO-CHARTS-HERE");
+    expect(resultDiv.innerHTML).not.toContain("ai_helper_chart");
+
+    source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+    expect(resultDiv.innerHTML).toContain("NO-CHARTS-HERE");
+    expect(resultDiv.innerHTML).not.toContain("ai_helper_chart");
+    // The export keeps the raw body; the server replaces the directives.
+    expect(hiddenField.value).toBe(body);
+    replaceSpy.mockRestore();
+  });
+
+  it("throws when the chart unavailable message is missing", async () => {
+    const resultDiv = addResultDiv();
+    delete resultDiv.dataset.chartUnavailableMessage;
+    addExportUi();
+
+    await load();
+    const source = FakeEventSource.instances[0];
+    sendChunk(source, "text");
+
+    expect(() => frames.flush()).toThrow(TypeError);
   });
 
   it("coalesces chunks that arrive within one animation frame into a single render", async () => {

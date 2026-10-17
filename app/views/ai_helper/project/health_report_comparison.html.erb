@@ -48,6 +48,7 @@
     <div class="box">
       <div id="ai-helper-comparison-analysis"
            class="ai-helper-comparison-content"
+           data-chart-unavailable-message="<%= RedmineAiHelper::HealthReportChart::Resolver.comparison_message %>"
            data-analysis-url="<%= ai_helper_health_report_compare_analyze_path(@project,
              old_report_id: @old_report.id,
              new_report_id: @new_report.id) %>">

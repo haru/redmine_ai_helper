@@ -5,6 +5,26 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
 
   fixtures :projects, :users, :members, :member_roles, :roles, :enabled_modules
 
+  # Read a zip binary string into {entry name => UTF-8 content}.
+  def zip_entries(zip_binary)
+    entries = {}
+    Zip::InputStream.open(StringIO.new(zip_binary)) do |io|
+      while (entry = io.get_next_entry)
+        entries[entry.name] = io.read.force_encoding("UTF-8")
+      end
+    end
+    entries
+  end
+
+  # Inflate the Flate streams of a PDF and return their text content.
+  def pdf_text(pdf)
+    pdf.b.scan(/stream\r?\n(.*?)endstream/m).map do |(data)|
+      Zlib::Inflate.inflate(data)
+    rescue Zlib::Error
+      data
+    end.join.delete("\x00").gsub(/\\([()])/, '\1')
+  end
+
   context "AiHelperDashboardController" do
     setup do
       @controller = AiHelperDashboardController.new
@@ -280,10 +300,156 @@ This is a test report."
       should "render the edit preview table with the list class" do
         Role.find(1).add_permission! :edit_ai_helper_health_reports
 
-        post :health_report_preview, params: { id: @project.id, text: "| col |\n|-----|\n| 1 |" }
+        post :health_report_preview, params: { id: @project.id, report_id: @report.id, text: "| col |\n|-----|\n| 1 |" }
 
         assert_response :success
         assert_select "table.list td", text: "1"
+      end
+    end
+
+    context "#health_report_show pdf charts" do
+      setup do
+        Role.find(1).add_permission! :view_ai_helper_health_reports
+        @report = AiHelperHealthReport.create!(
+          project: @project,
+          user: @user,
+          health_report: "Report body\n\n{{ai_helper_chart(open_closed, version=12)}}\n\nAfter",
+          metrics: [ { version_id: 12, version_name: "1.0.0",
+                       metrics: { issue_statistics: { open_issues: 10, closed_issues: 5 } } } ].to_json
+        )
+      end
+
+      should "draw the chart from the report's stored metrics" do
+        get :health_report_show, params: { id: @project.id, report_id: @report.id, format: :pdf }
+
+        assert_response :success
+        text = pdf_text(response.body)
+        assert_includes text, "Open vs Closed Issues - 1.0.0"
+        assert_includes text, "#{l(:label_open_issues)} (10)"
+        assert_not_includes text, "{{ai_helper_chart"
+      end
+
+      should "report an unavailable chart when the stored metrics are broken" do
+        @report.update_column(:metrics, "{not json")
+
+        get :health_report_show, params: { id: @project.id, report_id: @report.id, format: :pdf }
+
+        assert_includes pdf_text(response.body), l("ai_helper.health_report_chart.errors.metrics_unavailable")
+      end
+    end
+
+    context "edit form chart help" do
+      setup do
+        Role.find(1).add_permission! :view_ai_helper_health_reports
+        Role.find(1).add_permission! :edit_ai_helper_health_reports
+        @report = AiHelperHealthReport.create!(
+          project: @project, user: @user, health_report: "Body",
+          metrics: [
+            { version_id: 12, version_name: "1.0.0", metrics: {} },
+            { period_name: "Last 1 Week", metrics: {} },
+            { period_name: "Repository Activity (Last 1 Week)", metrics: {} }
+          ].to_json
+        )
+      end
+
+      should "point the preview at the report in the detail pane" do
+        get :health_report_show, params: { id: @project.id, report_id: @report.id }, xhr: true
+
+        assert_select "textarea[data-preview-url=?]",
+                      "/projects/#{@project.identifier}/ai_helper/health_reports/preview?report_id=#{@report.id}"
+      end
+
+      [ :detail_pane, :show_page ].each do |where|
+        should "render the collapsed chart help in the #{where} edit form" do
+          get :health_report_show, params: { id: @project.id, report_id: @report.id }, xhr: where == :detail_pane
+
+          assert_select "form.ai-helper-health-report-edit-form fieldset.collapsible.collapsed.ai-helper-health-report-chart-help", 1 do
+            assert_select "legend.icon.icon-collapsed[onclick=?]", "toggleFieldset(this);" do
+              assert_select "svg"
+              assert_select "legend", text: /#{Regexp.escape(l("ai_helper.health_report_chart.help.title"))}/
+            end
+            assert_select "div[style=?]", "display: none;"
+          end
+        end
+      end
+
+      should "list the syntax, chart types and the report's targets" do
+        get :health_report_show, params: { id: @project.id, report_id: @report.id }, xhr: true
+
+        assert_select "fieldset.ai-helper-health-report-chart-help div" do |divs|
+          text = divs.first.text
+          assert_includes text, "{{ai_helper_chart("
+          %w[status tracker priority assignee open_closed progress].each do |key|
+            assert_includes text, key
+            assert_includes text, l("ai_helper.health_report_chart.types.#{key}")
+          end
+          assert_includes text, "version=12"
+          assert_includes text, "1.0.0"
+          assert_includes text, "period=last_week"
+          assert_includes text, l("ai_helper.health_report_chart.periods.last_week")
+          assert_not_includes text, "last_month"
+        end
+      end
+
+      should "not render the help for a user who cannot edit" do
+        Role.find(1).remove_permission! :edit_ai_helper_health_reports
+        @request.session[:user_id] = 2
+        User.current = User.find(2)
+
+        get :health_report_show, params: { id: @project.id, report_id: @report.id }, xhr: true
+
+        assert_response :success
+        assert_select "textarea", 0
+        assert_select "fieldset.ai-helper-health-report-chart-help", 0
+      end
+    end
+
+    context "#health_report_content" do
+      setup do
+        Role.find(1).add_permission! :view_ai_helper_health_reports
+        @report = AiHelperHealthReport.create!(
+          project: @project,
+          user: @user,
+          health_report: "Report body\n\n{{ai_helper_chart(open_closed, version=12)}}\n\nAfter",
+          metrics: [ { version_id: 12, version_name: "1.0.0",
+                       metrics: { issue_statistics: { open_issues: 10, closed_issues: 5 } } } ].to_json
+        )
+      end
+
+      should "render the content container without a layout" do
+        get :health_report_content, params: { id: @project.id, report_id: @report.id }
+
+        assert_response :success
+        assert_not_includes response.body, "<html"
+        assert_select "div.ai-helper-health-report-content" \
+                      "[data-pdf-url='/projects/#{@project.identifier}/ai_helper/health_reports/#{@report.id}.pdf']" \
+                      "[data-markdown-url='/projects/#{@project.identifier}/ai_helper/health_reports/#{@report.id}/markdown']", 1
+        assert_select "div.ai-helper-health-report-content canvas[data-ai-helper-chart]", 1
+      end
+
+      should "return 404 when the report belongs to another project" do
+        other_project = Project.find(2)
+        other_project.enabled_module_names = other_project.enabled_module_names + [ "ai_helper" ]
+        other_project.save!
+
+        other_report = AiHelperHealthReport.create!(
+          project: other_project,
+          user: @user,
+          health_report: "Other project report"
+        )
+
+        get :health_report_content, params: { id: @project.id, report_id: other_report.id }
+
+        assert_response :not_found
+      end
+
+      should "return 403 when the report is not visible to the user" do
+        non_member_user = User.find(4)
+        @request.session[:user_id] = non_member_user.id
+
+        get :health_report_content, params: { id: @project.id, report_id: @report.id }
+
+        assert_response :forbidden
       end
     end
 
@@ -527,6 +693,8 @@ This is a test report."
         assert_select ".old-report-info", 1
         assert_select ".new-report-info", 1
         assert_select "#ai-helper-comparison-analysis[data-analysis-url]", 1
+        assert_select "#ai-helper-comparison-analysis[data-chart-unavailable-message=?]",
+                      I18n.t("ai_helper.health_report_chart.unavailable") + I18n.t("ai_helper.health_report_chart.errors.comparison")
       end
 
       should "redirect when report IDs are missing" do
@@ -959,6 +1127,19 @@ This is a test report."
         role.add_permission! :view_ai_helper_health_reports
       end
 
+      should "write the comparison message in place of chart directives" do
+        post :comparison_pdf, params: {
+          id: @project.id, old_report_id: @old_report.id, new_report_id: @new_report.id,
+          comparison_content: "Intro\n\n{{ai_helper_chart(status, version=12)}}\n\nOutro"
+        }
+
+        assert_response :success
+        text = pdf_text(response.body)
+        assert_includes text, I18n.t("ai_helper.health_report_chart.unavailable") +
+                              I18n.t("ai_helper.health_report_chart.errors.comparison")
+        assert_not_includes text, "{{ai_helper_chart"
+      end
+
       should "export comparison analysis as PDF with valid content" do
         comparison_content = "# Comparison Analysis\n\nThis is the comparison result."
 
@@ -1112,6 +1293,20 @@ This is a test report."
 
         role = Role.find(1)
         role.add_permission! :view_ai_helper_health_reports
+      end
+
+      should "replace chart directives with a one-line blockquote and stay a single .md" do
+        post :comparison_markdown, params: {
+          id: @project.id, old_report_id: @old_report.id, new_report_id: @new_report.id,
+          comparison_content: "Intro\n\n{{ai_helper_chart(status, version=12)}}\n\nOutro"
+        }
+
+        assert_response :success
+        assert_equal "text/markdown", response.media_type
+        assert_match(/\.md"?\z/, response.headers["Content-Disposition"])
+        message = I18n.t("ai_helper.health_report_chart.unavailable") +
+                  I18n.t("ai_helper.health_report_chart.errors.comparison")
+        assert_equal "Intro\n\n> #{message}\n\nOutro", response.body
       end
 
       should "export comparison analysis as Markdown with valid content" do
@@ -1467,17 +1662,63 @@ This is a test report."
         @request.session[:user_id] = @editor.id
         User.current = @editor
         Role.find(1).add_permission! :edit_ai_helper_health_reports
+        Role.find(1).add_permission! :view_ai_helper_health_reports
         @original_text_formatting = Setting.text_formatting
+        @report = AiHelperHealthReport.create!(
+          project: @project, user: @user, health_report: "AI body",
+          metrics: [ { version_id: 12, version_name: "1.0.0",
+                       metrics: { issue_statistics: { open_issues: 10, closed_issues: 5 } } } ].to_json
+        )
       end
 
       teardown do
         Setting.text_formatting = @original_text_formatting
       end
 
+      should "require report_id" do
+        post :health_report_preview, params: { id: @project.id, text: "text" }
+
+        assert_response :not_found
+      end
+
+      should "return 404 for a report that does not exist" do
+        post :health_report_preview, params: { id: @project.id, report_id: 0, text: "text" }
+
+        assert_response :not_found
+      end
+
+      should "return 404 for a report of another project" do
+        other = AiHelperHealthReport.create!(project: Project.find(2), user: @user, health_report: "other")
+
+        post :health_report_preview, params: { id: @project.id, report_id: other.id, text: "text" }
+
+        assert_response :not_found
+      end
+
+      should "return 403 when the report is not visible to the user" do
+        AiHelperHealthReport.any_instance.stubs(:visible?).returns(false)
+
+        post :health_report_preview, params: { id: @project.id, report_id: @report.id, text: "text" }
+
+        assert_response :forbidden
+      end
+
+      should "render chart directives from the report's stored metrics" do
+        post :health_report_preview, params: {
+          id: @project.id, report_id: @report.id,
+          text: "Before\n\n{{ai_helper_chart(open_closed, version=12)}}\n\nAfter"
+        }
+
+        assert_response :success
+        assert_includes response.body, "data-ai-helper-chart"
+        assert_includes response.body, "Open vs Closed Issues - 1.0.0"
+        assert_not_includes response.body, "{{ai_helper_chart"
+      end
+
       should "render Markdown HTML without layout even under the Textile setting" do
         Setting.text_formatting = "textile"
 
-        post :health_report_preview, params: { id: @project.id, text: "**bold** statement" }
+        post :health_report_preview, params: { id: @project.id, report_id: @report.id, text: "**bold** statement" }
 
         assert_response :success
         assert_not_includes response.body, "<html"
@@ -1485,7 +1726,7 @@ This is a test report."
       end
 
       should "render an empty preview notice for blank text" do
-        post :health_report_preview, params: { id: @project.id, text: "" }
+        post :health_report_preview, params: { id: @project.id, report_id: @report.id, text: "" }
 
         assert_response :success
         assert_includes response.body, %(<p class="empty-preview">#{l(:label_nothing_to_preview)}</p>)
@@ -1501,11 +1742,27 @@ This is a test report."
         get :health_report_markdown, params: { id: @project.id, report_id: @report.id }
 
         assert_response :success
-        assert_includes response.media_type, "text/markdown"
+        assert_equal "application/zip", response.media_type
         assert_includes response.headers["Content-Disposition"], "attachment"
-        assert_includes response.headers["Content-Disposition"],
-                        "#{@project.identifier}-health-report-#{@report.created_at.strftime("%Y%m%d")}.md"
-        assert_equal "AI body", response.body
+        base = "#{@project.identifier}-health-report-#{@report.created_at.strftime("%Y%m%d")}"
+        assert_includes response.headers["Content-Disposition"], "#{base}.zip"
+        assert_equal({ "#{base}.md" => "AI body" }, zip_entries(response.body))
+      end
+
+      should "put the chart svgs in the zip and replace the directive with an image" do
+        chart_report = AiHelperHealthReport.create!(
+          project: @project, user: @user,
+          health_report: "Before\n\n{{ai_helper_chart(open_closed, version=12)}}\n\nAfter",
+          metrics: [ { version_id: 12, version_name: "1.0.0",
+                       metrics: { issue_statistics: { open_issues: 10, closed_issues: 5 } } } ].to_json
+        )
+
+        get :health_report_markdown, params: { id: @project.id, report_id: chart_report.id }
+
+        entries = zip_entries(response.body)
+        markdown = entries["#{@project.identifier}-health-report-#{chart_report.created_at.strftime("%Y%m%d")}.md"]
+        assert_equal "Before\n\n![Open vs Closed Issues - 1.0.0](charts/chart-1.svg)\n\nAfter", markdown
+        assert_includes entries["charts/chart-1.svg"], "<svg"
       end
 
       should "prefix the edit notice quote line for an edited report" do
@@ -1514,7 +1771,9 @@ This is a test report."
         get :health_report_markdown, params: { id: @project.id, report_id: @report.id }
 
         assert_response :success
-        notice, blank, body = response.body.split("\n", 3)
+        entries = zip_entries(response.body)
+        assert_equal 1, entries.length
+        notice, blank, body = entries.values.first.split("\n", 3)
         assert notice.start_with?("> #{l("ai_helper.health_report_edit.edited")}: ")
         assert_equal "", blank
         assert_equal "Edited body", body

@@ -228,6 +228,34 @@ curl -X POST \
 - The AI Helper module must be enabled for the project
 - REST API must be enabled in Redmine administration settings
 
+**Chart directives in the report body:**
+
+A health report body can contain chart directives. A directive is a single line
+that is drawn as a chart (from the metrics stored with the report) on screen,
+in the PDF export and in the Markdown export. The API returns the body with the
+directive lines unchanged, so API clients that render the report themselves must
+interpret them (or ignore them).
+
+```
+{{ai_helper_chart(<type>, version=<version_id>)}}
+{{ai_helper_chart(<type>, period=<period_key>)}}
+```
+
+- The directive must occupy a whole line (up to 3 leading spaces) outside fenced
+  code blocks. Spaces around the comma and `=` are ignored.
+- `<type>`: `status`, `tracker`, `priority`, `assignee`, `open_closed`, `progress`
+  (issues by status / tracker / priority / assignee, open vs closed, progress
+  distribution).
+- `<version_id>`: the numeric id of a version in the report's stored metrics.
+- `<period_key>`: `last_week`, `last_month`, `all_time` or `recent`.
+- A directive that cannot be drawn (unknown type or target, no stored metrics)
+  is shown as a message with the reason instead of a chart.
+
+The Markdown export of a health report is a zip file (`<name>.md` plus
+`charts/chart-<n>.svg`) instead of a single `.md` file. Extract it and open the
+`.md` file in a Markdown viewer to see the charts. This is a change from earlier
+releases and should be mentioned in the release notes.
+
 **Scheduling with cron:**
 To generate health reports automatically every Monday at 9:00 AM, add the following to your crontab:
 ```bash

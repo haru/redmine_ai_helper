@@ -1,0 +1,26 @@
+<%# The three DOM states of a chart directive position (contracts/http-and-dom.md).
+    The canvas payload travels in a data attribute so that it is never touched
+    by linkify_issue_references, and every value is ERB-escaped here. Only
+    Redmine's existing classes are used (no new CSS). %>
+<% if resolved.is_a?(RedmineAiHelper::HealthReportChart::Chart) %>
+  <% if resolved.no_data? %>
+<div class="ai-helper-health-report-chart">
+  <p><strong><%= resolved.title %></strong></p>
+  <p class="nodata"><%= l(:label_no_data) %></p>
+</div>
+  <% else %>
+<div class="ai-helper-health-report-chart issue-report-graph">
+  <canvas role="img" aria-label="<%= resolved.title %>"
+          data-ai-helper-chart="<%= { form: resolved.form.to_s,
+                                      title: resolved.title,
+                                      labels: resolved.items.map(&:label),
+                                      values: resolved.items.map(&:value),
+                                      fillColors: resolved.items.map(&:fill_color),
+                                      borderColors: resolved.items.map(&:border_color) }.to_json %>"></canvas>
+</div>
+  <% end %>
+<% else %>
+<div class="ai-helper-health-report-chart">
+  <p class="warning"><%= resolved.message %></p>
+</div>
+<% end %>

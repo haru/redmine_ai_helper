@@ -32,6 +32,11 @@ export default [
         // declaration), then referenced as a bare identifier from other files.
         AiHelperMarkdownParser: "readonly",
         AiHelperFrameRenderer: "readonly",
+        // Health report chart scripts assign themselves to window
+        // (assets/javascripts/project_health/ai_helper_chart_directive.js,
+        //  ai_helper_health_report_chart.js).
+        AiHelperChartDirective: "readonly",
+        AiHelperHealthReportChart: "readonly",
         CommandCompletion: "readonly",
         // Redmine core globals (app/assets/javascripts/application-legacy.js),
         // referenced as bare identifiers from inline `onclick` bridges.
@@ -195,6 +200,30 @@ export default [
       globals: {
         handleGenerateProjectHealthClick: "readonly",
         handleProjectHealthExportClick: "readonly",
+      },
+    },
+  },
+  {
+    // swapInSavedReportContent is declared in
+    // ai_helper_project_health_swap.js (split out purely to stay under
+    // max-lines, see ADR-027) and referenced here as a bare identifier,
+    // for the same split-file reason as the blocks above.
+    files: ["assets/javascripts/project_health/ai_helper_project_health.js"],
+    languageOptions: {
+      globals: {
+        swapInSavedReportContent: "readonly",
+      },
+    },
+  },
+  {
+    // hiddenFieldContainerOf is declared in ai_helper_project_health.js
+    // (exposed via window for the load-guard reason) and referenced here as
+    // a bare identifier, for the same max-lines split-file reason as the
+    // blocks above.
+    files: ["assets/javascripts/project_health/ai_helper_project_health_swap.js"],
+    languageOptions: {
+      globals: {
+        hiddenFieldContainerOf: "readonly",
       },
     },
   },

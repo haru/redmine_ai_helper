@@ -114,6 +114,13 @@ function handleGenerateProjectHealthClick(e, parser) {
   currentProjectHealthEventSource = new EventSource(url);
   const eventSource = currentProjectHealthEventSource;
   let content = '';
+  // The id of the report the server saved for this generation, delivered
+  // via a named SSE event before the stop chunk. Used to swap in the
+  // server-rendered body when the stream finishes.
+  let savedReportId = null;
+  eventSource.addEventListener('health_report_saved', function(event) {
+    savedReportId = JSON.parse(event.data).report_id;
+  });
   const renderer = new AiHelperFrameRenderer(function() {
     // A newer generation may have replaced this stream since scheduling.
     if (currentProjectHealthEventSource !== eventSource) {
@@ -147,7 +154,7 @@ function handleGenerateProjectHealthClick(e, parser) {
       eventSource.close();
       currentProjectHealthEventSource = null;
       renderer.cancel();
-      finalizeStreamingContent(resultDiv, parser, content);
+      finalizeStreamingContent(resultDiv, parser, content, savedReportId);
     }
   };
 

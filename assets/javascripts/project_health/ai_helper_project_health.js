@@ -118,7 +118,10 @@ if (!window.aiHelperProjectHealthInitialized) {
       loader.style.display = 'none';
     }
 
-    const formattedContent = parser.parse(content);
+    // Chart directives are never shown while the report is streaming (and
+    // a directive line still being received stays hidden too).
+    const strippedContent = AiHelperChartDirective.stripForStreaming(content);
+    const formattedContent = parser.parse(strippedContent);
     const newHTML = '<div class="ai-helper-streaming-content">' +
       formattedContent +
       '<span class="ai-helper-cursor">|</span></div>';
@@ -164,8 +167,14 @@ if (!window.aiHelperProjectHealthInitialized) {
    * @param {HTMLElement} resultDiv - The report result container.
    * @param {AiHelperMarkdownParser} parser - Parser used to render the final markdown.
    * @param {string} content - The full generated report content.
+   * @param {number} [savedReportId] - The saved report's id from the
+   *   health_report_saved SSE event. When present, the server-rendered
+   *   report body (which carries the charts) is fetched and swapped in,
+   *   and the export links are rebuilt for the saved report.
+   * @returns {Promise<void>|undefined} The swap promise when a saved report
+   *   id was given, undefined otherwise.
    */
-  function finalizeStreamingContent(resultDiv, parser, content) {
+  function finalizeStreamingContent(resultDiv, parser, content, savedReportId) {
     // Validate the result area's structure before touching the DOM, so a
     // failed guard leaves the page as it was instead of a finished-looking
     // pane whose history, export links and timestamp were never updated.
@@ -183,7 +192,10 @@ if (!window.aiHelperProjectHealthInitialized) {
       return;
     }
 
-    const formattedContent = parser.parse(content);
+    // The client-rendered completion never shows chart directives either;
+    // the charts arrive with the server-rendered swap below.
+    const strippedContent = AiHelperChartDirective.stripForStreaming(content);
+    const formattedContent = parser.parse(strippedContent);
     const finalHTML = '<div class="ai-helper-final-content">' +
       formattedContent + '</div>';
     resultDiv.innerHTML = finalHTML;
@@ -197,11 +209,19 @@ if (!window.aiHelperProjectHealthInitialized) {
     // Final scroll to bottom
     scrollHealthContentToBottom();
 
+    if (savedReportId) {
+      // The server-rendered body and the saved report's export links arrive
+      // asynchronously. Adding the meta-tag based export links here too
+      // would duplicate them.
+      return swapInSavedReportContent(resultDiv, savedReportId);
+    }
+
     // Add PDF export button after generation completes
     addPdfExportButton();
 
     // Refresh metadata (created timestamp) to reflect the regenerated report
     refreshProjectHealthMetadata();
+    return undefined;
   }
 
   /**
@@ -432,14 +452,15 @@ function setupHealthReportObserver() {
   }
 }
 
-// Make functions used by ai_helper_project_health_actions.js (split out to
-// keep this file under the max-lines ESLint limit; see ADR-027) globally
-// available.
+// Make functions used by ai_helper_project_health_actions.js and
+// ai_helper_project_health_swap.js (split out to keep this file under the
+// max-lines ESLint limit; see ADR-027) globally available.
 window.appendStreamingChunk = appendStreamingChunk;
 window.finalizeStreamingContent = finalizeStreamingContent;
 window.removePdfExportButton = removePdfExportButton;
 window.handlePdfExport = handlePdfExport;
 window.handleMarkdownExport = handleMarkdownExport;
+window.hiddenFieldContainerOf = hiddenFieldContainerOf;
 
 // handleGenerateProjectHealthClick and handleProjectHealthExportClick are
 // defined in ai_helper_project_health_actions.js.
@@ -460,6 +481,9 @@ document.addEventListener('DOMContentLoaded', function() {
   // skipping the initialization above.
   if (typeof AiHelperMarkdownParser === 'undefined') {
     throw new Error('AiHelperMarkdownParser is not loaded; the project health report cannot be generated.');
+  }
+  if (typeof AiHelperChartDirective === 'undefined') {
+    throw new Error('AiHelperChartDirective is not loaded; chart directives cannot be stripped from the report.');
   }
   const parser = new AiHelperMarkdownParser();
 

@@ -92,7 +92,8 @@ if (!window.aiHelperComparisonInitialized) {
         if (currentEventSource !== eventSource) {
           return;
         }
-        const formattedContent = parser.parse(content);
+        const formattedContent = parser.parse(
+          AiHelperChartDirective.replaceForComparison(content, resultDiv.dataset.chartUnavailableMessage));
         resultDiv.innerHTML = '<div class="ai-helper-streaming-content">' +
           formattedContent +
           '<span class="ai-helper-cursor">|</span></div>';
@@ -116,7 +117,8 @@ if (!window.aiHelperComparisonInitialized) {
             renderer.cancel();
 
             // Render final content
-            const formattedContent = parser.parse(content);
+            const formattedContent = parser.parse(
+              AiHelperChartDirective.replaceForComparison(content, resultDiv.dataset.chartUnavailableMessage));
             resultDiv.innerHTML = '<div class="ai-helper-final-content">' +
               formattedContent + '</div>';
 

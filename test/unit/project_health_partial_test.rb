@@ -302,7 +302,7 @@ class ProjectHealthPartialTest < ActionView::TestCase
     assert_select html, %(form input[type="submit"][value="#{l(:button_save)}"]), 1
     assert_select html, "form a.ai-helper-health-report-edit-cancel", 1
     textarea = html.at_css("textarea")
-    assert_equal ai_helper_health_report_preview_path(@project), textarea["data-preview-url"]
+    assert_equal ai_helper_health_report_preview_path(@project, report_id: report.id), textarea["data-preview-url"]
     assert_equal help_wiki_syntax_path, textarea["data-help-url"]
   end
 

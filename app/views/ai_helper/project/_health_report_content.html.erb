@@ -1,0 +1,8 @@
+<%# The body of one stored health report inside its content container. The
+    data attributes let the browser rebuild the export links after the
+    container replaces the streamed body. %>
+<div class="ai-helper-health-report-content"
+     data-pdf-url="<%= ai_helper_health_report_show_path(@project, report_id: health_report.id, format: :pdf) %>"
+     data-markdown-url="<%= ai_helper_health_report_markdown_path(@project, report_id: health_report.id) %>">
+  <%= render_health_report_markdown(health_report.health_report.to_s, report: health_report) %>
+</div>

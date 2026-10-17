@@ -473,7 +473,7 @@ class AiHelperController < ApplicationController
     end
   end
 
-  # Generate Markdown from current health report content
+  # Generate a Markdown zip (body plus chart SVGs) from current health report content
   # @return [void]
   def project_health_markdown
     health_report_content = params[:health_report_content]
@@ -484,10 +484,11 @@ class AiHelperController < ApplicationController
       # Use Loofah to safely remove dangerous elements (script, style, etc.) with their content
       sanitized_content = Loofah.fragment(health_report_content.delete("\r")).scrub!(:prune).to_text.strip
 
-      filename = "#{@project.identifier}-health-report-#{Date.current.strftime("%Y%m%d")}.md"
-      send_data(sanitized_content,
-                type: "text/markdown",
-                filename: filename)
+      base_name = "#{@project.identifier}-health-report-#{Date.current.strftime("%Y%m%d")}"
+      archive = RedmineAiHelper::HealthReportChart::MarkdownArchive.build(
+        sanitized_content, resolver: RedmineAiHelper::HealthReportChart::Resolver.new(nil), base_name: base_name
+      )
+      send_data(archive, type: "application/zip", filename: "#{base_name}.zip")
     else
       redirect_to project_path(@project), alert: t("ai_helper.project_health.no_report_available")
     end
@@ -516,6 +517,7 @@ class AiHelperController < ApplicationController
         )
 
         Rails.cache.write(cache_key, content, expires_in: 1.hour)
+        send_health_report_saved_event(content)
       end
     rescue => e
       ai_helper_logger.error "Generate project health error: #{e.message}"
@@ -695,6 +697,19 @@ class AiHelperController < ApplicationController
   end
 
   private
+
+  # Send the health_report_saved SSE event when the latest report saved by
+  # the LLM call for this project and user holds exactly the body the LLM
+  # returned (R-008). When no matching report exists, for example when the
+  # LLM raised before saving, nothing is sent.
+  # @param content [String] the body returned by the LLM
+  # @return [void]
+  def send_health_report_saved_event(content)
+    report = AiHelperHealthReport.for_project(@project.id).by_user(User.current.id).sorted.first
+    return unless report && report.health_report == content
+
+    response.stream.write("event: health_report_saved\ndata: {\"report_id\": #{report.id}}\n\n")
+  end
 
   def build_sub_issue_from_param(issue_param)
     issue = Issue.new

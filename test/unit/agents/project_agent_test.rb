@@ -34,6 +34,46 @@ class ProjectAgentTest < ActiveSupport::TestCase
         enabled_module.save!
       end
 
+      should "pass a chart guide built from the same metrics that are saved" do
+        mock_tools = mock("ProjectTools")
+        mock_tools.stubs(:get_metrics).returns({ issue_statistics: { total_issues: 3 } })
+        RedmineAiHelper::Tools::ProjectTools.stubs(:new).returns(mock_tools)
+        mock_calculator = mock("ProjectMetricsCalculator")
+        mock_calculator.stubs(:calculate_repository_metrics).returns({ repository_available: false })
+        RedmineAiHelper::ProjectMetricsCalculator.stubs(:new).returns(mock_calculator)
+        @agent.stubs(:load_prompt).with(regexp_matches(/analysis_instructions/)).returns(stub(format: "instructions"))
+
+        captured = nil
+        mock_prompt = mock("Prompt")
+        mock_prompt.expects(:format).with { |args| captured = args }.returns("formatted prompt")
+        @agent.stubs(:load_prompt).with("project_agent/health_report").returns(mock_prompt)
+        @agent.stubs(:think_chat).returns("report")
+
+        @agent.project_health_report(project: @project)
+
+        expected_guide = RedmineAiHelper::HealthReportChart::PromptGuide.build(
+          RedmineAiHelper::HealthReportChart::Resolver.new(captured[:metrics])
+        )
+        assert_equal expected_guide, captured[:chart_guide]
+        assert_includes captured[:chart_guide], "Available targets:"
+      end
+
+      should "reference chart_guide in both health report templates and forbid directives in both comparison templates" do
+        %w[health_report health_report_ja].each do |name|
+          template = RedmineAiHelper::Util::PromptLoader.load_template("project_agent/#{name}")
+          rendered = template.format(
+            project_id: 1, analysis_focus: "f", analysis_instructions: "i", report_sections: "s", focus_guidance: "g",
+            health_report_instructions: "h", chart_guide: "CHART-GUIDE-MARKER", metrics: "m"
+          )
+          assert_includes rendered, "CHART-GUIDE-MARKER", name
+          assert_not_includes rendered, "{chart_guide}", name
+        end
+        %w[health_report_comparison health_report_comparison_ja].each do |name|
+          template = RedmineAiHelper::Util::PromptLoader.load_template("project_agent/#{name}")
+          assert_includes template.format, "{{ai_helper_chart(...)}}", name
+        end
+      end
+
       should "generate version-specific report when open versions exist" do
         # Create a mock version for testing
         version = Version.new(name: "Test Version", project: @project, status: "open")
@@ -116,6 +156,7 @@ class ProjectAgentTest < ActiveSupport::TestCase
           report_sections: "Generate separate sections for 1-week and 1-month periods with comparative analysis",
           focus_guidance: "Focus on recent activity trends and identify patterns that can guide future project direction",
           health_report_instructions: "No specific instructions provided.",
+          chart_guide: instance_of(String),
           metrics: instance_of(String)
         ).returns("formatted prompt")
 

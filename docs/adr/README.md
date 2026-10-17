@@ -110,3 +110,4 @@ Briefly describe alternatives that were rejected and why.
 | [055](./055-slack-markdown-block-replies.md) | Slack replies as markdown blocks | Accepted |
 | [056](./056-dashboard-health-report-frame-capped-by-viewport.md) | Cap the dashboard health report frame, not the pane, by viewport height | Accepted |
 | [057](./057-ai-output-tables-styled-on-the-server.md) | Style AI output tables on the server, not by re-parsing in the browser | Accepted |
+| [058](./058-health-report-charts-placeholder-rendering.md) | Draw health report charts from stored metrics via placeholder directives | Accepted |

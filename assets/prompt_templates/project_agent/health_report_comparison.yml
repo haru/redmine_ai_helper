@@ -65,6 +65,8 @@ template: |
 
   Use emojis to enhance readability and clarity.
 
+  Do not write chart directives (lines such as {{ai_helper_chart(...)}}). Charts cannot be drawn in a comparison report, so do not copy such lines from the reports below.
+
   ---- Structure your analysis using the following Markdown sections:
 
   ## Executive Summary

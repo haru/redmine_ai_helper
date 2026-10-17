@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require "redmine_ai_helper/health_report_chart/scanner"
+require "redmine_ai_helper/health_report_chart/resolver"
+require "redmine_ai_helper/export/pdf/project_health_pdf_chart_helper"
 
 module RedmineAiHelper
   # Export functionality
@@ -13,12 +16,15 @@ module RedmineAiHelper
         include ActionView::Helpers::SanitizeHelper
         include ActionView::Helpers::TextHelper
         include RedmineAiHelper::Logger
+        include RedmineAiHelper::Export::PDF::ProjectHealthPdfChartHelper
 
         # Generate PDF for project health report
         # @param project [Project] The project object
         # @param health_report [String] The health report content
         # @param options [Hash] Optional settings. :edit_notice is a line shown below
-        #   the header when the report was edited by a user.
+        #   the header when the report was edited by a user. :charts is the
+        #   HealthReportChart::Resolver that draws chart directives; without it
+        #   every directive is reported as having no metrics.
         # @return [String] PDF content as binary string
         def project_health_to_pdf(project, health_report, options = {})
           pdf = Redmine::Export::PDF::ITCPDF.new(current_language)
@@ -40,7 +46,8 @@ module RedmineAiHelper
           pdf.SetFontStyle("", 10)
           pdf.set_x(left_margin)
           pdf.set_auto_page_break(true, bottom_margin)
-          render_pdf_report_content(pdf, project, health_report, left_margin, is_rtl, text_align)
+          charts = options[:charts] || RedmineAiHelper::HealthReportChart::Resolver.new(nil)
+          render_pdf_body(pdf, project, health_report, charts, left_margin, is_rtl, text_align)
 
           pdf.output
         end
@@ -107,6 +114,20 @@ module RedmineAiHelper
           pdf.SetFontStyle("B", 12)
           pdf.cell(0, 6, l(:label_ai_helper_project_health_report_content, default: "Health Report Content"), 0, 0, text_align)
           pdf.ln(8)
+        end
+
+        # Draw the body split at chart directives. Text parts go through the
+        # existing text pipeline unchanged; directives are drawn outside its
+        # rescue so a drawing failure is not hidden by the plain-text fallback.
+        def render_pdf_body(pdf, project, health_report, charts, left_margin, is_rtl, text_align)
+          parts = health_report.is_a?(String) ? RedmineAiHelper::HealthReportChart::Scanner.split(health_report) : [ health_report ]
+          parts.each do |part|
+            if part.is_a?(RedmineAiHelper::HealthReportChart::Directive)
+              render_pdf_chart(pdf, charts.resolve(part), left_margin, text_align)
+            else
+              render_pdf_report_content(pdf, project, part, left_margin, is_rtl, text_align)
+            end
+          end
         end
 
         def render_pdf_report_content(pdf, project, health_report, left_margin, is_rtl, text_align)

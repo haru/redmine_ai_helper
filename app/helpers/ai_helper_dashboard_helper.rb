@@ -2,12 +2,74 @@
 module AiHelperDashboardHelper
   include AiHelperHelper
 
+  require "redmine_ai_helper/health_report_chart/resolver"
+  require "redmine_ai_helper/health_report_chart/scanner"
+
   # Render a stored health report body as Markdown HTML, independent of the
   # Redmine text formatting setting, and linkify bare issue references.
+  # Chart directive lines are resolved from the report's stored metrics and
+  # replaced by the chart partial's HTML. A body without chart directives
+  # returns exactly the same HTML as the plain Markdown pipeline (SC-002).
   # @param text [String] The Markdown source text of the report body.
-  # @return [ActiveSupport::SafeBuffer] Sanitized HTML with issue links.
-  def render_health_report_markdown(text)
-    linkify_issue_references(md_to_html(text))
+  # @param report [AiHelperHealthReport, nil] The report the body belongs to;
+  #   nil means the body is rendered without stored metrics.
+  # @return [ActiveSupport::SafeBuffer] Sanitized HTML with issue links and charts.
+  # @raise [RuntimeError] when a marker paragraph is lost during rendering.
+  def render_health_report_markdown(text, report:)
+    parts = RedmineAiHelper::HealthReportChart::Scanner.split(text.to_s)
+    return linkify_issue_references(md_to_html(text)) unless parts.any?(RedmineAiHelper::HealthReportChart::Directive)
+
+    resolver = RedmineAiHelper::HealthReportChart::Resolver.new(report&.metrics)
+    directives = parts.select { |part| part.is_a?(RedmineAiHelper::HealthReportChart::Directive) }
+    markers = []
+    marked = parts.map do |part|
+      if part.is_a?(RedmineAiHelper::HealthReportChart::Directive)
+        marker = chart_marker
+        markers << marker
+        "\n\n#{marker}\n\n"
+      else
+        part
+      end
+    end.join
+
+    html = linkify_issue_references(md_to_html(marked)).to_s
+    directives.each_with_index do |directive, index|
+      marker = markers[index]
+      replaced = false
+      html = html.sub("<p>#{marker}</p>") { replaced = true; chart_html(directive, resolver) }
+      raise "Chart marker paragraph was not rendered in the report body" unless replaced
+    end
+    html.html_safe # rubocop:disable Rails/OutputSafety
+  end
+
+  # Render one chart directive position as the chart partial's HTML.
+  # @param directive [RedmineAiHelper::HealthReportChart::Directive] the parsed directive
+  # @param resolver [RedmineAiHelper::HealthReportChart::Resolver] resolver built
+  #   from the report's stored metrics
+  # @return [String] the partial's HTML for the Chart or Unavailable state
+  def chart_html(directive, resolver)
+    render "ai_helper/project/health_report_chart", resolved: resolver.resolve(directive)
+  end
+
+  # An unpredictable paragraph marker made of lowercase letters and digits
+  # only, so it survives the Markdown pipeline untouched (no # or markup).
+  # @return [String]
+  def chart_marker
+    "aihelperchart#{SecureRandom.hex(12)}"
+  end
+
+  # Emit the Chart.js classic asset into the page head exactly once, but only
+  # when Redmine's importmap does not pin chart.js (Redmine 6.x). On Redmine 7
+  # the chart.js importmap pin is used by the dynamic import instead (R-007).
+  # @return [void]
+  def ai_helper_chart_heads
+    return if @ai_helper_chart_heads_included # rubocop:disable Rails/HelperInstanceVariable
+    return if Rails.application.importmap.instance_variable_get(:@packages).key?("chart.js")
+
+    content_for :header_tags do
+      javascript_include_tag "chart.min"
+    end
+    @ai_helper_chart_heads_included = true # rubocop:disable Rails/HelperInstanceVariable
   end
 
   # Build the one-line Markdown quote that marks an edited report in exports.

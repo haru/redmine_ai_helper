@@ -1,4 +1,5 @@
 require_relative "../test_helper"
+require "redmine_ai_helper/health_report_chart/resolver"
 
 class ProjectHealthPdfHelperTest < ActionView::TestCase
   include RedmineAiHelper::Export::PDF::ProjectHealthPdfHelper
@@ -11,7 +12,47 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
       Zlib::Inflate.inflate(data)
     rescue Zlib::Error
       data
-    end.join.delete("\x00")
+    end.join.delete("\x00").gsub(/\\([()])/, '\1')
+  end
+
+
+  # Records the drawing calls made on the PDF object while still running
+  # them, so tests can assert which shapes the chart renderer drew.
+  module PdfCallRecorder
+    def self.calls
+      @calls ||= []
+    end
+
+    %i[Rect PieSector Circle setAlpha AddPage].each do |name|
+      define_method(name) do |*args, **kwargs, &block|
+        PdfCallRecorder.calls << [ name, args ]
+        super(*args, **kwargs, &block)
+      end
+    end
+  end
+
+  CHART_METRICS = [
+    {
+      version_id: 12, version_name: "1.0.0",
+      metrics: {
+        issue_statistics: {
+          by_status: { "New" => 3, "Closed" => 5, "Resolved" => 0 },
+          by_assigned_to: { "Alice" => 6, "Bob" => 2 },
+          open_issues: 10, closed_issues: 0
+        },
+        progress_metrics: { completion_distribution: { not_started: 3, in_progress: 2, completed: 5 } }
+      }
+    }
+  ].to_json
+
+  def calls_named(name)
+    PdfCallRecorder.calls.select { |call_name, _| call_name == name }
+  end
+
+  def render_with_charts(body, metrics = CHART_METRICS)
+    PdfCallRecorder.calls.clear
+    resolver = RedmineAiHelper::HealthReportChart::Resolver.new(metrics)
+    project_health_to_pdf(@project, body, charts: resolver)
   end
 
   context "ProjectHealthPdfHelper" do
@@ -130,6 +171,138 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
 
         assert_not_nil result
         assert result.start_with?("%PDF")
+      end
+    end
+
+    context "chart directives" do
+      setup do
+        Redmine::Export::PDF::ITCPDF.prepend(PdfCallRecorder)
+        PdfCallRecorder.calls.clear
+      end
+
+      should "produce the same output for a body without directives with or without a resolver" do
+        body = "# Report\n\nPlain text only."
+        resolver = RedmineAiHelper::HealthReportChart::Resolver.new(CHART_METRICS)
+
+        plain = pdf_text(project_health_to_pdf(@project, body))
+        charted = pdf_text(project_health_to_pdf(@project, body, charts: resolver))
+
+        assert_equal plain, charted
+      end
+
+      should "draw a doughnut with one sector per non-zero item clockwise from 12 o'clock" do
+        pdf = render_with_charts("Before\n\n{{ai_helper_chart(status, version=12)}}\n\nAfter")
+
+        fills = calls_named(:PieSector).select { |_, args| args[5] == "F" }
+        borders = calls_named(:PieSector).select { |_, args| args[5] == "D" }
+        # New (3) and Closed (5) are drawn; Resolved (0) has no sector.
+        assert_equal 2, fills.length
+        assert_equal 2, borders.length
+        closed_start, closed_end = fills.first[1][3], fills.first[1][4]
+        new_start = fills.last[1][3]
+        assert_equal 0, closed_start
+        assert_in_delta 225.0, closed_end, 0.001
+        assert_in_delta closed_end, new_start, 0.001
+        assert_includes pdf_text(pdf), "Before"
+        assert_includes pdf_text(pdf), "After"
+      end
+
+      should "fill sectors with alpha 0.2 and restore alpha 1 for the borders" do
+        render_with_charts("{{ai_helper_chart(status, version=12)}}")
+
+        alphas = calls_named(:setAlpha).map { |_, args| args.first }
+        assert_includes alphas, 0.2
+        assert alphas.each_cons(2).any? { |a, b| (a - 0.2).abs < 1e-9 && b == 1 }, "alpha 1 must follow the 0.2 fill"
+      end
+
+      should "overlay a white hole of half the outer radius" do
+        render_with_charts("{{ai_helper_chart(status, version=12)}}")
+
+        sector_radius = calls_named(:PieSector).first[1][2]
+        hole = calls_named(:Circle).last[1]
+        assert_in_delta sector_radius * 0.5, hole[2], 0.001
+      end
+
+      should "draw a full ring when one item occupies the whole chart" do
+        metrics = [
+          { version_id: 12, version_name: "1.0.0", metrics: { issue_statistics: { by_status: { "Only" => 4 } } } }
+        ].to_json
+
+        render_with_charts("{{ai_helper_chart(status, version=12)}}", metrics)
+
+        assert_empty calls_named(:PieSector)
+        assert_operator calls_named(:Circle).length, :>=, 2
+      end
+
+      should "list zero-count items in the legend without a sector" do
+        pdf = render_with_charts("{{ai_helper_chart(status, version=12)}}")
+
+        assert_includes pdf_text(pdf), "Resolved (0)"
+        # Three legend swatches, each an alpha fill rect plus a border rect.
+        assert_equal 6, calls_named(:Rect).length
+      end
+
+      should "draw a horizontal bar per item below its label row" do
+        pdf = render_with_charts("{{ai_helper_chart(assignee, version=12)}}")
+
+        text = pdf_text(pdf)
+        assert_includes text, "Alice (6)"
+        assert_includes text, "Bob (2)"
+        # Two items, each with an alpha fill rect and a border rect.
+        assert_equal 4, calls_named(:Rect).length
+        widths = calls_named(:Rect).map { |_, args| args[2] }.uniq.sort
+        assert_in_delta widths.last / 3.0, widths.first, 0.001
+      end
+
+      should "write the title and a no-data message for a chart without data" do
+        metrics = [
+          { version_id: 12, version_name: "1.0.0", metrics: { issue_statistics: { by_status: {} } } }
+        ].to_json
+
+        pdf = render_with_charts("{{ai_helper_chart(status, version=12)}}", metrics)
+
+        assert_includes pdf_text(pdf), l(:label_no_data)
+        assert_empty calls_named(:PieSector)
+      end
+
+      should "write the unavailable message as a paragraph" do
+        pdf = render_with_charts("{{ai_helper_chart(burndown, version=12)}}")
+
+        message = l("ai_helper.health_report_chart.unavailable") +
+                  l("ai_helper.health_report_chart.errors.unknown_type", type: "burndown")
+        assert_includes pdf_text(pdf), message
+        assert_not_includes pdf_text(pdf), "{{ai_helper_chart"
+      end
+
+      should "report metrics_unavailable for every directive without a resolver" do
+        PdfCallRecorder.calls.clear
+        pdf = project_health_to_pdf(@project, "{{ai_helper_chart(status, version=12)}}")
+
+        assert_includes pdf_text(pdf), l("ai_helper.health_report_chart.errors.metrics_unavailable")
+      end
+
+      should "add a page before drawing a chart that does not fit" do
+        filler = (1..60).map { |i| "Line #{i}" }.join("\n\n")
+        render_with_charts("#{filler}\n\n{{ai_helper_chart(status, version=12)}}")
+
+        # The filler already pushes the cursor near the page bottom, so the
+        # chart is moved to a new page rather than split across two.
+        assert_operator calls_named(:AddPage).length, :>=, 2
+      end
+
+      should "draw charts outside the rescue that falls back to plain text" do
+        self.stubs(:textilizable).raises(StandardError.new("Textilizable error"))
+
+        render_with_charts("Text\n\n{{ai_helper_chart(status, version=12)}}")
+
+        assert_operator calls_named(:PieSector).length, :>, 0
+      end
+
+      should "not rescue a failure raised while drawing a chart" do
+        Redmine::Export::PDF::ITCPDF.any_instance.stubs(:PieSector).raises(RuntimeError.new("draw failed"))
+
+        error = assert_raises(RuntimeError) { render_with_charts("{{ai_helper_chart(status, version=12)}}") }
+        assert_equal "draw failed", error.message
       end
     end
 

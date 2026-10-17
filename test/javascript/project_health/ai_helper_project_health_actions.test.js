@@ -11,7 +11,17 @@ class FakeEventSource {
     this.closeCount = 0;
     this.onmessage = null;
     this.onerror = null;
+    this.listeners = {};
     FakeEventSource.instances.push(this);
+  }
+
+  addEventListener(name, listener) {
+    this.listeners[name] = this.listeners[name] || [];
+    this.listeners[name].push(listener);
+  }
+
+  emit(name, event) {
+    (this.listeners[name] || []).forEach((listener) => listener(event));
   }
 
   close() {
@@ -56,6 +66,7 @@ describe("ai_helper_project_health_actions", () => {
     delete window.updateHealthReportHistory;
     await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
     await loadScript("assets/javascripts/shared/ai_helper_frame_renderer");
+    await loadScript("assets/javascripts/project_health/ai_helper_chart_directive");
   });
 
   afterEach(() => {
@@ -65,7 +76,8 @@ describe("ai_helper_project_health_actions", () => {
     document
       .querySelectorAll(
         'meta[name^="ai-helper-project-health"], meta[name="error-message"], meta[name="export-label"], ' +
-          'meta[name="markdown-export-url"], meta[name="pdf-export-url"], meta[name="csrf-token"]',
+          'meta[name="markdown-export-url"], meta[name="pdf-export-url"], meta[name="csrf-token"], ' +
+          'meta[name="ai-helper-health-report-content-url"]',
       )
       .forEach((m) => m.remove());
     // Restores every vi.spyOn mock (console.error, finalizeStreamingContent,
@@ -115,6 +127,7 @@ describe("ai_helper_project_health_actions", () => {
 
   async function load() {
     await loadScript("assets/javascripts/project_health/ai_helper_project_health_actions");
+    await loadScript("assets/javascripts/project_health/ai_helper_project_health_swap");
     cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/project_health/ai_helper_project_health");
     return cleanup;
   }
@@ -924,6 +937,109 @@ describe("ai_helper_project_health_actions", () => {
       container.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 
       expect(appendChildSpy.mock.calls.some(([node]) => node.tagName === "FORM")).toBe(false);
+    });
+  });
+
+  describe("health_report_saved event handling", () => {
+    function clickGenerate(link) {
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      return FakeEventSource.instances[FakeEventSource.instances.length - 1];
+    }
+
+    it("listens for the health_report_saved event on the stream", async () => {
+      addHealthContainer();
+      const link = addGenerateLink();
+      await load();
+
+      const source = clickGenerate(link);
+
+      expect(source.listeners.health_report_saved).toHaveLength(1);
+    });
+
+    it("passes the saved report id to finalizeStreamingContent when the stream stops", async () => {
+      const { resultDiv } = addHealthContainer();
+      const link = addGenerateLink();
+      await load();
+      // The spy must be installed after load(): loading the script
+      // re-assigns window.finalizeStreamingContent.
+      const finalizeSpy = vi.spyOn(window, "finalizeStreamingContent").mockImplementation(() => {});
+
+      const source = clickGenerate(link);
+      source.emit("health_report_saved", { data: JSON.stringify({ report_id: 42 }) });
+      sendChunk(source, "draft");
+      sendStop(source);
+
+      expect(finalizeSpy).toHaveBeenCalledTimes(1);
+      expect(finalizeSpy.mock.calls[0][0]).toBe(resultDiv);
+      expect(finalizeSpy.mock.calls[0][2]).toBe("draft");
+      expect(finalizeSpy.mock.calls[0][3]).toBe(42);
+    });
+
+    it("passes undefined when no health_report_saved event arrived", async () => {
+      addHealthContainer();
+      const link = addGenerateLink();
+      await load();
+      const finalizeSpy = vi.spyOn(window, "finalizeStreamingContent").mockImplementation(() => {});
+
+      const source = clickGenerate(link);
+      sendChunk(source, "draft");
+      sendStop(source);
+
+      expect(finalizeSpy).toHaveBeenCalledTimes(1);
+      expect(finalizeSpy.mock.calls[0][3]).toBeNull();
+    });
+
+    it("uses the latest generation's saved report id", async () => {
+      addHealthContainer();
+      const link = addGenerateLink();
+      await load();
+      const finalizeSpy = vi.spyOn(window, "finalizeStreamingContent").mockImplementation(() => {});
+
+      const first = clickGenerate(link);
+      first.emit("health_report_saved", { data: JSON.stringify({ report_id: 11 }) });
+
+      const second = clickGenerate(link);
+      second.emit("health_report_saved", { data: JSON.stringify({ report_id: 22 }) });
+      sendStop(second);
+
+      expect(finalizeSpy).toHaveBeenCalledTimes(1);
+      expect(finalizeSpy.mock.calls[0][3]).toBe(22);
+    });
+
+    it("swaps in the server-rendered content after a full generation in the dashboard detail pane", async () => {
+      addMeta(
+        "ai-helper-health-report-content-url",
+        "/projects/ecookbook/ai_helper/health_reports/__REPORT_ID__/content",
+      );
+      addMeta("export-label", "Exporter");
+      const { contentDiv, resultDiv } = createDashboardDetailPane(container);
+      const link = addGenerateLink();
+      const fetchMock = vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        text: async () =>
+          '<div class="ai-helper-health-report-content" data-pdf-url="/p/42.pdf" data-markdown-url="/p/42.md">' +
+          "<p>server rendered</p></div>",
+      }));
+      vi.stubGlobal("fetch", fetchMock);
+
+      await load();
+      const source = clickGenerate(link);
+      source.emit("health_report_saved", { data: JSON.stringify({ report_id: 42 }) });
+      sendChunk(source, "client draft");
+      sendStop(source);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/projects/ecookbook/ai_helper/health_reports/42/content",
+        expect.anything(),
+      );
+      expect(resultDiv.innerHTML).toContain("server rendered");
+      expect(resultDiv.innerHTML).not.toContain("client draft");
+      const formats = contentDiv.querySelector(".other-formats");
+      expect(formats.querySelector("a.pdf").getAttribute("href")).toBe("/p/42.pdf");
+      expect(formats.querySelector("a.text").getAttribute("href")).toBe("/p/42.md");
+      expect(formats.querySelector("a.pdf").id).toBe("");
     });
   });
 });
