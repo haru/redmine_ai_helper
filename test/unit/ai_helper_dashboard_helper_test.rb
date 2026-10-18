@@ -275,6 +275,7 @@ class AiHelperDashboardHelperTest < ActionView::TestCase
       end
 
       assert_match(/marker/i, error.message)
+      assert_includes error.message, "directive: {{ai_helper_chart(status, version=12)}}"
     end
   end
 

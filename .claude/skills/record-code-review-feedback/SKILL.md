@@ -73,6 +73,8 @@ Never edit or delete existing entries, except for updating the **Promoted to** f
 
 If the new entry has one or more **Related** entries (the pattern has occurred at least twice), propose to the user where the prevention rule should be promoted (AGENTS.md, the constitution, an ADR, a skill) and show the proposed text. Do not change those files without the user's approval. After the approved rule is added, update the entry's **Promoted to** field and the matching index cell to name the destination.
 
+Propose promotion only for a rule that applies across features and areas of the codebase. Do not propose a rule tied to one feature, one component, or one kind of output (for example, only PDF export or only one screen), even when it has recurred: every promoted rule is loaded into every session's context, so a narrow rule costs context in all the sessions where it does not apply. Leave such a rule in the log entry with **Promoted to** set to `Not yet`, and do not mention promotion in the report.
+
 ### Step 8: Report
 
 Tell the user the created files, categories, prevention rules, and any promotion proposal. Do not commit.

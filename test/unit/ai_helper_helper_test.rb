@@ -242,4 +242,50 @@ class AiHelperHelperTest < ActionView::TestCase
       assert_no_match(/<script>/i, html)
     end
   end
+
+  context "#health_report_html_with_chart_markers" do
+    should "return the plain Markdown HTML and no markers when the body has no chart directive" do
+      text = "# Title\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\nSee #12"
+      parts = RedmineAiHelper::HealthReportChart::Scanner.split(text)
+
+      html, markers = health_report_html_with_chart_markers(parts)
+
+      # Concrete expectations instead of recomputing the implementation's
+      # expression: the table is rendered (with the list class), and the bare
+      # issue reference is linkified.
+      assert_empty markers
+      assert_includes html, "<h1>Title</h1>"
+      assert_includes html, %(<table class="list">)
+      assert_includes html, %(<a href="/issues/12">#12</a>)
+    end
+
+    should "replace each chart directive with a marker paragraph in body order" do
+      text = "Intro\n\n{{ai_helper_chart(status, version=12)}}\n\nMiddle\n\n{{ai_helper_chart(progress, version=12)}}\n\nEnd"
+      parts = RedmineAiHelper::HealthReportChart::Scanner.split(text)
+      directives = parts.grep(RedmineAiHelper::HealthReportChart::Directive)
+      assert_equal 2, directives.size
+
+      html, markers = health_report_html_with_chart_markers(parts)
+
+      assert_equal directives, markers.map(&:last)
+      markers.each do |marker, _directive|
+        assert_match(/\Aaihelperchart[0-9a-f]{24}\z/, marker)
+        assert_equal 1, Nokogiri::HTML::DocumentFragment.parse(html).xpath("./p[text()='#{marker}']").size
+      end
+      assert_equal markers.map(&:first), html.scan(/aihelperchart[0-9a-f]{24}/)
+    end
+
+    should "render tables separated by a blank line as separate tables" do
+      text = "| a | b | c |\n|---|---|---|\n| 1 | 2 | 3 |\n\n| x | y |\n|---|---|\n| 4 | 5 |\n"
+      parts = RedmineAiHelper::HealthReportChart::Scanner.split(text)
+
+      html, = health_report_html_with_chart_markers(parts)
+
+      assert_equal 2, Nokogiri::HTML::DocumentFragment.parse(html).css("table").size
+    end
+
+    should "raise ArgumentError for a part that is neither a String nor a Directive" do
+      assert_raises(ArgumentError) { health_report_html_with_chart_markers([ "text", 42 ]) }
+    end
+  end
 end

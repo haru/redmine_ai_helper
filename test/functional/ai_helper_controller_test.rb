@@ -1147,6 +1147,22 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_equal "application/pdf", @response.content_type
       end
 
+      should "draw two tables of different widths in the latest report PDF without Markdown table lines" do
+        Rails.cache.stubs(:fetch).returns(TWO_TABLES_BODY)
+
+        get :project_health, params: { id: @project.id, format: :pdf }
+
+        assert_response :success
+        assert_pdf_draws_two_tables(response.body)
+      end
+
+      should "let a body conversion error propagate instead of drawing a fallback PDF" do
+        Rails.cache.stubs(:fetch).returns(TWO_TABLES_BODY)
+        AiHelperController.any_instance.stubs(:md_to_html).raises(RuntimeError, "conversion failed")
+
+        assert_raises(RuntimeError) { get :project_health, params: { id: @project.id, format: :pdf } }
+      end
+
       should "redirect when no health report available for PDF" do
         # Mock cache to return error hash
         Rails.cache.stubs(:fetch).returns({ error: "No data" })
@@ -1220,12 +1236,14 @@ class AiHelperControllerTest < ActionController::TestCase
         post :project_health_pdf, params: { id: @project.id, health_report_content: "Text\n\n{{ai_helper_chart(status, version=12)}}\n\nMore" }
 
         assert_response :success
-        inflated = response.body.b.scan(/stream\r?\n(.*?)endstream/m).map do |(data)|
-          Zlib::Inflate.inflate(data)
-        rescue Zlib::Error
-          data
-        end.join.delete("\x00").gsub(/\\([()])/, '\1')
-        assert_includes inflated, I18n.t("ai_helper.health_report_chart.errors.metrics_unavailable")
+        assert_includes pdf_text(response.body), I18n.t("ai_helper.health_report_chart.errors.metrics_unavailable")
+      end
+
+      should "draw two tables of different widths without Markdown table lines" do
+        post :project_health_pdf, params: { id: @project.id, health_report_content: TWO_TABLES_BODY }
+
+        assert_response :success
+        assert_pdf_draws_two_tables(response.body)
       end
 
       should "generate PDF from health report content" do

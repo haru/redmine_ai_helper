@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "redmine_ai_helper/health_report_chart/scanner"
+
 # AiHelperHelper module for AI Helper plugin
 module AiHelperHelper
   include Redmine::WikiFormatting::CommonMark
@@ -27,6 +29,32 @@ module AiHelperHelper
     fragment = defined?(MarkdownPipeline) ? pipeline_fragment(text) : filter_fragment(text)
     set_list_class_on_tables(fragment)
     fragment.to_s.html_safe # rubocop:disable Rails/OutputSafety
+  end
+
+  # Build the HTML of a health report body in which every chart directive is
+  # replaced by a marker paragraph. The whole body goes through the Markdown
+  # pipeline once, so the screen and the PDF share one set of conversion rules.
+  # @param parts [Array<String, RedmineAiHelper::HealthReportChart::Directive>]
+  #   The result of HealthReportChart::Scanner.split.
+  # @return [Array(String, Array<Array(String, RedmineAiHelper::HealthReportChart::Directive)>)]
+  #   The HTML and the [marker, directive] pairs in body order.
+  # @raise [ArgumentError] when a part is neither a String nor a Directive.
+  def health_report_html_with_chart_markers(parts)
+    markers = []
+    marked = parts.map do |part|
+      case part
+      when RedmineAiHelper::HealthReportChart::Directive
+        marker = chart_marker
+        markers << [ marker, part ]
+        "\n\n#{marker}\n\n"
+      when String
+        part
+      else
+        raise ArgumentError, "expected a String or a Directive, got #{part.class}"
+      end
+    end.join
+
+    [ linkify_issue_references(md_to_html(marked)).to_s, markers ]
   end
 
   # Convert bare "#1234" patterns in an HTML string into anchor tags pointing to
@@ -72,6 +100,13 @@ module AiHelperHelper
   end
 
   private
+
+  # An unpredictable paragraph marker made of lowercase letters and digits
+  # only, so it survives the Markdown pipeline untouched (no # or markup).
+  # @return [String]
+  def chart_marker
+    "aihelperchart#{SecureRandom.hex(12)}"
+  end
 
   # Renders the text with Redmine 6.x's MarkdownPipeline (already sanitized).
   # @api private

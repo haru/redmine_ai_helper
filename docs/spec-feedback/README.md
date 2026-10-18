@@ -104,3 +104,6 @@ A concrete, checkable rule to apply when writing future specifications.
 | [SF-021](./021-chart-form-heuristic-applied-mechanically.md) | Applied a chart-form heuristic to every type without checking what each chart tells the reader | intent-misread | 078-health-report-charts | Not yet |
 | [SF-022](./022-semantic-color-ignored-for-ordered-stages.md) | Assigned palette colors by position to stages that carry a meaning | unconfirmed-assumption | 078-health-report-charts | Not yet |
 | [SF-023](./023-research-kept-doughnut-api-after-adr.md) | Research R-009 kept the doughnut drawing API after ADR-059 dropped donut charts | scope-gap | 078-health-report-charts | Not yet |
+| [SF-024](./024-export-presentation-asked-per-element.md) | Asked about PDF presentation element by element instead of requiring the export to match the screen | intent-misread | 079-fix-health-report-pdf-table | Not yet |
+| [SF-025](./025-pdf-styling-reinvented-instead-of-reusing-redmine-renderer.md) | Planned PDF styling tweaks and asked about them instead of reusing Redmine's own PDF renderer as-is | intent-misread | 079-fix-health-report-pdf-table | Not yet |
+| [SF-026](./026-screen-match-read-as-style-match.md) | Read "match the screen" as matching styles and wrote a style-level user story | intent-misread | 079-fix-health-report-pdf-table | Not yet |

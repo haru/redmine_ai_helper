@@ -113,3 +113,4 @@ Briefly describe alternatives that were rejected and why.
 | [058](./058-health-report-charts-placeholder-rendering.md) | Draw health report charts from stored metrics via placeholder directives | Accepted |
 | [059](./059-health-report-chart-form-by-information.md) | Choose each health report chart's form by what helps the reader | Accepted |
 | [060](./060-health-report-visibility-follows-view-permission.md) | Health report visibility follows the view_ai_helper permission | Accepted |
+| [061](./061-health-report-pdf-body-drawn-by-redmine-pdf-renderer.md) | Draw the health report PDF body with Redmine's PDF renderer from the screen HTML | Accepted |

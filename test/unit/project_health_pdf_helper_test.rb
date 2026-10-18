@@ -3,18 +3,10 @@ require "redmine_ai_helper/health_report_chart/resolver"
 
 class ProjectHealthPdfHelperTest < ActionView::TestCase
   include RedmineAiHelper::Export::PDF::ProjectHealthPdfHelper
+  include AiHelperHelper
+  include AiHelperDashboardHelper
   include RedmineAiHelper::Logger
   fixtures :projects, :users, :roles, :members, :member_roles
-
-  # Inflate all Flate streams of a PDF and return their concatenated content.
-  def pdf_text(pdf)
-    pdf.b.scan(/stream\r?\n(.*?)endstream/m).map do |(data)|
-      Zlib::Inflate.inflate(data)
-    rescue Zlib::Error
-      data
-    end.join.delete("\x00").gsub(/\\([()])/, '\1')
-  end
-
 
   # Records the drawing calls made on the PDF object while still running
   # them, so tests can assert which shapes the chart renderer drew.
@@ -30,7 +22,8 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
     # rbpdf's snake_case names are aliases bound to the original methods, so
     # they are recorded separately under the CamelCase name.
     { Rect: :Rect, PieSector: :PieSector, Circle: :Circle, setAlpha: :setAlpha,
-      AddPage: :AddPage, add_page: :AddPage }.each do |name, recorded_as|
+      AddPage: :AddPage, add_page: :AddPage,
+      RDMwriteFormattedCell: :RDMwriteFormattedCell }.each do |name, recorded_as|
       define_method(name) do |*args, **kwargs, &block|
         PdfCallRecorder.calls << [ recorded_as, args ] if PdfCallRecorder.recording
         super(*args, **kwargs, &block)
@@ -54,6 +47,80 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
 
   def calls_named(name)
     PdfCallRecorder.calls.select { |call_name, _| call_name == name }
+  end
+
+  # The HTML passed to RDMwriteFormattedCell, one string per call, in call order.
+  def written_html_chunks
+    calls_named(:RDMwriteFormattedCell).map { |_, args| args[4] }
+  end
+
+  # Read the tables out of recorded HTML. Raises when the HTML holds no table,
+  # so a test never passes by asserting on an empty result.
+  # @return [Array<Hash>] one hash per table: :columns, :header, :rows (cell texts)
+  def pdf_tables(html)
+    tables = Nokogiri::HTML::DocumentFragment.parse(html).css("table")
+    raise ArgumentError, "no <table> in the recorded HTML: #{html.inspect}" if tables.empty?
+
+    tables.map do |table|
+      rows = table.css("tr").map { |tr| tr.css("th, td").map { |cell| cell.text.strip } }
+      { columns: rows.map(&:size).max, header: rows.first, rows: rows.drop(1) }
+    end
+  end
+
+  ALL_ELEMENTS_BODY = <<~MD
+    # Heading One
+
+    ## Heading Two
+
+    ### Heading Three
+
+    A paragraph with **bold**, *italic* and [a link](https://example.com/page).
+
+    - bullet one
+      - nested bullet
+    - bullet two
+
+    1. first
+       1. nested first
+    2. second
+
+    | a | b |
+    |---|---|
+    | 1 | 2 |
+
+    ```
+    code line one
+    code line two
+    ```
+
+    > quoted text
+
+    ---
+
+    {{ai_helper_chart(status, version=12)}}
+
+    Closing paragraph.
+  MD
+
+  # The element nodes of an HTML string as [name, text] pairs.
+  def element_signature(html)
+    Nokogiri::HTML::DocumentFragment.parse(html).children.reject(&:text?).map { |node| [ node.name, node.text ] }
+  end
+
+  def assert_pdf_matches_screen
+    stubs(:chart_html).returns("")
+    report = AiHelperHealthReport.new(metrics: CHART_METRICS)
+    screen = render_health_report_markdown(ALL_ELEMENTS_BODY, report: report)
+
+    render_with_charts(ALL_ELEMENTS_BODY)
+    pdf_html = written_html_chunks.join
+
+    assert_equal element_signature(screen.to_s), element_signature(pdf_html)
+    assert_equal Nokogiri::HTML::DocumentFragment.parse(screen.to_s).css("h1, h2, h3, ul, ol, table, pre, blockquote, hr, a").size,
+                 Nokogiri::HTML::DocumentFragment.parse(pdf_html).css("h1, h2, h3, ul, ol, table, pre, blockquote, hr, a").size
+    assert_not_includes pdf_html, "\u00B6"
+    assert_no_match(/\A#/, pdf_html)
+    assert_equal 1, Nokogiri::HTML::DocumentFragment.parse(pdf_html).css("ol ol").size
   end
 
   def render_with_charts(body, metrics = CHART_METRICS)
@@ -159,18 +226,6 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
         assert result.start_with?("%PDF")
       end
 
-      should "handle textilizable conversion errors gracefully" do
-        health_report = "# Test Report\n\nContent here."
-
-        # Mock textilizable to raise an error
-        self.stubs(:textilizable).raises(StandardError.new("Textilizable error"))
-
-        result = project_health_to_pdf(@project, health_report)
-
-        assert_not_nil result
-        assert result.start_with?("%PDF")
-      end
-
       should "set proper PDF metadata" do
         health_report = "Test content"
 
@@ -195,6 +250,9 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
       should "produce the same output for a body without directives with or without a resolver" do
         body = "# Report\n\nPlain text only."
         resolver = RedmineAiHelper::HealthReportChart::Resolver.new(CHART_METRICS)
+        # The PDF prints the creation time to the second; freeze it so a second
+        # boundary between the two renders cannot make the output differ.
+        Time.stubs(:now).returns(Time.utc(2026, 10, 18, 12, 0, 0))
 
         plain = pdf_text(project_health_to_pdf(@project, body))
         charted = pdf_text(project_health_to_pdf(@project, body, charts: resolver))
@@ -350,296 +408,279 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
         assert_raises(ArgumentError) { render_with_charts("{{ai_helper_chart(status, version=12)}}") }
       end
 
-      should "draw charts outside the rescue that falls back to plain text" do
-        self.stubs(:textilizable).raises(StandardError.new("Textilizable error"))
-
-        render_with_charts("Text\n\n{{ai_helper_chart(status, version=12)}}")
-
-        assert_operator calls_named(:Rect).length, :>, 0
-      end
-
       should "not rescue a failure raised while drawing a chart" do
         Redmine::Export::PDF::ITCPDF.any_instance.stubs(:Rect).raises(RuntimeError.new("draw failed"))
 
         error = assert_raises(RuntimeError) { render_with_charts("{{ai_helper_chart(status, version=12)}}") }
         assert_equal "draw failed", error.message
       end
-    end
 
-    context "#convert_markdown_to_plain_text" do
-      should "convert headers to plain text" do
-        markdown = "# Header 1\n## Header 2\n### Header 3"
-        result = send(:convert_markdown_to_plain_text, markdown)
-
-        assert_equal "Header 1\nHeader 2\nHeader 3", result
+      should "fail the export when the body contains an image the PDF cannot draw" do
+        error = assert_raises(RuntimeError) { render_with_charts("Text\n\n![logo](https://example.com/logo.png)") }
+        assert_match(/<img>/, error.message)
       end
 
-      should "convert bold text to plain text" do
-        markdown = "**bold text** and __another bold__"
-        result = send(:convert_markdown_to_plain_text, markdown)
+      should "raise when a marker paragraph is not a top-level paragraph" do
+        directive = RedmineAiHelper::HealthReportChart::Directive.new(type: "status", target_kind: :version, target_value: "12", source: "{{ai_helper_chart(status, version=12)}}")
+        stubs(:health_report_html_with_chart_markers)
+          .returns([ "<blockquote><p>aihelperchartlost</p></blockquote>", [ [ "aihelperchartlost", directive ] ] ])
 
-        assert_equal "bold text and another bold", result
-      end
-
-      should "convert italic text to plain text" do
-        markdown = "*italic text* and _another italic_"
-        result = send(:convert_markdown_to_plain_text, markdown)
-
-        assert_equal "italic text and another italic", result
-      end
-
-      should "convert lists to bullet points" do
-        markdown = "- Item 1\n- Item 2\n* Item 3\n+ Item 4"
-        result = send(:convert_markdown_to_plain_text, markdown)
-
-        assert_match(/• Item 1/, result)
-        assert_match(/• Item 2/, result)
-        assert_match(/• Item 3/, result)
-        assert_match(/• Item 4/, result)
-      end
-
-      should "convert numbered lists" do
-        markdown = "1. First item\n2. Second item"
-        result = send(:convert_markdown_to_plain_text, markdown)
-
-        assert_match(/First item/, result)
-        assert_match(/Second item/, result)
-      end
-
-      should "handle code blocks" do
-        markdown = "```ruby\ndef test\nend\n```\n\nSome `inline code` here"
-        result = send(:convert_markdown_to_plain_text, markdown)
-
-        assert_match(/\[Code Block\]/, result)
-        assert_match(/inline code/, result)
-      end
-
-      should "handle links" do
-        markdown = "[Link text](http://example.com)"
-        result = send(:convert_markdown_to_plain_text, markdown)
-
-        assert_equal "Link text", result
-      end
-
-      should "handle empty content" do
-        result = send(:convert_markdown_to_plain_text, "")
-
-        assert_equal "", result
-      end
-
-      should "handle nil content" do
-        result = send(:convert_markdown_to_plain_text, nil)
-
-        assert_equal "", result
-      end
-
-      should "normalize whitespace" do
-        markdown = "Line 1\n\n\n\nLine 2\n\n\n\nLine 3"
-        result = send(:convert_markdown_to_plain_text, markdown)
-
-        assert_equal "Line 1\n\nLine 2\n\nLine 3", result
-      end
-
-      should "handle complex markdown" do
-        markdown = <<~MARKDOWN
-          # Project Health Report
-
-          **Summary:** This project is doing *well*.
-
-          ## Issues
-          - **Critical:** 2 issues
-          - **Major:** 5 issues
-
-          ### Code Quality
-          ```ruby
-          def calculate_health
-            return "good"
-          end
-          ```
-
-          For more info, see [documentation](http://example.com).
-        MARKDOWN
-
-        result = send(:convert_markdown_to_plain_text, markdown)
-
-        assert_match(/Project Health Report/, result)
-        assert_match(/Summary: This project is doing well/, result)
-        assert_match(/• Critical: 2 issues/, result)
-        assert_match(/• Major: 5 issues/, result)
-        assert_match(/Code Quality/, result)
-        assert_match(/\[Code Block\]/, result)
-        assert_match(/documentation/, result)
+        error = assert_raises(RuntimeError) { project_health_to_pdf(@project, "text") }
+        assert_equal "Chart marker paragraph was not rendered in the report body " \
+                     "(1 marker(s) left, directive: {{ai_helper_chart(status, version=12)}}, marker: aihelperchartlost)",
+                     error.message
       end
     end
 
-    context "#process_markdown_tables_for_pdf" do
+    context "tables drawn from the screen HTML" do
       setup do
-        @pdf = Redmine::Export::PDF::ITCPDF.new("en")
-        @left_margin = 10
+        Redmine::Export::PDF::ITCPDF.prepend(PdfCallRecorder)
+        PdfCallRecorder.calls.clear
+        PdfCallRecorder.recording = true
       end
 
-      should "process markdown table and return content without table" do
-        markdown_with_table = <<~MARKDOWN
-          # Header
-
-          | Name | Age | City |
-          |------|-----|------|
-          | John | 25  | NYC  |
-          | Jane | 30  | LA   |
-
-          Some text after table.
-        MARKDOWN
-
-        result = send(:process_markdown_tables_for_pdf, @pdf, markdown_with_table, @left_margin)
-
-        assert_no_match(/\|/, result)
-        assert_match(/Header/, result)
-        assert_match(/Some text after table/, result)
+      teardown do
+        PdfCallRecorder.recording = false
       end
 
-      should "handle content with no tables" do
-        content = "# Header\n\nSome content without tables."
-
-        result = send(:process_markdown_tables_for_pdf, @pdf, content, @left_margin)
-
-        assert_equal content, result
+      should "raise from the table reader when the HTML has no table" do
+        assert_raises(ArgumentError) { pdf_tables("<p>no table here</p>") }
       end
 
-      should "handle multiple tables" do
-        markdown_with_tables = <<~MARKDOWN
-          Before text
+      should "draw two tables separated by a blank line as two tables" do
+        body = "| a | b | c | d | e | f | g | h |\n|---|---|---|---|---|---|---|---|\n| 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |\n\n| x | y | z |\n|---|---|---|\n| 9 | 10 | 11 |\n"
 
-          | Table 1 | Data |
-          |---------|------|
-          | Row 1   | Val1 |
+        project_health_to_pdf(@project, body)
+        tables = pdf_tables(written_html_chunks.join)
 
-          Some text between tables
-
-          | Table 2 | More |
-          |---------|------|
-          | Row 2   | Val2 |
-
-          After text
-        MARKDOWN
-
-        result = send(:process_markdown_tables_for_pdf, @pdf, markdown_with_tables, @left_margin)
-
-        assert_no_match(/\|/, result)
-        # The method should remove tables but preserve non-table text
-        assert result.include?("Before text") || result.include?("After text") || result.include?("Some text")
-      end
-    end
-
-    context "#clean_remaining_table_lines" do
-      should "remove remaining table-like lines" do
-        content = <<~TEXT
-          Some text
-          | Header | Data |
-          |--------|------|
-          | Row    | Val  |
-          More text
-        TEXT
-
-        result = send(:clean_remaining_table_lines, content)
-
-        assert_no_match(/\|/, result)
-        assert_match(/Some text/, result)
-        assert_match(/More text/, result)
+        assert_equal([ 8, 3 ], tables.map { |t| t[:columns] })
+        assert_equal [ "x", "y", "z" ], tables.last[:header]
+        assert_equal [ [ "9", "10", "11" ] ], tables.last[:rows]
+        assert_no_match(/---/, written_html_chunks.join)
       end
 
-      should "handle content without table lines" do
-        content = "Normal text content"
+      should "keep a paragraph between two tables as its own element" do
+        body = "| a | b |\n|---|---|\n| 1 | 2 |\n\nbetween tables\n\n| c | d |\n|---|---|\n| 3 | 4 |\n"
 
-        result = send(:clean_remaining_table_lines, content)
+        project_health_to_pdf(@project, body)
+        names = Nokogiri::HTML::DocumentFragment.parse(written_html_chunks.join).children.reject(&:text?).map(&:name)
 
-        assert_equal content, result
-      end
-    end
-
-    context "#html_to_plain_text" do
-      should "convert HTML to plain text" do
-        html = "<h1>Header</h1><p>Some <strong>bold</strong> text</p>"
-
-        result = send(:html_to_plain_text, html)
-
-        assert_match(/Header/, result)
-        assert_match(/Some bold text/, result)
-        assert_no_match(/</, result)
+        assert_equal %w[table p table], names
       end
 
-      should "handle empty HTML" do
-        result = send(:html_to_plain_text, "")
+      should "draw the same tables as the screen when a sentence follows a table without a blank line" do
+        body = "| a | b |\n|---|---|\n| 1 | 2 |\nright after the table\n"
 
-        assert_equal "", result
+        project_health_to_pdf(@project, body)
+
+        assert_equal pdf_tables(md_to_html(body)), pdf_tables(written_html_chunks.join)
       end
 
-      should "handle nil HTML" do
-        result = send(:html_to_plain_text, nil)
+      should "draw the last row of a body that ends with a table row and no newline" do
+        body = "| a | b |\n|---|---|\n| 1 | 2 |\n| last | row |"
 
-        assert_equal "", result
+        project_health_to_pdf(@project, body)
+
+        assert_equal [ [ "1", "2" ], [ "last", "row" ] ], pdf_tables(written_html_chunks.join).first[:rows]
+      end
+
+      should "draw a table without data rows as a header-only table" do
+        project_health_to_pdf(@project, "| a | b |\n|---|---|\n")
+        table = pdf_tables(written_html_chunks.join).first
+
+        assert_equal [ "a", "b" ], table[:header]
+        assert_empty table[:rows]
+      end
+
+      should "not truncate long cell text" do
+        long = "word " * 20
+        project_health_to_pdf(@project, "| a |\n|---|\n| #{long.strip} |\n")
+
+        assert_equal [ [ long.strip ] ], pdf_tables(written_html_chunks.join).first[:rows]
+        assert_no_match(/\.\.\./, written_html_chunks.join)
+      end
+
+      should "draw rows with different cell counts as the screen does" do
+        body = "| a | b | c |\n|---|---|---|\n| 1 | 2 |\n| 1 | 2 | 3 | 4 |\n"
+
+        project_health_to_pdf(@project, body)
+
+        assert_equal pdf_tables(md_to_html(body)), pdf_tables(written_html_chunks.join)
+      end
+
+      should "not draw pipe lines inside a code block as a table" do
+        body = "```\n| a | b |\n|---|---|\n| 1 | 2 |\n```\n"
+
+        project_health_to_pdf(@project, body)
+
+        assert_raises(ArgumentError) { pdf_tables(written_html_chunks.join) }
+        assert_includes written_html_chunks.join, "<pre"
       end
     end
 
-    context "#process_simple_text_for_pdf" do
+    context "no duplicate or fallback output" do
       setup do
-        @pdf = Redmine::Export::PDF::ITCPDF.new("en")
-        @pdf.add_page
-        @left_margin = 10
+        Redmine::Export::PDF::ITCPDF.prepend(PdfCallRecorder)
+        PdfCallRecorder.calls.clear
+        PdfCallRecorder.recording = true
       end
 
-      should "process text with headings" do
-        text = "# Main Header\n\nSome content\n\n## Sub Header\n\nMore content"
-
-        assert_nothing_raised do
-          send(:process_simple_text_for_pdf, @pdf, text, @left_margin)
-        end
+      teardown do
+        PdfCallRecorder.recording = false
       end
 
-      should "process text with lists" do
-        text = "• Item 1\n• Item 2\n  • Nested item"
+      should "draw each part once and leave no Markdown table line in the text" do
+        body = "# Heading Once\n\nParagraph Once\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\nTail Once\n"
 
-        assert_nothing_raised do
-          send(:process_simple_text_for_pdf, @pdf, text, @left_margin)
-        end
+        pdf = project_health_to_pdf(@project, body)
+        text = pdf_text(pdf)
+        texts = pdf_text_runs(pdf).map(&:text)
+
+        # The searched region exists: heading, paragraph, table cells and tail
+        # are all in the text layer.
+        assert_operator texts.size, :>=, 6, "heading, paragraph, table and tail must be drawn"
+        %w[Heading\ Once Paragraph\ Once Tail\ Once a b 1 2].each { |word| assert_includes texts, word }
+
+        # The old bug printed the Markdown table lines as plain text, so a run
+        # was a line starting with "|" (the separator row "|---|---|" included).
+        pipe_runs = texts.select { |run| run.start_with?("|") || run.include?("|---") }
+        assert_empty pipe_runs
+
+        # Each part is drawn exactly once.
+        %w[Heading Paragraph Tail].each { |word| assert_equal 1, text.scan("#{word} Once").size, word }
       end
 
-      should "process plain text" do
-        text = "Just some plain text content."
+      should "hand no blank HTML chunk to the PDF writer, whatever the marker positions are" do
+        render_with_charts("{{ai_helper_chart(status, version=12)}}\n\nMiddle\n\n{{ai_helper_chart(open_closed, version=12)}}")
 
-        assert_nothing_raised do
-          send(:process_simple_text_for_pdf, @pdf, text, @left_margin)
-        end
+        blanks = written_html_chunks.select { |html| html.strip.empty? }
+        assert_empty blanks
+      end
+
+      should "let an exception from the Markdown conversion surface without a fallback" do
+        stubs(:md_to_html).raises(RuntimeError, "conversion failed")
+        ai_helper_logger.expects(:error).never
+
+        error = assert_raises(RuntimeError) { project_health_to_pdf(@project, "text") }
+        assert_equal "conversion failed", error.message
       end
     end
 
-    context "#add_simple_heading_to_pdf" do
+    context "positions" do
       setup do
-        @pdf = Redmine::Export::PDF::ITCPDF.new("en")
-        @pdf.add_page
-        @left_margin = 10
+        Redmine::Export::PDF::ITCPDF.prepend(PdfCallRecorder)
+        PdfCallRecorder.calls.clear
+        PdfCallRecorder.recording = true
       end
 
-      should "add heading with appropriate size" do
-        assert_nothing_raised do
-          send(:add_simple_heading_to_pdf, @pdf, "Test Header", 1, @left_margin)
-          send(:add_simple_heading_to_pdf, @pdf, "Sub Header", 2, @left_margin)
-          send(:add_simple_heading_to_pdf, @pdf, "Sub Sub Header", 3, @left_margin)
-        end
+      teardown do
+        PdfCallRecorder.recording = false
+      end
+
+      should "draw headings and tables in the order they are written" do
+        body = "# First\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n# Second\n\n| c | d |\n|---|---|\n| 3 | 4 |\n"
+
+        project_health_to_pdf(@project, body)
+        nodes = Nokogiri::HTML::DocumentFragment.parse(written_html_chunks.join).children.reject(&:text?)
+
+        assert_equal %w[h1 table h1 table], nodes.map(&:name)
+        assert_equal [ "First", "Second" ], nodes.select { |n| n.name == "h1" }.map(&:text)
+      end
+
+      should "draw a chart between the tables written before and after it" do
+        body = "| a | b |\n|---|---|\n| 1 | 2 |\n\n{{ai_helper_chart(status, version=12)}}\n\n| c | d |\n|---|---|\n| 3 | 4 |\n"
+
+        render_with_charts(body)
+        sequence = PdfCallRecorder.calls.map(&:first).select { |name| %i[RDMwriteFormattedCell Rect].include?(name) }
+
+        # The first table's HTML, then the chart's bars (two bars, each drawn
+        # filled and bordered), then the second table's HTML.
+        assert_equal([ :RDMwriteFormattedCell ] + ([ :Rect ] * 4) + [ :RDMwriteFormattedCell ], sequence)
+        assert_equal [ [ "1", "2" ] ], pdf_tables(written_html_chunks.first).first[:rows]
+        assert_equal [ [ "3", "4" ] ], pdf_tables(written_html_chunks.last).first[:rows]
+      end
+
+      should "draw consecutive directives in order, each at its own marker" do
+        body = "{{ai_helper_chart(status, version=12)}}\n\n{{ai_helper_chart(progress, version=12)}}"
+
+        pdf = render_with_charts(body)
+
+        text = pdf_text(pdf)
+        assert_includes text, "Issues by Status - 1.0.0"
+        assert_includes text, "Not started (3)"
+        assert_operator text.index("Issues by Status - 1.0.0"), :<, text.index("Not started (3)"),
+                       "the status chart must be drawn before the progress chart"
+      end
+
+      should "draw a directive that appears twice once per marker" do
+        render_with_charts("{{ai_helper_chart(status, version=12)}}\n\n{{ai_helper_chart(status, version=12)}}")
+
+        assert_equal 8, calls_named(:Rect).length, "two status charts, each with two bars drawn twice"
+      end
+
+      should "draw a directive that the scanner left in a fenced code block as body text" do
+        body = "```\n{{ai_helper_chart(status, version=12)}}\n```\n"
+
+        render_with_charts(body)
+
+        assert_includes written_html_chunks.join, "{{ai_helper_chart(status, version=12)}}"
+        assert_empty calls_named(:Rect)
+      end
+
+      should "raise when a chart marker paragraph is lost" do
+        directive = RedmineAiHelper::HealthReportChart::Directive.new(type: "status", target_kind: :version, target_value: "12", source: "{{ai_helper_chart(status, version=12)}}")
+        stubs(:health_report_html_with_chart_markers).returns([ "<p>no marker here</p>", [ [ "aihelperchartlost", directive ] ] ])
+
+        error = assert_raises(RuntimeError) { project_health_to_pdf(@project, "text") }
+        assert_equal "Chart marker paragraph was not rendered in the report body " \
+                     "(1 marker(s) left, directive: {{ai_helper_chart(status, version=12)}}, marker: aihelperchartlost)",
+                     error.message
       end
     end
 
-    context "#add_simple_list_item_to_pdf" do
+    context "elements match the screen" do
       setup do
-        @pdf = Redmine::Export::PDF::ITCPDF.new("en")
-        @pdf.add_page
-        @left_margin = 10
+        Redmine::Export::PDF::ITCPDF.prepend(PdfCallRecorder)
+        PdfCallRecorder.calls.clear
+        PdfCallRecorder.recording = true
       end
 
-      should "add list items with proper indentation" do
-        assert_nothing_raised do
-          send(:add_simple_list_item_to_pdf, @pdf, "Item 1", 0, :bullet, @left_margin)
-          send(:add_simple_list_item_to_pdf, @pdf, "Nested item", 1, :bullet, @left_margin)
+      teardown do
+        PdfCallRecorder.recording = false
+      end
+
+      should "pass the same element kinds and texts as the screen (Markdown formatting)" do
+        assert_pdf_matches_screen
+      end
+
+      should "pass the same element kinds and texts as the screen (Textile formatting)" do
+        with_settings text_formatting: "textile" do
+          assert_pdf_matches_screen
         end
+      end
+
+      should "draw the headings as headings and the numbered lists with their numbers in the text layer" do
+        text = pdf_text(render_with_charts(ALL_ELEMENTS_BODY)).b
+
+        [ "Heading One", "Heading Two", "Heading Three" ].each { |heading| assert_includes text, heading }
+        assert_equal %w[1. 1. 2.], text.scan(/\[\((\d+\.)\)\] TJ/).flatten
+      end
+
+      should "keep a directive that is not on a line of its own as text on screen and in the PDF" do
+        # The scanner only recognizes a directive on a whole line outside
+        # fences, so a directive inside a list item or a quote is plain text
+        # for the screen and the PDF alike — neither draws a chart for it.
+        body = "- item {{ai_helper_chart(status, version=12)}}\n\n> quote {{ai_helper_chart(progress, version=12)}}\n"
+        report = AiHelperHealthReport.new(metrics: CHART_METRICS)
+
+        screen = render_health_report_markdown(body, report: report)
+        pdf = render_with_charts(body)
+
+        assert_includes screen, "{{ai_helper_chart(status, version=12)}}"
+        assert_includes screen, "{{ai_helper_chart(progress, version=12)}}"
+        assert_includes pdf_text(pdf), "{{ai_helper_chart(status, version=12)}}"
+        assert_includes pdf_text(pdf), "{{ai_helper_chart(progress, version=12)}}"
+        assert_empty calls_named(:Rect)
       end
     end
 
@@ -652,74 +693,26 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
 
       should "add paragraph text" do
         assert_nothing_raised do
-          send(:add_simple_paragraph_to_pdf, @pdf, "This is a paragraph of text.", @left_margin)
+          send(:add_simple_paragraph_to_pdf, @pdf, "This is a paragraph of text.", @left_margin, "L")
         end
       end
 
       should "handle empty text" do
         assert_nothing_raised do
-          send(:add_simple_paragraph_to_pdf, @pdf, "", @left_margin)
-        end
-      end
-    end
-
-    context "#process_table_html_for_pdf" do
-      setup do
-        @pdf = Redmine::Export::PDF::ITCPDF.new("en")
-        @pdf.add_page
-        @left_margin = 10
-      end
-
-      should "process HTML table" do
-        table_html = <<~HTML
-          <table>
-            <tr><th>Header 1</th><th>Header 2</th></tr>
-            <tr><td>Data 1</td><td>Data 2</td></tr>
-          </table>
-        HTML
-
-        assert_nothing_raised do
-          send(:process_table_html_for_pdf, @pdf, table_html, @left_margin)
+          send(:add_simple_paragraph_to_pdf, @pdf, "", @left_margin, "L")
         end
       end
 
-      should "handle malformed HTML table" do
-        malformed_html = "<table><tr><td>Incomplete"
+      should "place the paragraph further right when the text_align is R" do
+        send(:add_simple_paragraph_to_pdf, @pdf, "AlignMarker", @left_margin, "L")
+        left_x = pdf_text_runs(@pdf.output).find { |run| run.text == "AlignMarker" }.x
 
-        assert_nothing_raised do
-          send(:process_table_html_for_pdf, @pdf, malformed_html, @left_margin)
-        end
-      end
-    end
+        right_pdf = Redmine::Export::PDF::ITCPDF.new("en")
+        right_pdf.add_page
+        send(:add_simple_paragraph_to_pdf, right_pdf, "AlignMarker", @left_margin, "R")
+        right_x = pdf_text_runs(right_pdf.output).find { |run| run.text == "AlignMarker" }.x
 
-    context "#draw_pdf_table" do
-      setup do
-        @pdf = Redmine::Export::PDF::ITCPDF.new("en")
-        @pdf.add_page
-        @left_margin = 10
-      end
-
-      should "draw table with headers and rows" do
-        headers = [ "Name", "Age", "City" ]
-        rows = [ [ "John", "25", "NYC" ], [ "Jane", "30", "LA" ] ]
-
-        assert_nothing_raised do
-          send(:draw_pdf_table, @pdf, headers, rows, @left_margin)
-        end
-      end
-
-      should "handle empty table" do
-        assert_nothing_raised do
-          send(:draw_pdf_table, @pdf, [], [], @left_margin)
-        end
-      end
-
-      should "handle table with only headers" do
-        headers = [ "Name", "Age" ]
-
-        assert_nothing_raised do
-          send(:draw_pdf_table, @pdf, headers, [], @left_margin)
-        end
+        assert_operator right_x, :>, left_x, "R must place the paragraph further right than L"
       end
     end
 
