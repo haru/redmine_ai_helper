@@ -77,6 +77,10 @@ function handleGenerateProjectHealthClick(e, parser) {
     return;
   }
 
+  // Hand the result area to this generation, so a swap of an earlier
+  // generation that settles late leaves it alone.
+  beginReportGeneration(resultDiv);
+
   // Hide placeholder if it exists
   const placeholder = document.querySelector('.ai-helper-detail-placeholder');
   if (placeholder) {
@@ -114,6 +118,16 @@ function handleGenerateProjectHealthClick(e, parser) {
   currentProjectHealthEventSource = new EventSource(url);
   const eventSource = currentProjectHealthEventSource;
   let content = '';
+  // The saved report for this generation, delivered via a named SSE event
+  // before the stop chunk. Used to swap in the server-rendered body when
+  // the stream finishes. A failure to read the event is kept separate: the
+  // event being absent is a normal path (the body was an error message),
+  // while a present-but-invalid event means the swap cannot happen and
+  // must be reported (CRF-047).
+  const saved = { id: null, failure: null };
+  eventSource.addEventListener('health_report_saved', function(event) {
+    readSavedReportEvent(event, saved);
+  });
   const renderer = new AiHelperFrameRenderer(function() {
     // A newer generation may have replaced this stream since scheduling.
     if (currentProjectHealthEventSource !== eventSource) {
@@ -147,7 +161,7 @@ function handleGenerateProjectHealthClick(e, parser) {
       eventSource.close();
       currentProjectHealthEventSource = null;
       renderer.cancel();
-      finalizeStreamingContent(resultDiv, parser, content);
+      finishGeneration(resultDiv, parser, content, saved.id, saved.failure);
     }
   };
 
@@ -169,6 +183,80 @@ function handleGenerateProjectHealthClick(e, parser) {
     // Remove PDF button if it exists on error
     removePdfExportButton();
   };
+}
+
+/**
+ * Read the saved report's id from a health_report_saved SSE event.
+ * @param {MessageEvent} event - The named SSE event.
+ * @returns {number} The positive integer report id.
+ * @throws {Error} When the payload carries no positive integer report_id.
+ */
+function savedReportIdOf(event) {
+  const reportId = JSON.parse(event.data).report_id;
+  if (!Number.isInteger(reportId) || reportId <= 0) {
+    throw new Error('health_report_saved carried an invalid report_id: ' + JSON.stringify(reportId));
+  }
+  return reportId;
+}
+
+/**
+ * Read a health_report_saved SSE event into the generation's saved-report
+ * record. A read failure is captured in the record instead of thrown, so
+ * the stream continues and finishGeneration can report the swap failure:
+ * an invalid event must never silently degrade to a chartless body
+ * (CRF-047).
+ * @param {MessageEvent} event - The named SSE event.
+ * @param {{id: number|null, failure: Error|null}} saved - Record filled
+ *   with the saved report id, or with the failure raised while reading it.
+ * @returns {void}
+ */
+function readSavedReportEvent(event, saved) {
+  try {
+    saved.id = savedReportIdOf(event);
+  } catch (error) {
+    console.error('Invalid health_report_saved event:', error);
+    saved.failure = error;
+  }
+}
+
+/**
+ * Render the finished report and, when the server saved it, report a failed
+ * swap to the server-rendered body in the result area. A failure raised
+ * synchronously by finalizeStreamingContent is reported the same way: a
+ * .catch below would only see a rejected return promise, never a throw
+ * (CRF-047).
+ * @param {HTMLElement} resultDiv - The report result container.
+ * @param {AiHelperMarkdownParser} parser - Parser for the final markdown.
+ * @param {string} content - The full generated report content.
+ * @param {number|null} savedReportId - The saved report's id, if any.
+ * @param {Error|null} savedReportEventFailure - The failure raised while
+ *   reading the health_report_saved event, if any.
+ */
+function finishGeneration(resultDiv, parser, content, savedReportId, savedReportEventFailure) {
+  if (savedReportEventFailure) {
+    showSavedReportSwapError(resultDiv, savedReportEventFailure);
+    return;
+  }
+  let swapped;
+  try {
+    swapped = finalizeStreamingContent(resultDiv, parser, content, savedReportId);
+  } catch (error) {
+    showSavedReportSwapError(resultDiv, error);
+    return;
+  }
+  if (swapped) {
+    const generation = reportGenerationOf(resultDiv);
+    swapped.catch(function(error) {
+      // A newer generation owns the area now; its loader or report must
+      // not be replaced by this one's error box. The failure is still
+      // logged.
+      if (reportGenerationOf(resultDiv) !== generation) {
+        console.error('Failed to swap in the saved health report of a superseded generation:', error);
+        return;
+      }
+      showSavedReportSwapError(resultDiv, error);
+    });
+  }
 }
 
 /**

@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require "redmine_ai_helper/health_report_chart/scanner"
+require "redmine_ai_helper/health_report_chart/resolver"
+require "redmine_ai_helper/export/pdf/project_health_pdf_chart_helper"
 
 module RedmineAiHelper
   # Export functionality
@@ -13,13 +16,18 @@ module RedmineAiHelper
         include ActionView::Helpers::SanitizeHelper
         include ActionView::Helpers::TextHelper
         include RedmineAiHelper::Logger
+        include RedmineAiHelper::Export::PDF::ProjectHealthPdfChartHelper
 
         # Generate PDF for project health report
         # @param project [Project] The project object
         # @param health_report [String] The health report content
         # @param options [Hash] Optional settings. :edit_notice is a line shown below
-        #   the header when the report was edited by a user.
+        #   the header when the report was edited by a user. :charts is the
+        #   HealthReportChart::Resolver that draws chart directives; without it,
+        #   directives resolve against no metrics (Resolver.new(nil)).
         # @return [String] PDF content as binary string
+        # @raise [ArgumentError] when :charts is not a Resolver, or the body is
+        #   neither a String nor nil
         def project_health_to_pdf(project, health_report, options = {})
           pdf = Redmine::Export::PDF::ITCPDF.new(current_language)
           is_rtl = l(:direction) == "rtl"
@@ -40,7 +48,9 @@ module RedmineAiHelper
           pdf.SetFontStyle("", 10)
           pdf.set_x(left_margin)
           pdf.set_auto_page_break(true, bottom_margin)
-          render_pdf_report_content(pdf, project, health_report, left_margin, is_rtl, text_align)
+          charts = options.fetch(:charts) { RedmineAiHelper::HealthReportChart::Resolver.new(nil) }
+          raise ArgumentError, "charts must be a HealthReportChart::Resolver" unless charts.is_a?(RedmineAiHelper::HealthReportChart::Resolver)
+          render_pdf_body(pdf, project, health_report, charts, left_margin, is_rtl, text_align)
 
           pdf.output
         end

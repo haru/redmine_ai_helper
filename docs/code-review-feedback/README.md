@@ -130,3 +130,19 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-044](./044-promoted-feedback-rules-narrowed.md) | Promoted feedback rules were narrowed, half-dropped and mis-cited | doc-comment | Local AI review | Not yet |
 | [CRF-045](./045-finalize-accepted-detached-pane.md) | Finalize accepted a result area detached together with its whole pane | edge-case | GitHub Copilot (PR #526) | Not yet |
 | [CRF-046](./046-sse-try-wrapped-data-read.md) | SSE try block wrapped reading the event data, not only the parse | error-handling | GitHub Copilot (PR #526) | Not yet |
+| [CRF-047](./047-client-swap-failures-unhandled.md) | Saved-report swap and chart loading failed silently in the browser | error-handling | Local AI review | Not yet |
+| [CRF-048](./048-redmine-version-matrix-chart-loading.md) | Chart.js loading ignored Redmine 6.0 (no importmap) and the overview page | edge-case | Local AI review | Not yet |
+| [CRF-049](./049-dom-and-index-boundaries.md) | Observer-added export links, observer root node and index 0 boundaries were missed | edge-case | Local AI review | Not yet |
+| [CRF-050](./050-value-object-and-union-checks-incomplete.md) | New chart value objects and Chart\|Unavailable results skipped the CRF-003/CRF-009 checks | convention-violation | Local AI review | AGENTS.md |
+| [CRF-051](./051-chart-tests-vacuous-or-one-sided.md) | Chart tests passed without the guard, diverged between Ruby and JS, and skipped call sites | test-gap | Local AI review | AGENTS.md |
+| [CRF-052](./052-chart-comments-described-other-behaviour.md) | Chart comments and docs described behaviour the code does not have | doc-comment | Local AI review | Not yet |
+| [CRF-053](./053-html-block-directives-caused-500.md) | Directives inside CommonMark HTML blocks made every report render fail with HTTP 500 | edge-case | Local AI review | Not yet |
+| [CRF-054](./054-stream-and-chart-failures-swallowed.md) | Stream completion, swap and chart failures were swallowed or invisible in the browser and the controller | error-handling | Local AI review | Not yet |
+| [CRF-055](./055-union-and-value-object-checks-missed-again.md) | Union returns and late-added value objects skipped the case/else and invariant checks again | convention-violation | Local AI review | Not yet |
+| [CRF-056](./056-chart-heads-only-in-one-erb-branch.md) | Chart heads were loaded only in the saved-report branch of the overview partial | edge-case | Local AI review | Not yet |
+| [CRF-057](./057-guard-and-sse-contract-test-gaps.md) | Resolver guards were unreachable from tests and the SSE contract was tested only through stubs | test-gap | Local AI review | Not yet |
+| [CRF-058](./058-doughnut-era-and-pre-swap-docs-survived.md) | Doughnut-era and pre-swap docs survived in specs, wiki and comments | doc-comment | Local AI review | Not yet |
+| [CRF-059](./059-report-visibility-narrower-than-generation.md) | Report visibility was narrower than the permission that generates and lists reports | permission | GitHub Copilot (PR #528) | Not yet |
+| [CRF-060](./060-js-scanner-missed-ruby-html-block-fix.md) | The JS directive scanner missed the HTML-block fix made to the Ruby scanner | convention-violation | GitHub Copilot (PR #528) | AGENTS.md |
+| [CRF-061](./061-async-browser-work-outlived-its-target.md) | Late async work in the browser acted on targets that had been replaced or reused | edge-case | GitHub Copilot (PR #528) | AGENTS.md |
+| [CRF-062](./062-chart-values-only-in-pixels.md) | Chart labels and counts were available only as pixels | other | GitHub Copilot (PR #528) | Not yet |

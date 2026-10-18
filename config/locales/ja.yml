@@ -119,6 +119,39 @@ ja:
       placeholder: "AI比較分析を自動で生成しています"
       analysis_title: "比較分析"
       error_select_two_reports: "比較する2つの異なるレポートを選択してください"
+    health_report_chart:
+      types:
+        status: "ステータス別の件数"
+        tracker: "トラッカー別の件数"
+        priority: "優先度別の件数"
+        assignee: "担当者別の件数"
+        open_closed: "未完了と完了の件数"
+        progress: "進捗の分布"
+      periods:
+        last_week: "直近 1 週間"
+        last_month: "直近 1 か月"
+        all_time: "全期間"
+        recent: "最近の活動"
+      items:
+        not_started: "未着手"
+        in_progress: "進行中"
+        completed: "完了"
+        other: "その他"
+      errors:
+        invalid_arguments: "チャート指定の書き方が正しくありません"
+        unknown_type: "種類「%{type}」はありません"
+        metrics_unavailable: "このレポートには集計データがありません"
+        unknown_target: "対象「%{target}」は、このレポートの集計データにありません"
+        data_missing: "対象の集計データに、このチャートの値がありません"
+        comparison: "比較レポートではチャートを描けません"
+      unavailable: "チャートを描けません: "
+      item_label: "%{name} (%{count})"
+      tile_summary: "%{total}件中%{closed}件が完了 (%{rate}%%)"
+      draw_failed: "チャートを描画できませんでした。"
+      help:
+        title: "チャート指定の書き方"
+        syntax: "チャート指定は 1 行で、前後を空行で区切って書きます: {{ai_helper_chart(種類, version=<バージョンID>)}} または {{ai_helper_chart(種類, period=<期間>)}}。表・リスト・コードブロックの中には書けません。数値を本文に書き写す必要はありません。"
+        targets: "このレポートで使える対象"
     generate_issue_reply:
       title: "AIヘルパーでコメント案を作成"
       instructions: "回答内容の要点や指示を記入してください。"

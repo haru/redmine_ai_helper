@@ -1,6 +1,16 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      // Redmine serves chart.js at runtime (importmap pin on Redmine 7,
+      // chart.min on Redmine 6), so npm does not install it. The dynamic
+      // import in ai_helper_health_report_chart.js is resolved to a local
+      // stub instead.
+      "chart.js": fileURLToPath(new URL("./test/javascript/support/chart_js_stub.js", import.meta.url)),
+    },
+  },
   test: {
     environment: "jsdom",
     include: ["test/javascript/**/*.test.js"],

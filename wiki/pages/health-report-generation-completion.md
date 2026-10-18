@@ -52,9 +52,12 @@ change (S050).
   closing it could stop the server-side generation (PR #526 review).
 - `onmessage` reads `event.data` once, before the `try`, so only `JSON.parse` is
   guarded and the logged payload is that saved value (PR #526 review).
-- Export links are **not** added by this path in the dashboard: `addPdfExportButton`
-  is unchanged; the id-bearing links arrive when the detail pane reloads after
-  completion (S050).
+- Export links are **not** added by the stream itself: after completion, feature
+  078's swap fetches the saved report's server-rendered content and
+  `addReportExportLinks` rebuilds the links from its data attributes into an
+  `.other-formats` paragraph (id-less links to the saved report's own export
+  endpoints; the POST-based `-dynamic` links added during generation are
+  removed). `addPdfExportButton` is unchanged (S050; feature 078).
 - No ADR: a small local fix, not an architectural decision (S050).
 
 ## Rejected alternatives

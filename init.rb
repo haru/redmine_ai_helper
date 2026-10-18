@@ -68,7 +68,7 @@ Redmine::Plugin.register :redmine_ai_helper do
                  ],
                   ai_helper_dashboard: [
                     :index, :health_report_history, :health_report_show, :compare_health_reports, :comparison_pdf, :comparison_markdown,
-                    :health_report_markdown
+                    :health_report_markdown, :health_report_content
                   ]
                 }
     permission :settings_ai_helper,

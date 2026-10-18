@@ -41,6 +41,58 @@ class ProjectHealthPartialTest < ActionView::TestCase
     assert_includes html, 'meta name="ai-helper-project-health-created-label"'
   end
 
+  context "charts on every server-rendered call site" do
+    setup do
+      Role.find(1).add_permission! :view_ai_helper_health_reports
+      @chart_report = AiHelperHealthReport.create!(
+        project: @project, user: @user,
+        health_report: "Before\n\n{{ai_helper_chart(status, version=12)}}\n\nAfter",
+        metrics: [ { version_id: 12, version_name: "1.0.0",
+                     metrics: { issue_statistics: { by_status: { "New" => 2, "Closed" => 1 } } } } ].to_json
+      )
+    end
+
+    should "draw the chart and load Chart.js on the project overview" do
+      Rails.application.stubs(importmap: stub(packages: {}))
+
+      html = render(partial: "ai_helper/project/health_report", locals: { project: @project })
+
+      assert_select Nokogiri::HTML::DocumentFragment.parse(html), "canvas[data-ai-helper-chart]", 1
+      assert_includes view.content_for(:header_tags).to_s, "chart.min"
+    end
+
+    should "load Chart.js in the placeholder state, before any report exists" do
+      # After the first generation the swapped-in body contains canvases, so
+      # chart.min must be in the head even when this render showed only the
+      # placeholder (Redmine 6.0/6.1 have no importmap pin to fall back on).
+      Rails.application.stubs(importmap: stub(packages: {}))
+      AiHelperHealthReport.destroy_all
+
+      html = render(partial: "ai_helper/project/health_report", locals: { project: @project })
+
+      assert_select Nokogiri::HTML::DocumentFragment.parse(html),
+                    ".ai-helper-project-health-placeholder", 1
+      assert_includes view.content_for(:header_tags).to_s, "chart.min"
+    end
+
+    should "draw the chart in the shared body partial" do
+      html = render(partial: "ai_helper/project/health_report_body", locals: { health_report: @chart_report })
+
+      assert_select Nokogiri::HTML::DocumentFragment.parse(html),
+                    ".ai-helper-health-report-current canvas[data-ai-helper-chart]", 1
+    end
+
+    should "draw the chart in the original body of an edited report" do
+      @chart_report.update_content("Edited without chart", User.find(2))
+
+      html = render(partial: "ai_helper/project/health_report_body", locals: { health_report: @chart_report })
+
+      fragment = Nokogiri::HTML::DocumentFragment.parse(html)
+      assert_select fragment, ".ai-helper-health-report-original canvas[data-ai-helper-chart]", 1
+      assert_select fragment, ".ai-helper-health-report-current canvas[data-ai-helper-chart]", 0
+    end
+  end
+
   should "export a stored report on the overview from the record-based endpoints" do
     report = AiHelperHealthReport.create!(project: @project, user: @user, health_report: "Stored body")
 
@@ -62,6 +114,28 @@ class ProjectHealthPartialTest < ActionView::TestCase
     assert_select Nokogiri::HTML::DocumentFragment.parse(html), "p.other-formats" do
       assert_select "a#ai-helper-markdown-export-link[href=?]", ai_helper_project_health_markdown_path(@project)
       assert_select "a#ai-helper-pdf-export-link[href=?]", ai_helper_project_health_pdf_path(@project)
+    end
+  end
+
+  should "render a cached body that differs from the stored record without the saved-report UI" do
+    # The stored record exists but the cached body is from another run: the
+    # shown body must not be treated as the record (no edit status, no
+    # record-based export links, no metrics), while the record's created-on
+    # meta still shows.
+    AiHelperHealthReport.create!(project: @project, user: @user, health_report: "Record body")
+    Rails.cache.stubs(:read).with("project_health_#{@project.id}___").returns("Stale streamed body")
+
+    html = render(partial: "ai_helper/project/health_report", locals: { project: @project })
+
+    fragment = Nokogiri::HTML::DocumentFragment.parse(html)
+    assert_includes html, "Stale streamed body"
+    assert_select fragment, "p.ai-helper-project-health-meta", 1
+    assert_select fragment, "p.ai-helper-health-report-edited-notice", 0
+    assert_select fragment, "p.other-formats" do
+      assert_select "a#ai-helper-markdown-export-link", 1
+      assert_select "a#ai-helper-pdf-export-link", 1
+      assert_select "a.text:not(#ai-helper-markdown-export-link)", 0
+      assert_select "a.pdf:not(#ai-helper-pdf-export-link)", 0
     end
   end
 
@@ -136,6 +210,8 @@ class ProjectHealthPartialTest < ActionView::TestCase
   context "edit UI" do
     setup do
       @role = roles(:roles_001)
+      # editable? requires visible?, which requires view_ai_helper
+      @role.add_permission! :view_ai_helper
       @report = AiHelperHealthReport.create!(
         project: @project,
         user: @user,
@@ -302,7 +378,7 @@ class ProjectHealthPartialTest < ActionView::TestCase
     assert_select html, %(form input[type="submit"][value="#{l(:button_save)}"]), 1
     assert_select html, "form a.ai-helper-health-report-edit-cancel", 1
     textarea = html.at_css("textarea")
-    assert_equal ai_helper_health_report_preview_path(@project), textarea["data-preview-url"]
+    assert_equal ai_helper_health_report_preview_path(@project, report_id: report.id), textarea["data-preview-url"]
     assert_equal help_wiki_syntax_path, textarea["data-help-url"]
   end
 

@@ -2,7 +2,7 @@
 title: Health Report Markdown Rendering
 type: decision
 sources: [S038, S049]
-updated: 2026-10-16
+updated: 2026-10-17
 ---
 
 # Health Report Markdown Rendering
@@ -44,7 +44,10 @@ edited as **Markdown, independent of Redmine's text-formatting setting**
   load), the last surviving client-side rendering path; the hidden field and
   the PDF/Markdown export handlers stay (S049). Feature 064's rejection of
   client-side rendering is thereby enforced for saved reports (ADR-057); the
-  freshly streamed report is still rendered by `AiHelperMarkdownParser`.
+  freshly streamed report is still rendered by `AiHelperMarkdownParser` while
+  streaming, but once the stream finishes the client-rendered body is
+  **replaced** by the saved report's server-rendered content (feature 078's
+  swap) — the saved report's charts exist only in that server-rendered markup.
 - The table CSS of `ai_helper.css` extends to the chat and summary containers;
   columns without an explicit Markdown alignment use `text-align: start`
   there (RTL-safe), while the health report containers keep `left` and their

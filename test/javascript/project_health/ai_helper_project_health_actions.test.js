@@ -11,7 +11,17 @@ class FakeEventSource {
     this.closeCount = 0;
     this.onmessage = null;
     this.onerror = null;
+    this.listeners = {};
     FakeEventSource.instances.push(this);
+  }
+
+  addEventListener(name, listener) {
+    this.listeners[name] = this.listeners[name] || [];
+    this.listeners[name].push(listener);
+  }
+
+  emit(name, event) {
+    (this.listeners[name] || []).forEach((listener) => listener(event));
   }
 
   close() {
@@ -56,6 +66,7 @@ describe("ai_helper_project_health_actions", () => {
     delete window.updateHealthReportHistory;
     await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
     await loadScript("assets/javascripts/shared/ai_helper_frame_renderer");
+    await loadScript("assets/javascripts/project_health/ai_helper_chart_directive");
   });
 
   afterEach(() => {
@@ -65,7 +76,8 @@ describe("ai_helper_project_health_actions", () => {
     document
       .querySelectorAll(
         'meta[name^="ai-helper-project-health"], meta[name="error-message"], meta[name="export-label"], ' +
-          'meta[name="markdown-export-url"], meta[name="pdf-export-url"], meta[name="csrf-token"]',
+          'meta[name="markdown-export-url"], meta[name="pdf-export-url"], meta[name="csrf-token"], ' +
+          'meta[name="ai-helper-health-report-content-url"]',
       )
       .forEach((m) => m.remove());
     // Restores every vi.spyOn mock (console.error, finalizeStreamingContent,
@@ -115,6 +127,7 @@ describe("ai_helper_project_health_actions", () => {
 
   async function load() {
     await loadScript("assets/javascripts/project_health/ai_helper_project_health_actions");
+    await loadScript("assets/javascripts/project_health/ai_helper_project_health_swap");
     cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/project_health/ai_helper_project_health");
     return cleanup;
   }
@@ -415,19 +428,22 @@ describe("ai_helper_project_health_actions", () => {
       expect(resultDiv.innerHTML).toContain("ai-helper-final-content");
     });
 
-    it("propagates finalize errors out of onmessage without logging a parse failure, leaving the stream closed", async () => {
-      addHealthContainer();
+    it("shows the swap error box when finalizeStreamingContent throws synchronously, leaving the stream closed", async () => {
+      addMeta("error-message", "Something failed");
+      const { resultDiv } = addHealthContainer();
       const link = addGenerateLink();
       const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       await load();
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       const source = FakeEventSource.instances[0];
+      const failure = new Error("finalize boom");
       vi.spyOn(window, "finalizeStreamingContent").mockImplementation(() => {
-        throw new Error("finalize boom");
+        throw failure;
       });
 
-      expect(() => sendStop(source)).toThrow("finalize boom");
-      expect(errorSpy).not.toHaveBeenCalled();
+      expect(() => sendStop(source)).not.toThrow();
+      expect(resultDiv.querySelector(".ai-helper-error").textContent).toBe("Something failed");
+      expect(errorSpy).toHaveBeenCalledWith(expect.any(String), failure);
 
       // The stream must be closed — and dropped as the current one — before
       // finalize runs, so a failing finalize can never leave the generation
@@ -437,6 +453,7 @@ describe("ai_helper_project_health_actions", () => {
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       expect(source.closeCount).toBe(1);
       expect(FakeEventSource.instances[1].closed).toBe(false);
+      errorSpy.mockRestore();
     });
 
     it("re-throws non-SyntaxError failures raised while parsing the payload", async () => {
@@ -924,6 +941,252 @@ describe("ai_helper_project_health_actions", () => {
       container.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 
       expect(appendChildSpy.mock.calls.some(([node]) => node.tagName === "FORM")).toBe(false);
+    });
+  });
+
+  describe("health_report_saved event handling", () => {
+    function clickGenerate(link) {
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      return FakeEventSource.instances[FakeEventSource.instances.length - 1];
+    }
+
+    it("listens for the health_report_saved event on the stream", async () => {
+      addHealthContainer();
+      const link = addGenerateLink();
+      await load();
+
+      const source = clickGenerate(link);
+
+      expect(source.listeners.health_report_saved).toHaveLength(1);
+    });
+
+    it("passes the saved report id to finalizeStreamingContent when the stream stops", async () => {
+      const { resultDiv } = addHealthContainer();
+      const link = addGenerateLink();
+      await load();
+      // The spy must be installed after load(): loading the script
+      // re-assigns window.finalizeStreamingContent.
+      const finalizeSpy = vi.spyOn(window, "finalizeStreamingContent").mockImplementation(() => {});
+
+      const source = clickGenerate(link);
+      source.emit("health_report_saved", { data: JSON.stringify({ report_id: 42 }) });
+      sendChunk(source, "draft");
+      sendStop(source);
+
+      expect(finalizeSpy).toHaveBeenCalledTimes(1);
+      expect(finalizeSpy.mock.calls[0][0]).toBe(resultDiv);
+      expect(finalizeSpy.mock.calls[0][2]).toBe("draft");
+      expect(finalizeSpy.mock.calls[0][3]).toBe(42);
+    });
+
+    it("passes undefined when no health_report_saved event arrived", async () => {
+      addHealthContainer();
+      const link = addGenerateLink();
+      await load();
+      const finalizeSpy = vi.spyOn(window, "finalizeStreamingContent").mockImplementation(() => {});
+
+      const source = clickGenerate(link);
+      sendChunk(source, "draft");
+      sendStop(source);
+
+      expect(finalizeSpy).toHaveBeenCalledTimes(1);
+      expect(finalizeSpy.mock.calls[0][3]).toBeNull();
+    });
+
+    it("uses the latest generation's saved report id", async () => {
+      addHealthContainer();
+      const link = addGenerateLink();
+      await load();
+      const finalizeSpy = vi.spyOn(window, "finalizeStreamingContent").mockImplementation(() => {});
+
+      const first = clickGenerate(link);
+      first.emit("health_report_saved", { data: JSON.stringify({ report_id: 11 }) });
+
+      const second = clickGenerate(link);
+      second.emit("health_report_saved", { data: JSON.stringify({ report_id: 22 }) });
+      sendStop(second);
+
+      expect(finalizeSpy).toHaveBeenCalledTimes(1);
+      expect(finalizeSpy.mock.calls[0][3]).toBe(22);
+    });
+
+    [
+      ["has no report_id", {}],
+      ["has a non-integer report_id", { report_id: "42" }],
+      ["has a non-positive report_id", { report_id: 0 }],
+    ].forEach(([name, payload]) => {
+      it(`logs the failure when the health_report_saved payload ${name} and shows the swap error instead of a chartless body`, async () => {
+        addMeta("error-message", "Something failed");
+        const { resultDiv } = addHealthContainer();
+        const link = addGenerateLink();
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+        const finalizeSpy = vi.spyOn(window, "finalizeStreamingContent").mockImplementation(() => {});
+        await load();
+
+        const source = clickGenerate(link);
+
+        expect(() => source.emit("health_report_saved", { data: JSON.stringify(payload) })).not.toThrow();
+        expect(consoleError).toHaveBeenCalledWith(expect.any(String), expect.any(Error));
+
+        sendStop(source);
+
+        expect(resultDiv.querySelector(".ai-helper-error").textContent).toBe("Something failed");
+        expect(finalizeSpy).not.toHaveBeenCalled();
+        consoleError.mockRestore();
+        finalizeSpy.mockRestore();
+      });
+    });
+
+    it("shows the error message and logs when swapping in the saved report fails", async () => {
+      addMeta("error-message", "Something failed");
+      const { resultDiv } = addHealthContainer();
+      const link = addGenerateLink();
+      await load();
+      const failure = new Error("HTTP 500");
+      vi.spyOn(window, "finalizeStreamingContent").mockImplementation(() => Promise.reject(failure));
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      const source = clickGenerate(link);
+      source.emit("health_report_saved", { data: JSON.stringify({ report_id: 42 }) });
+      sendStop(source);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(resultDiv.querySelector(".ai-helper-error").textContent).toBe("Something failed");
+      expect(consoleError).toHaveBeenCalledWith(expect.any(String), failure);
+      consoleError.mockRestore();
+    });
+
+    it("swaps in the server-rendered content after a full generation in the dashboard detail pane", async () => {
+      addMeta(
+        "ai-helper-health-report-content-url",
+        "/projects/ecookbook/ai_helper/health_reports/__REPORT_ID__/content",
+      );
+      addMeta("export-label", "Exporter");
+      const { contentDiv, resultDiv } = createDashboardDetailPane(container);
+      const link = addGenerateLink();
+      const fetchMock = vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        text: async () =>
+          '<div class="ai-helper-health-report-content" data-pdf-url="/p/42.pdf" data-markdown-url="/p/42.md">' +
+          "<p>server rendered</p></div>",
+      }));
+      vi.stubGlobal("fetch", fetchMock);
+
+      await load();
+      const source = clickGenerate(link);
+      source.emit("health_report_saved", { data: JSON.stringify({ report_id: 42 }) });
+      sendChunk(source, "client draft");
+      sendStop(source);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/projects/ecookbook/ai_helper/health_reports/42/content",
+        expect.anything(),
+      );
+      expect(resultDiv.innerHTML).toContain("server rendered");
+      expect(resultDiv.innerHTML).not.toContain("client draft");
+      const formats = contentDiv.querySelector(".other-formats");
+      expect(formats.querySelector("a.pdf").getAttribute("href")).toBe("/p/42.pdf");
+      expect(formats.querySelector("a.text").getAttribute("href")).toBe("/p/42.md");
+      expect(formats.querySelector("a.pdf").id).toBe("");
+    });
+
+    describe("a swap from an earlier generation", () => {
+      // Each generation's content request stays pending until the test
+      // settles it, so the requests can be resolved in any order.
+      function deferredFetch() {
+        const pending = {};
+        const fetchMock = vi.fn(
+          (url) =>
+            new Promise((resolve, reject) => {
+              pending[url] = { resolve, reject };
+            }),
+        );
+        vi.stubGlobal("fetch", fetchMock);
+        return pending;
+      }
+
+      function contentResponse(id, body) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () =>
+            `<div class="ai-helper-health-report-content" data-pdf-url="/p/${id}.pdf" data-markdown-url="/p/${id}.md">` +
+            `<p>${body}</p></div>`,
+        };
+      }
+
+      function finishWithSavedReport(source, id, text) {
+        source.emit("health_report_saved", { data: JSON.stringify({ report_id: id }) });
+        sendChunk(source, text);
+        sendStop(source);
+      }
+
+      const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+      const urlOf = (id) => `/projects/ecookbook/ai_helper/health_reports/${id}/content`;
+
+      beforeEach(() => {
+        addMeta("ai-helper-health-report-content-url", urlOf("__REPORT_ID__"));
+        addMeta("export-label", "Exporter");
+        addMeta("error-message", "Something failed");
+      });
+
+      it("does not overwrite a newer generation's swapped report when resolved in reverse order", async () => {
+        const { contentDiv, resultDiv } = createDashboardDetailPane(container);
+        const link = addGenerateLink();
+        const pending = deferredFetch();
+        await load();
+
+        finishWithSavedReport(clickGenerate(link), 11, "draft A");
+        finishWithSavedReport(clickGenerate(link), 22, "draft B");
+
+        pending[urlOf(22)].resolve(contentResponse(22, "report B"));
+        await flush();
+        pending[urlOf(11)].resolve(contentResponse(11, "report A"));
+        await flush();
+
+        expect(resultDiv.innerHTML).toContain("report B");
+        expect(resultDiv.innerHTML).not.toContain("report A");
+        const pdfLinks = Array.from(contentDiv.querySelectorAll(".other-formats a.pdf"));
+        expect(pdfLinks.map((a) => a.getAttribute("href"))).toEqual(["/p/22.pdf"]);
+      });
+
+      it("does not replace a newer generation still streaming", async () => {
+        const { resultDiv } = createDashboardDetailPane(container);
+        const link = addGenerateLink();
+        const pending = deferredFetch();
+        await load();
+
+        finishWithSavedReport(clickGenerate(link), 11, "draft A");
+        clickGenerate(link);
+
+        pending[urlOf(11)].resolve(contentResponse(11, "report A"));
+        await flush();
+
+        expect(resultDiv.querySelector(".ai-helper-loader")).not.toBeNull();
+        expect(resultDiv.innerHTML).not.toContain("report A");
+      });
+
+      it("does not show its failure over a newer generation's report", async () => {
+        const { resultDiv } = createDashboardDetailPane(container);
+        const link = addGenerateLink();
+        const pending = deferredFetch();
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+        await load();
+
+        finishWithSavedReport(clickGenerate(link), 11, "draft A");
+        finishWithSavedReport(clickGenerate(link), 22, "draft B");
+
+        pending[urlOf(22)].resolve(contentResponse(22, "report B"));
+        await flush();
+        pending[urlOf(11)].reject(new Error("HTTP 500"));
+        await flush();
+
+        expect(resultDiv.innerHTML).toContain("report B");
+        expect(resultDiv.querySelector(".ai-helper-error")).toBeNull();
+        consoleError.mockRestore();
+      });
     });
   });
 });

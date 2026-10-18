@@ -1,0 +1,25 @@
+<%# Collapsible help for chart directives, shown inside the report edit form. %>
+<% targets = RedmineAiHelper::HealthReportChart::Resolver.new(report.metrics).targets %>
+<fieldset class="collapsible collapsed ai-helper-health-report-chart-help">
+  <legend onclick="toggleFieldset(this);" class="icon icon-collapsed">
+    <%= sprite_icon("angle-right") %> <%= l("ai_helper.health_report_chart.help.title") %>
+  </legend>
+  <div style="display: none;">
+    <p><%= l("ai_helper.health_report_chart.help.syntax") %></p>
+    <ul>
+      <% RedmineAiHelper::HealthReportChart::ChartType.each do |key, definition| %>
+        <li><code><%= key %></code> - <%= l(definition[:title_key]) %></li>
+      <% end %>
+    </ul>
+    <p><strong><%= l("ai_helper.health_report_chart.help.targets") %></strong></p>
+    <% if targets.any? %>
+      <ul>
+        <% targets.each do |target| %>
+          <li><code><%= target.identifier %></code> - <%= target.display_name %></li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="nodata"><%= l(:label_no_data) %></p>
+    <% end %>
+  </div>
+</fieldset>

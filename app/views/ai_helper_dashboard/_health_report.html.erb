@@ -1,4 +1,5 @@
 <% ai_helper_markdown_toolbar_heads if User.current.allowed_to?(:edit_ai_helper_health_reports, @project) %>
+<% ai_helper_chart_heads %>
 <%
   # Skip rendering if no project is available or user doesn't have permission
   if RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: @project, permission: { controller: :ai_helper, action: :project_health }) && AiHelperSetting.find_or_create.model_profile
@@ -83,6 +84,9 @@
 <meta name="i18n-field_author" content="<%= l(:field_author) %>" />
 <meta name="markdown-export-url" content="<%= ai_helper_project_health_markdown_path(@project) %>" />
 <meta name="pdf-export-url" content="<%= ai_helper_project_health_pdf_path(@project) %>" />
+<% # The __REPORT_ID__ placeholder is replaced by the JS with the id of the
+   # report saved by the generation that just finished. %>
+<meta name="ai-helper-health-report-content-url" content="<%= ai_helper_health_report_content_path(@project, report_id: "__REPORT_ID__") %>" />
 
 <% end # if project %>
 

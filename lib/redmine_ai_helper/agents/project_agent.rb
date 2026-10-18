@@ -2,6 +2,7 @@
 
 require_relative "../base_agent"
 require "redmine_ai_helper/project_metrics_calculator"
+require "redmine_ai_helper/health_report_chart/prompt_guide"
 
 module RedmineAiHelper
   module Agents
@@ -42,6 +43,10 @@ module RedmineAiHelper
 
         project_settings = AiHelperProjectSetting.settings(project)
         health_report_instructions = project_settings.health_report_instructions
+        metrics_json = JSON.pretty_generate(metrics_list)
+        chart_guide = RedmineAiHelper::HealthReportChart::PromptGuide.build(
+          RedmineAiHelper::HealthReportChart::Resolver.new(metrics_json)
+        )
 
         prompt_text = prompt.format(
           project_id: project.id,
@@ -50,7 +55,8 @@ module RedmineAiHelper
           report_sections: report_sections,
           focus_guidance: focus_guidance,
           health_report_instructions: (health_report_instructions.presence || "No specific instructions provided."),
-          metrics: JSON.pretty_generate(metrics_list)
+          chart_guide: chart_guide,
+          metrics: metrics_json
         )
 
         report_text = think_chat([ { role: "user", content: prompt_text } ], {}, stream_proc)

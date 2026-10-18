@@ -1,8 +1,8 @@
 ---
 title: Project Health Report
 type: component
-sources: [S002, S003, S011, S038, S048, S049, S050]
-updated: 2026-10-17
+sources: [S002, S003, S011, S038, S048, S049, S050, S051, S052, S054]
+updated: 2026-10-18
 ---
 
 # Project Health Report
@@ -39,7 +39,10 @@ are deeper-reasoning tasks, so they use the optional
 Reports are saved automatically to the `AiHelperHealthReport` model — raw
 Markdown, the project and triggering user, and structured metrics as JSON (via
 `metrics_hash` accessors); scopes handle project filtering and permission-based
-visibility, and a `deletable?` check gates deletion (S011). You can review past
+visibility, and a `deletable?` check gates deletion (S011). `visible?` is
+admin or `view_ai_helper` on the project, the same permission that generates
+and lists reports, so non-members on public projects whose Non member role has
+it can open and export reports too (S054, ADR-060). You can review past
 reports to track progress (S002).
 
 Stored reports are **editable** by holders of `:edit_ai_helper_health_reports`;
@@ -57,9 +60,11 @@ incremental UI updates as tokens arrive (S011).
 ## Export & UI
 
 - **PDF** (individual reports and comparisons) via `ProjectHealthPdfHelper`
-  (ITCPDF); **Markdown** raw downloads via the controller (S002, S011).
+  (ITCPDF); the **Markdown** download is a **zip archive** holding the Markdown
+  file — chart directives replaced with relative links to the bundled chart
+  SVGs — plus the SVG images (feature 078, FR-016; S002, S011).
 - `AiHelperDashboardController` handles report display, history pagination, PDF
-  endpoints, and Markdown export (S011).
+  endpoints, and the Markdown zip export (S011).
 - Saved reports are rendered **server-side** with `md_to_html`, so Markdown
   displays correctly regardless of Redmine's text-formatting setting; before
   feature 064 they went through format-dependent `textilizable` and broke on
@@ -83,6 +88,12 @@ incremental UI updates as tokens arrive (S011).
   (`.../health_reports/:report_id/markdown`) and an edited notice in PDF; the
   body-POST exports remain only for unsaved streamed reports (S038).
 
+## Charts
+
+Feature 078 lets a report body carry one-line chart directives drawn from the
+metrics stored with the report (S051, ADR-058). Syntax, rendering paths,
+export zip and gotchas: [Health Report Charts](./health-report-charts.md).
+
 ## REST API
 
 Generate reports programmatically — e.g. on a cron schedule (S002).
@@ -94,10 +105,13 @@ Generate reports programmatically — e.g. on a cron schedule (S002).
 - **Requirements**: the API-key user must have `view_ai_helper` on the project,
   the AI Helper module must be enabled for the project, and REST API must be
   enabled in Redmine admin settings (S002).
+- **Chart directives** in `health_report` are returned unchanged; clients that
+  render the Markdown themselves must interpret or ignore them (S051).
 
 ## Related
 
-- [Multi-Agent Architecture](./multi-agent-architecture.md) ·
+- [Health Report Charts](./health-report-charts.md) ·
+  [Multi-Agent Architecture](./multi-agent-architecture.md) ·
   [Tool System](./tool-system.md) · [Think Model](./think-model.md) ·
   [Plugin Overview](./plugin-overview.md) ·
   [Health Report Editing](./health-report-editing.md) ·
