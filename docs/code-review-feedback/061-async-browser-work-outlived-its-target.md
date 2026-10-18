@@ -39,4 +39,4 @@ CRF-045 taught "check `isConnected` after an await", and the code applied exactl
 - An async continuation that writes into a long-lived element must check ownership, not just presence: capture a token when the operation starts and compare it when it settles (both success and failure). Test with two operations settled in reverse order.
 - Code that creates objects with an explicit release API (`destroy`, `disconnect`, `close`) in response to DOM additions must also release them on removal, and must not create them after an await if the target is gone.
 
-**Promoted to**: Not yet
+**Promoted to**: AGENTS.md

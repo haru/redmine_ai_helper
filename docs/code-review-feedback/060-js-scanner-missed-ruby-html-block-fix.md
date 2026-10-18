@@ -31,4 +31,4 @@ CRF-053 fixed the defect in the Ruby scanner only. The JS file states that its r
 
 When fixing a rule that has a declared twin implementation (a comment like "kept identical to", an ADR naming both languages), fix and test both in the same change, and add the new cases to the shared contract table before writing either test.
 
-**Promoted to**: Not yet
+**Promoted to**: AGENTS.md

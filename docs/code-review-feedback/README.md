@@ -143,6 +143,6 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-057](./057-guard-and-sse-contract-test-gaps.md) | Resolver guards were unreachable from tests and the SSE contract was tested only through stubs | test-gap | Local AI review | Not yet |
 | [CRF-058](./058-doughnut-era-and-pre-swap-docs-survived.md) | Doughnut-era and pre-swap docs survived in specs, wiki and comments | doc-comment | Local AI review | Not yet |
 | [CRF-059](./059-report-visibility-narrower-than-generation.md) | Report visibility was narrower than the permission that generates and lists reports | permission | GitHub Copilot (PR #528) | Not yet |
-| [CRF-060](./060-js-scanner-missed-ruby-html-block-fix.md) | The JS directive scanner missed the HTML-block fix made to the Ruby scanner | convention-violation | GitHub Copilot (PR #528) | Not yet |
-| [CRF-061](./061-async-browser-work-outlived-its-target.md) | Late async work in the browser acted on targets that had been replaced or reused | edge-case | GitHub Copilot (PR #528) | Not yet |
+| [CRF-060](./060-js-scanner-missed-ruby-html-block-fix.md) | The JS directive scanner missed the HTML-block fix made to the Ruby scanner | convention-violation | GitHub Copilot (PR #528) | AGENTS.md |
+| [CRF-061](./061-async-browser-work-outlived-its-target.md) | Late async work in the browser acted on targets that had been replaced or reused | edge-case | GitHub Copilot (PR #528) | AGENTS.md |
 | [CRF-062](./062-chart-values-only-in-pixels.md) | Chart labels and counts were available only as pixels | other | GitHub Copilot (PR #528) | Not yet |

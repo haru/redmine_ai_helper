@@ -61,6 +61,7 @@ a ratchet: it only ever increases, tracked toward 90%. See
 - When a bug's cause is in a shared code path, grep every caller of that path in the same step and check each one for the same defect; never write a caller as "must not change" until it is confirmed unaffected — include affected callers or ask the user about scope (SF-003, SF-007, SF-015)
 - Before a spec says an element or UI state (table striping, a disabled/selected/error state, etc.) looks "like Redmine's existing X", grep Redmine's stylesheets for that element or state and name the selector in the spec; when none exists, ask the user instead of writing it as a requirement (SF-017, SF-018). When a clarification answer rejects a proposed behaviour, do not add a different behaviour the user did not choose without confirming it (SF-018)
 - When a spec leaves a user-visible presentation choice open (chart form, layout, loading/streaming display, state wording), ask the user with options instead of settling it in plan/research on implementation-cost grounds; YAGNI applies only to choices the user cannot see (SF-019, SF-020)
+- A rule declared as implemented in two languages (a comment "kept identical to", an ADR naming both) is changed and tested in both in the same change, and new cases go into the shared contract table first (CRF-051, CRF-053, CRF-060)
 
 ## Architecture Overview
 
@@ -161,6 +162,7 @@ Agents expose tools by overriding `available_tool_providers` to return an array 
 - Write comments in English
 - CSS: use Redmine's existing classes (`.box`), no custom colors/fonts
 - Icons: `sprite_icon` helper; i18n: `t()` / `l()`
+- An async continuation that writes into a long-lived element checks ownership with a token captured when the operation starts, on both success and failure, not only `isConnected`. Objects created on DOM addition that have a release API (`destroy`, `disconnect`) are released on removal (CRF-045, CRF-061)
 
 ### Configuration
 - Global settings: `AiHelperSetting` model
