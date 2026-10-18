@@ -20,25 +20,8 @@ module AiHelperDashboardHelper
     return linkify_issue_references(md_to_html(text)) unless parts.any?(RedmineAiHelper::HealthReportChart::Directive)
 
     resolver = RedmineAiHelper::HealthReportChart::Resolver.new(report&.metrics)
-    directives = []
-    markers = []
-    marked = parts.map do |part|
-      case part
-      when RedmineAiHelper::HealthReportChart::Directive
-        directives << part
-        marker = chart_marker
-        markers << marker
-        "\n\n#{marker}\n\n"
-      when String
-        part
-      else
-        raise ArgumentError, "expected a String or a Directive, got #{part.class}"
-      end
-    end.join
-
-    html = linkify_issue_references(md_to_html(marked)).to_s
-    directives.each_with_index do |directive, index|
-      marker = markers[index]
+    html, markers = health_report_html_with_chart_markers(parts)
+    markers.each do |marker, directive|
       replaced = false
       html = html.sub("<p>#{marker}</p>") { replaced = true; chart_html(directive, resolver) }
       raise "Chart marker paragraph was not rendered in the report body" unless replaced
@@ -60,13 +43,6 @@ module AiHelperDashboardHelper
     else
       raise ArgumentError, "expected a Chart or an Unavailable, got #{resolved.class}"
     end
-  end
-
-  # An unpredictable paragraph marker made of lowercase letters and digits
-  # only, so it survives the Markdown pipeline untouched (no # or markup).
-  # @return [String]
-  def chart_marker
-    "aihelperchart#{SecureRandom.hex(12)}"
   end
 
   # Emit the Chart.js classic asset into the page head exactly once, but only

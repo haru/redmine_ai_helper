@@ -338,6 +338,27 @@ This is a test report."
       end
     end
 
+    context "#health_report_show pdf tables" do
+      setup do
+        Role.find(1).add_permission! :view_ai_helper_health_reports
+        @report = AiHelperHealthReport.create!(
+          project: @project, user: @user,
+          health_report: "| a | b | c |\n|---|---|---|\n| 1 | 2 | 3 |\n\n| x | y |\n|---|---|\n| 4 | 5 |\n"
+        )
+      end
+
+      should "draw two tables of different widths without Markdown table lines" do
+        RedmineAiHelper::CustomLogger.instance.expects(:error).with(regexp_matches(/Error processing content for PDF/)).never
+
+        get :health_report_show, params: { id: @project.id, report_id: @report.id, format: :pdf }
+
+        assert_response :success
+        text = pdf_text(response.body)
+        assert_equal(0, text.lines.count { |line| line.strip.match?(/\A\|.*\|\z/) })
+        assert_no_match(/---/, text)
+      end
+    end
+
     context "edit form chart help" do
       setup do
         Role.find(1).add_permission! :view_ai_helper_health_reports
@@ -1146,6 +1167,20 @@ This is a test report."
 
         role = Role.find(1)
         role.add_permission! :view_ai_helper_health_reports
+      end
+
+      should "draw two tables of different widths without Markdown table lines" do
+        RedmineAiHelper::CustomLogger.instance.expects(:error).with(regexp_matches(/Error processing content for PDF/)).never
+
+        post :comparison_pdf, params: {
+          id: @project.id, old_report_id: @old_report.id, new_report_id: @new_report.id,
+          comparison_content: "| a | b | c |\n|---|---|---|\n| 1 | 2 | 3 |\n\n| x | y |\n|---|---|\n| 4 | 5 |\n"
+        }
+
+        assert_response :success
+        text = pdf_text(response.body)
+        assert_equal(0, text.lines.count { |line| line.strip.match?(/\A\|.*\|\z/) })
+        assert_no_match(/---/, text)
       end
 
       should "write the comparison message in place of chart directives" do

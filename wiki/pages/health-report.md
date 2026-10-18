@@ -60,7 +60,12 @@ incremental UI updates as tokens arrive (S011).
 ## Export & UI
 
 - **PDF** (individual reports and comparisons) via `ProjectHealthPdfHelper`
-  (ITCPDF); the **Markdown** download is a **zip archive** holding the Markdown
+  (ITCPDF). The body is drawn from the same HTML as the screen
+  (`AiHelperHelper#health_report_html_with_chart_markers`) with Redmine's
+  `RDMwriteFormattedCell`, so tables, headings and lists match the screen's
+  element kinds and order; charts are drawn at their marker positions. There is
+  no fallback rendering: an exception fails the export (feature 079, ADR-061).
+  The **Markdown** download is a **zip archive** holding the Markdown
   file — chart directives replaced with relative links to the bundled chart
   SVGs — plus the SVG images (feature 078, FR-016; S002, S011).
 - `AiHelperDashboardController` handles report display, history pagination, PDF

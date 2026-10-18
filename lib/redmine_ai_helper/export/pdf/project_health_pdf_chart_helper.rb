@@ -15,29 +15,44 @@ module RedmineAiHelper
 
         private
 
-        # Draw the body split at chart directives. Text parts go through the
-        # existing text pipeline unchanged; directives are drawn outside its
-        # rescue so a drawing failure is not hidden by the plain-text fallback.
-        def render_pdf_body(pdf, project, health_report, charts, left_margin, is_rtl, text_align)
+        # Draw the body as the HTML the screen shows: the whole body goes through
+        # the Markdown pipeline once, chart directives are marker paragraphs, and
+        # the HTML between markers is drawn by Redmine's own PDF renderer.
+        # Charts are drawn at their marker's position. Errors are not rescued.
+        # @raise [ArgumentError] when health_report is neither a String nor nil
+        # @raise [RuntimeError] when a chart marker paragraph is lost during rendering
+        def render_pdf_body(pdf, health_report, charts, left_margin, text_align)
           parts =
             case health_report
             when String then RedmineAiHelper::HealthReportChart::Scanner.split(health_report)
-            when nil then [ nil ]
+            when nil then return
             else raise ArgumentError, "health_report must be a String or nil"
             end
-          parts.each do |part|
-            case part
-            when RedmineAiHelper::HealthReportChart::Directive
-              render_pdf_chart(pdf, charts.resolve(part), left_margin, text_align)
-            when String
-              render_pdf_report_content(pdf, project, part, left_margin, is_rtl, text_align)
-            when nil
-              # An empty body splits into the single nil part; nothing to draw.
-              nil
+          html, markers = health_report_html_with_chart_markers(parts)
+          pending = []
+          fragment = Nokogiri::HTML::DocumentFragment.parse(html)
+          fragment.children.each do |node|
+            marker, directive = markers.first
+            if marker && node.element? && node.name == "p" && node.text == marker
+              markers.shift
+              write_pdf_html(pdf, pending.join, left_margin)
+              pending.clear
+              render_pdf_chart(pdf, charts.resolve(directive), left_margin, text_align)
             else
-              raise ArgumentError, "expected a String, a Directive or nil, got #{part.class}"
+              pending << node.to_html
             end
           end
+          write_pdf_html(pdf, pending.join, left_margin)
+          raise "Chart marker paragraph was not rendered in the report body" unless markers.empty?
+        end
+
+        # Draw HTML with Redmine's formatted cell writer; blank HTML draws nothing.
+        # The attachment list is empty because a health report has no attachments.
+        def write_pdf_html(pdf, html, left_margin)
+          return if html.strip.empty?
+
+          pdf.set_x(left_margin)
+          pdf.RDMwriteFormattedCell(0, 5, "", "", html, [])
         end
 
         # @raise [ArgumentError] when resolved is neither a Chart nor an Unavailable
