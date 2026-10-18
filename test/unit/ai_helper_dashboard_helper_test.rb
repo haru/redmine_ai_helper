@@ -92,6 +92,20 @@ class AiHelperDashboardHelperTest < ActionView::TestCase
       assert_equal [ "rgb(255, 99, 132)", "rgb(54, 162, 235)" ], json["borderColors"]
     end
 
+    should "list the chart's labels and counts as text for screen readers next to the canvas" do
+      html = render_health_report_markdown(@report.health_report, report: @report)
+
+      fragment = Nokogiri::HTML::DocumentFragment.parse(html)
+      # Outside the chart container: Chart.js sizes the canvas from a
+      # container dedicated to it.
+      assert_select fragment, "div.ai-helper-health-report-chart ul", 0
+      assert_select fragment, "div.ai-helper-health-report-chart + ul.hidden-for-sighted", 1 do
+        assert_select "li", 2
+        assert_select "li:nth-child(1)", text: "New (3)"
+        assert_select "li:nth-child(2)", text: "Closed (1)"
+      end
+    end
+
     should "render progress as a canvas with the stacked form" do
       metrics = [ { version_id: 12, version_name: "1.0.0",
                     metrics: { progress_metrics: { completion_distribution: { not_started: 3, in_progress: 2, completed: 5 } } } } ].to_json

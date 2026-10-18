@@ -5,7 +5,12 @@
     Redmine's existing classes are used (no new CSS).
     The localized draw-failure message travels with the canvas: when Chart.js
     cannot draw it, the JS shows this text instead of an unexplained blank
-    box. %>
+    box.
+    The item labels (each already carrying its count) follow the canvas as a
+    list hidden with Redmine's .hidden-for-sighted class, read right after
+    the canvas, so screen readers get the values the canvas only shows as
+    pixels. The list stays outside the chart container because
+    Chart.js sizes the canvas from a container dedicated to it. %>
 <% if resolved.is_a?(RedmineAiHelper::HealthReportChart::Chart) %>
   <% if resolved.no_data? %>
 <div class="ai-helper-health-report-chart">
@@ -28,6 +33,11 @@
                                       fillColors: resolved.items.map(&:fill_color),
                                       borderColors: resolved.items.map(&:border_color) }.to_json %>"></canvas>
 </div>
+<ul class="hidden-for-sighted">
+    <% resolved.items.each do |item| %>
+  <li><%= item.label %></li>
+    <% end %>
+</ul>
   <% end %>
 <% else %>
 <div class="ai-helper-health-report-chart">

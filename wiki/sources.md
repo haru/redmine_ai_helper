@@ -58,3 +58,4 @@ Sources are immutable inputs — the wiki never edits them.
 | S051 | specs/078-health-report-charts (research.md + plan.md) + docs/adr/058-health-report-charts-placeholder-rendering.md | feature-artifact | 2026-10-17 | 2026-10-17 | health-report-charts.md, health-report.md |
 | S052 | docs/code-review-feedback/047-*.md to 052-*.md (review of feature 078) | file | 2026-10-17 | 2026-10-17 | health-report-charts.md, health-report.md |
 | S053 | docs/adr/059-health-report-chart-form-by-information.md + docs/spec-feedback/021-chart-form-heuristic-applied-mechanically.md | file | 2026-10-17 | 2026-10-17 | health-report-charts.md |
+| S054 | docs/adr/060-health-report-visibility-follows-view-permission.md + docs/code-review-feedback/059-*.md to 062-*.md (Copilot review of PR #528) | file | 2026-10-18 | 2026-10-18 | health-report-charts.md, health-report.md |

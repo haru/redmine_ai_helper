@@ -10,7 +10,7 @@ Health reports are Markdown written by an LLM. Users want charts (issues by stat
 ## Decision
 
 - The report body carries only a one-line chart directive, for example `{{ai_helper_chart(status, version=12)}}`. The LLM chooses the chart type and position; the values always come from the stored metrics. Users can add or remove directives when editing the report.
-- Charts are drawn every time the report is displayed or exported, from the stored metrics, by `RedmineAiHelper::HealthReportChart` (directive scanner, resolver, value objects). The scanner rules (one line, outside fenced code blocks) are implemented identically in Ruby and JavaScript and share one test table.
+- Charts are drawn every time the report is displayed or exported, from the stored metrics, by `RedmineAiHelper::HealthReportChart` (directive scanner, resolver, value objects). The scanner rules (one line, outside fenced code blocks and CommonMark HTML blocks of types 1-5) are implemented identically in Ruby and JavaScript and share one test table.
 - There are three renderers fed by the same `Chart` object: Chart.js on screen (ERB emits a `<canvas>` with a data attribute), rbpdf shapes in the PDF, and a hand-built SVG string in the Markdown export. No image library or server font is required.
 - The Markdown export of a health report is always a zip: `<name>.md` plus `charts/chart-<n>.svg`, where n numbers the drawable charts in order of appearance. A directive that cannot be drawn is replaced with a one-line blockquote that states the reason. Comparison reports never draw charts (directives are replaced with an explanatory message) and keep exporting a single `.md` file.
 - Chat and summary rendering are unchanged; only health report bodies resolve directives.

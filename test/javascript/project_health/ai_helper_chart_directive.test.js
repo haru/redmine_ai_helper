@@ -130,6 +130,41 @@ describe("AiHelperChartDirective", () => {
       });
     }
 
+    // CommonMark HTML blocks of types 1-5, the same inputs as the Ruby
+    // Scanner tests ("raw HTML blocks (CommonMark types 1-5)" in
+    // scanner_test.rb): a directive inside them is raw HTML content and is
+    // kept.
+    const htmlBlockCases = [
+      { name: "keeps a directive inside a pre block", input: `Intro\n\n<pre>\n${D}\n</pre>\n`, expected: `Intro\n\n<pre>\n${D}\n</pre>\n` },
+      { name: "keeps a directive inside an HTML comment", input: `<!--\n${D}\n-->`, expected: `<!--\n${D}\n-->` },
+      ...[["<script>", "</script>"], ["<style>", "</style>"], ["<textarea>", "</textarea>"]].map(([open, close]) => ({
+        name: `keeps a directive inside a ${open} block`,
+        input: `${open}\n${D}\n${close}`,
+        expected: `${open}\n${D}\n${close}`,
+      })),
+      ...[["<?php", "?>"], ["<!DOCTYPE", "html>"], ["<![CDATA[", "]]>"]].map(([open, close]) => ({
+        name: `keeps a directive inside a block opened by ${open}`,
+        input: `${open}\n${D}\n${close}`,
+        expected: `${open}\n${D}\n${close}`,
+      })),
+      { name: "keeps a directive after an unterminated HTML block until the end", input: `<pre>\n${D}`, expected: `<pre>\n${D}` },
+      { name: "closes the HTML block on its opening line when it ends there", input: `<pre>code</pre>\n${D}`, expected: "<pre>code</pre>" },
+      { name: "removes a directive after the HTML block closed", input: `<pre>\ncode\n</pre>\n\n${D}`, expected: "<pre>\ncode\n</pre>\n" },
+      { name: "does not open an HTML block inside a fenced code block", input: `\`\`\`\n<pre>\n${D}\n</pre>\n\`\`\`\n${D}`, expected: `\`\`\`\n<pre>\n${D}\n</pre>\n\`\`\`` },
+      { name: "does not open a fenced code block inside an HTML block", input: `<pre>\n\`\`\`\n${D}\n\`\`\`\n</pre>`, expected: `<pre>\n\`\`\`\n${D}\n\`\`\`\n</pre>` },
+      { name: "does not leave a fence open after a comment that contains a fence line", input: `<!--\n\`\`\`\n-->\n${D}`, expected: "<!--\n```\n-->" },
+      { name: "treats uppercase opening tags like lowercase ones", input: `<PRE>\n${D}\n</PRE>`, expected: `<PRE>\n${D}\n</PRE>` },
+      { name: "does not treat a lookalike tag as an HTML block", input: `<preview>\n${D}`, expected: "<preview>" },
+      { name: "still removes a directive between the blank lines of a type 6 block", input: `<details>\n\n${D}\n\n</details>`, expected: "<details>\n\n\n</details>" },
+      { name: "does not hide a directive prefix still arriving inside an HTML block", input: "<pre>\n{{ai_he", expected: "<pre>\n{{ai_he" },
+    ];
+
+    for (const c of htmlBlockCases) {
+      it(c.name, () => {
+        expect(window.AiHelperChartDirective.stripForStreaming(c.input)).toBe(c.expected);
+      });
+    }
+
     describe("trailing line still being received", () => {
       [
         ["a single brace", "text\n{", "text"],
@@ -181,6 +216,12 @@ describe("AiHelperChartDirective", () => {
 
     it("does not touch a directive inside a fenced code block or an indented one", () => {
       const markdown = "```\n{{ai_helper_chart(status, version=12)}}\n```\n    {{ai_helper_chart(status, version=12)}}";
+
+      expect(window.AiHelperChartDirective.replaceForComparison(markdown, message)).toBe(markdown);
+    });
+
+    it("does not touch a directive inside an HTML block", () => {
+      const markdown = "<pre>\n{{ai_helper_chart(status, version=12)}}\n</pre>\n<!--\n{{ai_helper_chart(status, version=12)}}\n-->";
 
       expect(window.AiHelperChartDirective.replaceForComparison(markdown, message)).toBe(markdown);
     });

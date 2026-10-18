@@ -1,8 +1,8 @@
 ---
 title: Health Report Charts
 type: component
-sources: [S051, S052, S053]
-updated: 2026-10-17
+sources: [S051, S052, S053, S054]
+updated: 2026-10-18
 ---
 
 # Health Report Charts
@@ -14,15 +14,17 @@ screen, in the PDF, and in the Markdown export. Part of the
 ## Design
 
 - The body carries only `{{ai_helper_chart(<type>, version=<id>|period=<key>)}}`
-  on a whole line outside fenced code blocks; the LLM picks type and position,
-  values always come from the metrics stored with the report (S051, ADR-058).
+  on a whole line outside fenced code blocks and CommonMark HTML blocks of
+  types 1-5 (`<pre>`, `<!--`, ...); the LLM picks type and position, values
+  always come from the metrics stored with the report (S051, S054, ADR-058).
 - Ruby (`RedmineAiHelper::HealthReportChart`: `Scanner`, `Directive`, `Resolver`,
   `Chart`/`Item`/`Unavailable`, `Palette`, `SvgRenderer`, `MarkdownArchive`,
   `PromptGuide`) decides everything; the three renderers only draw a `Chart`
   (S051).
 - The scanner rules exist twice, in Ruby and in `ai_helper_chart_directive.js`,
-  and share one judgment table in `contracts/chart-directive.md` (rows #1-#20)
-  (S051, S052).
+  and share one judgment table in `contracts/chart-directive.md` (rows #1-#26);
+  the JS copy once tracked only fences, so a directive inside `<pre>` vanished
+  while streaming (S051, S052, S054).
 - Alternatives rejected: PNG attachments (permissions, old reports, fonts) and
   Mermaid (Node/Chromium for PDF, LLM writes numbers) (S051).
 
@@ -45,6 +47,15 @@ asked to write one or two sentences interpreting each chart (S053).
 - After generation the browser fetches `health_report_content` for the id sent
   in the `health_report_saved` SSE event; a failed swap shows the error message
   instead of a finished-looking body without charts (S052).
+- Starting another generation reuses the same result area, so each generation
+  stamps it with `data-ai-helper-generation`; a swap or swap failure of an
+  earlier generation that settles late is dropped (S054).
+- Charts whose canvases leave the document are `destroy()`ed by the same
+  MutationObserver that draws added ones; a canvas removed before the dynamic
+  `import("chart.js")` resolves is never drawn (S054).
+- Each canvas is followed by a `ul.hidden-for-sighted` (Redmine's class) listing
+  the item labels with their counts, outside the chart container, so screen
+  readers get the values (S054).
 
 ## Gotchas
 

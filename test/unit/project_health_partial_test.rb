@@ -210,6 +210,8 @@ class ProjectHealthPartialTest < ActionView::TestCase
   context "edit UI" do
     setup do
       @role = roles(:roles_001)
+      # editable? requires visible?, which requires view_ai_helper
+      @role.add_permission! :view_ai_helper
       @report = AiHelperHealthReport.create!(
         project: @project,
         user: @user,

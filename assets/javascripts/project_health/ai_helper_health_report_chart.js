@@ -5,7 +5,9 @@
 // stripped while a report is still streaming; the canvases first appear in
 // the server-rendered body that is swapped in when the generation finishes
 // (or that ships with the page on reload), so newly added subtrees are
-// drawn too.
+// drawn too. Charts whose canvases leave the document (another report
+// selected, an edit saved, a preview refreshed) are destroyed, since
+// Chart.js keeps every instance and its canvas until destroy() is called.
 
 // Chart.js option builders per payload form. The payload is the JSON stored
 // in the canvas' data-ai-helper-chart attribute.
@@ -19,6 +21,10 @@ const BAR_CHART_BASE_HEIGHT = 80;
 const BAR_CHART_ROW_HEIGHT = 36;
 // Container height (px) of the single stacked bar: title, bar, axis, legend.
 const STACKED_CHART_HEIGHT = 170;
+
+// The Chart.js instance drawn on each canvas, so it can be destroyed once
+// the canvas has left the document.
+const chartInstances = new Map();
 
 const FORM_CONFIG_BUILDERS = {
   bar: buildBarConfig,
@@ -156,13 +162,18 @@ function drawCanvas(canvas) {
 
   const ChartClass = window.Chart;
   if (ChartClass) {
-    new ChartClass(canvas, config);
+    chartInstances.set(canvas, new ChartClass(canvas, config));
     return;
   }
   // .then().catch() instead of .then(onFulfilled, onRejected) so a failure
   // inside the fulfilled handler (the Chart constructor) is caught too.
   window.AiHelperHealthReportChart.loadChart().then(function (loaded) {
-    new loaded(canvas, config);
+    // The canvas may have been replaced while Chart.js was loading; a chart
+    // drawn on it now would never be destroyed.
+    if (!canvas.isConnected) {
+      return;
+    }
+    chartInstances.set(canvas, new loaded(canvas, config));
   }).catch(function (error) {
     // The canvas is marked failed so it is never re-processed, and the
     // failure is shown next to it instead of an unexplained blank box.
@@ -219,13 +230,33 @@ function renderWithin(root) {
 }
 
 /**
- * Draw the whole document once loaded and keep drawing every subtree added
- * afterwards (swapped-in saved reports, Ajax-refreshed panes, previews).
+ * Destroy every chart whose canvas is no longer in the document and forget
+ * it. A canvas moved within the document stays connected and keeps its
+ * chart.
+ * @returns {void}
+ */
+function releaseDetachedCharts() {
+  chartInstances.forEach(function (chart, canvas) {
+    if (canvas.isConnected) {
+      return;
+    }
+    chartInstances.delete(canvas);
+    chart.destroy();
+  });
+}
+
+/**
+ * Draw the whole document once loaded, keep drawing every subtree added
+ * afterwards (swapped-in saved reports, Ajax-refreshed panes, previews) and
+ * destroy the charts of removed canvases.
  * @returns {void}
  */
 function startChartRendering() {
   renderWithin(document);
   const observer = new MutationObserver(function (mutations) {
+    if (mutations.some(function (mutation) { return mutation.removedNodes.length > 0; })) {
+      releaseDetachedCharts();
+    }
     mutations.forEach(function (mutation) {
       Array.prototype.forEach.call(mutation.addedNodes, function (node) {
         if (node.nodeType !== Node.ELEMENT_NODE) {

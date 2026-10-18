@@ -5,6 +5,33 @@
 // declared there (exposed as a global), so must load after
 // ai_helper_project_health.js.
 
+// The number of the most recently started generation. A new generation
+// reuses the same connected result area, so a swap or swap failure of an
+// earlier generation that settles late must recognise that the area now
+// belongs to a newer one.
+let lastReportGeneration = 0;
+
+/**
+ * Mark the result area as owned by a newly started generation, so that any
+ * earlier generation's pending swap stops applying to it.
+ * @param {HTMLElement} resultDiv - The report result container.
+ * @returns {void}
+ */
+function beginReportGeneration(resultDiv) {
+  lastReportGeneration += 1;
+  resultDiv.setAttribute('data-ai-helper-generation', String(lastReportGeneration));
+}
+
+/**
+ * Read which generation currently owns the result area.
+ * @param {HTMLElement} resultDiv - The report result container.
+ * @returns {string|null} The generation number, or null when no generation
+ *   was started in this area.
+ */
+function reportGenerationOf(resultDiv) {
+  return resultDiv.getAttribute('data-ai-helper-generation');
+}
+
 /**
  * Build the URL of the saved report's server-rendered content. Called before
  * the result area is touched so a bad id or a missing meta tag fails while
@@ -39,9 +66,11 @@ function savedReportContentUrl(savedReportId) {
  * @returns {Promise<void>} Resolves when the swap is done, rejects when the
  *   request fails or the response lacks the content root or its export
  *   URLs. Resolves without swapping when the result area was detached from
- *   the document while the request was in flight.
+ *   the document, or a newer generation started in it, while the request
+ *   was in flight.
  */
 function swapInSavedReportContent(resultDiv, contentUrl) {
+  const generation = reportGenerationOf(resultDiv);
   return fetch(contentUrl, { credentials: 'same-origin' })
     .then(function(response) {
       if (!response.ok) {
@@ -53,8 +82,9 @@ function swapInSavedReportContent(resultDiv, contentUrl) {
       // Selecting another report while the request was in flight replaces
       // the whole detail pane, detaching the result area together with its
       // content container; the newly shown pane must not receive this
-      // report's body.
-      if (!resultDiv.isConnected) {
+      // report's body. Starting another generation keeps the area but
+      // hands it to the newer generation, whose loader or report must stay.
+      if (!resultDiv.isConnected || reportGenerationOf(resultDiv) !== generation) {
         return;
       }
       resultDiv.innerHTML = html;
@@ -159,3 +189,5 @@ function showSavedReportSwapError(resultDiv, error) {
 window.savedReportContentUrl = savedReportContentUrl;
 window.swapInSavedReportContent = swapInSavedReportContent;
 window.showSavedReportSwapError = showSavedReportSwapError;
+window.beginReportGeneration = beginReportGeneration;
+window.reportGenerationOf = reportGenerationOf;

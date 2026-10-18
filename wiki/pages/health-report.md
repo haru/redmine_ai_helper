@@ -1,8 +1,8 @@
 ---
 title: Project Health Report
 type: component
-sources: [S002, S003, S011, S038, S048, S049, S050, S051, S052]
-updated: 2026-10-17
+sources: [S002, S003, S011, S038, S048, S049, S050, S051, S052, S054]
+updated: 2026-10-18
 ---
 
 # Project Health Report
@@ -39,7 +39,10 @@ are deeper-reasoning tasks, so they use the optional
 Reports are saved automatically to the `AiHelperHealthReport` model — raw
 Markdown, the project and triggering user, and structured metrics as JSON (via
 `metrics_hash` accessors); scopes handle project filtering and permission-based
-visibility, and a `deletable?` check gates deletion (S011). You can review past
+visibility, and a `deletable?` check gates deletion (S011). `visible?` is
+admin or `view_ai_helper` on the project, the same permission that generates
+and lists reports, so non-members on public projects whose Non member role has
+it can open and export reports too (S054, ADR-060). You can review past
 reports to track progress (S002).
 
 Stored reports are **editable** by holders of `:edit_ai_helper_health_reports`;

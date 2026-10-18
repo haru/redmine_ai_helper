@@ -77,6 +77,10 @@ function handleGenerateProjectHealthClick(e, parser) {
     return;
   }
 
+  // Hand the result area to this generation, so a swap of an earlier
+  // generation that settles late leaves it alone.
+  beginReportGeneration(resultDiv);
+
   // Hide placeholder if it exists
   const placeholder = document.querySelector('.ai-helper-detail-placeholder');
   if (placeholder) {
@@ -241,7 +245,15 @@ function finishGeneration(resultDiv, parser, content, savedReportId, savedReport
     return;
   }
   if (swapped) {
+    const generation = reportGenerationOf(resultDiv);
     swapped.catch(function(error) {
+      // A newer generation owns the area now; its loader or report must
+      // not be replaced by this one's error box. The failure is still
+      // logged.
+      if (reportGenerationOf(resultDiv) !== generation) {
+        console.error('Failed to swap in the saved health report of a superseded generation:', error);
+        return;
+      }
       showSavedReportSwapError(resultDiv, error);
     });
   }

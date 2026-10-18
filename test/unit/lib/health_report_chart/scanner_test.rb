@@ -245,6 +245,14 @@ class HealthReportChartScannerTest < ActiveSupport::TestCase
         assert_single_string(split(markdown), markdown)
       end
 
+      should "not leave a fence open after an HTML comment that contains a fence line" do
+        markdown = "<!--\n```\n-->\n#{DIRECTIVE_LINE}"
+        parts = split(markdown)
+
+        assert_equal "<!--\n```\n-->\n", parts[0]
+        assert_directive_at(parts, 1, type: "status", target_kind: :version, target_value: "12", source: DIRECTIVE_LINE)
+      end
+
       should "not treat the case-insensitive opening tags differently from lowercase ones" do
         markdown = "<PRE>\n#{DIRECTIVE_LINE}\n</PRE>"
 

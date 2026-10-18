@@ -1091,5 +1091,102 @@ describe("ai_helper_project_health_actions", () => {
       expect(formats.querySelector("a.text").getAttribute("href")).toBe("/p/42.md");
       expect(formats.querySelector("a.pdf").id).toBe("");
     });
+
+    describe("a swap from an earlier generation", () => {
+      // Each generation's content request stays pending until the test
+      // settles it, so the requests can be resolved in any order.
+      function deferredFetch() {
+        const pending = {};
+        const fetchMock = vi.fn(
+          (url) =>
+            new Promise((resolve, reject) => {
+              pending[url] = { resolve, reject };
+            }),
+        );
+        vi.stubGlobal("fetch", fetchMock);
+        return pending;
+      }
+
+      function contentResponse(id, body) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () =>
+            `<div class="ai-helper-health-report-content" data-pdf-url="/p/${id}.pdf" data-markdown-url="/p/${id}.md">` +
+            `<p>${body}</p></div>`,
+        };
+      }
+
+      function finishWithSavedReport(source, id, text) {
+        source.emit("health_report_saved", { data: JSON.stringify({ report_id: id }) });
+        sendChunk(source, text);
+        sendStop(source);
+      }
+
+      const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+      const urlOf = (id) => `/projects/ecookbook/ai_helper/health_reports/${id}/content`;
+
+      beforeEach(() => {
+        addMeta("ai-helper-health-report-content-url", urlOf("__REPORT_ID__"));
+        addMeta("export-label", "Exporter");
+        addMeta("error-message", "Something failed");
+      });
+
+      it("does not overwrite a newer generation's swapped report when resolved in reverse order", async () => {
+        const { contentDiv, resultDiv } = createDashboardDetailPane(container);
+        const link = addGenerateLink();
+        const pending = deferredFetch();
+        await load();
+
+        finishWithSavedReport(clickGenerate(link), 11, "draft A");
+        finishWithSavedReport(clickGenerate(link), 22, "draft B");
+
+        pending[urlOf(22)].resolve(contentResponse(22, "report B"));
+        await flush();
+        pending[urlOf(11)].resolve(contentResponse(11, "report A"));
+        await flush();
+
+        expect(resultDiv.innerHTML).toContain("report B");
+        expect(resultDiv.innerHTML).not.toContain("report A");
+        const pdfLinks = Array.from(contentDiv.querySelectorAll(".other-formats a.pdf"));
+        expect(pdfLinks.map((a) => a.getAttribute("href"))).toEqual(["/p/22.pdf"]);
+      });
+
+      it("does not replace a newer generation still streaming", async () => {
+        const { resultDiv } = createDashboardDetailPane(container);
+        const link = addGenerateLink();
+        const pending = deferredFetch();
+        await load();
+
+        finishWithSavedReport(clickGenerate(link), 11, "draft A");
+        clickGenerate(link);
+
+        pending[urlOf(11)].resolve(contentResponse(11, "report A"));
+        await flush();
+
+        expect(resultDiv.querySelector(".ai-helper-loader")).not.toBeNull();
+        expect(resultDiv.innerHTML).not.toContain("report A");
+      });
+
+      it("does not show its failure over a newer generation's report", async () => {
+        const { resultDiv } = createDashboardDetailPane(container);
+        const link = addGenerateLink();
+        const pending = deferredFetch();
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+        await load();
+
+        finishWithSavedReport(clickGenerate(link), 11, "draft A");
+        finishWithSavedReport(clickGenerate(link), 22, "draft B");
+
+        pending[urlOf(22)].resolve(contentResponse(22, "report B"));
+        await flush();
+        pending[urlOf(11)].reject(new Error("HTTP 500"));
+        await flush();
+
+        expect(resultDiv.innerHTML).toContain("report B");
+        expect(resultDiv.querySelector(".ai-helper-error")).toBeNull();
+        consoleError.mockRestore();
+      });
+    });
   });
 });

@@ -204,8 +204,9 @@ export default [
     },
   },
   {
-    // savedReportContentUrl, swapInSavedReportContent and
-    // showSavedReportSwapError are declared in
+    // savedReportContentUrl, swapInSavedReportContent,
+    // showSavedReportSwapError, beginReportGeneration and
+    // reportGenerationOf are declared in
     // ai_helper_project_health_swap.js (split out purely to stay under
     // max-lines, see ADR-027) and referenced from these files as bare
     // identifiers, for the same split-file reason as the blocks above.
@@ -218,6 +219,8 @@ export default [
         savedReportContentUrl: "readonly",
         swapInSavedReportContent: "readonly",
         showSavedReportSwapError: "readonly",
+        beginReportGeneration: "readonly",
+        reportGenerationOf: "readonly",
       },
     },
   },

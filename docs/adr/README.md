@@ -112,3 +112,4 @@ Briefly describe alternatives that were rejected and why.
 | [057](./057-ai-output-tables-styled-on-the-server.md) | Style AI output tables on the server, not by re-parsing in the browser | Accepted |
 | [058](./058-health-report-charts-placeholder-rendering.md) | Draw health report charts from stored metrics via placeholder directives | Accepted |
 | [059](./059-health-report-chart-form-by-information.md) | Choose each health report chart's form by what helps the reader | Accepted |
+| [060](./060-health-report-visibility-follows-view-permission.md) | Health report visibility follows the view_ai_helper permission | Accepted |

@@ -4,10 +4,16 @@ import { loadScript } from "../support/load_script.js";
 
 class FakeChart {
   constructor(canvas, config) {
+    this.canvas = canvas;
     FakeChart.calls.push({ canvas, config });
+  }
+
+  destroy() {
+    FakeChart.destroyed.push(this.canvas);
   }
 }
 FakeChart.calls = [];
+FakeChart.destroyed = [];
 
 describe("AiHelperHealthReportChart", () => {
   let root;
@@ -26,6 +32,7 @@ describe("AiHelperHealthReportChart", () => {
     root = document.createElement("div");
     document.body.appendChild(root);
     FakeChart.calls = [];
+    FakeChart.destroyed = [];
     vi.stubGlobal("Chart", FakeChart);
     delete window.AiHelperHealthReportChart;
     await loadScript("assets/javascripts/project_health/ai_helper_health_report_chart");
@@ -376,6 +383,105 @@ describe("AiHelperHealthReportChart", () => {
       expect(FakeChart.calls.length).toBe(2);
       expect(FakeChart.calls[1].canvas).toBe(laterCanvas);
       expect(laterCanvas.hasAttribute("data-ai-helper-chart-rendered")).toBe(true);
+    });
+  });
+
+  describe("releasing charts whose canvases left the document", () => {
+    const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    async function start() {
+      delete window.AiHelperHealthReportChart;
+      cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/project_health/ai_helper_health_report_chart");
+    }
+
+    function addSection() {
+      const section = document.createElement("div");
+      const canvas = document.createElement("canvas");
+      canvas.setAttribute("data-ai-helper-chart", JSON.stringify(basePayload));
+      section.appendChild(canvas);
+      root.appendChild(section);
+      return { section, canvas };
+    }
+
+    it("destroys the chart of a canvas whose subtree was removed", async () => {
+      await start();
+      const { section, canvas } = addSection();
+      await flush();
+      expect(FakeChart.calls.map((call) => call.canvas)).toEqual([canvas]);
+
+      section.remove();
+      await flush();
+
+      expect(FakeChart.destroyed).toEqual([canvas]);
+    });
+
+    it("destroys the chart of a canvas replaced through innerHTML", async () => {
+      await start();
+      const { canvas } = addSection();
+      await flush();
+
+      root.innerHTML = "<p>replaced</p>";
+      await flush();
+
+      expect(FakeChart.destroyed).toEqual([canvas]);
+    });
+
+    it("keeps the charts whose canvases are still in the document", async () => {
+      await start();
+      const kept = addSection();
+      const removed = addSection();
+      await flush();
+
+      removed.section.remove();
+      await flush();
+
+      expect(FakeChart.destroyed).toEqual([removed.canvas]);
+      expect(FakeChart.destroyed).not.toContain(kept.canvas);
+    });
+
+    it("destroys a chart only once when its canvas is removed and more nodes leave later", async () => {
+      await start();
+      const { section, canvas } = addSection();
+      await flush();
+
+      section.remove();
+      await flush();
+      addSection().section.remove();
+      await flush();
+
+      expect(FakeChart.destroyed.filter((destroyed) => destroyed === canvas).length).toBe(1);
+    });
+
+    it("destroys a chart drawn through the dynamic import once its canvas is removed", async () => {
+      await start();
+      vi.unstubAllGlobals();
+      vi.spyOn(window.AiHelperHealthReportChart, "loadChart").mockResolvedValue(FakeChart);
+      const { section, canvas } = addSection();
+      await flush();
+      expect(FakeChart.calls.map((call) => call.canvas)).toEqual([canvas]);
+
+      section.remove();
+      await flush();
+
+      expect(FakeChart.destroyed).toEqual([canvas]);
+    });
+
+    it("does not draw a canvas removed before the dynamic import resolved", async () => {
+      vi.unstubAllGlobals();
+      let resolveLoad;
+      vi.spyOn(window.AiHelperHealthReportChart, "loadChart").mockReturnValue(
+        new Promise((resolve) => {
+          resolveLoad = resolve;
+        }),
+      );
+      const { section } = addSection();
+
+      window.AiHelperHealthReportChart.renderWithin(root);
+      section.remove();
+      resolveLoad(FakeChart);
+      await flush();
+
+      expect(FakeChart.calls).toEqual([]);
     });
   });
 });

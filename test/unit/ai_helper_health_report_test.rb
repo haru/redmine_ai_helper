@@ -446,6 +446,8 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
   context "editable?" do
     setup do
       @role = Role.find(1)
+      # editable? requires visible?, which requires view_ai_helper
+      @role.add_permission! :view_ai_helper
       @member = User.find(2)
       @report = AiHelperHealthReport.create!(
         project: @project,
@@ -504,6 +506,49 @@ class AiHelperHealthReportTest < ActiveSupport::TestCase
       @project.update!(status: Project::STATUS_ARCHIVED)
 
       assert_not @report.editable?(@member)
+    end
+  end
+
+  context "visible?" do
+    setup do
+      @non_member_role = Role.non_member
+      @non_member = User.find(4)
+      @report = AiHelperHealthReport.create!(
+        project: @project,
+        user: @user,
+        health_report: "Test report"
+      )
+    end
+
+    teardown do
+      @non_member_role.remove_permission! :view_ai_helper
+    end
+
+    should "be visible to a non-member whose non-member role has view_ai_helper on a public project" do
+      @non_member_role.add_permission! :view_ai_helper
+
+      assert_not @non_member.member_of?(@project)
+      assert @report.visible?(@non_member)
+    end
+
+    should "not be visible to a non-member whose non-member role lacks view_ai_helper" do
+      @non_member_role.remove_permission! :view_ai_helper
+
+      assert_not @report.visible?(@non_member)
+    end
+
+    should "not be visible to a non-member with view_ai_helper when the ai_helper module is disabled" do
+      @non_member_role.add_permission! :view_ai_helper
+      @project.disable_module!(:ai_helper)
+
+      assert_not AiHelperHealthReport.find(@report.id).visible?(@non_member)
+    end
+
+    should "be visible to an administrator who is not a member" do
+      admin = User.find(1)
+
+      assert_not admin.member_of?(@project)
+      assert @report.visible?(admin)
     end
   end
 
