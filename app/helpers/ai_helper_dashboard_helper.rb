@@ -8,23 +8,27 @@ module AiHelperDashboardHelper
   # Render a stored health report body as Markdown HTML, independent of the
   # Redmine text formatting setting, and linkify bare issue references.
   # Chart directive lines are resolved from the report's stored metrics and
-  # replaced by the chart partial's HTML. A body without chart directives
-  # returns exactly the same HTML as the plain Markdown pipeline (SC-002).
+  # replaced by the chart partial's HTML. Every body goes through the shared
+  # conversion `health_report_html_with_chart_markers`, so a body without
+  # chart directives returns exactly the same HTML as the plain Markdown
+  # pipeline (SC-002).
   # @param text [String] The Markdown source text of the report body.
   # @param report [AiHelperHealthReport, nil] The report the body belongs to;
   #   nil means the body is rendered without stored metrics.
   # @return [ActiveSupport::SafeBuffer] Sanitized HTML with issue links and charts.
-  # @raise [RuntimeError] when a marker paragraph is lost during rendering.
+  # @raise [RuntimeError] when a marker paragraph is not rendered as a
+  #   paragraph whose whole text is the marker.
   def render_health_report_markdown(text, report:)
     parts = RedmineAiHelper::HealthReportChart::Scanner.split(text.to_s)
-    return linkify_issue_references(md_to_html(text)) unless parts.any?(RedmineAiHelper::HealthReportChart::Directive)
-
     resolver = RedmineAiHelper::HealthReportChart::Resolver.new(report&.metrics)
     html, markers = health_report_html_with_chart_markers(parts)
-    markers.each do |marker, directive|
+    markers.each_with_index do |(marker, directive), index|
       replaced = false
       html = html.sub("<p>#{marker}</p>") { replaced = true; chart_html(directive, resolver) }
-      raise "Chart marker paragraph was not rendered in the report body" unless replaced
+      unless replaced
+        raise "Chart marker paragraph was not rendered in the report body " \
+              "(#{markers.size - index} marker(s) left, directive: #{directive.source}, marker: #{marker})"
+      end
     end
     html.html_safe # rubocop:disable Rails/OutputSafety
   end

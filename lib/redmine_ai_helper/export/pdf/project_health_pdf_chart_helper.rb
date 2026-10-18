@@ -6,48 +6,87 @@ require "redmine_ai_helper/health_report_chart/palette"
 module RedmineAiHelper
   module Export
     module PDF
-      # Splits a health report body at its chart directives and draws the
-      # resolved charts into a PDF with rbpdf shapes and text: horizontal
-      # bars, one stacked bar, or a number tile, like the screen and SVG
-      # renderers (R-004). Used by ProjectHealthPdfHelper.
+      # Draws a health report PDF body the way the screen shows it: the whole
+      # body goes through the shared Markdown conversion once
+      # (AiHelperHelper#health_report_html_with_chart_markers), then this
+      # module renders the resulting HTML — the text between chart markers
+      # with Redmine's own PDF renderer, and the charts themselves as rbpdf
+      # shapes and text: horizontal bars, one stacked bar, or a number tile,
+      # like the screen and SVG renderers (R-004) — at the markers' positions.
+      # Used by ProjectHealthPdfHelper.
       module ProjectHealthPdfChartHelper
         include Redmine::I18n
 
         private
 
-        # Draw the body as the HTML the screen shows: the whole body goes through
-        # the Markdown pipeline once, chart directives are marker paragraphs, and
-        # the HTML between markers is drawn by Redmine's own PDF renderer.
-        # Charts are drawn at their marker's position. Errors are not rescued.
+        # Draw the body as the HTML the screen shows. A nil body draws nothing.
+        # The marker list is consumed from the front as the walk meets the
+        # marker paragraphs, so consecutive and repeated directives each draw
+        # their own chart in body order. Errors are not rescued.
+        # @param pdf [Redmine::Export::PDF::ITCPDF] the PDF being written
+        # @param health_report [String, nil] the Markdown source of the body
+        # @param charts [RedmineAiHelper::HealthReportChart::Resolver] the
+        #   resolver the marker directives are drawn with
+        # @param left_margin [Numeric] the page's left margin
+        # @param text_align [String] "L" or "R"; the chart renderer's text
+        #   alignment (the body HTML follows pdf.set_rtl instead)
+        # @return [void]
         # @raise [ArgumentError] when health_report is neither a String nor nil
-        # @raise [RuntimeError] when a chart marker paragraph is lost during rendering
+        # @raise [RuntimeError] when a chart directive's marker paragraph did
+        #   not survive the Markdown pipeline as a top-level <p> paragraph, or
+        #   when the body contains images the PDF cannot draw
         def render_pdf_body(pdf, health_report, charts, left_margin, text_align)
+          return if health_report.nil?
+
           parts =
             case health_report
             when String then RedmineAiHelper::HealthReportChart::Scanner.split(health_report)
-            when nil then return
             else raise ArgumentError, "health_report must be a String or nil"
             end
           html, markers = health_report_html_with_chart_markers(parts)
-          pending = []
           fragment = Nokogiri::HTML::DocumentFragment.parse(html)
+          raise_unsupported_pdf_images(fragment)
+          pending = []
           fragment.children.each do |node|
             marker, directive = markers.first
             if marker && node.element? && node.name == "p" && node.text == marker
-              markers.shift
+              markers = markers.drop(1)
               write_pdf_html(pdf, pending.join, left_margin)
-              pending.clear
+              pending = []
               render_pdf_chart(pdf, charts.resolve(directive), left_margin, text_align)
             else
               pending << node.to_html
             end
           end
           write_pdf_html(pdf, pending.join, left_margin)
-          raise "Chart marker paragraph was not rendered in the report body" unless markers.empty?
+          unless markers.empty?
+            missing_marker, missing_directive = markers.first
+            raise "Chart marker paragraph was not rendered in the report body " \
+                  "(#{markers.size} marker(s) left, directive: #{missing_directive.source}, marker: #{missing_marker})"
+          end
         end
 
-        # Draw HTML with Redmine's formatted cell writer; blank HTML draws nothing.
-        # The attachment list is empty because a health report has no attachments.
+        # Fail the export when the body carries images: the PDF writer gets an
+        # empty attachment list, Redmine's ITCPDF#get_image_filename returns
+        # nil for an <img src> matching no attachment, and rbpdf then rescues
+        # its own error and draws nothing (rbpdf#proc_image_file). An <img>
+        # would therefore vanish silently, so the export raises instead.
+        # @param fragment [Nokogiri::HTML::DocumentFragment] the body HTML
+        # @return [void]
+        # @raise [RuntimeError] when the fragment contains <img> elements
+        def raise_unsupported_pdf_images(fragment)
+          images = fragment.css("img")
+          return if images.empty?
+
+          raise "the report body contains #{images.size} <img> element(s), but images cannot be drawn in the PDF"
+        end
+
+        # Draw HTML with Redmine's formatted cell writer. The width 0 means
+        # the full column between the margins, and the empty x and y strings
+        # mean "start at the current position". Blank HTML draws nothing, so
+        # the chunks before the first chart and between two charts add no
+        # empty cell. The attachment list is empty because a health report has
+        # no attachments.
         def write_pdf_html(pdf, html, left_margin)
           return if html.strip.empty?
 
@@ -65,6 +104,21 @@ module RedmineAiHelper
           else
             raise ArgumentError, "expected a Chart or an Unavailable, got #{resolved.class}"
           end
+        end
+
+        # Draw the chart "unavailable" message as a plain paragraph. This is
+        # the only text this module draws outside Redmine's PDF renderer.
+        # @param pdf [RBPDF] the PDF document to draw into
+        # @param text [String] the message text; blank text draws nothing
+        # @param left_margin [Numeric] x position where the paragraph starts
+        # @param text_align [String] "L" or "R"
+        def add_simple_paragraph_to_pdf(pdf, text, left_margin, text_align)
+          return if text.strip.empty?
+
+          pdf.set_x(left_margin)
+          pdf.SetFontStyle("", 10)
+          pdf.multi_cell(0, 5, text, 0, text_align)
+          pdf.ln(2)
         end
 
         def render_pdf_drawable_chart(pdf, chart, left_margin, text_align)

@@ -146,3 +146,7 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-060](./060-js-scanner-missed-ruby-html-block-fix.md) | The JS directive scanner missed the HTML-block fix made to the Ruby scanner | convention-violation | GitHub Copilot (PR #528) | AGENTS.md |
 | [CRF-061](./061-async-browser-work-outlived-its-target.md) | Late async work in the browser acted on targets that had been replaced or reused | edge-case | GitHub Copilot (PR #528) | AGENTS.md |
 | [CRF-062](./062-chart-values-only-in-pixels.md) | Chart labels and counts were available only as pixels | other | GitHub Copilot (PR #528) | Not yet |
+| [CRF-063](./063-pdf-table-tests-could-not-fail.md) | PDF table tests could not fail against the bug they claimed to catch | test-gap | Local AI review | Not yet |
+| [CRF-064](./064-pdf-images-silently-dropped.md) | Images silently dropped from the PDF and a marker raise without diagnostic | error-handling | Local AI review | Not yet |
+| [CRF-065](./065-screen-bypassed-shared-conversion.md) | Screen renderer kept a fast path that bypassed the shared conversion | convention-violation | Local AI review | Not yet |
+| [CRF-066](./066-rbpdf-docs-stale-and-unsourced.md) | Chart helper comment and rbpdf claims described the earlier design or nothing checkable | doc-comment | Local AI review | Not yet |

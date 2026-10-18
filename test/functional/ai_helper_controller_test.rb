@@ -3,15 +3,6 @@ require_relative "../test_helper"
 class AiHelperControllerTest < ActionController::TestCase
   fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :custom_values, :groups_users, :members, :member_roles, :roles, :user_preferences, :issue_statuses, :wikis, :wiki_pages, :wiki_contents
 
-  # Inflate the Flate streams of a PDF and return their text content.
-  def pdf_text(pdf)
-    pdf.b.scan(/stream\r?\n(.*?)endstream/m).map do |(data)|
-      Zlib::Inflate.inflate(data)
-    rescue Zlib::Error
-      data
-    end.join.delete("\x00").gsub(/\\([()])/, '\1')
-  end
-
   # Add an assistant answer with the given web search sources to the conversation.
   def add_answer(citations)
     message = AiHelperMessage.new(content: "The answer", role: "assistant")
@@ -1157,15 +1148,19 @@ class AiHelperControllerTest < ActionController::TestCase
       end
 
       should "draw two tables of different widths in the latest report PDF without Markdown table lines" do
-        RedmineAiHelper::CustomLogger.instance.expects(:error).with(regexp_matches(/Error processing content for PDF/)).never
-        Rails.cache.stubs(:fetch).returns("| a | b | c |\n|---|---|---|\n| 1 | 2 | 3 |\n\n| x | y |\n|---|---|\n| 4 | 5 |\n")
+        Rails.cache.stubs(:fetch).returns(TWO_TABLES_BODY)
 
         get :project_health, params: { id: @project.id, format: :pdf }
 
         assert_response :success
-        text = pdf_text(response.body)
-        assert_equal(0, text.lines.count { |line| line.strip.match?(/\A\|.*\|\z/) })
-        assert_no_match(/---/, text)
+        assert_pdf_draws_two_tables(response.body)
+      end
+
+      should "let a body conversion error propagate instead of drawing a fallback PDF" do
+        Rails.cache.stubs(:fetch).returns(TWO_TABLES_BODY)
+        AiHelperController.any_instance.stubs(:md_to_html).raises(RuntimeError, "conversion failed")
+
+        assert_raises(RuntimeError) { get :project_health, params: { id: @project.id, format: :pdf } }
       end
 
       should "redirect when no health report available for PDF" do
@@ -1241,23 +1236,14 @@ class AiHelperControllerTest < ActionController::TestCase
         post :project_health_pdf, params: { id: @project.id, health_report_content: "Text\n\n{{ai_helper_chart(status, version=12)}}\n\nMore" }
 
         assert_response :success
-        inflated = response.body.b.scan(/stream\r?\n(.*?)endstream/m).map do |(data)|
-          Zlib::Inflate.inflate(data)
-        rescue Zlib::Error
-          data
-        end.join.delete("\x00").gsub(/\\([()])/, '\1')
-        assert_includes inflated, I18n.t("ai_helper.health_report_chart.errors.metrics_unavailable")
+        assert_includes pdf_text(response.body), I18n.t("ai_helper.health_report_chart.errors.metrics_unavailable")
       end
 
       should "draw two tables of different widths without Markdown table lines" do
-        RedmineAiHelper::CustomLogger.instance.expects(:error).with(regexp_matches(/Error processing content for PDF/)).never
-
-        post :project_health_pdf, params: { id: @project.id, health_report_content: "| a | b | c |\n|---|---|---|\n| 1 | 2 | 3 |\n\n| x | y |\n|---|---|\n| 4 | 5 |\n" }
+        post :project_health_pdf, params: { id: @project.id, health_report_content: TWO_TABLES_BODY }
 
         assert_response :success
-        text = pdf_text(response.body)
-        assert_equal(0, text.lines.count { |line| line.strip.match?(/\A\|.*\|\z/) })
-        assert_no_match(/---/, text)
+        assert_pdf_draws_two_tables(response.body)
       end
 
       should "generate PDF from health report content" do

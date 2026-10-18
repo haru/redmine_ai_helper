@@ -16,15 +16,6 @@ class AiHelperDashboardControllerTest < ActionController::TestCase
     entries
   end
 
-  # Inflate the Flate streams of a PDF and return their text content.
-  def pdf_text(pdf)
-    pdf.b.scan(/stream\r?\n(.*?)endstream/m).map do |(data)|
-      Zlib::Inflate.inflate(data)
-    rescue Zlib::Error
-      data
-    end.join.delete("\x00").gsub(/\\([()])/, '\1')
-  end
-
   context "AiHelperDashboardController" do
     setup do
       @controller = AiHelperDashboardController.new
@@ -343,19 +334,37 @@ This is a test report."
         Role.find(1).add_permission! :view_ai_helper_health_reports
         @report = AiHelperHealthReport.create!(
           project: @project, user: @user,
-          health_report: "| a | b | c |\n|---|---|---|\n| 1 | 2 | 3 |\n\n| x | y |\n|---|---|\n| 4 | 5 |\n"
+          health_report: TWO_TABLES_BODY
         )
       end
 
-      should "draw two tables of different widths without Markdown table lines" do
-        RedmineAiHelper::CustomLogger.instance.expects(:error).with(regexp_matches(/Error processing content for PDF/)).never
+      should "draw the same table cells on screen and in the PDF" do
+        get :health_report_show, params: { id: @project.id, report_id: @report.id }, xhr: true
+        assert_response :success
+        screen_tables = Nokogiri::HTML::DocumentFragment.parse(response.body).css(".ai-helper-health-report-current table")
+        screen_cells = screen_tables.flat_map { |table| table.css("th, td").map { |cell| cell.text.strip } }
+        assert_equal 2, screen_tables.size
 
+        get :health_report_show, params: { id: @project.id, report_id: @report.id, format: :pdf }
+        assert_response :success
+        pdf_cell_texts = pdf_text_runs(response.body).map(&:text)
+
+        assert_empty screen_cells - pdf_cell_texts, "every screen table cell must be drawn in the PDF"
+      end
+
+      should "draw two tables of different widths without Markdown table lines" do
         get :health_report_show, params: { id: @project.id, report_id: @report.id, format: :pdf }
 
         assert_response :success
-        text = pdf_text(response.body)
-        assert_equal(0, text.lines.count { |line| line.strip.match?(/\A\|.*\|\z/) })
-        assert_no_match(/---/, text)
+        assert_pdf_draws_two_tables(response.body)
+      end
+
+      should "let a body conversion error propagate instead of drawing a fallback PDF" do
+        AiHelperDashboardController.any_instance.stubs(:md_to_html).raises(RuntimeError, "conversion failed")
+
+        assert_raises(RuntimeError) do
+          get :health_report_show, params: { id: @project.id, report_id: @report.id, format: :pdf }
+        end
       end
     end
 
@@ -1170,17 +1179,13 @@ This is a test report."
       end
 
       should "draw two tables of different widths without Markdown table lines" do
-        RedmineAiHelper::CustomLogger.instance.expects(:error).with(regexp_matches(/Error processing content for PDF/)).never
-
         post :comparison_pdf, params: {
           id: @project.id, old_report_id: @old_report.id, new_report_id: @new_report.id,
-          comparison_content: "| a | b | c |\n|---|---|---|\n| 1 | 2 | 3 |\n\n| x | y |\n|---|---|\n| 4 | 5 |\n"
+          comparison_content: TWO_TABLES_BODY
         }
 
         assert_response :success
-        text = pdf_text(response.body)
-        assert_equal(0, text.lines.count { |line| line.strip.match?(/\A\|.*\|\z/) })
-        assert_no_match(/---/, text)
+        assert_pdf_draws_two_tables(response.body)
       end
 
       should "write the comparison message in place of chart directives" do

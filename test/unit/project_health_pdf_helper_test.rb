@@ -8,16 +8,6 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
   include RedmineAiHelper::Logger
   fixtures :projects, :users, :roles, :members, :member_roles
 
-  # Inflate all Flate streams of a PDF and return their concatenated content.
-  def pdf_text(pdf)
-    pdf.b.scan(/stream\r?\n(.*?)endstream/m).map do |(data)|
-      Zlib::Inflate.inflate(data)
-    rescue Zlib::Error
-      data
-    end.join.delete("\x00").gsub(/\\([()])/, '\1')
-  end
-
-
   # Records the drawing calls made on the PDF object while still running
   # them, so tests can assert which shapes the chart renderer drew.
   module PdfCallRecorder
@@ -236,18 +226,6 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
         assert result.start_with?("%PDF")
       end
 
-      should "handle textilizable conversion errors gracefully" do
-        health_report = "# Test Report\n\nContent here."
-
-        # Mock textilizable to raise an error
-        self.stubs(:textilizable).raises(StandardError.new("Textilizable error"))
-
-        result = project_health_to_pdf(@project, health_report)
-
-        assert_not_nil result
-        assert result.start_with?("%PDF")
-      end
-
       should "set proper PDF metadata" do
         health_report = "Test content"
 
@@ -427,19 +405,27 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
         assert_raises(ArgumentError) { render_with_charts("{{ai_helper_chart(status, version=12)}}") }
       end
 
-      should "draw charts outside the rescue that falls back to plain text" do
-        self.stubs(:textilizable).raises(StandardError.new("Textilizable error"))
-
-        render_with_charts("Text\n\n{{ai_helper_chart(status, version=12)}}")
-
-        assert_operator calls_named(:Rect).length, :>, 0
-      end
-
       should "not rescue a failure raised while drawing a chart" do
         Redmine::Export::PDF::ITCPDF.any_instance.stubs(:Rect).raises(RuntimeError.new("draw failed"))
 
         error = assert_raises(RuntimeError) { render_with_charts("{{ai_helper_chart(status, version=12)}}") }
         assert_equal "draw failed", error.message
+      end
+
+      should "fail the export when the body contains an image the PDF cannot draw" do
+        error = assert_raises(RuntimeError) { render_with_charts("Text\n\n![logo](https://example.com/logo.png)") }
+        assert_match(/<img>/, error.message)
+      end
+
+      should "raise when a marker paragraph is not a top-level paragraph" do
+        directive = RedmineAiHelper::HealthReportChart::Directive.new(type: "status", target_kind: :version, target_value: "12", source: "{{ai_helper_chart(status, version=12)}}")
+        stubs(:health_report_html_with_chart_markers)
+          .returns([ "<blockquote><p>aihelperchartlost</p></blockquote>", [ [ "aihelperchartlost", directive ] ] ])
+
+        error = assert_raises(RuntimeError) { project_health_to_pdf(@project, "text") }
+        assert_equal "Chart marker paragraph was not rendered in the report body " \
+                     "(1 marker(s) left, directive: {{ai_helper_chart(status, version=12)}}, marker: aihelperchartlost)",
+                     error.message
       end
     end
 
@@ -543,16 +529,29 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
       should "draw each part once and leave no Markdown table line in the text" do
         body = "# Heading Once\n\nParagraph Once\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\nTail Once\n"
 
-        text = pdf_text(project_health_to_pdf(@project, body))
+        pdf = project_health_to_pdf(@project, body)
+        text = pdf_text(pdf)
+        texts = pdf_text_runs(pdf).map(&:text)
 
-        assert_equal(0, text.lines.count { |line| line.strip.match?(/\A\|.*\|\z/) })
+        # The searched region exists: heading, paragraph, table cells and tail
+        # are all in the text layer.
+        assert_operator texts.size, :>=, 6, "heading, paragraph, table and tail must be drawn"
+        %w[Heading\ Once Paragraph\ Once Tail\ Once a b 1 2].each { |word| assert_includes texts, word }
+
+        # The old bug printed the Markdown table lines as plain text, so a run
+        # was a line starting with "|" (the separator row "|---|---|" included).
+        pipe_runs = texts.select { |run| run.start_with?("|") || run.include?("|---") }
+        assert_empty pipe_runs
+
+        # Each part is drawn exactly once.
         %w[Heading Paragraph Tail].each { |word| assert_equal 1, text.scan("#{word} Once").size, word }
       end
 
-      should "not log a content processing error" do
-        ai_helper_logger.expects(:error).never
+      should "hand no blank HTML chunk to the PDF writer, whatever the marker positions are" do
+        render_with_charts("{{ai_helper_chart(status, version=12)}}\n\nMiddle\n\n{{ai_helper_chart(open_closed, version=12)}}")
 
-        project_health_to_pdf(@project, "| a | b |\n|---|---|\n| 1 | 2 |\n")
+        blanks = written_html_chunks.select { |html| html.strip.empty? }
+        assert_empty blanks
       end
 
       should "let an exception from the Markdown conversion surface without a fallback" do
@@ -591,12 +590,29 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
         render_with_charts(body)
         sequence = PdfCallRecorder.calls.map(&:first).select { |name| %i[RDMwriteFormattedCell Rect].include?(name) }
 
-        assert_equal :RDMwriteFormattedCell, sequence.first
-        assert_equal :RDMwriteFormattedCell, sequence.last
-        assert_operator sequence.size, :>, 2
-        assert_equal 2, sequence.count(:RDMwriteFormattedCell)
+        # The first table's HTML, then the chart's bars (two bars, each drawn
+        # filled and bordered), then the second table's HTML.
+        assert_equal([ :RDMwriteFormattedCell ] + ([ :Rect ] * 4) + [ :RDMwriteFormattedCell ], sequence)
         assert_equal [ [ "1", "2" ] ], pdf_tables(written_html_chunks.first).first[:rows]
         assert_equal [ [ "3", "4" ] ], pdf_tables(written_html_chunks.last).first[:rows]
+      end
+
+      should "draw consecutive directives in order, each at its own marker" do
+        body = "{{ai_helper_chart(status, version=12)}}\n\n{{ai_helper_chart(progress, version=12)}}"
+
+        pdf = render_with_charts(body)
+
+        text = pdf_text(pdf)
+        assert_includes text, "Issues by Status - 1.0.0"
+        assert_includes text, "Not started (3)"
+        assert_operator text.index("Issues by Status - 1.0.0"), :<, text.index("Not started (3)"),
+                       "the status chart must be drawn before the progress chart"
+      end
+
+      should "draw a directive that appears twice once per marker" do
+        render_with_charts("{{ai_helper_chart(status, version=12)}}\n\n{{ai_helper_chart(status, version=12)}}")
+
+        assert_equal 8, calls_named(:Rect).length, "two status charts, each with two bars drawn twice"
       end
 
       should "draw a directive that the scanner left in a fenced code block as body text" do
@@ -613,7 +629,9 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
         stubs(:health_report_html_with_chart_markers).returns([ "<p>no marker here</p>", [ [ "aihelperchartlost", directive ] ] ])
 
         error = assert_raises(RuntimeError) { project_health_to_pdf(@project, "text") }
-        assert_equal "Chart marker paragraph was not rendered in the report body", error.message
+        assert_equal "Chart marker paragraph was not rendered in the report body " \
+                     "(1 marker(s) left, directive: {{ai_helper_chart(status, version=12)}}, marker: aihelperchartlost)",
+                     error.message
       end
     end
 
@@ -644,6 +662,23 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
         [ "Heading One", "Heading Two", "Heading Three" ].each { |heading| assert_includes text, heading }
         assert_equal %w[1. 1. 2.], text.scan(/\[\((\d+\.)\)\] TJ/).flatten
       end
+
+      should "keep a directive that is not on a line of its own as text on screen and in the PDF" do
+        # The scanner only recognizes a directive on a whole line outside
+        # fences, so a directive inside a list item or a quote is plain text
+        # for the screen and the PDF alike — neither draws a chart for it.
+        body = "- item {{ai_helper_chart(status, version=12)}}\n\n> quote {{ai_helper_chart(progress, version=12)}}\n"
+        report = AiHelperHealthReport.new(metrics: CHART_METRICS)
+
+        screen = render_health_report_markdown(body, report: report)
+        pdf = render_with_charts(body)
+
+        assert_includes screen, "{{ai_helper_chart(status, version=12)}}"
+        assert_includes screen, "{{ai_helper_chart(progress, version=12)}}"
+        assert_includes pdf_text(pdf), "{{ai_helper_chart(status, version=12)}}"
+        assert_includes pdf_text(pdf), "{{ai_helper_chart(progress, version=12)}}"
+        assert_empty calls_named(:Rect)
+      end
     end
 
     context "#add_simple_paragraph_to_pdf" do
@@ -655,14 +690,26 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
 
       should "add paragraph text" do
         assert_nothing_raised do
-          send(:add_simple_paragraph_to_pdf, @pdf, "This is a paragraph of text.", @left_margin)
+          send(:add_simple_paragraph_to_pdf, @pdf, "This is a paragraph of text.", @left_margin, "L")
         end
       end
 
       should "handle empty text" do
         assert_nothing_raised do
-          send(:add_simple_paragraph_to_pdf, @pdf, "", @left_margin)
+          send(:add_simple_paragraph_to_pdf, @pdf, "", @left_margin, "L")
         end
+      end
+
+      should "place the paragraph further right when the text_align is R" do
+        send(:add_simple_paragraph_to_pdf, @pdf, "AlignMarker", @left_margin, "L")
+        left_x = pdf_text_runs(@pdf.output).find { |run| run.text == "AlignMarker" }.x
+
+        right_pdf = Redmine::Export::PDF::ITCPDF.new("en")
+        right_pdf.add_page
+        send(:add_simple_paragraph_to_pdf, right_pdf, "AlignMarker", @left_margin, "R")
+        right_x = pdf_text_runs(right_pdf.output).find { |run| run.text == "AlignMarker" }.x
+
+        assert_operator right_x, :>, left_x, "R must place the paragraph further right than L"
       end
     end
 

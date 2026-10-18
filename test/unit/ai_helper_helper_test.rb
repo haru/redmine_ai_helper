@@ -250,8 +250,13 @@ class AiHelperHelperTest < ActionView::TestCase
 
       html, markers = health_report_html_with_chart_markers(parts)
 
+      # Concrete expectations instead of recomputing the implementation's
+      # expression: the table is rendered (with the list class), and the bare
+      # issue reference is linkified.
       assert_empty markers
-      assert_equal linkify_issue_references(md_to_html(text)).to_s, html
+      assert_includes html, "<h1>Title</h1>"
+      assert_includes html, %(<table class="list">)
+      assert_includes html, %(<a href="/issues/12">#12</a>)
     end
 
     should "replace each chart directive with a marker paragraph in body order" do

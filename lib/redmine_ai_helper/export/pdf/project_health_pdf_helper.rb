@@ -26,6 +26,11 @@ module RedmineAiHelper
         # @return [String] PDF content as binary string
         # @raise [ArgumentError] when :charts is not a Resolver, or the body is
         #   neither a String nor nil
+        #
+        # In an RTL language the whole page is switched to right-to-left with
+        # pdf.set_rtl, which also right-aligns the body HTML drawn by
+        # RDMwriteFormattedCell. text_align is passed only to the header cells,
+        # the edit notice and the chart renderer's own text.
         def project_health_to_pdf(project, health_report, options = {})
           pdf = Redmine::Export::PDF::ITCPDF.new(current_language)
           is_rtl = l(:direction) == "rtl"
@@ -115,20 +120,6 @@ module RedmineAiHelper
           pdf.SetFontStyle("B", 12)
           pdf.cell(0, 6, l(:label_ai_helper_project_health_report_content, default: "Health Report Content"), 0, 0, text_align)
           pdf.ln(8)
-        end
-
-        # Add simple paragraph to PDF
-        # @param pdf [Redmine::Export::PDF::ITCPDF] The PDF object
-        # @param text [String] The paragraph text
-        # @param left_margin [Integer] The left margin
-        # @param text_align [String] Text alignment ('L' or 'R')
-        def add_simple_paragraph_to_pdf(pdf, text, left_margin, text_align = "L")
-          return if text.strip.empty?
-
-          pdf.set_x(left_margin)
-          pdf.SetFontStyle("", 10)
-          pdf.multi_cell(0, 5, text, 0, text_align)
-          pdf.ln(2)
         end
       end
     end

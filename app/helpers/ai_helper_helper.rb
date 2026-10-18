@@ -57,13 +57,6 @@ module AiHelperHelper
     [ linkify_issue_references(md_to_html(marked)).to_s, markers ]
   end
 
-  # An unpredictable paragraph marker made of lowercase letters and digits
-  # only, so it survives the Markdown pipeline untouched (no # or markup).
-  # @return [String]
-  def chart_marker
-    "aihelperchart#{SecureRandom.hex(12)}"
-  end
-
   # Convert bare "#1234" patterns in an HTML string into anchor tags pointing to
   # the corresponding Redmine issue page. Uses Nokogiri DOM traversal so that
   # only text nodes outside <a>, <pre>, and <code> subtrees are processed,
@@ -107,6 +100,13 @@ module AiHelperHelper
   end
 
   private
+
+  # An unpredictable paragraph marker made of lowercase letters and digits
+  # only, so it survives the Markdown pipeline untouched (no # or markup).
+  # @return [String]
+  def chart_marker
+    "aihelperchart#{SecureRandom.hex(12)}"
+  end
 
   # Renders the text with Redmine 6.x's MarkdownPipeline (already sanitized).
   # @api private
