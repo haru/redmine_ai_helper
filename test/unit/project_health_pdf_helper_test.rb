@@ -250,6 +250,9 @@ class ProjectHealthPdfHelperTest < ActionView::TestCase
       should "produce the same output for a body without directives with or without a resolver" do
         body = "# Report\n\nPlain text only."
         resolver = RedmineAiHelper::HealthReportChart::Resolver.new(CHART_METRICS)
+        # The PDF prints the creation time to the second; freeze it so a second
+        # boundary between the two renders cannot make the output differ.
+        Time.stubs(:now).returns(Time.utc(2026, 10, 18, 12, 0, 0))
 
         plain = pdf_text(project_health_to_pdf(@project, body))
         charted = pdf_text(project_health_to_pdf(@project, body, charts: resolver))
