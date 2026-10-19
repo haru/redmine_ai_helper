@@ -64,13 +64,13 @@
 
   <p class="other-formats">
     <%= l(:label_export_to) %>
+    <span><%= link_to 'Markdown',
+                      ai_helper_health_report_markdown_path(@project, report_id: health_report.id),
+                      class: 'text' %></span>
     <span><%= link_to 'PDF',
                       ai_helper_health_report_show_path(@project,
                                                        report_id: health_report.id,
                                                        format: :pdf),
                       class: 'pdf' %></span>
-    <span><%= link_to 'Markdown',
-                      ai_helper_health_report_markdown_path(@project, report_id: health_report.id),
-                      class: 'text' %></span>
   </p>
 </div>
