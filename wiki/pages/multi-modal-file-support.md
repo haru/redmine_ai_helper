@@ -37,6 +37,8 @@ Office documents are sent as the Markdown produced by Redmine's Markdown preview
 - The plugin's max attachment size applies to the original file (S056).
 - Notices appended for the LLM: conversion failure (only the notice is sent, warn log),
   truncation at the output limit (info log), images omitted, and no text (S056).
+- Design rationale, UTF-8 handling and vector-indexing error behavior:
+  [Office Attachments Sent as Markdown Preview](./office-attachments-markdown-preview.md) (S056).
 - The disk path is never sent. Details: [docs/office_document_attachments.md](../../docs/office_document_attachments.md),
   [ADR-062](../../docs/adr/062-office-attachments-sent-as-redmine-markdown-preview.md).
 
