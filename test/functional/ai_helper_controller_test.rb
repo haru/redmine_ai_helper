@@ -512,6 +512,14 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_template partial: "ai_helper/wiki/_summary_content"
       end
 
+      should "not cache the error of a failed generation" do
+        AiHelperSummaryCache.stubs(:wiki_cache).returns(nil)
+        RedmineAiHelper::Llm.any_instance.stubs(:wiki_summary).raises(ArgumentError.new("Missing prompt variables: wiki_data"))
+        AiHelperSummaryCache.expects(:update_wiki_cache).never
+
+        assert_raises(ArgumentError) { get :wiki_summary, params: { id: @wiki_page.id } }
+      end
+
       should "render summary tables with the list class" do
         markdown = "## Wiki heading\n\n| col |\n|-----|\n| 1   |"
         AiHelperSummaryCache.stubs(:wiki_cache).returns(
@@ -590,6 +598,17 @@ class AiHelperControllerTest < ActionController::TestCase
         post :generate_wiki_summary, params: { id: @wiki_page.id }
 
         assert_response :success
+      end
+
+      should "not cache the error of a failed generation and stream it as an error" do
+        AiHelperSummaryCache.stubs(:wiki_cache).with(wiki_page_id: @wiki_page.id).returns(nil)
+        RedmineAiHelper::Llm.any_instance.stubs(:wiki_summary).raises(ArgumentError.new("Missing prompt variables: wiki_data"))
+        AiHelperSummaryCache.expects(:update_wiki_cache).never
+
+        post :generate_wiki_summary, params: { id: @wiki_page.id }
+
+        assert_response :success
+        assert_includes @response.body, "Error generating wiki summary: Missing prompt variables: wiki_data"
       end
 
       should "handle wiki page not found" do
@@ -1420,6 +1439,21 @@ class AiHelperControllerTest < ActionController::TestCase
       end
     end
 
+    context "#generate_project_health with a failing LLM" do
+      should "not cache the error message as the report" do
+        llm_mock = mock("RedmineAiHelper::Llm")
+        llm_mock.stubs(:project_health_report).raises(ArgumentError.new("Missing prompt variables: project_name"))
+        RedmineAiHelper::Llm.stubs(:new).returns(llm_mock)
+        Rails.cache.stubs(:delete)
+        Rails.cache.expects(:write).never
+
+        get :generate_project_health, params: { id: @project.id }
+
+        assert_includes @response.body, "Error generating project health report: Missing prompt variables: project_name"
+        assert_not_includes @response.body, "health_report_saved"
+      end
+    end
+
     context "private methods and error handling" do
       should "handle find_user method" do
         # This tests the private method indirectly through chat
@@ -1444,6 +1478,7 @@ class AiHelperControllerTest < ActionController::TestCase
       end
 
       should "handle find_wiki_page method through wiki_summary" do
+        RedmineAiHelper::Llm.any_instance.stubs(:wiki_summary).returns("Stubbed wiki summary")
         wiki = Wiki.find(1)
         wiki_page = wiki.pages.first
 
@@ -1663,6 +1698,7 @@ class AiHelperControllerTest < ActionController::TestCase
       end
 
       should "handle error in wiki_summary update" do
+        RedmineAiHelper::Llm.any_instance.stubs(:wiki_summary).returns("Stubbed wiki summary")
         wiki = Wiki.find(1)
         wiki_page = wiki.pages.first
 
@@ -1822,6 +1858,7 @@ class AiHelperControllerTest < ActionController::TestCase
       end
 
       should "handle find_wiki_page with valid page" do
+        RedmineAiHelper::Llm.any_instance.stubs(:wiki_summary).returns("Stubbed wiki summary")
         wiki = Wiki.find(1)
         wiki_page = wiki.pages.first
 
@@ -1877,6 +1914,7 @@ class AiHelperControllerTest < ActionController::TestCase
         cache_key = "project_health_#{@project.id}"
         Rails.cache.expects(:delete).with(cache_key)
         Rails.cache.expects(:write).with(cache_key, anything, expires_in: 1.hour)
+        RedmineAiHelper::Llm.any_instance.stubs(:project_health_report).returns("Generated health report")
 
         get :generate_project_health, params: { id: @project.id }
 

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
+require "tmpdir"
 
 class PromptTemplateTest < ActiveSupport::TestCase
   context "PromptTemplate" do
@@ -13,6 +14,66 @@ class PromptTemplateTest < ActiveSupport::TestCase
 
         assert_equal "Hello {name}", pt.template
         assert_equal [ "name" ], pt.input_variables
+      end
+
+      should "reject a template that is not a String" do
+        [ nil, 5, [ "x" ], { a: 1 } ].each do |bad|
+          error = assert_raises(ArgumentError) { RedmineAiHelper::Util::PromptTemplate.new(template: bad) }
+          assert_equal "template must be a String, got #{bad.class}", error.message
+        end
+      end
+
+      should "reject a path that is neither a String nor nil" do
+        error = assert_raises(ArgumentError) { RedmineAiHelper::Util::PromptTemplate.new(template: "Hi", path: 5) }
+        assert_equal "path must be a String or nil, got Integer", error.message
+      end
+
+      should "reject duplicated input_variables including String/Symbol duplicates" do
+        [ [ "a", "a" ], [ :a, "a" ] ].each do |bad|
+          error = assert_raises(ArgumentError) do
+            RedmineAiHelper::Util::PromptTemplate.new(template: "{a}", input_variables: bad)
+          end
+          assert_equal "input_variables must not contain duplicates: a", error.message
+        end
+      end
+
+      should "reject input_variables names that cannot be a placeholder" do
+        [ "", "foo bar", "{x}", "1a" ].each do |bad|
+          error = assert_raises(ArgumentError) do
+            RedmineAiHelper::Util::PromptTemplate.new(template: "Hi", input_variables: [ bad ])
+          end
+          assert_equal "input_variables contains an invalid name: #{bad.inspect}", error.message
+        end
+      end
+
+      should "not let callers change the declared variables or the template afterwards" do
+        pt = RedmineAiHelper::Util::PromptTemplate.new(template: +"Hi {a}", input_variables: [ "a" ])
+
+        assert_predicate pt.input_variables, :frozen?
+        assert_predicate pt.template, :frozen?
+        assert_raises(FrozenError) { pt.input_variables << "b" }
+      end
+
+      should "reject input_variables that is not an Array" do
+        [ "name", nil, { a: 1 }, 5 ].each do |bad|
+          error = assert_raises(ArgumentError) do
+            RedmineAiHelper::Util::PromptTemplate.new(template: "x", input_variables: bad)
+          end
+          assert_includes error.message, bad.class.name
+        end
+      end
+
+      should "reject input_variables elements that are not String or Symbol" do
+        error = assert_raises(ArgumentError) do
+          RedmineAiHelper::Util::PromptTemplate.new(template: "x", input_variables: [ "a", 1 ])
+        end
+        assert_includes error.message, "Integer"
+      end
+
+      should "normalize Symbol input_variables to strings" do
+        pt = RedmineAiHelper::Util::PromptTemplate.new(template: "x", input_variables: [ :name, "other" ])
+
+        assert_equal [ "name", "other" ], pt.input_variables
       end
 
       should "default input_variables to empty array" do
@@ -90,6 +151,123 @@ class PromptTemplateTest < ActiveSupport::TestCase
 
         assert_equal "Alice says hello, Alice!", pt.format(name: "Alice")
       end
+
+      should "raise ArgumentError naming a missing variable" do
+        pt = RedmineAiHelper::Util::PromptTemplate.new(
+          template: "Hello {name} {missing}",
+          input_variables: [ "name", "missing" ]
+        )
+
+        error = assert_raises(ArgumentError) { pt.format(name: "x") }
+        assert_equal "Missing prompt variables: missing", error.message
+      end
+
+      should "raise ArgumentError naming an unknown variable" do
+        pt = RedmineAiHelper::Util::PromptTemplate.new(
+          template: "Hello {name}",
+          input_variables: [ "name" ]
+        )
+
+        error = assert_raises(ArgumentError) { pt.format(name: "x", extra: "y") }
+        assert_equal "unknown prompt variables: extra", error.message
+      end
+
+      should "raise one ArgumentError reporting missing and unknown variables" do
+        pt = RedmineAiHelper::Util::PromptTemplate.new(
+          template: "Hello {name} {missing}",
+          input_variables: [ "name", "missing" ]
+        )
+
+        error = assert_raises(ArgumentError) { pt.format(name: "x", extra: "y") }
+        assert_equal "Missing prompt variables: missing; unknown prompt variables: extra", error.message
+      end
+
+      should "raise ArgumentError when a String and a Symbol key name the same variable" do
+        pt = RedmineAiHelper::Util::PromptTemplate.new(template: "{a}", input_variables: [ "a" ])
+
+        error = assert_raises(ArgumentError) { pt.format(**{ "a" => 1, a: 2 }) }
+        assert_equal "Duplicate prompt variables: a", error.message
+      end
+
+      should "insert backslash sequences literally when variables match exactly" do
+        pt = RedmineAiHelper::Util::PromptTemplate.new(
+          template: "A {a} B {b}",
+          input_variables: [ "a", "b" ]
+        )
+
+        assert_equal 'A \\1 B \\\\', pt.format(a: '\\1', b: "\\\\")
+      end
+
+      should "treat nil and empty string values as given" do
+        pt = RedmineAiHelper::Util::PromptTemplate.new(
+          template: "[{a}][{b}]",
+          input_variables: [ "a", "b" ]
+        )
+
+        assert_equal "[][]", pt.format(a: nil, b: "")
+      end
+
+      should "return the body unchanged for empty declarations without arguments" do
+        pt = RedmineAiHelper::Util::PromptTemplate.new(template: "Body", input_variables: [])
+
+        assert_equal "Body", pt.format
+      end
+
+      should "raise ArgumentError when a variable is given to a template that declares none" do
+        pt = RedmineAiHelper::Util::PromptTemplate.new(template: "Body", input_variables: [])
+
+        error = assert_raises(ArgumentError) { pt.format(foo: "x") }
+        assert_includes error.message, "foo"
+      end
+
+      should "match symbol keys against string declarations and symbol declarations" do
+        string_decl = RedmineAiHelper::Util::PromptTemplate.new(template: "{a}", input_variables: [ "a" ])
+        symbol_decl = RedmineAiHelper::Util::PromptTemplate.new(template: "{a}", input_variables: [ :a ])
+
+        assert_equal "1", string_decl.format(a: 1)
+        assert_equal "1", symbol_decl.format(a: 1)
+      end
+
+      should "not return a partially substituted string or alter the template on failure" do
+        pt = RedmineAiHelper::Util::PromptTemplate.new(
+          template: "{a} {b}",
+          input_variables: [ "a", "b" ]
+        )
+
+        assert_raises(ArgumentError) { pt.format(a: "x") }
+        assert_equal "{a} {b}", pt.template
+      end
+    end
+
+    context "validation failure logging" do
+      should "log the path and variable names but keep the path out of the error message" do
+        pt = RedmineAiHelper::Util::PromptTemplate.new(
+          template: "{a}",
+          input_variables: [ "a" ],
+          path: "/secret/dir/t.yml"
+        )
+        logged = []
+        logger = mock("logger")
+        logger.expects(:error).with { |m| logged << m }
+        pt.stubs(:ai_helper_logger).returns(logger)
+
+        error = assert_raises(ArgumentError) { pt.format(b: "x") }
+
+        assert_equal [ "Prompt template variable mismatch (/secret/dir/t.yml): Missing prompt variables: a; unknown prompt variables: b" ], logged
+        assert_not_includes error.message, "/secret/dir"
+      end
+
+      should "omit the path item when the template has no path" do
+        pt = RedmineAiHelper::Util::PromptTemplate.new(template: "{a}", input_variables: [ "a" ])
+        logged = []
+        logger = mock("logger")
+        logger.expects(:error).with { |m| logged << m }
+        pt.stubs(:ai_helper_logger).returns(logger)
+
+        assert_raises(ArgumentError) { pt.format(b: "x") }
+
+        assert_equal [ "Prompt template variable mismatch: Missing prompt variables: a; unknown prompt variables: b" ], logged
+      end
     end
 
     context "load_from_path" do
@@ -114,6 +292,127 @@ class PromptTemplateTest < ActiveSupport::TestCase
 
         assert_instance_of RedmineAiHelper::Util::PromptTemplate, pt
         assert_includes pt.input_variables, "format_instructions"
+      end
+
+      should "expose the file path of a loaded template" do
+        Dir.mktmpdir do |dir|
+          file_path = File.join(dir, "t.yml")
+          File.write(file_path, "template: \"Hi\"\ninput_variables: []\n")
+          pt = RedmineAiHelper::Util::PromptTemplate.load_from_path(file_path)
+
+          assert_equal file_path, pt.path
+        end
+      end
+
+      should "have a nil path when created directly" do
+        assert_nil RedmineAiHelper::Util::PromptTemplate.new(template: "Hi").path
+      end
+
+      should "raise ArgumentError when a YAML file declares non-array input_variables" do
+        Dir.mktmpdir do |dir|
+          file_path = File.join(dir, "t.yml")
+          File.write(file_path, "template: \"Hi\"\ninput_variables: name\n")
+
+          assert_raises(ArgumentError) { RedmineAiHelper::Util::PromptTemplate.load_from_path(file_path) }
+        end
+      end
+
+      should "raise ArgumentError when a YAML file declares non-string input_variables elements" do
+        Dir.mktmpdir do |dir|
+          file_path = File.join(dir, "t.yml")
+          File.write(file_path, "template: \"Hi\"\ninput_variables: [1]\n")
+
+          assert_raises(ArgumentError) { RedmineAiHelper::Util::PromptTemplate.load_from_path(file_path) }
+        end
+      end
+
+      should "raise ArgumentError when the YAML root is not a mapping" do
+        Dir.mktmpdir do |dir|
+          file_path = File.join(dir, "t.yml")
+          File.write(file_path, "- a\n- b\n")
+          logged = []
+          logger = mock("logger")
+          logger.expects(:error).with { |m| logged << m }
+          RedmineAiHelper::Util::PromptTemplate.stubs(:ai_helper_logger).returns(logger)
+
+          error = assert_raises(ArgumentError) { RedmineAiHelper::Util::PromptTemplate.load_from_path(file_path) }
+
+          assert_equal "YAML root must be a mapping, got Array", error.message
+          assert_equal [ "Invalid prompt template (#{file_path}): #{error.message}" ], logged
+        end
+      end
+
+      should "raise ArgumentError when the YAML file is empty" do
+        Dir.mktmpdir do |dir|
+          file_path = File.join(dir, "t.yml")
+          File.write(file_path, "")
+          logged = []
+          logger = mock("logger")
+          logger.expects(:error).with { |m| logged << m }
+          RedmineAiHelper::Util::PromptTemplate.stubs(:ai_helper_logger).returns(logger)
+
+          error = assert_raises(ArgumentError) { RedmineAiHelper::Util::PromptTemplate.load_from_path(file_path) }
+
+          assert_equal "YAML root must be a mapping, got NilClass", error.message
+          assert_equal [ "Invalid prompt template (#{file_path}): #{error.message}" ], logged
+        end
+      end
+
+      should "raise ArgumentError when the YAML file has no template" do
+        Dir.mktmpdir do |dir|
+          file_path = File.join(dir, "t.yml")
+          File.write(file_path, "input_variables: []\n")
+          logged = []
+          logger = mock("logger")
+          logger.expects(:error).with { |m| logged << m }
+          RedmineAiHelper::Util::PromptTemplate.stubs(:ai_helper_logger).returns(logger)
+
+          error = assert_raises(ArgumentError) { RedmineAiHelper::Util::PromptTemplate.load_from_path(file_path) }
+
+          assert_equal "template must be a String, got NilClass", error.message
+          assert_equal [ "Invalid prompt template (#{file_path}): #{error.message}" ], logged
+        end
+      end
+
+      should "raise ArgumentError when input_variables is null" do
+        Dir.mktmpdir do |dir|
+          file_path = File.join(dir, "t.yml")
+          File.write(file_path, "template: \"Hi\"\ninput_variables:\n")
+          logged = []
+          logger = mock("logger")
+          logger.expects(:error).with { |m| logged << m }
+          RedmineAiHelper::Util::PromptTemplate.stubs(:ai_helper_logger).returns(logger)
+
+          error = assert_raises(ArgumentError) { RedmineAiHelper::Util::PromptTemplate.load_from_path(file_path) }
+
+          assert_equal "input_variables must be an Array, got NilClass", error.message
+          assert_equal [ "Invalid prompt template (#{file_path}): #{error.message}" ], logged
+        end
+      end
+
+      should "log the path for invalid input_variables from a file" do
+        Dir.mktmpdir do |dir|
+          file_path = File.join(dir, "t.yml")
+          File.write(file_path, "template: \"Hi\"\ninput_variables: [1]\n")
+          logged = []
+          logger = mock("logger")
+          logger.expects(:error).with { |m| logged << m }
+          RedmineAiHelper::Util::PromptTemplate.stubs(:ai_helper_logger).returns(logger)
+
+          error = assert_raises(ArgumentError) { RedmineAiHelper::Util::PromptTemplate.load_from_path(file_path) }
+
+          assert_equal "input_variables elements must be String or Symbol, got Integer", error.message
+          assert_equal [ "Invalid prompt template (#{file_path}): #{error.message}" ], logged
+        end
+      end
+
+      should "default to empty input_variables when the YAML file has no such key" do
+        Dir.mktmpdir do |dir|
+          file_path = File.join(dir, "t.yml")
+          File.write(file_path, "template: \"Hi\"\n")
+
+          assert_equal [], RedmineAiHelper::Util::PromptTemplate.load_from_path(file_path).input_variables
+        end
       end
 
       should "format loaded template correctly" do

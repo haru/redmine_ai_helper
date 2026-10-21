@@ -72,7 +72,8 @@ class ProjectAgentTest < ActiveSupport::TestCase
           assert_not_includes rendered, "{chart_guide}", name
         end
         %w[health_report_comparison health_report_comparison_ja].each do |name|
-          rendered = RedmineAiHelper::Util::PromptLoader.load_template("project_agent/#{name}").format
+          template = RedmineAiHelper::Util::PromptLoader.load_template("project_agent/#{name}")
+          rendered = template.format(**template.input_variables.to_h { |variable| [ variable.to_sym, "x" ] })
           instruction = rendered.lines.find { |line| line.include?("{{ai_helper_chart(...)}}") }
           assert_not_nil instruction, "#{name} must mention the directive syntax"
           assert_match(/Do not write chart directives|書かないでください/, instruction, name)
