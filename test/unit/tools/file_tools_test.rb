@@ -216,6 +216,62 @@ class FileToolsTest < ActiveSupport::TestCase
         assert_instance_of String, result
         assert_equal "This file contains a report with key findings.", result
       end
+
+      context "with an Office document" do
+        setup do
+          skip "Redmine's Markdown preview is not available" unless Attachment.method_defined?(:markdownized_preview_content)
+
+          AiHelperSetting.delete_all
+          AiHelperSetting.find_or_create.update!(attachment_send_enabled: true, attachment_max_size_mb: 100)
+          @office = Attachment.new(file: mock_file(original_filename: "x.docx", content_type: "application/octet-stream", size: 12), author: User.find(2))
+          @office.container = @message
+          @office.save!
+        end
+
+        teardown do
+          @office&.destroy
+        end
+
+        should "send the converted Markdown to the LLM" do
+          Attachment.any_instance.stubs(:markdownized_previewable?).returns(true)
+          Attachment.any_instance.stubs(:markdownized_preview_content).returns("# Quarterly report\n\nbody".b)
+          sent = nil
+          @mock_chat.expects(:ask).with { |_prompt, **kwargs| sent = kwargs[:with] }.returns(@mock_response)
+
+          result = @provider.analyze_content_files(content_type: "message", content_id: @message.id)
+
+          assert_equal "This file contains a report with key findings.", result
+          payload = sent.map { |s| RubyLLM::Message.new(role: :user, content: "q", attachments: [ s ]).attachments.first.for_llm }.join
+          assert_includes payload, "x.docx.md"
+          assert_includes payload, "# Quarterly report"
+        end
+
+        should "send the unconvertible notice instead of reporting no attachments when the conversion fails" do
+          Attachment.any_instance.stubs(:markdownized_previewable?).returns(true)
+          Attachment.any_instance.stubs(:markdownized_preview_content).returns(nil)
+          RedmineAiHelper::CustomLogger.instance.stubs(:warn)
+          sent = nil
+          @mock_chat.expects(:ask).with { |_prompt, **kwargs| sent = kwargs[:with] }.returns(@mock_response)
+
+          result = @provider.analyze_content_files(content_type: "message", content_id: @message.id)
+
+          assert_equal "This file contains a report with key findings.", result
+          payload = sent.map { |s| RubyLLM::Message.new(role: :user, content: "q", attachments: [ s ]).attachments.first.for_llm }.join
+          assert_includes payload, "x.docx.md"
+          assert_includes payload, "could not be converted to text"
+        end
+
+        should "report no supported attachments when Redmine cannot convert the document" do
+          Attachment.any_instance.stubs(:markdownized_previewable?).returns(false)
+          Attachment.any_instance.expects(:markdownized_preview_content).never
+
+          error = assert_raises(RuntimeError) do
+            @provider.analyze_content_files(content_type: "message", content_id: @message.id)
+          end
+
+          assert_match(/No supported file attachments found/, error.message)
+        end
+      end
     end
 
     context "error handling" do

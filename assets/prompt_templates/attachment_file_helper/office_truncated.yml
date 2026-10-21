@@ -1,0 +1,6 @@
+---
+_type: prompt
+input_variables:
+- filename
+template: |-
+  [Attachment notice] The converted text of the Office document "{filename}" was cut off at the size limit, so the rest of the document is not included. Do not guess or invent the omitted part. If it is relevant to the user's request, tell the user that "{filename}" was only partially read.

@@ -150,3 +150,8 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-064](./064-pdf-images-silently-dropped.md) | Images silently dropped from the PDF and a marker raise without diagnostic | error-handling | Local AI review | Not yet |
 | [CRF-065](./065-screen-bypassed-shared-conversion.md) | Screen renderer kept a fast path that bypassed the shared conversion | convention-violation | Local AI review | Not yet |
 | [CRF-066](./066-rbpdf-docs-stale-and-unsourced.md) | Chart helper comment and rbpdf claims described the earlier design or nothing checkable | doc-comment | Local AI review | Not yet |
+| [CRF-067](./067-utf8-trim-not-tied-to-truncation.md) | UTF-8 trailing-byte repair was not tied to Redmine's cut and broke on short input | edge-case | Local AI review | Not yet |
+| [CRF-068](./068-preview-return-not-type-checked.md) | Redmine's Markdown preview return value was not consumed as a union | convention-violation | Local AI review | Not yet |
+| [CRF-069](./069-caller-rescues-swallowed-new-error.md) | Existing broad rescues in callers swallowed the new error from the shared attachment path | error-handling | Local AI review | AGENTS.md |
+| [CRF-070](./070-office-notice-tests-one-sided.md) | Office notice and metadata tests covered only the positive side or one layer | test-gap | Local AI review | Not yet |
+| [CRF-071](./071-office-docs-diverged-from-research.md) | Office attachment docs and YARD diverged from research and the logger's behaviour | doc-comment | Local AI review | Not yet |

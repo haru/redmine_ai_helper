@@ -1,0 +1,6 @@
+---
+_type: prompt
+input_variables:
+- filename
+template: |-
+  [添付ファイルに関する注記] Office 文書「{filename}」にはテキストが含まれていません。内容を推測したり作り上げたりしないでください。ユーザーの依頼に関係する場合は、「{filename}」に読み取れるテキストがなかったことをユーザーに伝えてください。
