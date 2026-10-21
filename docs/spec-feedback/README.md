@@ -111,3 +111,4 @@ A concrete, checkable rule to apply when writing future specifications.
 | [SF-028](./028-empty-conversion-not-checked-against-notice-policy.md) | Kept sending an empty conversion result silently after choosing to report missing content | unconfirmed-assumption | 080-office-attachment-markdown | Not yet |
 | [SF-029](./029-caller-audit-skipped-exception-handling.md) | Caller audit for a new exception checked return-value use but not the callers' rescues | scope-gap | 080-office-attachment-markdown | AGENTS.md |
 | [SF-030](./030-research-dropped-fr-condition.md) | Research decision dropped the condition that the FR put on the UTF-8 repair | scope-gap | 080-office-attachment-markdown | Not yet |
+| [SF-031](./031-file-path-put-in-exception-message.md) | Put the template file path in an exception message without checking where the message goes | convention-unknown | 081-fix-prompt-template-validation | Not yet |

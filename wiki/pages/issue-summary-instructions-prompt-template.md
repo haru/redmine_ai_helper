@@ -21,8 +21,10 @@ instructions section lives in new templates —
 and Ruby only concatenates that rendered section onto the formatted prompt
 when the project's `issue_summary_instructions` is present (S035).
 
-`PromptTemplate#format` (`lib/redmine_ai_helper/util/prompt_template.rb:35-42`)
-does plain `{key}` substitution; adding a `{issue_summary_instructions}`
+`PromptTemplate#format` (`lib/redmine_ai_helper/util/prompt_template.rb`)
+does plain `{key}` substitution and, since feature 081 (ADR-063), raises
+`ArgumentError` unless the keywords it receives match the template's
+`input_variables` exactly; adding a `{issue_summary_instructions}`
 placeholder to the existing template and passing an empty string would leave
 the surrounding newlines behind, so the prompt would never byte-for-byte
 match the pre-feature output for projects with no instructions set. Keeping
