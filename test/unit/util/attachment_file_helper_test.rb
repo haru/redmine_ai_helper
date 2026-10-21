@@ -1,6 +1,15 @@
 require File.expand_path("../../../test_helper", __FILE__)
 require "redmine_ai_helper/util/attachment_file_helper"
 
+# Redmine before 7.0 has no Markdownizer. The tests mock attachments that report a Markdown
+# preview, so the production code still reads the output limit constant; provide a stand-in
+# with Redmine 7.0's default (100 KiB) there.
+unless defined?(Redmine::Markdownizer)
+  module Redmine::Markdownizer
+    MAX_OUTPUT_SIZE = 102_400
+  end
+end
+
 class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
   class TestClass
     include RedmineAiHelper::Util::AttachmentFileHelper
@@ -60,9 +69,8 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
     attachment
   end
 
-  # Redmine's output size limit for the Markdown conversion (absent before Redmine 7.0).
+  # Redmine's output size limit for the Markdown conversion (a stand-in before Redmine 7.0).
   def max_output_size
-    skip "Redmine::Markdownizer::MAX_OUTPUT_SIZE is not available" unless defined?(Redmine::Markdownizer::MAX_OUTPUT_SIZE)
     Redmine::Markdownizer::MAX_OUTPUT_SIZE
   end
 
