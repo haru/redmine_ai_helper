@@ -324,6 +324,9 @@ The AI Helper Plugin can analyze files attached to Issues, Wiki pages, and Board
 | Documents | .pdf, .txt, .md, .csv, .json, .xml |
 | Code | .rb, .py, .js, .html, .css, and more |
 | Audio | .mp3, .wav, .m4a, .ogg, .flac |
+| Office documents | .docx, .odt (and .xlsx, .pptx with Pandoc 3.8.3 or later) |
+
+Office documents are converted to Markdown with Redmine's own Markdown preview and the text is sent to the LLM. This requires Redmine 7.0 or later and [Pandoc](https://pandoc.org/) (set `pandoc_command` in `config/configuration.yml` if it is not in the `PATH`). On Redmine 6.x, or when Pandoc is not available, Office documents are not sent, as before. Redmine's `markdownized_preview_max_source_size`, `markdownized_preview_max_output_size` and `markdownized_preview_generation_timeout` settings apply. If a document cannot be converted, or the converted text is cut at the size limit, the LLM receives a notice saying so. Images inside documents are not sent; the LLM receives a notice instead. See [Office document attachments](docs/office_document_attachments.md) for details.
 
 To enable this feature, go to the AI Helper settings page in the Administration menu. Check **"Send attachments to LLM"** and optionally set the maximum file size limit (default: 3 MB). Files exceeding the limit are not sent to the LLM.
 

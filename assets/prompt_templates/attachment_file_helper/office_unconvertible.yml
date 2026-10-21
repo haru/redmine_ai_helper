@@ -1,0 +1,6 @@
+---
+_type: prompt
+input_variables:
+- filename
+template: |-
+  [Attachment notice] The Office document "{filename}" is attached to this item, but it could not be converted to text, so its content could not be read. Its content is not included. Do not guess or invent what the file contains. If the file is relevant to the user's request, tell the user that "{filename}" could not be read.

@@ -60,3 +60,4 @@ Sources are immutable inputs — the wiki never edits them.
 | S053 | docs/adr/059-health-report-chart-form-by-information.md + docs/spec-feedback/021-chart-form-heuristic-applied-mechanically.md | file | 2026-10-17 | 2026-10-17 | health-report-charts.md |
 | S054 | docs/adr/060-health-report-visibility-follows-view-permission.md + docs/code-review-feedback/059-*.md to 062-*.md (Copilot review of PR #528) | file | 2026-10-18 | 2026-10-18 | health-report-charts.md, health-report.md |
 | S055 | specs/079-fix-health-report-pdf-table (research.md + plan.md) + docs/adr/061-health-report-pdf-body-drawn-by-redmine-pdf-renderer.md | feature-artifact | 2026-10-18 | 2026-10-18 | health-report.md |
+| S056 | specs/080-office-attachment-markdown (research.md + plan.md) + docs/adr/062-office-attachments-sent-as-redmine-markdown-preview.md | feature-artifact | 2026-10-21 | 2026-10-21 | multi-modal-file-support.md, office-attachments-markdown-preview.md |

@@ -79,14 +79,33 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
       end
 
       should "return empty result when LLM call fails" do
+        [ RubyLLM::ServerError.new("API error"), Faraday::ConnectionFailed.new("API connection failed") ].each do |error|
+          analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
+          analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+          analyzer.stubs(:call_llm).raises(error)
+
+          result = analyzer.analyze(@issue)
+
+          assert_equal "", result[:summary], "for #{error.class}"
+          assert_equal [], result[:keywords], "for #{error.class}"
+        end
+      end
+
+      should "raise errors from the LLM call that are not API or network errors" do
         analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
         analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
-        analyzer.stubs(:call_llm).raises(StandardError.new("API connection failed"))
+        analyzer.stubs(:call_llm).raises(RubyLLM::ConfigurationError.new("missing API key"))
 
-        result = analyzer.analyze(@issue)
+        assert_raises(RubyLLM::ConfigurationError) { analyzer.analyze(@issue) }
+      end
 
-        assert_equal "", result[:summary]
-        assert_equal [], result[:keywords]
+      should "raise errors from reading the attachments instead of returning an empty result" do
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
+        analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:supported_attachment_paths).raises(EncodingError.new("attachment #9 is not valid UTF-8"))
+        analyzer.expects(:call_llm).never
+
+        assert_raises(EncodingError) { analyzer.analyze(@issue) }
       end
 
       should "return empty result when response is not valid JSON" do

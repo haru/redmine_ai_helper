@@ -614,22 +614,15 @@ class RedmineAiHelper::Tools::VectorToolsTest < ActiveSupport::TestCase
                "Query should include the issue title"
       end
 
-      should "fallback to raw query when analyzer fails" do
-        # Mock the IssueContentAnalyzer to raise an error
+      should "raise the analyzer error instead of searching with the raw query" do
+        # LLM API and network errors are handled inside IssueContentAnalyzer#analyze,
+        # so anything it raises (e.g. an invalid attachment) must surface.
         mock_analyzer_that_fails = mock("failing_analyzer")
         RedmineAiHelper::Vector::IssueContentAnalyzer.expects(:new).returns(mock_analyzer_that_fails)
-        mock_analyzer_that_fails.expects(:analyze).with(@issue).raises(StandardError.new("LLM connection failed"))
+        mock_analyzer_that_fails.expects(:analyze).with(@issue).raises(EncodingError.new("attachment #9 is not valid UTF-8"))
+        @mock_db.expects(:similarity_search).never
 
-        # Expect the fallback query (raw subject + description)
-        expected_raw_query = "#{@issue.subject} #{@issue.description}"
-        @mock_db.expects(:similarity_search).with { |args|
-          args[:question] == expected_raw_query && args[:k] == 10
-        }.returns([])
-
-        # Should not raise error, should fallback gracefully
-        result = @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10)
-
-        assert_equal [], result
+        assert_raises(EncodingError) { @vector_tools.find_similar_issues(issue_id: @issue.id, k: 10) }
       end
     end
 

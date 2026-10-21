@@ -1,6 +1,15 @@
 require File.expand_path("../../../test_helper", __FILE__)
 require "redmine_ai_helper/util/attachment_file_helper"
 
+# Redmine before 7.0 has no Markdownizer. The tests mock attachments that report a Markdown
+# preview, so the production code still reads the output limit constant; provide a stand-in
+# with Redmine 7.0's default (100 KiB) there.
+unless defined?(Redmine::Markdownizer)
+  module Redmine::Markdownizer
+    MAX_OUTPUT_SIZE = 102_400
+  end
+end
+
 class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
   class TestClass
     include RedmineAiHelper::Util::AttachmentFileHelper
@@ -43,6 +52,36 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
     attachment.stubs(:diskfile).returns(path)
     attachment.stubs(:filesize).returns(bytes.bytesize)
     attachment
+  end
+
+  # Helper to create a mock Office document attachment backed by a real temporary file.
+  # Without +previewable+ the mock does not respond to markdownized_previewable?, which
+  # represents a Redmine 6.x attachment (mocha's respond_to? is false for unstubbed methods).
+  # +content+ is the Markdown that Redmine's markdownized_preview_content returns (binary), or nil.
+  def office_attachment(filename, previewable: nil, content: nil, id: 7, filesize: nil)
+    attachment = real_attachment(filename, "office bytes")
+    attachment.stubs(:id).returns(id)
+    attachment.stubs(:filesize).returns(filesize || 1.megabyte)
+    unless previewable.nil?
+      attachment.stubs(:markdownized_previewable?).returns(previewable)
+      attachment.stubs(:markdownized_preview_content).returns(content&.b)
+    end
+    attachment
+  end
+
+  # Redmine's output size limit for the Markdown conversion (a stand-in before Redmine 7.0).
+  def max_output_size
+    Redmine::Markdownizer::MAX_OUTPUT_SIZE
+  end
+
+  # Runs the block with Redmine's output size limit replaced, as configured by
+  # markdownized_preview_max_output_size in configuration.yml.
+  def with_max_output_size(size)
+    original = max_output_size
+    silence_warnings { Redmine::Markdownizer.const_set(:MAX_OUTPUT_SIZE, size) }
+    yield
+  ensure
+    silence_warnings { Redmine::Markdownizer.const_set(:MAX_OUTPUT_SIZE, original) } if original
   end
 
   def container_with(*attachments)
@@ -513,6 +552,369 @@ class RedmineAiHelper::Util::AttachmentFileHelperTest < ActiveSupport::TestCase
       assert_nothing_raised { JSON.generate(payload) }
       assert_includes payload[0], "# 見出し"
       assert_includes payload[1], "puts '日本語'"
+    end
+  end
+
+  context "supported_attachment_paths with Office documents" do
+    should "send the Markdown converted by Redmine as an attachment named after the original file" do
+      att = office_attachment("x.docx", previewable: true, content: "# Title\n\nbody")
+      RedmineAiHelper::CustomLogger.instance.expects(:warn).never
+      RedmineAiHelper::CustomLogger.instance.expects(:info).never
+
+      result = @helper.supported_attachment_paths(container_with(att))
+
+      assert_equal 1, result.size
+      assert_kind_of RubyLLM::Attachment, result.first
+      assert_equal "x.docx.md", result.first.filename
+      assert_equal "text/markdown", result.first.mime_type
+      assert_equal "# Title\n\nbody", result.first.content
+      assert_not_includes result.first.content, att.diskfile
+    end
+
+    should "keep the order of attachments and send images as disk paths" do
+      doc = office_attachment("x.docx", previewable: true, content: "body")
+      png = real_attachment("a.png", "png bytes")
+
+      result = @helper.supported_attachment_paths(container_with(doc, png))
+
+      assert_equal 2, result.size
+      assert_kind_of RubyLLM::Attachment, result[0]
+      assert_equal png.diskfile, result[1]
+    end
+
+    should "not convert when attachment sending is disabled" do
+      @setting.update!(attachment_send_enabled: false)
+      att = office_attachment("x.docx", previewable: true, content: "body")
+      att.expects(:markdownized_preview_content).never
+
+      assert_equal [], @helper.supported_attachment_paths(container_with(att))
+    end
+
+    should "not convert files above the maximum size of the original file" do
+      @setting.update!(attachment_max_size_mb: 2)
+      att = office_attachment("x.docx", previewable: true, content: "body", filesize: 3.megabytes)
+      att.expects(:markdownized_preview_content).never
+
+      assert_equal [], @helper.supported_attachment_paths(container_with(att))
+    end
+
+    should "not convert files that do not exist on disk" do
+      att = office_attachment("x.docx", previewable: true, content: "body")
+      FileUtils.rm_f(att.diskfile)
+      att.expects(:markdownized_preview_content).never
+
+      assert_equal [], @helper.supported_attachment_paths(container_with(att))
+    end
+
+    should "append .md to the original filename with an upper-case extension" do
+      att = office_attachment("X.DOCX", previewable: true, content: "body")
+
+      result = @helper.supported_attachment_paths(container_with(att))
+
+      assert_equal "X.DOCX.md", result.first.filename
+    end
+
+    should "not ask Redmine about files with an existing supported extension" do
+      txt = real_attachment("a.txt", "plain")
+      txt.expects(:markdownized_previewable?).never
+      txt.expects(:markdownized_preview_content).never
+      png = real_attachment("a.png", "png bytes")
+      png.expects(:markdownized_previewable?).never
+
+      result = @helper.supported_attachment_paths(container_with(txt, png))
+
+      assert_equal [ txt.diskfile, png.diskfile ], result
+    end
+
+    should "add a notice for each kind of image reference" do
+      [ "![](media/a.png)", "<img src=\"a.png\" />", "<IMG SRC=a.png>" ].each do |ref|
+        att = office_attachment("x.docx", previewable: true, content: "text #{ref} more")
+
+        content = @helper.supported_attachment_paths(container_with(att)).first.content
+
+        assert content.start_with?("text #{ref} more\n\n"), "no separator for #{ref}"
+        assert_includes content, "images and figures inside the Office document \"x.docx\"", "no notice for #{ref}"
+      end
+    end
+
+    should "not add a notice when there is no image reference" do
+      att = office_attachment("x.docx", previewable: true, content: "just text")
+
+      assert_equal "just text", @helper.supported_attachment_paths(container_with(att)).first.content
+    end
+
+    should "not treat links or other tags as image references" do
+      [ "[text](http://example.com/a.png)", "<imgx src=a.png>", "<image src=a.png>", "! [a](b.png)" ].each do |ref|
+        att = office_attachment("x.docx", previewable: true, content: "text #{ref}")
+
+        assert_equal "text #{ref}", @helper.supported_attachment_paths(container_with(att)).first.content, "notice added for #{ref}"
+      end
+    end
+
+    should "add the no-text notice when only an HTML image tag remains" do
+      att = office_attachment("x.docx", previewable: true, content: "<img src=\"media/image1.png\" />\n")
+
+      content = @helper.supported_attachment_paths(container_with(att)).first.content
+
+      assert_includes content, "images and figures inside"
+      assert_includes content, "contains no text"
+    end
+
+    should "add the no-text notice after the image notice when only image references remain" do
+      att = office_attachment("x.docx", previewable: true, content: "![](media/image1.png)\n")
+
+      content = @helper.supported_attachment_paths(container_with(att)).first.content
+      images = content.index("images and figures inside")
+      no_text = content.index("contains no text")
+
+      assert content.start_with?("![](media/image1.png)\n\n")
+      assert images && no_text && images < no_text
+      assert_not_includes content, "could not be converted"
+    end
+
+    should "add only the no-text notice for an empty conversion result" do
+      att = office_attachment("x.docx", previewable: true, content: "")
+
+      content = @helper.supported_attachment_paths(container_with(att)).first.content
+
+      assert_includes content, "contains no text"
+      assert_not_includes content, "images and figures inside"
+      assert_not_includes content, "could not be converted"
+    end
+
+    should "share Redmine's conversion cache without running Pandoc again" do
+      skip "Redmine's Markdown preview is not available" unless Attachment.method_defined?(:markdownized_preview_content)
+
+      Redmine::Markdownizer.stubs(:available?).returns(true)
+      Redmine::Markdownizer.stubs(:markdownizable_extensions).returns([ ".docx" ])
+      att = Attachment.new(file: mock_file(original_filename: "cached.docx", content_type: "application/octet-stream", size: 12), author: User.find(2))
+      att.container = Issue.find(1)
+      att.save!
+      FileUtils.mkdir_p(File.dirname(att.markdownized_preview_cache_path))
+      File.binwrite(att.markdownized_preview_cache_path, "# Cached\n\ntext")
+      Process.expects(:spawn).never
+
+      begin
+        result = @helper.supported_attachment_paths(container_with(att))
+
+        assert_equal "# Cached\n\ntext", result.first.content
+      ensure
+        FileUtils.rm_f(att.markdownized_preview_cache_path)
+        att.destroy
+      end
+    end
+  end
+
+  context "attachment_file_type for Office documents" do
+    should "return 'document' when Redmine can convert the file" do
+      att = office_attachment("x.docx", previewable: true, content: "body")
+
+      assert_equal "document", @helper.send(:attachment_file_type, att)
+    end
+
+    should "keep the existing types without asking Redmine" do
+      png = mock_attachment("a.png")
+      png.expects(:markdownized_previewable?).never
+      rb = mock_attachment("a.rb")
+      rb.expects(:markdownized_previewable?).never
+
+      assert_equal "image", @helper.send(:attachment_file_type, png)
+      assert_equal "code", @helper.send(:attachment_file_type, rb)
+    end
+  end
+
+  context "supported_attachment_paths without Redmine's Markdown preview" do
+    should "ignore Office documents when the attachment has no markdownized_previewable? (Redmine 6.x)" do
+      doc = office_attachment("x.docx")
+      txt = real_attachment("a.txt", "plain")
+
+      result = nil
+      assert_nothing_raised { result = @helper.supported_attachment_paths(container_with(doc, txt)) }
+
+      assert_equal [ txt.diskfile ], result
+      assert_nil @helper.send(:attachment_file_type, doc)
+    end
+
+    should "not return or convert documents that Redmine reports as not convertible" do
+      docx = office_attachment("x.docx", previewable: false)
+      docx.expects(:markdownized_preview_content).never
+      xlsx = office_attachment("x.xlsx", previewable: false)
+      xlsx.expects(:markdownized_preview_content).never
+
+      assert_equal [], @helper.supported_attachment_paths(container_with(docx, xlsx))
+      assert_nil @helper.send(:attachment_file_type, docx)
+    end
+
+    should "return only the convertible documents when mixed with non-convertible ones" do
+      docx = office_attachment("x.docx", previewable: true, content: "body")
+      xlsx = office_attachment("x.xlsx", previewable: false)
+
+      result = @helper.supported_attachment_paths(container_with(docx, xlsx))
+
+      assert_equal [ "x.docx.md" ], result.map(&:filename)
+    end
+  end
+
+  context "supported_attachment_paths with Office documents that cannot be fully converted" do
+    should "send only a notice and log a warning when the conversion fails" do
+      att = office_attachment("x.docx", previewable: true, content: nil, id: 55)
+      RedmineAiHelper::CustomLogger.instance.expects(:warn).with { |m| m.include?("55") && m.include?("x.docx") }.once
+
+      result = @helper.supported_attachment_paths(container_with(att))
+
+      assert_equal 1, result.size
+      assert_kind_of RubyLLM::Attachment, result.first
+      assert_equal "x.docx.md", result.first.filename
+      assert_equal "text/markdown", result.first.mime_type
+      assert_equal 1, result.first.content.scan("could not be converted to text").size
+      assert result.first.content.start_with?("[Attachment notice]")
+      assert_not_includes result.first.content, att.diskfile
+    end
+
+    should "keep the other attachments and their order when a conversion fails" do
+      failed = office_attachment("x.docx", previewable: true, content: nil)
+      txt = real_attachment("a.txt", "plain")
+      RedmineAiHelper::CustomLogger.instance.stubs(:warn)
+
+      result = @helper.supported_attachment_paths(container_with(failed, txt))
+
+      assert_equal 2, result.size
+      assert_kind_of RubyLLM::Attachment, result[0]
+      assert_equal txt.diskfile, result[1]
+    end
+
+    should "add the truncation notice and log info when the result reaches the output limit" do
+      att = office_attachment("x.docx", previewable: true, content: "a" * max_output_size, id: 56)
+      RedmineAiHelper::CustomLogger.instance.expects(:info).with { |m| m.include?("56") && m.include?("x.docx") }.once
+
+      content = @helper.supported_attachment_paths(container_with(att)).first.content
+
+      assert content.start_with?(("a" * max_output_size) + "\n\n")
+      assert_includes content, "was cut off at the size limit"
+    end
+
+    should "not add the truncation notice below the output limit" do
+      att = office_attachment("x.docx", previewable: true, content: "a" * (max_output_size - 1))
+      RedmineAiHelper::CustomLogger.instance.expects(:info).never
+
+      content = @helper.supported_attachment_paths(container_with(att)).first.content
+
+      assert_equal "a" * (max_output_size - 1), content
+    end
+
+    should "remove only the incomplete trailing bytes of a character cut at the output limit" do
+      RedmineAiHelper::CustomLogger.instance.stubs(:info)
+      { "😀" => [ 1, 2, 3 ], "あ" => [ 1, 2 ], "é" => [ 1 ] }.each do |char, cuts|
+        cuts.each do |n|
+          body = "日本語 " + ("a" * (max_output_size - "日本語 ".bytesize - n))
+          att = office_attachment("x.docx", previewable: true, content: body.b + char.b.byteslice(0, n))
+
+          content = @helper.supported_attachment_paths(container_with(att)).first.content
+
+          assert content.valid_encoding?, "invalid for #{char.inspect} cut at #{n}"
+          assert content.start_with?(body + "\n\n"), "unexpected content for #{char.inspect} cut at #{n}"
+          assert_not_includes content, "�"
+        end
+      end
+    end
+
+    should "raise EncodingError for an incomplete last character below the output limit" do
+      att = office_attachment("x.docx", previewable: true, content: "abc\xE3\x81".b, id: 79)
+
+      error = assert_raises(EncodingError) { @helper.supported_attachment_paths(container_with(att)) }
+
+      assert_includes error.message, "79"
+    end
+
+    should "raise EncodingError for an invalid last byte that does not start a character" do
+      RedmineAiHelper::CustomLogger.instance.stubs(:info)
+      att = office_attachment("x.docx", previewable: true, content: ("a" * (max_output_size - 1)) + "\xFF".b)
+
+      assert_raises(EncodingError) { @helper.supported_attachment_paths(container_with(att)) }
+    end
+
+    should "raise EncodingError when a lead byte is followed by a byte that does not continue it" do
+      RedmineAiHelper::CustomLogger.instance.stubs(:info)
+      att = office_attachment("x.docx", previewable: true, content: ("a" * (max_output_size - 2)) + "\xE3A".b)
+
+      assert_raises(EncodingError) { @helper.supported_attachment_paths(container_with(att)) }
+    end
+
+    should "raise EncodingError for invalid results shorter than an incomplete character" do
+      RedmineAiHelper::CustomLogger.instance.stubs(:info)
+      with_max_output_size(1) do
+        [ "\xFF", "\xE3\xE3" ].each do |bytes|
+          att = office_attachment("x.docx", previewable: true, content: bytes.b)
+
+          assert_raises(EncodingError, "for #{bytes.inspect}") { @helper.supported_attachment_paths(container_with(att)) }
+        end
+      end
+    end
+
+    should "raise TypeError when Redmine returns neither a String nor nil" do
+      att = office_attachment("x.docx", previewable: true, content: "body", id: 80)
+      att.stubs(:markdownized_preview_content).returns(:unexpected)
+
+      error = assert_raises(TypeError) { @helper.supported_attachment_paths(container_with(att)) }
+
+      assert_includes error.message, "80"
+      assert_includes error.message, "Symbol"
+    end
+
+    should "judge truncation on the size before the incomplete bytes are removed" do
+      body = "a" * (max_output_size - 1)
+      att = office_attachment("x.docx", previewable: true, content: body.b + "\xE3".b)
+
+      content = @helper.supported_attachment_paths(container_with(att)).first.content
+
+      assert content.start_with?(body + "\n\n")
+      assert content.valid_encoding?
+      assert_includes content, "was cut off at the size limit"
+    end
+
+    should "raise EncodingError for an invalid byte that is not at the end" do
+      att = office_attachment("x.docx", previewable: true, content: "ab\xFFcd".b, id: 77)
+
+      error = assert_raises(EncodingError) { @helper.supported_attachment_paths(container_with(att)) }
+
+      assert_includes error.message, "77"
+    end
+
+    should "raise EncodingError when more than three trailing bytes are invalid" do
+      att = office_attachment("x.docx", previewable: true, content: "abc\xFF\xFF\xFF\xFF".b, id: 78)
+
+      error = assert_raises(EncodingError) { @helper.supported_attachment_paths(container_with(att)) }
+
+      assert_includes error.message, "78"
+    end
+
+    should "order the notices truncation, images, no text" do
+      content_in = "![](a.png)".ljust(max_output_size, " ")
+      att = office_attachment("x.docx", previewable: true, content: content_in)
+      RedmineAiHelper::CustomLogger.instance.stubs(:info)
+
+      content = @helper.supported_attachment_paths(container_with(att)).first.content
+      cut = content.index("was cut off at the size limit")
+      images = content.index("images and figures inside")
+      no_text = content.index("contains no text")
+
+      assert content.start_with?(content_in + "\n\n")
+      assert cut && images && no_text && cut < images && images < no_text
+    end
+
+    should "send the notices in Japanese when the locale is ja" do
+      RedmineAiHelper::CustomLogger.instance.stubs(:warn)
+      RedmineAiHelper::CustomLogger.instance.stubs(:info)
+      failed = office_attachment("x.docx", previewable: true, content: nil)
+      full = office_attachment("y.docx", previewable: true, content: "![](a.png)".ljust(max_output_size, " "))
+      empty = office_attachment("z.docx", previewable: true, content: "")
+
+      result = I18n.with_locale(:ja) { @helper.supported_attachment_paths(container_with(failed, full, empty)) }
+
+      assert_includes result[0].content, "テキストに変換できなかった"
+      assert_includes result[1].content, "上限サイズで切り詰められ"
+      assert_includes result[1].content, "画像や図"
+      assert_includes result[2].content, "テキストが含まれていません"
     end
   end
 end
