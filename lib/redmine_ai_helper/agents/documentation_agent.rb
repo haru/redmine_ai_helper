@@ -12,7 +12,7 @@ module RedmineAiHelper
       # Get the agent's backstory
       # @return [String] The backstory prompt
       def backstory
-        load_prompt("documentation_agent/backstory")
+        load_prompt("documentation_agent/backstory").format
       end
 
       # Check text for typos and return suggestions

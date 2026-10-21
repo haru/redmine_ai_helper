@@ -10,6 +10,21 @@ module AiHelper
 
     private
 
+    # Log a failure raised inside a stream block and report it on the stream.
+    # stream_llm_response closes the stream when the block returns, so the failure
+    # has to be reported from inside the block.
+    #
+    # @param stream_proc [Proc] the stream_proc yielded by stream_llm_response.
+    # @param log_label [String] prefix of the error log line.
+    # @param message_label [String] prefix of the message streamed to the user.
+    # @param error [StandardError] the failure.
+    # @return [void]
+    def report_stream_failure(stream_proc, log_label, message_label, error)
+      ai_helper_logger.error "#{log_label}: #{error.message}"
+      ai_helper_logger.error error.backtrace.join("\n")
+      stream_proc.call("#{message_label}: #{error.message}")
+    end
+
     # Prepare headers required for SSE streaming.
     #
     # @return [void]

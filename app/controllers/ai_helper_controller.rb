@@ -122,9 +122,7 @@ class AiHelperController < ApplicationController
       rescue => e
         # Surface the failure to the user, but never persist the error message
         # as cached summary content.
-        ai_helper_logger.error "Generate issue summary error: #{e.message}"
-        ai_helper_logger.error e.backtrace.join("\n")
-        stream_proc.call("Error generating issue summary: #{e.message}")
+        report_stream_failure(stream_proc, "Generate issue summary error", "Error generating issue summary", e)
       end
     end
   end
@@ -161,9 +159,15 @@ class AiHelperController < ApplicationController
         stream_proc.call(content)
       end
 
-      content = llm.wiki_summary(wiki_page: @wiki_page, stream_proc: cache_proc)
-      # Update cache with final content
-      AiHelperSummaryCache.update_wiki_cache(wiki_page_id: @wiki_page.id, content: content)
+      begin
+        content = llm.wiki_summary(wiki_page: @wiki_page, stream_proc: cache_proc)
+        # Update cache with final content
+        AiHelperSummaryCache.update_wiki_cache(wiki_page_id: @wiki_page.id, content: content)
+      rescue => e
+        # Surface the failure to the user, but never persist the error message
+        # as cached summary content.
+        report_stream_failure(stream_proc, "Generate wiki summary error", "Error generating wiki summary", e)
+      end
     end
   end
 
@@ -517,13 +521,18 @@ class AiHelperController < ApplicationController
           stream_proc.call(content)
         end
 
-        content = llm.project_health_report(
-          project: @project,
-          stream_proc: cache_proc
-        )
+        begin
+          content = llm.project_health_report(
+            project: @project,
+            stream_proc: cache_proc
+          )
 
-        Rails.cache.write(cache_key, content, expires_in: 1.hour)
-        send_health_report_saved_event(content)
+          Rails.cache.write(cache_key, content, expires_in: 1.hour)
+          send_health_report_saved_event(content)
+        rescue => e
+          # Never cache the message as the report.
+          report_stream_failure(stream_proc, "Generate project health error", "Error generating project health report", e)
+        end
       end
     rescue => e
       ai_helper_logger.error "Generate project health error: #{e.message}"

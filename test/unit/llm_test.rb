@@ -299,13 +299,34 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       assert_equal "Test wiki summary content", summary
     end
 
-    should "handle errors during wiki summary generation" do
-      # Mock WikiAgent to raise an error
+    should "re-raise errors during wiki summary generation instead of returning the message" do
       RedmineAiHelper::Agents::WikiAgent.stubs(:new).raises(StandardError.new("Test error"))
 
-      summary = @llm.wiki_summary(wiki_page: @wiki_page)
+      error = assert_raises(StandardError) { @llm.wiki_summary(wiki_page: @wiki_page) }
 
-      assert_equal "Test error", summary
+      assert_equal "Test error", error.message
+    end
+
+    should "not stream the error message of a failed wiki summary" do
+      RedmineAiHelper::Agents::WikiAgent.stubs(:new).raises(ArgumentError.new("Missing prompt variables: wiki_data"))
+      streamed = []
+
+      assert_raises(ArgumentError) do
+        @llm.wiki_summary(wiki_page: @wiki_page, stream_proc: proc { |c| streamed << c })
+      end
+      assert_empty streamed
+    end
+
+    should "re-raise errors during project health report generation" do
+      RedmineAiHelper::Agents::ProjectAgent.any_instance.stubs(:project_health_report)
+        .raises(ArgumentError.new("Missing prompt variables: project_name"))
+      streamed = []
+
+      error = assert_raises(ArgumentError) do
+        @llm.project_health_report(project: Project.find(1), stream_proc: proc { |c| streamed << c })
+      end
+      assert_equal "Missing prompt variables: project_name", error.message
+      assert_empty streamed
     end
 
     should "create langfuse trace for wiki summary" do

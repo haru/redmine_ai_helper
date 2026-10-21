@@ -12,12 +12,15 @@ require "redmine_ai_helper/agents/mcp_agent"
 # callers' broad rescue (inline completion rescues and returns "").
 #
 # The remaining callers already run their real templates in existing tests
-# (none of these stub load_prompt/format): LeaderAgent generate_goal and
+# (they do not stub load_prompt/format): LeaderAgent generate_goal and
 # generate_steps (leader_agent_test), DocumentationAgent#check_typos
 # (documentation_agent_test), IssueContentAnalyzer (issue_content_analyzer_test),
 # SystemPrompt (system_prompt_test), BaseAgent system prompt (base_agent_test),
 # FileTools (file_tools_test) and AttachmentFileHelper
-# (attachment_file_helper_test).
+# (attachment_file_helper_test). Callers that existing tests exercise only with
+# a stubbed load_prompt (wiki_summary, issue_summary, generate_issue_reply,
+# suggest_stuff_todo, the backstories) and the leader's web search notice are
+# driven with the real templates below.
 class PromptTemplateCallersTest < ActiveSupport::TestCase
   fixtures :projects, :users, :issues, :issue_statuses, :trackers, :enumerations, :wikis, :wiki_pages, :wiki_contents, :versions, :issue_categories, :custom_fields, :enabled_modules
 
@@ -119,6 +122,76 @@ class PromptTemplateCallersTest < ActiveSupport::TestCase
           @agent.expects(:think_chat).returns("comparison")
 
           assert_equal "comparison", @agent.health_report_comparison(old_report: old_report, new_report: new_report)
+        end
+      end
+    end
+  end
+
+  context "callers that existing tests exercise with a stubbed prompt" do
+    %w[en ja].each do |locale|
+      should "format WikiAgent#wiki_summary with the real template (#{locale})" do
+        I18n.with_locale(locale.to_sym) do
+          agent = RedmineAiHelper::Agents::WikiAgent.new(project: @project)
+          agent.expects(:chat).once.returns("summary")
+
+          assert_equal "summary", agent.wiki_summary(wiki_page: WikiPage.find(1))
+        end
+      end
+
+      [ nil, "Keep it short" ].each do |instructions|
+        should "format IssueReadAgent#issue_summary with the real templates (#{locale}, instructions=#{instructions.inspect})" do
+          I18n.with_locale(locale.to_sym) do
+            AiHelperProjectSetting.settings(@project).update!(issue_summary_instructions: instructions)
+            agent = RedmineAiHelper::Agents::IssueReadAgent.new(project: @project)
+            captured = nil
+            agent.expects(:chat).with { |messages, *| captured = messages.first[:content] }.returns("summary")
+
+            agent.issue_summary(issue: Issue.find(1))
+
+            assert_not_nil captured
+            assert_equal instructions.present?, captured.include?("Keep it short")
+          end
+        end
+      end
+
+      should "format IssueReadAgent#generate_issue_reply with the real template (#{locale})" do
+        I18n.with_locale(locale.to_sym) do
+          agent = RedmineAiHelper::Agents::IssueReadAgent.new(project: @project)
+          agent.expects(:think_chat).once.returns("reply")
+
+          assert_equal "reply", agent.generate_issue_reply(issue: Issue.find(1), instructions: "be polite")
+        end
+      end
+
+      should "format IssueReadAgent#suggest_stuff_todo with the real template (#{locale})" do
+        I18n.with_locale(locale.to_sym) do
+          agent = RedmineAiHelper::Agents::IssueReadAgent.new(project: @project)
+          agent.expects(:chat).once.returns("todo")
+
+          assert_equal "todo", agent.suggest_stuff_todo
+        end
+      end
+
+      should "format the LeaderAgent web search notice with the real template (#{locale})" do
+        I18n.with_locale(locale.to_sym) do
+          RedmineAiHelper::Agents::WebSearchAgent.any_instance.stubs(:enabled?).returns(false)
+          agent = RedmineAiHelper::Agents::LeaderAgent.new(project: @project)
+
+          assert_not_includes agent.system_prompt.fixed, "#<RedmineAiHelper::Util::PromptTemplate"
+        end
+      end
+
+      %w[
+        DocumentationAgent IssueWriteAgent SystemAgent BoardAgent WikiAgent IssueReadAgent
+        UserAgent VersionAgent LeaderAgent FileAgent RepositoryAgent
+      ].each do |agent_name|
+        should "return the formatted backstory text from #{agent_name} (#{locale})" do
+          I18n.with_locale(locale.to_sym) do
+            agent = RedmineAiHelper::Agents.const_get(agent_name).new(project: @project)
+
+            assert_instance_of String, agent.backstory
+            assert_not_empty agent.backstory
+          end
         end
       end
     end

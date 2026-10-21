@@ -155,3 +155,8 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-069](./069-caller-rescues-swallowed-new-error.md) | Existing broad rescues in callers swallowed the new error from the shared attachment path | error-handling | Local AI review | AGENTS.md |
 | [CRF-070](./070-office-notice-tests-one-sided.md) | Office notice and metadata tests covered only the positive side or one layer | test-gap | Local AI review | Not yet |
 | [CRF-071](./071-office-docs-diverged-from-research.md) | Office attachment docs and YARD diverged from research and the logger's behaviour | doc-comment | Local AI review | Not yet |
+| [CRF-072](./072-prompt-template-yaml-boundary-unvalidated.md) | PromptTemplate validated input_variables but not the rest of its YAML boundary | convention-violation | Local AI review | Not yet |
+| [CRF-073](./073-llm-rescues-turned-new-error-into-cached-results.md) | Llm#wiki_summary and #project_health_report turned the new ArgumentError into saved or served results | error-handling | Local AI review | Not yet |
+| [CRF-074](./074-documentation-agent-backstory-not-formatted.md) | DocumentationAgent#backstory returned the PromptTemplate object instead of its text | edge-case | Local AI review | Not yet |
+| [CRF-075](./075-prompt-template-tests-vacuous-and-overstated.md) | Log assertions matched fixed text, a helper absorbed bad input and callers coverage was overstated | test-gap | Local AI review | Not yet |
+| [CRF-076](./076-adr-reason-contradicted-research-and-wiki-uncited.md) | ADR rejected-alternative reason contradicted research R-007, and the wiki claim had no source ID | doc-comment | Local AI review | Not yet |

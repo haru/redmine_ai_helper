@@ -175,53 +175,48 @@ module RedmineAiHelper
     end
 
     # Get the summary of the wiki page using WikiAgent with streaming support
+    # Errors are never swallowed here: the caller must be able to tell a failed
+    # summary from a successful one so that a failure message is not persisted
+    # as cached summary content.
     # @param wiki_page [WikiPage] The wiki page object
     # @param stream_proc [Proc] Optional callback proc for streaming content
-    # return [String] The summary of the wiki page
+    # @raise [StandardError] if summary generation fails
+    # @return [String] The summary of the wiki page
     def wiki_summary(wiki_page:, stream_proc: nil)
-      begin
-        prompt = "Please summarize the wiki page '#{wiki_page.title}'."
-        langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: prompt)
-        agent = RedmineAiHelper::Agents::WikiAgent.new(project: wiki_page.wiki.project, langfuse: langfuse)
-        langfuse.create_span(name: "user_request", input: prompt)
-        answer = agent.wiki_summary(wiki_page: wiki_page, stream_proc: stream_proc)
-        langfuse.finish_current_span(output: answer)
-        langfuse.flush(output: answer)
-      rescue => e
-        ai_helper_logger.error "error: #{e.full_message}"
-        answer = e.message
-        stream_proc.call(answer) if stream_proc
-      end
+      prompt = "Please summarize the wiki page '#{wiki_page.title}'."
+      langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: prompt)
+      agent = RedmineAiHelper::Agents::WikiAgent.new(project: wiki_page.wiki.project, langfuse: langfuse)
+      langfuse.create_span(name: "user_request", input: prompt)
+      answer = agent.wiki_summary(wiki_page: wiki_page, stream_proc: stream_proc)
+      langfuse.finish_current_span(output: answer)
+      langfuse.flush(output: answer)
       ai_helper_logger.info "answer: #{answer}"
       answer
     end
 
     # Generate project health report using ProjectAgent with streaming support
+    # Errors are never swallowed here: the callers (the streaming action and the
+    # REST API) must be able to tell a failed generation from a saved report.
     # @param project [Project] The project object
     # @param stream_proc [Proc] Optional callback proc for streaming content
+    # @raise [StandardError] if report generation fails
     # @return [String] The project health report
     def project_health_report(project:, stream_proc: nil)
-      begin
-        prompt = "project_health_report"
+      prompt = "project_health_report"
 
-        langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: prompt)
-        options = {}
-        options[:langfuse] = langfuse
-        options[:project_id] = project.id
-        agent = RedmineAiHelper::Agents::ProjectAgent.new(options)
-        langfuse.create_span(name: "user_request", input: prompt)
-        answer = agent.project_health_report(
-          project: project,
-          options: options,
-          stream_proc: stream_proc
-        )
-        langfuse.finish_current_span(output: answer)
-        langfuse.flush(output: answer)
-      rescue => e
-        ai_helper_logger.error "error: #{e.full_message}"
-        answer = e.message
-        stream_proc.call(answer) if stream_proc
-      end
+      langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: prompt)
+      options = {}
+      options[:langfuse] = langfuse
+      options[:project_id] = project.id
+      agent = RedmineAiHelper::Agents::ProjectAgent.new(options)
+      langfuse.create_span(name: "user_request", input: prompt)
+      answer = agent.project_health_report(
+        project: project,
+        options: options,
+        stream_proc: stream_proc
+      )
+      langfuse.finish_current_span(output: answer)
+      langfuse.flush(output: answer)
       ai_helper_logger.info "project health report: #{answer}"
       answer
     end

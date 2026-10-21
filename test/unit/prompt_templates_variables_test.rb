@@ -14,7 +14,7 @@ class PromptTemplatesVariablesTest < ActiveSupport::TestCase
   # Throws on constructs it does not model instead of silently skipping them.
   # @param file_path [String] Path of the YAML template
   # @return [Hash] { placeholders: Array<String>, declared: Array<String> }
-  def self.extract_variables(file_path)
+  def extract_variables(file_path)
     yaml = YAML.safe_load(File.read(file_path))
     raise ArgumentError, "#{file_path}: YAML is not a Hash" unless yaml.is_a?(Hash)
     raise ArgumentError, "#{file_path}: template is not a String" unless yaml["template"].is_a?(String)
@@ -22,13 +22,24 @@ class PromptTemplatesVariablesTest < ActiveSupport::TestCase
     declared = yaml.fetch("input_variables", [])
     raise ArgumentError, "#{file_path}: input_variables is not an Array" unless declared.is_a?(Array)
 
+    names = declared.map do |name|
+      case name
+      when String, Symbol
+        name.to_s
+      else
+        raise ArgumentError, "#{file_path}: input_variables element is not a String or Symbol: #{name.inspect}"
+      end
+    end
+    duplicated = names.tally.select { |_name, count| count > 1 }.keys
+    raise ArgumentError, "#{file_path}: input_variables has duplicates: #{duplicated.join(", ")}" unless duplicated.empty?
+
     {
       placeholders: yaml["template"].scan(PLACEHOLDER).flatten.uniq,
-      declared: declared.map(&:to_s).uniq
+      declared: names
     }
   end
 
-  def self.template_files
+  def template_files
     Dir.glob(File.join(TEMPLATE_ROOT, "**", "*.yml")).sort
   end
 
@@ -43,41 +54,52 @@ class PromptTemplatesVariablesTest < ActiveSupport::TestCase
   context "extract_variables helper" do
     should "throw when the YAML is not a Hash" do
       write_yaml("- a\n- b\n") do |path|
-        assert_raises(ArgumentError) { self.class.extract_variables(path) }
+        assert_raises(ArgumentError) { extract_variables(path) }
       end
     end
 
     should "throw when template is not a String" do
       write_yaml("template: [1]\n") do |path|
-        assert_raises(ArgumentError) { self.class.extract_variables(path) }
+        assert_raises(ArgumentError) { extract_variables(path) }
       end
     end
 
     should "throw when input_variables is not an Array" do
       write_yaml("template: \"Hi {a}\"\ninput_variables: a\n") do |path|
-        assert_raises(ArgumentError) { self.class.extract_variables(path) }
+        assert_raises(ArgumentError) { extract_variables(path) }
+      end
+    end
+
+    should "throw when an input_variables element is not a String" do
+      write_yaml("template: \"Hi {a}\"\ninput_variables: [1]\n") do |path|
+        assert_raises(ArgumentError) { extract_variables(path) }
+      end
+    end
+
+    should "throw when input_variables has duplicates" do
+      write_yaml("template: \"Hi {a}\"\ninput_variables: [a, a]\n") do |path|
+        assert_raises(ArgumentError) { extract_variables(path) }
       end
     end
 
     should "report a mismatch between body and declaration" do
       write_yaml("template: \"Hi {foo}\"\ninput_variables: []\n") do |path|
-        found = self.class.extract_variables(path)
+        found = extract_variables(path)
 
         assert_equal [ "foo" ], found[:placeholders]
         assert_equal [], found[:declared]
-        assert_not_equal found[:placeholders].sort, found[:declared].sort
       end
     end
   end
 
   context "shipped prompt templates" do
     should "be found" do
-      assert_operator self.class.template_files.size, :>=, 80
+      assert_operator template_files.size, :>=, 80
     end
 
     should "declare exactly the placeholders used in the body" do
-      mismatches = self.class.template_files.filter_map do |file|
-        found = self.class.extract_variables(file)
+      mismatches = template_files.filter_map do |file|
+        found = extract_variables(file)
         next if found[:placeholders].sort == found[:declared].sort
 
         "#{file.delete_prefix("#{TEMPLATE_ROOT}/")}: body=#{found[:placeholders].sort} declared=#{found[:declared].sort}"
@@ -88,13 +110,13 @@ class PromptTemplatesVariablesTest < ActiveSupport::TestCase
 
     should "declare identical variables in the English and Japanese versions" do
       pairs = 0
-      self.class.template_files.grep(/_ja\.yml\z/).each do |ja_file|
+      template_files.grep(/_ja\.yml\z/).each do |ja_file|
         en_file = ja_file.sub(/_ja\.yml\z/, ".yml")
         assert File.exist?(en_file), "missing English counterpart of #{ja_file}"
 
         pairs += 1
-        assert_equal self.class.extract_variables(en_file)[:declared].sort,
-                     self.class.extract_variables(ja_file)[:declared].sort,
+        assert_equal extract_variables(en_file)[:declared].sort,
+                     extract_variables(ja_file)[:declared].sort,
                      "variables differ between #{en_file} and #{ja_file}"
       end
       assert_operator pairs, :>=, 40
