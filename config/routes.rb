@@ -50,6 +50,7 @@ RedmineApp::Application.routes.draw do
   post "projects/:id/ai_helper/health_reports/compare/markdown", to: "ai_helper_dashboard#comparison_markdown", as: "ai_helper_health_report_comparison_markdown"
   # Preview must precede the :report_id routes so "preview" is not captured as a report id
   post "projects/:id/ai_helper/health_reports/preview", to: "ai_helper_dashboard#health_report_preview", as: "ai_helper_health_report_preview"
+  get "projects/:id/ai_helper/health_reports/:report_id/content", to: "ai_helper_dashboard#health_report_content", as: "ai_helper_health_report_content"
   get "projects/:id/ai_helper/health_reports/:report_id/markdown", to: "ai_helper_dashboard#health_report_markdown", as: "ai_helper_health_report_markdown"
   patch "projects/:id/ai_helper/health_reports/:report_id", to: "ai_helper_dashboard#health_report_update", as: "ai_helper_health_report_update"
   get "projects/:id/ai_helper/health_reports/:report_id", to: "ai_helper_dashboard#health_report_show", as: "ai_helper_health_report_show"

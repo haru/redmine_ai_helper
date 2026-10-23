@@ -35,8 +35,11 @@ module RedmineAiHelper
       end
 
       # Analyze an issue and extract summary and keywords.
+      # LLM API and network errors give an empty result; other errors, such as an
+      # attachment that cannot be read, are raised.
       # @param issue [Issue] The issue to analyze.
       # @return [Hash] A hash containing :summary (String) and :keywords (Array<String>).
+      # @raise [EncodingError] if an Office attachment's converted text is not valid UTF-8.
       def analyze(issue)
         native = @llm_provider.supports_structured_output?
         format_instructions = native ? "" : RedmineAiHelper::Util::StructuredOutputHelper.get_format_instructions(JSON_SCHEMA)
@@ -44,11 +47,13 @@ module RedmineAiHelper
         messages = [ { role: "user", content: prompt } ]
         file_paths = supported_attachment_paths(issue)
         schema_payload = native ? RedmineAiHelper::Util::StructuredOutputHelper.native_schema_payload(JSON_SCHEMA) : nil
-        response = call_llm(messages, with: file_paths.presence, schema: schema_payload)
+        begin
+          response = call_llm(messages, with: file_paths.presence, schema: schema_payload)
+        rescue RubyLLM::Error, Faraday::Error => e
+          ai_helper_logger.warn("Failed to analyze issue content of issue ##{issue.id}: #{e.class}: #{e.message}")
+          return empty_result
+        end
         parse_response(response, messages, with: file_paths.presence)
-      rescue StandardError => e
-        ai_helper_logger.warn("Failed to analyze issue content: #{e.message}")
-        empty_result
       end
 
       private

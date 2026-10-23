@@ -1,0 +1,6 @@
+---
+_type: prompt
+input_variables:
+- filename
+template: |-
+  [Attachment notice] The images and figures inside the Office document "{filename}" are not included in its converted text. Do not guess or invent what they show. If they are relevant to the user's request, tell the user that the images in "{filename}" were not available.

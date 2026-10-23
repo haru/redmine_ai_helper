@@ -1,0 +1,6 @@
+---
+_type: prompt
+input_variables:
+- filename
+template: |-
+  [Attachment notice] The Office document "{filename}" contains no text. Do not guess or invent what it contains. If it is relevant to the user's request, tell the user that "{filename}" had no readable text.

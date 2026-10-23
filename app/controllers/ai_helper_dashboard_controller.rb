@@ -9,7 +9,7 @@ class AiHelperDashboardController < ApplicationController
   protect_from_forgery with: :exception
 
   before_action :find_project, :authorize, :find_user
-  before_action :find_health_report_and_project, only: [ :health_report_show, :health_report_destroy, :health_report_update, :health_report_markdown ]
+  before_action :find_health_report_and_project, only: [ :health_report_show, :health_report_destroy, :health_report_update, :health_report_markdown, :health_report_content, :health_report_preview ]
   before_action :set_per_page_limit, only: [ :index ]
 
   # Render the dashboard landing page for the current project.
@@ -45,6 +45,15 @@ class AiHelperDashboardController < ApplicationController
     end
   end
 
+  # Return the stored report body wrapped in the content container (no
+  # layout), used by the browser to swap in the saved report right after
+  # generation (R-008).
+  def health_report_content
+    return render_403 unless @health_report.visible?(@user)
+
+    render partial: "ai_helper/project/health_report_content", locals: { health_report: @health_report }
+  end
+
   # Show a specific health report and provide export options.
   def health_report_show
     unless @health_report.visible?(@user)
@@ -63,22 +72,26 @@ class AiHelperDashboardController < ApplicationController
       format.pdf do
         filename = "#{@project.identifier}-health-report-#{@health_report.created_at.strftime("%Y%m%d")}.pdf"
         send_data(project_health_to_pdf(@project, @health_report.health_report,
-                                        edit_notice: helpers.health_report_edit_notice_text(@health_report)),
+                                        edit_notice: helpers.health_report_edit_notice_text(@health_report),
+                                        charts: RedmineAiHelper::HealthReportChart::Resolver.new(@health_report.metrics)),
                   type: "application/pdf",
                   filename: filename)
       end
     end
   end
 
-  # Export a health report as a Markdown file. An edited report is prefixed
-  # with a quoted edit notice line.
+  # Export a health report as a zip holding the Markdown file and the chart
+  # SVGs. An edited report is prefixed with a quoted edit notice line.
   def health_report_markdown
     return render_403 unless @health_report.visible?(@user)
 
     notice = helpers.health_report_edit_notice_text(@health_report)
     content = notice ? "#{notice}\n\n#{@health_report.health_report}" : @health_report.health_report.to_s
-    filename = "#{@project.identifier}-health-report-#{@health_report.created_at.strftime("%Y%m%d")}.md"
-    send_data(content, type: "text/markdown", filename: filename)
+    base_name = "#{@project.identifier}-health-report-#{@health_report.created_at.strftime("%Y%m%d")}"
+    archive = RedmineAiHelper::HealthReportChart::MarkdownArchive.build(
+      content, resolver: RedmineAiHelper::HealthReportChart::Resolver.new(@health_report.metrics), base_name: base_name
+    )
+    send_data(archive, type: "application/zip", filename: "#{base_name}.zip")
   end
 
   # Update the body of a stored health report (JSON).
@@ -110,9 +123,13 @@ class AiHelperDashboardController < ApplicationController
   end
 
   # Render a Markdown preview of the text being edited (no layout).
+  # The report given by report_id supplies the stored metrics so chart
+  # directives resolve against that report.
   def health_report_preview
+    return render_403 unless @health_report.visible?(@user)
+
     html = if params[:text].present?
-        helpers.render_health_report_markdown(params[:text].to_s)
+        helpers.render_health_report_markdown(params[:text].to_s, report: @health_report)
     else
         helpers.content_tag(:p, l(:label_nothing_to_preview), class: "empty-preview")
     end
@@ -165,7 +182,8 @@ class AiHelperDashboardController < ApplicationController
       sanitized_content = Loofah.fragment(comparison_content.delete("\r")).scrub!(:prune).to_text.strip
 
       filename = "#{@project.identifier}-health-report-comparison-#{Date.current.strftime("%Y%m%d")}.pdf"
-      send_data(project_health_to_pdf(@project, sanitized_content),
+      send_data(project_health_to_pdf(@project, sanitized_content,
+                                      charts: RedmineAiHelper::HealthReportChart::Resolver.comparison),
                 type: "application/pdf",
                 filename: filename)
     else
@@ -187,7 +205,9 @@ class AiHelperDashboardController < ApplicationController
       sanitized_content = Loofah.fragment(comparison_content.delete("\r")).scrub!(:prune).to_text.strip
 
       filename = "#{@project.identifier}-health-report-comparison-#{Date.current.strftime("%Y%m%d")}.md"
-      send_data(sanitized_content,
+      message = RedmineAiHelper::HealthReportChart::Resolver.comparison_message
+      content = RedmineAiHelper::HealthReportChart::MarkdownArchive.replace_directives(sanitized_content) { "> #{message}" }
+      send_data(content,
                 type: "text/markdown",
                 filename: filename)
     else

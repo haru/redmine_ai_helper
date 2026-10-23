@@ -119,6 +119,39 @@ en:
       placeholder: "Comparison analysis starts automatically"
       analysis_title: "Comparison Analysis"
       error_select_two_reports: "Please select two different reports to compare"
+    health_report_chart:
+      types:
+        status: "Issues by Status"
+        tracker: "Issues by Tracker"
+        priority: "Issues by Priority"
+        assignee: "Issues by Assignee"
+        open_closed: "Open vs Closed Issues"
+        progress: "Progress Distribution"
+      periods:
+        last_week: "Last 1 Week"
+        last_month: "Last 1 Month"
+        all_time: "All Time Analysis"
+        recent: "Recent Activity"
+      items:
+        not_started: "Not started"
+        in_progress: "In progress"
+        completed: "Completed"
+        other: "Others"
+      errors:
+        invalid_arguments: "The chart directive syntax is invalid"
+        unknown_type: "Unknown chart type \"%{type}\""
+        metrics_unavailable: "This report has no collected metrics data"
+        unknown_target: "The target \"%{target}\" is not included in this report's metrics data"
+        data_missing: "This report's metrics data does not contain the values required for this chart"
+        comparison: "Charts cannot be drawn in a comparison report"
+      unavailable: "Cannot draw the chart: "
+      item_label: "%{name} (%{count})"
+      tile_summary: "%{closed} of %{total} closed (%{rate}%%)"
+      draw_failed: "The chart could not be drawn."
+      help:
+        title: "Chart directives"
+        syntax: "Write a chart directive on a single line, surrounded by blank lines: {{ai_helper_chart(type, version=<version_id>)}} or {{ai_helper_chart(type, period=<period>)}}. Do not place it inside tables, lists, or code blocks. There is no need to copy the numbers into the text."
+        targets: "Targets available in this report"
     generate_issue_reply:
       title: "Create a comment draft with AI Helper"
       instructions: "Please enter the key points or instructions for the reply."

@@ -228,6 +228,35 @@ curl -X POST \
 - The AI Helper module must be enabled for the project
 - REST API must be enabled in Redmine administration settings
 
+**Chart directives in the report body:**
+
+A health report body can contain chart directives. A directive is a single line
+that is drawn as a chart (from the metrics stored with the report) on screen,
+in the PDF export and in the Markdown export. The API returns the body with the
+directive lines unchanged, so API clients that render the report themselves must
+interpret them (or ignore them).
+
+```
+{{ai_helper_chart(<type>, version=<version_id>)}}
+{{ai_helper_chart(<type>, period=<period_key>)}}
+```
+
+- The directive must occupy a whole line (up to 3 leading spaces) outside fenced
+  code blocks. Spaces around the comma and `=` are ignored.
+- `<type>`: `status`, `tracker`, `priority`, `assignee` (horizontal bars by
+  count), `progress` (one stacked bar of not started / in progress / completed)
+  and `open_closed` (a number tile with the completion rate, not a chart).
+- `<version_id>`: the numeric id of a version in the report's stored metrics.
+- `<period_key>`: `last_week`, `last_month`, `all_time` or `recent`.
+- A directive that cannot be drawn (unknown type or target, no stored metrics)
+  is shown as a message with the reason instead of a chart.
+
+The Markdown export of a health report is a zip file (`<name>.md` plus
+`charts/chart-<n>.svg`, where n numbers the charts that can be drawn, in order of
+appearance) instead of a single `.md` file. Extract it and open the
+`.md` file in a Markdown viewer to see the charts. This is a change from earlier
+releases and should be mentioned in the release notes.
+
 **Scheduling with cron:**
 To generate health reports automatically every Monday at 9:00 AM, add the following to your crontab:
 ```bash
@@ -295,6 +324,9 @@ The AI Helper Plugin can analyze files attached to Issues, Wiki pages, and Board
 | Documents | .pdf, .txt, .md, .csv, .json, .xml |
 | Code | .rb, .py, .js, .html, .css, and more |
 | Audio | .mp3, .wav, .m4a, .ogg, .flac |
+| Office documents | .docx, .odt (and .xlsx, .pptx with Pandoc 3.8.3 or later) |
+
+Office documents are converted to Markdown with Redmine's own Markdown preview and the text is sent to the LLM. This requires Redmine 7.0 or later and [Pandoc](https://pandoc.org/) (set `pandoc_command` in `config/configuration.yml` if it is not in the `PATH`). On Redmine 6.x, or when Pandoc is not available, Office documents are not sent, as before. Redmine's `markdownized_preview_max_source_size`, `markdownized_preview_max_output_size` and `markdownized_preview_generation_timeout` settings apply. If a document cannot be converted, or the converted text is cut at the size limit, the LLM receives a notice saying so. Images inside documents are not sent; the LLM receives a notice instead. See [Office document attachments](docs/office_document_attachments.md) for details.
 
 To enable this feature, go to the AI Helper settings page in the Administration menu. Check **"Send attachments to LLM"** and optionally set the maximum file size limit (default: 3 MB). Files exceeding the limit are not sent to the LLM.
 

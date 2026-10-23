@@ -106,11 +106,16 @@ class DocumentationAgentTest < ActiveSupport::TestCase
     assert_equal "the", result.first["corrected"]
   end
 
-  def test_backstory_returns_prompt
-    prompt_mock = mock("prompt")
-    @agent.stubs(:load_prompt).with("documentation_agent/backstory").returns(prompt_mock)
+  def test_backstory_returns_formatted_prompt_text
+    backstory = @agent.backstory
 
-    assert_equal prompt_mock, @agent.backstory
+    assert_instance_of String, backstory
+    assert_not_empty backstory
+    assert_not_includes backstory, "RedmineAiHelper::Util::PromptTemplate"
+  end
+
+  def test_system_prompt_embeds_backstory_text
+    assert_not_includes @agent.system_prompt.fixed, "#<RedmineAiHelper::Util::PromptTemplate"
   end
 
   def test_check_typos_validates_and_fixes_incorrect_length

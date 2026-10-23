@@ -2,18 +2,31 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadScriptAndFireDOMContentLoaded } from "../support/dom_content_loaded.js";
 import { stubAnimationFrames } from "../support/animation_frames.js";
 import { loadScript } from "../support/load_script.js";
+import { createDashboardDetailPane } from "../support/dashboard_detail_pane.js";
 
 class FakeEventSource {
   constructor(url) {
     this.url = url;
     this.closed = false;
+    this.closeCount = 0;
     this.onmessage = null;
     this.onerror = null;
+    this.listeners = {};
     FakeEventSource.instances.push(this);
+  }
+
+  addEventListener(name, listener) {
+    this.listeners[name] = this.listeners[name] || [];
+    this.listeners[name].push(listener);
+  }
+
+  emit(name, event) {
+    (this.listeners[name] || []).forEach((listener) => listener(event));
   }
 
   close() {
     this.closed = true;
+    this.closeCount += 1;
   }
 }
 FakeEventSource.instances = [];
@@ -25,6 +38,20 @@ describe("ai_helper_project_health_actions", () => {
 
   function sendChunk(source, text) {
     source.onmessage({ data: JSON.stringify({ choices: [{ delta: { content: text } }] }) });
+  }
+
+  function sendStop(source) {
+    source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+  }
+
+  // Runs one full generation through the generate link: click, one content
+  // chunk, stop. Returns the FakeEventSource of that generation.
+  function generateReport(link, text) {
+    link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    const source = FakeEventSource.instances[FakeEventSource.instances.length - 1];
+    sendChunk(source, text);
+    sendStop(source);
+    return source;
   }
 
   beforeEach(async () => {
@@ -39,6 +66,7 @@ describe("ai_helper_project_health_actions", () => {
     delete window.updateHealthReportHistory;
     await loadScript("assets/javascripts/shared/ai_helper_markdown_parser");
     await loadScript("assets/javascripts/shared/ai_helper_frame_renderer");
+    await loadScript("assets/javascripts/project_health/ai_helper_chart_directive");
   });
 
   afterEach(() => {
@@ -48,9 +76,14 @@ describe("ai_helper_project_health_actions", () => {
     document
       .querySelectorAll(
         'meta[name^="ai-helper-project-health"], meta[name="error-message"], meta[name="export-label"], ' +
-          'meta[name="markdown-export-url"], meta[name="pdf-export-url"], meta[name="csrf-token"]',
+          'meta[name="markdown-export-url"], meta[name="pdf-export-url"], meta[name="csrf-token"], ' +
+          'meta[name="ai-helper-health-report-content-url"]',
       )
       .forEach((m) => m.remove());
+    // Restores every vi.spyOn mock (console.error, finalizeStreamingContent,
+    // form submit, ...) even when an assertion failed before the manual
+    // restore point, so no mock leaks into the next test.
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
     vi.useRealTimers();
   });
@@ -94,8 +127,84 @@ describe("ai_helper_project_health_actions", () => {
 
   async function load() {
     await loadScript("assets/javascripts/project_health/ai_helper_project_health_actions");
+    await loadScript("assets/javascripts/project_health/ai_helper_project_health_swap");
     cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/project_health/ai_helper_project_health");
     return cleanup;
+  }
+
+  // Local DOM helper reproducing the dashboard detail pane of
+  // app/views/ai_helper/project/_health_report_body.html.erb while the
+  // previous report is still on screen, in one of the two states the pane
+  // can be in (see specs/077-fix-dashboard-health-report-error/data-model.md):
+  // - default: the edited report's ORIGINAL body is being viewed — the
+  //   result area is hidden and the "show current" link is visible;
+  // - editFormOpen: the edit form is open, so startEdit has hidden the whole
+  //   `.ai-helper-health-report-view` and the form is visible.
+  // In both states the pane still shows the previous report's metadata,
+  // edit link, flash notice, and export links — the elements the
+  // data-model.md lists as removed when a new generation starts.
+  function addDetailPaneWithPreviousReport({ editFormOpen = false } = {}) {
+    const { detailPane, contentDiv, resultDiv } = createDashboardDetailPane(container);
+    const viewDiv = detailPane.querySelector(".ai-helper-health-report-view");
+
+    const flash = document.createElement("div");
+    flash.className = "flash notice";
+    flash.textContent = "saved";
+    detailPane.insertBefore(flash, contentDiv);
+
+    const meta = document.createElement("div");
+    meta.className = "ai-helper-health-report-meta";
+    meta.textContent = "created";
+    detailPane.insertBefore(meta, contentDiv);
+
+    const contextual = document.createElement("div");
+    contextual.className = "contextual";
+    const editLink = document.createElement("a");
+    editLink.className = "icon icon-edit ai-helper-health-report-edit-link";
+    contextual.appendChild(editLink);
+    detailPane.insertBefore(contextual, contentDiv);
+
+    const original = document.createElement("div");
+    original.className = "ai-helper-health-report-original";
+    original.textContent = "original body";
+    viewDiv.appendChild(original);
+
+    // The ERB renders both toggle links inside one <p> (lines 38-42).
+    const toggleParagraph = document.createElement("p");
+    const showOriginal = document.createElement("a");
+    showOriginal.className = "ai-helper-health-report-show-original";
+    showOriginal.href = "#";
+    const showCurrent = document.createElement("a");
+    showCurrent.className = "ai-helper-health-report-show-current";
+    showCurrent.href = "#";
+    toggleParagraph.appendChild(showOriginal);
+    toggleParagraph.appendChild(showCurrent);
+    viewDiv.appendChild(toggleParagraph);
+
+    const editForm = document.createElement("form");
+    editForm.className = "ai-helper-health-report-edit-form";
+    contentDiv.appendChild(editForm);
+
+    const otherFormats = document.createElement("p");
+    otherFormats.className = "other-formats";
+    detailPane.appendChild(otherFormats);
+
+    if (editFormOpen) {
+      // startEdit() hides the read-only view as a whole and shows the form;
+      // the toggle links and the original keep their default ERB state.
+      viewDiv.hidden = true;
+      original.hidden = true;
+      showOriginal.hidden = false;
+      showCurrent.hidden = true;
+      editForm.hidden = false;
+    } else {
+      // toggleOriginal() hides the current body in favour of the original.
+      resultDiv.hidden = true;
+      original.hidden = false;
+      showOriginal.hidden = true;
+    }
+
+    return { detailPane, contentDiv, resultDiv, viewDiv, toggleParagraph };
   }
 
   describe("generate report click delegation", () => {
@@ -114,7 +223,6 @@ describe("ai_helper_project_health_actions", () => {
       expect(errorSpy).toHaveBeenCalled();
       expect(alertSpy).toHaveBeenCalled();
       expect(FakeEventSource.instances.length).toBe(0);
-      errorSpy.mockRestore();
     });
 
     it("ignores clicks that are not on the generate link", async () => {
@@ -170,7 +278,7 @@ describe("ai_helper_project_health_actions", () => {
 
     it("streams content, finalizes on stop, stores the content, and refreshes metadata", async () => {
       addMeta("ai-helper-project-health-metadata-url", "/metadata");
-      const { resultDiv } = addHealthContainer();
+      const { contentDiv, resultDiv } = addHealthContainer();
       const link = addGenerateLink();
       const fetchMock = vi.fn(async () => ({ status: 204 }));
       vi.stubGlobal("fetch", fetchMock);
@@ -185,11 +293,12 @@ describe("ai_helper_project_health_actions", () => {
       expect(resultDiv.innerHTML).toContain("ai-helper-cursor");
 
       sendChunk(source, "good");
-      source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+      sendStop(source);
 
       expect(source.closed).toBe(true);
       expect(resultDiv.innerHTML).toContain("ai-helper-final-content");
       expect(document.getElementById("ai-helper-health-report-content").value).toBe("Report: good");
+      expect(document.getElementById("ai-helper-health-report-content").parentElement).toBe(contentDiv);
       expect(container.querySelector(".other-formats")).not.toBeNull();
 
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -223,7 +332,6 @@ describe("ai_helper_project_health_actions", () => {
 
       expect(renderSpy).toHaveBeenCalledTimes(2);
       expect(renderSpy.mock.calls[1][2]).toBe("one two three four");
-      renderSpy.mockRestore();
     });
 
     it("cancels a pending streaming render when the stream finishes", async () => {
@@ -234,7 +342,7 @@ describe("ai_helper_project_health_actions", () => {
       const source = FakeEventSource.instances[0];
 
       sendChunk(source, "final text");
-      source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+      sendStop(source);
 
       expect(frames.pendingCount()).toBe(0);
       expect(resultDiv.innerHTML).toContain("ai-helper-final-content");
@@ -279,20 +387,178 @@ describe("ai_helper_project_health_actions", () => {
 
       expect(document.getElementById("ai-helper-health-report-content")).toBeNull();
 
-      source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+      sendStop(source);
 
       expect(document.getElementById("ai-helper-health-report-content").value).toBe("");
     });
 
-    it("ignores malformed SSE payloads without throwing", async () => {
-      addHealthContainer();
+    it("keeps one hidden field and one export link pair after two consecutive overview generations", async () => {
+      const { contentDiv, healthDiv } = addHealthContainer();
       const link = addGenerateLink();
+
+      await load();
+      generateReport(link, "first");
+      generateReport(link, "second");
+
+      expect(contentDiv.querySelectorAll("#ai-helper-health-report-content").length).toBe(1);
+      expect(document.getElementById("ai-helper-health-report-content").value).toBe("second");
+      expect(healthDiv.querySelectorAll(".other-formats").length).toBe(1);
+    });
+
+    it("logs a parse failure and keeps receiving after a malformed SSE payload", async () => {
+      const { resultDiv } = addHealthContainer();
+      const link = addGenerateLink();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       await load();
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       const source = FakeEventSource.instances[0];
 
       expect(() => source.onmessage({ data: "not json" })).not.toThrow();
+      expect(errorSpy).toHaveBeenCalledWith(
+        "Failed to parse project health streaming event data:",
+        expect.any(SyntaxError),
+        "not json",
+      );
+
+      sendChunk(source, "after malformed");
+      sendStop(source);
+      frames.flush();
+
+      expect(resultDiv.innerHTML).toContain("after malformed");
+      expect(resultDiv.innerHTML).toContain("ai-helper-final-content");
     });
+
+    it("shows the swap error box when finalizeStreamingContent throws synchronously, leaving the stream closed", async () => {
+      addMeta("error-message", "Something failed");
+      const { resultDiv } = addHealthContainer();
+      const link = addGenerateLink();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const source = FakeEventSource.instances[0];
+      const failure = new Error("finalize boom");
+      vi.spyOn(window, "finalizeStreamingContent").mockImplementation(() => {
+        throw failure;
+      });
+
+      expect(() => sendStop(source)).not.toThrow();
+      expect(resultDiv.querySelector(".ai-helper-error").textContent).toBe("Something failed");
+      expect(errorSpy).toHaveBeenCalledWith(expect.any(String), failure);
+
+      // The stream must be closed — and dropped as the current one — before
+      // finalize runs, so a failing finalize can never leave the generation
+      // half-alive: closing the source happens before the throwing call and
+      // a fresh click must not try to close the failed stream again.
+      expect(source.closed).toBe(true);
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      expect(source.closeCount).toBe(1);
+      expect(FakeEventSource.instances[1].closed).toBe(false);
+      errorSpy.mockRestore();
+    });
+
+    it("re-throws non-SyntaxError failures raised while parsing the payload", async () => {
+      addHealthContainer();
+      const link = addGenerateLink();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const source = FakeEventSource.instances[0];
+
+      const boom = new TypeError("data access failed");
+      expect(() =>
+        source.onmessage({
+          get data() {
+            throw boom;
+          },
+        }),
+      ).toThrow(boom);
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+
+    it("re-throws a SyntaxError raised while reading the event data instead of logging it as a parse failure", async () => {
+      addHealthContainer();
+      const link = addGenerateLink();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const source = FakeEventSource.instances[0];
+
+      // Only JSON.parse's SyntaxError is recoverable; the same error class
+      // thrown by the data getter is a real failure. The getter throws only
+      // on its first read, so a handler that re-reads the data while
+      // logging would swallow the error instead of surfacing it.
+      const boom = new SyntaxError("data getter failed");
+      let reads = 0;
+      expect(() =>
+        source.onmessage({
+          get data() {
+            reads += 1;
+            if (reads === 1) {
+              throw boom;
+            }
+            return "not json";
+          },
+        }),
+      ).toThrow(boom);
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+
+    it("reads the event data exactly once per message", async () => {
+      addHealthContainer();
+      const link = addGenerateLink();
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const source = FakeEventSource.instances[0];
+
+      let reads = 0;
+      source.onmessage({
+        get data() {
+          reads += 1;
+          return "not json";
+        },
+      });
+      expect(reads).toBe(1);
+    });
+
+    it("propagates the TypeError raised when a well-formed JSON payload is not an object", async () => {
+      addHealthContainer();
+      const link = addGenerateLink();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const source = FakeEventSource.instances[0];
+
+      // JSON.parse("null") succeeds but yields null; reading .choices on it
+      // is a real bug and must surface, not be logged as a parse failure.
+      expect(() => source.onmessage({ data: "null" })).toThrow(TypeError);
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+
+    it("updates the master-detail history and selects the first report row when generation finishes in the dashboard detail pane", async () => {
+      createDashboardDetailPane(container);
+      const link = addGenerateLink();
+      const historyRow = document.createElement("div");
+      historyRow.className = "ai-helper-report-row";
+      container.appendChild(historyRow);
+      const masterDetailInstance = { selectedReportId: "old", selectReport: vi.fn() };
+      window.updateHealthReportHistory = vi.fn((callback) => callback(masterDetailInstance));
+
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const source = FakeEventSource.instances[0];
+      sendStop(source);
+
+      // Real timers here: the production code chains a 1000ms and then a
+      // 100ms setTimeout (see the project-overview variant below for why
+      // fake timers are not used in this suite).
+      await new Promise((resolve) => setTimeout(resolve, 1100));
+      expect(window.updateHealthReportHistory).toHaveBeenCalledTimes(1);
+
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      expect(masterDetailInstance.selectedReportId).toBeNull();
+      expect(masterDetailInstance.selectReport).toHaveBeenCalledWith(historyRow);
+    }, 10000);
 
     it("re-initializes master-detail history and selects the first report after streaming stops", async () => {
       addHealthContainer();
@@ -307,7 +573,7 @@ describe("ai_helper_project_health_actions", () => {
       await load();
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       const source = FakeEventSource.instances[0];
-      source.onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+      sendStop(source);
 
       // Real timers here: the production code chains a 1000ms and then a
       // 100ms setTimeout, and combining vi.useFakeTimers() with the
@@ -321,6 +587,130 @@ describe("ai_helper_project_health_actions", () => {
       expect(masterDetailInstance.selectReport).toHaveBeenCalledWith(historyRow);
     }, 10000);
 
+    it("removes the previous report's details from the detail pane and un-hides the result area when generation starts", async () => {
+      const { detailPane, resultDiv, toggleParagraph } = addDetailPaneWithPreviousReport();
+      const link = addGenerateLink();
+
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+      expect(detailPane.querySelector(".ai-helper-health-report-meta")).toBeNull();
+      expect(detailPane.querySelector(".contextual")).toBeNull();
+      expect(detailPane.querySelector(".ai-helper-health-report-edit-form")).toBeNull();
+      expect(detailPane.querySelector(".ai-helper-health-report-original")).toBeNull();
+      expect(detailPane.querySelector(".ai-helper-health-report-show-original")).toBeNull();
+      // Both toggle links live in the same <p>; removing only the
+      // show-original link would leave the paragraph behind.
+      expect(detailPane.querySelector(".ai-helper-health-report-show-current")).toBeNull();
+      expect(toggleParagraph.isConnected).toBe(false);
+      expect(detailPane.querySelector(".flash")).toBeNull();
+      expect(detailPane.querySelector(".other-formats")).toBeNull();
+      expect(resultDiv.hidden).toBe(false);
+      // The stream must be rendered into the element that is actually in
+      // the document, not into a node detached with its whole pane.
+      expect(document.getElementById("ai-helper-project-health-result")).toBe(resultDiv);
+      expect(detailPane.contains(resultDiv)).toBe(true);
+      expect(resultDiv.innerHTML).toContain("ai-helper-loader");
+    });
+
+    it("un-hides the report view so the stream is visible when generation starts with the edit form open", async () => {
+      const { detailPane, resultDiv, viewDiv } = addDetailPaneWithPreviousReport({ editFormOpen: true });
+      const link = addGenerateLink();
+
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+      // The edit form is removed, and both the result area and every
+      // element between it and the document are shown — startEdit hid the
+      // whole view, so un-hiding only the result area would still render
+      // the loader and the stream into an invisible element.
+      expect(detailPane.querySelector(".ai-helper-health-report-edit-form")).toBeNull();
+      expect(viewDiv.hidden).toBe(false);
+      expect(resultDiv.hidden).toBe(false);
+      for (let element = resultDiv; element; element = element.parentElement) {
+        expect(element.hidden).toBe(false);
+      }
+      expect(document.getElementById("ai-helper-project-health-result")).toBe(resultDiv);
+      expect(detailPane.contains(resultDiv)).toBe(true);
+      expect(resultDiv.innerHTML).toContain("ai-helper-loader");
+    });
+
+    it("does not restore the removed details when the generation ends in an error", async () => {
+      const { detailPane, resultDiv, viewDiv } = addDetailPaneWithPreviousReport();
+      addMeta("error-message", "Generation failed");
+      const link = addGenerateLink();
+
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      FakeEventSource.instances[0].onerror();
+
+      expect(resultDiv.innerHTML).toContain("Generation failed");
+      expect(detailPane.querySelector(".ai-helper-health-report-meta")).toBeNull();
+      expect(detailPane.querySelector(".ai-helper-health-report-edit-form")).toBeNull();
+      expect(detailPane.querySelector(".other-formats")).toBeNull();
+      expect(resultDiv.hidden).toBe(false);
+      expect(viewDiv.hidden).toBe(false);
+      expect(document.getElementById("ai-helper-project-health-result")).toBe(resultDiv);
+      expect(detailPane.contains(resultDiv)).toBe(true);
+    });
+
+    it("generates into the dashboard's server-rendered no-report structure and refreshes the history", async () => {
+      // app/views/ai_helper_dashboard/_health_report.html.erb:61-71: the
+      // server renders .ai-helper-health-report-detail (hidden) >
+      // .ai-helper-project-health-content > #result + one hidden input,
+      // with NO .ai-helper-project-health wrapper on the dashboard tab.
+      const placeholder = document.createElement("div");
+      placeholder.className = "ai-helper-detail-placeholder";
+      container.appendChild(placeholder);
+      const reportDetail = document.createElement("div");
+      reportDetail.className = "ai-helper-health-report-detail";
+      reportDetail.style.display = "none";
+      const contentDiv = document.createElement("div");
+      contentDiv.className = "ai-helper-project-health-content";
+      const resultDiv = document.createElement("div");
+      resultDiv.id = "ai-helper-project-health-result";
+      const hiddenField = document.createElement("input");
+      hiddenField.id = "ai-helper-health-report-content";
+      hiddenField.value = "";
+      contentDiv.appendChild(resultDiv);
+      contentDiv.appendChild(hiddenField);
+      reportDetail.appendChild(contentDiv);
+      container.appendChild(reportDetail);
+      const link = addGenerateLink();
+      window.updateHealthReportHistory = vi.fn();
+
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      sendChunk(FakeEventSource.instances[0], "dashboard report");
+      sendStop(FakeEventSource.instances[0]);
+
+      expect(placeholder.style.display).toBe("none");
+      expect(reportDetail.style.display).toBe("block");
+      expect(resultDiv.innerHTML).toContain("ai-helper-final-content");
+      expect(document.querySelectorAll("#ai-helper-health-report-content").length).toBe(1);
+      expect(document.getElementById("ai-helper-health-report-content").value).toBe("dashboard report");
+
+      await new Promise((resolve) => setTimeout(resolve, 1100));
+      expect(window.updateHealthReportHistory).toHaveBeenCalledTimes(1);
+    }, 10000);
+
+    it("removes nothing in the project overview structure (no .ai-helper-health-report-body)", async () => {
+      const { healthDiv } = addHealthContainer();
+      const meta = document.createElement("div");
+      meta.className = "ai-helper-health-report-meta";
+      healthDiv.appendChild(meta);
+      const contextual = document.createElement("div");
+      contextual.className = "contextual";
+      healthDiv.appendChild(contextual);
+      const link = addGenerateLink();
+
+      await load();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+      expect(healthDiv.querySelector(".ai-helper-health-report-meta")).toBe(meta);
+      expect(healthDiv.querySelector(".contextual")).toBe(contextual);
+    });
+
     it("refreshes metadata directly when updateHealthReportHistory yields no instance", async () => {
       addMeta("ai-helper-project-health-metadata-url", "/metadata");
       addMeta("ai-helper-project-health-created-label", "Created");
@@ -333,7 +723,7 @@ describe("ai_helper_project_health_actions", () => {
 
       await load();
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-      FakeEventSource.instances[0].onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+      sendStop(FakeEventSource.instances[0]);
 
       await new Promise((resolve) => setTimeout(resolve, 1100));
 
@@ -380,7 +770,7 @@ describe("ai_helper_project_health_actions", () => {
 
       await load();
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-      FakeEventSource.instances[0].onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+      sendStop(FakeEventSource.instances[0]);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(fetchMock).not.toHaveBeenCalled();
@@ -397,7 +787,7 @@ describe("ai_helper_project_health_actions", () => {
 
       await expect(
         (async () => {
-          FakeEventSource.instances[0].onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+          sendStop(FakeEventSource.instances[0]);
           await new Promise((resolve) => setTimeout(resolve, 0));
         })(),
       ).resolves.toBeUndefined();
@@ -419,7 +809,7 @@ describe("ai_helper_project_health_actions", () => {
 
       await load();
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-      FakeEventSource.instances[0].onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+      sendStop(FakeEventSource.instances[0]);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       const meta = document.getElementById("ai-helper-project-health-meta");
@@ -440,7 +830,7 @@ describe("ai_helper_project_health_actions", () => {
 
       await load();
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-      FakeEventSource.instances[0].onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+      sendStop(FakeEventSource.instances[0]);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(document.getElementById("ai-helper-project-health-meta")).toBeNull();
@@ -457,7 +847,7 @@ describe("ai_helper_project_health_actions", () => {
 
       await expect(
         (async () => {
-          FakeEventSource.instances[0].onmessage({ data: JSON.stringify({ choices: [{ finish_reason: "stop" }] }) });
+          sendStop(FakeEventSource.instances[0]);
           await new Promise((resolve) => setTimeout(resolve, 0));
         })(),
       ).resolves.toBeUndefined();
@@ -493,9 +883,6 @@ describe("ai_helper_project_health_actions", () => {
       expect(form.querySelector('input[name="health_report_content"]').value).toBe("exportable content");
       expect(form.querySelector('input[name="authenticity_token"]').value).toBe("tok-a");
       expect(submitSpy).toHaveBeenCalledTimes(1);
-
-      submitSpy.mockRestore();
-      appendChildSpy.mockRestore();
     });
 
     it("submits a PDF export form for the dynamically-added export link", async () => {
@@ -511,9 +898,6 @@ describe("ai_helper_project_health_actions", () => {
 
       expect(appendChildSpy.mock.calls.some(([node]) => node.tagName === "FORM")).toBe(true);
       expect(submitSpy).toHaveBeenCalledTimes(1);
-
-      submitSpy.mockRestore();
-      appendChildSpy.mockRestore();
     });
 
     it("submits a Markdown export form for the dynamically-added export link", async () => {
@@ -522,16 +906,14 @@ describe("ai_helper_project_health_actions", () => {
       await load();
       const markdownLink = container.querySelector("#ai-helper-markdown-export-link-dynamic");
 
-      const submitSpy = vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(() => {});
+      // Stub submit so jsdom does not attempt real navigation.
+      vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(() => {});
       const appendChildSpy = vi.spyOn(document.body, "appendChild");
 
       markdownLink.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 
       const form = appendChildSpy.mock.calls.find(([node]) => node.tagName === "FORM")?.[0];
       expect(form.querySelector('input[name="health_report_content"]').value).toBe("exportable content");
-
-      submitSpy.mockRestore();
-      appendChildSpy.mockRestore();
     });
 
     it("does not build a form when the report content is empty", async () => {
@@ -549,7 +931,6 @@ describe("ai_helper_project_health_actions", () => {
       pdfLink.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 
       expect(appendChildSpy.mock.calls.some(([node]) => node.tagName === "FORM")).toBe(false);
-      appendChildSpy.mockRestore();
     });
 
     it("ignores clicks on unrelated elements", async () => {
@@ -560,7 +941,252 @@ describe("ai_helper_project_health_actions", () => {
       container.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 
       expect(appendChildSpy.mock.calls.some(([node]) => node.tagName === "FORM")).toBe(false);
-      appendChildSpy.mockRestore();
+    });
+  });
+
+  describe("health_report_saved event handling", () => {
+    function clickGenerate(link) {
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      return FakeEventSource.instances[FakeEventSource.instances.length - 1];
+    }
+
+    it("listens for the health_report_saved event on the stream", async () => {
+      addHealthContainer();
+      const link = addGenerateLink();
+      await load();
+
+      const source = clickGenerate(link);
+
+      expect(source.listeners.health_report_saved).toHaveLength(1);
+    });
+
+    it("passes the saved report id to finalizeStreamingContent when the stream stops", async () => {
+      const { resultDiv } = addHealthContainer();
+      const link = addGenerateLink();
+      await load();
+      // The spy must be installed after load(): loading the script
+      // re-assigns window.finalizeStreamingContent.
+      const finalizeSpy = vi.spyOn(window, "finalizeStreamingContent").mockImplementation(() => {});
+
+      const source = clickGenerate(link);
+      source.emit("health_report_saved", { data: JSON.stringify({ report_id: 42 }) });
+      sendChunk(source, "draft");
+      sendStop(source);
+
+      expect(finalizeSpy).toHaveBeenCalledTimes(1);
+      expect(finalizeSpy.mock.calls[0][0]).toBe(resultDiv);
+      expect(finalizeSpy.mock.calls[0][2]).toBe("draft");
+      expect(finalizeSpy.mock.calls[0][3]).toBe(42);
+    });
+
+    it("passes undefined when no health_report_saved event arrived", async () => {
+      addHealthContainer();
+      const link = addGenerateLink();
+      await load();
+      const finalizeSpy = vi.spyOn(window, "finalizeStreamingContent").mockImplementation(() => {});
+
+      const source = clickGenerate(link);
+      sendChunk(source, "draft");
+      sendStop(source);
+
+      expect(finalizeSpy).toHaveBeenCalledTimes(1);
+      expect(finalizeSpy.mock.calls[0][3]).toBeNull();
+    });
+
+    it("uses the latest generation's saved report id", async () => {
+      addHealthContainer();
+      const link = addGenerateLink();
+      await load();
+      const finalizeSpy = vi.spyOn(window, "finalizeStreamingContent").mockImplementation(() => {});
+
+      const first = clickGenerate(link);
+      first.emit("health_report_saved", { data: JSON.stringify({ report_id: 11 }) });
+
+      const second = clickGenerate(link);
+      second.emit("health_report_saved", { data: JSON.stringify({ report_id: 22 }) });
+      sendStop(second);
+
+      expect(finalizeSpy).toHaveBeenCalledTimes(1);
+      expect(finalizeSpy.mock.calls[0][3]).toBe(22);
+    });
+
+    [
+      ["has no report_id", {}],
+      ["has a non-integer report_id", { report_id: "42" }],
+      ["has a non-positive report_id", { report_id: 0 }],
+    ].forEach(([name, payload]) => {
+      it(`logs the failure when the health_report_saved payload ${name} and shows the swap error instead of a chartless body`, async () => {
+        addMeta("error-message", "Something failed");
+        const { resultDiv } = addHealthContainer();
+        const link = addGenerateLink();
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+        const finalizeSpy = vi.spyOn(window, "finalizeStreamingContent").mockImplementation(() => {});
+        await load();
+
+        const source = clickGenerate(link);
+
+        expect(() => source.emit("health_report_saved", { data: JSON.stringify(payload) })).not.toThrow();
+        expect(consoleError).toHaveBeenCalledWith(expect.any(String), expect.any(Error));
+
+        sendStop(source);
+
+        expect(resultDiv.querySelector(".ai-helper-error").textContent).toBe("Something failed");
+        expect(finalizeSpy).not.toHaveBeenCalled();
+        consoleError.mockRestore();
+        finalizeSpy.mockRestore();
+      });
+    });
+
+    it("shows the error message and logs when swapping in the saved report fails", async () => {
+      addMeta("error-message", "Something failed");
+      const { resultDiv } = addHealthContainer();
+      const link = addGenerateLink();
+      await load();
+      const failure = new Error("HTTP 500");
+      vi.spyOn(window, "finalizeStreamingContent").mockImplementation(() => Promise.reject(failure));
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      const source = clickGenerate(link);
+      source.emit("health_report_saved", { data: JSON.stringify({ report_id: 42 }) });
+      sendStop(source);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(resultDiv.querySelector(".ai-helper-error").textContent).toBe("Something failed");
+      expect(consoleError).toHaveBeenCalledWith(expect.any(String), failure);
+      consoleError.mockRestore();
+    });
+
+    it("swaps in the server-rendered content after a full generation in the dashboard detail pane", async () => {
+      addMeta(
+        "ai-helper-health-report-content-url",
+        "/projects/ecookbook/ai_helper/health_reports/__REPORT_ID__/content",
+      );
+      addMeta("export-label", "Exporter");
+      const { contentDiv, resultDiv } = createDashboardDetailPane(container);
+      const link = addGenerateLink();
+      const fetchMock = vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        text: async () =>
+          '<div class="ai-helper-health-report-content" data-pdf-url="/p/42.pdf" data-markdown-url="/p/42.md">' +
+          "<p>server rendered</p></div>",
+      }));
+      vi.stubGlobal("fetch", fetchMock);
+
+      await load();
+      const source = clickGenerate(link);
+      source.emit("health_report_saved", { data: JSON.stringify({ report_id: 42 }) });
+      sendChunk(source, "client draft");
+      sendStop(source);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/projects/ecookbook/ai_helper/health_reports/42/content",
+        expect.anything(),
+      );
+      expect(resultDiv.innerHTML).toContain("server rendered");
+      expect(resultDiv.innerHTML).not.toContain("client draft");
+      const formats = contentDiv.querySelector(".other-formats");
+      expect(formats.querySelector("a.pdf").getAttribute("href")).toBe("/p/42.pdf");
+      expect(formats.querySelector("a.text").getAttribute("href")).toBe("/p/42.md");
+      expect(formats.querySelector("a.pdf").id).toBe("");
+    });
+
+    describe("a swap from an earlier generation", () => {
+      // Each generation's content request stays pending until the test
+      // settles it, so the requests can be resolved in any order.
+      function deferredFetch() {
+        const pending = {};
+        const fetchMock = vi.fn(
+          (url) =>
+            new Promise((resolve, reject) => {
+              pending[url] = { resolve, reject };
+            }),
+        );
+        vi.stubGlobal("fetch", fetchMock);
+        return pending;
+      }
+
+      function contentResponse(id, body) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () =>
+            `<div class="ai-helper-health-report-content" data-pdf-url="/p/${id}.pdf" data-markdown-url="/p/${id}.md">` +
+            `<p>${body}</p></div>`,
+        };
+      }
+
+      function finishWithSavedReport(source, id, text) {
+        source.emit("health_report_saved", { data: JSON.stringify({ report_id: id }) });
+        sendChunk(source, text);
+        sendStop(source);
+      }
+
+      const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+      const urlOf = (id) => `/projects/ecookbook/ai_helper/health_reports/${id}/content`;
+
+      beforeEach(() => {
+        addMeta("ai-helper-health-report-content-url", urlOf("__REPORT_ID__"));
+        addMeta("export-label", "Exporter");
+        addMeta("error-message", "Something failed");
+      });
+
+      it("does not overwrite a newer generation's swapped report when resolved in reverse order", async () => {
+        const { contentDiv, resultDiv } = createDashboardDetailPane(container);
+        const link = addGenerateLink();
+        const pending = deferredFetch();
+        await load();
+
+        finishWithSavedReport(clickGenerate(link), 11, "draft A");
+        finishWithSavedReport(clickGenerate(link), 22, "draft B");
+
+        pending[urlOf(22)].resolve(contentResponse(22, "report B"));
+        await flush();
+        pending[urlOf(11)].resolve(contentResponse(11, "report A"));
+        await flush();
+
+        expect(resultDiv.innerHTML).toContain("report B");
+        expect(resultDiv.innerHTML).not.toContain("report A");
+        const pdfLinks = Array.from(contentDiv.querySelectorAll(".other-formats a.pdf"));
+        expect(pdfLinks.map((a) => a.getAttribute("href"))).toEqual(["/p/22.pdf"]);
+      });
+
+      it("does not replace a newer generation still streaming", async () => {
+        const { resultDiv } = createDashboardDetailPane(container);
+        const link = addGenerateLink();
+        const pending = deferredFetch();
+        await load();
+
+        finishWithSavedReport(clickGenerate(link), 11, "draft A");
+        clickGenerate(link);
+
+        pending[urlOf(11)].resolve(contentResponse(11, "report A"));
+        await flush();
+
+        expect(resultDiv.querySelector(".ai-helper-loader")).not.toBeNull();
+        expect(resultDiv.innerHTML).not.toContain("report A");
+      });
+
+      it("does not show its failure over a newer generation's report", async () => {
+        const { resultDiv } = createDashboardDetailPane(container);
+        const link = addGenerateLink();
+        const pending = deferredFetch();
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+        await load();
+
+        finishWithSavedReport(clickGenerate(link), 11, "draft A");
+        finishWithSavedReport(clickGenerate(link), 22, "draft B");
+
+        pending[urlOf(22)].resolve(contentResponse(22, "report B"));
+        await flush();
+        pending[urlOf(11)].reject(new Error("HTTP 500"));
+        await flush();
+
+        expect(resultDiv.innerHTML).toContain("report B");
+        expect(resultDiv.querySelector(".ai-helper-error")).toBeNull();
+        consoleError.mockRestore();
+      });
     });
   });
 });

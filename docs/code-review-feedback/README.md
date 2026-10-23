@@ -118,3 +118,45 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-032](./032-adr-cause-diverged-from-research.md) | ADR and CSS comments described a cause and alternatives that research did not record | doc-comment | Local AI review | AGENTS.md |
 | [CRF-033](./033-css-scanner-test-silent-misparse.md) | CSS source-scan test misparsed unsupported constructs silently and had bypassable negative checks | test-gap | Local AI review | AGENTS.md |
 | [CRF-034](./034-layout-css-test-duplication.md) | Layout CSS test re-parsed the stylesheet per lookup and duplicated selector constants | readability | Local AI review | Not yet |
+| [CRF-035](./035-environment-dependent-and-vacuous-table-tests.md) | Table class tests pinned Redmine-version markup, matched the wrong element and had narrow negative checks | test-gap | Local AI review | Not yet |
+| [CRF-036](./036-parser-guard-skipped-unrelated-init.md) | Early return for a missing Markdown parser silently skipped initialization that no longer needed it | error-handling | Local AI review | Not yet |
+| [CRF-037](./037-adr-misattributed-quote-and-stale-comments.md) | ADR quoted a decision from the wrong source; comments and promotion fields were inaccurate | doc-comment | Local AI review | Not yet |
+| [CRF-038](./038-streaming-parser-dropped-explicit-left-alignment.md) | Streaming Markdown parser dropped explicit left alignment, breaking RTL parity with the server renderer | edge-case | GitHub Copilot (PR #525) | Not yet |
+| [CRF-039](./039-adr-called-streaming-display-server-rendered.md) | ADR listed the browser-rendered streaming display among server-rendered tables | doc-comment | GitHub Copilot (PR #525) | Not yet |
+| [CRF-040](./040-generation-cleanup-left-edit-view-hidden.md) | Generation cleanup un-hid the result area but not the view that startEdit had hidden | edge-case | Local AI review | Not yet |
+| [CRF-041](./041-finalize-mutated-dom-before-guard.md) | Finalize mutated the DOM before the guard that could reject it | error-handling | Local AI review | Not yet |
+| [CRF-042](./042-test-dom-derived-from-code-not-erb.md) | Test DOM and assertions were derived from the code instead of the real markup | test-gap | Local AI review | Not yet |
+| [CRF-043](./043-comments-described-narrower-scopes.md) | Comments described narrower scopes than the code they annotate | doc-comment | Local AI review | Not yet |
+| [CRF-044](./044-promoted-feedback-rules-narrowed.md) | Promoted feedback rules were narrowed, half-dropped and mis-cited | doc-comment | Local AI review | Not yet |
+| [CRF-045](./045-finalize-accepted-detached-pane.md) | Finalize accepted a result area detached together with its whole pane | edge-case | GitHub Copilot (PR #526) | Not yet |
+| [CRF-046](./046-sse-try-wrapped-data-read.md) | SSE try block wrapped reading the event data, not only the parse | error-handling | GitHub Copilot (PR #526) | Not yet |
+| [CRF-047](./047-client-swap-failures-unhandled.md) | Saved-report swap and chart loading failed silently in the browser | error-handling | Local AI review | Not yet |
+| [CRF-048](./048-redmine-version-matrix-chart-loading.md) | Chart.js loading ignored Redmine 6.0 (no importmap) and the overview page | edge-case | Local AI review | Not yet |
+| [CRF-049](./049-dom-and-index-boundaries.md) | Observer-added export links, observer root node and index 0 boundaries were missed | edge-case | Local AI review | Not yet |
+| [CRF-050](./050-value-object-and-union-checks-incomplete.md) | New chart value objects and Chart\|Unavailable results skipped the CRF-003/CRF-009 checks | convention-violation | Local AI review | AGENTS.md |
+| [CRF-051](./051-chart-tests-vacuous-or-one-sided.md) | Chart tests passed without the guard, diverged between Ruby and JS, and skipped call sites | test-gap | Local AI review | AGENTS.md |
+| [CRF-052](./052-chart-comments-described-other-behaviour.md) | Chart comments and docs described behaviour the code does not have | doc-comment | Local AI review | Not yet |
+| [CRF-053](./053-html-block-directives-caused-500.md) | Directives inside CommonMark HTML blocks made every report render fail with HTTP 500 | edge-case | Local AI review | Not yet |
+| [CRF-054](./054-stream-and-chart-failures-swallowed.md) | Stream completion, swap and chart failures were swallowed or invisible in the browser and the controller | error-handling | Local AI review | Not yet |
+| [CRF-055](./055-union-and-value-object-checks-missed-again.md) | Union returns and late-added value objects skipped the case/else and invariant checks again | convention-violation | Local AI review | Not yet |
+| [CRF-056](./056-chart-heads-only-in-one-erb-branch.md) | Chart heads were loaded only in the saved-report branch of the overview partial | edge-case | Local AI review | Not yet |
+| [CRF-057](./057-guard-and-sse-contract-test-gaps.md) | Resolver guards were unreachable from tests and the SSE contract was tested only through stubs | test-gap | Local AI review | Not yet |
+| [CRF-058](./058-doughnut-era-and-pre-swap-docs-survived.md) | Doughnut-era and pre-swap docs survived in specs, wiki and comments | doc-comment | Local AI review | Not yet |
+| [CRF-059](./059-report-visibility-narrower-than-generation.md) | Report visibility was narrower than the permission that generates and lists reports | permission | GitHub Copilot (PR #528) | Not yet |
+| [CRF-060](./060-js-scanner-missed-ruby-html-block-fix.md) | The JS directive scanner missed the HTML-block fix made to the Ruby scanner | convention-violation | GitHub Copilot (PR #528) | AGENTS.md |
+| [CRF-061](./061-async-browser-work-outlived-its-target.md) | Late async work in the browser acted on targets that had been replaced or reused | edge-case | GitHub Copilot (PR #528) | AGENTS.md |
+| [CRF-062](./062-chart-values-only-in-pixels.md) | Chart labels and counts were available only as pixels | other | GitHub Copilot (PR #528) | Not yet |
+| [CRF-063](./063-pdf-table-tests-could-not-fail.md) | PDF table tests could not fail against the bug they claimed to catch | test-gap | Local AI review | Not yet |
+| [CRF-064](./064-pdf-images-silently-dropped.md) | Images silently dropped from the PDF and a marker raise without diagnostic | error-handling | Local AI review | Not yet |
+| [CRF-065](./065-screen-bypassed-shared-conversion.md) | Screen renderer kept a fast path that bypassed the shared conversion | convention-violation | Local AI review | Not yet |
+| [CRF-066](./066-rbpdf-docs-stale-and-unsourced.md) | Chart helper comment and rbpdf claims described the earlier design or nothing checkable | doc-comment | Local AI review | Not yet |
+| [CRF-067](./067-utf8-trim-not-tied-to-truncation.md) | UTF-8 trailing-byte repair was not tied to Redmine's cut and broke on short input | edge-case | Local AI review | Not yet |
+| [CRF-068](./068-preview-return-not-type-checked.md) | Redmine's Markdown preview return value was not consumed as a union | convention-violation | Local AI review | Not yet |
+| [CRF-069](./069-caller-rescues-swallowed-new-error.md) | Existing broad rescues in callers swallowed the new error from the shared attachment path | error-handling | Local AI review | AGENTS.md |
+| [CRF-070](./070-office-notice-tests-one-sided.md) | Office notice and metadata tests covered only the positive side or one layer | test-gap | Local AI review | Not yet |
+| [CRF-071](./071-office-docs-diverged-from-research.md) | Office attachment docs and YARD diverged from research and the logger's behaviour | doc-comment | Local AI review | Not yet |
+| [CRF-072](./072-prompt-template-yaml-boundary-unvalidated.md) | PromptTemplate validated input_variables but not the rest of its YAML boundary | convention-violation | Local AI review | Not yet |
+| [CRF-073](./073-llm-rescues-turned-new-error-into-cached-results.md) | Llm#wiki_summary and #project_health_report turned the new ArgumentError into saved or served results | error-handling | Local AI review | Not yet |
+| [CRF-074](./074-documentation-agent-backstory-not-formatted.md) | DocumentationAgent#backstory returned the PromptTemplate object instead of its text | edge-case | Local AI review | Not yet |
+| [CRF-075](./075-prompt-template-tests-vacuous-and-overstated.md) | Log assertions matched fixed text, a helper absorbed bad input and callers coverage was overstated | test-gap | Local AI review | Not yet |
+| [CRF-076](./076-adr-reason-contradicted-research-and-wiki-uncited.md) | ADR rejected-alternative reason contradicted research R-007, and the wiki claim had no source ID | doc-comment | Local AI review | Not yet |

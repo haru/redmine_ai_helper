@@ -118,7 +118,10 @@ if (!window.aiHelperProjectHealthInitialized) {
       loader.style.display = 'none';
     }
 
-    const formattedContent = parser.parse(content);
+    // Chart directives are never shown while the report is streaming (and
+    // a directive line still being received stays hidden too).
+    const strippedContent = AiHelperChartDirective.stripForStreaming(content);
+    const formattedContent = parser.parse(strippedContent);
     const newHTML = '<div class="ai-helper-streaming-content">' +
       formattedContent +
       '<span class="ai-helper-cursor">|</span></div>';
@@ -164,15 +167,45 @@ if (!window.aiHelperProjectHealthInitialized) {
    * @param {HTMLElement} resultDiv - The report result container.
    * @param {AiHelperMarkdownParser} parser - Parser used to render the final markdown.
    * @param {string} content - The full generated report content.
+   * @param {number} [savedReportId] - The saved report's id from the
+   *   health_report_saved SSE event. When present, the server-rendered
+   *   report body (which carries the charts) is fetched and swapped in,
+   *   and the export links are rebuilt for the saved report.
+   * @returns {Promise<void>|undefined} The swap promise when a saved report
+   *   id was given and the result area is still attached; undefined otherwise.
+   * @throws {Error} Before touching the DOM, when a saved report id is given
+   *   but is not a positive integer or the content-url meta tag is missing.
    */
-  function finalizeStreamingContent(resultDiv, parser, content) {
-    const formattedContent = parser.parse(content);
+  function finalizeStreamingContent(resultDiv, parser, content, savedReportId) {
+    // Validate the result area's structure before touching the DOM, so a
+    // failed guard leaves the page as it was instead of a finished-looking
+    // pane whose history, export links and timestamp were never updated.
+    hiddenFieldContainerOf(resultDiv);
+    const hasSavedReport = savedReportId !== null && savedReportId !== undefined;
+    const contentUrl = hasSavedReport ? savedReportContentUrl(savedReportId) : null;
+
+    // Selecting another report while streaming replaces the whole detail
+    // pane (AiHelperMasterDetail#renderReportDetail), detaching the result
+    // area together with its content container, so the guard above still
+    // passes. Rendering into the detached pane is pointless, and the
+    // hidden-field lookup by id would overwrite the newly shown pane's
+    // field. The report itself was saved on the server, so only the
+    // history list is refreshed.
+    if (!resultDiv.isConnected) {
+      refreshHealthReportHistory();
+      return;
+    }
+
+    // The client-rendered completion never shows chart directives either;
+    // the charts arrive with the server-rendered swap below.
+    const strippedContent = AiHelperChartDirective.stripForStreaming(content);
+    const formattedContent = parser.parse(strippedContent);
     const finalHTML = '<div class="ai-helper-final-content">' +
       formattedContent + '</div>';
     resultDiv.innerHTML = finalHTML;
 
     // Store the markdown content in hidden field for PDF generation
-    updateHiddenReportContent(content);
+    updateHiddenReportContent(resultDiv, content);
 
     // Update health report history in master-detail layout
     refreshHealthReportHistory();
@@ -180,11 +213,20 @@ if (!window.aiHelperProjectHealthInitialized) {
     // Final scroll to bottom
     scrollHealthContentToBottom();
 
+    if (hasSavedReport) {
+      // The server-rendered body and the saved report's export links arrive
+      // asynchronously. Adding the meta-tag based export links here too
+      // would duplicate them. refreshHealthReportHistory() above already
+      // refreshes the created-on metadata.
+      return swapInSavedReportContent(resultDiv, contentUrl);
+    }
+
     // Add PDF export button after generation completes
     addPdfExportButton();
 
     // Refresh metadata (created timestamp) to reflect the regenerated report
     refreshProjectHealthMetadata();
+    return undefined;
   }
 
   /**
@@ -251,18 +293,47 @@ if (!window.aiHelperProjectHealthInitialized) {
   }
 
   /**
-   * Store the report's markdown content in a hidden field for later export,
-   * creating the field if it doesn't exist yet.
-   * @param {string} content - The report's raw markdown content.
+   * Find the `.ai-helper-project-health-content` ancestor that holds the
+   * hidden report-content field, validating the result area itself first.
+   * @param {HTMLElement} resultDiv - The report result container.
+   * @returns {HTMLElement} The `.ai-helper-project-health-content` ancestor.
+   * @throws {Error} If `resultDiv` is not an HTMLElement, or if it has no
+   *   `.ai-helper-project-health-content` ancestor.
    */
-  function updateHiddenReportContent(content) {
+  function hiddenFieldContainerOf(resultDiv) {
+    if (!(resultDiv instanceof HTMLElement)) {
+      throw new Error('the report result area must be an HTMLElement');
+    }
+    const contentContainer = resultDiv.closest('.ai-helper-project-health-content');
+    if (!contentContainer) {
+      throw new Error(
+        'the report result area must have a .ai-helper-project-health-content ancestor',
+      );
+    }
+    return contentContainer;
+  }
+
+  /**
+   * Store the report's markdown content in a hidden field for later export,
+   * creating the field inside the result area's `.ai-helper-project-health-content`
+   * ancestor if it doesn't exist yet. That ancestor exists in every layout
+   * that can generate a report (project overview, dashboard placeholder,
+   * dashboard detail pane), unlike `.ai-helper-project-health`, which the
+   * whole dashboard tab lacks.
+   * @param {HTMLElement} resultDiv - The report result container.
+   * @param {string} content - The report's raw markdown content.
+   * @throws {Error} If `resultDiv` is not an HTMLElement or has no
+   *   `.ai-helper-project-health-content` ancestor.
+   */
+  function updateHiddenReportContent(resultDiv, content) {
+    const contentContainer = hiddenFieldContainerOf(resultDiv);
     let hiddenField = document.getElementById('ai-helper-health-report-content');
     if (!hiddenField) {
       // Create hidden field if it doesn't exist
       hiddenField = document.createElement('input');
       hiddenField.type = 'hidden';
       hiddenField.id = 'ai-helper-health-report-content';
-      document.querySelector('.ai-helper-project-health').appendChild(hiddenField);
+      contentContainer.appendChild(hiddenField);
     }
     // Safely set the value to prevent XSS
     hiddenField.value = content;
@@ -334,11 +405,10 @@ if (!window.aiHelperProjectHealthInitialized) {
 
 /**
  * If a health report is already rendered in the DOM (e.g. after a page
- * reload), ensure its "has-report" styling, Markdown formatting, and PDF
- * export button are all in place.
- * @param {AiHelperMarkdownParser} parser - The Markdown parser instance.
+ * reload), ensure its "has-report" styling and PDF export button are in
+ * place. The rendered body stays exactly as the server produced it.
  */
-function initializeExistingReportDisplay(parser) {
+function initializeExistingReportDisplay() {
   const resultDiv = document.getElementById('ai-helper-project-health-result');
   const contentDiv = document.querySelector('.ai-helper-project-health-content');
 
@@ -346,15 +416,6 @@ function initializeExistingReportDisplay(parser) {
     // Ensure the has-report class is applied for existing content
     if (contentDiv && !contentDiv.classList.contains('has-report')) {
       contentDiv.classList.add('has-report');
-    }
-
-    // textilizable() honors Redmine's text_formatting setting, which may be
-    // Textile and therefore breaks Markdown headings/tables. Re-parse the
-    // raw Markdown stored in the hidden field to render consistently.
-    const hiddenField = document.getElementById('ai-helper-health-report-content');
-    if (hiddenField && hiddenField.value) {
-      const formattedContent = parser.parse(hiddenField.value);
-      resultDiv.innerHTML = '<div class="ai-helper-final-content">' + formattedContent + '</div>';
     }
 
     addPdfExportButton();
@@ -396,14 +457,15 @@ function setupHealthReportObserver() {
   }
 }
 
-// Make functions used by ai_helper_project_health_actions.js (split out to
-// keep this file under the max-lines ESLint limit; see ADR-027) globally
-// available.
+// Make functions used by ai_helper_project_health_actions.js and
+// ai_helper_project_health_swap.js (split out to keep this file under the
+// max-lines ESLint limit; see ADR-027) globally available.
 window.appendStreamingChunk = appendStreamingChunk;
 window.finalizeStreamingContent = finalizeStreamingContent;
 window.removePdfExportButton = removePdfExportButton;
 window.handlePdfExport = handlePdfExport;
 window.handleMarkdownExport = handleMarkdownExport;
+window.hiddenFieldContainerOf = hiddenFieldContainerOf;
 
 // handleGenerateProjectHealthClick and handleProjectHealthExportClick are
 // defined in ai_helper_project_health_actions.js.
@@ -413,90 +475,28 @@ document.addEventListener('DOMContentLoaded', function() {
   // Set flag to indicate main script is loaded
   window.aiHelperProjectHealthLoaded = true;
 
-  // Wait for AiHelperMarkdownParser to be available
-  let parser;
-  try {
-    if (typeof AiHelperMarkdownParser !== 'undefined') {
-      parser = new AiHelperMarkdownParser();
-    } else {
-      return;
-    }
-  } catch {
-    return;
-  }
-
-  initializeExistingReportDisplay(parser);
+  initializeExistingReportDisplay();
   setupHealthReportObserver();
+
+  // Add event listeners to export links
+  document.addEventListener('click', handleProjectHealthExportClick);
+
+  // Only the streaming generation needs the Markdown parser. A missing parser
+  // script is a page setup error, so let it surface instead of silently
+  // skipping the initialization above.
+  if (typeof AiHelperMarkdownParser === 'undefined') {
+    throw new Error('AiHelperMarkdownParser is not loaded; the project health report cannot be generated.');
+  }
+  if (typeof AiHelperChartDirective === 'undefined') {
+    throw new Error('AiHelperChartDirective is not loaded; chart directives cannot be stripped from the report.');
+  }
+  const parser = new AiHelperMarkdownParser();
 
   // Use event delegation so the handler survives DOM replacement
   // (e.g. after updateHealthReportHistory replaces the history container)
   document.addEventListener('click', function(e) {
     handleGenerateProjectHealthClick(e, parser);
   });
-
-  // Add event listeners to export links
-  document.addEventListener('click', handleProjectHealthExportClick);
-});
-
-// --- extracted from project/_health_report_detail_pane.html.erb and
-// project/_health_report_show.html.erb (near-duplicate Markdown re-parse +
-// export wiring, unified here) ---
-document.addEventListener('DOMContentLoaded', function() {
-  const hiddenField = document.getElementById('ai-helper-health-report-content');
-  const resultDiv = document.getElementById('ai-helper-project-health-result');
-  if (!hiddenField || !resultDiv) { return; }
-  if (typeof AiHelperMarkdownParser === 'undefined') { return; }
-  const content = hiddenField.value;
-  if (!content) { return; }
-  const parser = new AiHelperMarkdownParser();
-  const formattedContent = parser.parse(content);
-  resultDiv.innerHTML = '<div class="ai-helper-final-content">' + formattedContent + '</div>';
-
-  // detail_pane variant: build and submit a form dynamically.
-  const detailExportLink = document.getElementById('ai-helper-markdown-export-detail');
-  if (detailExportLink) {
-    detailExportLink.addEventListener('click', function(e) {
-      e.preventDefault();
-      const markdownContent = hiddenField.value;
-      if (!markdownContent) { return; }
-
-      const detailPane = document.querySelector('.ai-helper-health-report-detail[data-config]');
-      const config = detailPane ? JSON.parse(detailPane.dataset.config || '{}') : {};
-
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = config.markdownExportUrl;
-
-      const contentField = document.createElement('input');
-      contentField.type = 'hidden';
-      contentField.name = 'health_report_content';
-      contentField.value = markdownContent;
-
-      const csrfToken = document.querySelector('meta[name="csrf-token"]');
-      if (csrfToken) {
-        const tokenField = document.createElement('input');
-        tokenField.type = 'hidden';
-        tokenField.name = 'authenticity_token';
-        tokenField.value = csrfToken.getAttribute('content');
-        form.appendChild(tokenField);
-      }
-
-      form.appendChild(contentField);
-      document.body.appendChild(form);
-      form.submit();
-      document.body.removeChild(form);
-    });
-  }
-
-  // show variant: submit the pre-rendered export form.
-  const showExportLink = document.getElementById('export-markdown-link');
-  const showExportForm = document.getElementById('markdown-export-form');
-  if (showExportLink && showExportForm) {
-    showExportLink.addEventListener('click', function(e) {
-      e.preventDefault();
-      showExportForm.submit();
-    });
-  }
 });
 
 } // End guard against multiple script loading

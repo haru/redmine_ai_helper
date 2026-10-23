@@ -392,43 +392,76 @@ body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-conte
   font-style: normal !important;
 }
 
-/* Tables use Redmine's standard list classes for styling */
+/* Tables use Redmine's standard list classes for styling. The chat history
+   and the issue/wiki summaries also render AI output through md_to_html, so
+   they share the same table rules as the health report containers.
+   #aihelper-chat-conversation holds both the server-rendered history
+   (md_to_html) and the answer being streamed (AiHelperMarkdownParser, which
+   emits table.list as well), so the streaming tables follow these rules too. */
 .ai-helper-streaming-content table.list,
-.ai-helper-final-content table.list {
+.ai-helper-final-content table.list,
+#aihelper-chat-conversation table.list,
+.ai-helper-summary-body table.list {
   margin-bottom: 1em;
   width: 100%;
 }
 
-/* Override Redmine's default table alignment with Markdown-based alignment */
+/* Keep the header cells wrappable in every AI output container */
+.ai-helper-streaming-content table.list th,
+.ai-helper-final-content table.list th,
+#aihelper-chat-conversation table.list th,
+.ai-helper-summary-body table.list th {
+  white-space: collapse;
+}
+
+/* Override Redmine's default table alignment with Markdown-based alignment.
+   Containers without RTL overrides align unspecified columns to the writing
+   direction start; the health report containers keep their explicit left
+   rules and RTL overrides in ai_helper_rtl.css. */
 .ai-helper-streaming-content table.list td,
-.ai-helper-final-content table.list td {
+.ai-helper-streaming-content table.list th,
+.ai-helper-final-content table.list td,
+.ai-helper-final-content table.list th {
   text-align: left !important;
 }
 
-.ai-helper-streaming-content table.list th,
-.ai-helper-final-content table.list th {
-  text-align: left !important;
-  white-space: collapse;
+#aihelper-chat-conversation table.list td,
+#aihelper-chat-conversation table.list th,
+.ai-helper-summary-body table.list td,
+.ai-helper-summary-body table.list th {
+  text-align: start !important;
 }
 
 .ai-helper-streaming-content table.list td[align=left],
 .ai-helper-streaming-content table.list th[align=left],
 .ai-helper-final-content table.list td[align=left],
-.ai-helper-final-content table.list th[align=left] {
+.ai-helper-final-content table.list th[align=left],
+#aihelper-chat-conversation table.list td[align=left],
+#aihelper-chat-conversation table.list th[align=left],
+.ai-helper-summary-body table.list td[align=left],
+.ai-helper-summary-body table.list th[align=left] {
   text-align: left !important;
 }
 
 .ai-helper-streaming-content table.list td[align=right],
 .ai-helper-streaming-content table.list th[align=right],
 .ai-helper-final-content table.list td[align=right],
-.ai-helper-final-content table.list th[align=right] {
+.ai-helper-final-content table.list th[align=right],
+#aihelper-chat-conversation table.list td[align=right],
+#aihelper-chat-conversation table.list th[align=right],
+.ai-helper-summary-body table.list td[align=right],
+.ai-helper-summary-body table.list th[align=right] {
   text-align: right !important;
 }
 
 .ai-helper-streaming-content table.list td[align=center],
 .ai-helper-streaming-content table.list th[align=center],
 .ai-helper-final-content table.list td[align=center],
-.ai-helper-final-content table.list th[align=center] {
+.ai-helper-final-content table.list th[align=center],
+#aihelper-chat-conversation table.list td[align=center],
+#aihelper-chat-conversation table.list th[align=center],
+.ai-helper-summary-body table.list td[align=center],
+.ai-helper-summary-body table.list th[align=center] {
   text-align: center !important;
 }
 

@@ -272,7 +272,8 @@ if (typeof AiHelperMarkdownParser === "undefined") {
               if (sep.startsWith(":") && sep.endsWith(":")) {return "center";}
               if (sep.endsWith(":")) {return "right";}
               if (sep.startsWith(":")) {return "left";}
-              return "left";
+              // No alignment hint: emit no align attribute, matching md_to_html
+              return null;
             });
             // Skip the separator line
             i++;
@@ -304,7 +305,9 @@ if (typeof AiHelperMarkdownParser === "undefined") {
     /**
      * Build a `<table>` element's HTML from parsed rows and column alignments.
      * @param {string[][]} tableData - Cell text, one array per row (row 0 is the header).
-     * @param {string[]} alignments - Per-column alignment (`'left'`, `'center'`, or `'right'`).
+     * @param {Array<string|null>} alignments - Per-column alignment (`'left'`, `'center'`, or `'right'`),
+     *   or `null` for a column without an alignment hint. Explicit `'left'` is emitted as
+     *   `align="left"` so that RTL layouts keep it left-aligned, as the server renderer does.
      * @returns {string} The rendered `<table>` HTML, or `''` if `tableData` is empty.
      */
     convertTableToHtml(tableData, alignments) {
@@ -316,8 +319,8 @@ if (typeof AiHelperMarkdownParser === "undefined") {
       html.push("<thead>");
       html.push("<tr>");
       tableData[0].forEach((cell, index) => {
-        const alignment = alignments[index] || "left";
-        const alignAttr = alignment !== "left" ? ` align="${alignment}"` : "";
+        const alignment = alignments[index];
+        const alignAttr = alignment ? ` align="${alignment}"` : "";
         html.push(`<th${alignAttr}>${cell}</th>`);
       });
       html.push("</tr>");
@@ -329,9 +332,8 @@ if (typeof AiHelperMarkdownParser === "undefined") {
         for (let i = 1; i < tableData.length; i++) {
           html.push("<tr>");
           tableData[i].forEach((cell, index) => {
-            const alignment = alignments[index] || "left";
-            const alignAttr =
-              alignment !== "left" ? ` align="${alignment}"` : "";
+            const alignment = alignments[index];
+            const alignAttr = alignment ? ` align="${alignment}"` : "";
             html.push(`<td${alignAttr}>${cell}</td>`);
           });
           html.push("</tr>");

@@ -58,6 +58,11 @@ a ratchet: it only ever increases, tracked toward 90%. See
 - **Design docs in `specs/` are AUTHORITATIVE and MANDATORY** — never deviate without explicit user approval
 - For existing feature specifications and architectural decisions, consult `wiki/INDEX.md`
 - Before a spec states how existing code or an external API behaves (timing, status/error codes, idempotency), read that code or the official docs in the same step and cite it; write "not documented" when the docs are silent, and never design an ignored-error rule around an undocumented response (SF-008, SF-009)
+- When a bug's cause is in a shared code path, grep every caller of that path in the same step and check each one for the same defect; never write a caller as "must not change" until it is confirmed unaffected — include affected callers or ask the user about scope (SF-003, SF-007, SF-015)
+- When a change adds an exception to a shared code path, read how each caller up to the entry point handles it; a `rescue StandardError` / `rescue => e` around the call counts as affected (CRF-069, SF-029)
+- Before a spec says an element or UI state (table striping, a disabled/selected/error state, etc.) looks "like Redmine's existing X", grep Redmine's stylesheets for that element or state and name the selector in the spec; when none exists, ask the user instead of writing it as a requirement (SF-017, SF-018). When a clarification answer rejects a proposed behaviour, do not add a different behaviour the user did not choose without confirming it (SF-018)
+- When a spec leaves a user-visible presentation choice open (chart form, layout, loading/streaming display, state wording), ask the user with options instead of settling it in plan/research on implementation-cost grounds; YAGNI applies only to choices the user cannot see (SF-019, SF-020)
+- A rule declared as implemented in two languages (a comment "kept identical to", an ADR naming both) is changed and tested in both in the same change, and new cases go into the shared contract table first (CRF-051, CRF-053, CRF-060)
 
 ## Architecture Overview
 
@@ -134,12 +139,14 @@ Agents expose tools by overriding `available_tool_providers` to return an array 
 - Logging: mixin `RedmineAiHelper::Logger`, use `ai_helper_logger` — **never** `Rails.logger`
 - Error handling: **NEVER implement fallback error handling**. Let errors surface immediately. No silent continues.
 - A `rescue` that turns failures into a result value (a "failed" flag, an error response) lists the error classes the external call can raise (API, network, parse) — never `StandardError` — and wraps only that call. Specs and contracts that prescribe such a rescue name the classes too. A value returned across an adapter or plugin boundary is checked with `is_a?` where it is first used, and a violation raises. A log line for a failed operation on a created resource names that resource's id (CRF-014, CRF-022, SF-010)
+- A method that returns a union is consumed with `case`/`when` over every member and an `else` that raises. Data read back from the database or a file is boundary input: validate its element types (CRF-050)
 - Value objects validate their documented invariants in `initialize` and raise `ArgumentError`. A method documented to accept a type union branches on the types explicitly and raises on anything else — do not let `to_s` or `&.` absorb unexpected values (CRF-003, CRF-009)
 
 ### Testing
 - **TDD**: Write tests before implementing features
 - Assert cross-call properties (e.g. a cache prefix) by equality: build two instances with every per-request input changed and `assert_equal` the stable part. For a value that crosses layers (agent → provider → request payload), add at least one test from the top-level entry point to the rendered payload. Every new `raise`/guard branch gets a test that drives it (CRF-006, CRF-010)
 - A test helper that parses source (CSS, templates, config) throws on constructs it does not model, with a test for that throw. Every negative assertion covers the equivalent spellings of what it forbids and asserts that the searched region was found (CRF-024, CRF-033)
+- For every new guard or branch, run its test once with the guard removed and confirm it fails. When the expected outcome can also come from another layer (framework page breaks, `authorize`), arrange the input so only the guard can produce it (CRF-051)
 - Framework: `shoulda` (context/should blocks) + `mocha` (mocking external servers only)
 - Test fixtures: `test/model_factory.rb` (FactoryBot)
 - Test structure: `test/unit/` (models, agents, tools), `test/unit/lib/` (lib classes), `test/functional/` (controllers), `test/integration/` (API)
@@ -156,6 +163,7 @@ Agents expose tools by overriding `available_tool_providers` to return an array 
 - Write comments in English
 - CSS: use Redmine's existing classes (`.box`), no custom colors/fonts
 - Icons: `sprite_icon` helper; i18n: `t()` / `l()`
+- An async continuation that writes into a long-lived element checks ownership with a token captured when the operation starts, on both success and failure, not only `isConnected`. Objects created on DOM addition that have a release API (`destroy`, `disconnect`) are released on removal (CRF-045, CRF-061)
 
 ### Configuration
 - Global settings: `AiHelperSetting` model

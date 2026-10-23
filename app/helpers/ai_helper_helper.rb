@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "redmine_ai_helper/health_report_chart/scanner"
+
 # AiHelperHelper module for AI Helper plugin
 module AiHelperHelper
   include Redmine::WikiFormatting::CommonMark
@@ -13,21 +15,46 @@ module AiHelperHelper
   ISSUE_REFERENCE_EXCLUDED_TAGS = %w[a pre code].freeze
 
   # Converts a given Markdown text to HTML using the Markdown pipeline.
-  # Supports both Redmine 6.1 (MarkdownPipeline) and master (MarkdownFilter) versions.
+  # Supports both Redmine 6.x (MarkdownPipeline) and 7.x and later (MarkdownFilter).
+  # Every <table> of the output gets Redmine's standard "list" class so that the
+  # standard table styling applies; the column alignment is then decided by the
+  # container rules in ai_helper.css.
+  # @param text [String] The Markdown text.
+  # @return [ActiveSupport::SafeBuffer] The sanitized HTML.
+  # @raise [ArgumentError] If MarkdownPipeline#call does not return a
+  #   Nokogiri::XML::DocumentFragment in :output (Redmine 6.x only).
   def md_to_html(text)
     text = text.encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
 
-    if defined?(MarkdownPipeline)
-      MarkdownPipeline.call(text)[:output].to_s.html_safe # rubocop:disable Rails/OutputSafety
-    else
-      html = MarkdownFilter.new(text, PIPELINE_CONFIG).call
-      fragment = Redmine::WikiFormatting::HtmlParser.parse(html)
-      SANITIZER.call(fragment)
-      SCRUBBERS.each do |scrubber|
-        fragment.scrub!(scrubber)
+    fragment = defined?(MarkdownPipeline) ? pipeline_fragment(text) : filter_fragment(text)
+    set_list_class_on_tables(fragment)
+    fragment.to_s.html_safe # rubocop:disable Rails/OutputSafety
+  end
+
+  # Build the HTML of a health report body in which every chart directive is
+  # replaced by a marker paragraph. The whole body goes through the Markdown
+  # pipeline once, so the screen and the PDF share one set of conversion rules.
+  # @param parts [Array<String, RedmineAiHelper::HealthReportChart::Directive>]
+  #   The result of HealthReportChart::Scanner.split.
+  # @return [Array(String, Array<Array(String, RedmineAiHelper::HealthReportChart::Directive)>)]
+  #   The HTML and the [marker, directive] pairs in body order.
+  # @raise [ArgumentError] when a part is neither a String nor a Directive.
+  def health_report_html_with_chart_markers(parts)
+    markers = []
+    marked = parts.map do |part|
+      case part
+      when RedmineAiHelper::HealthReportChart::Directive
+        marker = chart_marker
+        markers << [ marker, part ]
+        "\n\n#{marker}\n\n"
+      when String
+        part
+      else
+        raise ArgumentError, "expected a String or a Directive, got #{part.class}"
       end
-      fragment.to_s.html_safe # rubocop:disable Rails/OutputSafety
-    end
+    end.join
+
+    [ linkify_issue_references(md_to_html(marked)).to_s, markers ]
   end
 
   # Convert bare "#1234" patterns in an HTML string into anchor tags pointing to
@@ -73,6 +100,57 @@ module AiHelperHelper
   end
 
   private
+
+  # An unpredictable paragraph marker made of lowercase letters and digits
+  # only, so it survives the Markdown pipeline untouched (no # or markup).
+  # @return [String]
+  def chart_marker
+    "aihelperchart#{SecureRandom.hex(12)}"
+  end
+
+  # Renders the text with Redmine 6.x's MarkdownPipeline (already sanitized).
+  # @api private
+  # @param text [String] The Markdown text.
+  # @return [Nokogiri::XML::DocumentFragment] The sanitized fragment.
+  # @raise [ArgumentError] If the pipeline output is not a document fragment.
+  def pipeline_fragment(text)
+    output = MarkdownPipeline.call(text)[:output]
+    unless output.is_a?(Nokogiri::XML::DocumentFragment)
+      raise ArgumentError, "MarkdownPipeline#call must return a Nokogiri::XML::DocumentFragment in :output, but got #{output.class}"
+    end
+
+    output
+  end
+
+  # Renders the text with Redmine 7.x's MarkdownFilter and sanitizes the result.
+  # @api private
+  # @param text [String] The Markdown text.
+  # @return [Nokogiri::XML::DocumentFragment] The sanitized fragment.
+  def filter_fragment(text)
+    html = MarkdownFilter.new(text, PIPELINE_CONFIG).call
+    fragment = Redmine::WikiFormatting::HtmlParser.parse(html)
+    SANITIZER.call(fragment)
+    SCRUBBERS.each do |scrubber|
+      fragment.scrub!(scrubber)
+    end
+    fragment
+  end
+
+  # Sets Redmine's standard "list" class on every <table> of the Nokogiri
+  # fragment, overwriting any existing class. It runs after sanitization
+  # because the sanitizer does not allow a class on <table> and would strip
+  # "list"; overwriting also means a class written in the source body never
+  # reaches the output. The fragment is changed in place instead of being
+  # serialized and re-parsed, because a re-parse alters the markup outside the
+  # tables (task-list items, div.pre-wrapper, disabled="").
+  # @api private
+  # @param fragment [Nokogiri::XML::DocumentFragment] The sanitized fragment.
+  # @return [void]
+  def set_list_class_on_tables(fragment)
+    fragment.css("table").each do |table|
+      table["class"] = "list"
+    end
+  end
 
   def excluded_ancestor?(node)
     node.ancestors.any? { |a| ISSUE_REFERENCE_EXCLUDED_TAGS.include?(a.name) }

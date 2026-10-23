@@ -58,6 +58,22 @@ class ApiHealthReportTest < Redmine::IntegrationTest
     assert json.key?("created_at")
   end
 
+  test "POST /projects/:id/ai_helper/health_report.json returns an error instead of a stale report when generation fails" do
+    llm_mock = mock("RedmineAiHelper::Llm")
+    llm_mock.stubs(:project_health_report).raises(ArgumentError.new("Missing prompt variables: project_name"))
+    RedmineAiHelper::Llm.stubs(:new).returns(llm_mock)
+    AiHelperHealthReport.create!(project: @project, user: @user, health_report: "# Old report", metrics: {}.to_json)
+
+    post "/projects/#{@project.identifier}/ai_helper/health_report.json",
+         headers: { "X-Redmine-API-Key" => @user.api_key }
+
+    assert_response :internal_server_error
+    json = response.parsed_body
+
+    assert_equal "Failed to generate health report", json["error"]
+    assert_equal "Missing prompt variables: project_name", json["message"]
+  end
+
   test "POST /projects/:id/ai_helper/health_report.json without API key should return 401" do
     post "/projects/#{@project.identifier}/ai_helper/health_report.json"
 

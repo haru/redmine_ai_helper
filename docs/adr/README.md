@@ -109,3 +109,10 @@ Briefly describe alternatives that were rejected and why.
 | [054](./054-chat-channel-progress-message.md) | Progress message for chat channel questions | Proposed |
 | [055](./055-slack-markdown-block-replies.md) | Slack replies as markdown blocks | Accepted |
 | [056](./056-dashboard-health-report-frame-capped-by-viewport.md) | Cap the dashboard health report frame, not the pane, by viewport height | Accepted |
+| [057](./057-ai-output-tables-styled-on-the-server.md) | Style AI output tables on the server, not by re-parsing in the browser | Accepted |
+| [058](./058-health-report-charts-placeholder-rendering.md) | Draw health report charts from stored metrics via placeholder directives | Accepted |
+| [059](./059-health-report-chart-form-by-information.md) | Choose each health report chart's form by what helps the reader | Accepted |
+| [060](./060-health-report-visibility-follows-view-permission.md) | Health report visibility follows the view_ai_helper permission | Accepted |
+| [061](./061-health-report-pdf-body-drawn-by-redmine-pdf-renderer.md) | Draw the health report PDF body with Redmine's PDF renderer from the screen HTML | Accepted |
+| [062](./062-office-attachments-sent-as-redmine-markdown-preview.md) | Send Office attachments to the LLM as Redmine's Markdown preview | Accepted |
+| [063](./063-prompt-template-strict-input-variables.md) | PromptTemplate#format requires the declared variables exactly | Accepted |

@@ -287,13 +287,22 @@ describe("AiHelperMarkdownParser tables", () => {
   });
 
   it("renders a table with body rows and column alignment", () => {
-    const html = parser.parse("|Left|Center|Right|\n|:---|:---:|---:|\n|a|b|c|");
+    const html = parser.parse("|Left|Center|Right|None|\n|:---|:---:|---:|---|\n|a|b|c|d|");
+    expect(html).toContain('<th align="left">Left</th>');
     expect(html).toContain('<th align="center">Center</th>');
     expect(html).toContain('<th align="right">Right</th>');
-    expect(html).toContain("<th>Left</th>");
+    expect(html).toContain("<th>None</th>");
+    expect(html).toContain('<td align="left">a</td>');
     expect(html).toContain('<td align="center">b</td>');
     expect(html).toContain('<td align="right">c</td>');
-    expect(html).toContain("<td>a</td>");
+    expect(html).toContain("<td>d</td>");
+  });
+
+  it("emits no align attribute for columns beyond the separator row", () => {
+    const html = parser.parse("|A|B|\n|:---|\n|a|b|");
+    expect(html).toContain('<th align="left">A</th>');
+    expect(html).toContain("<th>B</th>");
+    expect(html).toContain("<td>b</td>");
   });
 
   it("renders a table that runs to the end of the document", () => {

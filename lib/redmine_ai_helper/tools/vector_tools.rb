@@ -265,7 +265,8 @@ module RedmineAiHelper
 
       # Build a hybrid query for vector similarity search.
       # Uses IssueContentAnalyzer to generate a structured query with summary, keywords, and title.
-      # Falls back to raw query (subject + description) if analysis fails.
+      # LLM API and network errors are handled inside IssueContentAnalyzer#analyze (empty summary
+      # and keywords), so any error it raises is propagated.
       # @param issue [Issue] The issue to build a query for.
       # @return [String] The formatted query string.
       def build_hybrid_query(issue)
@@ -277,9 +278,6 @@ module RedmineAiHelper
           Keywords: #{analysis[:keywords].join(", ")}
           Title: #{issue.subject}
         QUERY
-      rescue => e
-        ai_helper_logger.warn("Failed to build hybrid query: #{e.message}, falling back to raw query")
-        "#{issue.subject} #{issue.description}"
       end
 
       # Create a filter for the Qdrant database query.

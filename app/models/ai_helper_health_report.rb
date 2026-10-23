@@ -36,11 +36,14 @@ class AiHelperHealthReport < ApplicationRecord
 
   # Check if the report is visible to the user
   # @param user [User] The user to check visibility for
-  # @return [Boolean] true if user is admin or a member of the project
+  # @return [Boolean] true if user is admin or holds view_ai_helper on the
+  #   project (members and, on public projects, non-members whose
+  #   non-member role grants it), the same permission that lets them
+  #   generate a report
   def visible?(user = User.current)
     return false unless project.present? && user.present?
-    # Admin can view all reports, or user must be a member of the project
-    user.admin? || user.member_of?(project)
+    # Admins see every report, including ones in closed projects
+    user.admin? || RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: project, user: user)
   end
 
   # Check if the report can be deleted by the user

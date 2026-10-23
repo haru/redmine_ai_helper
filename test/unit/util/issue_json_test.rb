@@ -88,6 +88,16 @@ class RedmineAiHelper::Util::IssueJsonTest < ActiveSupport::TestCase
       assert_equal "audio", attachment_data[:type]
     end
 
+    should "include type 'document' for Office documents that Redmine can convert" do
+      Attachment.any_instance.stubs(:filename).returns("report.docx")
+      Attachment.any_instance.stubs(:markdownized_previewable?).returns(true)
+
+      issue_data = @test_class.generate_issue_data(@issue)
+      attachment_data = issue_data[:attachments].first
+
+      assert_equal "document", attachment_data[:type]
+    end
+
     should "include type nil for unsupported attachments" do
       Attachment.any_instance.stubs(:filename).returns("archive.zip")
 

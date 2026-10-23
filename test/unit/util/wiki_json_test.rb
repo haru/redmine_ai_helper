@@ -63,6 +63,16 @@ class RedmineAiHelper::Util::WikiJsonTest < ActiveSupport::TestCase
       assert_equal "audio", attachment_data[:type]
     end
 
+    should "include type 'document' for Office documents that Redmine can convert" do
+      Attachment.any_instance.stubs(:filename).returns("report.docx")
+      Attachment.any_instance.stubs(:markdownized_previewable?).returns(true)
+
+      wiki_data = @test_class.generate_wiki_data(@page)
+      attachment_data = wiki_data[:attachments].first
+
+      assert_equal "document", attachment_data[:type]
+    end
+
     should "include type nil for unsupported attachments" do
       Attachment.any_instance.stubs(:filename).returns("archive.zip")
 
