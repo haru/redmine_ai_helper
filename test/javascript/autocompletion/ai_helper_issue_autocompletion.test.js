@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadScript } from "../support/load_script.js";
 import { loadScriptAndFireDOMContentLoaded } from "../support/dom_content_loaded.js";
+import { createJstEditor } from "../support/jst_editor.js";
 
 // --- T020: Characterization tests for shared/_textarea_overlay.html.erb extraction ---
 
@@ -8,6 +9,9 @@ describe("initializeIssueCompletion (from shared/_textarea_overlay.html.erb)", (
   let container;
   let autoCompletionMock;
   let cleanup;
+  // Forms built by createJstIssueDOM; removed in afterEach so a failing
+  // assertion cannot leave its editors behind for the next test.
+  let jstForms = [];
 
   function createIssueDOM() {
     const form = document.createElement("div");
@@ -30,6 +34,84 @@ describe("initializeIssueCompletion (from shared/_textarea_overlay.html.erb)", (
 
     document.body.appendChild(form);
     return { form, descTextarea, notesTextarea, descContainer, notesContainer };
+  }
+
+  /**
+   * Builds the DOM the way Redmine and the plugin ERB really render it:
+   * app/views/issues/_form.html.erb puts the description textarea in
+   * `span#issue_description_and_toolbar`, app/views/issues/_edit.html.erb puts
+   * the notes textarea in `fieldset#add_notes`, and Redmine's jsToolBar wraps
+   * each textarea in `div.jstBlock` (see support/jst_editor.js). The AI Helper
+   * containers come from the `view_issues_form_details_bottom` hook, so they
+   * start outside the editors and the script moves them. As in
+   * shared/_textarea_overlay.html.erb, the duplicate-check container exists
+   * only for a new issue and the notes container only for a persisted one.
+   * @param {object} options
+   * @param {boolean} options.persisted true for the edit form of an existing issue
+   * @returns {object} the created elements
+   */
+  function createJstIssueDOM({ persisted = false } = {}) {
+    const form = document.createElement("div");
+
+    const descWrapper = document.createElement("span");
+    descWrapper.id = "issue_description_and_toolbar";
+    const desc = createJstEditor("issue_description");
+    descWrapper.appendChild(desc.block);
+    const descParagraph = document.createElement("p");
+    descParagraph.appendChild(descWrapper);
+    form.appendChild(descParagraph);
+
+    let notes = null;
+    if (persisted) {
+      const fieldset = document.createElement("fieldset");
+      fieldset.id = "add_notes";
+      notes = createJstEditor("issue_notes");
+      fieldset.appendChild(notes.block);
+      form.appendChild(fieldset);
+    }
+
+    const hookArea = document.createElement("div");
+    const buildContainer = (id) => {
+      const el = document.createElement("div");
+      el.id = id;
+      el.style.display = "none";
+      hookArea.appendChild(el);
+      return el;
+    };
+    const descContainer = buildContainer("ai-helper-description-checkbox-container");
+    const dupContainer = persisted ? null : buildContainer("ai-helper-duplicate-check-container");
+    const notesContainer = persisted ? buildContainer("ai-helper-notes-checkbox-container") : null;
+    form.appendChild(hookArea);
+
+    document.body.appendChild(form);
+    jstForms.push(form);
+    return { form, descWrapper, desc, notes, descContainer, dupContainer, notesContainer };
+  }
+
+  /**
+   * Builds the DOM of a form without Redmine's wiki toolbar (text format
+   * "none"): the description textarea stands alone and the AI Helper
+   * container is rendered elsewhere by the hook.
+   * @returns {object} the created elements
+   */
+  function createPlainIssueDOM() {
+    const form = document.createElement("div");
+    const textarea = document.createElement("textarea");
+    textarea.id = "issue_description";
+    const paragraph = document.createElement("p");
+    paragraph.appendChild(textarea);
+    form.appendChild(paragraph);
+
+    const descContainer = document.createElement("div");
+    descContainer.id = "ai-helper-description-checkbox-container";
+    descContainer.style.display = "none";
+    const hookArea = document.createElement("div");
+    hookArea.appendChild(descContainer);
+    form.appendChild(hookArea);
+
+    document.body.appendChild(form);
+    jstForms.push(form);
+    return { form, textarea, descContainer };
   }
 
   function createConfig(overrides = {}) {
@@ -62,7 +144,9 @@ describe("initializeIssueCompletion (from shared/_textarea_overlay.html.erb)", (
     });
   }
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    // Loaded by _html_header.html.erb before the autocompletion scripts
+    await loadScript("assets/javascripts/shared/ai_helper_editor_controls");
     autoCompletionMock = vi.fn();
     vi.stubGlobal("AiHelperAutoCompletion", autoCompletionMock);
 
@@ -83,6 +167,8 @@ describe("initializeIssueCompletion (from shared/_textarea_overlay.html.erb)", (
     cleanup?.removeRegisteredListeners();
     cleanup = undefined;
     vi.useRealTimers();
+    jstForms.forEach((form) => form.remove());
+    jstForms = [];
     document
       .querySelectorAll(
         "#ai-helper-issue-textarea-overlay, #issue_description, #issue_notes, #ai-helper-description-checkbox-container, #ai-helper-notes-checkbox-container, #ai-helper-duplicate-check-container, #ai-helper-duplicate-check-btn, #ai-helper-duplicate-check-results, #ai-helper-duplicate-check-loading, #issue_subject, meta[name=csrf-token]"
@@ -91,6 +177,7 @@ describe("initializeIssueCompletion (from shared/_textarea_overlay.html.erb)", (
     vi.unstubAllGlobals();
     delete window.aiHelperInstances;
     delete window.aiHelperAutoCompletionInitialized;
+    delete window.AiHelperEditorControls;
   });
 
   it("creates an AiHelperAutoCompletion for description textarea", async () => {
@@ -120,13 +207,68 @@ describe("initializeIssueCompletion (from shared/_textarea_overlay.html.erb)", (
     dom.form.remove();
   });
 
-  it("moves the description checkbox container below the textarea", async () => {
+  it("moves the description checkbox container right after the textarea when there is no wiki toolbar (FR-005)", async () => {
     autoCompletionMock.mockImplementation(function() { this.init = vi.fn(); });
-    const dom = createIssueDOM();
+    const dom = createPlainIssueDOM();
+    expect(dom.textarea.nextElementSibling).toBeNull();
     cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/autocompletion/ai_helper_issue_autocompletion");
 
+    expect(dom.textarea.nextElementSibling).toBe(dom.descContainer);
     expect(dom.descContainer.style.display).toBe("block");
-    dom.form.remove();
+  });
+
+  it("places the description checkbox container after .jstBlock, not inside .jstEditor (issue #541)", async () => {
+    autoCompletionMock.mockImplementation(function() { this.init = vi.fn(); });
+    const dom = createJstIssueDOM();
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/autocompletion/ai_helper_issue_autocompletion");
+
+    expect(dom.desc.block.nextElementSibling).toBe(dom.descContainer);
+    expect(dom.desc.editor.contains(dom.descContainer)).toBe(false);
+  });
+
+  it("places both checkbox containers after their own .jstBlock on the issue edit form (issue #541)", async () => {
+    autoCompletionMock.mockImplementation(function() { this.init = vi.fn(); });
+    container.dataset.config = createConfig({
+      isPersistedIssue: true,
+      notesEndpoint: "/projects/1/ai_helper/issues/5/suggest_completion",
+      issueId: "5",
+    });
+    const dom = createJstIssueDOM({ persisted: true });
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/autocompletion/ai_helper_issue_autocompletion");
+
+    expect(dom.notes.block.nextElementSibling).toBe(dom.notesContainer);
+    expect(dom.notes.editor.contains(dom.notesContainer)).toBe(false);
+    expect(dom.notesContainer.style.display).toBe("block");
+    expect(dom.desc.block.nextElementSibling).toBe(dom.descContainer);
+    expect(dom.desc.editor.contains(dom.descContainer)).toBe(false);
+  });
+
+  it("keeps the description checkbox inside the collapsed description wrapper on the issue edit form", async () => {
+    autoCompletionMock.mockImplementation(function() { this.init = vi.fn(); });
+    container.dataset.config = createConfig({
+      isPersistedIssue: true,
+      notesEndpoint: "/projects/1/ai_helper/issues/5/suggest_completion",
+      issueId: "5",
+    });
+    const dom = createJstIssueDOM({ persisted: true });
+    // app/views/issues/_form.html.erb hides the editor of a persisted issue until the edit link is clicked
+    dom.descWrapper.style.display = "none";
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/autocompletion/ai_helper_issue_autocompletion");
+
+    expect(dom.descContainer.parentNode).toBe(dom.descWrapper);
+    expect(dom.desc.block.nextElementSibling).toBe(dom.descContainer);
+    expect(dom.descWrapper.style.display).toBe("none");
+  });
+
+  it("keeps the order editor, completion checkbox, duplicate-check link on a new issue (FR-004)", async () => {
+    autoCompletionMock.mockImplementation(function() { this.init = vi.fn(); });
+    const dom = createJstIssueDOM();
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/autocompletion/ai_helper_issue_autocompletion");
+
+    expect(dom.desc.block.nextElementSibling).toBe(dom.descContainer);
+    expect(dom.descContainer.nextElementSibling).toBe(dom.dupContainer);
+    expect(dom.dupContainer.style.display).toBe("block");
+    expect(dom.desc.editor.contains(dom.dupContainer)).toBe(false);
   });
 
   it("does not reinitialize if aiHelperAutoCompletionInitialized is true", async () => {
@@ -428,7 +570,9 @@ describe("Duplicate check (from shared/_textarea_overlay.html.erb)", () => {
     return { form, descTextarea, dupBtn, dupResults, dupLoading, subjectInput };
   }
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    // Loaded by _html_header.html.erb before the autocompletion scripts
+    await loadScript("assets/javascripts/shared/ai_helper_editor_controls");
     const acMock = vi.fn();
     acMock.mockImplementation(function() { this.init = vi.fn(); });
     vi.stubGlobal("AiHelperAutoCompletion", acMock);
@@ -466,6 +610,7 @@ describe("Duplicate check (from shared/_textarea_overlay.html.erb)", () => {
     vi.unstubAllGlobals();
     delete window.aiHelperInstances;
     delete window.aiHelperAutoCompletionInitialized;
+    delete window.AiHelperEditorControls;
   });
 
   it("shows alert when subject and description are empty", async () => {

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadScript } from "../support/load_script.js";
 import { loadScriptAndFireDOMContentLoaded } from "../support/dom_content_loaded.js";
+import { createJstEditor } from "../support/jst_editor.js";
 
 // --- T019: Characterization tests for wiki/_textarea_overlay.html.erb extraction ---
 
@@ -8,6 +9,9 @@ describe("initializeWikiCompletion (from wiki/_textarea_overlay.html.erb)", () =
   let container;
   let autoCompletionMock;
   let cleanup;
+  // Nodes built by createWikiFormDOM; removed in afterEach so a failing
+  // assertion cannot leave its editor behind for the next test.
+  let jstNodes = [];
 
   function createWikiDOM() {
     const parent = document.createElement("div");
@@ -23,7 +27,50 @@ describe("initializeWikiCompletion (from wiki/_textarea_overlay.html.erb)", () =
     return { parent, textarea, checkboxContainer };
   }
 
-  beforeEach(() => {
+  /**
+   * Builds the DOM the way Redmine renders the wiki edit form
+   * (app/views/wiki/edit.html.erb lines 15-16): the content textarea sits in
+   * `div.box.tabular` inside `form#wiki_form`, and Redmine's jsToolBar wraps
+   * it in `div.jstBlock` (see support/jst_editor.js). The AI Helper checkbox
+   * container is rendered by a layout hook outside the form, so the script
+   * has to move it.
+   * @param {object} options
+   * @param {boolean} options.withToolbar false builds the form of text format "none" (no jsToolBar)
+   * @returns {object} the created elements; `block`, `editor` and `preview` exist only with the toolbar
+   */
+  function createWikiFormDOM({ withToolbar = true } = {}) {
+    const form = document.createElement("form");
+    form.id = "wiki_form";
+    const box = document.createElement("div");
+    box.className = "box tabular";
+
+    let jst = null;
+    let textarea;
+    if (withToolbar) {
+      jst = createJstEditor("content_text");
+      textarea = jst.textarea;
+      box.appendChild(jst.block);
+    } else {
+      textarea = document.createElement("textarea");
+      textarea.id = "content_text";
+      box.appendChild(textarea);
+    }
+    box.appendChild(document.createElement("p"));
+    form.appendChild(box);
+
+    const checkboxContainer = document.createElement("div");
+    checkboxContainer.id = "ai-helper-wiki-checkbox-container";
+    checkboxContainer.style.display = "none";
+
+    document.body.appendChild(form);
+    document.body.appendChild(checkboxContainer);
+    jstNodes.push(form, checkboxContainer);
+    return { form, box, textarea, checkboxContainer, ...jst };
+  }
+
+  beforeEach(async () => {
+    // Loaded by _html_header.html.erb before the autocompletion scripts
+    await loadScript("assets/javascripts/shared/ai_helper_editor_controls");
     autoCompletionMock = vi.fn();
     vi.stubGlobal("AiHelperAutoCompletion", autoCompletionMock);
 
@@ -55,6 +102,8 @@ describe("initializeWikiCompletion (from wiki/_textarea_overlay.html.erb)", () =
   afterEach(() => {
     cleanup?.removeRegisteredListeners();
     cleanup = undefined;
+    jstNodes.forEach((node) => node.remove());
+    jstNodes = [];
     document
       .querySelectorAll(
         "#ai-helper-wiki-textarea-overlay, #content_text, #ai-helper-wiki-checkbox-container"
@@ -63,6 +112,7 @@ describe("initializeWikiCompletion (from wiki/_textarea_overlay.html.erb)", () =
     vi.unstubAllGlobals();
     delete window.aiHelperInstances;
     delete window.aiHelperWikiCompletionInitialized;
+    delete window.AiHelperEditorControls;
   });
 
   it("creates an AiHelperAutoCompletion instance for wiki textarea", async () => {
@@ -103,14 +153,24 @@ describe("initializeWikiCompletion (from wiki/_textarea_overlay.html.erb)", () =
     dom.parent.remove();
   });
 
-  it("moves the checkbox container to below the textarea", async () => {
+  it("moves the checkbox container right after the textarea when there is no wiki toolbar (FR-005)", async () => {
     autoCompletionMock.mockImplementation(function() { this.init = vi.fn(); });
-    const dom = createWikiDOM();
+    const dom = createWikiFormDOM({ withToolbar: false });
+    expect(dom.textarea.nextElementSibling.tagName).toBe("P");
     cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/autocompletion/ai_helper_wiki_autocompletion");
 
+    expect(dom.textarea.nextElementSibling).toBe(dom.checkboxContainer);
     expect(dom.checkboxContainer.style.display).toBe("block");
-    expect(dom.checkboxContainer.nextSibling).toBeNull();
-    dom.parent.remove();
+  });
+
+  it("places the checkbox container after .jstBlock, not inside .jstEditor (issue #541)", async () => {
+    autoCompletionMock.mockImplementation(function() { this.init = vi.fn(); });
+    const dom = createWikiFormDOM();
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/autocompletion/ai_helper_wiki_autocompletion");
+
+    expect(dom.block.nextElementSibling).toBe(dom.checkboxContainer);
+    expect(dom.editor.contains(dom.checkboxContainer)).toBe(false);
+    expect(dom.checkboxContainer.style.display).toBe("block");
   });
 
   it("detects wiki page name from URL and adjusts endpoint", async () => {
