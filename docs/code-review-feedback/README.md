@@ -160,3 +160,6 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-074](./074-documentation-agent-backstory-not-formatted.md) | DocumentationAgent#backstory returned the PromptTemplate object instead of its text | edge-case | Local AI review | Not yet |
 | [CRF-075](./075-prompt-template-tests-vacuous-and-overstated.md) | Log assertions matched fixed text, a helper absorbed bad input and callers coverage was overstated | test-gap | Local AI review | Not yet |
 | [CRF-076](./076-adr-reason-contradicted-research-and-wiki-uncited.md) | ADR rejected-alternative reason contradicted research R-007, and the wiki claim had no source ID | doc-comment | Local AI review | Not yet |
+| [CRF-077](./077-move-tests-vacuous-and-fixture-dom-not-from-erb.md) | "Move" tests passed without the move, and the fixture DOM did not match what the ERB renders | test-gap | Local AI review | AGENTS.md |
+| [CRF-078](./078-jsdoc-still-said-below-the-textarea.md) | JSDoc kept the old placement wording after the placement changed | doc-comment | Local AI review | Not yet |
+| [CRF-079](./079-jstoolbar-test-dom-builder-copied-three-times.md) | The jsToolBar DOM builder was copied into three test files | readability | Local AI review | Not yet |

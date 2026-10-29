@@ -4,24 +4,8 @@
  */
 
 /**
- * Move `container` to immediately follow `textarea` in the DOM and reveal it.
- * @param {HTMLElement} textarea - The textarea to position after.
- * @param {HTMLElement} container - The element to move.
- */
-function moveContainerAfterTextarea(textarea, container) {
-  const parent = textarea.parentNode;
-  const nextSibling = textarea.nextSibling;
-  if (nextSibling) {
-    parent.insertBefore(container, nextSibling);
-  } else {
-    parent.appendChild(container);
-  }
-  container.style.display = 'block';
-}
-
-/**
  * Initialize description-field auto-completion and move its checkbox
- * into place below the textarea.
+ * into place below the description editor.
  * @param {HTMLElement} descriptionTextarea - The issue description textarea.
  * @param {object} config Parsed overlay config (`dataset.config`).
  */
@@ -47,10 +31,10 @@ function initializeDescriptionAutoCompletion(descriptionTextarea, config) {
 
   autoCompletion.init();
 
-  // Move the description checkbox to below the description textarea
+  // Move the description checkbox to below the description editor
   const descriptionContainer = document.getElementById('ai-helper-description-checkbox-container');
   if (descriptionContainer) {
-    moveContainerAfterTextarea(descriptionTextarea, descriptionContainer);
+    AiHelperEditorControls.placeAfterEditor(descriptionTextarea, descriptionContainer);
   }
 
   // Store reference globally for potential updates
@@ -143,7 +127,7 @@ function initializeDuplicateCheck(duplicateCheckContainer, descriptionTextarea, 
 
 /**
  * Initialize notes-field auto-completion and move its checkbox into place
- * below the textarea. Only used for existing (persisted) issues.
+ * below the notes editor. Only used for existing (persisted) issues.
  * @param {HTMLElement} notesTextarea - The issue notes textarea.
  * @param {object} config Parsed overlay config (`dataset.config`).
  */
@@ -171,10 +155,10 @@ function initializeNotesAutoCompletion(notesTextarea, config) {
 
   notesAutoCompletion.init();
 
-  // Move the notes checkbox to right below the notes textarea
+  // Move the notes checkbox to right below the notes editor
   const notesContainer = document.getElementById('ai-helper-notes-checkbox-container');
   if (notesContainer) {
-    moveContainerAfterTextarea(notesTextarea, notesContainer);
+    AiHelperEditorControls.placeAfterEditor(notesTextarea, notesContainer);
   }
 
   // Store reference globally for potential updates

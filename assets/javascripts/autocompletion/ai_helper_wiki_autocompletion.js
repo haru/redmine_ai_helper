@@ -55,14 +55,7 @@ function initializeWikiCompletion() {
 
     const wikiContainer = document.getElementById('ai-helper-wiki-checkbox-container');
     if (wikiContainer && wikiTextarea) {
-      const parent = wikiTextarea.parentNode;
-      const nextSibling = wikiTextarea.nextSibling;
-      if (nextSibling) {
-        parent.insertBefore(wikiContainer, nextSibling);
-      } else {
-        parent.appendChild(wikiContainer);
-      }
-      wikiContainer.style.display = 'block';
+      AiHelperEditorControls.placeAfterEditor(wikiTextarea, wikiContainer);
     }
 
     if (!window.aiHelperInstances) {
