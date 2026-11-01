@@ -131,6 +131,8 @@ class AiHelperViewHookTest < ActionController::TestCase
     assert_operator children.index(close_button), :>, children.index(arrow)
     assert_nil open_button["title"], "popup buttons intentionally have no tooltip"
     assert_nil close_button["title"], "popup buttons intentionally have no tooltip"
+    assert_equal I18n.t(:label_ai_helper_popup_open), open_button["aria-label"]
+    assert_equal I18n.t(:label_ai_helper_popup_close), close_button["aria-label"]
     assert open_button.at_css("svg"), "expected an icon in the open button"
     assert close_button.at_css("svg"), "expected an icon in the close button"
   end

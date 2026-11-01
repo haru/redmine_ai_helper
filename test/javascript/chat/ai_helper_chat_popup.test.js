@@ -1394,6 +1394,16 @@ describe("AiHelperChatPopup drag and resize (FR-007, FR-008, FR-009)", () => {
       expect(setItem).not.toHaveBeenCalled();
     });
 
+    it("saves nothing when the pointer only reports a move at the same coordinates", () => {
+      const setItem = vi.spyOn(Storage.prototype, "setItem");
+
+      pointer(header, "pointerdown", { x: 5, y: 5 });
+      pointer(header, "pointermove", { x: 5, y: 5 });
+      pointer(header, "pointerup", { x: 5, y: 5 });
+
+      expect(setItem).not.toHaveBeenCalled();
+    });
+
     it("does not overwrite the saved size with the fitted size when the header is moved in a small window", () => {
       localStorage.setItem(LAYOUT_KEY, JSON.stringify({ left: 100, top: 100, width: 900, height: 700 }));
       closeAndFinish(popup);

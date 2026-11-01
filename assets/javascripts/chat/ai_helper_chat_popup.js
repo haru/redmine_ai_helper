@@ -326,7 +326,9 @@ const AiHelperChatPopup = (() => {
       return;
     }
     const delta = { x: event.clientX - drag.x, y: event.clientY - drag.y };
-    drag.moved = true;
+    if (delta.x !== 0 || delta.y !== 0) {
+      drag.moved = true;
+    }
     applyLayout(drag.edge === null ? Layout.moved(drag.start, delta, viewport()) : Layout.resized(drag.start, drag.edge, delta, viewport()));
   }
 

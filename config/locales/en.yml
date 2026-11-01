@@ -5,6 +5,8 @@ en:
   label_ai_helper_input_newline: "Press Shift + Enter for a new line."
   label_ai_helper_custom_command_hint: "Type '/' to use custom commands."
   label_ai_helper_start_new_chat: "Start a new chat"
+  label_ai_helper_popup_open: "Open in popup"
+  label_ai_helper_popup_close: "Close popup"
   label_ai_helper_citations: "Sources"
   label_ai_helper_free_input_option: "Other (type yourself)"
   label_ai_helper_read_only_suffix: " (Read-only)"

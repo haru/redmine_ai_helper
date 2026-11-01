@@ -169,3 +169,5 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-083](./083-history-jump-changed-sidebar-fold-state-in-popup.md) | A shared history action changed the sidebar fold state while the chat was the popup | edge-case | Local AI review | Not yet |
 | [CRF-084](./084-popup-css-and-parser-tests-missed-contract.md) | Popup CSS tests covered only stacking, the test parser misread some constructs, and fixtures and listeners leaked | test-gap | Local AI review | Not yet |
 | [CRF-085](./085-popup-docs-and-comments-stated-more-than-the-code-did.md) | Popup ADR, research and comments described tooltips as modals and overstated what was saved | doc-comment | Local AI review | Not yet |
+| [CRF-086](./086-popup-icon-only-links-lost-accessible-name.md) | Popup icon-only links lost their accessible name when the tooltip was removed | convention-violation | GitHub Copilot | Not yet |
+| [CRF-087](./087-popup-drag-marked-moved-on-zero-delta.md) | Popup drag was marked as moved on a pointermove with no coordinate change | edge-case | GitHub Copilot | Not yet |
