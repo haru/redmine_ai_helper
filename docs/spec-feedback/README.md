@@ -114,3 +114,5 @@ A concrete, checkable rule to apply when writing future specifications.
 | [SF-031](./031-file-path-put-in-exception-message.md) | Put the template file path in an exception message without checking where the message goes | convention-unknown | 081-fix-prompt-template-validation | Not yet |
 | [SF-032](./032-popup-default-placement-ignored-sidebar-origin.md) | Offered popup default placements unrelated to the sidebar the form comes from | unconfirmed-assumption | 083-chat-form-popup | Not yet |
 | [SF-033](./033-popup-assumed-available-in-flyout-layout.md) | Assumed the popup stays available in the narrow flyout layout without asking | unconfirmed-assumption | 083-chat-form-popup | Not yet |
+| [SF-034](./034-popup-buttons-given-tooltip-unlike-redmine-ui-buttons.md) | Gave the popup buttons a tooltip although Redmine's UI-operation buttons have none | convention-unknown | 083-chat-form-popup | Not yet |
+| [SF-035](./035-popup-open-icon-chosen-without-asking.md) | Chose a generic icon for "open in popup" without asking | unconfirmed-assumption | 083-chat-form-popup | Not yet |

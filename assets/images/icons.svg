@@ -14,5 +14,11 @@
       <path d="M18 6l-12 12"/>
       <path d="M6 6l12 12"/>
     </symbol>
+    <symbol viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" id="icon--ai-helper-popup-open">
+      <path d="M11 5h-6a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-6"/>
+      <path d="M3 13h6a2 2 0 0 1 2 2v6"/>
+      <path d="M16 3h5v5"/>
+      <path d="M21 3l-6 6"/>
+    </symbol>
   </defs>
 </svg>
