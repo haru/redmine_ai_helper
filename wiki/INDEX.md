@@ -35,6 +35,7 @@ page files, not here.
 - [Health Report Detail Pane Layout](./pages/health-report-detail-pane-layout.md) — ADR-056: why the dashboard report clipped export links (non-flex body wrapper), moving the viewport cap from the pane to the frame, the edit-form and ≤900px exceptions, and rejected alternatives.
 - [Health Report Generation Completion (Dashboard)](./pages/health-report-generation-completion.md) — feature 077: why dashboard generation threw on completion (missing `.ai-helper-project-health`), hidden field under `.ai-helper-project-health-content`, `try/catch` narrowed to `JSON.parse`, clearing the previous report's details, and rejected alternatives.
 - [Health Report Charts](./pages/health-report-charts.md) — feature 078/ADR-058/ADR-059: chart directives resolved from stored metrics and drawn on screen, in PDF and as SVG zip; each chart's form chosen by what helps the reader (bars, stacked bar, number tile — no doughnuts); Redmine 6.0 importmap, rbpdf alias and observer gotchas.
+- [Chat Popup Design Decisions](./pages/chat-popup-design-decisions.md) — ADR-064: why the sidebar element is moved not cloned, the storage split, z-index, Pointer Events, and every rejected alternative.
 
 ## component
 - [Chat Channel Gateway Architecture](./pages/chat-channel-gateway-architecture.md) — core + adapters structure, capability declaration, and gateway operational model.
