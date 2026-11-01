@@ -61,7 +61,8 @@ two are deliberately not merged into one figure (S024).
 Success criteria that are timing- or network-observational (concurrent
 connections, time-to-save) are still verified manually through a feature's
 `quickstart.md`: drive the running Redmine with Playwright MCP (the
-`redmine-playwright-login` skill) and watch the browser's network recording
+`redmine-playwright-login` skill, using the devcontainer's local headless
+Chromium at `localhost:3000`) and watch the browser's network recording
 (S021).
 
 ## Related

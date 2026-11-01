@@ -118,3 +118,4 @@ Briefly describe alternatives that were rejected and why.
 | [063](./063-prompt-template-strict-input-variables.md) | PromptTemplate#format requires the declared variables exactly | Accepted |
 | [064](./064-chat-popup-moves-the-sidebar-element.md) | Show the chat as a popup by moving the sidebar element | Accepted |
 | [065](./065-chat-popup-close-animation-reverses-open.md) | Animate the chat popup closing as the reverse of opening | Accepted |
+| [066](./066-devcontainer-uses-local-headless-chromium.md) | Run Playwright MCP against a local headless Chromium in the devcontainer | Accepted |
