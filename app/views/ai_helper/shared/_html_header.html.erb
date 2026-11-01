@@ -14,12 +14,21 @@
       // Update the existing instance with user ID for user-specific localStorage
       ai_helper.setUserId('<%= User.current.id %>');
     </script>
+    <script>
+      // Hide the sidebar chat before first paint when this tab shows it as a popup,
+      // so it never flashes in the sidebar on page navigation.
+      if (sessionStorage.getItem('aihelper-popup-open_<%= User.current.id %>') === 'true') {
+        document.documentElement.classList.add('aihelper-popup-pending');
+      }
+    </script>
     <%= javascript_include_tag('shared/ai_helper_markdown_parser.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('autocompletion/ai_helper_auto_completion.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('autocompletion/ai_helper_auto_completion_overlay.js', plugin: :redmine_ai_helper) %>
     <%= stylesheet_link_tag('ai_helper_command_completion.css', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('chat/ai_helper_command_completion.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('chat/ai_helper_chat.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('chat/ai_helper_chat_popup_layout.js', plugin: :redmine_ai_helper) %>
+    <%= javascript_include_tag('chat/ai_helper_chat_popup.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('shared/ai_helper_editor_controls.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('autocompletion/ai_helper_wiki_autocompletion.js', plugin: :redmine_ai_helper) %>
     <%= javascript_include_tag('autocompletion/ai_helper_issue_autocompletion.js', plugin: :redmine_ai_helper) %>

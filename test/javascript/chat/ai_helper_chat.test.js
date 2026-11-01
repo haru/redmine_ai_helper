@@ -4,6 +4,7 @@ import { loadScript } from "../support/load_script.js";
 describe("AiHelperChat.initChatForm (from _chat_form.html.erb)", () => {
   let chatInput;
   let commandCompletionMock;
+  let popupMock;
 
   beforeEach(() => {
     chatInput = document.createElement("textarea");
@@ -13,6 +14,8 @@ describe("AiHelperChat.initChatForm (from _chat_form.html.erb)", () => {
 
     commandCompletionMock = vi.fn();
     vi.stubGlobal("CommandCompletion", commandCompletionMock);
+    popupMock = { init: vi.fn(), restoreDraft: vi.fn() };
+    vi.stubGlobal("AiHelperChatPopup", popupMock);
   });
 
   afterEach(() => {
@@ -52,11 +55,26 @@ describe("AiHelperChat.initChatForm (from _chat_form.html.erb)", () => {
   });
 
   it("does nothing when CommandCompletion is not defined", async () => {
-    vi.unstubAllGlobals();
+    vi.stubGlobal("CommandCompletion", undefined);
     await load();
     window.AiHelperChat.initChatForm();
 
     expect(chatInput.dataset.commandCompletionInitialized).toBeUndefined();
+  });
+
+  it("restores the popup draft once the chat form is initialized", async () => {
+    await load();
+    window.AiHelperChat.initChatForm();
+
+    expect(popupMock.restoreDraft).toHaveBeenCalledTimes(1);
+  });
+
+  it("restores the popup draft even when the chat input is absent", async () => {
+    chatInput.remove();
+    await load();
+    window.AiHelperChat.initChatForm();
+
+    expect(popupMock.restoreDraft).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -65,6 +83,7 @@ describe("AiHelperChat.initSidebar (from _sidebar.html.erb)", () => {
   let sidebar;
   let chatFormArea;
   let aiHelperMock;
+  let popupMock;
 
   beforeEach(() => {
     sidebarWrapper = document.createElement("div");
@@ -91,10 +110,14 @@ describe("AiHelperChat.initSidebar (from _sidebar.html.erb)", () => {
       page_info: { additional_info: {} },
     };
     vi.stubGlobal("ai_helper", aiHelperMock);
+    popupMock = { init: vi.fn(), restoreDraft: vi.fn() };
+    vi.stubGlobal("AiHelperChatPopup", popupMock);
   });
 
   afterEach(() => {
     sidebarWrapper.remove();
+    // Some tests append the sidebar to <body> instead of the wrapper.
+    sidebar.remove();
     vi.unstubAllGlobals();
     delete window.AiHelperChat;
   });
@@ -172,9 +195,51 @@ describe("AiHelperChat.initSidebar (from _sidebar.html.erb)", () => {
     window.AiHelperChat.initSidebar();
 
     expect(aiHelperMock.init_fold_flag).not.toHaveBeenCalled();
+    expect(popupMock.init).not.toHaveBeenCalled();
   });
 
-  it("handles missing sidebar element gracefully", async () => {
+  it("initializes the chat popup after the sidebar has been moved to the top of the wrapper and set up", async () => {
+    const other = document.createElement("div");
+    sidebarWrapper.appendChild(other);
+    sidebarWrapper.appendChild(sidebar);
+    expect(sidebarWrapper.firstChild).not.toBe(sidebar);
+    const order = [];
+    aiHelperMock.set_hamberger_menu.mockImplementation(() => order.push("hamburger"));
+    popupMock.init.mockImplementation(() => order.push(sidebarWrapper.firstChild === sidebar ? "popup-after-move" : "popup-before-move"));
+
+    await load();
+    window.AiHelperChat.initSidebar();
+
+    expect(order).toEqual(["hamburger", "popup-after-move"]);
+  });
+
+  it("removes aihelper-popup-pending from <html> even when a setup step throws", async () => {
+    sidebarWrapper.appendChild(sidebar);
+    document.documentElement.classList.add("aihelper-popup-pending");
+    aiHelperMock.reload_chat.mockImplementation(() => {
+      throw new Error("reload failed");
+    });
+
+    await load();
+    try {
+      expect(() => window.AiHelperChat.initSidebar()).toThrow(/reload failed/);
+      expect(document.documentElement.classList.contains("aihelper-popup-pending")).toBe(false);
+    } finally {
+      document.documentElement.classList.remove("aihelper-popup-pending");
+    }
+  });
+
+  it("removes aihelper-popup-pending from <html> when there is no sidebar wrapper", async () => {
+    sidebarWrapper.remove();
+    document.documentElement.classList.add("aihelper-popup-pending");
+
+    await load();
+    window.AiHelperChat.initSidebar();
+
+    expect(document.documentElement.classList.contains("aihelper-popup-pending")).toBe(false);
+  });
+
+  it("still sets up the page info when the sidebar element is missing", async () => {
     await load();
     window.AiHelperChat.initSidebar();
 

@@ -1657,3 +1657,170 @@ table.list.ai-helper-report-list td.radio .radio-placeholder {
 .aihelper-citations p {
   margin-bottom: 0.2em;
 }
+
+/* ==========================================================================
+   Chat popup (083-chat-form-popup)
+
+   The sidebar element is moved to <body> and given .aihelper-popup-mode
+   (ADR-064). Left/top/width/height are set inline by AiHelperChatPopup.
+   ========================================================================== */
+
+/* Hide the sidebar chat before JS moves it, when this tab is in popup mode. */
+html.aihelper-popup-pending #aihelper-sidebar {
+  visibility: hidden;
+}
+
+/* Popup-only controls stay hidden while the chat is in the sidebar. */
+#aihelper-popup-close,
+.aihelper-popup-resize {
+  display: none;
+}
+
+.aihelper-popup-button {
+  position: absolute;
+  bottom: 0;
+  padding: 5px;
+  line-height: 1;
+}
+
+#aihelper-popup-open {
+  right: 28px;
+}
+
+#aihelper-popup-close {
+  right: 0;
+}
+
+/* The popup is not offered when Redmine moves the sidebar into the flyout
+   menu; 899px matches app/assets/stylesheets/responsive.css:34 (R-009). */
+@media (max-width: 899px) {
+  #aihelper-popup-open {
+    display: none;
+  }
+}
+
+#aihelper-sidebar.aihelper-popup-mode {
+  position: fixed;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  /* Copied from Redmine's #sidebar (application.css:320), which no longer applies. */
+  font-size: 0.8125rem;
+  background: var(--oc-gray-0);
+  border: 1px solid var(--oc-gray-4);
+  /* Same shadow as Redmine's #sticky-issue-header (application.css:933-941). */
+  box-shadow: 0 2px 6px rgba(var(--oc-black-rgb), 0.15);
+}
+
+#aihelper-sidebar.aihelper-popup-mode .aihelper-arrow-button,
+#aihelper-sidebar.aihelper-popup-mode #aihelper-popup-open {
+  display: none;
+}
+
+#aihelper-sidebar.aihelper-popup-mode #aihelper-popup-close {
+  display: inline-block;
+}
+
+#aihelper-sidebar.aihelper-popup-mode .aihelper-popup-resize {
+  display: block;
+}
+
+/* The conversation and form are always shown in the popup, even when the
+   sidebar was folded. !important overrides the inline display:none that
+   ai_helper.fold_chat sets. */
+#aihelper-sidebar.aihelper-popup-mode #aihelper-foldable-area {
+  display: flex !important;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+#aihelper-sidebar.aihelper-popup-mode #aihelper-chat-conversation {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+}
+
+/* Rules that applied only inside Redmine's #sidebar (application.css:329-337)
+   and the plugin's own #sidebar rule (above). :where() keeps their specificity
+   at element level, so the plugin's own #aihelper-chat-conversation ul/li and
+   #aihelper-chat-clear hr rules still win inside the popup, as they do in
+   the sidebar. */
+:where(#aihelper-sidebar.aihelper-popup-mode) hr {
+  inline-size: 100%;
+  margin: 0 auto;
+  block-size: 1px;
+  background: var(--oc-gray-4);
+  border: 0;
+}
+
+:where(#aihelper-sidebar.aihelper-popup-mode) ul {
+  margin: 0;
+  padding: 0;
+}
+
+:where(#aihelper-sidebar.aihelper-popup-mode) ul li {
+  list-style-type: none;
+  margin-block: 0;
+  margin-inline: 0 2px;
+  padding: 0;
+}
+
+:where(#aihelper-sidebar.aihelper-popup-mode) .aihelper-dropdown-menu ul li {
+  padding-bottom: 10px;
+  padding-top: 10px;
+}
+
+/* The history menu is positioned from the header and cannot be reached by
+   scrolling the page, because the popup is fixed: scroll inside the menu. */
+#aihelper-sidebar.aihelper-popup-mode .aihelper-dropdown-menu {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+/* Touch drags must reach the pointer handlers instead of panning the page. */
+#aihelper-sidebar.aihelper-popup-mode .aihelper-header,
+.aihelper-popup-resize {
+  touch-action: none;
+}
+
+/* Redmine hides #sidebar when printing (application.css @media print); the
+   popup is no longer inside it. */
+@media print {
+  #aihelper-sidebar.aihelper-popup-mode {
+    display: none;
+  }
+}
+
+/* Stacking (R-006): above Redmine's #sticky-issue-header (z-index 1000,
+   `div#sticky-issue-header` in application.css) so the close button is never hidden, but below
+   Redmine's modal dialogs. showModal opens a jQuery UI dialog with
+   .ui-widget-overlay and .ui-front (z-index 100), so the popup drops to 90
+   while one is open. The plugin's own overlays and tooltips use 9998-10001 and stay on top. */
+#aihelper-sidebar.aihelper-popup-mode {
+  z-index: 1001;
+}
+
+body:has(.ui-widget-overlay) #aihelper-sidebar.aihelper-popup-mode {
+  z-index: 90;
+}
+
+/* Move transition when the popup opens from the sidebar (FR-018). */
+#aihelper-sidebar.aihelper-popup-animating {
+  transition: left 200ms, top 200ms;
+}
+
+/* Resize handles: edges are 6px strips, corners 12px squares. */
+.aihelper-popup-resize {
+  position: absolute;
+}
+
+.aihelper-popup-resize[data-edge="n"] { top: -3px; left: 12px; right: 12px; height: 6px; cursor: ns-resize; }
+.aihelper-popup-resize[data-edge="s"] { bottom: -3px; left: 12px; right: 12px; height: 6px; cursor: ns-resize; }
+.aihelper-popup-resize[data-edge="e"] { right: -3px; top: 12px; bottom: 12px; width: 6px; cursor: ew-resize; }
+.aihelper-popup-resize[data-edge="w"] { left: -3px; top: 12px; bottom: 12px; width: 6px; cursor: ew-resize; }
+.aihelper-popup-resize[data-edge="ne"] { top: -3px; right: -3px; width: 12px; height: 12px; cursor: nesw-resize; }
+.aihelper-popup-resize[data-edge="nw"] { top: -3px; left: -3px; width: 12px; height: 12px; cursor: nwse-resize; }
+.aihelper-popup-resize[data-edge="se"] { bottom: -3px; right: -3px; width: 12px; height: 12px; cursor: nwse-resize; }
+.aihelper-popup-resize[data-edge="sw"] { bottom: -3px; left: -3px; width: 12px; height: 12px; cursor: nesw-resize; }

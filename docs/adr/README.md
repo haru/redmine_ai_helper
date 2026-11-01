@@ -116,3 +116,4 @@ Briefly describe alternatives that were rejected and why.
 | [061](./061-health-report-pdf-body-drawn-by-redmine-pdf-renderer.md) | Draw the health report PDF body with Redmine's PDF renderer from the screen HTML | Accepted |
 | [062](./062-office-attachments-sent-as-redmine-markdown-preview.md) | Send Office attachments to the LLM as Redmine's Markdown preview | Accepted |
 | [063](./063-prompt-template-strict-input-variables.md) | PromptTemplate#format requires the declared variables exactly | Accepted |
+| [064](./064-chat-popup-moves-the-sidebar-element.md) | Show the chat as a popup by moving the sidebar element | Accepted |

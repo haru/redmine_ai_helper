@@ -110,6 +110,77 @@ class AiHelperViewHookTest < ActionController::TestCase
     assert_nil doc.at_css("#ai-helper-stuff-todo-modal")
     assert_nil doc.at_css('meta[name="ai-helper-stuff-todo-url"]')
   end
+
+  # --- Chat popup (083-chat-form-popup) ---
+
+  test "sidebar header renders the popup open button before the fold arrow and the close button after it" do
+    get :show, params: { id: @issue.id }
+    assert_response :success
+
+    header = Nokogiri::HTML(@response.body).at_css("#aihelper-sidebar .aihelper-header")
+    assert header, "expected the AI Helper header inside #aihelper-sidebar"
+    open_button = header.at_css("#aihelper-popup-open")
+    close_button = header.at_css("#aihelper-popup-close")
+    arrow = header.at_css(".aihelper-arrow-button")
+    assert open_button, "expected #aihelper-popup-open"
+    assert close_button, "expected #aihelper-popup-close"
+    assert arrow, "expected .aihelper-arrow-button"
+
+    children = header.element_children
+    assert_operator children.index(open_button), :<, children.index(arrow)
+    assert_operator children.index(close_button), :>, children.index(arrow)
+    assert_equal "Open in popup", open_button["title"]
+    assert_equal "Close popup", close_button["title"]
+    assert open_button.at_css("svg"), "expected an icon in the open button"
+    assert close_button.at_css("svg"), "expected an icon in the close button"
+  end
+
+  test "popup button titles are translated for Japanese users" do
+    @user.update_column(:language, "ja")
+    get :show, params: { id: @issue.id }
+    assert_response :success
+
+    doc = Nokogiri::HTML(@response.body)
+    assert_equal "ポップアップで開く", doc.at_css("#aihelper-popup-open")["title"]
+    assert_equal "ポップアップを閉じる", doc.at_css("#aihelper-popup-close")["title"]
+  end
+
+  test "sidebar renders eight popup resize handles as direct children" do
+    get :show, params: { id: @issue.id }
+    assert_response :success
+
+    sidebar = Nokogiri::HTML(@response.body).at_css("#aihelper-sidebar")
+    handles = sidebar.element_children.select { |e| e["class"].to_s.split.include?("aihelper-popup-resize") }
+    assert_equal %w[e n ne nw s se sw w], handles.map { |e| e["data-edge"] }.sort
+  end
+
+  test "head loads the popup script after the chat script and checks the popup flag right after setUserId" do
+    get :show, params: { id: @issue.id }
+    assert_response :success
+
+    head = Nokogiri::HTML(@response.body).at_css("head")
+    scripts = head.css("script")
+    srcs = scripts.map { |e| e["src"].to_s }
+    chat_index = srcs.index { |src| src.match?(%r{/chat/ai_helper_chat(-[0-9a-f]+)?\.js\z}) }
+    popup_index = srcs.index { |src| src.match?(%r{/chat/ai_helper_chat_popup(-[0-9a-f]+)?\.js\z}) }
+    assert chat_index, "expected ai_helper_chat.js in head"
+    assert popup_index, "expected ai_helper_chat_popup.js in head"
+    assert_operator popup_index, :>, chat_index
+
+    set_user_index = scripts.index { |e| e["src"].nil? && e.text.include?("ai_helper.setUserId") }
+    assert set_user_index, "expected the setUserId inline script"
+    flag_script = scripts[set_user_index + 1]
+    assert_nil flag_script["src"]
+    assert_includes flag_script.text, "aihelper-popup-open_#{@user.id}"
+    assert_includes flag_script.text, "aihelper-popup-pending"
+    # The open state is per tab, so it must be read from sessionStorage and compared with 'true'.
+    assert_includes flag_script.text, "sessionStorage.getItem('aihelper-popup-open_#{@user.id}') === 'true'"
+    assert_not_includes flag_script.text, "localStorage"
+
+    layout_index = srcs.index { |src| src.match?(%r{/chat/ai_helper_chat_popup_layout(-[0-9a-f]+)?\.js\z}) }
+    assert layout_index, "expected ai_helper_chat_popup_layout.js in head"
+    assert_operator layout_index, :<, popup_index
+  end
 end
 
 # Verifies the body_bottom stuff todo modal partial guards safely when there

@@ -171,7 +171,11 @@ Object.assign(AiHelper.prototype, {
     xhr.onload = function () {
       if (xhr.status === 200) {
         ai_helper.close_dropdown_menu();
-        ai_helper.fold_chat(false);
+        // The popup always shows the conversation and must not change the
+        // sidebar's fold state (FR-013), so only the sidebar unfolds.
+        if (!chatArea.closest(".aihelper-popup-mode")) {
+          ai_helper.fold_chat(false);
+        }
         ai_helper.innerHTMLwithScripts(chatArea, xhr.responseText);
         chatArea.scrollTop = 0;
       } else {

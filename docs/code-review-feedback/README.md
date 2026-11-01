@@ -163,3 +163,9 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-077](./077-move-tests-vacuous-and-fixture-dom-not-from-erb.md) | "Move" tests passed without the move, and the fixture DOM did not match what the ERB renders | test-gap | Local AI review | AGENTS.md |
 | [CRF-078](./078-jsdoc-still-said-below-the-textarea.md) | JSDoc kept the old placement wording after the placement changed | doc-comment | Local AI review | Not yet |
 | [CRF-079](./079-jstoolbar-test-dom-builder-copied-three-times.md) | The jsToolBar DOM builder was copied into three test files | readability | Local AI review | Not yet |
+| [CRF-080](./080-copied-sidebar-css-outranked-plugin-rules.md) | Copied #sidebar CSS rules outranked the plugin's own rules, and print and touch behaviour were not carried over | edge-case | Local AI review | Not yet |
+| [CRF-081](./081-popup-layout-saved-from-unvalidated-measurements.md) | Popup layout was saved from measurements and fitted values that were not valid saved values | edge-case | Local AI review | Not yet |
+| [CRF-082](./082-popup-state-set-before-action-and-pending-not-released.md) | Popup state was saved before the action succeeded, and a startup error left the chat hidden | error-handling | Local AI review | Not yet |
+| [CRF-083](./083-history-jump-changed-sidebar-fold-state-in-popup.md) | A shared history action changed the sidebar fold state while the chat was the popup | edge-case | Local AI review | Not yet |
+| [CRF-084](./084-popup-css-and-parser-tests-missed-contract.md) | Popup CSS tests covered only stacking, the test parser misread some constructs, and fixtures and listeners leaked | test-gap | Local AI review | Not yet |
+| [CRF-085](./085-popup-docs-and-comments-stated-more-than-the-code-did.md) | Popup ADR, research and comments described tooltips as modals and overstated what was saved | doc-comment | Local AI review | Not yet |

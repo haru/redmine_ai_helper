@@ -8,6 +8,8 @@ ja:
   label_ai_helper_citations: "出典"
   label_ai_helper_free_input_option: "その他（自分で入力）"
   label_ai_helper_read_only_suffix: "（読み取り専用）"
+  label_ai_helper_popup_open: "ポップアップで開く"
+  label_ai_helper_popup_close: "ポップアップを閉じる"
   ai_helper_summary: "AIヘルパーで要約"
   ai_helper_similar_issues: "AIヘルパーで類似チケットを検索"
   ai_helper_find_similar_issues: "類似チケットを検索"

@@ -1,8 +1,8 @@
 ---
 title: AI Chat Sidebar
 type: component
-sources: [S013, S044, S049]
-updated: 2026-10-16
+sources: [S013, S044, S049, S058]
+updated: 2026-11-01
 ---
 
 # AI Chat Sidebar
@@ -73,6 +73,14 @@ format (S013) — the same method that folds in imported
   `rel="noopener noreferrer"`, only `http(s)` URLs as links). No JavaScript
   builds them; the existing reload shows them, including after reopening a
   conversation (ADR-052, S044). See [Web Search & Citations](./web-search-citations.md).
+
+## Popup mode
+
+The chat can be moved to a non-modal popup by moving the `#aihelper-sidebar`
+element itself, never cloning it (ADR-064, S058). Open state and the unsent
+draft are in `sessionStorage` (per tab); position and size are in
+`localStorage` (survives closing the browser). All keys are per user. Not offered below 900px, where Redmine moves the
+sidebar into its flyout menu (S058).
 
 ## Related
 
