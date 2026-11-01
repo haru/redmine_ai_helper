@@ -26,9 +26,13 @@
       "command": "npx",
       "args": [
         "-y",
-        "@playwright/mcp@latest",
-        "--cdp-endpoint",
-        "ws://browserless:3000"
+        "@playwright/mcp@0.0.84",
+        "--browser",
+        "chromium",
+        "--executable-path",
+        "/usr/bin/chromium",
+        "--headless",
+        "--no-sandbox"
       ],
       "env": {}
     },

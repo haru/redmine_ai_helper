@@ -16,6 +16,8 @@ services:
 
     # Overrides default command so things don't shut down after the process ends.
     command: sleep infinity
+    # Chromium (Playwright MCP) crashes with the default 64MB /dev/shm.
+    shm_size: "1gb"
     env_file:
       - path: .env
         required: false
@@ -64,22 +66,6 @@ services:
     environment:
       QDRANT__SERVICE__ENABLE_STRICT_MODE: "true"
 
-  browserless:
-    image: browserless/chrome
-    restart: unless-stopped
-    # ports:
-    #   - 3000:3000
-    environment:
-      # Maximum concurrent sessions
-      MAX_CONCURRENT_SESSIONS: 10
-      # Connection timeout in milliseconds
-      CONNECTION_TIMEOUT: 60000
-      # Maximum queue length
-      MAX_QUEUE_LENGTH: 10
-      # Enable debugger for Playwright
-      ENABLE_DEBUGGER: "false"
-      # Token for authentication (optional, set to empty for no auth)
-      TOKEN: ""
   # weaviate:
   #   command:
   #     - --host

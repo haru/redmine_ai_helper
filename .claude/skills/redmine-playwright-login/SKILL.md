@@ -24,7 +24,7 @@ If a path is given, open it after logging in. Otherwise stop at the post-login p
 
 Read these three environment variables (e.g. via `printenv`):
 
-- `REDMINE_PLAYRIGHT_URL` — base URL of the running Redmine instance
+- `REDMINE_PLAYRIGHT_URL` — base URL of the running Redmine instance (`http://localhost:3000` in the devcontainer)
 - `REDMINE_PLAYRIGHT_USER` — login name
 - `REDMINE_PLAYRIGHT_PASSWORD` — password
 
@@ -56,6 +56,8 @@ If the user (or `$ARGUMENTS`) specified a page to open next, navigate there now 
 
 ## Notes
 
+- The Playwright MCP server launches a headless Chromium (`/usr/bin/chromium`) inside the devcontainer, so Redmine is reached at `http://localhost:3000`. There is no separate browser container (ADR-066).
+- Files passed to `mcp__playwright__browser_file_upload` are read from the devcontainer's filesystem; use absolute paths there (e.g. under the scratchpad directory).
 - This is a local/test Redmine instance for development — credentials come from env vars set up for this purpose, not real user secrets.
 - Do not print the password anywhere except as needed to pass it into the Playwright fill call.
 - Reuse the already-open browser session for subsequent actions in the same conversation — no need to re-login unless the session was closed or logged out.
