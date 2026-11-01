@@ -113,6 +113,16 @@ function teardownPage() {
 }
 
 /**
+ * Closes the popup and lets the close animation (FR-019) finish.
+ * @param {object} popup - The AiHelperChatPopup global.
+ */
+function closeAndFinish(popup) {
+  vi.useFakeTimers();
+  popup.close();
+  vi.advanceTimersByTime(200);
+}
+
+/**
  * Installs a controllable window.matchMedia (jsdom has none).
  * @param {boolean} matches - Initial value of the query's `matches`.
  * @returns {{query: object, change: Function, mediaQuery: Function}} helpers; `change(matches)` fires a change event
@@ -372,7 +382,7 @@ describe("AiHelperChatPopup open and close", () => {
     popup.open();
     expect(sidebar.parentElement).toBe(document.body);
 
-    popup.close();
+    closeAndFinish(popup);
 
     const wrapper = document.getElementById("sidebar-wrapper");
     expect(sidebar.parentElement).toBe(wrapper);
@@ -386,7 +396,7 @@ describe("AiHelperChatPopup open and close", () => {
     sessionStorage.setItem(DRAFT_KEY, "draft");
     document.getElementById("ai-helper-message-input").value = "typed text";
 
-    popup.close();
+    closeAndFinish(popup);
 
     expect(sessionStorage.getItem(OPEN_KEY)).toBeNull();
     expect(sessionStorage.getItem(DRAFT_KEY)).toBeNull();
@@ -399,7 +409,7 @@ describe("AiHelperChatPopup open and close", () => {
 
     popup.open();
     expect(input.value).toBe("line one\nline two");
-    popup.close();
+    closeAndFinish(popup);
 
     expect(input.value).toBe("line one\nline two");
   });
@@ -427,7 +437,7 @@ describe("AiHelperChatPopup open and close", () => {
     expect(conversation.scrollTop).toBe(500);
 
     conversation.scrollTop = 0;
-    popup.close();
+    closeAndFinish(popup);
     expect(document.activeElement).toBe(input);
     expect(conversation.scrollTop).toBe(500);
   });
@@ -446,7 +456,7 @@ describe("AiHelperChatPopup open and close", () => {
     const setItem = vi.spyOn(Storage.prototype, "setItem");
 
     popup.open();
-    popup.close();
+    closeAndFinish(popup);
 
     const keys = setItem.mock.calls.map((call) => call[0]);
     expect(keys).not.toContain(FOLD_KEY);
@@ -459,7 +469,9 @@ describe("AiHelperChatPopup open and close", () => {
     expect(sidebar.parentElement).toBe(document.body);
 
     const closeClick = new MouseEvent("click", { bubbles: true, cancelable: true });
+    vi.useFakeTimers();
     document.getElementById("aihelper-popup-close").dispatchEvent(closeClick);
+    vi.advanceTimersByTime(200);
     expect(closeClick.defaultPrevented).toBe(true);
     expect(sidebar.parentElement).toBe(document.getElementById("sidebar-wrapper"));
   });
@@ -481,7 +493,7 @@ describe("AiHelperChatPopup open and close", () => {
     wrapper.removeChild(sidebar);
     wrapper.appendChild(sidebar);
 
-    popup.close();
+    closeAndFinish(popup);
 
     expect(wrapper.lastElementChild).toBe(sidebar);
   });
@@ -514,7 +526,7 @@ describe("AiHelperChatPopup open and close", () => {
     popup.open();
     expect(document.activeElement).toBe(closeButton);
 
-    popup.close();
+    closeAndFinish(popup);
     expect(document.activeElement).toBe(openButton);
   });
 
@@ -633,12 +645,148 @@ describe("AiHelperChatPopup open animation (FR-018)", () => {
     expect(sidebar.classList.contains("aihelper-popup-animating")).toBe(false);
   });
 
-  it("close() ends the animation class immediately", () => {
+  it("close() replaces the open animation with the close animation", () => {
     popup.open();
+    vi.advanceTimersByTime(100);
+
+    popup.close();
+    vi.advanceTimersByTime(100);
+    expect(sidebar.classList.contains("aihelper-popup-animating")).toBe(true);
+    vi.advanceTimersByTime(100);
+
+    expect(sidebar.classList.contains("aihelper-popup-animating")).toBe(false);
+    expect(sidebar.parentElement).toBe(document.getElementById("sidebar-wrapper"));
+  });
+});
+
+describe("AiHelperChatPopup close animation (FR-019)", () => {
+  let sidebar;
+  let wrapper;
+  let popup;
+  let media;
+
+  beforeEach(async () => {
+    sidebar = setupPage();
+    wrapper = document.getElementById("sidebar-wrapper");
+    // The sidebar slot: where the chat lands when it returns to the top of #sidebar-wrapper.
+    stubRect(wrapper, { left: 800, top: 60, width: 240, height: 700 });
+    media = stubMatchMedia(false);
+    popup = await load();
+    popup.init();
+    vi.useFakeTimers();
+    localStorage.setItem(LAYOUT_KEY, JSON.stringify({ left: 300, top: 50, width: 320, height: 420 }));
+    popup.open();
+    vi.advanceTimersByTime(200);
+  });
+
+  afterEach(teardownPage);
+
+  it("close() animates the position and size back to the sidebar slot and stays in the body meanwhile", () => {
+    expect(sidebar.parentElement).toBe(document.body);
+    expect(sidebar.classList.contains("aihelper-popup-animating")).toBe(false);
 
     popup.close();
 
+    expect(sidebar.parentElement).toBe(document.body);
+    expect(sidebar.classList.contains("aihelper-popup-animating")).toBe(true);
+    expect([sidebar.style.left, sidebar.style.top, sidebar.style.width, sidebar.style.height])
+      .toEqual(["800px", "60px", "240px", "600px"]);
+  });
+
+  it("returns the chat to the top of #sidebar-wrapper after about 200ms and clears the popup styles", () => {
+    popup.close();
+
+    vi.advanceTimersByTime(199);
+    expect(sidebar.parentElement).toBe(document.body);
+    vi.advanceTimersByTime(1);
+
+    expect(sidebar.parentElement).toBe(wrapper);
+    expect(wrapper.firstElementChild).toBe(sidebar);
+    expect(sidebar.classList.contains("aihelper-popup-mode")).toBe(false);
     expect(sidebar.classList.contains("aihelper-popup-animating")).toBe(false);
+    expect([sidebar.style.left, sidebar.style.top, sidebar.style.width, sidebar.style.height]).toEqual(["", "", "", ""]);
+  });
+
+  it("starts the transition from the popup layout", () => {
+    // offsetWidth is read as the reflow point between the start and end values.
+    let leftAtReflow = null;
+    let widthAtReflow = null;
+    Object.defineProperty(sidebar, "offsetWidth", {
+      configurable: true,
+      get: () => {
+        leftAtReflow = sidebar.style.left;
+        widthAtReflow = sidebar.style.width;
+        return 0;
+      },
+    });
+
+    popup.close();
+
+    expect(leftAtReflow).toBe("300px");
+    expect(widthAtReflow).toBe("320px");
+  });
+
+  it("removes the open state and the draft when close() is called, without waiting for the animation", () => {
+    sessionStorage.setItem(DRAFT_KEY, "draft");
+
+    popup.close();
+
+    expect(sessionStorage.getItem(OPEN_KEY)).toBeNull();
+    expect(sessionStorage.getItem(DRAFT_KEY)).toBeNull();
+    expect(sidebar.parentElement).toBe(document.body);
+  });
+
+  it("ignores a second close() during the animation and does not restart its timer", () => {
+    popup.close();
+    vi.advanceTimersByTime(100);
+
+    popup.close();
+    vi.advanceTimersByTime(100);
+
+    expect(sidebar.parentElement).toBe(wrapper);
+  });
+
+  it("returns at once, without animation, when the screen becomes narrow during the animation", () => {
+    popup.close();
+    vi.advanceTimersByTime(100);
+
+    media.change(true);
+
+    expect(sidebar.parentElement).toBe(wrapper);
+    expect(sidebar.classList.contains("aihelper-popup-animating")).toBe(false);
+    expect(sidebar.style.left).toBe("");
+  });
+
+  it("an older close timer does not move a popup that was opened again", () => {
+    popup.close();
+    vi.advanceTimersByTime(100);
+    media.change(true);
+    media.change(false);
+    popup.open();
+    expect(sidebar.parentElement).toBe(document.body);
+
+    vi.advanceTimersByTime(300);
+
+    expect(sidebar.parentElement).toBe(document.body);
+    expect(sidebar.classList.contains("aihelper-popup-mode")).toBe(true);
+  });
+
+  it("a narrow-screen close does not animate", () => {
+    media.change(true);
+
+    expect(sidebar.parentElement).toBe(wrapper);
+    expect(sidebar.classList.contains("aihelper-popup-animating")).toBe(false);
+  });
+
+  it("keeps the input text and the conversation element through the animation", () => {
+    const conversation = document.getElementById("aihelper-chat-conversation");
+    document.getElementById("ai-helper-message-input").value = "typed text";
+
+    popup.close();
+    vi.advanceTimersByTime(200);
+
+    expect(document.getElementById("ai-helper-message-input").value).toBe("typed text");
+    expect(document.getElementById("aihelper-chat-conversation")).toBe(conversation);
   });
 });
 
@@ -1194,7 +1342,7 @@ describe("AiHelperChatPopup drag and resize (FR-007, FR-008, FR-009)", () => {
     });
 
     it("does not start while the chat is in the sidebar", () => {
-      popup.close();
+      closeAndFinish(popup);
       sidebar.style.left = "100px";
       sidebar.style.top = "100px";
 
@@ -1213,7 +1361,7 @@ describe("AiHelperChatPopup drag and resize (FR-007, FR-008, FR-009)", () => {
     it("drops a drag in progress when the popup is closed, and saves nothing for it", () => {
       pointer(header, "pointerdown", { x: 0, y: 0 });
       pointer(header, "pointermove", { x: 40, y: 40 });
-      popup.close();
+      closeAndFinish(popup);
       const before = localStorage.getItem(LAYOUT_KEY);
 
       pointer(header, "pointermove", { x: 80, y: 80 });
@@ -1235,7 +1383,7 @@ describe("AiHelperChatPopup drag and resize (FR-007, FR-008, FR-009)", () => {
 
     it("does not overwrite the saved size with the fitted size when the header is moved in a small window", () => {
       localStorage.setItem(LAYOUT_KEY, JSON.stringify({ left: 100, top: 100, width: 900, height: 700 }));
-      popup.close();
+      closeAndFinish(popup);
       popup.open();
       stubViewport(500, 400);
       window.dispatchEvent(new Event("resize"));
@@ -1250,7 +1398,7 @@ describe("AiHelperChatPopup drag and resize (FR-007, FR-008, FR-009)", () => {
 
     it("keeps the saved height when only the width is resized in a small window", () => {
       localStorage.setItem(LAYOUT_KEY, JSON.stringify({ left: 0, top: 0, width: 900, height: 700 }));
-      popup.close();
+      closeAndFinish(popup);
       popup.open();
       stubViewport(500, 400);
       window.dispatchEvent(new Event("resize"));
@@ -1403,7 +1551,7 @@ describe("AiHelperChatPopup drag and resize (FR-007, FR-008, FR-009)", () => {
     });
 
     it("does nothing while the chat is in the sidebar", () => {
-      popup.close();
+      closeAndFinish(popup);
       stubViewport(380, 300);
 
       window.dispatchEvent(new Event("resize"));
@@ -1416,7 +1564,7 @@ describe("AiHelperChatPopup drag and resize (FR-007, FR-008, FR-009)", () => {
     it("opens at the moved and resized layout after closing", () => {
       drag(header, 40, 40);
       drag(handle("se"), 20, 20);
-      popup.close();
+      closeAndFinish(popup);
 
       popup.open();
 

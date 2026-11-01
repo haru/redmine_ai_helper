@@ -264,8 +264,8 @@ describe("chat popup CSS contract (ui-contract.md, FR-001, FR-003, FR-007, FR-00
       expect(declared(POPUP, "display", "print")).toBe("none");
     });
 
-    it("animates the move from the sidebar with left and top over 200ms", () => {
-      expect(declared("#aihelper-sidebar.aihelper-popup-animating", "transition")).toBe("left 200ms,top 200ms");
+    it("animates opening and closing (FR-018, FR-019) with left, top, width and height over 200ms", () => {
+      expect(declared("#aihelper-sidebar.aihelper-popup-animating", "transition")).toBe("left 200ms,top 200ms,width 200ms,height 200ms");
     });
 
     it("keeps the copied sidebar list and divider rules below the plugin's own conversation rules", () => {

@@ -1,7 +1,7 @@
 ---
 title: Chat Popup
 type: component
-sources: [S058]
+sources: [S058, S059]
 updated: 2026-11-01
 ---
 
@@ -17,6 +17,13 @@ rejected alternatives: [Chat Popup Design Decisions](./chat-popup-design-decisio
   `aihelper-popup-mode` (`position: fixed`); closing moves it back to the top
   of `#sidebar-wrapper`. It is never cloned, because the chat scripts use fixed
   IDs such as `aihelper-chat-conversation` (ADR-064, S058).
+- Opening moves the chat from its sidebar position to the layout over 200ms
+  (FR-018, left/top only). Closing is the reverse (FR-019, ADR-065, S059): the
+  position and size change to the sidebar slot over 200ms, then the chat returns
+  to `#sidebar-wrapper`. The saved open state and draft are removed when
+  `close()` is called, so a navigation during the animation does not reopen the
+  popup. A second `close()` and header drags are ignored while closing. Narrow
+  screens and `pageshow` return the chat at once, without animation (S059).
 - Layout rules are pure functions in `ai_helper_chat_popup_layout.js`; DOM and
   state wiring is a second file, called from two lines in `ai_helper_chat.js`.
   No DB column, route or controller changes (S058).

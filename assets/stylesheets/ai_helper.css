@@ -1806,9 +1806,10 @@ body:has(.ui-widget-overlay) #aihelper-sidebar.aihelper-popup-mode {
   z-index: 90;
 }
 
-/* Move transition when the popup opens from the sidebar (FR-018). */
+/* Move transition when the popup opens from, and closes back to, the sidebar
+   (FR-018, FR-019). The size changes too, so the close is the open in reverse. */
 #aihelper-sidebar.aihelper-popup-animating {
-  transition: left 200ms, top 200ms;
+  transition: left 200ms, top 200ms, width 200ms, height 200ms;
 }
 
 /* Resize handles: edges are 6px strips, corners 12px squares. */

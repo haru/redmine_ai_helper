@@ -1,7 +1,7 @@
 ---
 title: Chat Popup Design Decisions
 type: decision
-sources: [S058]
+sources: [S058, S059]
 updated: 2026-11-01
 ---
 
@@ -35,3 +35,12 @@ Each line is a rejected alternative and the reason.
 
 Redmine's flyout moves `#sidebar > *` (`responsive.js:57`), so returning the
 element to `#sidebar-wrapper` also puts it back in the menu (S058).
+
+## Closing animation (ADR-065, S059)
+- **Waiting for `transitionend`**: it is not fired when no value changes or the
+  element is hidden, so the chat could stay in the body (S059).
+- **Moving the chat back to measure the slot**: each move drops focus and the
+  scroll position and costs a second layout (S059).
+- **Animating the position only**: the user chose to restore the size too (S059).
+- **Deleting the saved state after the animation**: a navigation in the 200ms
+  would reopen the popup (S059).

@@ -20,6 +20,8 @@ const AiHelperChatPopup = (() => {
 
   let mediaQuery = null;
   let animationToken = 0;
+  let closing = false;
+  let sidebarHeight = 0;
   let drag = null;
 
   /**
@@ -201,6 +203,7 @@ const AiHelperChatPopup = (() => {
   function show(animate) {
     const element = chatElement();
     const from = element.getBoundingClientRect();
+    sidebarHeight = from.height;
     const layout = Layout.clamp(readLayout(), viewport());
     keepingFocusAndScroll(() => {
       document.body.appendChild(element);
@@ -223,12 +226,15 @@ const AiHelperChatPopup = (() => {
   }
 
   /**
-   * Move the chat back to the top of the sidebar.
+   * Move the chat back to the top of the sidebar at once. Ends a running
+   * animation, so a pending close timer does nothing afterwards.
    */
   function hide() {
     const element = chatElement();
     const wrapper = requiredElement('sidebar-wrapper');
     drag = null;
+    closing = false;
+    animationToken += 1;
     keepingFocusAndScroll(() => {
       wrapper.insertBefore(element, wrapper.firstChild);
       element.classList.remove('aihelper-popup-mode', 'aihelper-popup-animating');
@@ -254,16 +260,31 @@ const AiHelperChatPopup = (() => {
   }
 
   /**
-   * Close the popup and return the chat to the sidebar (FR-003). The input
-   * value stays as it is; the saved open state and draft are removed.
+   * Close the popup (FR-003, FR-019): the saved open state and draft are
+   * removed at once, the position and size change to the sidebar slot over
+   * 200ms, and then the chat returns to the sidebar. The input value stays as
+   * it is. A second call during the animation does nothing.
    */
   function close() {
-    if (!isPopup()) {
+    if (!isPopup() || closing) {
       return;
     }
-    hide();
+    const slot = requiredElement('sidebar-wrapper').getBoundingClientRect();
+    closing = true;
+    drag = null;
     sessionStorage.removeItem(storageKey(OPEN_KEY));
     sessionStorage.removeItem(storageKey(DRAFT_KEY));
+    const element = chatElement();
+    const token = ++animationToken;
+    element.classList.add('aihelper-popup-animating');
+    // Force a reflow so the transition starts from the popup layout.
+    void element.offsetWidth;
+    applyLayout({ left: slot.left, top: slot.top, width: slot.width, height: sidebarHeight });
+    setTimeout(() => {
+      if (token === animationToken) {
+        hide();
+      }
+    }, ANIMATION_MS);
   }
 
   /**
@@ -285,7 +306,7 @@ const AiHelperChatPopup = (() => {
    * @param {string|null} edge - Handle edge, or null when the header is dragged.
    */
   function startDrag(event, edge) {
-    if (event.button !== 0 || drag || !isPopup()) {
+    if (event.button !== 0 || drag || closing || !isPopup()) {
       return;
     }
     if (event.target.closest('a, .aihelper-hamburger, .aihelper-dropdown-menu')) {
