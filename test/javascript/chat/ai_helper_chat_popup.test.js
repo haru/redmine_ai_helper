@@ -778,6 +778,19 @@ describe("AiHelperChatPopup close animation (FR-019)", () => {
     expect(sidebar.classList.contains("aihelper-popup-animating")).toBe(false);
   });
 
+  it("does not re-apply the popup layout on a window resize during the animation", () => {
+    popup.close();
+    vi.advanceTimersByTime(100);
+    stubViewport(380, 300);
+
+    window.dispatchEvent(new Event("resize"));
+
+    expect([sidebar.style.left, sidebar.style.top, sidebar.style.width, sidebar.style.height])
+      .toEqual(["800px", "60px", "240px", "600px"]);
+    vi.advanceTimersByTime(100);
+    expect(sidebar.parentElement).toBe(wrapper);
+  });
+
   it("keeps the input text and the conversation element through the animation", () => {
     const conversation = document.getElementById("aihelper-chat-conversation");
     document.getElementById("ai-helper-message-input").value = "typed text";

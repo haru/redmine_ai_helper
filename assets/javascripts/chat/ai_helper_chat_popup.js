@@ -398,10 +398,11 @@ const AiHelperChatPopup = (() => {
    * Fit the popup to the current viewport. The fitted layout is not saved,
    * so a larger window brings the saved layout back. A drag in progress is
    * abandoned, because its start layout no longer matches the viewport. With
-   * no usable saved layout the popup stays as it is.
+   * no usable saved layout the popup stays as it is. While the popup is closing
+   * nothing is applied, so the animation toward the sidebar is not undone.
    */
   function fitToViewport() {
-    if (!isPopup()) {
+    if (!isPopup() || closing) {
       return;
     }
     drag = null;
