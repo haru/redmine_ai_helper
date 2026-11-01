@@ -1,8 +1,8 @@
 ---
 title: AI Chat Sidebar
 type: component
-sources: [S013, S044, S049]
-updated: 2026-10-16
+sources: [S013, S044, S049, S058]
+updated: 2026-11-01
 ---
 
 # AI Chat Sidebar
@@ -73,6 +73,10 @@ format (S013) — the same method that folds in imported
   `rel="noopener noreferrer"`, only `http(s)` URLs as links). No JavaScript
   builds them; the existing reload shows them, including after reopening a
   conversation (ADR-052, S044). See [Web Search & Citations](./web-search-citations.md).
+
+## Popup mode
+
+The chat can be shown as a movable, resizable popup; see [Chat Popup](./chat-popup.md) (ADR-064, S058).
 
 ## Related
 

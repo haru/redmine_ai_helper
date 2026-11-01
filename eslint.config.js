@@ -168,6 +168,27 @@ export default [
     },
   },
   {
+    // AiHelperChatPopup is declared (const) in chat/ai_helper_chat_popup.js and
+    // called as a bare identifier from chat/ai_helper_chat.js. Scoped to this
+    // file so ai_helper_chat_popup.js itself does not redeclare a global.
+    files: ["assets/javascripts/chat/ai_helper_chat.js"],
+    languageOptions: {
+      globals: {
+        AiHelperChatPopup: "readonly",
+      },
+    },
+  },
+  {
+    // AiHelperChatPopupLayout is declared (const) in chat/ai_helper_chat_popup_layout.js
+    // and used as a bare identifier by chat/ai_helper_chat_popup.js.
+    files: ["assets/javascripts/chat/ai_helper_chat_popup.js"],
+    languageOptions: {
+      globals: {
+        AiHelperChatPopupLayout: "readonly",
+      },
+    },
+  },
+  {
     // AiHelper is declared via `class AiHelper {...}` in ai_helper.js and
     // extended (static/prototype) from these files, which are split out
     // purely to stay under max-lines (see ADR-027) — see the comment at the

@@ -4,7 +4,8 @@
  */
 const AiHelperChat = (() => {
   /**
-   * Initialize CommandCompletion on the chat input if not already done.
+   * Initialize CommandCompletion on the chat input if not already done, then
+   * restore the unsent popup draft.
    */
   function initChatForm() {
     const chatInput = document.getElementById('ai-helper-message-input');
@@ -15,11 +16,14 @@ const AiHelperChat = (() => {
         chatInput.dataset.commandCompletionInitialized = 'true';
       }
     }
+    AiHelperChatPopup.restoreDraft();
   }
 
   /**
    * Initialize the chat sidebar: relocate into sidebar-wrapper, load chat
-   * form via XHR, and wire up ai_helper page info.
+   * form via XHR, wire up ai_helper page info, then initialize the chat popup.
+   * The popup-pending marker is removed even if a step throws, so the chat is
+   * never left hidden (R-005).
    *
    * Reads configuration from the #aihelper-sidebar element's data attributes:
    * - data-chat-form-url
@@ -29,6 +33,18 @@ const AiHelperChat = (() => {
    * - data-additional-info (JSON string)
    */
   function initSidebar() {
+    try {
+      setUpSidebar();
+    } finally {
+      document.documentElement.classList.remove('aihelper-popup-pending');
+    }
+  }
+
+  /**
+   * Relocate the sidebar chat, load the chat form and initialize the popup.
+   * See initSidebar.
+   */
+  function setUpSidebar() {
     if (!document.getElementById('sidebar-wrapper')) {
       return;
     }
@@ -65,6 +81,7 @@ const AiHelperChat = (() => {
     }
 
     ai_helper.set_hamberger_menu();
+    AiHelperChatPopup.init();
   }
 
   /**

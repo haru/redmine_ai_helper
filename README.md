@@ -59,6 +59,7 @@ The Redmine AI Helper Plugin adds AI chat functionality to Redmine, enhancing pr
 # ✨ Features
 
 - Adds an AI chat sidebar to the right side of your Redmine interface
+  - The chat can be switched to a popup that you can move and resize; it stays open across pages
 - Enables various AI-assisted features including:
   - Issue search
   - Issue and Wiki content summarization
