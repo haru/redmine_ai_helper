@@ -129,20 +129,10 @@ class AiHelperViewHookTest < ActionController::TestCase
     children = header.element_children
     assert_operator children.index(open_button), :<, children.index(arrow)
     assert_operator children.index(close_button), :>, children.index(arrow)
-    assert_equal "Open in popup", open_button["title"]
-    assert_equal "Close popup", close_button["title"]
+    assert_nil open_button["title"], "popup buttons intentionally have no tooltip"
+    assert_nil close_button["title"], "popup buttons intentionally have no tooltip"
     assert open_button.at_css("svg"), "expected an icon in the open button"
     assert close_button.at_css("svg"), "expected an icon in the close button"
-  end
-
-  test "popup button titles are translated for Japanese users" do
-    @user.update_column(:language, "ja")
-    get :show, params: { id: @issue.id }
-    assert_response :success
-
-    doc = Nokogiri::HTML(@response.body)
-    assert_equal "ポップアップで開く", doc.at_css("#aihelper-popup-open")["title"]
-    assert_equal "ポップアップを閉じる", doc.at_css("#aihelper-popup-close")["title"]
   end
 
   test "sidebar renders eight popup resize handles as direct children" do
