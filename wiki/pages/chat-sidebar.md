@@ -76,11 +76,7 @@ format (S013) — the same method that folds in imported
 
 ## Popup mode
 
-The chat can be moved to a non-modal popup by moving the `#aihelper-sidebar`
-element itself, never cloning it (ADR-064, S058). Open state and the unsent
-draft are in `sessionStorage` (per tab); position and size are in
-`localStorage` (survives closing the browser). All keys are per user. Not offered below 900px, where Redmine moves the
-sidebar into its flyout menu (S058).
+The chat can be shown as a movable, resizable popup; see [Chat Popup](./chat-popup.md) (ADR-064, S058).
 
 ## Related
 
