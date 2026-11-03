@@ -267,7 +267,7 @@ describe("AiHelperJournalEditAids", () => {
       const overlaysBefore = document.querySelectorAll(".ai-helper-textarea-overlay").length;
 
       expect(() => window.AiHelperJournalEditAids.attach(dom.controls))
-        .toThrow(new RegExp(selector.replace(/\./g, "\\.")));
+        .toThrow(selector);
 
       expect(window.AiHelperJournalEditAids.entryFor(dom.form)).toBeUndefined();
       expect(document.querySelectorAll(".ai-helper-textarea-overlay").length).toBe(overlaysBefore);
