@@ -2,11 +2,15 @@
 
 require "redmine_ai_helper/base_tools"
 require "redmine_ai_helper/project_metrics_calculator"
+require "redmine_ai_helper/util/member_hash"
+require "redmine_ai_helper/util/project_write_guard"
 
 module RedmineAiHelper
   module Tools
     # ProjectTools is a specialized tool for handling Redmine project-related queries.
     class ProjectTools < RedmineAiHelper::BaseTools
+      include RedmineAiHelper::Util::MemberHash
+      include RedmineAiHelper::Util::ProjectWriteGuard
       define_function :list_projects, description: "List all projects visible to the current user. It returns the project ID, name, identifier, description, created_on, and last_activity_date." do
         property :dummy, type: "string", description: "dummy property", required: false
       end
@@ -79,15 +83,19 @@ module RedmineAiHelper
         project_json
       end
 
-      define_function :project_members, description: "List all members of the projects. It can be used to obtain the ID from the user's name. It can also be used to obtain the roles that the user has in the projects. Member information includes user_id, login, user_name, and roles." do
+      define_function :project_members, description: "List all members of the projects, built from the project memberships. Includes users, groups, and locked users. It can be used to obtain the ID from the user's or group's name. It can also be used to obtain the roles that the member has in the projects. Member information includes member_id, user_id, login, user_name, type (user or group), status (active, registered, or locked), roles (each with id, name, inherited, inherited_from, and editable), and deletable. Before changing or removing a member's roles, check inherited, editable, and deletable: inherited roles and roles you cannot manage cannot be changed and members holding them cannot be removed. When choosing an assignee for an issue, look at type and status: locked users cannot be assigned, and groups can be assigned only when the 'accept issue assignments from groups' setting is enabled." do
         property :project_ids, type: "array", description: "The project IDs of the projects to return.", required: true do
           item type: "integer"
         end
       end
 
-      # List all members of the project.
+      # List all members of the project, built from project.memberships so that
+      # groups and locked users are included as well (see research R-018).
+      # The existing keys (user_id, login, user_name, roles[].id, roles[].name)
+      # keep their names and meanings.
       # @param project_ids [Array<Integer>] The project IDs of the projects to return.
-      # @return [Array<Hash>] An array of hashes containing member information.
+      # @return [Hash] { projects: [ { project_id:, project_name:, members: [...] } ] }
+      #   for the projects accessible via AI Helper.
       def project_members(project_ids:)
         projects = Project.where(id: project_ids)
         return ToolResponse.create_error "No projects found" if projects.empty?
@@ -97,19 +105,7 @@ module RedmineAiHelper
         flag = AiHelperSetting.all_projects_scope?
 
         list = projects.filter { |p| accessible_project?(p, all_projects_scope: flag) }.map do |project|
-          members = project.members.map do |member|
-            {
-              user_id: member.user_id,
-              login: member.user.login,
-              user_name: member.user.name,
-              roles: member.roles.map do |role|
-                {
-                  id: role.id,
-                  name: role.name
-                }
-              end
-            }
-          end
+          members = project.memberships.map { |member| member_to_hash(member) }
           {
             project_id: project.id,
             project_name: project.name,
@@ -317,7 +313,80 @@ module RedmineAiHelper
         end
       end
 
+      define_function :capable_project_props, description: "Return the values that can be set when creating or updating a project: the parent projects you may choose, whether the top level is allowed, whether you may set is_public, inherit_members, and the enabled modules, the available modules, the trackers with their assigned flag, the project custom fields with their possible values, the default is_public, and the sequential identifier when enabled. Omit project_id for creating a new project; pass project_id for updating an existing one." do
+        property :project_id, type: "integer", description: "The ID of the project to update. Omit to get the values for creating a new project.", required: false
+      end
+
+      # Return the values that can be set when creating or updating a project.
+      # @param project_id [Integer, nil] The project ID, or nil for a new project.
+      # @return [Hash] The capability props, or { error: } for a user-caused failure.
+      def capable_project_props(project_id: nil)
+        user_errors_as_result do
+          if project_id
+            project = readable_project!(project_id: project_id, permission: :edit_project)
+          else
+            unless User.current.allowed_to?({ controller: "projects", action: "create" }, nil, global: true)
+              raise UserError, "Permission denied: projects/create (neither add_project nor add_subprojects is granted)"
+            end
+            project = Project.new
+          end
+          project_props(project)
+        end
+      end
+
       private
+
+      # Build the capable_project_props hash for a new or existing project.
+      # @param project [Project] The (possibly unsaved) project.
+      # @return [Hash] The capability props.
+      def project_props(project)
+        parents = project.allowed_parents(User.current)
+        # The candidate list is at most a handful of projects; read the flag once
+        # so accessible_project? does not re-read the settings row per project.
+        scope_flag = AiHelperSetting.all_projects_scope?
+        {
+          project_id: project.id,
+          allowed_parents: parents.compact.select { |p| accessible_project?(p, all_projects_scope: scope_flag) }.map { |p| { id: p.id, name: p.name } },
+          top_level_allowed: parents.include?(nil),
+          can_set_is_public: project.safe_attribute?("is_public", User.current),
+          can_set_inherit_members: project.safe_attribute?("inherit_members", User.current),
+          can_select_modules: project.safe_attribute?("enabled_module_names", User.current),
+          available_modules: Redmine::AccessControl.available_project_modules.map(&:to_s),
+          enabled_modules: project.enabled_module_names,
+          trackers: Tracker.sorted.map do |tracker|
+            { id: tracker.id, name: tracker.name, assigned: project.tracker_ids.include?(tracker.id) }
+          end,
+          custom_fields: project.visible_custom_field_values.map { |value| project_custom_field_to_hash(value) },
+          default_is_public: project.new_record? ? Setting.default_projects_public? : project.is_public,
+          sequential_identifier: Setting.sequential_project_identifiers? ? Project.next_identifier : nil
+        }
+      end
+
+      # Convert a project custom field value to the shape of contracts/project_tools.md.
+      # @param value [CustomFieldValue] The custom field value.
+      # @return [Hash] The custom field description.
+      def project_custom_field_to_hash(value)
+        custom_field = value.custom_field
+        {
+          id: custom_field.id,
+          name: custom_field.name,
+          field_format: custom_field.field_format,
+          is_required: custom_field.is_required,
+          multiple: custom_field.multiple?,
+          possible_values: custom_field.possible_values_options(project_from_value(value)).map do |option|
+            label, val = Array(option)
+            { value: (val || label).to_s, label: label.to_s }
+          end,
+          default_value: custom_field.default_value
+        }
+      end
+
+      # The project a custom field value belongs to, for possible_values_options.
+      # @param value [CustomFieldValue] The custom field value.
+      # @return [Project, nil] The customized project, or nil for an unsaved one.
+      def project_from_value(value)
+        value.customized.is_a?(Project) ? value.customized : nil
+      end
 
       def format_project_custom_fields(project)
         project.custom_field_values.map do |cfv|

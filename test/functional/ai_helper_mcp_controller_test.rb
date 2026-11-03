@@ -283,6 +283,48 @@ class AiHelperMcpControllerTest < ActionController::TestCase
     end
   end
 
+  # ─── Project management tools (spec 084, FR-008, SC-003, SC-004) ──────────
+
+  context "project management tools" do
+    setup { set_valid_auth_headers }
+
+    should "list the write tools in normal mode and the read tools too" do
+      names = listed_tool_names
+
+      pm_write_tools.each { |name| assert_includes names, name, "#{name} must be listed in normal mode" }
+      pm_read_tools.each { |name| assert_includes names, name, "#{name} must be listed in normal mode" }
+    end
+
+    should "hide the write tools and keep the read tools in read-only mode" do
+      AiHelperSetting.stubs(:read_only_mode?).returns(true)
+      names = listed_tool_names
+
+      pm_write_tools.each { |name| assert_not_includes names, name, "#{name} must be hidden in read-only mode" }
+      pm_read_tools.each { |name| assert_includes names, name, "#{name} must stay in read-only mode" }
+    end
+
+    should "reject calls to the write tools in read-only mode" do
+      AiHelperSetting.stubs(:read_only_mode?).returns(true)
+
+      pm_write_tools.each do |name|
+        post :handle_request, body: tools_call_payload(name, {}), as: :json
+        body = JSON.parse(@response.body)
+
+        assert_equal true, body.dig("result", "isError"), "#{name} must be rejected in read-only mode"
+      end
+    end
+
+    should "not expose any delete, destroy, or archive tool for projects, members, or categories" do
+      names = listed_tool_names
+
+      %w[delete_project delete_category delete_member archive_project close_project destroy_project].each do |name|
+        assert_not_includes names, name
+      end
+      forbidden = names.select { |name| name.match?(/project|member|categor|tracker/) && name.match?(/delete|destroy|archive/) }
+      assert_empty forbidden
+    end
+  end
+
   # ─── Setting.login_required = true (Issue #304) ────────────────────────────
 
   context "with Setting.login_required = true" do
@@ -497,6 +539,19 @@ class AiHelperMcpControllerTest < ActionController::TestCase
   end
 
   private
+
+  def pm_write_tools
+    %w[create_project update_project update_modules add_trackers remove_trackers
+    add_member update_member_roles remove_member create_category update_category]
+  end
+  def pm_read_tools
+    %w[capable_project_props find_member_candidates list_managed_roles list_categories]
+  end
+
+  def listed_tool_names
+    post :handle_request, body: tools_list_payload, as: :json
+    JSON.parse(@response.body).dig("result", "tools").map { |t| t["name"] }
+  end
 
   def set_valid_auth_headers
     @request.headers["X-Redmine-API-Key"] = @api_key

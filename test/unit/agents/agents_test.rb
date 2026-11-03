@@ -146,11 +146,15 @@ class AgentsTest < ActiveSupport::TestCase
     end
 
     should "return correct tool providers" do
-      assert_equal [ RedmineAiHelper::Tools::ProjectTools ], @agent.available_tool_providers
+      expected = [
+        RedmineAiHelper::Tools::ProjectTools, RedmineAiHelper::Tools::ProjectWriteTools,
+        RedmineAiHelper::Tools::MemberTools, RedmineAiHelper::Tools::CategoryTools
+      ]
+      assert_equal expected, @agent.available_tool_providers
     end
 
     should "return correct tool classes derived from providers" do
-      assert_equal RedmineAiHelper::Tools::ProjectTools.tool_classes, @agent.available_tool_classes
+      assert_equal @agent.available_tool_providers.flat_map(&:tool_classes), @agent.available_tool_classes
     end
   end
 

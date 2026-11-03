@@ -64,3 +64,4 @@ Sources are immutable inputs — the wiki never edits them.
 | S057 | specs/081-fix-prompt-template-validation (research.md + plan.md) + docs/adr/063-prompt-template-strict-input-variables.md | feature-artifact | 2026-10-21 | 2026-10-21 | issue-summary-instructions-prompt-template.md |
 | S058 | specs/083-chat-form-popup (research.md + plan.md) + docs/adr/064-chat-popup-moves-the-sidebar-element.md | feature-artifact | 2026-11-01 | 2026-11-01 | chat-sidebar.md, chat-popup.md, chat-popup-design-decisions.md |
 | S059 | specs/083-chat-form-popup (research.md R-012 + spec.md FR-019) + docs/adr/065-chat-popup-close-animation-reverses-open.md | feature-artifact | 2026-11-01 | 2026-11-01 | chat-popup.md, chat-popup-design-decisions.md |
+| S060 | specs/084-project-management-tools (research.md + plan.md) + docs/adr/067-project-management-tools-check-permissions-on-every-object.md | feature-artifact | 2026-11-03 | 2026-11-03 | project-management-tools.md |

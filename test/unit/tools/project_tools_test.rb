@@ -81,7 +81,9 @@ class ProjectToolsTest < ActiveSupport::TestCase
 
   def test_project_members
     project = Project.find(1)
-    members = project.members
+    # R-018: the list is now built from project.memberships, so groups and locked
+    # users appear as well; project.members (active users only) is smaller.
+    members = project.memberships
 
     response = @provider.project_members(project_ids: [ project.id ])
 
@@ -940,6 +942,219 @@ class ProjectToolsTest < ActiveSupport::TestCase
       assert workload_balance.key?(:workload_variance)
       assert workload_balance.key?(:max_workload)
       assert workload_balance.key?(:min_workload)
+    end
+  end
+
+  context "project_members extension (memberships)" do
+    setup do
+      @project5 = Project.find(5)
+      EnabledModule.create!(project_id: @project5.id, name: "ai_helper") unless @project5.module_enabled?(:ai_helper)
+      @previous_user = User.current
+      User.current = User.find(1)
+    end
+
+    teardown do
+      User.current = @previous_user
+    end
+
+    should "return groups with type group and nil login" do
+      response = @provider.project_members(project_ids: [ @project5.id ])
+
+      group_member = response[:projects][0][:members].find { |m| m[:user_id] == 10 }
+      assert_not_nil group_member, "group A Team (user_id 10) must appear in the members list"
+      assert_equal "group", group_member[:type]
+      assert_nil group_member[:login]
+      assert_equal "A Team", group_member[:user_name]
+    end
+
+    should "return locked users with status locked" do
+      response = @provider.project_members(project_ids: [ 1 ])
+
+      locked_member = response[:projects][0][:members].find { |m| m[:user_id] == 5 }
+      assert_not_nil locked_member, "locked user 5 must appear in the members list"
+      assert_equal "locked", locked_member[:status]
+      assert_equal "user", locked_member[:type]
+    end
+
+    should "return the Member shape from contracts/member_tools.md" do
+      response = @provider.project_members(project_ids: [ @project5.id ])
+
+      member = response[:projects][0][:members].find { |m| m[:user_id] == 2 }
+      membership = @project5.memberships.find_by(user_id: 2)
+      assert_equal membership.id, member[:member_id]
+      assert_equal "active", member[:status]
+      assert_equal "user", member[:type]
+      assert_kind_of TrueClass, member[:deletable]
+      assert(member[:roles].all? { |r| r.key?(:inherited) })
+      assert(member[:roles].all? { |r| r.key?(:inherited_from) })
+      assert(member[:roles].all? { |r| r.key?(:editable) })
+      # Existing keys keep their names and meanings
+      assert_equal membership.user.login, member[:login]
+      assert_equal membership.user.name, member[:user_name]
+      assert_equal membership.roles.map(&:id).sort, member[:roles].map { |r| r[:id] }.sort
+    end
+
+    should "mark inherited roles with inherited, inherited_from and editable false" do
+      # Member 7 (user 8 in project 5) holds both roles inherited from group A Team
+      response = @provider.project_members(project_ids: [ @project5.id ])
+
+      member = response[:projects][0][:members].find { |m| m[:user_id] == 8 }
+      assert_not_nil member
+      assert_not_empty member[:roles]
+      assert member[:roles].all? { |r| r[:inherited] == true },
+        "all roles of user 8 in project 5 are inherited, got: #{member[:roles].inspect}"
+      assert_equal [ "A Team" ], member[:roles].map { |r| r[:inherited_from] }.uniq
+      assert(member[:roles].all? { |r| r[:editable] == false })
+    end
+
+    should "mark direct roles as not inherited and editable by a manager" do
+      response = @provider.project_members(project_ids: [ @project5.id ])
+
+      member = response[:projects][0][:members].find { |m| m[:user_id] == 2 }
+      roles = member[:roles].sort_by { |r| r[:id] }
+      assert(roles.all? { |r| r[:inherited] == false })
+      assert(roles.all? { |r| r[:inherited_from].nil? })
+      assert(roles.all? { |r| r[:editable] == true })
+    end
+
+    should "mark members with inherited roles as not deletable" do
+      response = @provider.project_members(project_ids: [ @project5.id ])
+
+      member = response[:projects][0][:members].find { |m| m[:user_id] == 8 }
+      assert_equal false, member[:deletable]
+    end
+
+    should "raise on an unknown principal status read back from the database" do
+      principal = Principal.new
+      principal.stubs(:status).returns(99)
+
+      assert_raises(RuntimeError, "Unknown principal status: 99") do
+        @provider.send(:principal_status, principal)
+      end
+    end
+
+    should "keep the outer shape and only return accessible projects" do
+      # Project 3 has no ai_helper module and the scope is off, so it must not appear
+      response = @provider.project_members(project_ids: [ @project5.id, 3 ])
+
+      assert_equal 1, response[:projects].size
+      entry = response[:projects][0]
+      assert_equal @project5.id, entry[:project_id]
+      assert_equal @project5.name, entry[:project_name]
+      assert entry.key?(:members)
+    end
+  end
+
+  context "capable_project_props" do
+    setup do
+      @previous_user = User.current
+      Role.find(1).add_permission!(:view_ai_helper)
+      User.current = User.find(2) # jsmith: Manager in project 1, holds add_project globally
+    end
+
+    teardown do
+      User.current = @previous_user
+    end
+
+    should "return an error for a new project when the user cannot create projects" do
+      User.current = User.find(4) # rhill: no membership, no global add_project
+
+      result = @provider.capable_project_props
+
+      assert result[:error].present?
+      assert_match(/add_project|projects\/create/, result[:error])
+    end
+
+    should "return the props for a new project" do
+      result = @provider.capable_project_props
+
+      assert_nil result[:project_id]
+      assert_equal true, result[:top_level_allowed]
+      # No fixture role has add_subprojects, so the only allowed parent is the top level
+      assert_equal [], result[:allowed_parents]
+      assert_equal true, result[:can_set_is_public]
+      assert_equal true, result[:can_set_inherit_members]
+      assert_equal true, result[:can_select_modules]
+      assert_includes result[:available_modules], "issue_tracking"
+      assert_includes result[:available_modules], "ai_helper"
+      # The defaults are whatever Redmine puts on a fresh Project
+      defaults = Project.new
+      assert_equal defaults.enabled_module_names.sort, result[:enabled_modules].sort
+      assert_equal defaults.is_public, result[:default_is_public]
+      # Trackers: the Redmine defaults are marked as assigned, all trackers are listed
+      assert_equal(Tracker.sorted.pluck(:id), result[:trackers].map { |t| t[:id] })
+      assert_equal defaults.tracker_ids.sort, result[:trackers].select { |t| t[:assigned] }.map { |t| t[:id] }.sort
+    end
+
+    should "return the shape of the project custom fields for a new project" do
+      custom_field = ProjectCustomField.create!(name: "Contract Type", field_format: "list", is_for_all: true, possible_values: [ "Enterprise", "Community" ])
+      custom_field2 = ProjectCustomField.create!(name: "Region", field_format: "list", is_for_all: true, possible_values: [ "EU", "US" ], default_value: "EU")
+
+      result = @provider.capable_project_props
+
+      fields = result[:custom_fields]
+      contract = fields.find { |f| f[:id] == custom_field.id }
+      assert_equal "Contract Type", contract[:name]
+      assert_equal "list", contract[:field_format]
+      assert_equal false, contract[:is_required]
+      assert_equal false, contract[:multiple]
+      assert_equal [ { value: "Enterprise", label: "Enterprise" }, { value: "Community", label: "Community" } ], contract[:possible_values]
+      list_field = fields.find { |f| f[:id] == custom_field2.id }
+      assert_equal [ { value: "EU", label: "EU" }, { value: "US", label: "US" } ], list_field[:possible_values]
+      assert_equal "EU", list_field[:default_value]
+
+      custom_field.destroy
+      custom_field2.destroy
+    end
+
+    should "return the sequential identifier when the setting is on" do
+      Setting.stubs(:sequential_project_identifiers?).returns(true)
+
+      result = @provider.capable_project_props
+
+      assert_equal Project.next_identifier, result[:sequential_identifier]
+    end
+
+    should "return a null sequential identifier when the setting is off" do
+      Setting.stubs(:sequential_project_identifiers?).returns(false)
+
+      result = @provider.capable_project_props
+
+      assert_nil result[:sequential_identifier]
+    end
+
+    should "return the current state for an existing project" do
+      result = @provider.capable_project_props(project_id: 1)
+
+      assert_equal 1, result[:project_id]
+      assert_equal EnabledModule.where(project_id: 1).pluck(:name).sort, result[:enabled_modules].sort
+      assert_equal Project.find(1).is_public, result[:default_is_public]
+      assert_equal(Project.find(1).tracker_ids, result[:trackers].select { |t| t[:assigned] }.map { |t| t[:id] })
+      assert_equal true, result[:can_set_is_public] # Manager holds select_project_publicity
+    end
+
+    should "reject an existing project when the user lacks edit_project" do
+      Role.find(2).add_permission!(:view_ai_helper)
+      Role.find(2).remove_permission!(:edit_project)
+      User.current = User.find(3) # dlopper: Developer in project 1
+
+      result = @provider.capable_project_props(project_id: 1)
+
+      assert_equal({ error: "Permission denied: edit_project on project 1" }, result)
+    end
+
+    should "list only AI Helper accessible projects as allowed parents" do
+      EnabledModule.create!(project_id: 2, name: "ai_helper") unless Project.find(2).module_enabled?(:ai_helper)
+      Role.find(1).add_permission!(:add_subprojects)
+      Role.find(2).add_permission!(:add_subprojects)
+      Role.find(2).add_permission!(:view_ai_helper)
+      # jsmith is a member of projects 1 and 2 (member_roles 1 and 3)
+
+      result = @provider.capable_project_props(project_id: 1)
+
+      parent_ids = result[:allowed_parents].map { |p| p[:id] }
+      assert_includes parent_ids, 2
+      assert_not_includes parent_ids, 3 # no ai_helper module on project 3
     end
   end
 
