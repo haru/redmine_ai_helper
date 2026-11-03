@@ -50,7 +50,7 @@ No tool deletes, closes, or archives a project, category, or other data;
   permission) (S060, ADR-068).
 - **Atomic writes:** module, tracker, and member-role changes write at
   assignment time in Redmine, so each runs with its `save` in one transaction
-  and a failed save changes nothing (ADR-068).
+  and a failed save changes nothing (S060, ADR-068).
 - **Confirmation** before `create_project`, making a project public,
   `remove_member`, and disabling `ai_helper` is requested in tool descriptions
   and the backstory, not enforced by the tools (S060).
