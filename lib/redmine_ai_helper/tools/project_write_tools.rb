@@ -46,6 +46,7 @@ module RedmineAiHelper
         user_errors_as_result do
           raise UserError, "name is required" if name.nil?
           raise UserError, "identifier is required" if identifier.nil?
+          validate_booleans!("is_public" => is_public, "inherit_members" => inherit_members)
 
           validate_create_permission!(parent_id)
           if !User.current.admin? && Project.default_member_role.nil?
@@ -167,6 +168,7 @@ module RedmineAiHelper
                          parent_id: nil, clear_parent: nil, inherit_members: nil, custom_fields: nil)
         user_errors_as_result do
           project = writable_project!(project_id: project_id, permission: :edit_project)
+          validate_booleans!("is_public" => is_public, "inherit_members" => inherit_members, "clear_parent" => clear_parent)
           if !parent_id.nil? && clear_parent == true
             raise UserError, "parent_id and clear_parent cannot be used together"
           end

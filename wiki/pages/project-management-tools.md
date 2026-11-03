@@ -51,6 +51,14 @@ No tool deletes, closes, or archives a project, category, or other data;
 - **Atomic writes:** module, tracker, and member-role changes write at
   assignment time in Redmine, so each runs with its `save` in one transaction
   and a failed save changes nothing (S060, ADR-068).
+- **Strict argument types:** list arguments must be arrays of the declared
+  element type (ADR-068). Boolean arguments (`is_public`, `inherit_members`,
+  `clear_parent`, `clear_assigned_to`) accept only `true`, `false`, or `nil`.
+  Chat tool calls are not schema-validated, and Rails would cast `"no"` to
+  `true` (ADR-069).
+- **ADR reading order:** ADR-068 supersedes ADR-067's decisions 1 and 4 and
+  its `add_default_member` description; ADR-069 lists exactly which statements
+  are affected.
 - **Confirmation** before `create_project`, making a project public,
   `remove_member`, and disabling `ai_helper` is requested in tool descriptions
   and the backstory, not enforced by the tools (S060).

@@ -82,6 +82,7 @@ module RedmineAiHelper
           project = writable_project!(
             project_id: category.project_id, permission: :manage_categories, require_issue_tracking: true
           )
+          validate_booleans!("clear_assigned_to" => clear_assigned_to)
           if !assigned_to_id.nil? && clear_assigned_to == true
             raise UserError, "assigned_to_id and clear_assigned_to cannot be used together"
           end

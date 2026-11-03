@@ -692,6 +692,44 @@ class ProjectWriteToolsTest < ActiveSupport::TestCase
       assert_equal({ error: "custom_fields entries must be objects" }, result)
       assert_nil Project.find_by(identifier: "bad-custom-fields")
     end
+
+    # Each value is one Rails would cast to the opposite of the current value
+    # (or one the tool would silently ignore), so only the type check can
+    # produce the error.
+    should "reject is_public and inherit_members on update that are not true, false, or nil" do
+      @project.update!(is_public: false, inherit_members: false)
+
+      [ "no", "true", 1 ].each do |bad|
+        result = @provider.update_project(project_id: @project.id, is_public: bad)
+        assert_equal({ error: "is_public must be true or false" }, result, "is_public #{bad.inspect}")
+
+        result = @provider.update_project(project_id: @project.id, inherit_members: bad)
+        assert_equal({ error: "inherit_members must be true or false" }, result, "inherit_members #{bad.inspect}")
+      end
+      @project.reload
+      assert_equal false, @project.is_public
+      assert_equal false, @project.inherit_members
+    end
+
+    should "reject clear_parent that is not true, false, or nil" do
+      EnabledModule.create!(project_id: 3, name: "ai_helper")
+
+      [ "true", 1 ].each do |bad|
+        result = @provider.update_project(project_id: 3, clear_parent: bad)
+        assert_equal({ error: "clear_parent must be true or false" }, result, "clear_parent #{bad.inspect}")
+      end
+      assert_equal 1, Project.find(3).reload.parent_id
+    end
+
+    should "reject is_public and inherit_members on create that are not true, false, or nil" do
+      result = @provider.create_project(name: "Bad Public", identifier: "bad-public", is_public: "no")
+      assert_equal({ error: "is_public must be true or false" }, result)
+      assert_nil Project.find_by(identifier: "bad-public")
+
+      result = @provider.create_project(name: "Bad Inherit", identifier: "bad-inherit", inherit_members: "yes")
+      assert_equal({ error: "inherit_members must be true or false" }, result)
+      assert_nil Project.find_by(identifier: "bad-inherit")
+    end
   end
 
   context "tracker no-op results" do

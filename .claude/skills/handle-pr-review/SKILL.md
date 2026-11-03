@@ -43,7 +43,7 @@ Present a table: finding, verdict (valid / not needed), priority, and one or two
 
 ## Phase 4: Record
 
-For adopted findings that changed code, or docs that contradicted real behaviour, invoke the `record-code-review-feedback` skill with the PR number and a short list of what was adopted and what was not. Typo-only or wording-only fixes and findings not adopted are not recorded. If the new entry relates to earlier entries (same pattern again), propose where to promote the rule (e.g. AGENTS.md) with the exact text, and wait for approval.
+For adopted findings that changed code, or docs that contradicted real behaviour, invoke the `record-code-review-feedback` skill with the PR number and a short list of what was adopted and what was not. Typo-only or wording-only fixes and findings not adopted are not recorded. If the new entry has two or more related earlier entries (the same pattern for at least the third time), propose the promotion as `record-code-review-feedback` Step 7 describes: the destination, the exact text, and what the rule requires. Then wait for approval.
 
 ## Phase 5: Reply and resolve every thread
 
