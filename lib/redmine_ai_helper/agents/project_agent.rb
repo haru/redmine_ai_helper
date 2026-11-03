@@ -19,7 +19,7 @@ module RedmineAiHelper
       # Get available RubyLLM::Tool subclasses for this agent
       # @return [Array<Class>] Array of RubyLLM::Tool subclasses
       def available_tool_providers
-        [ RedmineAiHelper::Tools::ProjectTools ]
+        [ RedmineAiHelper::Tools::ProjectTools, RedmineAiHelper::Tools::ProjectWriteTools, RedmineAiHelper::Tools::MemberTools, RedmineAiHelper::Tools::CategoryTools ]
       end
 
       # Generate comprehensive project health report

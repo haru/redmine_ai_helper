@@ -64,6 +64,7 @@ page files, not here.
 - [Log File Access Tools](./pages/log-file-access-tools.md) — `SystemTools`' admin-only `get_log_file_info`/`read_log_tail`/`search_log`: admin → setting → input gating, the `log_access_enabled` setting, limits, path hiding, and `SystemAgent` prompt guidance.
 - [Log File Reader](./pages/log-file-reader.md) — `LogFileReader`: backward chunked tail and search, the 500 MB scan cap, literal matching, and when line numbers count from the start vs. only from the end.
 - [Version Write Tools](./pages/version-write-tools.md) — feature 068: `create_version`/`update_version`/`delete_version`, `capable_version_props`, permissions on the version's own project, delete rules, update semantics.
+- [Project Management Tools](./pages/project-management-tools.md) — feature 084: project/module/tracker/member/category tools, where they reject instead of dropping, `ai_helper` on creation, extended `project_members`.
 
 ## reference
 - [Chat History APIs](./pages/chat-history-apis.md) — Slack/Discord message-retrieval APIs, scopes, display-name resolution, exclusion rules.

@@ -580,6 +580,9 @@ All requests must include a Redmine API key in the `X-Redmine-API-Key` header. T
 |------------|---------------|-------------|
 | Issue | `read_issues`, `search_issues`, `create_new_issue`, `update_issue` | Read, search, create, and update issues |
 | Project | `list_projects`, `read_project`, `project_members`, `get_metrics` | Project information and metrics |
+| Project management | `capable_project_props`, `create_project`, `update_project`, `update_modules`, `add_trackers`, `remove_trackers` | Create and update projects, enable or disable modules, assign or unassign trackers (no delete) |
+| Member | `find_member_candidates`, `list_managed_roles`, `add_member`, `update_member_roles`, `remove_member` | Add members, change their roles, remove them |
+| Category | `list_categories`, `create_category`, `update_category` | List, create, and update issue categories (no delete) |
 | Wiki | `read_wiki_page`, `list_wiki_pages` | Wiki page access |
 | Repository | `repository_info`, `read_file`, `read_diff` | Source code and revision access |
 | Board | `list_boards`, `read_message` | Forum and message access |

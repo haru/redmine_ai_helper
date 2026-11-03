@@ -119,3 +119,5 @@ Briefly describe alternatives that were rejected and why.
 | [064](./064-chat-popup-moves-the-sidebar-element.md) | Show the chat as a popup by moving the sidebar element | Accepted |
 | [065](./065-chat-popup-close-animation-reverses-open.md) | Animate the chat popup closing as the reverse of opening | Accepted |
 | [066](./066-devcontainer-uses-local-headless-chromium.md) | Run Playwright MCP against a local headless Chromium in the devcontainer | Accepted |
+| [067](./067-project-management-tools-check-permissions-on-every-object.md) | Project management tools check permissions on every object they use | Proposed |
+| [068](./068-project-management-tools-atomic-writes-and-guard-scope.md) | Project management tools write atomically and state the guard scope precisely | Proposed |

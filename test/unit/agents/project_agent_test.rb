@@ -4,6 +4,10 @@ require "redmine_ai_helper/agents/project_agent"
 class ProjectAgentTest < ActiveSupport::TestCase
   fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :enabled_modules
 
+  def backstory_in(locale)
+    I18n.with_locale(locale) { @agent.backstory }
+  end
+
   setup do
     @params = {
       project: Project.find(1),
@@ -18,6 +22,137 @@ class ProjectAgentTest < ActiveSupport::TestCase
 
       RedmineAiHelper::Tools::ProjectTools.tool_classes.each do |tc|
         assert_includes tool_classes, tc
+      end
+    end
+
+    context "project write tools" do
+      setup do
+        @previous_user = User.current
+        User.current = User.find(1)
+      end
+
+      teardown do
+        User.current = @previous_user
+      end
+
+      should "include ProjectWriteTools in available_tool_providers" do
+        assert_includes @agent.available_tool_providers, RedmineAiHelper::Tools::ProjectWriteTools
+      end
+
+      should "drop project write tools in read-only mode and keep capable_project_props" do
+        AiHelperSetting.stubs(:read_only_mode?).returns(true)
+        names = @agent.available_tool_classes.map { |tc| tc.new.name }
+
+        assert(names.any? { |name| name.end_with?("--capable_project_props") })
+        assert(names.none? { |name| name.end_with?("--create_project") })
+        assert(names.none? { |name| name.end_with?("--update_project") })
+        assert(names.none? { |name| name.end_with?("--update_modules") })
+      end
+
+      should "state the confirmation duties and limits in both backstories" do
+        backstory = backstory_in(:en)
+        backstory_ja = backstory_in(:ja)
+        [
+          # Confirm before creating a project
+          [ /ALWAYS confirm with the user before creating a project/, /プロジェクトを作成する前には、必ず/ ],
+          # Confirm before switching private to public
+          [ /ALWAYS confirm with the user before making a project public/, /プロジェクトを公開に切り替える前には、必ず/ ],
+          # Confirm before disabling the ai_helper module
+          [ /ALWAYS confirm with the user before disabling the ai_helper module/, /ai_helper モジュールを無効にする前には、必ず/ ],
+          # The identifier cannot be changed
+          [ /identifier cannot be changed/i, /識別子は作成後に変更できません/ ],
+          # Project deletion, closing, and archiving are not possible
+          [ /cannot delete, close, or archive a project/i, /プロジェクトの削除・クローズ・アーカイブはできません/ ],
+          # Version operations belong to the VersionAgent
+          [ /VersionAgent/i, /VersionAgent の担当/ ]
+        ].each do |en_pattern, ja_pattern|
+          assert_match(en_pattern, backstory)
+          assert_match(ja_pattern, backstory_ja)
+        end
+      end
+    end
+
+    context "member management tools" do
+      setup do
+        @previous_user = User.current
+        User.current = User.find(1)
+      end
+
+      teardown do
+        User.current = @previous_user
+      end
+
+      should "include MemberTools in available_tool_providers" do
+        assert_includes @agent.available_tool_providers, RedmineAiHelper::Tools::MemberTools
+      end
+
+      should "drop member write tools in read-only mode and keep the read tools" do
+        AiHelperSetting.stubs(:read_only_mode?).returns(true)
+        tool_classes = @agent.available_tool_classes
+        names = tool_classes.map { |tc| tc.new.name }
+
+        assert(names.any? { |name| name.end_with?("--find_member_candidates") })
+        assert(names.any? { |name| name.end_with?("--list_managed_roles") })
+        assert(names.none? { |name| name.end_with?("--add_member") })
+        assert(names.none? { |name| name.end_with?("--update_member_roles") })
+        assert(names.none? { |name| name.end_with?("--remove_member") })
+      end
+
+      should "require confirmation before member removal in both backstories" do
+        assert_match(/ALWAYS confirm with the user before removing a member/, backstory_in(:en))
+        assert_match(/メンバーを除外する前には、必ず/, backstory_in(:ja))
+      end
+
+      should "explain how to look up IDs from names in both backstories" do
+        backstory = backstory_in(:en)
+        backstory_ja = backstory_in(:ja)
+        %w[find_member_candidates list_managed_roles project_members].each do |function|
+          assert_match(/#{function}/, backstory)
+          assert_match(/#{function}/, backstory_ja)
+        end
+      end
+    end
+
+    context "tracker and category tools" do
+      setup do
+        @previous_user = User.current
+        User.current = User.find(1)
+      end
+
+      teardown do
+        User.current = @previous_user
+      end
+
+      should "include CategoryTools in available_tool_providers" do
+        assert_includes @agent.available_tool_providers, RedmineAiHelper::Tools::CategoryTools
+      end
+
+      should "drop tracker and category write tools in read-only mode and keep list_categories" do
+        AiHelperSetting.stubs(:read_only_mode?).returns(true)
+        names = @agent.available_tool_classes.map { |tc| tc.new.name }
+
+        assert(names.any? { |name| name.end_with?("--list_categories") })
+        %w[add_trackers remove_trackers create_category update_category].each do |function|
+          assert names.none? { |name| name.end_with?("--#{function}") }, "#{function} must be dropped in read-only mode"
+        end
+      end
+
+      should "describe the tracker and category operations in both backstories" do
+        backstory = backstory_in(:en)
+        backstory_ja = backstory_in(:ja)
+        %w[add_trackers remove_trackers list_categories create_category update_category].each do |function|
+          assert_match(/#{function}/, backstory)
+          assert_match(/#{function}/, backstory_ja)
+        end
+        # Show the candidates when a tracker or category matches nothing or several
+        assert_match(/tracker or category.*(?:no match|more than one)|(?:no match|more than one).*tracker or category/im, backstory)
+        assert_match(/トラッカーやカテゴリ.*候補|候補.*トラッカーやカテゴリ/m, backstory_ja)
+        # Tracker IDs are looked up through capable_project_props
+        assert_match(/capable_project_props to look up a tracker ID/, backstory)
+        assert_match(/トラッカーの ID は capable_project_props/, backstory_ja)
+        # Assigning/unassigning trackers and adding/updating categories need no confirmation
+        assert_match(/without (?:asking for )?confirmation/i, backstory)
+        assert_match(/確認なしで/, backstory_ja)
       end
     end
 
