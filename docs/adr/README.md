@@ -121,3 +121,4 @@ Briefly describe alternatives that were rejected and why.
 | [066](./066-devcontainer-uses-local-headless-chromium.md) | Run Playwright MCP against a local headless Chromium in the devcontainer | Accepted |
 | [067](./067-project-management-tools-check-permissions-on-every-object.md) | Project management tools check permissions on every object they use | Proposed |
 | [068](./068-project-management-tools-atomic-writes-and-guard-scope.md) | Project management tools write atomically and state the guard scope precisely | Proposed |
+| [069](./069-project-management-tools-adr-067-claims-superseded.md) | State which ADR-067 claims ADR-068 supersedes, and type-check boolean tool arguments | Proposed |

@@ -176,3 +176,4 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-090](./090-category-lookup-leaked-hidden-project.md) | update_category revealed the project id of a category the caller could not see | permission | Local AI review | Not yet |
 | [CRF-091](./091-weak-and-vacuous-tests-in-project-management-tools.md) | Tests asserted an outcome another layer already guaranteed, or could not tell whether the guard ran | test-gap | Local AI review | Not yet |
 | [CRF-092](./092-project-management-docs-overstated-the-guard-scope.md) | ADR, wiki, research and comments described the guard, defaults, and Redmine behaviour more broadly or differently than the code | doc-comment | Local AI review | Not yet |
+| [CRF-093](./093-boolean-tool-arguments-accepted-without-type-check.md) | Boolean tool arguments were accepted or ignored without checking their type | error-handling | GitHub Copilot (PR #549) | Not yet |

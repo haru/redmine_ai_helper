@@ -205,6 +205,18 @@ class CategoryToolsTest < ActiveSupport::TestCase
       assert_equal other.id, @category.assigned_to_id
     end
 
+    should "reject clear_assigned_to that is not true, false, or nil" do
+      before = @category.assigned_to_id
+      assert_not_nil before
+
+      # Each value would otherwise be silently ignored by the `== true` check
+      [ "true", 1 ].each do |bad|
+        result = @provider.update_category(category_id: @category.id, clear_assigned_to: bad)
+        assert_equal({ error: "clear_assigned_to must be true or false" }, result, "clear_assigned_to #{bad.inspect}")
+      end
+      assert_equal before, @category.reload.assigned_to_id
+    end
+
     should "remove the assignee with clear_assigned_to" do
       result = @provider.update_category(category_id: @category.id, clear_assigned_to: true)
 
