@@ -728,3 +728,125 @@ describe("Duplicate check (from shared/_textarea_overlay.html.erb)", () => {
     dom.form.remove();
   });
 });
+
+describe("completion request context_type from the issue page entry points (085 US2)", () => {
+  let container;
+  let cleanup;
+  let jstForms = [];
+
+  function buildConfig(overrides = {}) {
+    return JSON.stringify({
+      descriptionEndpoint: "/projects/1/ai_helper/issue/5/suggest_completion",
+      userId: "1",
+      isPersistedIssue: true,
+      issueId: "5",
+      projectId: "1",
+      debounceDelay: 0,
+      minLength: 1,
+      suggestionColor: "#888888",
+      notesEndpoint: "/projects/1/ai_helper/issue/5/suggest_completion",
+      labels: {
+        commonToggleLabel: "Toggle",
+        loading: "Loading...",
+        noSuggestions: "No suggestions",
+        acceptSuggestion: "Accept",
+        dismiss: "Dismiss",
+        enabledTooltip: "Enabled",
+        disabledTooltip: "Disabled",
+        noteEnabledTooltip: "Note Enabled",
+        noteDisabledTooltip: "Note Disabled",
+      },
+      duplicateCheckLabels: { emptyContent: "empty" },
+      ...overrides,
+    });
+  }
+
+  beforeEach(async () => {
+    // The real completion class, so the request body is the real payload
+    await loadScript("assets/javascripts/shared/ai_helper_editor_controls");
+    await loadScript("assets/javascripts/autocompletion/ai_helper_auto_completion");
+    await loadScript("assets/javascripts/autocompletion/ai_helper_auto_completion_overlay");
+
+    const meta = document.createElement("meta");
+    meta.name = "csrf-token";
+    meta.content = "test-csrf-token";
+    document.head.appendChild(meta);
+
+    container = document.createElement("div");
+    container.id = "ai-helper-issue-textarea-overlay";
+    container.dataset.config = buildConfig();
+    document.body.appendChild(container);
+
+    window.aiHelperAutoCompletionInitialized = false;
+  });
+
+  afterEach(async () => {
+    cleanup?.removeRegisteredListeners();
+    cleanup = undefined;
+    jstForms.forEach((form) => form.remove());
+    jstForms = [];
+    document.body.innerHTML = "";
+    document.head.querySelectorAll('meta[name="csrf-token"]').forEach((el) => el.remove());
+    vi.unstubAllGlobals();
+    localStorage.clear();
+    delete window.aiHelperInstances;
+    delete window.aiHelperAutoCompletionInitialized;
+    delete window.AiHelperEditorControls;
+  });
+
+  /** Run the page entry point on a persisted issue and fetch the body sent from one field. */
+  async function requestBodyFor(textareaId) {
+    // The page loads with completion enabled (shared localStorage key, R-009)
+    localStorage.setItem("aiHelperAutoCompletion_1", JSON.stringify({ enabled: true }));
+
+    const fetchCalls = [];
+    vi.stubGlobal("fetch", vi.fn((url, options) => {
+      fetchCalls.push({ url, options });
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ suggestion: "" }),
+      });
+    }));
+
+    const desc = createJstEditor("issue_description");
+    const notes = createJstEditor("issue_notes");
+    const form = document.createElement("form");
+    form.appendChild(desc.block);
+    form.appendChild(notes.block);
+    document.body.appendChild(form);
+    jstForms.push(form);
+
+    const descContainer = document.createElement("div");
+    descContainer.id = "ai-helper-description-checkbox-container";
+    descContainer.innerHTML = '<input type="checkbox" id="ai-helper-autocompletion-description-toggle">';
+    descContainer.style.display = "none";
+    form.appendChild(descContainer);
+    const notesContainer = document.createElement("div");
+    notesContainer.id = "ai-helper-notes-checkbox-container";
+    notesContainer.innerHTML = '<input type="checkbox" id="ai-helper-autocompletion-notes-toggle">';
+    notesContainer.style.display = "none";
+    form.appendChild(notesContainer);
+
+    cleanup = await loadScriptAndFireDOMContentLoaded("assets/javascripts/autocompletion/ai_helper_issue_autocompletion");
+
+    const textarea = document.getElementById(textareaId);
+    textarea.value = "typed text for the request";
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await Promise.resolve();
+
+    expect(fetchCalls.length).toBeGreaterThanOrEqual(1);
+    return fetchCalls.map((c) => JSON.parse(c.options.body));
+  }
+
+  it("sends the new-comment field's request with context_type 'note' (CRF-006)", async () => {
+    const bodies = await requestBodyFor("issue_notes");
+    expect(bodies.some((b) => b.context_type === "note")).toBe(true);
+  });
+
+  it("sends the description field's request with context_type 'description'", async () => {
+    const bodies = await requestBodyFor("issue_description");
+    expect(bodies.some((b) => b.context_type === "description")).toBe(true);
+  });
+});

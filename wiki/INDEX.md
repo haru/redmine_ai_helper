@@ -49,6 +49,7 @@ page files, not here.
 - [Chat Popup](./pages/chat-popup.md) — the sidebar chat moved into a fixed, movable, resizable popup: storage split, layout rules, pending marker, fold-state guarantee
 - [Issue AI Features](./pages/issue-ai-features.md) — `IssueReadAgent` summarization/caching, reply drafts, sub-issues, assignee suggestion, duplicate check, and inline completion.
 - [Inline Completion Request Flow](./pages/inline-completion-request-flow.md) — AbortController cancellation, no-change suppression, debounce-timer clearing, and where the autocompletion settings are read and validated.
+- [Comment Edit Form Aids](./pages/comment-edit-form-aids.md) — typo check and completion in the edit form of a posted comment: hook placement, `MutationObserver` attachment, attach-time validation and failure handling, `journal_id` validation, edit-time context, and the narrowed completion rescue.
 - [MCP Integration](./pages/mcp-integration.md) — consuming external MCP servers: dynamic agent generation and the read-only gotcha. See [MCP Server Endpoint](./pages/mcp-server-endpoint.md) for the other direction.
 - [MCP Server Endpoint](./pages/mcp-server-endpoint.md) — exposing Redmine as an MCP server: stateless mode, auth, permissions, tool groups, and the anonymous-endpoint pattern reused by inbound webhooks.
 - [Custom Commands](./pages/custom-commands.md) — reusable `/command` prompt shortcuts, scope precedence, template variables.

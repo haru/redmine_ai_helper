@@ -831,3 +831,327 @@ describe("#ai-helper-wiki-typo-overlay container (no module-level auto-init)", (
   });
 });
 
+
+describe("AiHelperTypoChecker explicit checkButton/controlPanel options (085)", () => {
+  let parent;
+
+  beforeEach(async () => {
+    await loadScript("assets/javascripts/typo_checker/ai_helper_typo_checker");
+    await loadScript("assets/javascripts/typo_checker/ai_helper_typo_suggestion_overlay");
+    const acceptTemplate = document.createElement("span");
+    acceptTemplate.className = "ai-helper-typo-accept-btn-template";
+    acceptTemplate.innerHTML = "✓";
+    document.body.appendChild(acceptTemplate);
+    const rejectTemplate = document.createElement("span");
+    rejectTemplate.className = "ai-helper-typo-reject-btn-template";
+    rejectTemplate.innerHTML = "✗";
+    document.body.appendChild(rejectTemplate);
+    const meta = document.createElement("meta");
+    meta.name = "csrf-token";
+    meta.content = "test-csrf-token";
+    document.head.appendChild(meta);
+  });
+
+  afterEach(() => {
+    document.body.innerHTML = "";
+    document.head.querySelectorAll('meta[name="csrf-token"]').forEach((el) => el.remove());
+    vi.restoreAllMocks();
+  });
+
+  /** Build a journal-edit-form style DOM: no element carries a mapped id. */
+  function createJournalEditDOM() {
+    const form = document.createElement("form");
+    form.id = "journal-42-form";
+    parent = document.createElement("div");
+    parent.style.position = "relative";
+    form.appendChild(parent);
+
+    const textarea = document.createElement("textarea");
+    textarea.id = "journal_42_notes";
+    parent.appendChild(textarea);
+
+    const controlPanel = document.createElement("div");
+    controlPanel.className = "ai-helper-typo-control-panel ai-helper-journal-typo-control-panel";
+    const applyAllBtn = document.createElement("button");
+    applyAllBtn.className = "ai-helper-typo-apply-all-btn";
+    controlPanel.appendChild(applyAllBtn);
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "ai-helper-typo-close-btn";
+    controlPanel.appendChild(closeBtn);
+    parent.appendChild(controlPanel);
+
+    const checkBtn = document.createElement("a");
+    checkBtn.className = "icon icon-edit ai-helper-journal-typo-check-btn";
+    checkBtn.innerHTML = '<svg></svg> Check';
+    parent.appendChild(checkBtn);
+
+    document.body.appendChild(form);
+
+    return { textarea, controlPanel, checkBtn, applyAllBtn, closeBtn };
+  }
+
+  it("uses the passed checkButton and controlPanel instead of the id maps", () => {
+    // Precondition (CRF-042): the mapped ids are absent, so the maps in
+    // findExistingButton/findControlPanel can never resolve anything
+    expect(document.getElementById("ai-helper-typo-check-notes-btn")).toBeNull();
+    expect(document.getElementById("ai-helper-typo-control-panel-notes")).toBeNull();
+
+    const dom = createJournalEditDOM();
+    const lookup = vi.spyOn(document, "getElementById");
+    const checker = createChecker(dom.textarea, {
+      checkButton: dom.checkBtn,
+      controlPanel: dom.controlPanel,
+    });
+    checker.init();
+
+    expect(lookup).not.toHaveBeenCalled();
+    expect(checker.checkButton).toBe(dom.checkBtn);
+    expect(checker.controlPanel).toBe(dom.controlPanel);
+    expect(checker.applyAllButton).toBe(dom.applyAllBtn);
+    expect(checker.closeButton).toBe(dom.closeBtn);
+    // The panel is moved under the textarea's parent
+    expect(dom.controlPanel.parentNode).toBe(dom.textarea.parentNode);
+  });
+
+  it("binds the check button click on the passed button", () => {
+    const dom = createJournalEditDOM();
+    const checker = createChecker(dom.textarea, {
+      checkButton: dom.checkBtn,
+      controlPanel: dom.controlPanel,
+    });
+    checker.init();
+
+    const spy = vi.spyOn(checker, "checkTypos").mockResolvedValue(undefined);
+    dom.checkBtn.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it("binds the panel buttons on the passed control panel", () => {
+    const dom = createJournalEditDOM();
+    const checker = createChecker(dom.textarea, {
+      checkButton: dom.checkBtn,
+      controlPanel: dom.controlPanel,
+    });
+    checker.init();
+
+    const acceptAll = vi.spyOn(checker, "acceptAllSuggestions").mockReturnValue(undefined);
+    const hideOverlay = vi.spyOn(checker, "hideOverlay").mockReturnValue(undefined);
+
+    dom.applyAllBtn.dispatchEvent(new Event("click", { bubbles: true }));
+    dom.closeBtn.dispatchEvent(new Event("click", { bubbles: true }));
+
+    expect(acceptAll).toHaveBeenCalledTimes(1);
+    expect(hideOverlay).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the id map lookup when the options are absent", () => {
+    const dom = createTypoCheckerDOM("issue_notes");
+
+    const checker = createChecker(dom.textarea);
+    checker.init();
+
+    expect(checker.checkButton).toBe(dom.checkBtn);
+    expect(checker.controlPanel).toBe(dom.controlPanel);
+  });
+});
+
+describe("AiHelperTypoChecker autoCompletion option (085 US2)", () => {
+  afterEach(() => {
+    document.body.innerHTML = "";
+    vi.restoreAllMocks();
+    delete window.aiHelperInstances;
+  });
+
+  /** A minimal stand-in for AiHelperAutoCompletion. */
+  function fakeAutoCompletion() {
+    return {
+      clearSuggestion: vi.fn(),
+      isEnabled: true,
+      checkbox: { checked: true },
+    };
+  }
+
+  it("disableAutocompletion pauses only the passed instance", () => {
+    const own = fakeAutoCompletion();
+    window.aiHelperInstances = {
+      autoCompletion: fakeAutoCompletion(),
+      notesAutoCompletion: fakeAutoCompletion(),
+      wikiAutoCompletion: fakeAutoCompletion(),
+    };
+    const dom = createTypoCheckerDOM("issue_notes");
+    const checker = createChecker(dom.textarea, { autoCompletion: own });
+    checker.init();
+
+    checker.disableAutocompletion();
+
+    expect(own.isEnabled).toBe(false);
+    expect(own.clearSuggestion).toHaveBeenCalledTimes(1);
+    expect(window.aiHelperInstances.autoCompletion.isEnabled).toBe(true);
+    expect(window.aiHelperInstances.notesAutoCompletion.isEnabled).toBe(true);
+    expect(window.aiHelperInstances.wikiAutoCompletion.isEnabled).toBe(true);
+  });
+
+  it("enableAutocompletion resumes only the passed instance and only when its checkbox is checked", () => {
+    const own = fakeAutoCompletion();
+    own.isEnabled = false;
+    const dom = createTypoCheckerDOM("issue_notes");
+    const checker = createChecker(dom.textarea, { autoCompletion: own });
+    checker.init();
+
+    checker.enableAutocompletion();
+    expect(own.isEnabled).toBe(true);
+
+    // Unchecked checkbox: stays paused
+    own.checkbox.checked = false;
+    own.isEnabled = false;
+    checker.enableAutocompletion();
+    expect(own.isEnabled).toBe(false);
+  });
+
+  it("keeps the window.aiHelperInstances behaviour when the option is absent", () => {
+    const notes = fakeAutoCompletion();
+    window.aiHelperInstances = { notesAutoCompletion: notes };
+    const dom = createTypoCheckerDOM("issue_notes");
+    const checker = createChecker(dom.textarea);
+    checker.init();
+
+    checker.disableAutocompletion();
+    expect(notes.isEnabled).toBe(false);
+    expect(notes.clearSuggestion).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("AiHelperTypoChecker destroy (085 US3)", () => {
+  let dom;
+  let checker;
+
+  beforeEach(async () => {
+    await loadScript("assets/javascripts/typo_checker/ai_helper_typo_checker");
+    await loadScript("assets/javascripts/typo_checker/ai_helper_typo_suggestion_overlay");
+    dom = createTypoCheckerDOM("issue_notes");
+    checker = createChecker(dom.textarea);
+    checker.init();
+    const meta = document.createElement("meta");
+    meta.name = "csrf-token";
+    meta.content = "test-csrf-token";
+    document.head.appendChild(meta);
+  });
+
+  afterEach(() => {
+    document.body.innerHTML = "";
+    document.head.querySelectorAll('meta[name="csrf-token"]').forEach((el) => el.remove());
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("removes every listener so no handler fires after destroy", () => {
+    const hideOverlay = vi.spyOn(checker, "hideOverlay").mockReturnValue(undefined);
+    const checkTypos = vi.spyOn(checker, "checkTypos").mockResolvedValue(undefined);
+    const acceptAll = vi.spyOn(checker, "acceptAllSuggestions").mockReturnValue(undefined);
+    const syncScroll = vi.spyOn(checker, "syncScroll").mockReturnValue(undefined);
+
+    checker.destroy();
+
+    dom.textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    dom.textarea.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+    dom.textarea.dispatchEvent(new Event("scroll", { bubbles: true }));
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    document.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    dom.checkBtn.dispatchEvent(new Event("click", { bubbles: true }));
+    dom.controlPanel.querySelector(".ai-helper-typo-apply-all-btn").dispatchEvent(new Event("click", { bubbles: true }));
+    dom.controlPanel.querySelector(".ai-helper-typo-close-btn").dispatchEvent(new Event("click", { bubbles: true }));
+
+    expect(hideOverlay).not.toHaveBeenCalled();
+    expect(checkTypos).not.toHaveBeenCalled();
+    expect(acceptAll).not.toHaveBeenCalled();
+    expect(syncScroll).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["showNoSuggestionsMessage"],
+    ["showErrorMessage"],
+  ])("the 3-second hide timer of %s does nothing once the instance is destroyed", (method) => {
+    vi.useFakeTimers();
+    try {
+      const own = { clearSuggestion: vi.fn(), isEnabled: false, checkbox: { checked: true } };
+      checker.options.autoCompletion = own;
+
+      checker[method]();
+      checker.destroy();
+      vi.advanceTimersByTime(3000);
+
+      // hideOverlay() would have re-enabled the (checked) completion
+      expect(own.isEnabled).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("removes the overlay and the control panel from the document", () => {
+    // init() already inserted the overlay after the textarea
+    expect(checker.overlay.isConnected).toBe(true);
+    checker.overlay.classList.add("ai-helper-typo-overlay-active");
+    checker.isOverlayVisible = true;
+
+    checker.destroy();
+
+    expect(checker.overlay.isConnected).toBe(false);
+    expect(dom.controlPanel.isConnected).toBe(false);
+    expect(document.querySelectorAll(".ai-helper-typo-overlay").length).toBe(0);
+  });
+
+  it("a success response arriving after destroy does not touch the DOM or the button state", async () => {
+    dom.textarea.value = "This text is long enough to check.";
+    vi.stubGlobal("fetch", vi.fn(() => new Promise((resolve) => {
+      setTimeout(() => resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ suggestions: [{ original: "text", corrected: "verse", position: 13 }] }),
+      }), 10);
+    })));
+
+    const clickSpy = vi.fn();
+    dom.checkBtn.addEventListener("click", clickSpy);
+    // Spy on the writes themselves: a passive "unchanged" assertion cannot
+    // tell a skipped response from an overwritten-then-restored one (CRF-051)
+    const disabledWrites = vi.spyOn(dom.checkBtn, "disabled", "set");
+    const innerHTMLWrites = vi.spyOn(dom.checkBtn, "innerHTML", "set");
+    const textareaClassWrites = vi.spyOn(dom.textarea.classList, "add");
+    checker.destroy();
+
+    checker.checkTypos();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(document.querySelectorAll(".ai-helper-typo-overlay").length).toBe(0);
+    expect(clickSpy).not.toHaveBeenCalled();
+    expect(disabledWrites).not.toHaveBeenCalled();
+    expect(innerHTMLWrites).not.toHaveBeenCalled();
+    expect(textareaClassWrites).not.toHaveBeenCalled();
+    expect(dom.textarea.classList.contains("ai-helper-text-transparent")).toBe(false);
+  });
+
+  it("a failure response arriving after destroy does not touch the DOM or the button state", async () => {
+    dom.textarea.value = "This text is long enough to check.";
+    const consoleError = vi.spyOn(console, "error").mockReturnValue(undefined);
+    vi.stubGlobal("fetch", vi.fn(() => new Promise((resolve) => {
+      setTimeout(() => resolve({ ok: false, status: 500 }), 10);
+    })));
+
+    const disabledWrites = vi.spyOn(dom.checkBtn, "disabled", "set");
+    const innerHTMLWrites = vi.spyOn(dom.checkBtn, "innerHTML", "set");
+    checker.destroy();
+
+    checker.checkTypos();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(document.querySelectorAll(".ai-helper-typo-overlay").length).toBe(0);
+    expect(disabledWrites).not.toHaveBeenCalled();
+    expect(innerHTMLWrites).not.toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  it("destroying twice does not throw", () => {
+    checker.destroy();
+    expect(() => checker.destroy()).not.toThrow();
+  });
+});

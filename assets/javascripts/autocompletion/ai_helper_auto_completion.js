@@ -1,15 +1,20 @@
 // AI Helper Auto Completion for Redmine Textarea Fields
-// Provides GitHub Copilot-style inline completion for issue descriptions
+// Provides GitHub Copilot-style inline completion for issue descriptions,
+// new and edited comments, and wiki pages
 
 /**
  * GitHub Copilot-style inline AI completion for a Redmine textarea (issue
- * description/notes, wiki body). Debounces input, requests a suggestion from
+ * description/notes, journal edit form, wiki body). Debounces input, requests a suggestion from
  * the server, and renders it as ghost text via an overlay element.
  */
 class AiHelperAutoCompletion {
   /**
    * @param {HTMLTextAreaElement} textareaElement - The textarea to attach completion to.
-   * @param {object} [options] - Configuration; merged over the built-in defaults.
+   * @param {object} [options] - Configuration; merged over the built-in defaults
+   *   (debounceDelay, minLength, suggestionColor, contextType, endpoint, labels, userId).
+   *   `checkbox` and `container` (always together) bind the on/off checkbox and
+   *   its container explicitly instead of the context-type id lookup;
+   *   `journalId` marks the completion as belonging to a posted comment's edit form.
    */
   constructor(textareaElement, options = {}) {
     this.textarea = textareaElement;
@@ -55,12 +60,20 @@ class AiHelperAutoCompletion {
 
   /**
    * Locate the ERB-rendered on/off checkbox and container for this field's
-   * context type, and save settings whenever it changes.
+   * context type, and save settings whenever it changes. When the explicit
+   * `checkbox`/`container` options are passed (journal edit forms), they are
+   * used directly and no id lookup happens.
    */
   createCheckbox() {
     // This method now expects the checkbox to be already created in ERB
     // Just find and reference the existing checkbox
-    if (this.options.contextType === 'note') {
+    if (this.options.checkbox) {
+      if (!this.options.container) {
+        throw new Error('ai_helper: the checkbox option requires the container option');
+      }
+      this.checkbox = this.options.checkbox;
+      this.container = this.options.container;
+    } else if (this.options.contextType === 'note') {
       this.checkbox = document.getElementById('ai-helper-autocompletion-notes-toggle');
       this.container = document.getElementById('ai-helper-notes-checkbox-container');
     } else if (this.options.contextType === 'wiki') {
@@ -338,9 +351,10 @@ class AiHelperAutoCompletion {
   }
 
   /**
-   * Build the default completion request body, including project_id/
-   * project_identifier for new-issue forms. Split out of callCompletionAPI
-   * to keep it under ESLint's max-depth limit.
+   * Build the default completion request body: the text, cursor position and
+   * `context_type`, plus `journal_id` for a posted comment's edit form and
+   * project_id/project_identifier for new-issue forms. Split out of
+   * callCompletionAPI to keep it under ESLint's max-depth limit.
    * @param {string} text - The full textarea text.
    * @param {number} cursorPosition - The cursor offset within `text`.
    * @returns {object} The JSON-serializable request body.
@@ -348,8 +362,16 @@ class AiHelperAutoCompletion {
   buildDefaultRequestBody(text, cursorPosition) {
     const requestBody = {
       text: text,
-      cursor_position: cursorPosition
+      cursor_position: cursorPosition,
+      // Always declared so the server picks the matching prompt for this field
+      // (issue description, new comment, or an edited comment)
+      context_type: this.options.contextType,
     };
+
+    // A journal edit form identifies the comment being edited
+    if (this.options.journalId !== undefined && this.options.journalId !== null) {
+      requestBody.journal_id = this.options.journalId;
+    }
 
     // For new issues, try to get project_id from form or URL
     if (this.options.endpoint.includes('/new/')) {
