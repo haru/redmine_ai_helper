@@ -55,12 +55,17 @@ class AiHelperAutoCompletion {
 
   /**
    * Locate the ERB-rendered on/off checkbox and container for this field's
-   * context type, and save settings whenever it changes.
+   * context type, and save settings whenever it changes. When the explicit
+   * `checkbox`/`container` options are passed (journal edit forms), they are
+   * used directly and no id lookup happens.
    */
   createCheckbox() {
     // This method now expects the checkbox to be already created in ERB
     // Just find and reference the existing checkbox
-    if (this.options.contextType === 'note') {
+    if (this.options.checkbox) {
+      this.checkbox = this.options.checkbox;
+      this.container = this.options.container;
+    } else if (this.options.contextType === 'note') {
       this.checkbox = document.getElementById('ai-helper-autocompletion-notes-toggle');
       this.container = document.getElementById('ai-helper-notes-checkbox-container');
     } else if (this.options.contextType === 'wiki') {
@@ -348,8 +353,16 @@ class AiHelperAutoCompletion {
   buildDefaultRequestBody(text, cursorPosition) {
     const requestBody = {
       text: text,
-      cursor_position: cursorPosition
+      cursor_position: cursorPosition,
+      // Always declared so the server picks the matching prompt for this field
+      // (issue description, new comment, or an edited comment)
+      context_type: this.options.contextType,
     };
+
+    // A journal edit form identifies the comment being edited
+    if (this.options.journalId !== undefined && this.options.journalId !== null) {
+      requestBody.journal_id = this.options.journalId;
+    }
 
     // For new issues, try to get project_id from form or URL
     if (this.options.endpoint.includes('/new/')) {

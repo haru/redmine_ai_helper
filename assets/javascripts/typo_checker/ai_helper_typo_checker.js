@@ -14,7 +14,10 @@ class AiHelperTypoChecker {
       endpoint: options.endpoint,
       debounceDelay: options.debounceDelay || 1000,
       minLength: options.minLength || 10,
-      labels: options.labels || {}
+      labels: options.labels || {},
+      checkButton: options.checkButton || null,
+      controlPanel: options.controlPanel || null,
+      autoCompletion: options.autoCompletion || null
     };
     
     this.suggestions = [];
@@ -42,16 +45,22 @@ class AiHelperTypoChecker {
    * buttons), move it under the textarea's parent, and bind its buttons.
    */
   findControlPanel() {
-    // Map textarea IDs to control panel IDs
-    const textareaToControlPanelMap = {
-      'issue_description': 'ai-helper-typo-control-panel-description',
-      'issue_notes': 'ai-helper-typo-control-panel-notes', 
-      'content_text': 'ai-helper-typo-control-panel-wiki'
-    };
-    
-    const panelId = textareaToControlPanelMap[this.textarea.id];
-    if (panelId) {
-      this.controlPanel = document.getElementById(panelId);
+    // An explicitly passed panel (journal edit forms) is used as-is, without
+    // consulting the textarea-id map
+    if (this.options.controlPanel) {
+      this.controlPanel = this.options.controlPanel;
+    } else {
+      // Map textarea IDs to control panel IDs
+      const textareaToControlPanelMap = {
+        'issue_description': 'ai-helper-typo-control-panel-description',
+        'issue_notes': 'ai-helper-typo-control-panel-notes',
+        'content_text': 'ai-helper-typo-control-panel-wiki'
+      };
+
+      const panelId = textareaToControlPanelMap[this.textarea.id];
+      if (panelId) {
+        this.controlPanel = document.getElementById(panelId);
+      }
     }
     
     if (!this.controlPanel) {
@@ -73,20 +82,24 @@ class AiHelperTypoChecker {
     this.applyAllButton = this.controlPanel.querySelector('.ai-helper-typo-apply-all-btn');
     this.closeButton = this.controlPanel.querySelector('.ai-helper-typo-close-btn');
     
+    // Kept on the instance so destroy() can pass the identical references to
+    // removeEventListener
     if (this.applyAllButton) {
-      this.applyAllButton.addEventListener('click', (e) => {
+      this.applyAllHandler = (e) => {
         e.preventDefault();
         e.stopPropagation();
         this.acceptAllSuggestions();
-      });
+      };
+      this.applyAllButton.addEventListener('click', this.applyAllHandler);
     }
-    
+
     if (this.closeButton) {
-      this.closeButton.addEventListener('click', (e) => {
+      this.closeHandler = (e) => {
         e.preventDefault();
         e.stopPropagation();
         this.hideOverlay();
-      });
+      };
+      this.closeButton.addEventListener('click', this.closeHandler);
     }
   }
 
@@ -177,13 +190,19 @@ class AiHelperTypoChecker {
    * Locate this textarea's "check typos" button by its known ID mapping.
    */
   findExistingButton() {
+    // An explicitly passed button (journal edit forms) is used as-is
+    if (this.options.checkButton) {
+      this.checkButton = this.options.checkButton;
+      return;
+    }
+
     // Map textarea IDs to button IDs
     const textareaToButtonMap = {
       'issue_description': 'ai-helper-typo-check-description-btn',
       'issue_notes': 'ai-helper-typo-check-notes-btn',
       'content_text': 'ai-helper-typo-check-wiki-btn'
     };
-    
+
     const buttonId = textareaToButtonMap[this.textarea.id];
     if (buttonId) {
       this.checkButton = document.getElementById(buttonId);
@@ -198,57 +217,101 @@ class AiHelperTypoChecker {
     if (this.checkButton) {
       // Remove any existing event listeners to prevent duplicates
       this.checkButton.removeEventListener('click', this.checkTyposHandler);
-      
+
       // Create bound handler for later removal
       this.checkTyposHandler = () => {
         this.checkTypos();
       };
-      
+
       this.checkButton.addEventListener('click', this.checkTyposHandler);
     }
 
-    // Hide overlay when user starts typing or clicks outside
-    this.textarea.addEventListener('input', () => {
+    // All handlers are kept on the instance so destroy() can remove them
+    this.inputHandler = () => {
       if (this.isProcessingSuggestion) {
         return;
       }
       if (this.overlay && this.isOverlayActive()) {
         this.hideOverlay();
       }
-    });
+    };
 
-    document.addEventListener('keydown', (e) => {
+    this.documentKeydownHandler = (e) => {
       if (this.isProcessingSuggestion) {
         return;
       }
       if (e.key === 'Escape' && this.overlay && this.isOverlayActive()) {
         this.hideOverlay();
       }
-    });
+    };
 
-    document.addEventListener('click', (e) => {
+    this.documentClickHandler = (e) => {
       if (this.isProcessingSuggestion) {
         return;
       }
-      if (this.overlay && this.isOverlayActive() && 
-          !this.overlay.contains(e.target) && 
+      if (this.overlay && this.isOverlayActive() &&
+          !this.overlay.contains(e.target) &&
           e.target !== this.checkButton &&
           e.target !== this.textarea) {
         this.hideOverlay();
       }
-    });
+    };
 
-    // Disable autocomplete when typo overlay is active
-    this.textarea.addEventListener('focus', () => {
+    this.focusHandler = () => {
       if (this.overlay && this.isOverlayActive()) {
         this.disableAutocompletion();
       }
-    });
+    };
+
+    this.scrollHandler = () => {
+      this.syncScroll();
+    };
+
+    // Hide overlay when user starts typing or clicks outside
+    this.textarea.addEventListener('input', this.inputHandler);
+    document.addEventListener('keydown', this.documentKeydownHandler);
+    document.addEventListener('click', this.documentClickHandler);
+
+    // Disable autocomplete when typo overlay is active
+    this.textarea.addEventListener('focus', this.focusHandler);
 
     // Sync overlay scroll with textarea scroll
-    this.textarea.addEventListener('scroll', () => {
-      this.syncScroll();
-    });
+    this.textarea.addEventListener('scroll', this.scrollHandler);
+  }
+
+  /**
+   * Tear down this instance: remove every listener (document, textarea,
+   * check button, control panel), remove the overlay and control panel, and
+   * make any in-flight checkTypos response a no-op (R-004).
+   */
+  destroy() {
+    this.destroyed = true;
+
+    this.textarea.removeEventListener('input', this.inputHandler);
+    this.textarea.removeEventListener('focus', this.focusHandler);
+    this.textarea.removeEventListener('scroll', this.scrollHandler);
+    document.removeEventListener('keydown', this.documentKeydownHandler);
+    document.removeEventListener('click', this.documentClickHandler);
+
+    if (this.checkButton && this.checkTyposHandler) {
+      this.checkButton.removeEventListener('click', this.checkTyposHandler);
+    }
+    if (this.applyAllButton && this.applyAllHandler) {
+      this.applyAllButton.removeEventListener('click', this.applyAllHandler);
+    }
+    if (this.closeButton && this.closeHandler) {
+      this.closeButton.removeEventListener('click', this.closeHandler);
+    }
+
+    this.removeScrollableEventListeners();
+
+    if (this.overlay) {
+      this.overlay.remove();
+    }
+    if (this.controlPanel) {
+      this.controlPanel.remove();
+    }
+    this.textarea.classList.remove('ai-helper-text-transparent');
   }
 
   /**
@@ -257,6 +320,14 @@ class AiHelperTypoChecker {
    * fight over the textarea.
    */
   disableAutocompletion() {
+    // With an explicitly passed instance (journal edit forms) only that
+    // form's completion is paused; the page-level instances stay untouched
+    if (this.options.autoCompletion) {
+      this.options.autoCompletion.clearSuggestion();
+      this.options.autoCompletion.isEnabled = false;
+      return;
+    }
+
     // Disable autocomplete functionality when typo overlay is active
     if (window.aiHelperInstances) {
       const instances = window.aiHelperInstances;
@@ -280,6 +351,15 @@ class AiHelperTypoChecker {
    * once the typo overlay is hidden.
    */
   enableAutocompletion() {
+    // Mirror of disableAutocompletion for an explicitly passed instance
+    if (this.options.autoCompletion) {
+      const autoCompletion = this.options.autoCompletion;
+      if (autoCompletion.checkbox && autoCompletion.checkbox.checked) {
+        autoCompletion.isEnabled = true;
+      }
+      return;
+    }
+
     // Re-enable autocomplete functionality when typo overlay is hidden
     if (window.aiHelperInstances) {
       const instances = window.aiHelperInstances;
@@ -300,67 +380,70 @@ class AiHelperTypoChecker {
    * returned suggestions, showing a "checking..." state on the button meanwhile.
    */
   async checkTypos() {
-    // Prevent duplicate execution
-    if (this.isCheckingTypos) {
+    // Prevent duplicate execution; a destroyed instance must not touch the
+    // DOM at all (R-004)
+    if (this.isCheckingTypos || this.destroyed) {
       return;
     }
-    
+
     const text = this.textarea.value;
-    
     if (!text || text.length < this.options.minLength) {
       return;
     }
 
     this.isCheckingTypos = true;
-    this.checkButton.disabled = true;
-    
-    // Store original innerHTML to restore it later
-    if (!this.originalButtonHTML) {
-      this.originalButtonHTML = this.checkButton.innerHTML;
-    }
-    
-    // Replace only the text part while keeping the icon
-    const checkingText = this.options.labels.checking || 'Checking...';
-    const iconMatch = this.checkButton.innerHTML.match(/<svg[^>]*>.*?<\/svg>/);
-    if (iconMatch) {
-      this.checkButton.innerHTML = iconMatch[0] + ' ' + checkingText;
-    } else {
-      this.checkButton.textContent = checkingText;
-    }
+    this.showCheckingState();
 
     try {
-      const response = await fetch(this.options.endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': this.getCSRFToken()
-        },
-        body: JSON.stringify({
-          text: text
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await this.requestSuggestions(text);
+      // The form may have gone while the request was in flight (R-004)
+      if (!this.destroyed) {
+        this.suggestions = data.suggestions || [];
+        this.displayTypoOverlay();
       }
-
-      const data = await response.json();
-      this.suggestions = data.suggestions || [];
-      this.displayTypoOverlay();
     } catch (error) {
-      console.error('Typo check failed:', error);
-      this.showErrorMessage();
+      if (!this.destroyed) {
+        console.error('Typo check failed:', error);
+        this.showErrorMessage();
+      }
     } finally {
-      this.isCheckingTypos = false;
-      this.checkButton.disabled = false;
-      
-      // Restore original innerHTML instead of setting textContent
-      if (this.originalButtonHTML) {
-        this.checkButton.innerHTML = this.originalButtonHTML;
-      } else {
-        this.checkButton.textContent = this.options.labels.checkButton || 'Check';
+      if (!this.destroyed) {
+        this.restoreCheckButton();
       }
     }
+  }
+
+  /**
+   * POST the text to the check endpoint and return the parsed JSON body.
+   * @param {string} text - The text to check.
+   * @returns {Promise<object>} The response body.
+   */
+  async requestSuggestions(text) {
+    const headers = { 'Content-Type': 'application/json', 'X-CSRF-Token': this.getCSRFToken() };
+    const response = await fetch(this.options.endpoint, { method: 'POST', headers, body: JSON.stringify({ text }) });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+  }
+
+  /** Disable the check button and replace its text (keeping the icon) with the "checking" label. */
+  showCheckingState() {
+    this.checkButton.disabled = true;
+    // Store original innerHTML to restore it later
+    this.originalButtonHTML = this.originalButtonHTML || this.checkButton.innerHTML;
+    const checkingText = this.options.labels.checking || 'Checking...';
+    const icon = this.checkButton.innerHTML.match(/<svg[^>]*>.*?<\/svg>/);
+    this.checkButton.innerHTML = icon ? icon[0] + ' ' + checkingText : '';
+    if (!icon) { this.checkButton.textContent = checkingText; }
+  }
+
+  /** Re-enable the check button and restore its original content. */
+  restoreCheckButton() {
+    this.isCheckingTypos = false;
+    this.checkButton.disabled = false;
+    this.checkButton.textContent = this.originalButtonHTML ? '' : this.options.labels.checkButton || 'Check';
+    if (this.originalButtonHTML) { this.checkButton.innerHTML = this.originalButtonHTML; }
   }
 
   // Overlay content rendering and suggestion accept/reject interactions

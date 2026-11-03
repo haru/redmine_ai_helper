@@ -1156,6 +1156,151 @@ class RedmineAiHelper::Agents::IssueReadAgentTest < ActiveSupport::TestCase
       end
     end
   end
+    # Creates a journal with an exact created_on so tests do not rely on time
+    # advancing between records (ADR-040).
+    def create_journal(user:, notes:, created_on:, private_notes: false)
+      journal = Journal.new(journalized: @issue, user: user, notes: notes, private_notes: private_notes)
+      journal.created_on = created_on
+      journal.save!
+      journal
+    end
+
+    context "build_note_specific_context with a journal being edited (085 US2)" do
+      setup do
+        @project = Project.find(1)
+        @admin = User.find(1)
+        @writer = User.find(2)
+        @base_time = Time.utc(2026, 1, 1, 10, 0, 0)
+        @previous_user = User.current
+        User.current = @admin
+        @langfuse = RedmineAiHelper::LangfuseUtil::LangfuseWrapper.new(input: "Test input for Langfuse")
+        @agent = RedmineAiHelper::Agents::IssueReadAgent.new(project: @project, langfuse: @langfuse)
+        @project.enable_module!(:ai_helper)
+        # A fresh issue: core fixtures carry journals on issue 1, and these
+        # tests build their own journal history with exact timestamps
+        @issue = Issue.create!(project_id: @project.id, tracker_id: 1, status_id: 1,
+                               priority_id: 4, subject: "Context test issue", author_id: @admin.id)
+      end
+
+      teardown do
+        User.current = @previous_user
+      end
+
+      should "order recent_notes newest first, cap at 20 and keep the newest 5 in the prompt" do
+        22.times do |i|
+          create_journal(user: @admin, notes: "note #{i}", created_on: @base_time + i.minutes)
+        end
+
+        context = @agent.send(:build_note_specific_context, @issue)
+
+        notes = context[:recent_notes]
+        assert_equal 20, notes.length, "the 20-note cap is kept"
+        assert_equal "note 21", notes[0][:notes], "newest first"
+        assert_equal "note 2", notes[19][:notes]
+
+        prompt_notes = @agent.send(:format_recent_notes, notes)
+        assert_includes prompt_notes, "note 21"
+        assert_includes prompt_notes, "note 17"
+        assert_not_includes prompt_notes, "note 16", "the prompt carries only the newest 5"
+      end
+
+      should "order journals with the same created_on by id descending" do
+        same_time = @base_time + 30.minutes
+        first = create_journal(user: @admin, notes: "tie first", created_on: same_time)
+        second = create_journal(user: @admin, notes: "tie second", created_on: same_time)
+        assert second.id > first.id
+
+        context = @agent.send(:build_note_specific_context, @issue)
+
+        notes = context[:recent_notes]
+        assert_operator(notes.index { |n| n[:notes] == "tie second" }, :<,
+                       notes.index { |n| n[:notes] == "tie first" })
+      end
+
+      should "limit the history to comments earlier than the edited journal" do
+        create_journal(user: @admin, notes: "old one", created_on: @base_time)
+        create_journal(user: @admin, notes: "private before", created_on: @base_time + 2.minutes, private_notes: true)
+        create_journal(user: @admin, notes: "", created_on: @base_time + 3.minutes)
+        edited = create_journal(user: @writer, notes: "being edited", created_on: @base_time + 10.minutes)
+        create_journal(user: @admin, notes: "later one", created_on: @base_time + 20.minutes)
+        create_journal(user: @admin, notes: "private later", created_on: @base_time + 21.minutes, private_notes: true)
+
+        context = @agent.send(:build_note_specific_context, @issue, edited)
+
+        notes = context[:recent_notes]
+        assert_equal [ "old one" ], notes.map { |n| n[:notes] },
+                     "only the earlier, non-private, non-empty candidate is kept"
+        assert_not_includes notes.map { |n| n[:notes] }, "being edited"
+        assert_not_includes notes.map { |n| n[:notes] }, "later one"
+        assert_not_includes notes.map { |n| n[:notes] }, "private before"
+      end
+
+      should "use the journal's author as the writer instead of User.current" do
+        create_journal(user: @admin, notes: "admin note", created_on: @base_time)
+        edited = create_journal(user: @writer, notes: "being edited", created_on: @base_time + 10.minutes)
+        assert_not_equal @writer, User.current
+
+        context = @agent.send(:build_note_specific_context, @issue, edited)
+
+        assert_equal @writer.name, context[:current_user_name]
+        assert_equal @writer.id, context[:current_user_id]
+        assert_equal false, context[:recent_notes][0][:is_current_user]
+      end
+
+      should "judge the writer's role from the earlier comments only" do
+        edited = create_journal(user: @writer, notes: "first comment by writer", created_on: @base_time)
+
+        context = @agent.send(:build_note_specific_context, @issue, edited)
+        assert_equal "new_participant", context[:user_role_context][:suggested_role]
+
+        create_journal(user: @writer, notes: "writer earlier note", created_on: @base_time - 10.minutes)
+        # Drop the journals association cached by the first context build
+        @issue.reload
+
+        context = @agent.send(:build_note_specific_context, @issue, edited)
+        assert_equal "participant", context[:user_role_context][:suggested_role]
+        assert_equal 1, context[:user_role_context][:participation_count]
+      end
+
+      should "return an empty history with issue context for the issue's first comment" do
+        first = create_journal(user: @admin, notes: "the only comment", created_on: @base_time)
+
+        context = @agent.send(:build_note_specific_context, @issue, first)
+
+        assert_equal [], context[:recent_notes]
+        assert_equal @issue.subject, context[:issue_subject]
+        assert_equal @issue.id, context[:issue_id]
+      end
+
+      should "use the AnonymousUser name when the journal's author was deleted" do
+        ghost = User.create!(login: "ghost", firstname: "Ghost", lastname: "Writer",
+                             mail: "ghost@example.com", password: "abc12345", password_confirmation: "abc12345")
+        edited = create_journal(user: ghost, notes: "written by ghost", created_on: @base_time)
+        User.current = @admin
+        ghost.destroy
+        edited.reload
+
+        assert_kind_of AnonymousUser, edited.user
+        context = @agent.send(:build_note_specific_context, @issue, edited)
+
+        assert_equal edited.user.name, context[:current_user_name]
+      end
+
+      should "keep User.current as the writer and all candidates when journal is nil" do
+        create_journal(user: @admin, notes: "one", created_on: @base_time)
+        create_journal(user: @writer, notes: "two", created_on: @base_time + 1.minute)
+        create_journal(user: @admin, notes: "three", created_on: @base_time + 2.minutes)
+
+        context = @agent.send(:build_note_specific_context, @issue)
+
+        assert_equal @admin.name, context[:current_user_name]
+        assert_equal @admin.id, context[:current_user_id]
+        assert_equal 3, context[:recent_notes].length
+        assert_equal([ "three", "two", "one" ], context[:recent_notes].map { |n| n[:notes] })
+        assert context[:recent_notes][0][:is_current_user]
+        assert_not context[:recent_notes][1][:is_current_user]
+      end
+    end
 end
 
   # Additional tests for scoring and formatting helpers added to cover

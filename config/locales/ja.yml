@@ -185,6 +185,10 @@ ja:
       invalid_context_type: "context_typeが無効です。'description' または 'note' である必要があります"
       issue_not_in_project: "チケットは指定されたプロジェクトに属していません"
       issue_required_for_note: "ノート補完にはチケットが必要です"
+      invalid_journal_id: "journal_id は整数である必要があります"
+      journal_requires_note: "journal_id には context_type 'note' が必要です"
+      journal_not_in_issue: "指定されたチケットにコメントが見つかりません"
+      journal_not_editable: "このコメントを編集する権限がありません"
     autocompletion:
       loading: "AI提案を生成中..."
       no_suggestions: "提案がありません"

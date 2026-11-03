@@ -63,6 +63,18 @@ because disabling, blur and `destroy()` never reschedule (S021).
 `ai_helper_typo_checker.js` is *not* affected: it is button-triggered and guarded
 by `isCheckingTypos` (S021).
 
+## Request body and comment edit forms
+
+`buildDefaultRequestBody` always sends `context_type` (`"description"` or
+`"note"`); the comment edit form additionally sends `journal_id` (an Integer).
+The server rejects a non-Integer `journal_id`, a missing note context, a journal
+that is not visible / not on the issue (400) and a journal the user may not edit
+(403) before any LLM call; an omitted or `null` `journal_id` means a new comment
+([ADR-071](../../docs/adr/071-comment-completion-context.md)). Edit forms have
+one `AiHelperAutoCompletion` per form, created and destroyed by
+`ai_helper_journal_edit_aids.js`
+([ADR-070](../../docs/adr/070-journal-edit-form-aids-attachment.md)).
+
 ## Settings source and validation
 
 Completion settings are read through `ConfigFile.autocompletion_settings` from

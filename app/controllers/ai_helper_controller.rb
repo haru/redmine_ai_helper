@@ -361,7 +361,11 @@ class AiHelperController < ApplicationController
     issue, issue_error = resolve_completion_issue(context_type)
     render json: { error: issue_error }, status: :bad_request and return if issue_error
 
-    ai_helper_logger.info "Auto-completion request: issue_id=#{params[:issue_id]}, context_type=#{context_type}, project=#{@project&.identifier}, user=#{User.current.id}"
+    journal, journal_error, journal_error_status =
+      RedmineAiHelper::Util::CompletionJournalResolver.resolve(data, context_type, issue, User.current)
+    render json: { error: journal_error }, status: journal_error_status and return if journal_error
+
+    ai_helper_logger.info "Auto-completion request: issue_id=#{params[:issue_id]}, context_type=#{context_type}, journal_id=#{data['journal_id'] ? data['journal_id'] : 'none'}, project=#{@project&.identifier}, user=#{User.current.id}"
 
     begin
       suggestion = RedmineAiHelper::Llm.new.generate_text_completion(
@@ -369,7 +373,8 @@ class AiHelperController < ApplicationController
         context_type: context_type,
         cursor_position: data["cursor_position"],
         project: @project,
-        issue: issue
+        issue: issue,
+        journal: journal
       )
       render json: { suggestion: suggestion }
     rescue => e

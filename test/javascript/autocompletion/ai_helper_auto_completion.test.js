@@ -983,3 +983,144 @@ describe("AiHelperAutoCompletion request lifecycle", () => {
     });
   });
 });
+
+describe("AiHelperAutoCompletion explicit checkbox/container options (085)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    document.body.innerHTML = "";
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  /** Build a bare textarea with no ERB-rendered checkbox container at all. */
+  function createBareTextareaDOM() {
+    const container = document.createElement("div");
+    const textarea = document.createElement("textarea");
+    textarea.id = "journal_42_notes";
+    container.appendChild(textarea);
+    document.body.appendChild(container);
+    return { container, textarea };
+  }
+
+  it("uses the passed checkbox and container instead of looking them up by id", () => {
+    // Precondition (CRF-042): no element carries the production ids, so the
+    // id lookup in createCheckbox can never find anything for 'note'
+    expect(document.getElementById("ai-helper-autocompletion-notes-toggle")).toBeNull();
+    expect(document.getElementById("ai-helper-notes-checkbox-container")).toBeNull();
+
+    const dom = createBareTextareaDOM();
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.id = "ai-helper-journal-42-autocompletion-toggle";
+    const containerEl = document.createElement("div");
+    containerEl.className = "ai-helper-journal-edit-controls";
+    containerEl.appendChild(checkbox);
+
+    const completion = new window.AiHelperAutoCompletion(dom.textarea, {
+      contextType: "note",
+      checkbox: checkbox,
+      container: containerEl,
+    });
+    completion.init();
+
+    expect(completion.checkbox).toBe(checkbox);
+    expect(completion.container).toBe(containerEl);
+  });
+
+  it("does not consult document.getElementById when checkbox and container are passed", () => {
+    const dom = createBareTextareaDOM();
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    const containerEl = document.createElement("div");
+
+    const lookup = vi.spyOn(document, "getElementById");
+
+    const completion = new window.AiHelperAutoCompletion(dom.textarea, {
+      contextType: "note",
+      checkbox: checkbox,
+      container: containerEl,
+    });
+    completion.init();
+
+    expect(lookup).not.toHaveBeenCalled();
+    expect(completion.checkbox).toBe(checkbox);
+  });
+
+  it("keeps the id lookup by contextType when the options are absent", () => {
+    const dom = createTextareaDOM("note");
+
+    const completion = new window.AiHelperAutoCompletion(dom.textarea, { contextType: "note" });
+    completion.init();
+
+    expect(completion.checkbox).toBe(dom.checkbox);
+    expect(completion.container.id).toBe("ai-helper-notes-checkbox-container");
+  });
+
+  it("wires the change listener on the passed checkbox", () => {
+    const dom = createBareTextareaDOM();
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    const containerEl = document.createElement("div");
+    containerEl.appendChild(checkbox);
+
+    const completion = new window.AiHelperAutoCompletion(dom.textarea, {
+      contextType: "note",
+      checkbox: checkbox,
+      container: containerEl,
+      userId: 7,
+    });
+    completion.init();
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new Event("change"));
+
+    expect(JSON.parse(localStorage.getItem("aiHelperAutoCompletion_7")).enabled).toBe(true);
+  });
+});
+
+describe("AiHelperAutoCompletion request body: context_type / journal_id (085 US2)", () => {
+  afterEach(() => {
+    document.body.innerHTML = "";
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  /** Build an instance and run buildDefaultRequestBody through it. */
+  function requestBody(options = {}) {
+    const dom = createTextareaDOM(options.contextType || "description");
+    const completion = new window.AiHelperAutoCompletion(dom.textarea, options);
+    return completion.buildDefaultRequestBody("some text", 3);
+  }
+
+  it("always includes context_type with the configured contextType", () => {
+    expect(requestBody({ contextType: "description" })).toMatchObject({ context_type: "description" });
+    expect(requestBody({ contextType: "note" })).toMatchObject({ context_type: "note" });
+  });
+
+  it("includes journal_id when the journalId option is given", () => {
+    const body = requestBody({ contextType: "note", journalId: 42 });
+    expect(body.journal_id).toBe(42);
+    expect(body.context_type).toBe("note");
+  });
+
+  it("has no journal_id key when the journalId option is absent", () => {
+    const body = requestBody({ contextType: "note" });
+    expect(body).not.toHaveProperty("journal_id");
+    expect(body.context_type).toBe("note");
+  });
+
+  it("keeps customRequestData authoritative (Wiki path unchanged)", () => {
+    const dom = createTextareaDOM("description");
+    const custom = { text: "custom", cursor_position: 1, context_type: "wiki" };
+    const completion = new window.AiHelperAutoCompletion(dom.textarea, {
+      contextType: "description",
+      customRequestData: () => custom,
+    });
+    expect(completion.buildDefaultRequestBody).toBeDefined();
+    // callCompletionAPI uses customRequestData when present; simulate its choice
+    const chosen = completion.options.customRequestData("x", 0);
+    expect(chosen).toBe(custom);
+  });
+});

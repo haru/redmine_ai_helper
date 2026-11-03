@@ -271,11 +271,15 @@ module RedmineAiHelper
       # Generate text completion for inline auto-completion
       # @param text [String] The current text content
       # @param cursor_position [Integer] The cursor position in the text
+      # @param context_type [String] Type of completion ("description" or "note")
+      # @param project [Project, nil] The project instance
+      # @param issue [Issue, nil] The issue instance
+      # @param journal [Journal, nil] The journal being edited; nil for a new comment
       # @param context [Hash] Context information
       # @return [String] The completion suggestion
-      def generate_text_completion(text:, cursor_position: nil, context_type: "description", project: nil, issue: nil, context: nil)
+      def generate_text_completion(text:, cursor_position: nil, context_type: "description", project: nil, issue: nil, journal: nil, context: nil)
         begin
-          context ||= build_completion_context(text, context_type, project, issue)
+          context ||= build_completion_context(text, context_type, project, issue, journal)
 
           prefix_text = cursor_position ? text[0...cursor_position] : text
           suffix_text = (cursor_position && cursor_position < text.length) ? text[cursor_position..-1] : ""
@@ -553,10 +557,11 @@ module RedmineAiHelper
       # Moved from llm.rb to follow agent architecture
       # @param text [String] The input text
       # @param context_type [String] Type of context ('description' or 'note')
-      # @param project [Project] The project instance
-      # @param issue [Issue] The issue instance
+      # @param project [Project, nil] The project instance
+      # @param issue [Issue, nil] The issue instance
+      # @param journal [Journal, nil] The journal being edited; nil for a new comment
       # @return [Hash] Context information
-      def build_completion_context(text, context_type, project, issue)
+      def build_completion_context(text, context_type, project, issue, journal = nil)
         context = {
           context_type: context_type,
           project_name: project&.name,
@@ -572,7 +577,7 @@ module RedmineAiHelper
 
         # Add note-specific context
         if context_type == "note" && issue
-          context.merge!(build_note_specific_context(issue))
+          context.merge!(build_note_specific_context(issue, journal))
         end
 
         context
@@ -581,10 +586,14 @@ module RedmineAiHelper
       # Build note-specific context using IssueJson
       # Moved from llm.rb to follow agent architecture
       # @param issue [Issue] The issue instance
+      # @param journal [Journal, nil] The journal being edited; nil for a new comment.
+      #   When given, the conversation history contains only the comments posted
+      #   before it and its author acts as the writer.
       # @return [Hash] Note-specific context information
-      def build_note_specific_context(issue)
-        # Current user
-        current_user = User.current
+      def build_note_specific_context(issue, journal = nil)
+        # The writer is the journal's original author while editing, and the
+        # current user when writing a new comment
+        writer = journal&.user || User.current
 
         # Use IssueJson to get comprehensive issue data (already included in this class)
         issue_data = generate_issue_data(issue)
@@ -600,30 +609,50 @@ module RedmineAiHelper
           issue_assigned_to: issue_data.dig(:assigned_to, :name) || "None",
           issue_author: issue_data.dig(:author, :name) || "",
           issue_created_on: issue_data[:created_on],
-          current_user_name: current_user.name,
-          current_user_id: current_user.id
+          current_user_name: writer.name,
+          current_user_id: writer.id
         }
 
-        # Extract recent notes from journals (limit to latest 20 with notes)
-        journals_with_notes = issue_data[:journals]
-          .select { |journal| journal[:notes].present? && !journal[:private_notes] }
-          .first(20) # Already sorted by created_on desc in generate_issue_data
+        journals_with_notes = select_note_candidates(issue_data, journal)
 
-        note_context[:recent_notes] = journals_with_notes.map do |journal|
+        note_context[:recent_notes] = journals_with_notes.map do |journal_data|
           {
-            user_name: journal.dig(:user, :name) || "Unknown",
-            user_id: journal.dig(:user, :id),
-            notes: journal[:notes][0..300], # First 300 characters only
-            created_on: journal[:created_on],
-            is_current_user: journal.dig(:user, :id) == current_user.id
+            user_name: journal_data.dig(:user, :name) || "Unknown",
+            user_id: journal_data.dig(:user, :id),
+            notes: journal_data[:notes][0..300], # First 300 characters only
+            created_on: journal_data[:created_on],
+            is_current_user: journal_data.dig(:user, :id) == writer.id
           }
         end
 
         # User role analysis
-        user_roles = analyze_user_role_in_conversation(current_user, journals_with_notes, issue_data)
+        user_roles = analyze_user_role_in_conversation(writer, journals_with_notes, issue_data)
         note_context[:user_role_context] = user_roles
 
         note_context
+      end
+
+      # Select the journal entries that may enter the note completion history:
+      # candidates with notes, non-private, sorted by [created_on, id] newest
+      # first, capped at 20. While editing a comment, only the comments posted
+      # before it are candidates.
+      # @param issue_data [Hash] Issue data from {#generate_issue_data}
+      # @param journal [Journal, nil] The journal being edited; nil for a new comment
+      # @return [Array<Hash>] The candidate journals, newest first
+      def select_note_candidates(issue_data, journal)
+        # Journals come back from the has_many association in undefined order,
+        # so sort by [created_on, id] newest first; the id breaks ties between
+        # journals created in the same second.
+        candidates = issue_data[:journals]
+          .select { |journal_data| journal_data[:notes].present? && !journal_data[:private_notes] }
+          .sort_by { |journal_data| [ journal_data[:created_on], journal_data[:id] ] }
+          .reverse
+        if journal
+          candidates = candidates.select do |journal_data|
+            ([ journal_data[:created_on], journal_data[:id] ] <=> [ journal.created_on, journal.id ]) == -1
+          end
+        end
+        candidates.first(20)
       end
 
       # Method to analyze user's role in conversation

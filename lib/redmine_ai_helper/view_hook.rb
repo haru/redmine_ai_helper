@@ -9,6 +9,7 @@ module RedmineAiHelper
     render_on :view_issues_edit_notes_bottom, partial: "ai_helper/issues/form"
     render_on :view_issues_show_description_bottom, partial: "ai_helper/issues/subissues/description_bottom"
     render_on :view_issues_form_details_bottom, partial: "ai_helper/shared/textarea_overlay"
+    render_on :view_journals_notes_form_after_notes, partial: "ai_helper/journals/notes_form_controls"
     render_on :view_layouts_base_sidebar, partial: "ai_helper/wiki/summary"
     render_on :view_projects_show_right, partial: "ai_helper/project/health_report"
     # NOTE: render_on defines a method named after the hook, so multiple calls for the

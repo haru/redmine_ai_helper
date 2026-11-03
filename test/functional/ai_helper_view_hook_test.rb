@@ -86,6 +86,49 @@ class AiHelperViewHookTest < ActionController::TestCase
     assert doc.at_css("body #ai-helper-stuff-todo-body")
   end
 
+  test "journal edit aids script is included after the typo checker and editor controls scripts" do
+    get :show, params: { id: @issue.id }
+    assert_response :success
+
+    doc = Nokogiri::HTML(@response.body)
+    srcs = doc.css("script[src]").map { |s| s["src"] }
+    # Asset digests suffix the basename, so match on the path without the extension
+    index_of = ->(file) { srcs.index { |src| src.include?(file) } }
+    expect = %w[
+      autocompletion/ai_helper_auto_completion
+      shared/ai_helper_editor_controls
+      typo_checker/ai_helper_typo_checker
+      typo_checker/ai_helper_typo_suggestion_overlay
+      autocompletion/ai_helper_journal_edit_aids
+    ]
+    expect.each do |file|
+      assert index_of.call(file), "expected #{file} to be included on the issue page"
+    end
+    expect.each_cons(2) do |before, after|
+      assert index_of.call(before) < index_of.call(after),
+             "expected #{after} to be included after #{before}"
+    end
+  end
+
+  test "issue page typo overlay labels are unchanged when built by TypoCheckLabels" do
+    get :show, params: { id: @issue.id }
+    assert_response :success
+
+    doc = Nokogiri::HTML(@response.body)
+    overlay = doc.at_css("#ai-helper-issue-typo-overlay")
+    assert overlay, "expected the issue typo overlay to be rendered"
+    labels = JSON.parse(overlay["data-config"])["labels"]
+    expected = %w[
+      suggestionsTitle noSuggestions checkButton checking acceptSuggestion
+      dismissSuggestion acceptAll dismissAll errorOccurred correctionTooltip
+      applyFailed
+    ]
+    assert_equal expected.sort, labels.keys.sort
+    expected.each do |key|
+      assert_equal I18n.t("ai_helper.typo_check.#{key.underscore}"), labels[key]
+    end
+  end
+
   test "no stuff todo elements are rendered when ai_helper module is disabled" do
     EnabledModule.where(project_id: @project.id, name: "ai_helper").destroy_all
 
