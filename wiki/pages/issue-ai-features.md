@@ -1,8 +1,8 @@
 ---
 title: Issue AI Features
 type: component
-sources: [S014, S017, S021, S035]
-updated: 2026-09-20
+sources: [S014, S017, S021, S035, S061]
+updated: 2026-11-03
 ---
 
 # Issue AI Features
@@ -83,13 +83,13 @@ block unrelated actions such as saving the issue (S021). See
 The typo check link and the completion checkbox also appear in the edit form of
 a posted comment (rendered by the `view_journals_notes_form_after_notes` hook,
 attached to the dynamically inserted form by a `MutationObserver` on `#history`
-— [ADR-070](../../docs/adr/070-journal-edit-form-aids-attachment.md)). Completion
+— [ADR-070](../../docs/adr/070-journal-edit-form-aids-attachment.md), S061). Completion
 for comments always uses the note context: the browser sends
 `context_type: "note"` (the new-comment field too), history is the newest 5 of
 the newest 20 visible, non-private comments, and when editing a posted comment
 the request carries `journal_id`, the writer is the comment's author, and only
 earlier comments are used
-([ADR-071](../../docs/adr/071-comment-completion-context.md)).
+([ADR-071](../../docs/adr/071-comment-completion-context.md), S061).
 
 ## Related
 

@@ -365,7 +365,7 @@ class AiHelperController < ApplicationController
       RedmineAiHelper::Util::CompletionJournalResolver.resolve(data, context_type, issue, User.current)
     render json: { error: journal_error }, status: journal_error_status and return if journal_error
 
-    ai_helper_logger.info "Auto-completion request: issue_id=#{params[:issue_id]}, context_type=#{context_type}, journal_id=#{data['journal_id'] ? data['journal_id'] : 'none'}, project=#{@project&.identifier}, user=#{User.current.id}"
+    ai_helper_logger.info "Auto-completion request: issue_id=#{params[:issue_id]}, context_type=#{context_type}, journal_id=#{journal ? journal.id : 'none'}, project=#{@project&.identifier}, user=#{User.current.id}"
 
     begin
       suggestion = RedmineAiHelper::Llm.new.generate_text_completion(

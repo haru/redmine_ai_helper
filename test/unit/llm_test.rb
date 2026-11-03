@@ -493,7 +493,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
     end
 
     should "handle agent error gracefully" do
-      RedmineAiHelper::Agents::IssueReadAgent.any_instance.stubs(:generate_text_completion).raises(StandardError, "Agent error")
+      RedmineAiHelper::Agents::IssueReadAgent.any_instance.stubs(:generate_text_completion).raises(Faraday::ConnectionFailed, "Agent error")
 
       result = @llm.generate_text_completion(
         text: "Login page has error",
@@ -504,6 +504,20 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       )
 
       assert_equal "", result
+    end
+
+    should "not swallow a programming error raised by the agent" do
+      RedmineAiHelper::Agents::IssueReadAgent.any_instance.stubs(:generate_text_completion).raises(ArgumentError, "defect")
+
+      assert_raises(ArgumentError) do
+        @llm.generate_text_completion(
+          text: "Login page has error",
+          context_type: "description",
+          cursor_position: 18,
+          project: @project,
+          issue: @issue
+        )
+      end
     end
 
     should "parse single suggestion correctly" do
@@ -578,7 +592,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         # Mock IssueReadAgent to raise an error
         mock_agent = mock("IssueReadAgent")
         mock_agent.stubs(:llm_provider=)
-        mock_agent.expects(:generate_text_completion).raises(StandardError, "Agent failed")
+        mock_agent.expects(:generate_text_completion).raises(Faraday::ConnectionFailed, "Agent failed")
 
         RedmineAiHelper::Agents::IssueReadAgent.expects(:new).returns(mock_agent)
 

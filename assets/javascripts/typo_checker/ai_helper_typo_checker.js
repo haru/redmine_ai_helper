@@ -6,6 +6,10 @@ class AiHelperTypoChecker {
   /**
    * @param {HTMLTextAreaElement} textarea - The textarea to check.
    * @param {object} [options] - Configuration (endpoint, labels, debounceDelay, minLength).
+   *   `checkButton` and `controlPanel` bind the check button and control panel
+   *   explicitly instead of the textarea-id lookup; `autoCompletion` is the
+   *   one AiHelperAutoCompletion instance paused while the typo overlay is
+   *   shown (without it, every page-level instance is paused).
    */
   constructor(textarea, options = {}) {
     this.textarea = textarea;
@@ -315,64 +319,42 @@ class AiHelperTypoChecker {
   }
 
   /**
-   * Disable and clear any active description/notes/wiki autocompletion
-   * instances while the typo overlay is shown, so the two features don't
-   * fight over the textarea.
+   * The autocompletion instances this checker pauses while its overlay is
+   * shown: the explicitly passed instance (journal edit forms, so the
+   * page-level ones stay untouched), otherwise every registered page-level one.
+   * @returns {object[]} The instances to pause and resume.
    */
-  disableAutocompletion() {
-    // With an explicitly passed instance (journal edit forms) only that
-    // form's completion is paused; the page-level instances stay untouched
+  autoCompletionTargets() {
     if (this.options.autoCompletion) {
-      this.options.autoCompletion.clearSuggestion();
-      this.options.autoCompletion.isEnabled = false;
-      return;
+      return [this.options.autoCompletion];
     }
-
-    // Disable autocomplete functionality when typo overlay is active
-    if (window.aiHelperInstances) {
-      const instances = window.aiHelperInstances;
-      if (instances.autoCompletion) {
-        instances.autoCompletion.clearSuggestion();
-        instances.autoCompletion.isEnabled = false;
-      }
-      if (instances.wikiAutoCompletion) {
-        instances.wikiAutoCompletion.clearSuggestion();
-        instances.wikiAutoCompletion.isEnabled = false;
-      }
-      if (instances.notesAutoCompletion) {
-        instances.notesAutoCompletion.clearSuggestion();
-        instances.notesAutoCompletion.isEnabled = false;
-      }
-    }
+    const instances = window.aiHelperInstances || {};
+    return [instances.autoCompletion, instances.wikiAutoCompletion, instances.notesAutoCompletion].filter(Boolean);
   }
 
   /**
-   * Re-enable any autocompletion instance whose checkbox is still checked,
-   * once the typo overlay is hidden.
+   * Disable and clear the autocompletion instances (see
+   * {@link AiHelperTypoChecker#autoCompletionTargets}) while the typo overlay
+   * is shown, so the two features don't fight over the textarea.
+   */
+  disableAutocompletion() {
+    this.autoCompletionTargets().forEach((autoCompletion) => {
+      autoCompletion.clearSuggestion();
+      autoCompletion.isEnabled = false;
+    });
+  }
+
+  /**
+   * Re-enable the autocompletion instances (see
+   * {@link AiHelperTypoChecker#autoCompletionTargets}) whose checkbox is
+   * still checked, once the typo overlay is hidden.
    */
   enableAutocompletion() {
-    // Mirror of disableAutocompletion for an explicitly passed instance
-    if (this.options.autoCompletion) {
-      const autoCompletion = this.options.autoCompletion;
+    this.autoCompletionTargets().forEach((autoCompletion) => {
       if (autoCompletion.checkbox && autoCompletion.checkbox.checked) {
         autoCompletion.isEnabled = true;
       }
-      return;
-    }
-
-    // Re-enable autocomplete functionality when typo overlay is hidden
-    if (window.aiHelperInstances) {
-      const instances = window.aiHelperInstances;
-      if (instances.autoCompletion && instances.autoCompletion.checkbox && instances.autoCompletion.checkbox.checked) {
-        instances.autoCompletion.isEnabled = true;
-      }
-      if (instances.wikiAutoCompletion && instances.wikiAutoCompletion.checkbox && instances.wikiAutoCompletion.checkbox.checked) {
-        instances.wikiAutoCompletion.isEnabled = true;
-      }
-      if (instances.notesAutoCompletion && instances.notesAutoCompletion.checkbox && instances.notesAutoCompletion.checkbox.checked) {
-        instances.notesAutoCompletion.isEnabled = true;
-      }
-    }
+    });
   }
 
   /**
@@ -434,16 +416,22 @@ class AiHelperTypoChecker {
     this.originalButtonHTML = this.originalButtonHTML || this.checkButton.innerHTML;
     const checkingText = this.options.labels.checking || 'Checking...';
     const icon = this.checkButton.innerHTML.match(/<svg[^>]*>.*?<\/svg>/);
-    this.checkButton.innerHTML = icon ? icon[0] + ' ' + checkingText : '';
-    if (!icon) { this.checkButton.textContent = checkingText; }
+    if (icon) {
+      this.checkButton.innerHTML = icon[0] + ' ' + checkingText;
+    } else {
+      this.checkButton.textContent = checkingText;
+    }
   }
 
   /** Re-enable the check button and restore its original content. */
   restoreCheckButton() {
     this.isCheckingTypos = false;
     this.checkButton.disabled = false;
-    this.checkButton.textContent = this.originalButtonHTML ? '' : this.options.labels.checkButton || 'Check';
-    if (this.originalButtonHTML) { this.checkButton.innerHTML = this.originalButtonHTML; }
+    if (this.originalButtonHTML) {
+      this.checkButton.innerHTML = this.originalButtonHTML;
+    } else {
+      this.checkButton.textContent = this.options.labels.checkButton || 'Check';
+    }
   }
 
   // Overlay content rendering and suggestion accept/reject interactions

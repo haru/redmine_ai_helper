@@ -21,13 +21,21 @@ initialisation call as the ways to start a feature.
   Redmine's `view_journals_notes_form_after_notes` hook. It renders one
   `.ai-helper-journal-edit-controls` container inside the edit form (checkbox,
   typo check link, control panel, accept/reject button templates, `data-config`),
-  guarded by `PermissionChecker.module_enabled?`. Element ids contain the
-  journal id.
+  guarded by `PermissionChecker.module_enabled?`. The checkbox id contains the
+  journal id; the other elements are found by class within the container.
 - `ai_helper_journal_edit_aids.js` observes `#history` with a
   `MutationObserver` (`childList`, `subtree`). Each change attaches one
   `AiHelperAutoCompletion` and one `AiHelperTypoChecker` per not-yet-registered
   form (a `Map` keyed by the form element) and releases registered forms whose
   `isConnected` is false by calling `destroy()` on both.
+- `attach()` checks the textarea and the three controls (checkbox, check
+  button, control panel) before creating anything and throws when one is
+  missing, because the components would otherwise fall back to the page-level
+  new-comment controls. If the typo checker fails after the completion instance
+  was created, the completion instance is destroyed. `scan()` reports a form
+  whose attach failed once with `console.error` and never retries it, so one
+  broken form neither repeats on every mutation nor blocks releasing the
+  detached forms. `start()` disconnects a previous observer.
 - `AiHelperAutoCompletion` and `AiHelperTypoChecker` accept optional elements
   (`checkbox`/`container`, `checkButton`/`controlPanel`/`autoCompletion`) that
   replace the id lookups; without them behaviour is unchanged.

@@ -163,6 +163,19 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_equal I18n.t("ai_helper.completion_errors.journal_not_editable"), JSON.parse(response.body)["error"]
       end
 
+      should "log a warning naming the journal, issue and user when a journal request is rejected" do
+        logger_mock = mock("ai_helper_logger")
+        logger_mock.expects(:warn).with do |message|
+          message.include?("journal_id=999999") && message.include?("issue_id=#{@issue.id}") &&
+            message.include?("user=#{User.current.id}")
+        end
+        RedmineAiHelper::Util::CompletionJournalResolver.stubs(:ai_helper_logger).returns(logger_mock)
+
+        stub_llm_never_called
+        post_completion(999_999)
+        assert_response :bad_request
+      end
+
       should "pass the journal to the LLM and return the suggestion" do
         RedmineAiHelper::Llm.any_instance.expects(:generate_text_completion).with(
           text: "I have reviewed",
@@ -248,8 +261,11 @@ class AiHelperControllerTest < ActionController::TestCase
 
           assert_response :success
           assert_not_nil @captured_prompt
-          # The writer is the comment's original author, not the current user
-          assert_includes @captured_prompt, "John Smith"
+          # The writer is the comment's original author, not the current user.
+          # John Smith is also the issue author, so assert the writer line of
+          # the template rather than the bare name
+          assert_includes @captured_prompt, 'helping user "John Smith"'
+          assert_not_includes @captured_prompt, 'helping user "Redmine Admin"'
           # The edited comment and later ones are absent from the history
           assert_not_includes @captured_prompt, "Some notes with Redmine links"
           assert_not_includes @captured_prompt, "later comment after the edited one"

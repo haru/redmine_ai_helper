@@ -278,34 +278,36 @@ module RedmineAiHelper
       # @param context [Hash] Context information
       # @return [String] The completion suggestion
       def generate_text_completion(text:, cursor_position: nil, context_type: "description", project: nil, issue: nil, journal: nil, context: nil)
+        # Context building and prompt rendering are plugin code: a defect there
+        # must surface, so only the LLM request itself is guarded below
+        context ||= build_completion_context(text, context_type, project, issue, journal)
+
+        prefix_text = cursor_position ? text[0...cursor_position] : text
+        suffix_text = (cursor_position && cursor_position < text.length) ? text[cursor_position..-1] : ""
+
+        actual_context_type = context[:context_type] || context_type || "description"
+        template_name = actual_context_type == "note" ? "issue_read_agent/note_inline_completion" : "issue_read_agent/inline_completion"
+
+        prompt = load_prompt(template_name)
+        template_vars = build_completion_template_vars(context, actual_context_type, prefix_text, suffix_text, cursor_position)
+        prompt_text = prompt.format(**template_vars)
+
+        messages = [ { role: "user", content: prompt_text } ]
         begin
-          context ||= build_completion_context(text, context_type, project, issue, journal)
-
-          prefix_text = cursor_position ? text[0...cursor_position] : text
-          suffix_text = (cursor_position && cursor_position < text.length) ? text[cursor_position..-1] : ""
-
-          actual_context_type = context[:context_type] || context_type || "description"
-          template_name = actual_context_type == "note" ? "issue_read_agent/note_inline_completion" : "issue_read_agent/inline_completion"
-
-          prompt = load_prompt(template_name)
-          template_vars = build_completion_template_vars(context, actual_context_type, prefix_text, suffix_text, cursor_position)
-          prompt_text = prompt.format(**template_vars)
-
-          messages = [ { role: "user", content: prompt_text } ]
           completion = chat(messages, {})
-
-          ai_helper_logger.debug "Generated text completion: #{completion.length} characters"
-          parse_completion_response(completion)
         rescue Faraday::TimeoutError => e
           # Completion runs under a short timeout on purpose; giving up quietly
           # is the expected outcome for a slow backend, not a failure to report.
           ai_helper_logger.warn "Text completion timed out in IssueReadAgent (context_type=#{context_type}, project=#{project&.identifier}): #{e.message}"
-          ""
-        rescue => e
+          return ""
+        rescue RubyLLM::Error, Faraday::Error => e
           ai_helper_logger.error "Text completion error in IssueReadAgent: #{e.message}"
           ai_helper_logger.error "Error backtrace: #{e.backtrace.join("\n")}"
-          ""
+          return ""
         end
+
+        ai_helper_logger.debug "Generated text completion: #{completion.length} characters"
+        parse_completion_response(completion)
       end
 
       # Build the template variables hash used to render the inline completion prompt.
@@ -593,7 +595,8 @@ module RedmineAiHelper
       def build_note_specific_context(issue, journal = nil)
         # The writer is the journal's original author while editing, and the
         # current user when writing a new comment
-        writer = journal&.user || User.current
+        writer = journal ? journal.user : User.current
+        raise ArgumentError, "journal #{journal.id} has no user" if writer.nil?
 
         # Use IssueJson to get comprehensive issue data (already included in this class)
         issue_data = generate_issue_data(issue)
@@ -640,18 +643,18 @@ module RedmineAiHelper
       # @param journal [Journal, nil] The journal being edited; nil for a new comment
       # @return [Array<Hash>] The candidate journals, newest first
       def select_note_candidates(issue_data, journal)
-        # Journals come back from the has_many association in undefined order,
-        # so sort by [created_on, id] newest first; the id breaks ties between
-        # journals created in the same second.
         candidates = issue_data[:journals]
           .select { |journal_data| journal_data[:notes].present? && !journal_data[:private_notes] }
-          .sort_by { |journal_data| [ journal_data[:created_on], journal_data[:id] ] }
-          .reverse
         if journal
           candidates = candidates.select do |journal_data|
             ([ journal_data[:created_on], journal_data[:id] ] <=> [ journal.created_on, journal.id ]) == -1
           end
         end
+        # Journals come back from the has_many association in undefined order,
+        # so sort by [created_on, id] newest first; the id breaks ties between
+        # journals created in the same second. The cap comes last, after the
+        # "earlier than the edited comment" filter.
+        candidates = candidates.sort_by { |journal_data| [ journal_data[:created_on], journal_data[:id] ] }.reverse
         candidates.first(20)
       end
 

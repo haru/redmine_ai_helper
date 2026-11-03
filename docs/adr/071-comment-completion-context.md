@@ -33,7 +33,17 @@
   non-Integer value, missing note context, a journal not visible or not on the
   issue, and a journal the user may not edit are rejected with 400/400/400/403
   and new `ai_helper.completion_errors.*` messages. An omitted or `null`
-  `journal_id` keeps the previous behaviour.
+  `journal_id` keeps the previous behaviour. The resolver checks visibility
+  and edit rights for the same user it is given, and logs each rejected request
+  with the journal id, issue id and user id.
+- A journal without a user raises `ArgumentError` instead of quietly switching
+  the writer to the current user.
+- `IssueReadAgent#generate_text_completion` builds the context and renders the
+  prompt outside any rescue, and `Llm#generate_text_completion` rescues only
+  `RubyLLM::Error` and `Faraday::Error` (timeouts are still logged as a warning
+  by the agent). A defect in the context code therefore reaches the controller's
+  500 response instead of showing as "no suggestion". This applies to every
+  context type that uses these two methods, not only comments.
 
 ## Consequences
 

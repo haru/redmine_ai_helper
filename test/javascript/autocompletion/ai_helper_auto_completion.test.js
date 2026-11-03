@@ -1030,6 +1030,19 @@ describe("AiHelperAutoCompletion explicit checkbox/container options (085)", () 
     expect(completion.container).toBe(containerEl);
   });
 
+  it("throws when a checkbox is passed without its container", () => {
+    const dom = createBareTextareaDOM();
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+
+    const completion = new window.AiHelperAutoCompletion(dom.textarea, {
+      contextType: "note",
+      checkbox: checkbox,
+    });
+
+    expect(() => completion.init()).toThrow(/container/);
+  });
+
   it("does not consult document.getElementById when checkbox and container are passed", () => {
     const dom = createBareTextareaDOM();
     const checkbox = document.createElement("input");

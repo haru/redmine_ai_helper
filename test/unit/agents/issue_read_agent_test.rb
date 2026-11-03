@@ -956,18 +956,18 @@ class RedmineAiHelper::Agents::IssueReadAgentTest < ActiveSupport::TestCase
         assert_equal "I agree with the analysis.", result
       end
 
-      should "handle errors gracefully in text completion" do
+      should "let a prompt template error surface instead of returning an empty string" do
         @agent.expects(:load_prompt).raises(StandardError, "Template not found")
 
-        result = @agent.generate_text_completion(
-          text: "Test",
-          cursor_position: 4,
-          context_type: "description",
-          project: @project,
-          issue: @issue
-        )
-
-        assert_equal "", result
+        assert_raises(StandardError) do
+          @agent.generate_text_completion(
+            text: "Test",
+            cursor_position: 4,
+            context_type: "description",
+            project: @project,
+            issue: @issue
+          )
+        end
       end
 
       context "when the LLM request times out" do
@@ -1030,7 +1030,7 @@ class RedmineAiHelper::Agents::IssueReadAgentTest < ActiveSupport::TestCase
           mock_prompt = mock("Prompt")
           mock_prompt.stubs(:format).returns("Complete the text")
           @agent.stubs(:load_prompt).returns(mock_prompt)
-          @agent.stubs(:chat).raises(StandardError, "boom")
+          @agent.stubs(:chat).raises(Faraday::ConnectionFailed, "boom")
 
           logger = mock("ai_helper_logger")
           logger.stubs(:debug)
@@ -1284,6 +1284,49 @@ class RedmineAiHelper::Agents::IssueReadAgentTest < ActiveSupport::TestCase
         context = @agent.send(:build_note_specific_context, @issue, edited)
 
         assert_equal edited.user.name, context[:current_user_name]
+      end
+
+      should "raise when the journal has no author instead of falling back to User.current" do
+        edited = create_journal(user: @writer, notes: "being edited", created_on: @base_time)
+        edited.stubs(:user).returns(nil)
+
+        error = assert_raises(ArgumentError) do
+          @agent.send(:build_note_specific_context, @issue, edited)
+        end
+        assert_includes error.message, edited.id.to_s
+      end
+
+      should "apply the earlier-than filter before the 20-note cap" do
+        25.times do |i|
+          create_journal(user: @admin, notes: "note #{i}", created_on: @base_time + i.minutes)
+        end
+        edited = Journal.where(journalized_id: @issue.id).order(:created_on)[2]
+
+        context = @agent.send(:build_note_specific_context, @issue, edited)
+
+        assert_equal([ "note 1", "note 0" ], context[:recent_notes].map { |n| n[:notes] })
+      end
+
+      should "break same-second ties by id while editing" do
+        same_time = @base_time + 30.minutes
+        lower = create_journal(user: @admin, notes: "tie lower", created_on: same_time)
+        edited = create_journal(user: @writer, notes: "tie edited", created_on: same_time)
+        higher = create_journal(user: @admin, notes: "tie higher", created_on: same_time)
+        assert lower.id < edited.id
+        assert edited.id < higher.id
+
+        context = @agent.send(:build_note_specific_context, @issue, edited)
+
+        assert_equal([ "tie lower" ], context[:recent_notes].map { |n| n[:notes] })
+      end
+
+      should "let an error in building the completion context surface instead of returning an empty string" do
+        @agent.stubs(:build_completion_context).raises(ArgumentError, "context defect")
+
+        assert_raises(ArgumentError) do
+          @agent.generate_text_completion(text: "hello world", cursor_position: 5,
+                                          context_type: "note", project: @project, issue: @issue)
+        end
       end
 
       should "keep User.current as the writer and all candidates when journal is nil" do

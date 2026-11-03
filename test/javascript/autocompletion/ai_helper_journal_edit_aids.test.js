@@ -39,6 +39,23 @@ function createJournalHistoryDOM(journalId = 42) {
   const { block, textarea } = createJstEditor(`journal_${journalId}_notes`);
   form.appendChild(block);
 
+  // journals/_notes_form.html.erb renders the private-notes hidden field,
+  // checkbox and label between the editor and the hook output
+  const privateHidden = document.createElement("input");
+  privateHidden.type = "hidden";
+  privateHidden.name = "journal[private_notes]";
+  privateHidden.value = "0";
+  form.appendChild(privateHidden);
+  const privateCheckbox = document.createElement("input");
+  privateCheckbox.type = "checkbox";
+  privateCheckbox.id = `journal_${journalId}_private_notes`;
+  form.appendChild(privateCheckbox);
+  const privateLabel = document.createElement("label");
+  privateLabel.setAttribute("for", privateCheckbox.id);
+  form.appendChild(privateLabel);
+
+  // The hook output follows the private-notes label, i.e. NOT yet right after
+  // the editor: attach() must move it there
   const controls = buildControls(journalId);
   form.appendChild(controls);
 
@@ -94,8 +111,6 @@ function buildControls(journalId) {
       dismiss: "Dismiss",
       enabledTooltip: "note enabled",
       disabledTooltip: "note disabled",
-      noteEnabledTooltip: "note enabled",
-      noteDisabledTooltip: "note disabled",
     },
     typoLabels: typoLabels(),
   });
@@ -178,10 +193,12 @@ describe("AiHelperJournalEditAids", () => {
       const block = dom.form.querySelector(".jstBlock");
 
       // Precondition (CRF-042/CRF-077): the fixture renders the container
-      // where the production hook does — inside the form, after the .jstBlock,
-      // before the submit paragraph — and still hidden
+      // where the production hook does — inside the form, after the
+      // private-notes label, before the submit paragraph — still hidden and
+      // NOT yet directly after the editor
       expect(dom.controls.parentNode).toBe(dom.form);
-      expect(block.nextSibling).toBe(dom.controls);
+      expect(block.nextSibling).not.toBe(dom.controls);
+      expect(dom.controls.previousSibling.tagName).toBe("LABEL");
       expect(dom.controls.nextSibling.tagName).toBe("P");
       expect(dom.controls.style.display).toBe("none");
 
@@ -203,9 +220,11 @@ describe("AiHelperJournalEditAids", () => {
       expect(entry.typoChecker.options.endpoint).toBe("/projects/1/ai_helper/check_typos");
       expect(entry.typoChecker.options.labels.suggestionsTitle).toBe("Suggestions");
 
-      // The container was moved after the .jstBlock and revealed
+      // The container was moved directly after the .jstBlock (before the
+      // private-notes elements) and revealed
       expect(dom.controls.parentNode).toBe(dom.form);
       expect(block.nextSibling).toBe(dom.controls);
+      expect(dom.controls.nextSibling.tagName).toBe("INPUT");
       expect(dom.controls.style.display).toBe("block");
     });
 
@@ -237,6 +256,81 @@ describe("AiHelperJournalEditAids", () => {
         .toThrow(/textarea #issue_notes not found/);
       expect(window.AiHelperJournalEditAids.entryFor(dom.form)).toBeUndefined();
     });
+
+    it.each([
+      [".ai-helper-journal-autocompletion-toggle"],
+      [".ai-helper-journal-typo-check-btn"],
+      [".ai-helper-journal-typo-control-panel"],
+    ])("throws without creating anything when the %s element is missing", (selector) => {
+      dom = createJournalHistoryDOM(42);
+      dom.controls.querySelector(selector).remove();
+      const overlaysBefore = document.querySelectorAll(".ai-helper-textarea-overlay").length;
+
+      expect(() => window.AiHelperJournalEditAids.attach(dom.controls))
+        .toThrow(new RegExp(selector.replace(/\./g, "\\.")));
+
+      expect(window.AiHelperJournalEditAids.entryFor(dom.form)).toBeUndefined();
+      expect(document.querySelectorAll(".ai-helper-textarea-overlay").length).toBe(overlaysBefore);
+      // The new-comment checkbox must never be picked up as a fallback
+      expect(dom.controls.style.display).toBe("none");
+    });
+
+    it("destroys the completion instance and registers nothing when the typo checker fails to initialize", () => {
+      dom = createJournalHistoryDOM(42);
+      const completionDestroy = vi.spyOn(window.AiHelperAutoCompletion.prototype, "destroy");
+      vi.spyOn(window.AiHelperTypoChecker.prototype, "init").mockImplementation(() => {
+        throw new Error("typo init failed");
+      });
+
+      expect(() => window.AiHelperJournalEditAids.attach(dom.controls)).toThrow(/typo init failed/);
+
+      expect(completionDestroy).toHaveBeenCalledTimes(1);
+      expect(window.AiHelperJournalEditAids.entryFor(dom.form)).toBeUndefined();
+      expect(document.querySelectorAll(".ai-helper-textarea-overlay").length).toBe(0);
+    });
+
+    it("returns the registered entry without parsing the configuration again", () => {
+      dom = createJournalHistoryDOM(42);
+      const first = window.AiHelperJournalEditAids.attach(dom.controls);
+      dom.controls.dataset.config = "{not json";
+
+      expect(window.AiHelperJournalEditAids.attach(dom.controls)).toBe(first);
+    });
+  });
+
+  describe("completion request from the edit form (top level)", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+      localStorage.clear();
+    });
+
+    it("typing into the edit textarea posts context_type note and the journal id to the form's completion endpoint", async () => {
+      localStorage.clear();
+      dom = createJournalHistoryDOM(42);
+      window.AiHelperJournalEditAids.attach(dom.controls);
+      const toggle = dom.controls.querySelector(".ai-helper-journal-autocompletion-toggle");
+      toggle.checked = true;
+      toggle.dispatchEvent(new Event("change", { bubbles: true }));
+
+      const fetchCalls = [];
+      vi.stubGlobal("fetch", vi.fn((url, options) => {
+        fetchCalls.push({ url, options });
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ suggestion: "" }) });
+      }));
+
+      vi.useFakeTimers();
+      dom.textarea.value = "I have reviewed the issue";
+      dom.textarea.setSelectionRange(dom.textarea.value.length, dom.textarea.value.length);
+      dom.textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      await vi.advanceTimersByTimeAsync(600);
+
+      expect(fetchCalls).toHaveLength(1);
+      expect(fetchCalls[0].url).toBe("/projects/1/ai_helper/issue/42/suggest_completion");
+      const body = JSON.parse(fetchCalls[0].options.body);
+      expect(body.context_type).toBe("note");
+      expect(body.journal_id).toBe(42);
+      expect(body.text).toBe("I have reviewed the issue");
+    });
   });
 
   describe("scan", () => {
@@ -254,7 +348,80 @@ describe("AiHelperJournalEditAids", () => {
     });
   });
 
+  describe("scan with a container as root", () => {
+    it("attaches a controls container passed directly as the root", () => {
+      dom = createJournalHistoryDOM(42);
+      expect(window.AiHelperJournalEditAids.entryFor(dom.form)).toBeUndefined();
+
+      window.AiHelperJournalEditAids.scan(dom.controls);
+
+      expect(window.AiHelperJournalEditAids.entryFor(dom.form)).not.toBeUndefined();
+    });
+  });
+
   describe("start", () => {
+    it("never keeps two observers when called twice", () => {
+      dom = createJournalHistoryDOM(42);
+      const instances = [];
+      class FakeObserver {
+        constructor() {
+          this.disconnect = vi.fn();
+          this.observe = vi.fn();
+          instances.push(this);
+        }
+      }
+      vi.stubGlobal("MutationObserver", FakeObserver);
+
+      window.AiHelperJournalEditAids.start();
+      window.AiHelperJournalEditAids.start();
+
+      expect(instances).toHaveLength(2);
+      expect(instances[0].disconnect).toHaveBeenCalledTimes(1);
+      expect(instances[1].disconnect).not.toHaveBeenCalled();
+    });
+
+    it("releases the aids of a form removed from #history through the observer", async () => {
+      dom = createJournalHistoryDOM(42);
+      window.AiHelperJournalEditAids.start();
+      const entry = window.AiHelperJournalEditAids.entryFor(dom.form);
+      expect(entry).not.toBeUndefined();
+      const typoDestroy = vi.spyOn(entry.typoChecker, "destroy");
+
+      dom.change.remove();
+      expect(dom.history.contains(dom.form)).toBe(false);
+      await flushMicrotasks();
+
+      expect(typoDestroy).toHaveBeenCalledTimes(1);
+      expect(window.AiHelperJournalEditAids.entryFor(dom.form)).toBeUndefined();
+    });
+
+    it("reports a form that fails to attach once, never retries it, and still releases detached forms", async () => {
+      dom = createJournalHistoryDOM(42);
+      window.AiHelperJournalEditAids.start();
+      const entry = window.AiHelperJournalEditAids.entryFor(dom.form);
+      const typoDestroy = vi.spyOn(entry.typoChecker, "destroy");
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      // A broken new form (no textarea) arrives together with the removal of the old one
+      const broken = createJournalHistoryDOM(43);
+      broken.textarea.closest(".jstBlock").remove();
+      broken.history.remove();
+      dom.history.appendChild(broken.change);
+      dom.form.remove();
+      await flushMicrotasks();
+
+      expect(typoDestroy).toHaveBeenCalledTimes(1);
+      expect(window.AiHelperJournalEditAids.entryFor(dom.form)).toBeUndefined();
+      expect(window.AiHelperJournalEditAids.entryFor(broken.form)).toBeUndefined();
+      expect(consoleError).toHaveBeenCalledTimes(1);
+      expect(String(consoleError.mock.calls[0][0])).toContain("journal-43-form");
+
+      // Any later mutation must not attach (and report) the broken form again
+      dom.history.appendChild(document.createElement("div"));
+      await flushMicrotasks();
+      expect(consoleError).toHaveBeenCalledTimes(1);
+    });
+
     it("does nothing when #history is absent", () => {
       const orphan = buildControls(44);
       const host = document.createElement("div");
@@ -468,7 +635,6 @@ describe("AiHelperJournalEditAids multi-form lifecycle (085 US3)", () => {
 
   it.each([
     ["cancel (form.remove())", (dom) => dom.form.remove()],
-    ["save (form.remove())", (dom) => dom.form.remove()],
     ["ancestor #change-<id> removal", (dom) => dom.change.remove()],
   ])("releasing a form removed by %s destroys both instances and deletes the registration", (_label, remove) => {
     const dom = createJournalHistoryDOM(42);
@@ -516,9 +682,16 @@ describe("AiHelperJournalEditAids multi-form lifecycle (085 US3)", () => {
     const dom = createJournalHistoryDOM(42);
     const entry = window.AiHelperJournalEditAids.attach(dom.controls);
 
+    const removeSpy = vi.spyOn(document, "removeEventListener");
+
     // The overlay lives inside the textarea's parent; it must not survive the form
     dom.form.remove();
     window.AiHelperJournalEditAids.releaseDetached();
+
+    // The document-level listeners outlive the form unless destroy() removes them
+    const removed = removeSpy.mock.calls.map((call) => call[0]);
+    expect(removed).toContain("keydown");
+    expect(removed).toContain("click");
 
     expect(document.querySelectorAll(".ai-helper-typo-overlay").length).toBe(0);
     expect(document.querySelectorAll(".ai-helper-typo-control-panel").length).toBe(0);

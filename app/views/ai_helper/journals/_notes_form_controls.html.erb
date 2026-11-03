@@ -22,9 +22,7 @@
          acceptSuggestion: t('ai_helper.autocompletion.accept_suggestion'),
          dismiss: t('ai_helper.autocompletion.dismiss'),
          enabledTooltip: t('ai_helper.autocompletion.note_enabled_tooltip'),
-         disabledTooltip: t('ai_helper.autocompletion.note_disabled_tooltip'),
-         noteEnabledTooltip: t('ai_helper.autocompletion.note_enabled_tooltip'),
-         noteDisabledTooltip: t('ai_helper.autocompletion.note_disabled_tooltip')
+         disabledTooltip: t('ai_helper.autocompletion.note_disabled_tooltip')
        },
        typoLabels: RedmineAiHelper::Util::TypoCheckLabels.labels
      }.to_json %>'>
@@ -56,7 +54,8 @@
 
   <!-- Hidden templates for typo suggestion accept/reject buttons. The typo
        overlay looks these up in the whole document, so every page that shows
-       a typo checker needs a copy (the shared issue partial has one too). -->
+       a typo checker needs a copy (ai_helper/shared/_textarea_overlay and
+       ai_helper/wiki/_textarea_overlay carry one too). -->
   <div style="display: none;">
     <button type="button" class="ai-helper-typo-accept-btn-template"><%= sprite_icon("ai-helper-check", plugin: :redmine_ai_helper) %></button>
     <button type="button" class="ai-helper-typo-reject-btn-template"><%= sprite_icon("ai-helper-x", plugin: :redmine_ai_helper) %></button>

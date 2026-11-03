@@ -34,10 +34,13 @@ class AiHelperJournalEditControlsTest < ActionController::TestCase
     body = @response.body
     marker = "$(\"#journal-#{journal.id}-notes\").after('"
     start = body.index(marker)
-    body = body[(start + marker.length)..] if start
+    raise "journals/edit.js.erb marker not found in the response" unless start
+
+    body = body[(start + marker.length)..]
     closing = body.index("');")
-    body = body[0...closing] if closing
-    unescape_javascript_escapes(body)
+    raise "journals/edit.js.erb closing delimiter not found in the response" unless closing
+
+    unescape_javascript_escapes(body[0...closing])
   end
 
   # Inverse of Rails' escape_javascript: `\x` becomes the mapped character.
@@ -109,13 +112,36 @@ class AiHelperJournalEditControlsTest < ActionController::TestCase
     end
   end
 
+  test "the extraction helper raises when the edit.js.erb marker is missing" do
+    @response.stubs(:body).returns("alert('unrelated response');")
+
+    assert_raises(RuntimeError) { inserted_notes_form_html(@journal) }
+  end
+
   test "edit form renders nothing when the ai_helper module is disabled" do
     EnabledModule.where(project_id: @project.id, name: "ai_helper").destroy_all
 
     doc = edit_journal(@journal)
 
+    # The searched region was found: the edit form itself is rendered
+    assert doc.at_css("form#journal-#{@journal.id}-form"), "expected the edit form to be rendered"
+    assert doc.at_css("textarea#journal_#{@journal.id}_notes"), "expected the notes textarea to be rendered"
     assert_equal 0, doc.css(".ai-helper-journal-edit-controls").size
     assert_equal 0, doc.css(".ai-helper-autocompletion-controls").size
+  end
+
+  test "edit form renders nothing for a user without view_ai_helper even when the module is enabled" do
+    role = Role.create!(name: "Own notes editor without AI", permissions: [ :view_issues, :edit_own_issue_notes ])
+    user = User.create!(login: "noaiuser", firstname: "No", lastname: "Ai",
+                        mail: "noaiuser@example.com", password: "abc12345", password_confirmation: "abc12345")
+    Member.create!(project: @project, user: user, roles: [ role ])
+    journal = Journal.create!(journalized: @issue, user: user, notes: "my own note")
+    assert @project.module_enabled?(:ai_helper), "the module must be enabled so only the permission can hide the controls"
+
+    doc = edit_journal(journal, user: user)
+
+    assert doc.at_css("form#journal-#{journal.id}-form"), "expected the edit form to be rendered"
+    assert_equal 0, doc.css(".ai-helper-journal-edit-controls").size
   end
 
   test "edit form renders the controls for a user with only edit_own_issue_notes (no edit_issues)" do

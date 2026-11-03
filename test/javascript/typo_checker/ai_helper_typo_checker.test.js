@@ -1067,6 +1067,26 @@ describe("AiHelperTypoChecker destroy (085 US3)", () => {
     expect(syncScroll).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["showNoSuggestionsMessage"],
+    ["showErrorMessage"],
+  ])("the 3-second hide timer of %s does nothing once the instance is destroyed", (method) => {
+    vi.useFakeTimers();
+    try {
+      const own = { clearSuggestion: vi.fn(), isEnabled: false, checkbox: { checked: true } };
+      checker.options.autoCompletion = own;
+
+      checker[method]();
+      checker.destroy();
+      vi.advanceTimersByTime(3000);
+
+      // hideOverlay() would have re-enabled the (checked) completion
+      expect(own.isEnabled).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("removes the overlay and the control panel from the document", () => {
     // init() already inserted the overlay after the textarea
     expect(checker.overlay.isConnected).toBe(true);

@@ -294,10 +294,11 @@ module RedmineAiHelper
         langfuse.flush(output: completion)
 
         completion
-      rescue => e
+      rescue RubyLLM::Error, Faraday::Error => e
         ai_helper_logger.error "Text completion error: #{e.full_message}"
         ai_helper_logger.error e.backtrace.join("\n")
-        # Return empty string on error to avoid breaking UI
+        # An unreachable or failing LLM backend must not break the UI; any
+        # other error is a defect and surfaces to the controller (HTTP 500)
         ""
       end
     end
