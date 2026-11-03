@@ -181,3 +181,4 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-095](./095-journal-edit-aids-fell-back-to-page-controls-and-left-half-built-forms.md) | Journal edit aids fell back to page-level controls and left half-built forms behind | error-handling | Local AI review | Not yet |
 | [CRF-096](./096-journal-edit-tests-asserted-what-another-layer-guaranteed.md) | Journal edit tests asserted what another layer guaranteed, or missed the guard | test-gap | Local AI review | Not yet |
 | [CRF-097](./097-journal-edit-comments-and-docs-lagged-the-code.md) | Comments, JSDoc, wiki pages and an ADR lagged the journal edit code | doc-comment | Local AI review | Not yet |
+| [CRF-098](./098-completion-init-ran-outside-the-destroy-guard.md) | Completion init() ran outside the guard that destroys the instance on failure | error-handling | GitHub Copilot (PR #552) | Not yet |

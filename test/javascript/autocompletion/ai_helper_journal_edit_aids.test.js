@@ -289,6 +289,22 @@ describe("AiHelperJournalEditAids", () => {
       expect(document.querySelectorAll(".ai-helper-textarea-overlay").length).toBe(0);
     });
 
+    it("releases the completion overlay and listeners and registers nothing when completion initialization fails after the overlay is created", () => {
+      dom = createJournalHistoryDOM(42);
+      // Reproduces a malformed saved setting: loadSettings() runs last in init(),
+      // after the overlay and listeners already exist
+      vi.spyOn(window.AiHelperAutoCompletion.prototype, "loadSettings").mockImplementation(() => {
+        throw new Error("completion init failed");
+      });
+      const completionDestroy = vi.spyOn(window.AiHelperAutoCompletion.prototype, "destroy");
+
+      expect(() => window.AiHelperJournalEditAids.attach(dom.controls)).toThrow(/completion init failed/);
+
+      expect(completionDestroy).toHaveBeenCalledTimes(1);
+      expect(window.AiHelperJournalEditAids.entryFor(dom.form)).toBeUndefined();
+      expect(document.querySelectorAll(".ai-helper-textarea-overlay").length).toBe(0);
+    });
+
     it("returns the registered entry without parsing the configuration again", () => {
       dom = createJournalHistoryDOM(42);
       const first = window.AiHelperJournalEditAids.attach(dom.controls);

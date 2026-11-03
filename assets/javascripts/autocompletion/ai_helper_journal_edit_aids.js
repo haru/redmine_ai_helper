@@ -76,9 +76,12 @@ const AiHelperJournalEditAids = (() => {
       container: controls,
       labels: config.completionLabels,
     });
-    autoCompletion.init();
 
     try {
+      // init() creates the overlay and listeners before loadSettings() can
+      // throw, so it belongs inside the guard that destroys on failure
+      autoCompletion.init();
+
       const typoChecker = new window.AiHelperTypoChecker(textarea, {
         endpoint: config.typoEndpoint,
         labels: config.typoLabels,
