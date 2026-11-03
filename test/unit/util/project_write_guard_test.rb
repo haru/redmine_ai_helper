@@ -139,6 +139,37 @@ class RedmineAiHelper::Util::ProjectWriteGuardTest < ActiveSupport::TestCase
     end
   end
 
+  context "permission argument type" do
+    should "refuse a write fetch without a permission" do
+      User.current = User.find(1)
+
+      error = assert_raises(ArgumentError) { @guard.writable_project!(project_id: @project.id, permission: nil) }
+
+      assert_equal "permission is required for a write fetch", error.message
+    end
+
+    should "refuse a permission that is neither a Symbol nor a Hash" do
+      User.current = User.find(1)
+
+      [ "manage_members", 1 ].each do |bad|
+        error = assert_raises(ArgumentError, "writable #{bad.inspect}") { @guard.writable_project!(project_id: @project.id, permission: bad) }
+        assert_equal "permission must be a Symbol or a Hash: #{bad.inspect}", error.message
+        error = assert_raises(ArgumentError, "readable #{bad.inspect}") { @guard.readable_project!(project_id: @project.id, permission: bad) }
+        assert_equal "permission must be a Symbol or a Hash: #{bad.inspect}", error.message
+      end
+    end
+
+    should "accept a Hash permission and name it in the denial message" do
+      User.current = User.find(2)
+
+      error = assert_raises(RedmineAiHelper::BaseTools::UserError) do
+        @guard.writable_project!(project_id: @project.id, permission: { controller: "projects", action: "no_such_action" })
+      end
+
+      assert_equal "Permission denied: projects/no_such_action on project #{@project.id}", error.message
+    end
+  end
+
   context "readable_project! (read fetch)" do
     should "not judge the closed state" do
       make_closed_project_accessible(@project)

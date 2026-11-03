@@ -54,17 +54,17 @@ class ProjectAgentTest < ActiveSupport::TestCase
         backstory_ja = backstory_in(:ja)
         [
           # Confirm before creating a project
-          [ /before creating/i, /作成(?:する前|の前)/ ],
+          [ /ALWAYS confirm with the user before creating a project/, /プロジェクトを作成する前には、必ず/ ],
           # Confirm before switching private to public
-          [ /before making (?:a |the )?project public|private to public/i, /公開/ ],
+          [ /ALWAYS confirm with the user before making a project public/, /プロジェクトを公開に切り替える前には、必ず/ ],
           # Confirm before disabling the ai_helper module
-          [ /disabling the ai_helper module/i, /ai_helper/ ],
+          [ /ALWAYS confirm with the user before disabling the ai_helper module/, /ai_helper モジュールを無効にする前には、必ず/ ],
           # The identifier cannot be changed
-          [ /identifier cannot be changed/i, /識別子/ ],
+          [ /identifier cannot be changed/i, /識別子は作成後に変更できません/ ],
           # Project deletion, closing, and archiving are not possible
-          [ /cannot delete|cannot close|cannot archive|not delete/i, /削除・クローズ・アーカイブはできません/ ],
+          [ /cannot delete, close, or archive a project/i, /プロジェクトの削除・クローズ・アーカイブはできません/ ],
           # Version operations belong to the VersionAgent
-          [ /VersionAgent/i, /VersionAgent|バージョン/ ]
+          [ /VersionAgent/i, /VersionAgent の担当/ ]
         ].each do |en_pattern, ja_pattern|
           assert_match(en_pattern, backstory)
           assert_match(ja_pattern, backstory_ja)
@@ -99,8 +99,8 @@ class ProjectAgentTest < ActiveSupport::TestCase
       end
 
       should "require confirmation before member removal in both backstories" do
-        assert_match(/confirm/i, backstory_in(:en))
-        assert_match(/確認/i, backstory_in(:ja))
+        assert_match(/ALWAYS confirm with the user before removing a member/, backstory_in(:en))
+        assert_match(/メンバーを除外する前には、必ず/, backstory_in(:ja))
       end
 
       should "explain how to look up IDs from names in both backstories" do
@@ -147,6 +147,9 @@ class ProjectAgentTest < ActiveSupport::TestCase
         # Show the candidates when a tracker or category matches nothing or several
         assert_match(/tracker or category.*(?:no match|more than one)|(?:no match|more than one).*tracker or category/im, backstory)
         assert_match(/トラッカーやカテゴリ.*候補|候補.*トラッカーやカテゴリ/m, backstory_ja)
+        # Tracker IDs are looked up through capable_project_props
+        assert_match(/capable_project_props to look up a tracker ID/, backstory)
+        assert_match(/トラッカーの ID は capable_project_props/, backstory_ja)
         # Assigning/unassigning trackers and adding/updating categories need no confirmation
         assert_match(/without (?:asking for )?confirmation/i, backstory)
         assert_match(/確認なしで/, backstory_ja)

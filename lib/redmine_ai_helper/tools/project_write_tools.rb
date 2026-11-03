@@ -48,17 +48,16 @@ module RedmineAiHelper
           raise UserError, "identifier is required" if identifier.nil?
 
           validate_create_permission!(parent_id)
-          custom_fields = normalize_custom_fields(custom_fields)
-          validate_custom_fields_for_new!(custom_fields)
-          project = Project.new
-          validate_new_publicity!(project, is_public)
-          validate_new_inherit_members!(project, inherit_members)
-
-          unless User.current.admin?
-            raise UserError, "No role is configured for non-admin project creators" if Project.default_member_role.nil?
+          if !User.current.admin? && Project.default_member_role.nil?
+            raise UserError, "No role is configured for non-admin project creators"
           end
 
+          custom_fields = normalize_custom_fields(custom_fields)
           project = Project.new(name: name, identifier: identifier, description: description, homepage: homepage)
+          validate_custom_fields!(project, custom_fields)
+          validate_publicity!(project, is_public)
+          validate_inherit_members!(project, inherit_members)
+
           project.safe_attributes = build_project_attributes(
             is_public: is_public, parent_id: parent_id, inherit_members: inherit_members, custom_fields: custom_fields
           )
@@ -105,8 +104,8 @@ module RedmineAiHelper
         user_errors_as_result do
           project = writable_project!(project_id: project_id, permission: :select_project_modules)
 
-          enable = Array(enable)
-          disable = Array(disable)
+          enable = validate_string_list!(enable, "enable")
+          disable = validate_string_list!(disable, "disable")
           if enable.empty? && disable.empty?
             raise UserError, "enable or disable is required"
           end
@@ -121,15 +120,17 @@ module RedmineAiHelper
           end
 
           current = project.enabled_module_names
-          new_names = ((current | enable) - disable).uniq
+          new_names = (current | enable) - disable
           unchanged = ((enable & current) + (disable - current)).uniq
-          if new_names.sort == current.sort
-            return project_to_hash(project).merge(unchanged: unchanged.sort)
-          end
+          next project_to_hash(project).merge(unchanged: unchanged.sort) if new_names.sort == current.sort
 
-          project.enabled_module_names = new_names
-          unless project.save
-            raise UserError, "Failed to update modules: #{project.errors.full_messages.join(", ")}"
+          # enabled_module_names= writes immediately, so assignment and save share a
+          # transaction: a failed save must not leave the change behind.
+          ActiveRecord::Base.transaction do
+            project.enabled_module_names = new_names
+            unless project.save
+              raise UserError, "Failed to update modules: #{project.errors.full_messages.join(", ")}"
+            end
           end
           project_to_hash(project.reload).merge(unchanged: unchanged.sort)
         end
@@ -205,20 +206,15 @@ module RedmineAiHelper
       def add_trackers(project_id:, tracker_ids:)
         user_errors_as_result do
           project = writable_project!(project_id: project_id, permission: :edit_project, require_issue_tracking: true)
-          tracker_ids = validate_tracker_ids!(project, tracker_ids)
+          tracker_ids = validate_tracker_ids!(tracker_ids)
 
           current = project.tracker_ids
-          new_ids = (current | tracker_ids)
-          unchanged = (tracker_ids & current).uniq
-          if new_ids.sort == current.sort
-            return project_to_hash(project).merge(unchanged: tracker_ids.map { |id| tracker_hash(id) })
-          end
+          new_ids = current | tracker_ids
+          unchanged = tracker_ids & current
+          next tracker_result(project, unchanged, new_ids) if new_ids.sort == current.sort
 
-          project.tracker_ids = new_ids
-          unless project.save
-            raise UserError, "Failed to add trackers: #{project.errors.full_messages.join(", ")}"
-          end
-          project_to_hash(project.reload).merge(unchanged: unchanged.map { |id| tracker_hash(id) })
+          assign_trackers!(project, new_ids, "Failed to add trackers")
+          tracker_result(project.reload, unchanged, new_ids)
         end
       end
 
@@ -236,45 +232,79 @@ module RedmineAiHelper
       def remove_trackers(project_id:, tracker_ids:)
         user_errors_as_result do
           project = writable_project!(project_id: project_id, permission: :edit_project, require_issue_tracking: true)
-          tracker_ids = validate_tracker_ids!(project, tracker_ids)
+          tracker_ids = validate_tracker_ids!(tracker_ids)
 
           current = project.tracker_ids
-          new_ids = (current - tracker_ids)
-          unchanged = (tracker_ids - current).uniq
-          if new_ids.sort == current.sort
-            return project_to_hash(project).merge(unchanged: tracker_ids.map { |id| tracker_hash(id) })
-          end
+          new_ids = current - tracker_ids
+          unchanged = tracker_ids - current
+          next tracker_result(project, unchanged, new_ids) if new_ids.sort == current.sort
 
-          project.tracker_ids = new_ids
-          unless project.save
-            raise UserError, "Failed to remove trackers: #{project.errors.full_messages.join(", ")}"
-          end
-          result = project_to_hash(project.reload).merge(unchanged: unchanged.map { |id| tracker_hash(id) })
-          result[:no_trackers] = true if new_ids.empty?
-          result
+          assign_trackers!(project, new_ids, "Failed to remove trackers")
+          tracker_result(project.reload, unchanged, new_ids)
         end
       end
 
       private
 
-      # Validate that every tracker id exists. One invalid id rejects the whole list.
-      # @param project [Project] The project (unused for the lookup, kept for symmetry).
+      # Validate the tracker id list: an array of integers naming existing
+      # trackers. One invalid id rejects the whole list.
       # @param tracker_ids [Object] The tracker IDs given by the caller.
-      # @return [Array<Integer>] The validated tracker IDs.
-      # @raise [UserError] when the list is empty or an id does not exist.
-      def validate_tracker_ids!(_project, tracker_ids)
-        tracker_ids = Array(tracker_ids)
+      # @return [Array<Integer>] The validated tracker IDs without duplicates.
+      # @raise [UserError] when the value is not an array of integers, the list is
+      #   empty, or an id does not exist.
+      def validate_tracker_ids!(tracker_ids)
+        unless tracker_ids.is_a?(Array) && tracker_ids.all?(Integer)
+          raise UserError, "tracker_ids must be an array of integers"
+        end
         raise UserError, "tracker_ids is required (at least one tracker)" if tracker_ids.empty?
 
         missing = tracker_ids - Tracker.where(id: tracker_ids).pluck(:id)
         raise UserError, "Tracker not found: #{missing.join(", ")}" if missing.any?
 
-        tracker_ids
+        tracker_ids.uniq
+      end
+
+      # Validate an optional list of strings.
+      # @param value [Object] The value given by the caller.
+      # @param name [String] The argument name for the error message.
+      # @return [Array<String>] The list (empty when nil).
+      # @raise [UserError] when the value is neither nil nor an array of strings.
+      def validate_string_list!(value, name)
+        return [] if value.nil?
+        raise UserError, "#{name} must be an array of strings" unless value.is_a?(Array) && value.all?(String)
+
+        value.uniq
+      end
+
+      # Replace the tracker assignment. tracker_ids= writes the join table
+      # immediately, so assignment and save share a transaction and a failed save
+      # leaves nothing behind.
+      # @param project [Project] The project.
+      # @param tracker_ids [Array<Integer>] The new tracker IDs.
+      # @param failure [String] The error message prefix when the save fails.
+      # @return [void]
+      # @raise [UserError] when the project cannot be saved.
+      def assign_trackers!(project, tracker_ids, failure)
+        ActiveRecord::Base.transaction do
+          project.tracker_ids = tracker_ids
+          raise UserError, "#{failure}: #{project.errors.full_messages.join(", ")}" unless project.save
+        end
+      end
+
+      # The Project hash with unchanged: (and no_trackers when no tracker is left).
+      # @param project [Project] The project.
+      # @param unchanged [Array<Integer>] The tracker IDs that needed no change.
+      # @param tracker_ids [Array<Integer>] The tracker IDs the project ends up with.
+      # @return [Hash] The result hash.
+      def tracker_result(project, unchanged, tracker_ids)
+        result = project_to_hash(project).merge(unchanged: unchanged.map { |id| tracker_hash(id) })
+        result[:no_trackers] = true if tracker_ids.empty?
+        result
       end
 
       # The { id:, name: } hash of a tracker id.
       # @param tracker_id [Integer] The tracker ID.
-      # @return [Hash] The tracker hash, or { id: } only when the tracker vanished.
+      # @return [Hash] The tracker hash, or { id:, name: nil } when the tracker no longer exists.
       def tracker_hash(tracker_id)
         tracker = Tracker.find_by(id: tracker_id)
         tracker ? { id: tracker.id, name: tracker.name } : { id: tracker_id, name: nil }
@@ -303,46 +333,19 @@ module RedmineAiHelper
         end
       end
 
-      # Reject custom fields that are not editable on a new project by the current user.
-      # @param custom_fields [Array<Hash>] Entries already passed through {#normalize_custom_fields}.
-      # @return [void]
-      # @raise [UserError] if a field is not editable.
-      def validate_custom_fields_for_new!(custom_fields)
-        validate_custom_fields!(Project.new, custom_fields)
-      end
-
-      # Reject a publicity the current user may not set on a new project. Redmine
-      # judges this against the role given to non-admin creators, so the message
-      # carries the same hint (R-003).
-      # @param project [Project] The new project.
-      # @param is_public [Boolean, nil] The requested publicity.
-      # @return [void]
-      # @raise [UserError] if the attribute is not safe for the current user.
-      def validate_new_publicity!(project, is_public)
-        return if is_public.nil?
-        return if project.safe_attribute?("is_public", User.current)
-
-        raise UserError, "Permission denied: select_project_publicity (the role given to non-admin creators lacks it)"
-      end
-
-      # Reject a member-inheritance flag the current user may not set on a new project.
-      # @param project [Project] The new project.
-      # @param inherit_members [Boolean, nil] The requested flag.
-      # @return [void]
-      # @raise [UserError] if the attribute is not safe for the current user.
-      def validate_new_inherit_members!(project, inherit_members)
-        return if inherit_members.nil?
-        return if project.safe_attribute?("inherit_members", User.current)
-
-        raise UserError, "Permission denied: manage_members (inherit_members)"
-      end
-
-      # Drop custom field entries without a field_id and symbolize keys.
-      # @param custom_fields [Array<Hash>, nil] Raw custom field entries.
+      # Check the shape of the custom field entries, drop entries without a
+      # field_id and symbolize keys.
+      # @param custom_fields [Object] Raw custom field entries given by the caller.
       # @return [Array<Hash>] Entries having a field_id.
+      # @raise [UserError] when the value is not an array of objects.
       def normalize_custom_fields(custom_fields)
-        Array(custom_fields).filter_map do |field|
-          field = field.to_h.transform_keys(&:to_sym)
+        return [] if custom_fields.nil?
+        raise UserError, "custom_fields must be an array" unless custom_fields.is_a?(Array)
+
+        custom_fields.filter_map do |field|
+          raise UserError, "custom_fields entries must be objects" unless field.is_a?(Hash)
+
+          field = field.transform_keys(&:to_sym)
           if field[:field_id].nil?
             ai_helper_logger.warn("Skipping a project custom field entry without field_id")
             next
@@ -366,9 +369,11 @@ module RedmineAiHelper
         raise UserError, "Custom field not editable for projects: #{invalid.join(", ")}"
       end
 
-      # Reject a publicity change the current user may not make (Redmine would
-      # silently drop the attribute). Only judged when the argument is given.
-      # @param project [Project] The project.
+      # Reject a publicity the current user may not set (Redmine would silently
+      # drop the attribute). Only judged when the argument is given. For a new
+      # project Redmine judges this against the role given to non-admin creators,
+      # so the message carries a hint (R-003).
+      # @param project [Project] The project (new or existing).
       # @param is_public [Boolean, nil] The requested publicity.
       # @return [void]
       # @raise [UserError] if the attribute is not safe for the current user.
@@ -376,12 +381,13 @@ module RedmineAiHelper
         return if is_public.nil?
         return if project.safe_attribute?("is_public", User.current)
 
-        raise UserError, "Permission denied: select_project_publicity"
+        hint = project.new_record? ? " (the role given to non-admin creators lacks it)" : ""
+        raise UserError, "Permission denied: select_project_publicity#{hint}"
       end
 
       # Reject a member-inheritance change the current user may not make.
       # Only judged when the argument is given.
-      # @param project [Project] The project.
+      # @param project [Project] The project (new or existing).
       # @param inherit_members [Boolean, nil] The requested flag.
       # @return [void]
       # @raise [UserError] if the attribute is not safe for the current user.
@@ -418,22 +424,27 @@ module RedmineAiHelper
       end
 
       # Build the attributes hash for Project#safe_attributes=, keeping only given values.
-      # @param custom_fields [Array<Hash>] Entries already passed through {#normalize_custom_fields}.
+      # @param name [String, nil] The name.
+      # @param description [String, nil] The description.
+      # @param homepage [String, nil] The homepage.
+      # @param is_public [Boolean, nil] The publicity.
+      # @param parent_id [Integer, nil] The parent project ID.
+      # @param clear_parent [Boolean, nil] true to make the project top-level.
+      # @param inherit_members [Boolean, nil] The member inheritance flag.
+      # @param custom_fields [Array<Hash>, nil] Entries already passed through {#normalize_custom_fields}.
       # @return [Hash] String-keyed attributes.
       def build_project_attributes(name: nil, description: nil, homepage: nil, is_public: nil,
                                    parent_id: nil, clear_parent: nil, inherit_members: nil, custom_fields: nil)
-        attrs = {}
-        attrs["name"] = name unless name.nil?
-        attrs["description"] = description unless description.nil?
-        attrs["homepage"] = homepage unless homepage.nil?
-        attrs["is_public"] = is_public unless is_public.nil?
-        attrs["inherit_members"] = inherit_members unless inherit_members.nil?
+        attrs = {
+          "name" => name, "description" => description, "homepage" => homepage,
+          "is_public" => is_public, "inherit_members" => inherit_members
+        }.compact
         if clear_parent == true
           attrs["parent_id"] = ""
         elsif !parent_id.nil?
           attrs["parent_id"] = parent_id.to_s
         end
-        if custom_fields.any?
+        if custom_fields.present?
           attrs["custom_field_values"] = custom_fields.to_h { |field| [ field[:field_id].to_s, field[:value] ] }
         end
         attrs
@@ -450,14 +461,14 @@ module RedmineAiHelper
           description: project.description,
           homepage: project.homepage,
           is_public: project.is_public,
-          parent: project.parent ? { id: project.parent.id, name: project.parent.name } : nil,
+          parent: format_named_record(project.parent),
           inherit_members: project.inherit_members,
           status: project.status,
           custom_fields: project.visible_custom_field_values(User.current).map do |value|
             { id: value.custom_field.id, name: value.custom_field.name, value: value.value }
           end,
           enabled_modules: project.enabled_module_names,
-          trackers: project.trackers.map { |tracker| { id: tracker.id, name: tracker.name } },
+          trackers: project.trackers.map { |tracker| format_named_record(tracker) },
           url_for_project: project_path(project, only_path: true)
         }
       end

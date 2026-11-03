@@ -5,8 +5,16 @@
 # ProjectWriteTools, MemberTools, and CategoryTools.
 module NoDeleteToolsAssertions
   DESTRUCTIVE_NAME = /delete|destroy|archive|purge|close/i
-  # Every spelling of a record-removing or status-changing call.
-  DESTRUCTIVE_CALL = /\.(?:destroy!?|destroy_all|destroy_by|delete|delete_all|delete_by|archive|close|reopen)\b|update_column\s*\(?\s*:status|\.status\s*=/
+  # Every spelling of a record-removing or status-changing call: direct calls,
+  # dynamic dispatch (send / public_send), association clearing, and status
+  # changes through update variants, assignment, or the status constants.
+  DESTRUCTIVE_CALL = Regexp.union(
+    /\.(?:destroy!?|destroy_all|destroy_by|delete|delete_all|delete_by|archive|close|reopen|clear)\b/,
+    /\b(?:send|public_send|__send__)\s*\(?\s*[:"'](?:destroy|delete|archive|close|reopen|clear)/,
+    /\.update(?:!|_all|_attribute|_attributes|_column|_columns)?\s*\(\s*:?["']?status\b/,
+    /\.status\s*=(?!=)/,
+    /Project::STATUS_(?:ARCHIVED|CLOSED|SCHEDULED_FOR_DELETION)/
+  )
 
   # Source lines of the tool file without comments and blank lines.
   # @param tool_class [Class] The tool provider class.

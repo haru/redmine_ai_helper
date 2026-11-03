@@ -626,6 +626,228 @@ class ProjectWriteToolsTest < ActiveSupport::TestCase
     end
   end
 
+  context "atomic writes (a failed save changes nothing)" do
+    setup do
+      @project.tracker_ids = [ 1, 2 ]
+    end
+
+    should "roll back the module change when the save fails" do
+      before = EnabledModule.where(project_id: @project.id).pluck(:name).sort
+      Project.any_instance.stubs(:save).returns(false)
+
+      result = @provider.update_modules(project_id: @project.id, disable: [ "news" ])
+
+      assert_match(/Failed to update modules/, result[:error])
+      assert_equal before, EnabledModule.where(project_id: @project.id).pluck(:name).sort
+    end
+
+    should "roll back the tracker assignment when the save fails on add_trackers" do
+      Project.any_instance.stubs(:save).returns(false)
+
+      result = @provider.add_trackers(project_id: @project.id, tracker_ids: [ 3 ])
+
+      assert_match(/Failed to add trackers/, result[:error])
+      assert_equal [ 1, 2 ], Project.find(@project.id).tracker_ids.sort
+    end
+
+    should "roll back the tracker removal when the save fails on remove_trackers" do
+      Project.any_instance.stubs(:save).returns(false)
+
+      result = @provider.remove_trackers(project_id: @project.id, tracker_ids: [ 1 ])
+
+      assert_match(/Failed to remove trackers/, result[:error])
+      assert_equal [ 1, 2 ], Project.find(@project.id).tracker_ids.sort
+    end
+  end
+
+  context "input shape validation" do
+    should "reject tracker_ids that is not an array of integers" do
+      [ 3, "3", [ "3" ], [ 3, nil ], [ 3.5 ] ].each do |bad|
+        result = @provider.add_trackers(project_id: @project.id, tracker_ids: bad)
+        assert_equal({ error: "tracker_ids must be an array of integers" }, result, "add_trackers #{bad.inspect}")
+
+        result = @provider.remove_trackers(project_id: @project.id, tracker_ids: bad)
+        assert_equal({ error: "tracker_ids must be an array of integers" }, result, "remove_trackers #{bad.inspect}")
+      end
+    end
+
+    should "reject enable and disable that are not arrays of strings" do
+      [ "wiki", [ 1 ], [ "wiki", nil ] ].each do |bad|
+        result = @provider.update_modules(project_id: @project.id, enable: bad)
+        assert_equal({ error: "enable must be an array of strings" }, result, "enable #{bad.inspect}")
+
+        result = @provider.update_modules(project_id: @project.id, disable: bad)
+        assert_equal({ error: "disable must be an array of strings" }, result, "disable #{bad.inspect}")
+      end
+    end
+
+    should "reject custom_fields that is not an array of objects" do
+      result = @provider.update_project(project_id: @project.id, custom_fields: { "field_id" => 1, "value" => "x" })
+      assert_equal({ error: "custom_fields must be an array" }, result)
+
+      result = @provider.update_project(project_id: @project.id, custom_fields: [ "text" ])
+      assert_equal({ error: "custom_fields entries must be objects" }, result)
+
+      result = @provider.create_project(name: "Bad Custom Fields", identifier: "bad-custom-fields", custom_fields: [ 1 ])
+      assert_equal({ error: "custom_fields entries must be objects" }, result)
+      assert_nil Project.find_by(identifier: "bad-custom-fields")
+    end
+  end
+
+  context "tracker no-op results" do
+    should "list a repeated tracker id once in add_trackers" do
+      @project.tracker_ids = [ 1, 2 ]
+
+      result = @provider.add_trackers(project_id: @project.id, tracker_ids: [ 1, 1 ])
+
+      assert_equal([ 1 ], result[:unchanged].map { |t| t[:id] })
+    end
+
+    should "list a repeated tracker id once and flag no_trackers in remove_trackers" do
+      @project.tracker_ids = []
+
+      result = @provider.remove_trackers(project_id: @project.id, tracker_ids: [ 3, 3 ])
+
+      assert_equal([ 3 ], result[:unchanged].map { |t| t[:id] })
+      assert_equal true, result[:no_trackers]
+    end
+  end
+
+  context "update_modules enabling" do
+    should "enable one module and disable another in one request and keep the rest" do
+      @project.enabled_module_names = @project.enabled_module_names - [ "news" ]
+      before = @project.reload.enabled_module_names
+
+      result = @provider.update_modules(project_id: @project.id, enable: [ "news" ], disable: [ "wiki" ])
+
+      expected = (before | [ "news" ]) - [ "wiki" ]
+      assert_equal expected.sort, @project.reload.enabled_module_names.sort
+      assert_equal [], result[:unchanged]
+    end
+  end
+
+  context "update_project permitted changes" do
+    should "save is_public when the user holds select_project_publicity" do
+      User.current = User.find(2)
+      assert @project.is_public
+
+      result = @provider.update_project(project_id: @project.id, is_public: false)
+
+      assert_nil result[:error]
+      assert_equal false, @project.reload.is_public
+    end
+
+    should "save inherit_members when the user holds manage_members" do
+      User.current = User.find(2)
+      assert_equal false, @project.inherit_members
+
+      result = @provider.update_project(project_id: @project.id, inherit_members: true)
+
+      assert_nil result[:error]
+      assert_equal true, @project.reload.inherit_members
+    end
+
+    should "reject a visible and accessible parent that is not in allowed_parents" do
+      parent = Project.create!(name: "Not Allowed Parent", identifier: "not-allowed-parent", is_public: true)
+      Role.non_member.remove_permission!(:add_subprojects)
+      AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+      User.current = User.find(2)
+
+      result = @provider.update_project(project_id: @project.id, parent_id: parent.id)
+
+      assert_equal({ error: "Parent project not allowed: id = #{parent.id}" }, result)
+      assert_nil @project.reload.parent_id
+    end
+
+    should "reject a visible parent that AI Helper cannot access even when Redmine allows it" do
+      parent = Project.create!(name: "No Module Parent", identifier: "no-module-parent", is_public: true)
+      AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+
+      result = @provider.update_project(project_id: @project.id, parent_id: parent.id)
+
+      assert_equal({ error: "Parent project not allowed: id = #{parent.id}" }, result)
+      assert_nil @project.reload.parent_id
+    end
+
+    should "reject clear_parent when top level is not allowed" do
+      child = Project.create!(name: "Sub Without Top Level", identifier: "sub-no-top-level")
+      child.set_parent!(@project)
+      EnabledModule.create!(project_id: child.id, name: "ai_helper")
+      Member.create!(project: child, principal: User.find(2), role_ids: [ 1 ])
+      Role.find(1).remove_permission!(:add_project)
+      Role.non_member.remove_permission!(:add_project)
+      User.current = User.find(2)
+
+      result = @provider.update_project(project_id: child.id, clear_parent: true)
+
+      assert_equal({ error: "Parent project not allowed: top level is not allowed for project #{child.id}" }, result)
+      assert_equal @project.id, child.reload.parent_id
+    end
+  end
+
+  context "create_project additional guards" do
+    should "reject name and identifier when nil" do
+      assert_equal({ error: "name is required" }, @provider.create_project(name: nil, identifier: "nil-name"))
+      assert_equal({ error: "identifier is required" }, @provider.create_project(name: "Nil Identifier", identifier: nil))
+    end
+
+    should "reject a visible parent that AI Helper cannot access" do
+      parent = Project.create!(name: "Visible No Module", identifier: "visible-no-module", is_public: true)
+      AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+
+      assert_no_difference "Project.count" do
+        result = @provider.create_project(name: "Child Of Hidden", identifier: "child-of-hidden", parent_id: parent.id)
+        assert_equal({ error: "Parent project not allowed: id = #{parent.id}" }, result)
+      end
+    end
+
+    should "report the missing creator role before the publicity permission" do
+      Project.stubs(:default_member_role).returns(nil)
+      User.current = User.find(2)
+
+      result = @provider.create_project(name: "No Role Public", identifier: "no-role-public", is_public: true)
+
+      assert_equal({ error: "No role is configured for non-admin project creators" }, result)
+    end
+
+    should "set an editable custom field on creation" do
+      custom_field = ProjectCustomField.create!(name: "Create Field", field_format: "string", is_for_all: true)
+
+      result = @provider.create_project(
+        name: "Custom Field Create", identifier: "custom-field-create",
+        custom_fields: [ { field_id: custom_field.id, value: "Hello" } ]
+      )
+
+      assert_nil result[:error]
+      assert_equal "Hello", Project.find(result[:id]).custom_value_for(custom_field)&.value
+      custom_field.destroy
+    end
+
+    should "reject a custom field the creator cannot edit and create nothing" do
+      custom_field = ProjectCustomField.create!(name: "Hidden Create Field", field_format: "string", is_for_all: true, visible: false)
+      User.current = User.find(2)
+
+      assert_no_difference "Project.count" do
+        result = @provider.create_project(
+          name: "Hidden Field Create", identifier: "hidden-field-create",
+          custom_fields: [ { field_id: custom_field.id, value: "X" } ]
+        )
+        assert_match(/not editable/, result[:error])
+      end
+      custom_field.destroy
+    end
+
+    should "enable the ai_helper module for a non-admin creator who may select modules" do
+      assert_not_includes Setting.default_projects_modules, "ai_helper"
+      User.current = User.find(2)
+
+      result = @provider.create_project(name: "Non Admin Module", identifier: "non-admin-module")
+
+      assert_equal true, result[:ai_helper_module_enabled]
+      assert Project.find(result[:id]).module_enabled?(:ai_helper)
+    end
+  end
+
   context "no destructive tools" do
     should "not define a delete, destroy, or archive tool" do
       assert_no_destructive_tool_names(RedmineAiHelper::Tools::ProjectWriteTools)

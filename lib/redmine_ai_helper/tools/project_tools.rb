@@ -94,7 +94,8 @@ module RedmineAiHelper
       # The existing keys (user_id, login, user_name, roles[].id, roles[].name)
       # keep their names and meanings.
       # @param project_ids [Array<Integer>] The project IDs of the projects to return.
-      # @return [Hash] { projects: [ { project_id:, project_name:, members: [...] } ] }
+      # @return [Hash, ToolResponse] { projects: [ { project_id:, project_name:, members: [...] } ] },
+      #   or an error ToolResponse when no project id matches.
       #   for the projects accessible via AI Helper.
       def project_members(project_ids:)
         projects = Project.where(id: project_ids)
@@ -373,19 +374,23 @@ module RedmineAiHelper
           field_format: custom_field.field_format,
           is_required: custom_field.is_required,
           multiple: custom_field.multiple?,
-          possible_values: custom_field.possible_values_options(project_from_value(value)).map do |option|
-            label, val = Array(option)
-            { value: (val || label).to_s, label: label.to_s }
-          end,
+          possible_values: custom_field.possible_values_options(value.customized).map { |option| possible_value_hash(option) },
           default_value: custom_field.default_value
         }
       end
 
-      # The project a custom field value belongs to, for possible_values_options.
-      # @param value [CustomFieldValue] The custom field value.
-      # @return [Project, nil] The customized project, or nil for an unsaved one.
-      def project_from_value(value)
-        value.customized.is_a?(Project) ? value.customized : nil
+      # Convert one entry of CustomField#possible_values_options to { value:, label: }.
+      # @param option [String, Array] A value, or a [label, value] pair.
+      # @return [Hash] The possible value.
+      # @raise [ArgumentError] on any other entry type.
+      def possible_value_hash(option)
+        case option
+        when String then { value: option, label: option }
+        when Array
+          label, val = option
+          { value: (val || label).to_s, label: label.to_s }
+        else raise ArgumentError, "Unexpected possible value: #{option.inspect}"
+        end
       end
 
       def format_project_custom_fields(project)

@@ -4,8 +4,8 @@ module RedmineAiHelper
   module Util
     # Shared serializer that renders a Redmine Member (membership) as the Member
     # hash defined in specs/084-project-management-tools/contracts/member_tools.md.
-    # Used by ProjectTools#project_members and MemberTools#add_member /
-    # #update_member_roles so that all of them return the same shape.
+    # Mixed into every tool class that returns members or principals
+    # (ProjectTools, MemberTools, CategoryTools) so that they all return the same shape.
     module MemberHash
       # Convert a Member (membership) to the Member hash.
       # @param member [Member] The membership.

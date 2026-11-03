@@ -35,7 +35,7 @@ class MemberToolsTest < ActiveSupport::TestCase
   end
 
   # Restrict jsmith's manageable roles to Manager + Developer by turning off
-  # all_roles_managed (Redmine 7 lets a role manage all givable roles by default).
+  # all_roles_managed (Redmine lets a role manage all givable roles by default: all_roles_managed).
   def restrict_manageable_roles
     Role.find(1).update!(all_roles_managed: false, managed_role_ids: [ 1, 2 ])
     Role.find(2).update!(all_roles_managed: false, managed_role_ids: [ 1, 2 ])
@@ -448,14 +448,141 @@ class MemberToolsTest < ActiveSupport::TestCase
     end
 
     should "return only the roles the current user can manage" do
+      restrict_manageable_roles
+
       result = @provider.list_managed_roles(project_id: @project.id)
 
-      expected = User.current.managed_roles(@project).map { |role| { id: role.id, name: role.name } }
-      assert_equal(expected.sort_by { |r| r[:id] }, result[:roles].sort_by { |r| r[:id] })
-      # The fixtures give every givable role manage_members, so this must be non-empty
-      assert result[:roles].any?
-      # A role the user cannot manage (non-givable/builtin roles) never appears
-      assert(result[:roles].none? { |r| r[:id] == Role.find(4).id })
+      assert_equal([ { id: 1, name: "Manager" }, { id: 2, name: "Developer" } ], result[:roles].sort_by { |r| r[:id] })
+      assert(result[:roles].none? { |r| r[:id] == 3 }, "Reporter is not manageable")
+      assert(result[:roles].none? { |r| r[:id] == Role.find(4).id }, "builtin roles never appear")
+    end
+  end
+
+  context "role id shape validation" do
+    should "reject add_member role_ids that is not an array of integers" do
+      before = member_counts
+
+      [ 2, "2", [ "2" ], [ 2, nil ] ].each do |bad|
+        result = @provider.add_member(project_id: @project.id, principal_id: 8, role_ids: bad)
+        assert_equal({ error: "role_ids must be an array of integers" }, result, "role_ids #{bad.inspect}")
+      end
+      assert_equal before, member_counts
+    end
+
+    should "reject update_member_roles lists that are not arrays of integers" do
+      before = member_counts
+
+      [ 1, "1", [ "1" ] ].each do |bad|
+        result = @provider.update_member_roles(project_id: @project.id, principal_id: 3, add_role_ids: bad)
+        assert_equal({ error: "add_role_ids must be an array of integers" }, result, "add_role_ids #{bad.inspect}")
+
+        result = @provider.update_member_roles(project_id: @project.id, principal_id: 3, remove_role_ids: bad)
+        assert_equal({ error: "remove_role_ids must be an array of integers" }, result, "remove_role_ids #{bad.inspect}")
+      end
+      assert_equal before, member_counts
+    end
+
+    should "reject a non-givable builtin role even for an admin" do
+      User.current = User.find(1)
+      before = member_counts
+
+      result = @provider.add_member(project_id: @project.id, principal_id: 8, role_ids: [ Role.find(4).id ])
+
+      assert_match(/\ARoles you cannot manage: /, result[:error])
+      assert_equal before, member_counts
+    end
+  end
+
+  context "required arguments" do
+    should "reject a nil principal_id and a nil query" do
+      assert_equal({ error: "principal_id is required" }, @provider.add_member(project_id: @project.id, principal_id: nil, role_ids: [ 1 ]))
+      assert_equal({ error: "principal_id is required" }, @provider.update_member_roles(project_id: @project.id, principal_id: nil, add_role_ids: [ 1 ]))
+      assert_equal({ error: "principal_id is required" }, @provider.remove_member(project_id: @project.id, principal_id: nil))
+      assert_equal({ error: "query is required" }, @provider.find_member_candidates(project_id: @project.id, query: nil))
+    end
+  end
+
+  context "failed saves and removals leave nothing behind" do
+    should "roll back the role change when update_member_roles cannot save" do
+      before = MemberRole.where(member_id: 2).pluck(:role_id).sort
+      Member.any_instance.stubs(:save).returns(false)
+
+      result = @provider.update_member_roles(project_id: @project.id, principal_id: 3, add_role_ids: [ 1 ])
+
+      assert_match(/Failed to update member roles/, result[:error])
+      assert_equal before, MemberRole.where(member_id: 2).pluck(:role_id).sort
+    end
+
+    should "raise and keep the member and its roles when the member cannot be destroyed" do
+      before = MemberRole.where(member_id: 2).pluck(:role_id).sort
+      Member.any_instance.stubs(:destroy).returns(false)
+
+      assert_raises(ActiveRecord::RecordNotDestroyed) do
+        @provider.remove_member(project_id: @project.id, principal_id: 3)
+      end
+
+      assert Member.find_by(id: 2).present?
+      assert_equal before, MemberRole.where(member_id: 2).pluck(:role_id).sort
+    end
+  end
+
+  context "principal visibility" do
+    setup do
+      @outsider = User.new(firstname: "Out", lastname: "Sider", mail: "outsider@example.net", language: "en")
+      @outsider.login = "outsider"
+      @outsider.password = @outsider.password_confirmation = "secret123456"
+      @outsider.save!
+    end
+
+    should "find and add a user the caller can see" do
+      result = @provider.find_member_candidates(project_id: @project.id, query: "outsider")
+      assert_equal([ @outsider.id ], result[:candidates].map { |c| c[:id] })
+
+      assert_difference "Member.count", 1 do
+        @provider.add_member(project_id: @project.id, principal_id: @outsider.id, role_ids: [ 2 ])
+      end
+    end
+
+    should "hide and refuse a user outside the visible members when role visibility is restricted" do
+      Role.update_all(users_visibility: "members_of_visible_projects")
+      before = member_counts
+
+      result = @provider.find_member_candidates(project_id: @project.id, query: "outsider")
+      assert_equal [], result[:candidates]
+
+      result = @provider.add_member(project_id: @project.id, principal_id: @outsider.id, role_ids: [ 2 ])
+      assert_equal({ error: "Principal cannot be added: id = #{@outsider.id} (locked, not visible, or not found)" }, result)
+      assert_equal before, member_counts
+    end
+  end
+
+  context "groups as members" do
+    setup do
+      setup_project5_access
+    end
+
+    should "add a directly granted role to a group and pass it to the group's users" do
+      result = @provider.update_member_roles(project_id: @project5.id, principal_id: 10, add_role_ids: [ 3 ])
+
+      assert_nil result[:error]
+      assert_includes Member.find(6).role_ids, 3
+      assert_includes Member.find(7).role_ids, 3
+    end
+
+    should "remove a group member together with the memberships inherited from it, keeping users and the group" do
+      users_before = User.count
+      groups_before = Group.count
+
+      result = @provider.remove_member(project_id: @project5.id, principal_id: 10)
+
+      assert_equal true, result[:removed]
+      assert_equal "group", result[:principal][:type]
+      assert_nil Member.find_by(id: 6)
+      assert_nil @project5.memberships.find_by(user_id: 8)
+      assert User.find(8).present?
+      assert Group.find(10).present?
+      assert_equal users_before, User.count
+      assert_equal groups_before, Group.count
     end
   end
 
@@ -465,7 +592,7 @@ class MemberToolsTest < ActiveSupport::TestCase
     end
 
     should "not call a destructive method in the tool code" do
-      assert_destructive_calls_only(RedmineAiHelper::Tools::MemberTools, allowed: [ "member.destroy" ])
+      assert_destructive_calls_only(RedmineAiHelper::Tools::MemberTools, allowed: [ "ActiveRecord::Base.transaction { member.destroy! }" ])
     end
   end
 end

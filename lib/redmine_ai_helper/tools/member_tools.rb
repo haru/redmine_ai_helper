@@ -15,11 +15,11 @@ module RedmineAiHelper
 
       define_function :find_member_candidates, description: "Find users or groups that can be added to a project: active, visible to you, and not yet members of the project. Search matches login, name, or email. Returns at most 100 candidates with truncated set to true when more exist." do
         property :project_id, type: "integer", description: "The ID of the project to add members to.", required: true
-        property :query, type: "string", description: "The name or login fragment to search for.", required: true
+        property :query, type: "string", description: "The name, login, or email fragment to search for.", required: true
       end
       # Find principals that can be added to the project.
       # @param project_id [Integer] The project ID.
-      # @param query [String] The name or login fragment to search for.
+      # @param query [String] The name, login, or email fragment to search for.
       # @return [Hash] { candidates: [ { id:, name:, login:, type: } ], truncated: Boolean },
       #   or { error: } for a user-caused failure.
       def find_member_candidates(project_id:, query:)
@@ -66,7 +66,7 @@ module RedmineAiHelper
         user_errors_as_result do
           project = writable_project!(project_id: project_id, permission: :manage_members)
           raise UserError, "principal_id is required" if principal_id.nil?
-          validate_role_ids!(project, role_ids)
+          role_ids = validate_role_ids!(project, role_ids)
 
           principal = Principal.active.visible.find_by(id: principal_id)
           if principal.nil?
@@ -107,8 +107,8 @@ module RedmineAiHelper
           project = writable_project!(project_id: project_id, permission: :manage_members)
           raise UserError, "principal_id is required" if principal_id.nil?
 
-          add_role_ids = Array(add_role_ids)
-          remove_role_ids = Array(remove_role_ids)
+          add_role_ids = validate_id_list!(add_role_ids, "add_role_ids")
+          remove_role_ids = validate_id_list!(remove_role_ids, "remove_role_ids")
           if add_role_ids.empty? && remove_role_ids.empty?
             raise UserError, "add_role_ids or remove_role_ids is required"
           end
@@ -116,29 +116,33 @@ module RedmineAiHelper
           if overlap.any?
             raise UserError, "The same role cannot be added and removed: #{overlap.join(", ")}"
           end
-          validate_role_ids!(project, add_role_ids + remove_role_ids)
+          validate_role_ids!(project, (add_role_ids + remove_role_ids).uniq)
 
           member = project.memberships.find_by(user_id: principal_id)
           raise UserError, "Not a member: principal id = #{principal_id}" if member.nil?
 
-          direct_role_ids = member.member_roles.select { |mr| mr.inherited_from.nil? }.map(&:role_id)
-          inherited_role_ids = member.member_roles.select { |mr| mr.inherited_from.present? }.map(&:role_id)
+          inherited, direct = member.member_roles.partition { |mr| mr.inherited_from.present? }
+          direct_role_ids = direct.map(&:role_id)
+          inherited_role_ids = inherited.map(&:role_id)
           inherited_removed = remove_role_ids & inherited_role_ids
           unless inherited_removed.empty?
-            named = inherited_removed.map { |id| role = Role.find_by(id: id); "#{id} (#{role&.name})" }
-            raise UserError, "Inherited roles cannot be changed: #{named.join(", ")}"
+            raise UserError, "Inherited roles cannot be changed: #{role_labels(inherited_removed).join(", ")}"
           end
 
           unchanged = ((add_role_ids & member.role_ids) + (remove_role_ids - member.role_ids)).uniq
-          new_role_ids = ((direct_role_ids | add_role_ids) - remove_role_ids).uniq
+          new_role_ids = (direct_role_ids | add_role_ids) - remove_role_ids
           # Member#role_ids= keeps the inherited roles, so they count for the
           # "must keep at least one role" judgment.
           if (new_role_ids | inherited_role_ids).empty?
             raise UserError, "A member must keep at least one role; use remove_member to remove the member"
           end
 
-          member.role_ids = new_role_ids
-          raise UserError, "Failed to update member roles: #{member.errors.full_messages.join(", ")}" unless member.save
+          # role_ids= writes immediately, so assignment and save share a transaction:
+          # a failed save must not leave the change behind.
+          ActiveRecord::Base.transaction do
+            member.role_ids = new_role_ids
+            raise UserError, "Failed to update member roles: #{member.errors.full_messages.join(", ")}" unless member.save
+          end
 
           member_to_hash(member).merge(project: format_named_record(project), unchanged_role_ids: unchanged.sort)
         end
@@ -174,7 +178,9 @@ module RedmineAiHelper
 
           principal = principal_to_hash(member.principal)
           roles = member.roles.map(&:name)
-          member.destroy
+          # Member#destroy removes the member roles first; destroy! in a transaction
+          # raises (and rolls those back) when the member itself cannot be destroyed.
+          ActiveRecord::Base.transaction { member.destroy! }
 
           { removed: true, project_id: project.id, principal: principal, roles: roles }
         end
@@ -182,25 +188,46 @@ module RedmineAiHelper
 
       private
 
-      # Validate that every role id exists and can be managed by the current user
-      # in the project. One invalid role rejects the whole list.
+      # Validate the role id list: an array of integers naming existing roles that
+      # the current user can manage in the project. One invalid role rejects the
+      # whole list.
       # @param project [Project] The project.
       # @param role_ids [Object] The role IDs given by the caller.
-      # @return [void]
-      # @raise [UserError] when the list is empty, a role does not exist, or a role
-      #   is not manageable by the current user.
+      # @return [Array<Integer>] The validated role IDs without duplicates.
+      # @raise [UserError] when the value is not an array of integers, the list is
+      #   empty, a role does not exist, or a role is not manageable by the current user.
       def validate_role_ids!(project, role_ids)
-        role_ids = Array(role_ids)
+        raise UserError, "role_ids must be an array of integers" unless role_ids.is_a?(Array) && role_ids.all?(Integer)
         raise UserError, "role_ids is required (at least one role)" if role_ids.empty?
+
+        role_ids = role_ids.uniq
         missing = role_ids - Role.where(id: role_ids).pluck(:id)
         raise UserError, "Role not found: #{missing.join(", ")}" if missing.any?
 
-        managed = User.current.managed_roles(project).map(&:id)
-        unmanageable = (role_ids - managed).uniq
-        return if unmanageable.empty?
+        unmanageable = role_ids - User.current.managed_roles(project).map(&:id)
+        raise UserError, "Roles you cannot manage: #{role_labels(unmanageable).join(", ")}" if unmanageable.any?
 
-        named = unmanageable.map { |id| role = Role.find_by(id: id); "#{id} (#{role&.name})" }
-        raise UserError, "Roles you cannot manage: #{named.join(", ")}"
+        role_ids
+      end
+
+      # Validate an optional list of integer ids.
+      # @param value [Object] The value given by the caller.
+      # @param name [String] The argument name for the error message.
+      # @return [Array<Integer>] The list (empty when nil).
+      # @raise [UserError] when the value is neither nil nor an array of integers.
+      def validate_id_list!(value, name)
+        return [] if value.nil?
+        raise UserError, "#{name} must be an array of integers" unless value.is_a?(Array) && value.all?(Integer)
+
+        value.uniq
+      end
+
+      # "id (name)" labels for role ids, loading the names in one query.
+      # @param ids [Array<Integer>] The role IDs.
+      # @return [Array<String>] The labels.
+      def role_labels(ids)
+        names = Role.where(id: ids).index_by(&:id)
+        ids.map { |id| "#{id} (#{names[id]&.name})" }
       end
 
       # Convert a candidate principal to the candidate hash of contracts/member_tools.md.
@@ -211,7 +238,7 @@ module RedmineAiHelper
           id: principal.id,
           name: principal.name,
           login: principal.is_a?(Group) ? nil : principal.login,
-          type: principal.is_a?(Group) ? "group" : "user"
+          type: principal_type(principal)
         }
       end
     end

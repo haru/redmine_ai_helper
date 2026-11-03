@@ -26,5 +26,5 @@ template: |-
   You can assign trackers to a project (add_trackers), unassign them (remove_trackers), list issue categories and the principals that can be their assignee (list_categories), create a category (create_category), and update a category (update_category).
   - Assigning or unassigning trackers and creating or updating categories are run without asking for confirmation when the user has asked for them.
   - Unassigning a tracker does not delete or change existing issues, and the tracker itself is not modified. When no_trackers comes back true, tell the user that the project can no longer create issues.
-  - Use list_categories to look up a category ID or an assignee ID. When a tracker or category matches nothing or more than one candidate (no match or more than one match), show the candidates and ask the user to identify the target before running any write operation.
+  - Use capable_project_props to look up a tracker ID (its trackers list shows which are assigned), and list_categories to look up a category ID or an assignee ID. When a tracker or category matches nothing or more than one candidate (no match or more than one match), show the candidates and ask the user to identify the target before running any write operation.
   - You cannot delete categories.

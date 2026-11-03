@@ -1028,9 +1028,9 @@ class ProjectToolsTest < ActiveSupport::TestCase
       principal = Principal.new
       principal.stubs(:status).returns(99)
 
-      assert_raises(RuntimeError, "Unknown principal status: 99") do
-        @provider.send(:principal_status, principal)
-      end
+      error = assert_raises(RuntimeError) { @provider.send(:principal_status, principal) }
+
+      assert_equal "Unknown principal status: 99", error.message
     end
 
     should "keep the outer shape and only return accessible projects" do
@@ -1141,6 +1141,33 @@ class ProjectToolsTest < ActiveSupport::TestCase
       result = @provider.capable_project_props(project_id: 1)
 
       assert_equal({ error: "Permission denied: edit_project on project 1" }, result)
+    end
+
+    should "filter allowed parents by AI Helper access" do
+      other = Project.create!(name: "Allowed But Inaccessible", identifier: "allowed-inaccessible", is_public: true)
+      Role.non_member.add_permission!(:add_subprojects)
+
+      AiHelperSetting.stubs(:all_projects_scope?).returns(false)
+      result = @provider.capable_project_props(project_id: 1)
+      assert_not_includes result[:allowed_parents].map { |p| p[:id] }, other.id
+
+      # Redmine itself allows it: only the AI Helper access rule removes it above
+      assert_includes Project.find(1).allowed_parents(User.current).map { |p| p&.id }, other.id
+
+      AiHelperSetting.stubs(:all_projects_scope?).returns(true)
+      result = @provider.capable_project_props(project_id: 1)
+      assert_includes result[:allowed_parents].map { |p| p[:id] }, other.id
+    end
+
+    should "report false for the flags the role does not grant" do
+      Project.stubs(:default_member_role).returns(Role.create!(name: "Flagless", permissions: [ :view_issues ]))
+      User.current = User.find(2)
+
+      result = @provider.capable_project_props
+
+      assert_equal false, result[:can_set_is_public]
+      assert_equal false, result[:can_set_inherit_members]
+      assert_equal false, result[:can_select_modules]
     end
 
     should "list only AI Helper accessible projects as allowed parents" do

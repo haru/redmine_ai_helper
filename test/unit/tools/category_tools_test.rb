@@ -126,6 +126,31 @@ class CategoryToolsTest < ActiveSupport::TestCase
       end
     end
 
+    context "with a group as the assignee" do
+      setup do
+        Member.create!(project: @project, principal: Group.find(10), role_ids: [ 2 ])
+      end
+
+      should "accept a group when group assignment is enabled" do
+        with_settings issue_group_assignment: "1" do
+          result = @provider.create_category(project_id: @project.id, name: "Group Owned", assigned_to_id: 10)
+
+          assert_nil result[:error]
+          assert_equal({ id: 10, name: "A Team", type: "group" }, result[:assigned_to])
+        end
+      end
+
+      should "reject a group when group assignment is disabled and create nothing" do
+        with_settings issue_group_assignment: "0" do
+          assert_no_difference "IssueCategory.count" do
+            result = @provider.create_category(project_id: @project.id, name: "Group Rejected", assigned_to_id: 10)
+
+            assert_equal "Assignee not allowed: id = 10 (must be an assignable member of the project)", result[:error]
+          end
+        end
+      end
+    end
+
     should "reject a duplicate name" do
       assert_no_difference "IssueCategory.count" do
         result = @provider.create_category(project_id: @project.id, name: "Printing")
@@ -201,6 +226,17 @@ class CategoryToolsTest < ActiveSupport::TestCase
       result = @provider.update_category(category_id: 99_999, name: "X")
 
       assert_equal({ error: "Category not found. id = 99999" }, result)
+    end
+
+    should "not reveal a category of a project the caller cannot see" do
+      hidden = Project.create!(name: "Hidden Category Project", identifier: "hidden-category-project", is_public: false)
+      category = IssueCategory.create!(project: hidden, name: "Secret")
+      before = category.attributes
+
+      result = @provider.update_category(category_id: category.id, name: "Hijacked")
+
+      assert_equal({ error: "Category not found. id = #{category.id}" }, result)
+      assert_equal before, category.reload.attributes
     end
 
     should "judge the project of the category, not another project" do

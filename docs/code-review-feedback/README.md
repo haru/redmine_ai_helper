@@ -171,3 +171,8 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-085](./085-popup-docs-and-comments-stated-more-than-the-code-did.md) | Popup ADR, research and comments described tooltips as modals and overstated what was saved | doc-comment | Local AI review | Not yet |
 | [CRF-086](./086-popup-icon-only-links-lost-accessible-name.md) | Popup icon-only links lost their accessible name when the tooltip was removed | convention-violation | GitHub Copilot | Not yet |
 | [CRF-087](./087-popup-drag-marked-moved-on-zero-delta.md) | Popup drag was marked as moved on a pointermove with no coordinate change | edge-case | GitHub Copilot | Not yet |
+| [CRF-088](./088-collection-setters-written-before-save.md) | Collection setters wrote to the database before save, so a failed save left the change behind | error-handling | Local AI review | Not yet |
+| [CRF-089](./089-unvalidated-list-arguments-and-permission-types.md) | List arguments and the permission argument were coerced or accepted without checking their types | error-handling | Local AI review | Not yet |
+| [CRF-090](./090-category-lookup-leaked-hidden-project.md) | update_category revealed the project id of a category the caller could not see | permission | Local AI review | Not yet |
+| [CRF-091](./091-weak-and-vacuous-tests-in-project-management-tools.md) | Tests asserted an outcome another layer already guaranteed, or could not tell whether the guard ran | test-gap | Local AI review | Not yet |
+| [CRF-092](./092-project-management-docs-overstated-the-guard-scope.md) | ADR, wiki, research and comments described the guard, defaults, and Redmine behaviour more broadly or differently than the code | doc-comment | Local AI review | Not yet |

@@ -2,8 +2,10 @@
 
 module RedmineAiHelper
   module Util
-    # Shared fetch of the target project for the project-management write tools
-    # (ProjectWriteTools / MemberTools / CategoryTools).
+    # Shared fetch of the target project for the project-management tools: the
+    # write tools (ProjectWriteTools / MemberTools / CategoryTools) and the read
+    # tools that need the same checks (ProjectTools#capable_project_props,
+    # MemberTools#find_member_candidates, CategoryTools#list_categories).
     #
     # The guards run in a fixed order and raise BaseTools::UserError on the first
     # failed condition, so a user-caused failure changes nothing and reports which
@@ -21,12 +23,15 @@ module RedmineAiHelper
     module ProjectWriteGuard
       # Fetch the project for a write operation.
       # @param project_id [Integer, nil] The project ID.
-      # @param permission [Symbol, Hash] The permission required on the project.
+      # @param permission [Symbol, Hash] The permission required on the project (never nil).
       # @param require_issue_tracking [Boolean] Also require the issue_tracking module
       #   (checked before the permission, matching Redmine's tracker settings tab).
       # @return [Project] The project.
       # @raise [RedmineAiHelper::BaseTools::UserError] on the first failed guard.
+      # @raise [ArgumentError] when permission is nil or neither a Symbol nor a Hash.
       def writable_project!(project_id:, permission:, require_issue_tracking: false)
+        raise ArgumentError, "permission is required for a write fetch" if permission.nil?
+
         fetch_project!(project_id: project_id, permission: permission, require_issue_tracking: require_issue_tracking, closed_check: true)
       end
 
@@ -38,6 +43,7 @@ module RedmineAiHelper
       # @param require_issue_tracking [Boolean] Also require the issue_tracking module.
       # @return [Project] The project.
       # @raise [RedmineAiHelper::BaseTools::UserError] on the first failed guard.
+      # @raise [ArgumentError] when permission is neither nil, a Symbol, nor a Hash.
       def readable_project!(project_id:, permission:, require_issue_tracking: false)
         fetch_project!(project_id: project_id, permission: permission, require_issue_tracking: require_issue_tracking, closed_check: false)
       end
@@ -46,12 +52,15 @@ module RedmineAiHelper
 
       # Run the guards in order and return the project.
       # @param project_id [Integer, nil] The project ID.
-      # @param permission [Symbol, Hash] The permission required on the project.
+      # @param permission [Symbol, Hash, nil] The permission required on the project.
       # @param require_issue_tracking [Boolean] Whether the issue_tracking module is required.
       # @param closed_check [Boolean] Whether to reject closed projects.
       # @return [Project] The project.
       # @raise [RedmineAiHelper::BaseTools::UserError] on the first failed guard.
       def fetch_project!(project_id:, permission:, require_issue_tracking:, closed_check:)
+        unless permission.nil? || permission.is_a?(Symbol) || permission.is_a?(Hash)
+          raise ArgumentError, "permission must be a Symbol or a Hash: #{permission.inspect}"
+        end
         raise BaseTools::UserError, "project_id is required" if project_id.nil?
 
         project = Project.find_by(id: project_id)
@@ -73,8 +82,9 @@ module RedmineAiHelper
       # @return [String] "manage_members" or "projects/manage_members" style name.
       def permission_name(permission)
         case permission
+        when Symbol then permission.to_s
         when Hash then permission.values.join("/")
-        else permission.to_s
+        else raise ArgumentError, "permission must be a Symbol or a Hash: #{permission.inspect}"
         end
       end
     end

@@ -303,15 +303,52 @@ class AiHelperMcpControllerTest < ActionController::TestCase
       pm_read_tools.each { |name| assert_includes names, name, "#{name} must stay in read-only mode" }
     end
 
-    should "reject calls to the write tools in read-only mode" do
+    should "reject calls to the write tools in read-only mode and change nothing" do
       AiHelperSetting.stubs(:read_only_mode?).returns(true)
+      # Valid arguments: without the read-only guard each call would succeed or
+      # fail in the tool, never with the permission message.
+      calls = {
+        "create_project" => { name: "Read Only Project", identifier: "read-only-project" },
+        "update_project" => { project_id: 1, name: "Renamed" },
+        "update_modules" => { project_id: 1, disable: [ "news" ] },
+        "add_trackers" => { project_id: 1, tracker_ids: [ 3 ] },
+        "remove_trackers" => { project_id: 1, tracker_ids: [ 1 ] },
+        "add_member" => { project_id: 1, principal_id: 8, role_ids: [ 2 ] },
+        "update_member_roles" => { project_id: 1, principal_id: 3, add_role_ids: [ 1 ] },
+        "remove_member" => { project_id: 1, principal_id: 3 },
+        "create_category" => { project_id: 1, name: "Read Only Category" },
+        "update_category" => { category_id: 1, name: "Renamed Category" }
+      }
+      assert_equal pm_write_tools.sort, calls.keys.sort
+      snapshot = lambda do
+        [ Project.count, Member.count, MemberRole.count, IssueCategory.count, EnabledModule.count,
+          Project.find(1).name, Project.find(1).tracker_ids.sort, IssueCategory.find(1).name ]
+      end
+      before = snapshot.call
 
-      pm_write_tools.each do |name|
-        post :handle_request, body: tools_call_payload(name, {}), as: :json
+      calls.each do |name, arguments|
+        post :handle_request, body: tools_call_payload(name, arguments), as: :json
         body = JSON.parse(@response.body)
 
         assert_equal true, body.dig("result", "isError"), "#{name} must be rejected in read-only mode"
+        assert_equal I18n.t("ai_helper.mcp.errors.tool_permission_denied"), body.dig("result", "content", 0, "text"),
+          "#{name} must be rejected by the read-only guard"
       end
+      assert_equal before, snapshot.call
+    end
+
+    should "run a write tool in normal mode" do
+      project = Project.find(1)
+      EnabledModule.create!(project_id: project.id, name: "ai_helper") unless project.module_enabled?(:ai_helper)
+      EnabledModule.create!(project_id: project.id, name: "issue_tracking") unless project.module_enabled?(:issue_tracking)
+
+      assert_difference "IssueCategory.count", 1 do
+        post :handle_request, body: tools_call_payload("create_category", { project_id: 1, name: "Via MCP" }), as: :json
+      end
+
+      body = JSON.parse(@response.body)
+      assert_equal false, body.dig("result", "isError")
+      assert_equal "Via MCP", JSON.parse(body.dig("result", "content", 0, "text"))["name"]
     end
 
     should "not expose any delete, destroy, or archive tool for projects, members, or categories" do

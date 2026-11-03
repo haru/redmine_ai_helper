@@ -75,7 +75,9 @@ module RedmineAiHelper
       def update_category(category_id:, name: nil, assigned_to_id: nil, clear_assigned_to: nil)
         user_errors_as_result do
           category = IssueCategory.find_by(id: category_id)
-          raise UserError, "Category not found. id = #{category_id}" if category.nil?
+          # A category of a project the caller cannot see is reported as not found,
+          # so neither its existence nor its project id leaks.
+          raise UserError, "Category not found. id = #{category_id}" if category.nil? || !category.project.visible?
 
           project = writable_project!(
             project_id: category.project_id, permission: :manage_categories, require_issue_tracking: true
@@ -117,12 +119,7 @@ module RedmineAiHelper
       # @param category [IssueCategory] The category.
       # @return [Hash] { id:, project:, name:, assigned_to: }.
       def category_to_hash(category)
-        {
-          id: category.id,
-          project: format_named_record(category.project),
-          name: category.name,
-          assigned_to: category.assigned_to ? principal_summary(category.assigned_to) : nil
-        }
+        category_summary(category).merge(project: format_named_record(category.project))
       end
 
       # The { id:, name:, assigned_to: } summary of a category.

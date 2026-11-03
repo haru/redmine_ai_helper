@@ -38,11 +38,19 @@ No tool deletes, closes, or archives a project, category, or other data;
   `ai_helper_accessible` because a non-admin default role without
   `view_ai_helper` leaves the project unusable by the AI (S060).
 - **Creator membership** is saved with the project in one transaction;
-  creation is refused up front if no default member role exists, where
-  Redmine's UI would create a project without the creator as member (S060).
-- **Object-level permission:** every tool checks the target's own project
-  (`update_category` uses the category's project) via `ProjectWriteGuard`;
-  `list_categories` requires only visibility and AI Helper access (S060).
+  for non-admin creators, creation is refused up front if no default member
+  role exists, where Redmine's UI would create a project without the creator
+  as member (S060).
+- **Object-level permission:** every tool that targets an existing project
+  checks that project via `ProjectWriteGuard` (`update_category` uses the
+  category's project; a category of an invisible project is reported as not
+  found). `create_project` checks the requested parent itself, and
+  `project_members` checks only AI Helper access. `list_categories` requires
+  only visibility, AI Helper access, and the issue_tracking module (no
+  permission) (S060, ADR-068).
+- **Atomic writes:** module, tracker, and member-role changes write at
+  assignment time in Redmine, so each runs with its `save` in one transaction
+  and a failed save changes nothing (ADR-068).
 - **Confirmation** before `create_project`, making a project public,
   `remove_member`, and disabling `ai_helper` is requested in tool descriptions
   and the backstory, not enforced by the tools (S060).
