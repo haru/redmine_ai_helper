@@ -351,6 +351,28 @@ describe("AiHelper history", () => {
       expect(dom.chatConversation.innerHTML).toContain("history entry");
     });
 
+    it("jump_to_history keeps the sidebar fold state when the chat is shown as the popup", () => {
+      const instances = createXhrQueueMock();
+      vi.spyOn(helper, "close_dropdown_menu").mockImplementation(() => {});
+      const foldSpy = vi.spyOn(helper, "fold_chat").mockImplementation(() => {});
+      const popup = document.createElement("div");
+      popup.className = "aihelper-popup-mode";
+      document.body.appendChild(popup);
+      popup.appendChild(dom.chatConversation);
+
+      try {
+        helper.jump_to_history({ preventDefault: vi.fn() }, "/ai_helper/history/1");
+        instances[0].status = 200;
+        instances[0].responseText = "<p>history entry</p>";
+        instances[0].onload();
+
+        expect(foldSpy).not.toHaveBeenCalled();
+        expect(dom.chatConversation.innerHTML).toContain("history entry");
+      } finally {
+        popup.remove();
+      }
+    });
+
     it("jump_to_history does nothing when the chat conversation area is absent", () => {
       const instances = createXhrQueueMock();
       dom.chatConversation.remove();

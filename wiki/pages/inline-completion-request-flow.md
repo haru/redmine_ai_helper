@@ -1,8 +1,8 @@
 ---
 title: Inline Completion Request Flow
 type: component
-sources: [S021, S022, S036]
-updated: 2026-09-23
+sources: [S021, S022, S036, S061]
+updated: 2026-11-03
 ---
 
 # Inline Completion Request Flow
@@ -62,6 +62,13 @@ because disabling, blur and `destroy()` never reschedule (S021).
 
 `ai_helper_typo_checker.js` is *not* affected: it is button-triggered and guarded
 by `isCheckingTypos` (S021).
+
+## Request body and comment edit forms
+
+`buildDefaultRequestBody` always sends `context_type` (`"description"` or
+`"note"`); a comment edit form additionally sends `journal_id`. Validation,
+context and the per-form lifecycle are on
+[Comment Edit Form Aids](./comment-edit-form-aids.md) (S061).
 
 ## Settings source and validation
 

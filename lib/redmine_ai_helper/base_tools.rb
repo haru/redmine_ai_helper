@@ -413,6 +413,19 @@ module RedmineAiHelper
       { error: e.message }
     end
 
+    # Validate optional boolean arguments. Tool calls from the chat are not
+    # checked against the schema, Rails would cast a string such as "no" to
+    # true, and `== true` checks would silently ignore "true", so anything
+    # other than true, false, or nil is rejected.
+    # @param args [Hash{String => Object}] Argument names and the values given by the caller.
+    # @return [void]
+    # @raise [UserError] when a value is neither nil, true, nor false.
+    def validate_booleans!(args)
+      args.each do |name, value|
+        raise UserError, "#{name} must be true or false" unless [ nil, true, false ].include?(value)
+      end
+    end
+
     def format_named_record(obj)
       return nil unless obj
 

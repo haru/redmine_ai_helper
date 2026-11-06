@@ -557,7 +557,8 @@ Object.assign(AiHelperTypoChecker.prototype, {
       </div>
     `;
     this.overlay.classList.add('ai-helper-typo-overlay-active');
-    setTimeout(() => this.hideOverlay(), 3000);
+    // The form may be gone (destroy()) before the message times out
+    setTimeout(() => { if (!this.destroyed) { this.hideOverlay(); } }, 3000);
   },
 
   showErrorMessage() {
@@ -573,6 +574,7 @@ Object.assign(AiHelperTypoChecker.prototype, {
       </div>
     `;
     this.overlay.classList.add('ai-helper-typo-overlay-active');
-    setTimeout(() => this.hideOverlay(), 3000);
+    // The form may be gone (destroy()) before the message times out
+    setTimeout(() => { if (!this.destroyed) { this.hideOverlay(); } }, 3000);
   },
 });

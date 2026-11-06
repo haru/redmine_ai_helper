@@ -1,8 +1,8 @@
 ---
 title: Issue AI Features
 type: component
-sources: [S014, S017, S021, S035]
-updated: 2026-09-20
+sources: [S014, S017, S021, S035, S061]
+updated: 2026-11-03
 ---
 
 # Issue AI Features
@@ -77,6 +77,14 @@ server-side timeout with retries disabled — otherwise stale requests pile up a
 block unrelated actions such as saving the issue (S021). See
 [Inline Completion Request Flow](./inline-completion-request-flow.md) and
 [Completion Request Timeout Policy](./completion-request-timeout-policy.md).
+
+### Comment edit form and comment context
+
+The typo check link and the completion checkbox also appear in the edit form of
+a posted comment, and completion for comments always uses the note context with
+a newest-first history; when editing, the writer is the comment's author and
+only earlier comments are used. Details, validation and failure handling:
+[Comment Edit Form Aids](./comment-edit-form-aids.md) (S061).
 
 ## Related
 

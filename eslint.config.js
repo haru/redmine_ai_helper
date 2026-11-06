@@ -138,6 +138,21 @@ export default [
     },
   },
   {
+    // AiHelperEditorControls is declared via `const X = (() => {...})()` in
+    // ai_helper_editor_controls.js and referenced as a bare identifier from
+    // these consuming files. Scoped here for the same no-redeclare reason as
+    // the blocks above.
+    files: [
+      "assets/javascripts/autocompletion/ai_helper_issue_autocompletion.js",
+      "assets/javascripts/autocompletion/ai_helper_wiki_autocompletion.js",
+    ],
+    languageOptions: {
+      globals: {
+        AiHelperEditorControls: "readonly",
+      },
+    },
+  },
+  {
     // getSummary/getWikiSummary are declared as `function` in
     // ai_helper_issue_summary.js/ai_helper_wiki_summary.js and referenced as
     // bare identifiers from ai_helper.js and ai_helper_streaming.js
@@ -149,6 +164,27 @@ export default [
       globals: {
         getSummary: "readonly",
         getWikiSummary: "readonly",
+      },
+    },
+  },
+  {
+    // AiHelperChatPopup is declared (const) in chat/ai_helper_chat_popup.js and
+    // called as a bare identifier from chat/ai_helper_chat.js. Scoped to this
+    // file so ai_helper_chat_popup.js itself does not redeclare a global.
+    files: ["assets/javascripts/chat/ai_helper_chat.js"],
+    languageOptions: {
+      globals: {
+        AiHelperChatPopup: "readonly",
+      },
+    },
+  },
+  {
+    // AiHelperChatPopupLayout is declared (const) in chat/ai_helper_chat_popup_layout.js
+    // and used as a bare identifier by chat/ai_helper_chat_popup.js.
+    files: ["assets/javascripts/chat/ai_helper_chat_popup.js"],
+    languageOptions: {
+      globals: {
+        AiHelperChatPopupLayout: "readonly",
       },
     },
   },

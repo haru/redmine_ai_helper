@@ -59,6 +59,7 @@ The Redmine AI Helper Plugin adds AI chat functionality to Redmine, enhancing pr
 # ✨ Features
 
 - Adds an AI chat sidebar to the right side of your Redmine interface
+  - The chat can be switched to a popup that you can move and resize; it stays open across pages
 - Enables various AI-assisted features including:
   - Issue search
   - Issue and Wiki content summarization
@@ -163,7 +164,7 @@ The AI Helper Plugin can suggest optimal assignees when creating or editing issu
 
 ## To-Do Suggestions
 
-The AI Helper Plugin can suggest what you should work on today based on your assigned issues. This feature analyzes your issues considering due dates, priorities, and how long they've been untouched, then provides prioritized recommendations for both the current project and other projects you have access to. Access this feature from the "To Do" menu in the top menu bar (available only within project contexts where you have AI Helper permissions).
+The AI Helper Plugin can suggest what you should work on today based on your assigned issues. This feature analyzes your issues considering due dates, priorities, and how long they've been untouched, then provides prioritized recommendations for both the current project and other projects you have access to. Access this feature from the "To Do" link in the account menu (available only within project contexts where you have AI Helper permissions). In Redmine 7.0 and later, click your account icon in the top-right corner to open the account menu. In Redmine 6.x and earlier, the link is shown directly in the top menu bar.
 
 ![Image](https://github.com/user-attachments/assets/db12d4ac-58ee-4fd8-893c-d2feda0128cf)
 
@@ -579,6 +580,9 @@ All requests must include a Redmine API key in the `X-Redmine-API-Key` header. T
 |------------|---------------|-------------|
 | Issue | `read_issues`, `search_issues`, `create_new_issue`, `update_issue` | Read, search, create, and update issues |
 | Project | `list_projects`, `read_project`, `project_members`, `get_metrics` | Project information and metrics |
+| Project management | `capable_project_props`, `create_project`, `update_project`, `update_modules`, `add_trackers`, `remove_trackers` | Create and update projects, enable or disable modules, assign or unassign trackers (no delete) |
+| Member | `find_member_candidates`, `list_managed_roles`, `add_member`, `update_member_roles`, `remove_member` | Add members, change their roles, remove them |
+| Category | `list_categories`, `create_category`, `update_category` | List, create, and update issue categories (no delete) |
 | Wiki | `read_wiki_page`, `list_wiki_pages` | Wiki page access |
 | Repository | `repository_info`, `read_file`, `read_diff` | Source code and revision access |
 | Board | `list_boards`, `read_message` | Forum and message access |

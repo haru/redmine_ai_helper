@@ -66,7 +66,13 @@ Never edit or delete existing entries, except for updating the **Promoted to** f
 
 ### Step 7: Propose Promotion When It Recurs
 
-If the new entry has one or more **Related** entries (the pattern has occurred at least twice), propose to the user where the prevention rule should be promoted (AGENTS.md, the constitution, a skill) and show the proposed text. Do not change those files without the user's approval. After the approved rule is added, update the entry's **Promoted to** field and the matching index cell to name the destination.
+If the new entry has two or more **Related** entries (the pattern has occurred at least three times), propose to the user where the prevention rule should be promoted (AGENTS.md, the constitution, a skill). A pattern that has occurred only twice is not proposed: promoting at two occurrences fills the durable files with rules. The proposal states:
+
+1. The destination: the file and the section the rule goes into.
+2. The exact text to add.
+3. What the rule requires, explained in the user's language, one item per requirement in the text: what to do, and when it applies.
+
+The proposal is about the rule itself. Do not retell the findings, the entries, or the reasons for promoting it unless the user asks. Do not change those files without the user's approval. After the approved rule is added, update the entry's **Promoted to** field and the matching index cell to name the destination.
 
 Propose promotion only for a rule that applies across features and areas of the codebase. Do not propose a rule tied to one feature, one component, or one kind of output (for example, only PDF export or only one screen), even when it has recurred: every promoted rule is loaded into every session's context, so a narrow rule costs context in all the sessions where it does not apply. Leave such a rule in the log entry with **Promoted to** set to `Not yet`, and do not mention promotion in the report.
 

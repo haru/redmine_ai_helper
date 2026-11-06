@@ -35,6 +35,7 @@ page files, not here.
 - [Health Report Detail Pane Layout](./pages/health-report-detail-pane-layout.md) — ADR-056: why the dashboard report clipped export links (non-flex body wrapper), moving the viewport cap from the pane to the frame, the edit-form and ≤900px exceptions, and rejected alternatives.
 - [Health Report Generation Completion (Dashboard)](./pages/health-report-generation-completion.md) — feature 077: why dashboard generation threw on completion (missing `.ai-helper-project-health`), hidden field under `.ai-helper-project-health-content`, `try/catch` narrowed to `JSON.parse`, clearing the previous report's details, and rejected alternatives.
 - [Health Report Charts](./pages/health-report-charts.md) — feature 078/ADR-058/ADR-059: chart directives resolved from stored metrics and drawn on screen, in PDF and as SVG zip; each chart's form chosen by what helps the reader (bars, stacked bar, number tile — no doughnuts); Redmine 6.0 importmap, rbpdf alias and observer gotchas.
+- [Chat Popup Design Decisions](./pages/chat-popup-design-decisions.md) — ADR-064: why the sidebar element is moved not cloned, the storage split, z-index, Pointer Events, and every rejected alternative.
 
 ## component
 - [Chat Channel Gateway Architecture](./pages/chat-channel-gateway-architecture.md) — core + adapters structure, capability declaration, and gateway operational model.
@@ -44,9 +45,11 @@ page files, not here.
 - [Inbound Webhook Endpoint](./pages/inbound-webhook-endpoint.md) — the anonymous `POST /ai_helper/chat_webhook/:channel_type` controller: skipped filters, raw-body signature verification, challenge responses, webhook URL display.
 - [Inbound Event Queue](./pages/inbound-event-queue.md) — the `ai_helper_inbound_events` table: atomic claiming, freshness expiry, retention purge, and reply metadata resolved by event id.
 - [Chat Context Import](./pages/chat-context-import.md) — how surrounding messages are imported, cursored, persisted as `context` role, and fed to the LLM.
-- [AI Chat Sidebar](./pages/chat-sidebar.md) — the sidebar UI: view-hook injection, the `AiHelper` JS class, SSE handling, conversation models, and Markdown/XSS (parser now streaming-only; history uses server-side `md_to_html`).
+- [AI Chat Sidebar](./pages/chat-sidebar.md) — the sidebar UI: view-hook injection, the `AiHelper` JS class, SSE handling, conversation models, and Markdown/XSS (parser now streaming-only; history uses server-side `md_to_html`); popup mode (element moved, per-tab state).
+- [Chat Popup](./pages/chat-popup.md) — the sidebar chat moved into a fixed, movable, resizable popup: storage split, layout rules, pending marker, fold-state guarantee
 - [Issue AI Features](./pages/issue-ai-features.md) — `IssueReadAgent` summarization/caching, reply drafts, sub-issues, assignee suggestion, duplicate check, and inline completion.
 - [Inline Completion Request Flow](./pages/inline-completion-request-flow.md) — AbortController cancellation, no-change suppression, debounce-timer clearing, and where the autocompletion settings are read and validated.
+- [Comment Edit Form Aids](./pages/comment-edit-form-aids.md) — typo check and completion in the edit form of a posted comment: hook placement, `MutationObserver` attachment, attach-time validation and failure handling, `journal_id` validation, edit-time context, and the narrowed completion rescue.
 - [MCP Integration](./pages/mcp-integration.md) — consuming external MCP servers: dynamic agent generation and the read-only gotcha. See [MCP Server Endpoint](./pages/mcp-server-endpoint.md) for the other direction.
 - [MCP Server Endpoint](./pages/mcp-server-endpoint.md) — exposing Redmine as an MCP server: stateless mode, auth, permissions, tool groups, and the anonymous-endpoint pattern reused by inbound webhooks.
 - [Custom Commands](./pages/custom-commands.md) — reusable `/command` prompt shortcuts, scope precedence, template variables.
@@ -62,6 +65,7 @@ page files, not here.
 - [Log File Access Tools](./pages/log-file-access-tools.md) — `SystemTools`' admin-only `get_log_file_info`/`read_log_tail`/`search_log`: admin → setting → input gating, the `log_access_enabled` setting, limits, path hiding, and `SystemAgent` prompt guidance.
 - [Log File Reader](./pages/log-file-reader.md) — `LogFileReader`: backward chunked tail and search, the 500 MB scan cap, literal matching, and when line numbers count from the start vs. only from the end.
 - [Version Write Tools](./pages/version-write-tools.md) — feature 068: `create_version`/`update_version`/`delete_version`, `capable_version_props`, permissions on the version's own project, delete rules, update semantics.
+- [Project Management Tools](./pages/project-management-tools.md) — feature 084: project/module/tracker/member/category tools, where they reject instead of dropping, `ai_helper` on creation, extended `project_members`.
 
 ## reference
 - [Chat History APIs](./pages/chat-history-apis.md) — Slack/Discord message-retrieval APIs, scopes, display-name resolution, exclusion rules.

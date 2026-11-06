@@ -40,12 +40,14 @@
         <span class="aihelper-title">
           <%= t(:label_ai_helper) %><%= t(:label_ai_helper_read_only_suffix) if AiHelperSetting.read_only_mode? %>
         </span>
+        <%= link_to sprite_icon("ai-helper-popup-open", plugin: :redmine_ai_helper), "#", id: "aihelper-popup-open", class: "aihelper-popup-button icon-only", "aria-label": t(:label_ai_helper_popup_open) %>
         <span class="aihelper-arrow-button">
           <span class="aihelper-arrow-container">
             <%= link_to "", "#", onclick: "ai_helper.fold_chat(true)", class: "aihelper-arrow down", id: "aihelper-arrow-down" %>
             <%= link_to "", "#", onclick: "ai_helper.fold_chat(false)", class: "aihelper-arrow left", id: "aihelper-arrow-left", style: "display: none" %>
           </span>
         </span>
+        <%= link_to sprite_icon("close"), "#", id: "aihelper-popup-close", class: "aihelper-popup-button icon-only", "aria-label": t(:label_ai_helper_popup_close) %>
         <div class="aihelper-dropdown-menu">
           <div id="aihelper-chat-clear">
             <ul>
@@ -70,6 +72,9 @@
         <% end %>
         <hr>
       </div>
+      <% %w[n s e w ne nw se sw].each do |edge| %>
+        <div class="aihelper-popup-resize" data-edge="<%= edge %>"></div>
+      <% end %>
     </div>
     <script>
       document.addEventListener('DOMContentLoaded', function() {

@@ -2,7 +2,7 @@ require File.expand_path("../../test_helper", __FILE__)
 require "redmine_ai_helper/llm"
 
 class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
-  fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :custom_values, :groups_users, :members, :member_roles, :roles, :user_preferences, :wikis, :wiki_pages, :wiki_contents
+  fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :custom_values, :groups_users, :members, :member_roles, :roles, :user_preferences, :wikis, :wiki_pages, :wiki_contents, :journals
 
   context "RedmineAiHelper::Llm" do
     setup do
@@ -493,7 +493,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
     end
 
     should "handle agent error gracefully" do
-      RedmineAiHelper::Agents::IssueReadAgent.any_instance.stubs(:generate_text_completion).raises(StandardError, "Agent error")
+      RedmineAiHelper::Agents::IssueReadAgent.any_instance.stubs(:generate_text_completion).raises(Faraday::ConnectionFailed, "Agent error")
 
       result = @llm.generate_text_completion(
         text: "Login page has error",
@@ -504,6 +504,20 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       )
 
       assert_equal "", result
+    end
+
+    should "not swallow a programming error raised by the agent" do
+      RedmineAiHelper::Agents::IssueReadAgent.any_instance.stubs(:generate_text_completion).raises(ArgumentError, "defect")
+
+      assert_raises(ArgumentError) do
+        @llm.generate_text_completion(
+          text: "Login page has error",
+          context_type: "description",
+          cursor_position: 18,
+          project: @project,
+          issue: @issue
+        )
+      end
     end
 
     should "parse single suggestion correctly" do
@@ -550,7 +564,8 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
           cursor_position: 4,
           context_type: "description",
           project: @project,
-          issue: @issue
+          issue: @issue,
+          journal: nil
         ).returns("Completed text")
 
         RedmineAiHelper::Agents::IssueReadAgent.expects(:new).returns(mock_agent)
@@ -577,7 +592,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         # Mock IssueReadAgent to raise an error
         mock_agent = mock("IssueReadAgent")
         mock_agent.stubs(:llm_provider=)
-        mock_agent.expects(:generate_text_completion).raises(StandardError, "Agent failed")
+        mock_agent.expects(:generate_text_completion).raises(Faraday::ConnectionFailed, "Agent failed")
 
         RedmineAiHelper::Agents::IssueReadAgent.expects(:new).returns(mock_agent)
 
@@ -1199,4 +1214,74 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       assert_equal [], message.web_citations
     end
   end
+    # Tests for the journal pass-through (085 US2)
+    context "generate_text_completion with a journal being edited" do
+      setup do
+        @llm = RedmineAiHelper::Llm.new({})
+        @project = Project.find(1)
+        @issue = Issue.find(1)
+        @journal = Journal.find(1)
+      end
+
+      should "pass the journal to the agent" do
+        mock_langfuse = mock("LangfuseWrapper")
+        mock_langfuse.stubs(:create_span)
+        mock_langfuse.stubs(:finish_current_span)
+        mock_langfuse.stubs(:flush)
+        RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
+
+        mock_agent = mock("IssueReadAgent")
+        mock_agent.stubs(:llm_provider=)
+        mock_agent.expects(:generate_text_completion).with(
+          text: "Test text",
+          cursor_position: nil,
+          context_type: "note",
+          project: @project,
+          issue: @issue,
+          journal: @journal
+        ).returns("Completed text")
+
+        RedmineAiHelper::Agents::IssueReadAgent.expects(:new).returns(mock_agent)
+
+        result = @llm.generate_text_completion(
+          text: "Test text",
+          context_type: "note",
+          project: @project,
+          issue: @issue,
+          journal: @journal
+        )
+
+        assert_equal "Completed text", result
+      end
+
+      should "default journal to nil for a new comment" do
+        mock_langfuse = mock("LangfuseWrapper")
+        mock_langfuse.stubs(:create_span)
+        mock_langfuse.stubs(:finish_current_span)
+        mock_langfuse.stubs(:flush)
+        RedmineAiHelper::LangfuseUtil::LangfuseWrapper.stubs(:new).returns(mock_langfuse)
+
+        mock_agent = mock("IssueReadAgent")
+        mock_agent.stubs(:llm_provider=)
+        mock_agent.expects(:generate_text_completion).with(
+          text: "Test text",
+          cursor_position: nil,
+          context_type: "note",
+          project: @project,
+          issue: @issue,
+          journal: nil
+        ).returns("Completed text")
+
+        RedmineAiHelper::Agents::IssueReadAgent.expects(:new).returns(mock_agent)
+
+        result = @llm.generate_text_completion(
+          text: "Test text",
+          context_type: "note",
+          project: @project,
+          issue: @issue
+        )
+
+        assert_equal "Completed text", result
+      end
+    end
 end

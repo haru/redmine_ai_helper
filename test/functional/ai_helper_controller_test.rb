@@ -1,7 +1,7 @@
 require_relative "../test_helper"
 
 class AiHelperControllerTest < ActionController::TestCase
-  fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :custom_values, :groups_users, :members, :member_roles, :roles, :user_preferences, :issue_statuses, :wikis, :wiki_pages, :wiki_contents
+  fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :custom_values, :groups_users, :members, :member_roles, :roles, :user_preferences, :issue_statuses, :wikis, :wiki_pages, :wiki_contents, :enabled_modules, :journals
 
   # Add an assistant answer with the given web search sources to the conversation.
   def add_answer(citations)
@@ -9,6 +9,19 @@ class AiHelperControllerTest < ActionController::TestCase
     message.web_citations = citations
     @conversation.messages << message
     @conversation.save!
+  end
+
+  # Posts a suggest_completion request for issue 1, optionally with a journal_id.
+  # `:omitted` leaves the key out entirely.
+  def post_completion(journal_id, context_type: "note")
+    @request.headers["Content-Type"] = "application/json"
+    body = { text: "I have reviewed", cursor_position: 15, context_type: context_type }
+    body[:journal_id] = journal_id unless journal_id == :omitted
+    post :suggest_completion, params: { id: Issue.find(1).project.id, issue_id: Issue.find(1).id }, body: body.to_json
+  end
+
+  def stub_llm_never_called
+    RedmineAiHelper::Llm.any_instance.expects(:generate_text_completion).never
   end
 
   def citation(url, title = nil)
@@ -53,6 +66,236 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_select "#ai_helper_chat_form .icon-lock", count: 0
       end
     end
+
+    # journal_id validation for the comment edit form (085 US2)
+    context "suggest_completion with journal_id" do
+      setup do
+        @issue = Issue.find(1)
+        @journal = journals(:journals_002)
+      end
+
+      should "reject a string journal_id (CRF-050 boundary type)" do
+        stub_llm_never_called
+        post_completion("42")
+        assert_response :bad_request
+        assert_equal I18n.t("ai_helper.completion_errors.invalid_journal_id"), JSON.parse(response.body)["error"]
+      end
+
+      should "reject a float journal_id" do
+        stub_llm_never_called
+        post_completion(4.2)
+        assert_response :bad_request
+        assert_equal I18n.t("ai_helper.completion_errors.invalid_journal_id"), JSON.parse(response.body)["error"]
+      end
+
+      should "reject a boolean journal_id" do
+        stub_llm_never_called
+        post_completion(true)
+        assert_response :bad_request
+        assert_equal I18n.t("ai_helper.completion_errors.invalid_journal_id"), JSON.parse(response.body)["error"]
+      end
+
+      should "reject an array journal_id" do
+        stub_llm_never_called
+        post_completion([ 1 ])
+        assert_response :bad_request
+        assert_equal I18n.t("ai_helper.completion_errors.invalid_journal_id"), JSON.parse(response.body)["error"]
+      end
+
+      should "reject a journal_id without the note context type" do
+        stub_llm_never_called
+        post_completion(@journal.id, context_type: "description")
+        assert_response :bad_request
+        assert_equal I18n.t("ai_helper.completion_errors.journal_requires_note"), JSON.parse(response.body)["error"]
+      end
+
+      should "reject a journal_id without the note context type when context_type is missing" do
+        stub_llm_never_called
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: @issue.project.id, issue_id: @issue.id },
+             body: { text: "I have reviewed", cursor_position: 15, journal_id: @journal.id }.to_json
+        assert_response :bad_request
+        assert_equal I18n.t("ai_helper.completion_errors.journal_requires_note"), JSON.parse(response.body)["error"]
+      end
+
+      should "reject an unknown journal id" do
+        stub_llm_never_called
+        post_completion(999_999)
+        assert_response :bad_request
+        assert_equal I18n.t("ai_helper.completion_errors.journal_not_in_issue"), JSON.parse(response.body)["error"]
+      end
+
+      should "reject a journal of another issue" do
+        stub_llm_never_called
+        post_completion(journals(:journals_003).id)
+        assert_response :bad_request
+        assert_equal I18n.t("ai_helper.completion_errors.journal_not_in_issue"), JSON.parse(response.body)["error"]
+      end
+
+      should "reject an invisible private journal" do
+        journal = Journal.create!(journalized: @issue, user: User.find(1), notes: "private note", private_notes: true)
+        # A user who may see the issue but not private notes: only this
+        # visibility gap can produce the journal_not_in_issue response
+        role = Role.create!(name: "Private-blind viewer", permissions: [ :view_issues, :view_ai_helper, :edit_own_issue_notes ])
+        viewer = User.create!(login: "privblind", firstname: "Private", lastname: "Blind",
+                              mail: "privblind@example.com", password: "abc12345", password_confirmation: "abc12345")
+        Member.create!(project: @issue.project, user: viewer, roles: [ role ])
+        @request.session[:user_id] = viewer.id
+        User.current = viewer
+
+        stub_llm_never_called
+        post_completion(journal.id)
+        assert_response :bad_request
+        assert_equal I18n.t("ai_helper.completion_errors.journal_not_in_issue"), JSON.parse(response.body)["error"]
+      end
+
+      should "reject a visible journal the user may not edit" do
+        role = Role.create!(name: "Viewer", permissions: [ :view_issues, :view_ai_helper ])
+        member = User.create!(login: "viewer", firstname: "View", lastname: "Only",
+                              mail: "viewer@example.com", password: "abc12345", password_confirmation: "abc12345")
+        Member.create!(project: @issue.project, user: member, roles: [ role ])
+        @request.session[:user_id] = member.id
+        User.current = member
+
+        stub_llm_never_called
+        post_completion(@journal.id)
+        assert_response :forbidden
+        assert_equal I18n.t("ai_helper.completion_errors.journal_not_editable"), JSON.parse(response.body)["error"]
+      end
+
+      should "log a warning naming the journal, issue and user when a journal request is rejected" do
+        logger_mock = mock("ai_helper_logger")
+        logger_mock.expects(:warn).with do |message|
+          message.include?("journal_id=999999") && message.include?("issue_id=#{@issue.id}") &&
+            message.include?("user=#{User.current.id}")
+        end
+        RedmineAiHelper::Util::CompletionJournalResolver.stubs(:ai_helper_logger).returns(logger_mock)
+
+        stub_llm_never_called
+        post_completion(999_999)
+        assert_response :bad_request
+      end
+
+      should "pass the journal to the LLM and return the suggestion" do
+        RedmineAiHelper::Llm.any_instance.expects(:generate_text_completion).with(
+          text: "I have reviewed",
+          context_type: "note",
+          cursor_position: 15,
+          project: @project,
+          issue: @issue,
+          journal: @journal
+        ).returns("The reviewed suggestion")
+
+        post_completion(@journal.id)
+        assert_response :success
+        assert_equal "The reviewed suggestion", JSON.parse(response.body)["suggestion"]
+      end
+
+      should "pass journal nil when journal_id is omitted" do
+        RedmineAiHelper::Llm.any_instance.expects(:generate_text_completion).with(
+          text: "I have reviewed",
+          context_type: "note",
+          cursor_position: 15,
+          project: @project,
+          issue: @issue,
+          journal: nil
+        ).returns("New comment suggestion")
+
+        post_completion(:omitted)
+        assert_response :success
+        assert_equal "New comment suggestion", JSON.parse(response.body)["suggestion"]
+      end
+
+      should "pass journal nil when journal_id is null" do
+        RedmineAiHelper::Llm.any_instance.expects(:generate_text_completion).with(
+          text: "I have reviewed",
+          context_type: "note",
+          cursor_position: 15,
+          project: @project,
+          issue: @issue,
+          journal: nil
+        ).returns("New comment suggestion")
+
+        post_completion(nil)
+        assert_response :success
+        assert_equal "New comment suggestion", JSON.parse(response.body)["suggestion"]
+      end
+
+      should "log the journal_id" do
+        logger_mock = mock("ai_helper_logger")
+        logger_mock.stubs(:error)
+        logger_mock.expects(:info).with do |message|
+          message.include?("journal_id=#{@journal.id}")
+        end
+        @controller.stubs(:ai_helper_logger).returns(logger_mock)
+        RedmineAiHelper::Llm.any_instance.stubs(:generate_text_completion).returns("logged")
+
+        post_completion(@journal.id)
+        assert_response :success
+      end
+    end
+
+      # Top-level tests (CRF-006): controller -> real Llm -> real
+      # IssueReadAgent, only the RubyLLM chat stubbed, inspecting the rendered
+      # prompt.
+      context "suggest_completion prompt content (top-level)" do
+        setup do
+          @captured_prompt = nil
+          RedmineAiHelper::Agents::IssueReadAgent.any_instance.stubs(:chat).with do |messages, *_rest|
+            @captured_prompt = messages.first[:content]
+            true
+          end.returns("Suggested text.")
+        end
+
+        should "build the edit-request prompt from earlier comments only and name the original author" do
+          # journals_002 (1 day ago, John Smith) is being edited; journals_001
+          # (2 days ago) is earlier; this new one is later and must not appear
+          later = Journal.create!(journalized: Issue.find(1), user: User.find(1),
+                                  notes: "later comment after the edited one")
+          journal = journals(:journals_002)
+          assert later.created_on > journal.created_on
+
+          @request.session[:user_id] = User.find(1).id
+          User.current = User.find(1)
+          post_completion(journal.id)
+
+          assert_response :success
+          assert_not_nil @captured_prompt
+          # The writer is the comment's original author, not the current user.
+          # John Smith is also the issue author, so assert the writer line of
+          # the template rather than the bare name
+          assert_includes @captured_prompt, 'helping user "John Smith"'
+          assert_not_includes @captured_prompt, 'helping user "Redmine Admin"'
+          # The edited comment and later ones are absent from the history
+          assert_not_includes @captured_prompt, "Some notes with Redmine links"
+          assert_not_includes @captured_prompt, "later comment after the edited one"
+          # The earlier comment is the history
+          assert_includes @captured_prompt, "Journal notes"
+        end
+
+        should "build the new-comment prompt with newest-first history" do
+          middle = Journal.create!(journalized: Issue.find(1), user: User.find(2),
+                                   notes: "middle age comment")
+          # journals_001 (2 days ago) < journals_002 (1 day ago) < middle (now)
+          journal_oldest = journals(:journals_001)
+          journal_newer = journals(:journals_002)
+          assert journal_oldest.created_on < journal_newer.created_on
+          assert journal_newer.created_on < middle.created_on
+
+          post_completion(:omitted)
+
+          assert_response :success
+          assert_not_nil @captured_prompt
+          assert_includes @captured_prompt, "middle age comment"
+          assert_includes @captured_prompt, "Journal notes"
+          # Newest first: the middle comment appears before the 1-day-old one,
+          # which appears before the 2-day-old one
+          assert_operator(@captured_prompt.index("middle age comment"), :<,
+                         @captured_prompt.index("Some notes with Redmine links"))
+          assert_operator(@captured_prompt.index("Some notes with Redmine links"), :<,
+                          @captured_prompt.index("Journal notes"))
+        end
+      end
 
     context "_interactive_options partial" do
       should "render a free-input button with data-free-input attribute" do

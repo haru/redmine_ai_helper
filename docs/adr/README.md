@@ -116,3 +116,11 @@ Briefly describe alternatives that were rejected and why.
 | [061](./061-health-report-pdf-body-drawn-by-redmine-pdf-renderer.md) | Draw the health report PDF body with Redmine's PDF renderer from the screen HTML | Accepted |
 | [062](./062-office-attachments-sent-as-redmine-markdown-preview.md) | Send Office attachments to the LLM as Redmine's Markdown preview | Accepted |
 | [063](./063-prompt-template-strict-input-variables.md) | PromptTemplate#format requires the declared variables exactly | Accepted |
+| [064](./064-chat-popup-moves-the-sidebar-element.md) | Show the chat as a popup by moving the sidebar element | Accepted |
+| [065](./065-chat-popup-close-animation-reverses-open.md) | Animate the chat popup closing as the reverse of opening | Accepted |
+| [066](./066-devcontainer-uses-local-headless-chromium.md) | Run Playwright MCP against a local headless Chromium in the devcontainer | Accepted |
+| [067](./067-project-management-tools-check-permissions-on-every-object.md) | Project management tools check permissions on every object they use | Proposed |
+| [068](./068-project-management-tools-atomic-writes-and-guard-scope.md) | Project management tools write atomically and state the guard scope precisely | Proposed |
+| [069](./069-project-management-tools-adr-067-claims-superseded.md) | State which ADR-067 claims ADR-068 supersedes, and type-check boolean tool arguments | Proposed |
+| [070](./070-journal-edit-form-aids-attachment.md) | Attach typo check and auto-completion to comment edit forms through a hook and a MutationObserver | Accepted |
+| [071](./071-comment-completion-context.md) | Comment completion context: note context everywhere, newest-first history, edit scope by earlier comments | Accepted |

@@ -91,3 +91,4 @@ Gemfile.local
 .qlty/
 .rubocop_todo.yml
 .opencode/package-lock.json
+CLAUDE.local.md

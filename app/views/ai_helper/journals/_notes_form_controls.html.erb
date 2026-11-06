@@ -1,0 +1,64 @@
+<%# Typo check and auto-completion aids for a journal (posted comment) edit
+    form. Rendered by the view_journals_notes_form_after_notes hook inside
+    journals/_notes_form.html.erb. The element starts hidden; the
+    AiHelperJournalEditAids script places it after the editor and shows it. %>
+
+<% if RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: project) %>
+<% autocompletion_config = RedmineAiHelper::Util::ConfigFile.autocompletion_settings %>
+<div class="ai-helper-journal-edit-controls ai-helper-autocompletion-controls" style="display: none;"
+     data-config='<%= {
+       journalId: journal.id,
+       textareaId: "journal_#{journal.id}_notes",
+       completionEndpoint: ai_helper_suggest_completion_path(id: project.id, issue_id: journal.journalized_id),
+       typoEndpoint: ai_helper_check_typos_path(project),
+       userId: User.current.id,
+       debounceDelay: autocompletion_config[:debounce_delay] || 500,
+       minLength: autocompletion_config[:min_length] || 5,
+       suggestionColor: autocompletion_config[:suggestion_color] || '#888888',
+       completionLabels: {
+         commonToggleLabel: t('ai_helper.autocompletion.common_toggle_label'),
+         loading: t('ai_helper.autocompletion.loading'),
+         noSuggestions: t('ai_helper.autocompletion.no_suggestions'),
+         acceptSuggestion: t('ai_helper.autocompletion.accept_suggestion'),
+         dismiss: t('ai_helper.autocompletion.dismiss'),
+         enabledTooltip: t('ai_helper.autocompletion.note_enabled_tooltip'),
+         disabledTooltip: t('ai_helper.autocompletion.note_disabled_tooltip')
+       },
+       typoLabels: RedmineAiHelper::Util::TypoCheckLabels.labels
+     }.to_json %>'>
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <span>
+      <input type="checkbox" id="ai-helper-journal-<%= journal.id %>-autocompletion-toggle" class="ai-helper-journal-autocompletion-toggle" />
+      <label for="ai-helper-journal-<%= journal.id %>-autocompletion-toggle">
+        <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
+        <%= t('ai_helper.autocompletion.common_toggle_label') %>
+      </label>
+    </span>
+
+    <!-- Typo check button -->
+    <%= link_to "javascript:void(0)", class: "icon icon-edit ai-helper-journal-typo-check-btn" do %>
+      <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
+      <%= t('ai_helper.typo_check.check_button') %>
+    <% end %>
+  </div>
+
+  <!-- Typo control panel for this journal's textarea -->
+  <div class="ai-helper-typo-control-panel ai-helper-journal-typo-control-panel" style="display: none;">
+    <button type="button" class="ai-helper-typo-apply-all-btn">
+      <%= t('ai_helper.typo_check.accept_all') %>
+    </button>
+    <button type="button" class="ai-helper-typo-close-btn">
+      <%= t('ai_helper.typo_check.close') %>
+    </button>
+  </div>
+
+  <!-- Hidden templates for typo suggestion accept/reject buttons. The typo
+       overlay looks these up in the whole document, so every page that shows
+       a typo checker needs a copy (ai_helper/shared/_textarea_overlay and
+       ai_helper/wiki/_textarea_overlay carry one too). -->
+  <div style="display: none;">
+    <button type="button" class="ai-helper-typo-accept-btn-template"><%= sprite_icon("ai-helper-check", plugin: :redmine_ai_helper) %></button>
+    <button type="button" class="ai-helper-typo-reject-btn-template"><%= sprite_icon("ai-helper-x", plugin: :redmine_ai_helper) %></button>
+  </div>
+</div>
+<% end %>
