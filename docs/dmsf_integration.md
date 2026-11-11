@@ -20,11 +20,14 @@ when invoked outside the chat through another interface.
 
 ## Current commands
 
-- `search_files(query:, project_id: nil, limit: 10)` searches **metadata only**:
-  filename, title, and description. Results include project, folder path, current
-  version/revision and a DMSF view link. Up to 20 results are returned; at most
-  2,000 documents are scanned per request. `truncated: true` indicates that the
-  result/scan cap was reached.
+- `search_files(query:, project_id: nil, limit: 10)` searches filename, title,
+  and description. When DMSF's full-text index (Xapian) is available, matches
+  inside document **content** are included too. Results include project, folder
+  path, current version/revision and a DMSF view link. Up to 20 results are
+  returned; at most 2,000 documents are scanned per request. `truncated: true`
+  indicates that the result/scan cap was reached. Content matches are
+  re-authorized per hit and only appear when `RedmineDmsf.xapian_available` is
+  true (the `xapian` gem and a built index); otherwise search is metadata-only.
 - `analyze_file(file_id:, question: nil)` analyzes the **current revision** of a
   PDF or UTF-8 plain text/code document, through the configured AI model. The
   document bytes are sent to the AI provider only after access checks and the
@@ -33,8 +36,11 @@ when invoked outside the chat through another interface.
 
 ## Limitations and follow-up work
 
-- **No content-wide search or vector indexing yet.** Metadata search cannot
-  find text inside PDFs. A future index should handle revised, deleted and
+- **Content-wide search depends on DMSF Xapian.** Text inside documents is
+  found only when DMSF's Xapian index is installed and built
+  (`RedmineDmsf.xapian_available`); without it, `search_files` is metadata-only.
+  AI Helper adds no index of its own for DMSF, and no vector indexing of DMSF
+  content is provided. A future index should handle revised, deleted and
   permission-changed documents without leaking old snippets.
 - Office formats (`.docx`, `.xlsx`, `.pptx`, `.odt`) are not analyzed in this
   initial version. They require a vetted extraction/preview path.

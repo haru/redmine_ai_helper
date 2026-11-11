@@ -27,8 +27,9 @@ module RedmineAiHelper
 
       define_function :search_files,
         description: "Search Redmine DMSF documents by filename, title or description. " \
-                     "Only permitted projects and current, non-deleted revisions are included. " \
-                     "Returns DMSF links and revision metadata, not file contents." do
+                     "When DMSF full-text indexing (Xapian) is available, matches inside document " \
+                     "content are included too. Only permitted projects and current, non-deleted " \
+                     "revisions are included. Returns DMSF links and revision metadata, not file contents." do
         property :query, type: "string", description: "Required text to find in DMSF document metadata", required: true
         property :project_id, type: "integer", description: "Optional Redmine project ID", required: false
         property :limit, type: "integer", description: "Maximum matches (1 to 20; default 10)", required: false
@@ -72,6 +73,14 @@ module RedmineAiHelper
               break
             end
             documents << document_metadata(file)
+          end
+
+          # Optional content search: when DMSF's full-text index (Xapian) is
+          # available, DmsfFile.search also matches text inside documents. The
+          # hits are re-authorized here (fail-closed) and appended under the same
+          # cap, so no file outside the caller's permissions can leak.
+          append_content_matches(documents, query.strip, projects, project_ids, max_results) do
+            truncated = true
           end
 
           { documents: documents, scanned: scanned, truncated: truncated }
@@ -174,6 +183,55 @@ module RedmineAiHelper
       def dmsf_scope(project_ids)
         ::DmsfFile.visible.where(project_id: project_ids)
                     .includes(:project, :dmsf_folder, :dmsf_file_revisions)
+      end
+
+      # DMSF full-text content search is only possible through its Xapian index.
+      # @return [Boolean] true when the Xapian-backed content search is usable
+      def content_search_available?
+        defined?(::RedmineDmsf) && ::RedmineDmsf.respond_to?(:xapian_available) &&
+          ::RedmineDmsf.xapian_available
+      end
+
+      # Append full-text (Xapian) content matches to the metadata results,
+      # re-authorizing every hit and honoring the shared result cap. No-op when
+      # Xapian is unavailable, so behavior is unchanged in that case.
+      # @param documents [Array<Hash>] Metadata results collected so far
+      # @param query [String] Stripped search text
+      # @param projects [Array<Project>] Authorized projects
+      # @param project_ids [Array<Integer>] Authorized project IDs
+      # @param max_results [Integer] Result cap
+      # @yield invoked once when more content matches exist beyond the cap
+      # @return [void]
+      def append_content_matches(documents, query, projects, project_ids, max_results)
+        return unless content_search_available?
+
+        seen = documents.map { |doc| doc[:id] }.to_set
+        content_search_files(query, projects).each do |file|
+          next if seen.include?(file.id)
+          next unless dmsf_project_allowed?(file.project)
+          next unless document_visible?(file, project_ids)
+
+          if documents.length >= max_results
+            yield
+            break
+          end
+          seen << file.id
+          documents << document_metadata(file)
+        end
+      end
+
+      # Run DMSF's search (metadata + Xapian content) and normalize the result to
+      # DmsfFile records. Redmine's acts_as_searchable may return a [count,
+      # records] pair, so flatten and keep only DmsfFile instances.
+      # @param query [String] Stripped search text
+      # @param projects [Array<Project>] Authorized projects
+      # @return [Array<DmsfFile>] Matching documents (best-effort, re-authorized)
+      def content_search_files(query, projects)
+        result = ::DmsfFile.search(query, projects, {}, User.current)
+        Array(result).flatten.select { |item| item.is_a?(::DmsfFile) }
+      rescue StandardError => e
+        info("DMSF content search unavailable, using metadata only: #{e.class}")
+        []
       end
 
       # @param file_id [Integer] DMSF document ID

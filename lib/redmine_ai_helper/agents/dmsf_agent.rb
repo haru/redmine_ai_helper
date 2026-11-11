@@ -9,9 +9,7 @@ module RedmineAiHelper
     # BaseAgent registers this agent automatically; AgentList hides it if disabled.
     class DmsfAgent < RedmineAiHelper::BaseAgent
       # @return [Boolean] true when DMSF is present and attachment sharing opted in
-      def enabled?
-        RedmineAiHelper::Tools::DmsfTools.enabled?
-      end
+      delegate :enabled?, to: :'RedmineAiHelper::Tools::DmsfTools'
 
       # @return [String] Instructions for querying DMSF safely
       def backstory

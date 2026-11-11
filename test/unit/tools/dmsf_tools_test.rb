@@ -81,12 +81,73 @@ class DmsfToolsTest < ActiveSupport::TestCase
 
     result = @provider.search_files(query: "technical", project_id: @project.id)
 
-    assert_equal [ 42 ], result[:documents].map { |doc| doc[:id] }
+    assert_equal([ 42 ], result[:documents].map { |doc| doc[:id] })
     assert_equal "2.1", result[:documents].first[:version]
     assert_equal 87, result[:documents].first[:revision_id]
     assert_equal "https://redmine.example/dmsf_files/42/view", result[:documents].first[:url]
     assert_equal 1, result[:scanned]
     assert_equal false, result[:truncated]
+  end
+
+  test "appends Xapian content matches not found in metadata" do
+    @provider.stubs(:require_enabled!)
+    @provider.stubs(:authorized_projects).returns([ @project ])
+    @provider.stubs(:dmsf_project_allowed?).returns(true)
+    @provider.stubs(:document_visible?).returns(true)
+    @provider.stubs(:content_search_available?).returns(true)
+    @provider.stubs(:content_search_files).returns([ @file ])
+    scope = mock("empty DMSF scope")
+    scope.expects(:find_each).with(batch_size: 100)
+    @provider.stubs(:dmsf_scope).returns(scope)
+
+    result = @provider.search_files(query: "inside")
+
+    assert_equal([ 42 ], result[:documents].map { |doc| doc[:id] })
+  end
+
+  test "deduplicates content matches already found by metadata" do
+    @provider.stubs(:require_enabled!)
+    @provider.stubs(:authorized_projects).returns([ @project ])
+    @provider.stubs(:dmsf_project_allowed?).returns(true)
+    @provider.stubs(:document_visible?).returns(true)
+    @provider.stubs(:content_search_available?).returns(true)
+    @provider.stubs(:content_search_files).returns([ @file ])
+    scope = mock("DMSF scope yields the same file")
+    scope.expects(:find_each).with(batch_size: 100).yields(@file)
+    @provider.stubs(:dmsf_scope).returns(scope)
+
+    result = @provider.search_files(query: "technical")
+
+    assert_equal([ 42 ], result[:documents].map { |doc| doc[:id] })
+  end
+
+  test "never appends unauthorized Xapian content matches" do
+    @provider.stubs(:require_enabled!)
+    @provider.stubs(:authorized_projects).returns([ @project ])
+    @provider.stubs(:dmsf_project_allowed?).returns(false)
+    @provider.stubs(:content_search_available?).returns(true)
+    @provider.stubs(:content_search_files).returns([ @file ])
+    scope = mock("empty DMSF scope")
+    scope.expects(:find_each).with(batch_size: 100)
+    @provider.stubs(:dmsf_scope).returns(scope)
+
+    result = @provider.search_files(query: "inside")
+
+    assert_empty result[:documents]
+  end
+
+  test "content search is a no-op when Xapian is unavailable" do
+    @provider.stubs(:require_enabled!)
+    @provider.stubs(:authorized_projects).returns([ @project ])
+    @provider.stubs(:content_search_available?).returns(false)
+    @provider.expects(:content_search_files).never
+    scope = mock("empty DMSF scope")
+    scope.expects(:find_each).with(batch_size: 100)
+    @provider.stubs(:dmsf_scope).returns(scope)
+
+    result = @provider.search_files(query: "inside")
+
+    assert_empty result[:documents]
   end
 
   test "never adds invisible DMSF documents to search results" do
@@ -107,7 +168,7 @@ class DmsfToolsTest < ActiveSupport::TestCase
     @provider.stubs(:authorized_projects).returns([ @project ])
     scope = Object.new
     file = @file
-    scope.define_singleton_method(:find_each) do |batch_size:, &block|
+    scope.define_singleton_method(:find_each) do |**_kwargs, &block|
       2_050.times { block.call(file) }
     end
     @provider.stubs(:dmsf_scope).returns(scope)
@@ -152,7 +213,7 @@ class DmsfToolsTest < ActiveSupport::TestCase
 
     assert_equal "A technical specification summary", result[:analysis]
     assert_equal "https://redmine.example/dmsf_files/42/view", result[:document][:url]
-    refute result.to_s.include?("/tmp/")
+    assert_not result.to_s.include?("/tmp/")
   end
 
   test "rejects oversized documents without downloading them" do
