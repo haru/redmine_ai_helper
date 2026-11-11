@@ -36,8 +36,13 @@ class DmsfToolsTest < ActiveSupport::TestCase
   end
 
   test "does not expose search without the attachment opt-in" do
-    RedmineAiHelper::Tools::DmsfTools.stubs(:enabled?).returns(false)
+    RedmineAiHelper::Tools::DmsfTools.stubs(:available?).returns(true)
+    AiHelperSetting.stubs(:attachment_send_enabled?).returns(false)
+    original = ENV["REDMINE_AI_HELPER_DMSF_ENABLED"]
+    ENV["REDMINE_AI_HELPER_DMSF_ENABLED"] = "1"
     assert_match(/unavailable/, @provider.search_files(query: "Specification")[:error])
+  ensure
+    ENV["REDMINE_AI_HELPER_DMSF_ENABLED"] = original
   end
 
   test "requires a separate explicit DMSF opt-in" do
@@ -50,6 +55,21 @@ class DmsfToolsTest < ActiveSupport::TestCase
     assert_equal true, RedmineAiHelper::Tools::DmsfTools.enabled?
   ensure
     ENV["REDMINE_AI_HELPER_DMSF_ENABLED"] = original
+  end
+
+  test "blocks DMSF metadata when the user lacks DMSF file permission" do
+    @provider.stubs(:accessible_project?).with(@project).returns(true)
+    @project.stubs(:module_enabled?).with(:dmsf).returns(true)
+    User.current.stubs(:allowed_to?).with(:view_dmsf_files, @project).returns(false)
+
+    assert_equal false, @provider.send(:dmsf_project_allowed?, @project)
+  end
+
+  test "blocks DMSF access when AI Helper project scope denies it" do
+    @provider.stubs(:accessible_project?).with(@project).returns(false)
+    User.current.expects(:allowed_to?).with(:view_dmsf_files, @project).never
+
+    assert_equal false, @provider.send(:dmsf_project_allowed?, @project)
   end
 
   test "searches only explicitly authorized DMSF projects" do
