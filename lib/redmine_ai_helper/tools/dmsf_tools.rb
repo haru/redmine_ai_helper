@@ -136,7 +136,8 @@ module RedmineAiHelper
       # @raise [UserError] when the integration is unavailable
       def require_enabled!
         unless self.class.enabled?
-          raise UserError, "DMSF integration is unavailable. Install DMSF, set REDMINE_AI_HELPER_DMSF_ENABLED=1 and enable 'Send attachments to LLM'."
+          raise UserError, "DMSF integration is unavailable. Install DMSF, set " \
+                           "REDMINE_AI_HELPER_DMSF_ENABLED=1 and enable 'Send attachments to LLM'."
         end
       end
 
