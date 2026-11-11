@@ -64,11 +64,14 @@ module RedmineAiHelper
             next unless document_visible?(file, project_ids)
             next unless [ file.name, file.title, file.description ].any? { |value| value.to_s.downcase.include?(needle) }
 
-            documents << document_metadata(file)
+            # A match found while already at the cap proves there are more
+            # results beyond it; stop and flag truncation. Appending only while
+            # below the cap keeps truncated false when matches equal the cap.
             if documents.length >= max_results
               truncated = true
               break
             end
+            documents << document_metadata(file)
           end
 
           { documents: documents, scanned: scanned, truncated: truncated }
@@ -165,9 +168,12 @@ module RedmineAiHelper
       end
 
       # @param project_ids [Array<Integer>] Allowed project IDs
-      # @return [ActiveRecord::Relation] Non-deleted DMSF documents
+      # @return [ActiveRecord::Relation] Non-deleted DMSF documents, with the
+      #   per-row associations used by document_visible?/document_metadata
+      #   (project, folder, revisions) eager-loaded to avoid N+1 queries.
       def dmsf_scope(project_ids)
         ::DmsfFile.visible.where(project_id: project_ids)
+                    .includes(:project, :dmsf_folder, :dmsf_file_revisions)
       end
 
       # @param file_id [Integer] DMSF document ID
