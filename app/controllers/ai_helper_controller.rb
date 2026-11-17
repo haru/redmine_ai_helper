@@ -840,8 +840,13 @@ class AiHelperController < ApplicationController
   end
 
   # Set the conversation ID in the session
+  #
+  # Assign a new hash to the top-level key. Rack copies only the top level when
+  # it loads the session, so an in-place change to the nested hash is not seen
+  # as a change by stores that persist only modified sessions (e.g.
+  # activerecord-session_store, GitHub issue #568) and the ID would be lost.
   def set_conversation_id(id)
-    session[:ai_helper][:conversation_id] = id
+    session[:ai_helper] = session[:ai_helper].merge(conversation_id: id)
   end
 
   # Retrieve the conversation from the session-stored conversation ID.

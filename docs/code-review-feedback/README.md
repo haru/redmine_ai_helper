@@ -182,3 +182,6 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-096](./096-journal-edit-tests-asserted-what-another-layer-guaranteed.md) | Journal edit tests asserted what another layer guaranteed, or missed the guard | test-gap | Local AI review | Not yet |
 | [CRF-097](./097-journal-edit-comments-and-docs-lagged-the-code.md) | Comments, JSDoc, wiki pages and an ADR lagged the journal edit code | doc-comment | Local AI review | Not yet |
 | [CRF-098](./098-completion-init-ran-outside-the-destroy-guard.md) | Completion init() ran outside the guard that destroys the instance on failure | error-handling | GitHub Copilot (PR #552) | Not yet |
+| [CRF-099](./099-session-tests-vacuous-and-incomplete.md) | Session persistence tests asserted what they had just written and left a spec scenario and helper failure modes uncovered | test-gap | Local AI review | Not yet |
+| [CRF-100](./100-session-test-comments-overstated-store-behaviour.md) | Comments overstated the cookie store's behaviour and omitted why nested session hashes are shared | doc-comment | Local AI review | Not yet |
+| [CRF-101](./101-wiki-kept-overstated-cookie-store-claim.md) | Wiki page kept the overstated cookie store claim already corrected in the test comments | doc-comment | GitHub Copilot (PR #569) | Not yet |
