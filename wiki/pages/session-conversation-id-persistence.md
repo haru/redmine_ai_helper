@@ -24,8 +24,11 @@ lost (S062):
   is saved (S062).
 - The symptom (issue #568): `chat` creates a conversation, but `call_llm` sees an empty
   `ai_helper` and fails. It reproduced with both the marshal and json serializers (S062).
-- Redmine's default `cookie_store` serializes the whole session on every response, so
-  the bug is invisible there (S062).
+- Redmine's default `cookie_store` re-serializes the whole session on every response
+  whose request loaded the session (Rack's `commit_session?`; Redmine sets no
+  `:renew`/`:expire_after` options that would force a write otherwise). It has no
+  nested-change detection to skip that write, and `create_session` loads the session on
+  every AI Helper action, so the bug is invisible there (S062).
 
 ## Fix
 
