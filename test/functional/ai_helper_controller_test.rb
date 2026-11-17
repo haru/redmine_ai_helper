@@ -2130,6 +2130,17 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_not_nil session[:ai_helper][:conversation_id]
       end
 
+      should "raise when set_conversation_id is called before the ai_helper session area exists" do
+        # create_session guarantees the area; a missing one is a bug to surface, not to absorb
+        @controller.request = @request
+        @request.session[:ai_helper] = nil
+
+        # Guards against absorbing the missing area with a fallback such as `.to_h` or `|| {}`
+        error = assert_raises(NoMethodError) { @controller.send(:set_conversation_id, @conversation.id) }
+        assert_equal :merge, error.name
+        assert_nil error.receiver
+      end
+
       should "handle authorize_project_health with valid permissions" do
         # Test successful authorization
         User.current.stubs(:allowed_to?).with(:view_ai_helper, @project).returns(true)

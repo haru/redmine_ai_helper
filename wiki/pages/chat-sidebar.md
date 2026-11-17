@@ -1,8 +1,8 @@
 ---
 title: AI Chat Sidebar
 type: component
-sources: [S013, S044, S049, S058]
-updated: 2026-11-01
+sources: [S013, S044, S049, S058, S062]
+updated: 2026-11-17
 ---
 
 # AI Chat Sidebar
@@ -73,6 +73,10 @@ format (S013) — the same method that folds in imported
   `rel="noopener noreferrer"`, only `http(s)` URLs as links). No JavaScript
   builds them; the existing reload shows them, including after reopening a
   conversation (ADR-052, S044). See [Web Search & Citations](./web-search-citations.md).
+
+## Displayed conversation in the session
+
+The displayed conversation ID lives in `session[:ai_helper][:conversation_id]`; it must be written by reassigning the key, or change-detecting session stores drop it. See [Session Conversation ID Persistence](./session-conversation-id-persistence.md) (S062).
 
 ## Popup mode
 
