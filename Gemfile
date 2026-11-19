@@ -2,7 +2,7 @@ source "https://rubygems.org"
 
 gem "json", "< 4"
 gem "mcp", "~> 1.9.0"
-gem "ruby_llm", "~> 2.1.0"
+gem "ruby_llm", "~> 2.2.0"
 
 gem "langfuse", "~> 0.1.1"
 gem "qdrant-ruby", "~> 0.9.10"
