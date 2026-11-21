@@ -16,7 +16,7 @@ export function normalize(text) {
  * @keyframes blocks are skipped. Any construct the scan does not model throws,
  * because the contract tests that use it would silently miss rules (CRF-024,
  * CRF-033). That covers: any other at-rule, a nested @media, a nested rule,
- * unbalanced braces or parentheses, text without a block, a comma inside
+ * unbalanced braces or parentheses, an unclosed style rule, text without a block, a comma inside
  * parentheses in a selector, url() or a missing colon in a declaration, a
  * property declared twice in one rule, and var(--oc-*) inside @keyframes.
  * @param {string} source CSS source, comments allowed
@@ -87,6 +87,9 @@ function enterBlock(css, state, open) {
     throw new Error(`Unsupported at-rule: ${prelude}`);
   } else {
     const end = css.indexOf("}", open);
+    if (end === -1) {
+      throw new Error(`Unclosed rule: ${prelude}`);
+    }
     const body = css.slice(open + 1, end);
     if (body.includes("{")) {
       throw new Error(`Nested rule inside: ${prelude}`);

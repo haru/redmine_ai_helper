@@ -31,6 +31,7 @@ describe("parseRules (test helper)", () => {
     ["text without a block", "a { b: c } stray"],
     ["a nested rule", "a { b { c: d } }"],
     ["an unclosed @keyframes block", "@keyframes k { 0% { a: b }"],
+    ["an unclosed style rule", "a { b: c"],
     ["a declaration without a colon", "a { garbage; b: c }"],
     ["a comma inside :is()", "a:is(b, c) { d: e }"],
     ["a comma inside :has()", "body:has(.a, .b) c { d: e }"],

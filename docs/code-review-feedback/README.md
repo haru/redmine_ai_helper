@@ -188,3 +188,4 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-102](./102-oc-var-scan-tests-missed-equivalent-spellings.md) | Open Color scan tests missed equivalent spellings and unmodelled CSS | test-gap | Local AI review | Not yet |
 | [CRF-103](./103-oc-fallback-docs-and-comments-inexact.md) | Open Color fallback ADR and CSS comments were inexact | doc-comment | Local AI review | Not yet |
 | [CRF-104](./104-oc-test-helpers-left-in-test-file-and-duplicated.md) | Open Color test helpers lived in a test file and duplicated a scan loop | readability | Local AI review | Not yet |
+| [CRF-105](./105-css-parser-looped-on-unclosed-style-rule.md) | CSS test parser looped forever on an unclosed style rule | test-gap | GitHub Copilot (PR #572) | Not yet |
