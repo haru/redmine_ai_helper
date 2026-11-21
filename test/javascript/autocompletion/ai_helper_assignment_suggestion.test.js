@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadScript } from "../support/load_script.js";
+import { flushPromises, installFetchStub } from "../support/fetch_stub.js";
 
 describe("AiHelperAssignmentSuggestion", () => {
   let container;
@@ -360,6 +361,203 @@ describe("AiHelperAssignmentSuggestion", () => {
       expect(suggestion.panel).not.toBe(firstPanel);
       expect(firstPanel.isConnected).toBe(false);
       expect(container.querySelectorAll(".ai-helper-suggest-assignee-panel").length).toBe(1);
+    });
+  });
+
+  // --- Re-render release (088-fix-issue-form-rerender): destroy() must
+  // remove the link/panel and cancel the in-flight request so a response
+  // belonging to a detached form never reaches the new form (CRF-061). ---
+
+  /** Helper: Add the subject input fetchSuggestions reads. */
+  function addSubjectInput(value = "Bug in login") {
+    const input = document.createElement("input");
+    input.id = "issue_subject";
+    input.value = value;
+    container.appendChild(input);
+    return input;
+  }
+
+  describe("destroy (088-fix-issue-form-rerender)", () => {
+    let errorSpy;
+
+    beforeEach(() => {
+      errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      errorSpy.mockRestore();
+    });
+
+    it("sets destroyed, removes the link and the panel from the DOM", () => {
+      addAssignedToField();
+      const suggestion = createSuggestion();
+      suggestion.init();
+      suggestion.open();
+      expect(document.querySelector(".ai-helper-suggest-assignee-link")).not.toBeNull();
+      expect(document.querySelector(".ai-helper-suggest-assignee-panel")).not.toBeNull();
+
+      suggestion.destroy();
+
+      expect(suggestion.destroyed).toBe(true);
+      expect(suggestion.link).toBeNull();
+      expect(document.querySelector(".ai-helper-suggest-assignee-link")).toBeNull();
+      expect(document.querySelector(".ai-helper-suggest-assignee-panel")).toBeNull();
+    });
+
+    it("does not throw when the link was never created", () => {
+      const suggestion = createSuggestion();
+      expect(() => suggestion.destroy()).not.toThrow();
+      expect(suggestion.destroyed).toBe(true);
+    });
+
+    it("aborts an unfinished fetch", () => {
+      addAssignedToField();
+      addSubjectInput();
+      const suggestion = createSuggestion();
+      suggestion.init();
+      const fetchStub = installFetchStub();
+
+      suggestion.open();
+      expect(fetchStub.calls.length).toBe(1);
+      suggestion.destroy();
+
+      expect(fetchStub.calls[0].options.signal.aborted).toBe(true);
+    });
+
+    it("ignores a response arriving after destroy() and never selects a user", async () => {
+      addAssignedToField();
+      addSubjectInput();
+      const suggestion = createSuggestion();
+      suggestion.init();
+      const fetchStub = installFetchStub();
+
+      suggestion.open();
+      suggestion.destroy();
+      const renderSpy = vi.spyOn(suggestion, "renderHtml");
+      fetchStub.calls[0].resolve("<div>Late response</div>");
+      await flushPromises();
+
+      expect(renderSpy).not.toHaveBeenCalled();
+      expect(document.querySelector(".ai-helper-suggest-assignee-panel")).toBeNull();
+      expect(document.getElementById("issue_assigned_to_id").value).toBe("");
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+
+    it("ignores an error arriving after destroy()", async () => {
+      addAssignedToField();
+      addSubjectInput();
+      const suggestion = createSuggestion();
+      suggestion.init();
+      const fetchStub = installFetchStub();
+
+      suggestion.open();
+      suggestion.destroy();
+      fetchStub.calls[0].reject(new Error("boom"));
+      await flushPromises();
+
+      expect(document.querySelector(".ai-helper-suggest-assignee-panel")).toBeNull();
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+
+    it("close() aborts an unfinished fetch", () => {
+      addAssignedToField();
+      addSubjectInput();
+      const suggestion = createSuggestion();
+      suggestion.init();
+      const fetchStub = installFetchStub();
+
+      suggestion.open();
+      suggestion.close();
+
+      expect(fetchStub.calls[0].options.signal.aborted).toBe(true);
+    });
+
+    it("ignores the previous response when closed and opened again", async () => {
+      addAssignedToField();
+      addSubjectInput();
+      const suggestion = createSuggestion();
+      suggestion.init();
+      const fetchStub = installFetchStub();
+
+      suggestion.open();
+      suggestion.close();
+      suggestion.open();
+      expect(fetchStub.calls.length).toBe(2);
+
+      fetchStub.calls[0].resolve("<div>Old response</div>");
+      await flushPromises();
+      expect(suggestion.panel.innerHTML).not.toContain("Old response");
+      expect(suggestion.panel.innerHTML).toContain("Loading");
+
+      fetchStub.calls[1].resolve("<div>New response</div>");
+      await flushPromises();
+      expect(suggestion.panel.innerHTML).toContain("New response");
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+
+    it("close() releases the controller so the aborted request no longer owns the instance", () => {
+      addAssignedToField();
+      addSubjectInput();
+      const suggestion = createSuggestion();
+      suggestion.init();
+      installFetchStub();
+
+      suggestion.open();
+      expect(suggestion.abortController).not.toBeNull();
+      suggestion.close();
+
+      expect(suggestion.abortController).toBeNull();
+    });
+
+    it("ignores a non-abort error of a superseded open() (closed and opened again)", async () => {
+      addAssignedToField();
+      addSubjectInput();
+      const suggestion = createSuggestion();
+      suggestion.init();
+      const fetchStub = installFetchStub();
+
+      suggestion.open();
+      suggestion.close();
+      suggestion.open();
+      expect(fetchStub.calls.length).toBe(2);
+
+      // The first request fails with a plain error, not an AbortError: only
+      // the ownership check can drop it
+      fetchStub.calls[0].reject(new Error("late failure"));
+      await flushPromises();
+
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect(suggestion.panel.innerHTML).toContain("Loading");
+      expect(suggestion.panel.innerHTML).not.toContain("Something went wrong");
+    });
+
+    it.each([["init"], ["open"]])("%s() throws on a destroyed instance instead of touching the new form", (method) => {
+      addAssignedToField();
+      const suggestion = createSuggestion();
+      suggestion.destroy();
+
+      expect(() => suggestion[method]()).toThrow("destroyed");
+
+      expect(document.querySelector(".ai-helper-suggest-assignee-link")).toBeNull();
+      expect(document.querySelector(".ai-helper-suggest-assignee-panel")).toBeNull();
+    });
+
+    it("does not display or log an abort-caused AbortError", async () => {
+      addAssignedToField();
+      addSubjectInput();
+      const suggestion = createSuggestion();
+      suggestion.init();
+      const fetchStub = installFetchStub();
+
+      suggestion.open();
+      suggestion.close();
+      const abortError = new Error("The user aborted a request.");
+      abortError.name = "AbortError";
+      fetchStub.calls[0].reject(abortError);
+      await flushPromises();
+
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect(document.querySelector(".ai-helper-suggest-assignee-panel")).toBeNull();
     });
   });
 });

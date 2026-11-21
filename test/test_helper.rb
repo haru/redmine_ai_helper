@@ -185,3 +185,5 @@ setting = AiHelperSetting.find_or_create
 setting.model_profile_id = profile.id
 setting.additional_instructions = "This is a test system prompt."
 setting.save!
+
+require_relative "support/connection_errors"

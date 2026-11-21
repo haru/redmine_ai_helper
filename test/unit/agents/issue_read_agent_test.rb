@@ -2,6 +2,7 @@ require File.expand_path("../../../test_helper", __FILE__)
 require "redmine_ai_helper/agents/issue_read_agent"
 
 class RedmineAiHelper::Agents::IssueReadAgentTest < ActiveSupport::TestCase
+  include RedmineAiHelper::TestSupport::ConnectionErrors
   fixtures :projects, :users, :issues, :issue_statuses, :trackers, :enumerations
 
   context "IssueReadAgent" do
@@ -970,21 +971,77 @@ class RedmineAiHelper::Agents::IssueReadAgentTest < ActiveSupport::TestCase
         end
       end
 
-      context "when the LLM request times out" do
-        setup do
+      [ :read_timeout, :connect_timeout ].each do |kind|
+        context "when the LLM request times out (#{kind})" do
+          setup do
+            mock_prompt = mock("Prompt")
+            mock_prompt.stubs(:format).returns("Complete the text")
+            @agent.stubs(:load_prompt).returns(mock_prompt)
+            @agent.stubs(:chat).raises(build_connection_error(kind))
+
+            @logger = mock("ai_helper_logger")
+            @logger.stubs(:debug)
+            @logger.stubs(:info)
+            @agent.stubs(:ai_helper_logger).returns(@logger)
+          end
+
+          should "return an empty string instead of propagating the error" do
+            @logger.stubs(:warn)
+
+            result = @agent.generate_text_completion(
+              text: "Test completion",
+              cursor_position: 4,
+              context_type: "description",
+              project: @project,
+              issue: @issue
+            )
+
+            assert_equal "", result
+          end
+
+          should "log a warning naming the context type and the project" do
+            @logger.expects(:warn).once.with do |message|
+              message.include?("description") && message.include?(@project.identifier)
+            end
+            @logger.expects(:error).never
+
+            @agent.generate_text_completion(
+              text: "Test completion",
+              cursor_position: 4,
+              context_type: "description",
+              project: @project,
+              issue: @issue
+            )
+          end
+
+          should "not log the timeout as an error" do
+            @logger.stubs(:warn)
+            @logger.expects(:error).never
+
+            @agent.generate_text_completion(
+              text: "Test completion",
+              cursor_position: 4,
+              context_type: "note",
+              project: @project,
+              issue: @issue
+            )
+          end
+        end
+      end
+
+      context "when the LLM request fails for another reason" do
+        should "keep logging an error and returning an empty string when the connection is refused" do
           mock_prompt = mock("Prompt")
           mock_prompt.stubs(:format).returns("Complete the text")
           @agent.stubs(:load_prompt).returns(mock_prompt)
-          @agent.stubs(:chat).raises(Faraday::TimeoutError.new("execution expired"))
+          @agent.stubs(:chat).raises(build_connection_error(:refused))
 
-          @logger = mock("ai_helper_logger")
-          @logger.stubs(:debug)
-          @logger.stubs(:info)
-          @agent.stubs(:ai_helper_logger).returns(@logger)
-        end
-
-        should "return an empty string instead of propagating the error" do
-          @logger.stubs(:warn)
+          logger = mock("ai_helper_logger")
+          logger.stubs(:debug)
+          logger.stubs(:info)
+          logger.expects(:warn).never
+          logger.expects(:error).at_least_once
+          @agent.stubs(:ai_helper_logger).returns(logger)
 
           result = @agent.generate_text_completion(
             text: "Test completion",
@@ -997,10 +1054,19 @@ class RedmineAiHelper::Agents::IssueReadAgentTest < ActiveSupport::TestCase
           assert_equal "", result
         end
 
-        should "log a warning naming the context type and the project" do
-          @logger.expects(:warn).with do |message|
-            message.include?("description") && message.include?(@project.identifier)
-          end
+        should "name the class of the cause in the error log when the connection is refused" do
+          mock_prompt = mock("Prompt")
+          mock_prompt.stubs(:format).returns("Complete the text")
+          @agent.stubs(:load_prompt).returns(mock_prompt)
+          @agent.stubs(:chat).raises(build_connection_error(:refused))
+
+          logger = mock("ai_helper_logger")
+          logger.stubs(:debug)
+          logger.stubs(:info)
+          logger.expects(:warn).never
+          logger.stubs(:error)
+          logger.expects(:error).with { |message| message.include?("Faraday::ConnectionFailed") }.at_least_once
+          @agent.stubs(:ai_helper_logger).returns(logger)
 
           @agent.generate_text_completion(
             text: "Test completion",
@@ -1011,32 +1077,18 @@ class RedmineAiHelper::Agents::IssueReadAgentTest < ActiveSupport::TestCase
           )
         end
 
-        should "not log the timeout as an error" do
-          @logger.stubs(:warn)
-          @logger.expects(:error).never
-
-          @agent.generate_text_completion(
-            text: "Test completion",
-            cursor_position: 4,
-            context_type: "note",
-            project: @project,
-            issue: @issue
-          )
-        end
-      end
-
-      context "when the LLM request fails for another reason" do
-        should "keep logging an error and returning an empty string" do
+        should "log an error and return an empty string for a RubyLLM error that is not a connection error" do
           mock_prompt = mock("Prompt")
           mock_prompt.stubs(:format).returns("Complete the text")
           @agent.stubs(:load_prompt).returns(mock_prompt)
-          @agent.stubs(:chat).raises(Faraday::ConnectionFailed, "boom")
+          @agent.stubs(:chat).raises(RubyLLM::ServerError.new("upstream failure"))
 
           logger = mock("ai_helper_logger")
           logger.stubs(:debug)
           logger.stubs(:info)
           logger.expects(:warn).never
-          logger.expects(:error).at_least_once
+          logger.stubs(:error)
+          logger.expects(:error).with { |message| message.include?("RubyLLM::ServerError") }.at_least_once
           @agent.stubs(:ai_helper_logger).returns(logger)
 
           result = @agent.generate_text_completion(

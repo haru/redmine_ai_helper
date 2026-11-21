@@ -1,0 +1,38 @@
+<%# Notes-field AI Helper controls (completion toggle + typo check panel).
+    Rendered by view_issues_edit_notes_bottom, i.e. inside fieldset#add_notes
+    and outside #all_attributes, so re-rendering the issue form
+    (replaceIssueFormWith) never duplicates them. The project is judged the
+    same way as in shared/_textarea_overlay.html.erb (@project first): the
+    notes aids read their settings from that partial's config container, so
+    both partials must render under the same condition. This hook is called
+    only from issues/_edit.html.erb, i.e. for a persisted issue. See ADR-073. %>
+<% notes_project = @project || issue.project %>
+<% if RedmineAiHelper::Util::PermissionChecker.module_enabled?(project: notes_project) && issue.attributes_editable? %>
+<div id="ai-helper-notes-checkbox-container" class="ai-helper-autocompletion-controls" style="display: none;">
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <span>
+      <input type="checkbox" id="ai-helper-autocompletion-notes-toggle" />
+      <label for="ai-helper-autocompletion-notes-toggle">
+        <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
+        <%= t('ai_helper.autocompletion.common_toggle_label') %>
+      </label>
+    </span>
+
+    <!-- Typo check button -->
+    <%= link_to "javascript:void(0)", id: "ai-helper-typo-check-notes-btn", class: "icon icon-edit" do %>
+      <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
+      <%= t('ai_helper.typo_check.check_button') %>
+    <% end %>
+  </div>
+</div>
+
+<!-- Typo Control Panel for Issue Notes -->
+<div id="ai-helper-typo-control-panel-notes" class="ai-helper-typo-control-panel" style="display: none;">
+  <button type="button" class="ai-helper-typo-apply-all-btn">
+    <%= t('ai_helper.typo_check.accept_all') %>
+  </button>
+  <button type="button" class="ai-helper-typo-close-btn">
+    <%= t('ai_helper.typo_check.close') %>
+  </button>
+</div>
+<% end %>

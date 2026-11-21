@@ -98,14 +98,15 @@ module RedmineAiHelper
           ai_helper_logger.debug "Generated wiki completion: #{completion.length} characters"
 
           parse_wiki_completion_response(completion)
-        rescue Faraday::TimeoutError => e
-          # Completion runs under a short timeout on purpose; giving up quietly
-          # is the expected outcome for a slow backend, not a failure to report.
-          ai_helper_logger.warn "Wiki completion timed out in WikiAgent (context_type=wiki, project=#{project&.identifier}): #{e.message}"
-          ""
-        rescue => e
-          ai_helper_logger.error "Wiki completion error in WikiAgent: #{e.message}"
-          ai_helper_logger.error "Error backtrace: #{e.backtrace.join("\n")}"
+        rescue RubyLLM::Error => e
+          if RedmineAiHelper::Util::ConnectionErrorHelper.timeout?(e)
+            # Completion runs under a short timeout on purpose; giving up quietly
+            # is the expected outcome for a slow backend, not a failure to report.
+            ai_helper_logger.warn "Wiki completion timed out in WikiAgent (context_type=wiki, project=#{project&.identifier}): #{e.message}"
+          else
+            ai_helper_logger.error "Wiki completion error in WikiAgent: #{RedmineAiHelper::Util::ConnectionErrorHelper.describe(e)}"
+            ai_helper_logger.error "Error backtrace: #{e.backtrace.join("\n")}"
+          end
           ""
         end
       end

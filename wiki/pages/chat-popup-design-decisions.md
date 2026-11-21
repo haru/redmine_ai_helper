@@ -1,8 +1,8 @@
 ---
 title: Chat Popup Design Decisions
 type: decision
-sources: [S058, S059]
-updated: 2026-11-01
+sources: [S058, S059, S063]
+updated: 2026-11-21
 ---
 
 # Chat Popup Design Decisions
@@ -44,3 +44,7 @@ element to `#sidebar-wrapper` also puts it back in the menu (S058).
 - **Animating the position only**: the user chose to restore the size too (S059).
 - **Deleting the saved state after the animation**: a navigation in the 200ms
   would reopen the popup (S059).
+
+## Colours on Redmine 6 (ADR-072, S063)
+The popup's background, border, shadow and rule colours use `var(--oc-*)` with
+Redmine 6 fallbacks; see [Redmine 6 Fallbacks for Open Color Variables](./redmine-6-open-color-fallbacks.md) (S063).

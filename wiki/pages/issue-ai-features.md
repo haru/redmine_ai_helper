@@ -1,8 +1,8 @@
 ---
 title: Issue AI Features
 type: component
-sources: [S014, S017, S021, S035, S061]
-updated: 2026-11-03
+sources: [S014, S017, S021, S035, S061, S064]
+updated: 2026-11-21
 ---
 
 # Issue AI Features
@@ -85,6 +85,14 @@ a posted comment, and completion for comments always uses the note context with
 a newest-first history; when editing, the writer is the comment's author and
 only earlier comments are used. Details, validation and failure handling:
 [Comment Edit Form Aids](./comment-edit-form-aids.md) (S061).
+
+### Form re-render resilience
+
+Changing the project, tracker, status or parent field re-renders
+`#all_attributes`, and `AiHelperIssueFormAids` re-attaches the description
+completion, typo check, duplicate check and assignee suggestion per render.
+Details: [Issue Form Re-render Resilience](./issue-form-rerender-resilience.md)
+(S064).
 
 ## Related
 

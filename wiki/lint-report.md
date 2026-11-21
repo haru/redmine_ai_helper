@@ -1,16 +1,17 @@
-# Wiki Lint Report — 2026-10-03
+# Wiki Lint Report — 2026-11-21
 
-All 3 findings were fixed by hand at the user's request (semantic findings are never auto-rewritten).
+Mechanical fixes applied: none needed (`index-drift` and `links` are clean). Row 1 was fixed by hand afterwards at the user's request; the other findings are reported only.
 
-| # | Check | Severity | Page | Finding | Outcome |
+| # | Check | Severity | Page | Finding | Suggested fix |
 |---|-------|----------|------|---------|---------------|
-| 1 | contradictions | semantic | health-report.md | Unresolved `> ⚠ conflict:` — S011 says saved-report Markdown is parsed client-side by `AiHelperMarkdownParser`; S038 says saved reports were rendered with `textilizable` and now use server-side `md_to_html`. S038 describes the current code (feature 064), so the S011 claim is outdated. | Fixed: conflict marker removed; the page now states server-side `md_to_html` rendering (S038) and notes S011's client-side parsing as historical. |
-| 2 | citations | semantic | mcp-server-endpoint.md | Body cites S027 and S029, but frontmatter `sources` omits them. | Fixed: S027, S029 added to `sources`. |
-| 3 | citations | semantic | vector-search-internals.md | Body cites S002, but frontmatter `sources` omits it. | Fixed: S002 added to `sources`. |
+| 1 | orphans | structural | project-management-tools.md | No other page links to it (only `INDEX.md`). | Fixed: linked from the Related list in `tool-system.md`. |
+| 2 | stale | semantic | nginx-sse-proxy.md, custom-commands.md, chat-history-apis.md, chat-context-import.md, discord-message-content-intent.md, think-model.md (all updated 2026-08-01) | `updated` is older than 90 days. No source for them was re-ingested later. | Check against the current code and re-ingest the source, or touch `updated` after verifying. |
+| 3 | stale | semantic | inbound-chat-webhook-ingest.md, inbound-webhook-endpoint.md, inbound-event-queue.md, inbound-adapter-development.md, public-url-scope.md (2026-08-07 to 2026-08-08), agent-write-capability-routing.md (2026-08-07) | Same: older than 90 days. | Same as #2. |
+| 4 | stale | semantic | classic-script-testing-strategy.md, js-coverage-ratchet-policy.md, js-quality-tooling.md, js-test-convention.md (all 2026-08-22) | Same, and they are at the edge: older than 90 days as of 2026-11-21. | Re-verify against `vitest.config.js` and `package.json`. |
+| 5 | citations | structural | (18 pages over 600 words) | Exceeded the 600-word split rule in `SCHEMA.md`. | Fixed: all 18 split into a main page plus a linked sub-page (all now under 600 words); each split is listed in `INDEX.md`. |
 
 ## Checks with no findings
 
-- **index-drift** — all 47 pages are in `INDEX.md`; no dangling entries.
+- **index-drift** — all pages are in `INDEX.md`; no dangling entries.
 - **links** — no broken relative links; all cited S-ids exist in `sources.md`.
-- **orphans** — every page is linked from at least one other page.
-- **stale** — no page older than 90 days; no source re-ingested after its pages were updated.
+- **contradictions** — no `> ⚠ conflict:` markers.

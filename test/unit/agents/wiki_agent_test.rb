@@ -1,6 +1,7 @@
 require_relative "../../test_helper"
 
 class WikiAgentTest < ActiveSupport::TestCase
+  include RedmineAiHelper::TestSupport::ConnectionErrors
   fixtures :projects, :wikis, :wiki_pages, :wiki_contents, :users
 
   def setup
@@ -212,8 +213,8 @@ class WikiAgentTest < ActiveSupport::TestCase
         assert_kind_of String, completion
       end
 
-      should "handle errors gracefully" do
-        @agent.stubs(:chat).raises(StandardError.new("Test error"))
+      should "handle RubyLLM errors gracefully" do
+        @agent.stubs(:chat).raises(RubyLLM::ServerError.new("Test error"))
 
         completion = @agent.generate_wiki_completion(
           text: "Error test",
@@ -238,22 +239,73 @@ class WikiAgentTest < ActiveSupport::TestCase
         )
       end
 
-      context "when the LLM request times out" do
-        setup do
-          @agent.stubs(:chat).raises(Faraday::TimeoutError.new("execution expired"))
+      [ :read_timeout, :connect_timeout ].each do |kind|
+        context "when the LLM request times out (#{kind})" do
+          setup do
+            @agent.stubs(:chat).raises(build_connection_error(kind))
 
-          @logger = mock("ai_helper_logger")
-          @logger.stubs(:debug)
-          @logger.stubs(:info)
-          @agent.stubs(:ai_helper_logger).returns(@logger)
+            @logger = mock("ai_helper_logger")
+            @logger.stubs(:debug)
+            @logger.stubs(:info)
+            @agent.stubs(:ai_helper_logger).returns(@logger)
+          end
+
+          should "return an empty string instead of propagating the error" do
+            @logger.stubs(:warn)
+
+            completion = @agent.generate_wiki_completion(
+              text: "Timeout test",
+              cursor_position: 12,
+              project: @project,
+              wiki_page: @wiki_page
+            )
+
+            assert_equal "", completion
+          end
+
+          should "log a warning naming the context type and the project" do
+            @logger.expects(:warn).once.with do |message|
+              message.include?("wiki") && message.include?(@project.identifier)
+            end
+            @logger.expects(:error).never
+
+            @agent.generate_wiki_completion(
+              text: "Timeout test",
+              cursor_position: 12,
+              project: @project,
+              wiki_page: @wiki_page
+            )
+          end
+
+          should "not log the timeout as an error" do
+            @logger.stubs(:warn)
+            @logger.expects(:error).never
+
+            @agent.generate_wiki_completion(
+              text: "Timeout test",
+              cursor_position: 12,
+              project: @project,
+              wiki_page: @wiki_page
+            )
+          end
         end
+      end
 
-        should "return an empty string instead of propagating the error" do
-          @logger.stubs(:warn)
+      context "when the LLM request fails for another reason" do
+        should "log an error and return an empty string for a RubyLLM error that is not a connection error" do
+          @agent.stubs(:chat).raises(RubyLLM::ServerError.new("upstream failure"))
+
+          logger = mock("ai_helper_logger")
+          logger.stubs(:debug)
+          logger.stubs(:info)
+          logger.expects(:warn).never
+          logger.stubs(:error)
+          logger.expects(:error).with { |message| message.include?("RubyLLM::ServerError") }.at_least_once
+          @agent.stubs(:ai_helper_logger).returns(logger)
 
           completion = @agent.generate_wiki_completion(
-            text: "Timeout test",
-            cursor_position: 12,
+            text: "Error test",
+            cursor_position: 10,
             project: @project,
             wiki_page: @wiki_page
           )
@@ -261,35 +313,23 @@ class WikiAgentTest < ActiveSupport::TestCase
           assert_equal "", completion
         end
 
-        should "log a warning naming the context type and the project" do
-          @logger.expects(:warn).with do |message|
-            message.include?("wiki") && message.include?(@project.identifier)
+        should "let an error that is not a RubyLLM error surface instead of returning an empty string" do
+          @agent.stubs(:chat).raises(StandardError.new("boom"))
+
+          error = assert_raises(StandardError) do
+            @agent.generate_wiki_completion(
+              text: "Error test",
+              cursor_position: 10,
+              project: @project,
+              wiki_page: @wiki_page
+            )
           end
 
-          @agent.generate_wiki_completion(
-            text: "Timeout test",
-            cursor_position: 12,
-            project: @project,
-            wiki_page: @wiki_page
-          )
+          assert_equal "boom", error.message
         end
 
-        should "not log the timeout as an error" do
-          @logger.stubs(:warn)
-          @logger.expects(:error).never
-
-          @agent.generate_wiki_completion(
-            text: "Timeout test",
-            cursor_position: 12,
-            project: @project,
-            wiki_page: @wiki_page
-          )
-        end
-      end
-
-      context "when the LLM request fails for another reason" do
-        should "keep logging an error and returning an empty string" do
-          @agent.stubs(:chat).raises(StandardError.new("boom"))
+        should "log an error, not a warning, when the connection is refused" do
+          @agent.stubs(:chat).raises(build_connection_error(:refused))
 
           logger = mock("ai_helper_logger")
           logger.stubs(:debug)

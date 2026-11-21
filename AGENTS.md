@@ -140,6 +140,7 @@ Agents expose tools by overriding `available_tool_providers` to return an array 
 - Error handling: **NEVER implement fallback error handling**. Let errors surface immediately. No silent continues.
 - A `rescue` that turns failures into a result value (a "failed" flag, an error response) lists the error classes the external call can raise (API, network, parse) — never `StandardError` — and wraps only that call. Specs and contracts that prescribe such a rescue name the classes too. A value returned across an adapter or plugin boundary is checked with `is_a?` where it is first used, and a violation raises. A log line for a failed operation on a created resource names that resource's id (CRF-014, CRF-022, SF-010)
 - A method that returns a union is consumed with `case`/`when` over every member and an `else` that raises. Data read back from the database or a file is boundary input: validate its element types (CRF-050)
+- A teardown that releases several independent resources runs every release even when an earlier one throws, collects the errors and rethrows them after the last release (`AggregateError` for more than one); its test makes one release throw and asserts every other resource was released (CRF-110)
 - Value objects validate their documented invariants in `initialize` and raise `ArgumentError`. A method documented to accept a type union branches on the types explicitly and raises on anything else — do not let `to_s` or `&.` absorb unexpected values (CRF-003, CRF-009)
 
 ### Testing

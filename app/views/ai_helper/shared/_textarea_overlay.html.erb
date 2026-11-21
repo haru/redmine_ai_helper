@@ -47,37 +47,10 @@
 </div>
 <% end %>
 
-<% if @issue&.persisted? && !@issue.new_record? %>
-<div id="ai-helper-notes-checkbox-container" class="ai-helper-autocompletion-controls" style="display: none;">
-  <div style="display: flex; justify-content: space-between; align-items: center;">
-    <span>
-      <input type="checkbox" id="ai-helper-autocompletion-notes-toggle" />
-      <label for="ai-helper-autocompletion-notes-toggle">
-        <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
-        <%= t('ai_helper.autocompletion.common_toggle_label') %>
-      </label>
-    </span>
-
-    <!-- Typo check button -->
-    <%= link_to "javascript:void(0)", id: "ai-helper-typo-check-notes-btn", class: "icon icon-edit" do %>
-      <%= sprite_icon("ai-helper-robot", plugin: :redmine_ai_helper) %>
-      <%= t('ai_helper.typo_check.check_button') %>
-    <% end %>
-  </div>
-</div>
-<% end %>
-
-<!-- Typo Control Panels for Issue Description and Notes -->
+<!-- Typo Control Panel for Issue Description (the notes panel is rendered
+     by ai_helper/issues/_notes_controls.html.erb via view_issues_edit_notes_bottom,
+     so it is outside #all_attributes and never duplicated by form re-renders) -->
 <div id="ai-helper-typo-control-panel-description" class="ai-helper-typo-control-panel" style="display: none;">
-  <button type="button" class="ai-helper-typo-apply-all-btn">
-    <%= t('ai_helper.typo_check.accept_all') %>
-  </button>
-  <button type="button" class="ai-helper-typo-close-btn">
-    <%= t('ai_helper.typo_check.close') %>
-  </button>
-</div>
-
-<div id="ai-helper-typo-control-panel-notes" class="ai-helper-typo-control-panel" style="display: none;">
   <button type="button" class="ai-helper-typo-apply-all-btn">
     <%= t('ai_helper.typo_check.accept_all') %>
   </button>

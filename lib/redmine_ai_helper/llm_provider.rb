@@ -40,7 +40,7 @@ module RedmineAiHelper
       # @param embedding_model [String, nil] embedding model name; blank uses the provider default
       # @return [Integer] the dimension of the returned vector
       # @raise [UnexpectedEmbeddingResponseError] when no non-empty numeric vector is returned
-      # @raise [StandardError] provider / Faraday errors are propagated unchanged
+      # @raise [RubyLLM::Error] provider and network errors are propagated unchanged
       def test_embedding(profile:, embedding_model:)
         provider = provider_for_profile(profile, request_options: { request_timeout: EMBEDDING_TEST_TIMEOUT, max_retries: 0 })
         vectors = provider.embed(EMBEDDING_TEST_TEXT, embedding_model: embedding_model.presence)

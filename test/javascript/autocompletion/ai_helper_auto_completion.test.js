@@ -887,6 +887,40 @@ describe("AiHelperAutoCompletion request lifecycle", () => {
     });
   });
 
+  describe("restoreEnabled", () => {
+    afterEach(() => {
+      localStorage.clear();
+    });
+
+    it("sets the checkbox and isEnabled without writing localStorage", () => {
+      localStorage.setItem("aiHelperAutoCompletion_anonymous", JSON.stringify({ enabled: true }));
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+
+      completion.restoreEnabled(false);
+
+      expect(completion.isEnabled).toBe(false);
+      expect(completion.checkbox.checked).toBe(false);
+      expect(JSON.parse(localStorage.getItem("aiHelperAutoCompletion_anonymous")).enabled).toBe(true);
+
+      completion.restoreEnabled(true);
+
+      expect(completion.isEnabled).toBe(true);
+      expect(completion.checkbox.checked).toBe(true);
+    });
+
+    it("throws a TypeError on a non-boolean value", () => {
+      const dom = createTextareaDOM();
+      container = dom.container;
+      const completion = createCompletion(dom.textarea);
+
+      expect(() => completion.restoreEnabled("false")).toThrow(new TypeError("ai_helper: restoreEnabled expects a boolean, got string"));
+      expect(() => completion.restoreEnabled(undefined)).toThrow(new TypeError("ai_helper: restoreEnabled expects a boolean, got undefined"));
+      expect(completion.isEnabled).toBe(true);
+    });
+  });
+
   describe("onTextChange", () => {
     it("returns early when text and cursor unchanged", () => {
       const dom = createTextareaDOM();

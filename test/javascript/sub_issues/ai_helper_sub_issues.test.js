@@ -1,10 +1,17 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadScript } from "../support/load_script.js";
 import { loadScriptAndFireDOMContentLoaded } from "../support/dom_content_loaded.js";
 
 // ai_helper_sub_issues.js is an IIFE with no window-exposed API; it wires up
 // DOM event listeners and a MutationObserver on load. We drive it purely
 // through DOM events and fetch stubbing.
+
+// Every loadScript() registers an uncancelable 100ms setTimeout(initializeAllTrackers).
+// Let the last one fire before the jsdom environment is torn down, otherwise it
+// throws "document is not defined" as an unhandled error depending on timing.
+afterAll(async () => {
+  await new Promise((resolve) => setTimeout(resolve, 150));
+});
 
 describe("ai_helper_sub_issues (IIFE)", () => {
   let container;

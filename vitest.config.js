@@ -31,8 +31,9 @@ export default defineConfig({
       // stage 4: 92.19% (2290/2484) -> 90
       // stage 5: 96.11% (2972/3092) raised to 95 to match Ruby coverage target
       // stage 6 (077-fix-dashboard-health-report-error): 96.5% (3124/3237) -> 96
+      // stage 7 (088-fix-issue-form-rerender): 97.06% (3771/3885) -> 97
       thresholds: {
-        lines: 96,
+        lines: 97,
         perFile: false,
       },
     },

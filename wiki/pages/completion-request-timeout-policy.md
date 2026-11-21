@@ -1,8 +1,8 @@
 ---
 title: Completion Request Timeout Policy
 type: decision
-sources: [S021, S023]
-updated: 2026-08-26
+sources: [S021, S023, S065]
+updated: 2026-11-21
 ---
 
 # Completion Request Timeout Policy
@@ -50,13 +50,18 @@ AI features are untouched (S021).
 
 ## Which exception surfaces
 
-RubyLLM has **no timeout-specific error class** — `ruby_llm/error.rb` covers HTTP
-statuses only, and the error middleware converts responses, not transport
-exceptions (S021). With retries disabled, `Faraday::TimeoutError` propagates raw
-(connection-establishment failure surfaces as `Faraday::ConnectionFailed`)
-(S021). Both completion agent methods rescue it, log at **warn** level with
-context type, project and the Faraday error message, and return `""`; other
-exceptions keep the existing error-level log + `""` behaviour (S021).
+Since RubyLLM 2.2 the error middleware converts transport failures into
+`RubyLLM::ConnectionError` (the Faraday error is its `cause`), and
+`ConnectionError#timeout?` is true for both a read timeout and a connect timeout
+(S065). Both completion agent methods rescue it, log a timeout at **warn** level
+with context type, project and the error message, and return `""`; other
+connection errors and provider errors log at error level with the backtrace and
+return `""` (S065). Before 2.2 the agents rescued `Faraday::TimeoutError`
+directly and a connect timeout was logged as an error (S021); ADR-074 replaced
+that. `WikiAgent` and `Llm#generate_wiki_completion` rescue only `RubyLLM::Error`
+too, so a defect there surfaces instead of becoming an empty suggestion. RubyLLM 2.2 wraps only `Faraday::ConnectionFailed`, `Faraday::TimeoutError`
+and `Faraday::SSLError`; any other Faraday error (such as `Faraday::ParsingError`)
+is not wrapped, is not rescued, and surfaces as HTTP 500 (S065, ADR-074).
 
 A timeout therefore reaches the browser as `200` with `{"suggestion": ""}` —
 indistinguishable from "the model had nothing to add". The client treats both the

@@ -6,7 +6,9 @@ module RedmineAiHelper
     render_on :view_layouts_base_html_head, partial: "ai_helper/shared/html_header"
     render_on :view_layouts_base_body_top, partial: "ai_helper/chat/sidebar"
     render_on :view_issues_show_details_bottom, partial: "ai_helper/issues/bottom"
-    render_on :view_issues_edit_notes_bottom, partial: "ai_helper/issues/form"
+    render_on :view_issues_edit_notes_bottom,
+              { partial: "ai_helper/issues/form" },
+              { partial: "ai_helper/issues/notes_controls" }
     render_on :view_issues_show_description_bottom, partial: "ai_helper/issues/subissues/description_bottom"
     render_on :view_issues_form_details_bottom, partial: "ai_helper/shared/textarea_overlay"
     render_on :view_journals_notes_form_after_notes, partial: "ai_helper/journals/notes_form_controls"
