@@ -371,9 +371,12 @@ function stubAutoCompletion() {
     this.destroy = vi.fn();
     this.textarea = textarea;
     this.options = options;
+    // The real class starts enabled and init() loads the saved state
+    this.isEnabled = true;
     instances.push(this);
   };
   Mock.prototype.init = vi.fn();
+  Mock.prototype.restoreEnabled = vi.fn(function(enabled) { this.isEnabled = enabled; });
   Mock.prototype.clearSuggestion = vi.fn();
   vi.stubGlobal("AiHelperAutoCompletion", Mock);
   return { Mock, instances };
@@ -1532,17 +1535,25 @@ describe("AiHelperIssueFormAids", () => {
     expect(windowErrors).toHaveLength(1);
   });
 
-  it("a release that throws surfaces once, drops the registration and does not keep the new render from attaching", async () => {
+  it("a release that throws surfaces once, still releases the other parts, drops the registration and does not keep the new render from attaching", async () => {
+    const typoChecker = { destroy: vi.fn() };
+    vi.stubGlobal("AiHelperTypoChecker", { initFromConfig: vi.fn(() => typoChecker) });
     const dom = buildIssueForm({ persisted: false });
     await loadModule();
     window.AiHelperIssueFormAids.start();
     const firstEntry = window.AiHelperIssueFormAids.entryFor(dom.overlay);
     firstEntry.autoCompletion.destroy = vi.fn(() => { throw new Error("destroy boom"); });
+    const abort = new AbortController();
+    firstEntry.duplicateCheckAbort = abort;
 
     const secondRender = rerenderAllAttributes({ persisted: false, hookOutput: true });
     await flushPromises();
 
     expect(windowErrors.map((e) => e.message)).toEqual(["destroy boom"]);
+    // The parts after the failing one are released too: the entry already left the registry
+    expect(typoChecker.destroy).toHaveBeenCalledTimes(1);
+    expect(abort.signal.aborted).toBe(true);
+    expect(firstEntry.assignmentSuggestion.destroy).toHaveBeenCalledTimes(1);
     expect(window.AiHelperIssueFormAids.entryFor(dom.overlay)).toBeUndefined();
     expect(window.AiHelperIssueFormAids.entryFor(secondRender.overlay)).toBeDefined();
 
@@ -1551,6 +1562,23 @@ describe("AiHelperIssueFormAids", () => {
     await flushPromises();
     expect(firstEntry.autoCompletion.destroy).toHaveBeenCalledTimes(1);
     expect(windowErrors).toHaveLength(1);
+  });
+
+  it("a release where several parts fail to destroy releases every part and reports all errors together", async () => {
+    const typoChecker = { destroy: vi.fn(() => { throw new Error("typo destroy boom"); }) };
+    vi.stubGlobal("AiHelperTypoChecker", { initFromConfig: vi.fn(() => typoChecker) });
+    const dom = buildIssueForm({ persisted: false });
+    await loadModule();
+    window.AiHelperIssueFormAids.start();
+    const firstEntry = window.AiHelperIssueFormAids.entryFor(dom.overlay);
+    firstEntry.autoCompletion.destroy = vi.fn(() => { throw new Error("destroy boom"); });
+
+    rerenderAllAttributes({ persisted: false, hookOutput: true });
+    await flushPromises();
+
+    expect(windowErrors.map((e) => e.constructor)).toEqual([AggregateError]);
+    expect(windowErrors[0].errors.map((e) => e.message)).toEqual(["destroy boom", "typo destroy boom"]);
+    expect(firstEntry.assignmentSuggestion.destroy).toHaveBeenCalledTimes(1);
   });
 
   it("attach throws when the render has no data-config (boundary input is not defaulted)", async () => {
@@ -1842,6 +1870,62 @@ describe("AiHelperIssueFormAids", () => {
     );
     expect(secondEntry.autoCompletion.isEnabled).toBe(true);
     expect(secondEntry.autoCompletion).not.toBe(firstEntry.autoCompletion);
+  });
+
+  /**
+   * Edit form with the real completion class, where the description and the
+   * notes toggles are set to opposite states through their change events
+   * (both write the shared per-user localStorage key).
+   */
+  async function setUpOppositeToggles({ description, notes }) {
+    const dom = buildIssueForm({ persisted: true });
+    await loadScript("assets/javascripts/autocompletion/ai_helper_auto_completion");
+    await loadScript("assets/javascripts/autocompletion/ai_helper_auto_completion_overlay");
+    await loadModule();
+    vi.restoreAllMocks();
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    window.AiHelperIssueFormAids.start();
+
+    // Description first, then notes: the notes change is the last write to the shared key
+    for (const [field, checked] of [["description", description], ["notes", notes]]) {
+      const toggle = document.getElementById(`ai-helper-autocompletion-${field}-toggle`);
+      toggle.checked = checked;
+      toggle.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    // The precondition: the shared key now holds the notes state, not the description state
+    expect(JSON.parse(localStorage.getItem("aiHelperAutoCompletion_1")).enabled).toBe(notes);
+    return dom;
+  }
+
+  it.each([
+    { description: false, notes: true },
+    { description: true, notes: false },
+  ])("a re-render keeps the description completion at $description although the notes completion was set to $notes after it (FR-006)", async (toggles) => {
+    await setUpOppositeToggles(toggles);
+
+    rerenderAllAttributes({ persisted: true, hookOutput: true });
+    await flushPromises();
+
+    const entry = window.AiHelperIssueFormAids.entryFor(document.getElementById("ai-helper-issue-textarea-overlay"));
+    expect(entry.autoCompletion.isEnabled).toBe(toggles.description);
+    expect(document.getElementById("ai-helper-autocompletion-description-toggle").checked).toBe(toggles.description);
+    expect(document.getElementById("ai-helper-autocompletion-notes-toggle").checked).toBe(toggles.notes);
+    // The restore does not write the shared key: it still holds the notes state
+    expect(JSON.parse(localStorage.getItem("aiHelperAutoCompletion_1")).enabled).toBe(toggles.notes);
+  });
+
+  it("the description state survives an intermediate render without a description editor (FR-006)", async () => {
+    await setUpOppositeToggles({ description: false, notes: true });
+
+    // A status whose workflow makes the description read-only: no completion in this render
+    rerenderAllAttributes({ persisted: true, hookOutput: true, withDescription: false });
+    await flushPromises();
+    rerenderAllAttributes({ persisted: true, hookOutput: true });
+    await flushPromises();
+
+    const entry = window.AiHelperIssueFormAids.entryFor(document.getElementById("ai-helper-issue-textarea-overlay"));
+    expect(entry.autoCompletion.isEnabled).toBe(false);
+    expect(document.getElementById("ai-helper-autocompletion-description-toggle").checked).toBe(false);
   });
 
   // --- Five consecutive re-renders (SC-002) ---

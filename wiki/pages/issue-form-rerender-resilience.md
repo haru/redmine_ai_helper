@@ -31,9 +31,11 @@ Split from [Issue AI Features](./issue-ai-features.md).
   does the same empty-and-prepend on 6.0, 6.1 and 7.0 (S064).
 - Redmine copies the user's modified field values into the new form itself, so
   the plugin does not preserve input (S064).
-- The completion on/off state carries over with no code: each new completion
-  reads the per-user `localStorage` key `aiHelperAutoCompletion_<userId>` in
-  `init()` (S064).
+- The description completion's on/off state is recorded when its render is
+  released and restored on the next render's completion with
+  `restoreEnabled()`, which writes no storage. The per-user `localStorage` key
+  `aiHelperAutoCompletion_<userId>` read by `init()` is shared with the notes
+  toggle, so it may hold the notes state instead (S064).
 - Rejected: overriding Redmine's `replaceIssueFormWith` (ties the plugin to
   core internals), jQuery `ajaxComplete` (jQuery is not allowed), observing
   `document.body` (overlays would trigger it), and initializing only at
@@ -48,6 +50,9 @@ Split from [Issue AI Features](./issue-ai-features.md).
 - A missing `data-config`, or `data-assignment-config` when the assignee select
   exists, throws. A persisted issue's notes editor without notes controls
   throws too.
+- Releasing a render runs every part even when an earlier part's `destroy()`
+  throws, then rethrows (an `AggregateError` for several failures): the entry
+  has already left the registry, so a skipped part would never be released.
 - A second duplicate-check click aborts the first request; a released entry's
   button does nothing. A destroyed typo checker resumes the completions it had
   paused (S064).

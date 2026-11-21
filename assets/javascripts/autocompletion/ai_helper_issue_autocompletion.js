@@ -40,6 +40,16 @@ const AiHelperIssueFormAids = (() => {
   let notesAttached = false;
 
   /**
+   * @type {boolean|null} The on/off state of the last released description
+   * completion, restored on the next render's completion; null until a render
+   * with a description completion was released. It is not cleared by a
+   * render without one, so the state survives such a render too. The
+   * localStorage key cannot carry it: the notes toggle writes the same key
+   * (FR-006).
+   */
+  let descriptionEnabled = null;
+
+  /**
    * Parse a JSON data attribute of a config container. A missing attribute is
    * a rendering bug, not an empty config, so it throws.
    * @param {HTMLElement} element The config container.
@@ -105,26 +115,46 @@ const AiHelperIssueFormAids = (() => {
    * Release every part of a per-render entry and clear
    * window.aiHelperInstances.autoCompletion when it points at the released
    * completion. Used both when a render leaves the document and when attach
-   * fails midway.
+   * fails midway. The parts are independent, so every part is released even
+   * when another one throws; the entry has already left the registry, and a
+   * part skipped here would never be released. The error is rethrown after
+   * all parts ran: as is when one part failed, as an AggregateError when
+   * several did.
    * @param {IssueFormAidsEntry} entry The entry to release.
+   * @throws {Error|AggregateError} When releasing one or more parts failed.
    */
   function releaseEntry(entry) {
     entry.released = true;
     if (window.aiHelperInstances && window.aiHelperInstances.autoCompletion === entry.autoCompletion) {
       delete window.aiHelperInstances.autoCompletion;
     }
+    const errors = [];
+    const releasePart = (release) => {
+      try {
+        release();
+      } catch (error) {
+        errors.push(error);
+      }
+    };
     if (entry.autoCompletion) {
-      entry.autoCompletion.destroy();
+      releasePart(() => entry.autoCompletion.destroy());
     }
     if (entry.typoChecker) {
-      entry.typoChecker.destroy();
+      releasePart(() => entry.typoChecker.destroy());
     }
     if (entry.duplicateCheckAbort) {
-      entry.duplicateCheckAbort.abort();
+      const controller = entry.duplicateCheckAbort;
       entry.duplicateCheckAbort = null;
+      releasePart(() => controller.abort());
     }
     if (entry.assignmentSuggestion) {
-      entry.assignmentSuggestion.destroy();
+      releasePart(() => entry.assignmentSuggestion.destroy());
+    }
+    if (errors.length === 1) {
+      throw errors[0];
+    }
+    if (errors.length > 1) {
+      throw new AggregateError(errors, `Failed to release ${errors.length} parts of the issue form aids (${errors.map((e) => e.message).join('; ')})`);
     }
   }
 
@@ -290,6 +320,11 @@ const AiHelperIssueFormAids = (() => {
         entry.autoCompletion = autoCompletion;
 
         autoCompletion.init();
+        // init() read the shared localStorage key; put back the state of the
+        // completion this render replaces instead (FR-006)
+        if (descriptionEnabled !== null) {
+          autoCompletion.restoreEnabled(descriptionEnabled);
+        }
 
         // Move the description checkbox to below the description editor
         const descriptionContainer = document.getElementById('ai-helper-description-checkbox-container');
@@ -374,15 +409,19 @@ const AiHelperIssueFormAids = (() => {
   /**
    * Release the aids of registered renders that have left the document
    * (replaceIssueFormWith emptied #all_attributes). The global completion
-   * reference is cleared before the next attach can overwrite it (R-005). An
-   * entry leaves the registry before it is released, so a release that throws
-   * surfaces once instead of on every later mutation.
+   * reference is cleared before the next attach can overwrite it (R-005). The
+   * description completion's on/off state is recorded first for the next
+   * render (FR-006). An entry leaves the registry before it is released, so a
+   * release that throws surfaces once instead of on every later mutation.
    */
   function releaseDetached() {
     // isConnected also catches the removal of an ancestor of the container
     registry.forEach((entry, overlay) => {
       if (!overlay.isConnected) {
         registry.delete(overlay);
+        if (entry.autoCompletion) {
+          descriptionEnabled = entry.autoCompletion.isEnabled;
+        }
         releaseEntry(entry);
       }
     });

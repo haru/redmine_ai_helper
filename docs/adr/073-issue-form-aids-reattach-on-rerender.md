@@ -80,7 +80,10 @@ id and could select a user in the new form from a stale panel
   is a rendering bug and throws instead of being read as `{}`.
 - A registry entry leaves the registry before it is released, so a `destroy()`
   that throws surfaces once; the observer callback scans for the new render
-  even when the release threw. Each entry carries a `released` flag, so the
+  even when the release threw. Because a released entry is never visited
+  again, the release runs every part (completion, typo checker, duplicate-check
+  abort, assignee suggestion) even when an earlier one throws, then rethrows
+  (an `AggregateError` when several parts failed). Each entry carries a `released` flag, so the
   duplicate-check button listener of an entry whose attach failed does nothing
   instead of starting a request nobody can abort, and a second click aborts
   the previous duplicate-check request.
@@ -118,9 +121,15 @@ id and could select a user in the new form from a stale panel
   a project switch (SF-047); the notes aids likewise keep the page-load
   project's endpoint.
 - In-flight duplicate-check and assignee-suggestion requests of a released
-  render can no longer write into the new form. The completion on/off state
-  carries over because each new completion instance reads the same
-  `localStorage` key (`aiHelperAutoCompletion_<userId>`) in `init()`.
+  render can no longer write into the new form. The description completion's
+  on/off state carries over (FR-006): before a render is released its state is
+  recorded, and the next render's completion gets it back through
+  `restoreEnabled()` after `init()`, without writing storage. The
+  `localStorage` key (`aiHelperAutoCompletion_<userId>`) that `init()` reads
+  cannot carry it, because the description and the notes toggles both write
+  that one key; relying on it would let a notes toggle change flip the
+  description toggle on the next re-render. The recorded state survives a
+  render without a description editor.
 - The unused notes typo control panel is no longer rendered on the new-issue
   form, where it had no function.
 - The observer runs on every direct-child mutation of `#all_attributes`,
