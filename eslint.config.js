@@ -119,6 +119,9 @@ export default [
       globals: {
         AiHelperAutoCompletion: "readonly",
         AiHelperAssignmentSuggestion: "readonly",
+        // Declared via `class AiHelperTypoChecker {...}` in
+        // ai_helper_typo_checker.js and referenced for its initFromConfig factory
+        AiHelperTypoChecker: "readonly",
       },
     },
   },

@@ -189,3 +189,9 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-103](./103-oc-fallback-docs-and-comments-inexact.md) | Open Color fallback ADR and CSS comments were inexact | doc-comment | Local AI review | Not yet |
 | [CRF-104](./104-oc-test-helpers-left-in-test-file-and-duplicated.md) | Open Color test helpers lived in a test file and duplicated a scan loop | readability | Local AI review | Not yet |
 | [CRF-105](./105-css-parser-looped-on-unclosed-style-rule.md) | CSS test parser looped forever on an unclosed style rule | test-gap | GitHub Copilot (PR #572) | Not yet |
+| [CRF-106](./106-issue-form-aids-swallowed-attach-errors.md) | Issue form aids swallowed attach errors and left half-released state behind | error-handling | Local AI review | Not yet |
+| [CRF-107](./107-teardown-paths-missed-paused-state-and-ownership.md) | New teardown paths missed paused state, request ownership and the project the siblings use | edge-case | Local AI review | Not yet |
+| [CRF-108](./108-rerender-tests-negative-only-and-fixtures-not-from-erb.md) | Re-render tests had negative-only assertions and fixtures that did not follow the ERB | test-gap | Local AI review | Not yet |
+| [CRF-109](./109-adr-and-wiki-overstated-and-skipped-ingest-rules.md) | ADR-073 and the wiki overstated scope, rewrote research alternatives and skipped ingest rules | doc-comment | Local AI review | Not yet |
+| [CRF-110](./110-release-stopped-at-first-throwing-part.md) | Releasing a render stopped at the first part whose destroy threw | error-handling | GitHub Copilot (PR #574) | AGENTS.md |
+| [CRF-111](./111-rerender-restored-toggle-from-shared-storage-key.md) | Re-render restored the description toggle from a storage key shared with the notes toggle | edge-case | GitHub Copilot (PR #574) | Not yet |

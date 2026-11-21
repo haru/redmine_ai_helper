@@ -213,6 +213,26 @@ class AiHelperAutoCompletion {
   }
 
   /**
+   * Put back an on/off state this field had on a previous instance, without
+   * writing local storage. The storage key is shared per user by every field
+   * (description and notes), so after the other field's toggle changed it no
+   * longer holds this field's state; a replacement instance created by an
+   * issue form re-render restores the state of the instance it replaces
+   * instead (FR-006 of 088).
+   * @param {boolean} enabled The state to restore.
+   * @throws {TypeError} When `enabled` is not a boolean.
+   */
+  restoreEnabled(enabled) {
+    if (typeof enabled !== 'boolean') {
+      throw new TypeError(`ai_helper: restoreEnabled expects a boolean, got ${typeof enabled}`);
+    }
+    if (this.checkbox) {
+      this.checkbox.checked = enabled;
+    }
+    this.isEnabled = enabled;
+  }
+
+  /**
    * Persist the checkbox's current on/off state to local storage.
    */
   saveSettings() {
