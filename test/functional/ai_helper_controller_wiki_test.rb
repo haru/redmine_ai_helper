@@ -1,6 +1,7 @@
 require File.expand_path("../../test_helper", __FILE__)
 
 class AiHelperControllerWikiTest < Redmine::ControllerTest
+  include RedmineAiHelper::TestSupport::ConnectionErrors
   fixtures :projects, :users, :roles, :members, :member_roles, :wikis, :wiki_pages, :wiki_contents
 
   setup do
@@ -138,7 +139,7 @@ class AiHelperControllerWikiTest < Redmine::ControllerTest
 
   test "suggest_wiki_completion should return an empty suggestion when the LLM request times out" do
     RedmineAiHelper::Agents::WikiAgent.any_instance.stubs(:chat)
-      .raises(Faraday::TimeoutError.new("execution expired"))
+      .raises(build_connection_error(:read_timeout))
 
     @request.headers["Content-Type"] = "application/json"
     post :suggest_wiki_completion,
@@ -152,6 +153,49 @@ class AiHelperControllerWikiTest < Redmine::ControllerTest
     json_response = JSON.parse(response.body)
 
     assert_equal "", json_response["suggestion"]
+  end
+
+  test "suggest_wiki_completion should return an empty suggestion when only the HTTP adapter times out" do
+    # Stub only the transport so RubyLLM's ErrorMiddleware wraps the Faraday error.
+    Faraday::Adapter::NetHttp.any_instance.expects(:call).at_least_once.raises(Faraday::TimeoutError.new("Net::ReadTimeout"))
+    RedmineAiHelper::Agents::WikiAgent.any_instance.stubs(:ai_helper_logger).returns(logger = mock("ai_helper_logger"))
+    logger.stubs(:debug)
+    logger.stubs(:info)
+    logger.expects(:warn).at_least_once
+    logger.expects(:error).never
+
+    @request.headers["Content-Type"] = "application/json"
+    post :suggest_wiki_completion,
+         params: { id: @project.identifier },
+         body: JSON.generate({ text: "Timeout test", cursor_position: 12 })
+
+    assert_response :success
+    assert_equal "", JSON.parse(response.body)["suggestion"]
+  end
+
+  test "suggest_wiki_completion should return an empty suggestion when only the HTTP adapter fails to connect in time" do
+    Faraday::Adapter::NetHttp.any_instance.expects(:call).at_least_once
+      .raises(Faraday::ConnectionFailed.new(Net::OpenTimeout.new("execution expired")))
+
+    @request.headers["Content-Type"] = "application/json"
+    post :suggest_wiki_completion,
+         params: { id: @project.identifier },
+         body: JSON.generate({ text: "Timeout test", cursor_position: 12 })
+
+    assert_response :success
+    assert_equal "", JSON.parse(response.body)["suggestion"]
+  end
+
+  test "suggest_wiki_completion should surface a Faraday error that RubyLLM does not wrap" do
+    # ErrorMiddleware wraps only ConnectionFailed, TimeoutError and SSLError (ADR-074).
+    Faraday::Adapter::NetHttp.any_instance.expects(:call).at_least_once.raises(Faraday::ParsingError.new("unexpected token"))
+
+    @request.headers["Content-Type"] = "application/json"
+    post :suggest_wiki_completion,
+         params: { id: @project.identifier },
+         body: JSON.generate({ text: "Parse test", cursor_position: 10 })
+
+    assert_response :internal_server_error
   end
 
   test "suggest_wiki_completion should handle LLM errors gracefully" do

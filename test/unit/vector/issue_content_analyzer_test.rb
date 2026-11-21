@@ -1,6 +1,7 @@
 require File.expand_path("../../../test_helper", __FILE__)
 
 class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCase
+  include RedmineAiHelper::TestSupport::ConnectionErrors
   fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :journals
 
   context "IssueContentAnalyzer" do
@@ -79,7 +80,7 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
       end
 
       should "return empty result when LLM call fails" do
-        [ RubyLLM::ServerError.new("API error"), Faraday::ConnectionFailed.new("API connection failed") ].each do |error|
+        [ RubyLLM::ServerError.new("API error"), build_connection_error(:refused), build_connection_error(:read_timeout) ].each do |error|
           analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
           analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
           analyzer.stubs(:call_llm).raises(error)
@@ -89,6 +90,14 @@ class RedmineAiHelper::Vector::IssueContentAnalyzerTest < ActiveSupport::TestCas
           assert_equal "", result[:summary], "for #{error.class}"
           assert_equal [], result[:keywords], "for #{error.class}"
         end
+      end
+
+      should "raise a Faraday error that RubyLLM 2.2 never lets through" do
+        analyzer = RedmineAiHelper::Vector::IssueContentAnalyzer.new(llm_provider: @mock_llm_provider)
+        analyzer.stubs(:ai_helper_logger).returns(@mock_logger)
+        analyzer.stubs(:call_llm).raises(Faraday::ConnectionFailed.new("raw"))
+
+        assert_raises(Faraday::ConnectionFailed) { analyzer.analyze(@issue) }
       end
 
       should "raise errors from the LLM call that are not API or network errors" do

@@ -195,3 +195,7 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-109](./109-adr-and-wiki-overstated-and-skipped-ingest-rules.md) | ADR-073 and the wiki overstated scope, rewrote research alternatives and skipped ingest rules | doc-comment | Local AI review | Not yet |
 | [CRF-110](./110-release-stopped-at-first-throwing-part.md) | Releasing a render stopped at the first part whose destroy threw | error-handling | GitHub Copilot (PR #574) | AGENTS.md |
 | [CRF-111](./111-rerender-restored-toggle-from-shared-storage-key.md) | Re-render restored the description toggle from a storage key shared with the notes toggle | edge-case | GitHub Copilot (PR #574) | Not yet |
+| [CRF-112](./112-wiki-completion-catch-all-rescue-kept.md) | Wiki completion kept a catch-all rescue next to the narrowed one, on two layers | error-handling | Local AI review | Not yet |
+| [CRF-113](./113-adr-overstated-faraday-wrapping.md) | ADR-074 and the wiki said RubyLLM 2.2 never lets Faraday errors through | doc-comment | Local AI review | Not yet |
+| [CRF-114](./114-timeout-tests-missed-branches-and-real-middleware.md) | Timeout tests missed the non-ConnectionError branch and most real-middleware paths | test-gap | Local AI review | Not yet |
+| [CRF-115](./115-duplicated-timeout-predicate-and-fixture-nits.md) | Timeout predicate and log wording copied into three places, plus test fixture nits | readability | Local AI review | Not yet |

@@ -49,7 +49,7 @@ module RedmineAiHelper
         schema_payload = native ? RedmineAiHelper::Util::StructuredOutputHelper.native_schema_payload(JSON_SCHEMA) : nil
         begin
           response = call_llm(messages, with: file_paths.presence, schema: schema_payload)
-        rescue RubyLLM::Error, Faraday::Error => e
+        rescue RubyLLM::Error => e
           ai_helper_logger.warn("Failed to analyze issue content of issue ##{issue.id}: #{e.class}: #{e.message}")
           return empty_result
         end

@@ -1,6 +1,7 @@
 require_relative "../test_helper"
 
 class AiHelperControllerTest < ActionController::TestCase
+  include RedmineAiHelper::TestSupport::ConnectionErrors
   fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :custom_values, :groups_users, :members, :member_roles, :roles, :user_preferences, :issue_statuses, :wikis, :wiki_pages, :wiki_contents, :enabled_modules, :journals
 
   # Add an assistant answer with the given web search sources to the conversation.
@@ -2333,7 +2334,7 @@ class AiHelperControllerTest < ActionController::TestCase
       should "return an empty suggestion when the completion LLM request times out" do
         issue = Issue.find(1)
         RedmineAiHelper::Agents::IssueReadAgent.any_instance.stubs(:chat)
-          .raises(Faraday::TimeoutError.new("execution expired"))
+          .raises(build_connection_error(:read_timeout))
 
         @request.headers["Content-Type"] = "application/json"
         post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id },
@@ -2343,6 +2344,62 @@ class AiHelperControllerTest < ActionController::TestCase
         json_response = JSON.parse(response.body)
 
         assert_equal "", json_response["suggestion"]
+      end
+
+      should "return an empty suggestion when only the HTTP adapter times out" do
+        issue = Issue.find(1)
+        # Stub only the transport so RubyLLM's ErrorMiddleware turns the Faraday
+        # error into a ConnectionError exactly as it does against a real backend.
+        Faraday::Adapter::NetHttp.any_instance.expects(:call).at_least_once.raises(Faraday::TimeoutError.new("Net::ReadTimeout"))
+
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id },
+             body: { text: "Login page error", cursor_position: 16 }.to_json
+
+        assert_response :success
+        assert_equal "", JSON.parse(response.body)["suggestion"]
+      end
+
+      should "return an empty suggestion when only the HTTP adapter fails to connect in time" do
+        issue = Issue.find(1)
+        Faraday::Adapter::NetHttp.any_instance.expects(:call).at_least_once
+          .raises(Faraday::ConnectionFailed.new(Net::OpenTimeout.new("execution expired")))
+
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id },
+             body: { text: "Login page error", cursor_position: 16 }.to_json
+
+        assert_response :success
+        assert_equal "", JSON.parse(response.body)["suggestion"]
+      end
+
+      should "log an adapter-level timeout as a warning, not an error" do
+        issue = Issue.find(1)
+        Faraday::Adapter::NetHttp.any_instance.expects(:call).at_least_once.raises(Faraday::TimeoutError.new("Net::ReadTimeout"))
+        logger = mock("ai_helper_logger")
+        logger.stubs(:debug)
+        logger.stubs(:info)
+        logger.expects(:warn).at_least_once
+        logger.expects(:error).never
+        RedmineAiHelper::Agents::IssueReadAgent.any_instance.stubs(:ai_helper_logger).returns(logger)
+
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id },
+             body: { text: "Login page error", cursor_position: 16 }.to_json
+
+        assert_response :success
+      end
+
+      should "surface a Faraday error that RubyLLM does not wrap" do
+        issue = Issue.find(1)
+        # ErrorMiddleware wraps only ConnectionFailed, TimeoutError and SSLError (ADR-074).
+        Faraday::Adapter::NetHttp.any_instance.expects(:call).at_least_once.raises(Faraday::ParsingError.new("unexpected token"))
+
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id },
+             body: { text: "Login page error", cursor_position: 16 }.to_json
+
+        assert_response :internal_server_error
       end
 
       should "handle LLM error gracefully in suggest_completion" do
