@@ -2,7 +2,7 @@
 title: Health Report Generation Completion (Dashboard)
 type: decision
 sources: [S050]
-updated: 2026-10-17
+updated: 2026-11-21
 ---
 
 # Health Report Generation Completion (Dashboard)
@@ -60,27 +60,9 @@ change (S050).
   removed). `addPdfExportButton` is unchanged (S050; feature 078).
 - No ADR: a small local fix, not an architectural decision (S050).
 
-## Rejected alternatives
+## Rejected alternatives & gotchas
 
-- Append the field to `document.body`: detached from the widget and duplicated on
-  pane reload (S050).
-- Add `.ai-helper-project-health` to the dashboard ERB: reuses a class that
-  triggers `addPdfExportButton` and other unintended behavior (S050).
-- Do nothing when the wrapper is missing: loses the export body the overview needs
-  (S050).
-- Keep `catch` but only `console.error(error)`: still hides the cause (S050).
-- Rebuild the detail pane via `innerHTML`: violates "no HTML built in JS" (S050).
-- Disabling the generate link while the edit form is open (FR-009): withdrawn
-  because Redmine has no generic disabled-link class; opening generation with the
-  form open drops the unsaved input (S050).
-
-## Gotchas
-
-- The selected row in the history list stays `selected` on the previous report
-  during generation; after completion the top row is selected (S050).
-- Existing test DOM helper always created `.ai-helper-project-health`, which is why
-  the bug was not reproduced before; tests now use a detail-pane structure without
-  it (S050).
+Rejected alternatives and gotchas are on a separate page. See [Health Report Generation Completion: Alternatives & Gotchas](./health-report-generation-completion-alternatives.md) (S050).
 
 ## Related
 

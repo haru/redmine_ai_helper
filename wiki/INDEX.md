@@ -7,15 +7,18 @@ page files, not here.
 ## concept
 - [Plugin Overview](./pages/plugin-overview.md) — what the plugin does and the hub linking every topic page.
 - [Multi-Agent Architecture](./pages/multi-agent-architecture.md) — request flow, LeaderAgent planning, agent auto-registration, tool system, provider layer, and streaming.
+- [Multi-Agent Architecture: Agents](./pages/multi-agent-agents.md) — split from [multi-agent-architecture.md](./pages/multi-agent-architecture.md) to stay under the 600-word cap.
 
 ## decision
 - [All-Projects Data-Access Scope](./pages/all-projects-data-access-scope.md) — the `all_projects_scope` admin setting and the `PermissionChecker.data_accessible?`/`data_access_condition` methods that enforce the data-access decision across every data-reaching tool (originally 8 duplicated module-gated checks), with the intentional module-enabled/disabled asymmetry.
 - [Office Attachments Sent as Markdown Preview](./pages/office-attachments-markdown-preview.md) — ADR-062: Office files sent via Redmine's `markdownized_preview_content` as `<name>.md`, result/notice handling, UTF-8 trimming, vector-indexing rescue narrowing, rejected alternatives.
 - [All-Projects Scope: Effects & Alternatives](./pages/all-projects-scope-effects.md) — the vector-registration scope change, what stays module-gated (UI, gateway entry, read-only mode), and rejected alternatives.
 - [Agent Write-Capability Routing](./pages/agent-write-capability-routing.md) — why `can_write?`/`requires_write` guard write steps at dispatch time instead of being exposed to the router, and how skipped steps and the final-answer prompt stay consistent with what actually ran.
+- [Agent Write-Capability: Execution Behaviour](./pages/agent-write-capability-execution.md) — split from [agent-write-capability-routing.md](./pages/agent-write-capability-routing.md) to stay under the 600-word cap.
 - [MCP subscriptions/listen Rejection](./pages/mcp-listen-rejection.md) — ADR-031: the root cause (a streaming Proc body stringified into a fake 200), the three-part fix, alternatives rejected, and the gem-version-coupling gotcha it leaves behind.
 - [MCP subscriptions/listen 1.4.0 Fix](./pages/mcp-listen-rejection-1-4-0-fix.md) — ADR-032: how `mcp` 1.4.0 turned `serves_subscriptions_listen?` into the rejection gate itself, silently reopening the id-less request-storm case, and why deleting the override (not adopting the gem's new `serve_subscriptions_listen: false`) fixes it.
 - [Inbound Chat Webhook Ingest](./pages/inbound-chat-webhook-ingest.md) — why webhook events land on a Rails endpoint in Redmine, hand off through a DB table, and are polled by `InboundAdapter#start` so the gateway core stays unchanged.
+- [Inbound Webhook Polling Loop](./pages/inbound-chat-webhook-polling-loop.md) — split from [inbound-chat-webhook-ingest.md](./pages/inbound-chat-webhook-ingest.md) to stay under the 600-word cap.
 - [Public URL Scope for Chat Adapters](./pages/public-url-scope.md) — ADR-017's amendment to ADR-006: "no public URL required" is an outbound-adapter property, not a whole-plugin invariant.
 - [Completion Request Timeout Policy](./pages/completion-request-timeout-policy.md) — ADR-018: why completion LLM calls override RubyLLM's 300 s / 3-retry defaults per context, the injection path, and the alternatives rejected.
 - [Completion Suppression Scope](./pages/completion-suppression-scope.md) — ADR-019 and ADR-021: why no-change suppression lasts only while a suggestion is displayed, why `clearSuggestion` owns the teardown, and why accept must not write a snapshot.
@@ -25,43 +28,58 @@ page files, not here.
 - [Issue Summary Instructions & Role Gating](./pages/issue-summary-instructions-role-gating.md) — the one-query `Member`-based role resolution for users and groups, and why role enrichment is gated on the project's `issue_summary_instructions` being present.
 - [Issue Summary Instructions: Prompt Template & Settings](./pages/issue-summary-instructions-prompt-template.md) — the zero-prompt-diff template split, the setting's name vs. the wiki-summary feature, and why no cache invalidation is needed.
 - [Log File Location Resolution](./pages/log-file-location-resolution.md) — ADR-039: finding the Redmine log from the runtime `Rails.logger` (BroadcastLogger → private `@logdev` → `LogDevice#filename`), sharing `CustomLogger.log_file_path` for the AI Helper log, and never reading a substitute file.
+- [AI Helper Log Location Rule](./pages/ai-helper-log-location-rule.md) — split from [log-file-location-resolution.md](./pages/log-file-location-resolution.md) to stay under the 600-word cap.
 - [Model Profile Temperature Is Optional](./pages/model-profile-optional-temperature.md) — ADR-042: blank temperature sends none (providers already skip nil), the validation/migration/connection-test changes, GPT-5 auto-correction kept, and alternatives rejected.
 - [Health Report Editing](./pages/health-report-editing.md) — feature 064: the `:edit_ai_helper_health_reports` permission, keeping original + latest only, optimistic locking, `\r` normalization for unchanged saves, anonymous-editor reassignment, overview-cache invalidation, and edited notices in exports.
 - [Health Report Markdown Rendering](./pages/health-report-markdown-rendering.md) — ADR-044/057: saved reports render via `md_to_html` regardless of text formatting with `table.list` styling and no client-side re-parse, the self-loaded CommonMark jsToolBar, the dedicated preview endpoint, and the server-rendered detail pane.
+- [Health Report Editor Toolbar & Preview](./pages/health-report-editor-toolbar-and-preview.md) — split from [health-report-markdown-rendering.md](./pages/health-report-markdown-rendering.md) to stay under the 600-word cap.
 - [Version Write Tools: Strict Input & Error Results](./pages/version-write-tools-error-policy.md) — ADR-047/048: why disallowed sharing/custom fields error instead of being dropped, and why user mistakes return `{ error: }` while system failures raise.
 - [RubyLLM 2.1 Migration](./pages/ruby-llm-2-1-migration.md) — feature 069: RubyLLM 2.1 and Ruby 3.2+, API style left to RubyLLM, Azure on `:azure`, built-in MCP client (no SSE / non-loopback http), and the 2.0 API changes absorbed.
 - [Prompt Caching & Split System Prompt](./pages/prompt-caching.md) — feature 070/ADR-051: Anthropic-only cache breakpoints, the `Instructions(fixed, variable)` split, why other providers get one system string, `prompt_caching_enabled`, and Langfuse cache-token accounting.
 - [Web Search & Citations](./pages/web-search-citations.md) — feature 071/ADR-052: one dedicated `WebSearchAgent`, type-only provider support check, task-text-only requests, `WebCitation` value objects carried to the saved message, and display on screen and gateway.
 - [Health Report Detail Pane Layout](./pages/health-report-detail-pane-layout.md) — ADR-056: why the dashboard report clipped export links (non-flex body wrapper), moving the viewport cap from the pane to the frame, the edit-form and ≤900px exceptions, and rejected alternatives.
 - [Health Report Generation Completion (Dashboard)](./pages/health-report-generation-completion.md) — feature 077: why dashboard generation threw on completion (missing `.ai-helper-project-health`), hidden field under `.ai-helper-project-health-content`, `try/catch` narrowed to `JSON.parse`, clearing the previous report's details, and rejected alternatives.
+- [Health Report Generation Completion: Alternatives & Gotchas](./pages/health-report-generation-completion-alternatives.md) — split from [health-report-generation-completion.md](./pages/health-report-generation-completion.md) to stay under the 600-word cap.
 - [Health Report Charts](./pages/health-report-charts.md) — feature 078/ADR-058/ADR-059: chart directives resolved from stored metrics and drawn on screen, in PDF and as SVG zip; each chart's form chosen by what helps the reader (bars, stacked bar, number tile — no doughnuts); Redmine 6.0 importmap, rbpdf alias and observer gotchas.
+- [Health Report Charts Gotchas](./pages/health-report-charts-gotchas.md) — split from [health-report-charts.md](./pages/health-report-charts.md) to stay under the 600-word cap.
 - [Chat Popup Design Decisions](./pages/chat-popup-design-decisions.md) — ADR-064: why the sidebar element is moved not cloned, the storage split, z-index, Pointer Events, and every rejected alternative.
+- [Redmine 6 Fallbacks for Open Color Variables](./pages/redmine-6-open-color-fallbacks.md) — ADR-072: why the popup/Apply button went transparent on Redmine 6, the mandatory `var(--oc-*, fallback)` rule, and its test.
 
 ## component
 - [Chat Channel Gateway Architecture](./pages/chat-channel-gateway-architecture.md) — core + adapters structure, capability declaration, and gateway operational model.
+- [Chat Channel Gateway Operations](./pages/chat-channel-gateway-operations.md) — separate outbound process, execution account, crash vs. config-error restarts, Slack setup, removed ⏳ reaction and progress message.
 - [Chat Processing Reaction](./pages/chat-processing-reaction.md) — history of the ⏳ reaction on the question, removed in feature 073 (the ⏳ now sits on the progress message).
 - [Chat Progress Message](./pages/chat-progress-message.md) — the leader's plan/steps shown as one rewritten message in Slack/Discord and deleted after the answer; `progress_proc`, `ProgressReporter`, error policy.
 - [Slack Markdown Block Replies](./pages/slack-markdown-block-replies.md) — Slack replies/progress sent as `markdown` blocks, `send_plain_message` for failure notices, shared markdown issue-link format (ADR-055).
 - [Inbound Webhook Endpoint](./pages/inbound-webhook-endpoint.md) — the anonymous `POST /ai_helper/chat_webhook/:channel_type` controller: skipped filters, raw-body signature verification, challenge responses, webhook URL display.
+- [Inbound Webhook Event Normalization & Failures](./pages/inbound-webhook-event-normalization.md) — split from [inbound-webhook-endpoint.md](./pages/inbound-webhook-endpoint.md) to stay under the 600-word cap.
 - [Inbound Event Queue](./pages/inbound-event-queue.md) — the `ai_helper_inbound_events` table: atomic claiming, freshness expiry, retention purge, and reply metadata resolved by event id.
+- [Inbound Event Reply Metadata](./pages/inbound-event-reply-metadata.md) — split from [inbound-event-queue.md](./pages/inbound-event-queue.md) to stay under the 600-word cap.
 - [Session Conversation ID Persistence](./pages/session-conversation-id-persistence.md) — feature 086 (issue #568): why `set_conversation_id` must reassign `session[:ai_helper]` instead of mutating it (activerecord-session_store drops in-place nested writes), the `merge` fix, rejected alternatives, and the integration-test approach.
 - [Chat Context Import](./pages/chat-context-import.md) — how surrounding messages are imported, cursored, persisted as `context` role, and fed to the LLM.
 - [AI Chat Sidebar](./pages/chat-sidebar.md) — the sidebar UI: view-hook injection, the `AiHelper` JS class, SSE handling, conversation models, and Markdown/XSS (parser now streaming-only; history uses server-side `md_to_html`); popup mode (element moved, per-tab state).
 - [Chat Popup](./pages/chat-popup.md) — the sidebar chat moved into a fixed, movable, resizable popup: storage split, layout rules, pending marker, fold-state guarantee
+- [Chat Popup Layout & Gotchas](./pages/chat-popup-layout-and-gotchas.md) — split from [chat-popup.md](./pages/chat-popup.md) to stay under the 600-word cap.
 - [Issue AI Features](./pages/issue-ai-features.md) — `IssueReadAgent` summarization/caching, reply drafts, sub-issues, assignee suggestion, duplicate check, and inline completion.
 - [Inline Completion Request Flow](./pages/inline-completion-request-flow.md) — AbortController cancellation, no-change suppression, debounce-timer clearing, and where the autocompletion settings are read and validated.
+- [Inline Completion Settings](./pages/inline-completion-settings.md) — `ConfigFile.autocompletion_settings` validation, defaults and boot-time YAML behaviour (split from the request flow page).
 - [Comment Edit Form Aids](./pages/comment-edit-form-aids.md) — typo check and completion in the edit form of a posted comment: hook placement, `MutationObserver` attachment, attach-time validation and failure handling, `journal_id` validation, edit-time context, and the narrowed completion rescue.
 - [MCP Integration](./pages/mcp-integration.md) — consuming external MCP servers: dynamic agent generation and the read-only gotcha. See [MCP Server Endpoint](./pages/mcp-server-endpoint.md) for the other direction.
 - [MCP Server Endpoint](./pages/mcp-server-endpoint.md) — exposing Redmine as an MCP server: stateless mode, auth, permissions, tool groups, and the anonymous-endpoint pattern reused by inbound webhooks.
 - [Custom Commands](./pages/custom-commands.md) — reusable `/command` prompt shortcuts, scope precedence, template variables.
 - [Project Health Report](./pages/health-report.md) — `ProjectAgent` dual-pattern generation, `AiHelperHealthReport` storage, streamed comparison, export, REST API, and links to editing/rendering decisions.
+- [Health Report Export, UI & REST API](./pages/health-report-export-and-api.md) — PDF/Markdown-zip export, server-side rendering, master-detail view and the REST endpoint (split from the health report page).
 - [Think Model](./pages/think-model.md) — optional deep-reasoning model profile, its scope, validation, and no-fallback rules.
 - [BaseAgent LLM Calls](./pages/base-agent-llm-calls.md) — `chat` vs `@assistant` call styles, `think_chat`, and the `with_model` cross-provider gotcha.
 - [Tool System](./pages/tool-system.md) — the `BaseTools` DSL, `write: true`/read-only filtering, per-tool permission checks, and the tool providers.
+- [Tool System Security & Read-Only Mode](./pages/tool-system-security.md) — split from [tool-system.md](./pages/tool-system.md) to stay under the 600-word cap.
 - [LLM Provider Layer](./pages/llm-provider-layer.md) — the `LlmProvider` factory, resolution paths, provider subclasses/quirks, profile config, and structured output.
+- [LLM Provider Base Class & Quirks](./pages/llm-provider-base-and-quirks.md) — split from [llm-provider-layer.md](./pages/llm-provider-layer.md) to stay under the 600-word cap.
 - [Embedding Connection Test](./pages/embedding-connection-test.md) — the vector-tab button that embeds a fixed text with the unsaved form values: shared profile rule, 10 s per-request timeout gotchas, response check, and the removed `dimension`/`embedding_url` settings.
 - [Vector Search Internals](./pages/vector-search-internals.md) — Qdrant subsystem components, hybrid content/embeddings, payload indexes, rake tasks, staleness sync, and project-selection scope/gating.
+- [Vector Search Registration Scope](./pages/vector-search-registration-scope.md) — split from [vector-search-internals.md](./pages/vector-search-internals.md) to stay under the 600-word cap.
 - [JavaScript Quality Tooling](./pages/js-quality-tooling.md) — ESLint 10 flat config + Vitest 4/jsdom + `@vitest/coverage-v8`, Node.js/npm setup, and regression-check/CI wiring.
+- [JavaScript ESLint Configuration](./pages/js-eslint-configuration.md) — split from [js-quality-tooling.md](./pages/js-quality-tooling.md) to stay under the 600-word cap.
 - [Wiki Tools](./pages/wiki-tools.md) — `WikiTools`/`WikiWriteTools`: the unified `{id:, title:}` parent format, `wiki_update_page`'s `parent_title` semantics and validation, and why cross-wiki parents and N+1 eager-loading were left alone.
 - [Log File Access Tools](./pages/log-file-access-tools.md) — `SystemTools`' admin-only `get_log_file_info`/`read_log_tail`/`search_log`: admin → setting → input gating, the `log_access_enabled` setting, limits, path hiding, and `SystemAgent` prompt guidance.
 - [Log File Reader](./pages/log-file-reader.md) — `LogFileReader`: backward chunked tail and search, the 500 MB scan cap, literal matching, and when line numbers count from the start vs. only from the end.
@@ -72,6 +90,7 @@ page files, not here.
 - [Chat History APIs](./pages/chat-history-apis.md) — Slack/Discord message-retrieval APIs, scopes, display-name resolution, exclusion rules.
 - [Discord Message Content Intent](./pages/discord-message-content-intent.md) — why Identify requests the privileged intent (37376) and fails fast on close code 4014.
 - [Vector Search](./pages/vector-search.md) — Qdrant setup, index rake tasks, the embedding-provider constraint, and the optional vector model profile.
+- [Vector Model Profile & Attachments in the Index](./pages/vector-search-model-profile-and-attachments.md) — split from [vector-search.md](./pages/vector-search.md) to stay under the 600-word cap.
 - [Multi-modal File Support](./pages/multi-modal-file-support.md) — supported file types, attachment-to-LLM setting, and vector-index integration.
 
 ## howto

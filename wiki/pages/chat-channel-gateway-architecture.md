@@ -1,8 +1,8 @@
 ---
 title: Chat Channel Gateway Architecture
 type: component
-sources: [S001, S002, S018, S019, S044, S045, S046, S047]
-updated: 2026-10-13
+sources: [S001, S002, S018, S019, S044, S046, S047]
+updated: 2026-11-21
 ---
 
 # Chat Channel Gateway Architecture
@@ -25,43 +25,6 @@ per-tool implementations under `adapters/` (S001).
 
 The gateway itself runs as a long-lived rake task; incoming mentions are
 turned into an `IncomingMessage` and handled through `MessageHandler` (S001).
-
-## Operational model
-
-- It runs as a **separate background process** that connects *outward* to the
-  chat service, so **no public URL** is required for the Redmine server (S002).
-  Start it with `rake redmine:plugins:ai_helper:chat_channel:gateway` (S002).
-  ADR-017 scopes that guarantee to **outbound** adapters — it is not a
-  whole-plugin invariant, and enabling an inbound adapter does require a public
-  HTTPS URL. Slack/Discord are unaffected (S019). See
-  [Public URL Scope for Chat Adapters](./public-url-scope.md).
-- Every question is processed under a single Redmine **execution account**
-  chosen by the admin; restricting that account's roles restricts what the
-  gateway can read and do. Custom commands, agent orchestration, and Langfuse
-  tracing all behave identically to web chat (S002).
-- **Crash vs. config-error gotcha**: under systemd, `Restart=on-failure`
-  restarts crashes (non-zero exit). But configuration errors (invalid tokens,
-  no adapter enabled) exit with status **0** and are **not** auto-restarted —
-  fix the config and start again (S002).
-- **Slack base setup** (feature 028): Socket Mode app with an App-Level Token
-  (`xapp-`) and Bot Token (`xoxb-`); base bot scopes `app_mentions:read`,
-  `im:history`, `chat:write`, `reactions:write`; events `app_mention`,
-  `message.im`; channels are bound to projects in the Chat integrations tab
-  (S002). History import adds more scopes — see
-  [Chat History APIs](./chat-history-apis.md).
-
-## Processing reaction (removed)
-
-The gateway no longer marks a received message with ⏳ (feature 072's behaviour
-was removed in feature 073); `Gateway#enqueue` only queues (S046). History:
-[Chat Processing Reaction](./chat-processing-reaction.md).
-
-## Progress message
-
-While a multi-step question runs, `MessageHandler` shows one progress message
-that is rewritten and then deleted after the reply, via optional adapter
-methods gated by `supports_progress?` (S046). See
-[Chat Progress Message](./chat-progress-message.md).
 
 ## Adapter capability declaration
 
@@ -95,6 +58,10 @@ a plain text list (`- title: url`) under a localized heading after the issue-lin
 conversion, so titles are never rewritten. The saved answer content does not
 contain the list (ADR-052, S044). See
 [Web Search & Citations](./web-search-citations.md).
+
+## Operational model
+
+The gateway is a separate outbound-only process under one execution account; the crash vs. config-error restart gotcha and Slack base setup are on [Chat Channel Gateway Operations](./chat-channel-gateway-operations.md) (S002, S019). That page also holds the removed ⏳ reaction and the progress message (S046).
 
 ## Related
 
