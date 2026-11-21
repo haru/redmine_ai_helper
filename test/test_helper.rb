@@ -185,3 +185,40 @@ setting = AiHelperSetting.find_or_create
 setting.model_profile_id = profile.id
 setting.additional_instructions = "This is a test system prompt."
 setting.save!
+
+module RedmineAiHelper
+  module TestSupport
+    # Builds RubyLLM::ConnectionError objects shaped like the ones RubyLLM 2.2's
+    # ErrorMiddleware raises: the Faraday error is the Ruby `cause`.
+    module ConnectionErrors
+      # @param kind [Symbol] :read_timeout, :connect_timeout or :refused
+      # @return [RubyLLM::ConnectionError]
+      def build_connection_error(kind)
+        begin
+          raise_faraday_error(kind)
+        rescue Faraday::Error => e
+          begin
+            raise RubyLLM::ConnectionError, e.message
+          rescue RubyLLM::ConnectionError => wrapped
+            wrapped
+          end
+        end
+      end
+
+      private
+
+      def raise_faraday_error(kind)
+        case kind
+        when :read_timeout
+          raise Faraday::TimeoutError, "Net::ReadTimeout"
+        when :connect_timeout
+          raise Faraday::ConnectionFailed, Net::OpenTimeout.new("execution expired")
+        when :refused
+          raise Faraday::ConnectionFailed, Errno::ECONNREFUSED.new("Connection refused")
+        else
+          raise ArgumentError, "unknown connection error kind: #{kind.inspect}"
+        end
+      end
+    end
+  end
+end

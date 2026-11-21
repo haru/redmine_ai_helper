@@ -1,8 +1,8 @@
 ---
 title: MCP Integration
 type: component
-sources: [S002, S006, S016, S033, S034, S042]
-updated: 2026-10-11
+sources: [S002, S006, S016, S033, S034, S042, S065]
+updated: 2026-11-21
 ---
 
 # MCP Integration
@@ -85,3 +85,5 @@ file contents and diffs until ADR-037 (S034).
   the shared judgment both MCP directions rely on.
 - [All-Projects Scope: Effects & Alternatives](./all-projects-scope-effects.md) —
   confirms the MCP endpoint needed no separate change.
+
+See [MCP Tool Call Failures](./mcp-tool-call-failures.md) (S065).

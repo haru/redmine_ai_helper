@@ -2,6 +2,7 @@ require File.expand_path("../../test_helper", __FILE__)
 require "redmine_ai_helper/llm"
 
 class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
+  include RedmineAiHelper::TestSupport::ConnectionErrors
   fixtures :projects, :issues, :issue_statuses, :trackers, :enumerations, :users, :issue_categories, :versions, :custom_fields, :custom_values, :groups_users, :members, :member_roles, :roles, :user_preferences, :wikis, :wiki_pages, :wiki_contents, :journals
 
   context "RedmineAiHelper::Llm" do
@@ -493,7 +494,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
     end
 
     should "handle agent error gracefully" do
-      RedmineAiHelper::Agents::IssueReadAgent.any_instance.stubs(:generate_text_completion).raises(Faraday::ConnectionFailed, "Agent error")
+      RedmineAiHelper::Agents::IssueReadAgent.any_instance.stubs(:generate_text_completion).raises(build_connection_error(:refused))
 
       result = @llm.generate_text_completion(
         text: "Login page has error",
@@ -504,6 +505,20 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
       )
 
       assert_equal "", result
+    end
+
+    should "not rescue a Faraday error that RubyLLM 2.2 never lets through" do
+      RedmineAiHelper::Agents::IssueReadAgent.any_instance.stubs(:generate_text_completion).raises(Faraday::ConnectionFailed, "raw")
+
+      assert_raises(Faraday::ConnectionFailed) do
+        @llm.generate_text_completion(
+          text: "Login page has error",
+          context_type: "description",
+          cursor_position: 18,
+          project: @project,
+          issue: @issue
+        )
+      end
     end
 
     should "not swallow a programming error raised by the agent" do
@@ -592,7 +607,7 @@ class RedmineAiHelper::LlmTest < ActiveSupport::TestCase
         # Mock IssueReadAgent to raise an error
         mock_agent = mock("IssueReadAgent")
         mock_agent.stubs(:llm_provider=)
-        mock_agent.expects(:generate_text_completion).raises(Faraday::ConnectionFailed, "Agent failed")
+        mock_agent.expects(:generate_text_completion).raises(build_connection_error(:refused))
 
         RedmineAiHelper::Agents::IssueReadAgent.expects(:new).returns(mock_agent)
 

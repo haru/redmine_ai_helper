@@ -2,6 +2,7 @@
 require File.expand_path("../../test_helper", __FILE__)
 
 class LlmProviderTest < ActiveSupport::TestCase
+  include RedmineAiHelper::TestSupport::ConnectionErrors
   context "LlmProvider" do
     setup do
       @llm_provider = RedmineAiHelper::LlmProvider
@@ -190,7 +191,7 @@ class LlmProviderTest < ActiveSupport::TestCase
       end
 
       should "propagate provider errors unchanged" do
-        [ RubyLLM::UnauthorizedError.new("bad key"), Faraday::TimeoutError.new("timeout") ].each do |error|
+        [ RubyLLM::UnauthorizedError.new("bad key"), build_connection_error(:read_timeout) ].each do |error|
           @provider.stubs(:embed).raises(error)
 
           raised = assert_raises(error.class) do

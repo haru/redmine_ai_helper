@@ -1,8 +1,8 @@
 ---
 title: Comment Edit Form Aids
 type: component
-sources: [S061]
-updated: 2026-11-03
+sources: [S061, S065]
+updated: 2026-11-21
 ---
 
 # Comment Edit Form Aids
@@ -59,8 +59,8 @@ completion context is
   the comment's author; a journal without a user raises instead of falling
   back to the current user (S061).
 - Context building and prompt rendering run outside any rescue; the agent and
-  `Llm#generate_text_completion` rescue only `RubyLLM::Error` and
-  `Faraday::Error`, so a defect reaches the controller's 500 instead of
+  `Llm#generate_text_completion` rescue only `RubyLLM::Error`
+  (RubyLLM 2.2 wraps network failures in it; S065), so a defect reaches the controller's 500 instead of
   appearing as "no suggestion". This holds for every context type of those
   methods (S061).
 

@@ -189,17 +189,16 @@ class AiHelperSettingsController < ApplicationController
   # @param error [Exception]
   # @return [Boolean]
   def embedding_test_expected_error?(error)
-    error.is_a?(RubyLLM::Error) || error.is_a?(Faraday::Error) ||
+    error.is_a?(RubyLLM::Error) ||
       error.is_a?(RedmineAiHelper::LlmProvider::UnexpectedEmbeddingResponseError)
   end
 
-  # Whether the error is a read timeout or a connect timeout. faraday-net_http
-  # wraps Net::OpenTimeout in Faraday::ConnectionFailed.
+  # Whether the error is a read timeout or a connect timeout. RubyLLM wraps
+  # both in RubyLLM::ConnectionError and reports them through #timeout?.
   # @param error [StandardError]
   # @return [Boolean]
   def embedding_test_timeout?(error)
-    error.is_a?(Faraday::TimeoutError) ||
-      (error.is_a?(Faraday::ConnectionFailed) && error.cause.is_a?(Net::OpenTimeout))
+    error.is_a?(RubyLLM::ConnectionError) && error.timeout?
   end
 
   # Whether the given string is an http(s) URL with a host.

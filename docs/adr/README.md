@@ -126,3 +126,4 @@ Briefly describe alternatives that were rejected and why.
 | [071](./071-comment-completion-context.md) | Comment completion context: note context everywhere, newest-first history, edit scope by earlier comments | Accepted |
 | [072](./072-redmine-6-fallbacks-for-open-color-variables.md) | Redmine 6 fallbacks for Open Color variables in plugin stylesheets | Accepted |
 | [073](./073-issue-form-aids-reattach-on-rerender.md) | Re-attach the issue form aids on every re-render of #all_attributes | Accepted |
+| [074](./074-ruby-llm-2-2-connection-error-classification.md) | Classify LLM network failures with RubyLLM::ConnectionError | Accepted |

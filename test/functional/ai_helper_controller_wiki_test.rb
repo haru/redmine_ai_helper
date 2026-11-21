@@ -1,6 +1,7 @@
 require File.expand_path("../../test_helper", __FILE__)
 
 class AiHelperControllerWikiTest < Redmine::ControllerTest
+  include RedmineAiHelper::TestSupport::ConnectionErrors
   fixtures :projects, :users, :roles, :members, :member_roles, :wikis, :wiki_pages, :wiki_contents
 
   setup do
@@ -138,7 +139,7 @@ class AiHelperControllerWikiTest < Redmine::ControllerTest
 
   test "suggest_wiki_completion should return an empty suggestion when the LLM request times out" do
     RedmineAiHelper::Agents::WikiAgent.any_instance.stubs(:chat)
-      .raises(Faraday::TimeoutError.new("execution expired"))
+      .raises(build_connection_error(:read_timeout))
 
     @request.headers["Content-Type"] = "application/json"
     post :suggest_wiki_completion,

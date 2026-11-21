@@ -295,14 +295,15 @@ module RedmineAiHelper
         messages = [ { role: "user", content: prompt_text } ]
         begin
           completion = chat(messages, {})
-        rescue Faraday::TimeoutError => e
-          # Completion runs under a short timeout on purpose; giving up quietly
-          # is the expected outcome for a slow backend, not a failure to report.
-          ai_helper_logger.warn "Text completion timed out in IssueReadAgent (context_type=#{context_type}, project=#{project&.identifier}): #{e.message}"
-          return ""
-        rescue RubyLLM::Error, Faraday::Error => e
-          ai_helper_logger.error "Text completion error in IssueReadAgent: #{e.message}"
-          ai_helper_logger.error "Error backtrace: #{e.backtrace.join("\n")}"
+        rescue RubyLLM::Error => e
+          if e.is_a?(RubyLLM::ConnectionError) && e.timeout?
+            # Completion runs under a short timeout on purpose; giving up quietly
+            # is the expected outcome for a slow backend, not a failure to report.
+            ai_helper_logger.warn "Text completion timed out in IssueReadAgent (context_type=#{context_type}, project=#{project&.identifier}): #{e.message}"
+          else
+            ai_helper_logger.error "Text completion error in IssueReadAgent: #{e.message}"
+            ai_helper_logger.error "Error backtrace: #{e.backtrace.join("\n")}"
+          end
           return ""
         end
 

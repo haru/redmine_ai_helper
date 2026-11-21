@@ -1,8 +1,8 @@
 ---
 title: Office Attachments Sent as Markdown Preview
 type: decision
-sources: [S056]
-updated: 2026-10-21
+sources: [S056, S065]
+updated: 2026-11-21
 ---
 
 # Office Attachments Sent as Markdown Preview
@@ -48,8 +48,8 @@ Any other invalid byte raises `EncodingError`; `scrub` is avoided because it wou
 
 - All six attachment-sending features work through the shared helper without code changes (S056).
 - The first conversion runs synchronously in the caller (Redmine timeout, default 10 s) (S056).
-- Vector indexing: `IssueContentAnalyzer#analyze` now rescues only `RubyLLM::Error` and
-  `Faraday::Error` around the LLM call, and `VectorTools#build_hybrid_query` no longer rescues, so
+- Vector indexing: `IssueContentAnalyzer#analyze` now rescues only `RubyLLM::Error`
+  (which includes network failures since RubyLLM 2.2; S065) around the LLM call, and `VectorTools#build_hybrid_query` no longer rescues, so
   an attachment `EncodingError`/`TypeError` stops indexing of that issue and similar-issue search
   instead of becoming an empty analysis or plain query (S056). See [Vector Search](./vector-search.md).
 - A result exactly at the limit also gets the truncation notice, because Redmine does not report

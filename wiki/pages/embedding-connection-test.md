@@ -1,8 +1,8 @@
 ---
 title: Embedding Connection Test
 type: component
-sources: [S039, S040]
-updated: 2026-10-08
+sources: [S039, S040, S065]
+updated: 2026-11-21
 ---
 
 # Embedding Connection Test
@@ -52,10 +52,11 @@ The provider is built with `request_options: { request_timeout: 10, max_retries:
   wrong chat model name also fails this test.
 - `fetch_and_register_model!` now applies `request_options` to its own
   configuration; it previously always used the 300 s default.
-- Timeout detection: faraday-net_http raises `Faraday::TimeoutError` for read
-  timeouts but wraps the connect timeout (`Net::OpenTimeout`) in
-  `Faraday::ConnectionFailed`, so the controller checks both (the latter via
-  `cause`).
+- Timeout detection: RubyLLM 2.2 wraps both read and connect timeouts in
+  `RubyLLM::ConnectionError`, so the controller checks
+  `error.is_a?(RubyLLM::ConnectionError) && error.timeout?` (S065, ADR-074). Other
+  `RubyLLM::Error`s are expected errors; a raw `Faraday::Error` is unexpected and
+  logged with a backtrace.
 - Wrapping the call in `Timeout.timeout` was rejected as unsafe (S039).
 
 ## The "dimension" and "embedding URL" settings were removed
