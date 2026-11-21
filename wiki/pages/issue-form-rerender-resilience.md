@@ -24,6 +24,21 @@ Split from [Issue AI Features](./issue-ai-features.md).
   in-flight requests and clears `window.aiHelperInstances.autoCompletion` when
   it points at the released completion (S064).
 
+## Why this design
+- The observer callback is a microtask: it runs after the response scripts,
+  including the jsToolBar initialization, so `placeAfterEditor` works
+  unchanged. Measured once per re-render on Redmine 7.0.3; `replaceIssueFormWith`
+  does the same empty-and-prepend on 6.0, 6.1 and 7.0 (S064).
+- Redmine copies the user's modified field values into the new form itself, so
+  the plugin does not preserve input (S064).
+- The completion on/off state carries over with no code: each new completion
+  reads the per-user `localStorage` key `aiHelperAutoCompletion_<userId>` in
+  `init()` (S064).
+- Rejected: overriding Redmine's `replaceIssueFormWith` (ties the plugin to
+  core internals), jQuery `ajaxComplete` (jQuery is not allowed), observing
+  `document.body` (overlays would trigger it), and initializing only at
+  `DOMContentLoaded` (the bug itself) (S064).
+
 ## Failure handling
 - An attach failure is not swallowed: the parts built so far are released and
   the error is rethrown (an `AggregateError` when releasing fails too). The
