@@ -2,7 +2,7 @@
 title: Log File Location Resolution
 type: decision
 sources: [S036]
-updated: 2026-09-23
+updated: 2026-11-21
 ---
 
 # Log File Location Resolution
@@ -53,32 +53,9 @@ or hard-coding `log/#{Rails.env}.log` — both miss a replaced `config.logger` a
 can read a file that exists but is not being written, which the spec forbids
 ("never implicitly read a substitute file") (S036).
 
-## AI Helper log: share the logger's own rule
+## AI Helper log
 
-**Decision**: extract the path rule from `CustomLogger#initialize` into
-`CustomLogger.log_file_path(config)`. The logger applies it once at boot and
-keeps the result in `CustomLogger#log_file_path`, which the locator reads, so
-the tools follow the file the running logger writes even if `config.yml` is
-edited without a restart (S036):
-
-| `config/ai_helper/config.yml` | Log file |
-|---|---|
-| no `logger` section | none — `CustomLogger` writes to `Rails.logger`; "not accessible", reason "AI Helper logs go to the Redmine log" |
-| `logger.file` set | `Rails.root.join("log", file)` |
-| `logger` without `file` | `Rails.root.join("log/ai_helper.log")` |
-
-`CustomLogger` uses `::Logger.new(path, "daily")`, which renames the current
-file to `…YYYYMMDD` and reopens the same path, so the current file is always the
-path above; rotated files are out of scope (S036).
-
-A `config.yml` that could not be read at boot leaves no logger instance; the
-locator then reports the log as unavailable without the path of `config.yml`.
-
-**Rejected**: inspecting the `::Logger` wrapped by `CustomLogger.instance` — with
-no `logger` section it is `Rails.logger`, indistinguishable from the Redmine log;
-re-reading `config.yml` on every call — after an edit without a restart it names
-a file the logger does not write; reading `log/ai_helper.log` when the section is
-absent — that file may be a stale leftover (S036).
+The AI Helper log rule is on a separate page. See [AI Helper Log Location Rule](./ai-helper-log-location-rule.md) (S036).
 
 ## Related
 
