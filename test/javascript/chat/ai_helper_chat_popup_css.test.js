@@ -15,42 +15,6 @@ function loadRules() {
 const POPUP = "#aihelper-sidebar.aihelper-popup-mode";
 const POPUP_UNDER_MODAL = "body:has(.ui-widget-overlay) #aihelper-sidebar.aihelper-popup-mode";
 
-describe("parseRules (test helper)", () => {
-  it("reads declarations and the enclosing media query", () => {
-    const rules = parseRules("a, b { color: red; z-index: 3 } @media (max-width: 899px) { c { top: 0 } }");
-
-    expect(rules[0]).toEqual({ selectors: ["a", "b"], declarations: { color: "red", "z-index": "3" }, media: null });
-    expect(rules[1].media).toBe("(max-width: 899px)");
-  });
-
-  it("lower-cases property names so a lookup cannot miss an upper-case spelling", () => {
-    expect(parseRules("a { Z-INDEX: 3 }")[0].declarations).toEqual({ "z-index": "3" });
-  });
-
-  it("skips @keyframes blocks", () => {
-    const rules = parseRules("@keyframes k { 0% { a: b } 100% { a: c } } d { e: f }");
-
-    expect(rules).toHaveLength(1);
-    expect(rules[0].selectors).toEqual(["d"]);
-  });
-
-  it.each([
-    ["an unsupported at-rule", "@supports (display: grid) { a { b: c } }"],
-    ["an unbalanced closing brace", "a { b: c } }"],
-    ["an unclosed @media block", "@media print { a { b: c }"],
-    ["text without a block", "a { b: c } stray"],
-    ["a nested rule", "a { b { c: d } }"],
-    ["an unclosed @keyframes block", "@keyframes k { 0% { a: b }"],
-    ["a declaration without a colon", "a { garbage; b: c }"],
-    ["a comma inside :is()", "a:is(b, c) { d: e }"],
-    ["a comma inside :has()", "body:has(.a, .b) c { d: e }"],
-    ["url() in a value", "a { b: url(data:x;y) }"],
-    ["a nested @media", "@media print { @media (min-width: 1px) { a { b: c } } }"],
-  ])("throws on %s", (_name, source) => {
-    expect(() => parseRules(source)).toThrow();
-  });
-});
-
 describe("chat popup CSS contract (ui-contract.md, FR-001, FR-003, FR-007, FR-008, FR-010, FR-011, FR-018, R-006)", () => {
   const rules = loadRules();
 

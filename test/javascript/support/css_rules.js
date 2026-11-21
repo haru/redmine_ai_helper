@@ -13,9 +13,12 @@ export function normalize(text) {
 
 /**
  * Splits a stylesheet into its innermost rules. @media blocks are entered and
- * @keyframes blocks are skipped; any other at-rule, or unbalanced braces,
- * throws, because the contract checks below would silently miss rules the
- * scan does not model (CRF-024, CRF-033).
+ * @keyframes blocks are skipped. Any construct the scan does not model throws,
+ * because the contract tests that use it would silently miss rules (CRF-024,
+ * CRF-033). That covers: any other at-rule, a nested @media, a nested rule,
+ * unbalanced braces or parentheses, text without a block, a comma inside
+ * parentheses in a selector, url() or a missing colon in a declaration, a
+ * property declared twice in one rule, and var(--oc-*) inside @keyframes.
  * @param {string} source CSS source, comments allowed
  * @returns {{selectors: string[], declarations: Object<string, string>, media: (string|null)}[]} the rules
  */
@@ -75,7 +78,11 @@ function enterBlock(css, state, open) {
     state.media.push(normalize(prelude.slice(6)));
     state.index = open + 1;
   } else if (prelude.startsWith("@keyframes")) {
-    state.index = skipBlock(css, open);
+    const end = skipBlock(css, open);
+    if (/var\(\s*--oc-/i.test(css.slice(open, end))) {
+      throw new Error(`var(--oc-*) inside @keyframes is not checked: ${prelude}`);
+    }
+    state.index = end;
   } else if (prelude.startsWith("@")) {
     throw new Error(`Unsupported at-rule: ${prelude}`);
   } else {
@@ -95,16 +102,33 @@ function enterBlock(css, state, open) {
 
 /**
  * Splits a selector list on its top-level commas. A comma inside parentheses
- * (:is(), :has(), :not()) is not modelled, so it throws instead of being
- * misread as a list separator.
+ * (:is(), :has(), :not(), at any depth) is not modelled, so it throws instead
+ * of being misread as a list separator.
  * @param {string} prelude the text before the opening brace
  * @returns {string[]} normalized selectors
  */
 function splitSelectors(prelude) {
-  if (/\([^)]*,/.test(prelude)) {
-    throw new Error(`Comma inside parentheses in selector: ${prelude}`);
+  const parts = [];
+  let depth = 0;
+  let start = 0;
+  Array.from(prelude).forEach((char, i) => {
+    depth += { "(": 1, ")": -1 }[char] || 0;
+    if (depth < 0) {
+      throw new Error(`Unbalanced parentheses in selector: ${prelude}`);
+    }
+    if (char === ",") {
+      if (depth > 0) {
+        throw new Error(`Comma inside parentheses in selector: ${prelude}`);
+      }
+      parts.push(prelude.slice(start, i));
+      start = i + 1;
+    }
+  });
+  if (depth !== 0) {
+    throw new Error(`Unbalanced parentheses in selector: ${prelude}`);
   }
-  return prelude.split(",").map(normalize).filter(Boolean);
+  parts.push(prelude.slice(start));
+  return parts.map(normalize).filter(Boolean);
 }
 
 /**
@@ -142,7 +166,11 @@ function parseDeclarations(body) {
     if (colon === -1) {
       throw new Error(`Declaration without a colon: ${part.trim()}`);
     }
-    declarations[part.slice(0, colon).trim().toLowerCase()] = normalize(part.slice(colon + 1));
+    const property = part.slice(0, colon).trim().toLowerCase();
+    if (property in declarations) {
+      throw new Error(`Property declared twice in one rule: ${property}`);
+    }
+    declarations[property] = normalize(part.slice(colon + 1));
   });
   return declarations;
 }

@@ -185,3 +185,6 @@ A concrete, checkable rule to apply when generating future code.
 | [CRF-099](./099-session-tests-vacuous-and-incomplete.md) | Session persistence tests asserted what they had just written and left a spec scenario and helper failure modes uncovered | test-gap | Local AI review | Not yet |
 | [CRF-100](./100-session-test-comments-overstated-store-behaviour.md) | Comments overstated the cookie store's behaviour and omitted why nested session hashes are shared | doc-comment | Local AI review | Not yet |
 | [CRF-101](./101-wiki-kept-overstated-cookie-store-claim.md) | Wiki page kept the overstated cookie store claim already corrected in the test comments | doc-comment | GitHub Copilot (PR #569) | Not yet |
+| [CRF-102](./102-oc-var-scan-tests-missed-equivalent-spellings.md) | Open Color scan tests missed equivalent spellings and unmodelled CSS | test-gap | Local AI review | Not yet |
+| [CRF-103](./103-oc-fallback-docs-and-comments-inexact.md) | Open Color fallback ADR and CSS comments were inexact | doc-comment | Local AI review | Not yet |
+| [CRF-104](./104-oc-test-helpers-left-in-test-file-and-duplicated.md) | Open Color test helpers lived in a test file and duplicated a scan loop | readability | Local AI review | Not yet |
