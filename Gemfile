@@ -1,7 +1,7 @@
 source "https://rubygems.org"
 
 gem "json", "< 4"
-gem "mcp", "~> 1.9.0"
+gem "mcp", "~> 1.11.0"
 gem "ruby_llm", "~> 2.2.0"
 
 gem "langfuse", "~> 0.1.1"
