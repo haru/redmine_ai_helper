@@ -216,6 +216,108 @@ class AiHelperViewHookTest < ActionController::TestCase
     assert layout_index, "expected ai_helper_chat_popup_layout.js in head"
     assert_operator layout_index, :<, popup_index
   end
+
+  # --- Issue form notes controls (088-fix-issue-form-rerender) ---
+
+  test "edit page renders the notes controls once inside fieldset#add_notes and not inside #all_attributes" do
+    get :edit, params: { id: @issue.id }
+    assert_response :success
+
+    doc = Nokogiri::HTML(@response.body)
+    notes_fieldset = doc.at_css("fieldset#add_notes")
+    assert notes_fieldset, "expected fieldset#add_notes to be rendered on the edit page"
+    all_attributes = doc.at_css("#all_attributes")
+    assert all_attributes, "expected #all_attributes to be rendered on the edit page"
+
+    assert_equal 1, doc.css("#ai-helper-notes-checkbox-container").length,
+                 "expected exactly one notes checkbox container on the edit page"
+    assert_equal 1, doc.css("#ai-helper-typo-control-panel-notes").length,
+                 "expected exactly one notes typo control panel on the edit page"
+    assert notes_fieldset.at_css("#ai-helper-notes-checkbox-container"),
+           "expected the notes checkbox container inside fieldset#add_notes"
+    assert notes_fieldset.at_css("#ai-helper-typo-control-panel-notes"),
+           "expected the notes typo control panel inside fieldset#add_notes"
+    assert_nil all_attributes.at_css("#ai-helper-notes-checkbox-container"),
+               "expected no notes checkbox container inside #all_attributes"
+    assert_nil all_attributes.at_css("#ai-helper-typo-control-panel-notes"),
+               "expected no notes typo control panel inside #all_attributes"
+  end
+
+  test "new issue page does not render the notes controls" do
+    get :new, params: { project_id: @project.id }
+    assert_response :success
+
+    doc = Nokogiri::HTML(@response.body)
+    assert doc.at_css("#all_attributes"), "expected #all_attributes on the new issue page"
+    assert_nil doc.at_css("#ai-helper-notes-checkbox-container")
+    assert_nil doc.at_css("#ai-helper-typo-control-panel-notes")
+  end
+
+  test "new issue form re-render response (issues/new.js) does not contain the notes controls" do
+    get :new, params: { project_id: @project.id }, xhr: true
+    assert_response :success
+
+    # Positive controls (CRF-033): the response is the re-rendered form that
+    # carries the AI Helper config container, so the negative assertions
+    # below search a region that really was rendered
+    assert_includes @response.body, "replaceIssueFormWith"
+    assert_includes @response.body, "ai-helper-issue-textarea-overlay"
+    assert_not_includes @response.body, "ai-helper-notes-checkbox-container"
+    assert_not_includes @response.body, "ai-helper-typo-control-panel-notes"
+  end
+
+  test "edit form re-render response (issues/edit.js) does not contain the notes controls" do
+    get :edit, params: { id: @issue.id }, xhr: true
+    assert_response :success
+
+    assert_includes @response.body, "replaceIssueFormWith"
+    assert_includes @response.body, "ai-helper-issue-textarea-overlay"
+    assert_not_includes @response.body, "ai-helper-notes-checkbox-container"
+    assert_not_includes @response.body, "ai-helper-typo-control-panel-notes"
+  end
+
+  test "edit page renders no notes controls when the ai_helper module is disabled" do
+    EnabledModule.where(project_id: @project.id, name: "ai_helper").destroy_all
+
+    get :edit, params: { id: @issue.id }
+    assert_response :success
+
+    doc = Nokogiri::HTML(@response.body)
+    assert doc.at_css("fieldset#add_notes"), "expected fieldset#add_notes (the hook region) to be rendered"
+    assert_nil doc.at_css("#ai-helper-notes-checkbox-container")
+    assert_nil doc.at_css("#ai-helper-typo-control-panel-notes")
+  end
+
+  test "a failed update that moves the issue to a project without the module renders the config container and the notes controls together" do
+    # The overlay partial judges by @project (the page-load project) while the
+    # notes controls used issue.project, which a failed update has already
+    # switched to the target project: the two must agree (ADR-073)
+    other_project = projects(:projects_003)
+    EnabledModule.where(project_id: other_project.id, name: "ai_helper").destroy_all
+
+    put :update, params: { id: @issue.id, issue: { project_id: other_project.id, subject: "" } }
+    assert_response :success
+
+    doc = Nokogiri::HTML(@response.body)
+    assert doc.at_css("#all_attributes"), "expected the edit form to be re-rendered after the failed update"
+    assert_equal other_project.id, assigns(:issue).project_id, "expected the failed update to have switched the issue's project"
+    assert doc.at_css("#ai-helper-issue-textarea-overlay"), "expected the config container (judged by @project)"
+    assert doc.at_css("fieldset#add_notes #ai-helper-notes-checkbox-container"),
+           "expected the notes controls to be rendered whenever the config container is"
+    assert doc.at_css("fieldset#add_notes #ai-helper-typo-control-panel-notes")
+  end
+
+  test "edit page renders no notes controls when the issue attributes are not editable" do
+    Issue.any_instance.stubs(:attributes_editable?).returns(false)
+
+    get :edit, params: { id: @issue.id }
+    assert_response :success
+
+    doc = Nokogiri::HTML(@response.body)
+    assert doc.at_css("fieldset#add_notes"), "expected fieldset#add_notes (the hook region) to be rendered"
+    assert_nil doc.at_css("#ai-helper-notes-checkbox-container")
+    assert_nil doc.at_css("#ai-helper-typo-control-panel-notes")
+  end
 end
 
 # Verifies the body_bottom stuff todo modal partial guards safely when there

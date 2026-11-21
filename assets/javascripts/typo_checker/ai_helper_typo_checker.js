@@ -286,10 +286,16 @@ class AiHelperTypoChecker {
   /**
    * Tear down this instance: remove every listener (document, textarea,
    * check button, control panel), remove the overlay and control panel, and
-   * make any in-flight checkTypos response a no-op (R-004).
+   * make any in-flight checkTypos response a no-op (R-004). While the result
+   * overlay is shown the autocompletion instances are paused, so they are
+   * resumed here: nothing else would resume them once this checker is gone.
    */
   destroy() {
     this.destroyed = true;
+
+    if (this.isOverlayActive()) {
+      this.enableAutocompletion();
+    }
 
     this.textarea.removeEventListener('input', this.inputHandler);
     this.textarea.removeEventListener('focus', this.focusHandler);

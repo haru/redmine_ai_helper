@@ -17,12 +17,18 @@ class AiHelperAssignmentSuggestion {
     this.panel = null;
     this.link = null;
     this.isOpen = false;
+    /** @type {boolean} Once true, the instance must not touch the DOM or its fetches anymore; init() and open() throw. */
+    this.destroyed = false;
+    /** @type {AbortController|null} Controller of the request started by the current open() call; null once close() aborted it. */
+    this.abortController = null;
   }
 
   /**
    * Initialize the suggestion feature by inserting the link into the DOM.
+   * @throws {Error} When the instance was destroyed: it no longer owns the form.
    */
   init() {
+    this.assertNotDestroyed('init');
     const assignedToSelect = document.getElementById('issue_assigned_to_id');
     if (!assignedToSelect) {return;}
 
@@ -55,21 +61,56 @@ class AiHelperAssignmentSuggestion {
 
   /**
    * Open the suggestion panel and fetch suggestions.
+   * @throws {Error} When the instance was destroyed: it no longer owns the form.
    */
   open() {
+    this.assertNotDestroyed('open');
     this.isOpen = true;
     this.createPanel();
     this.fetchSuggestions();
   }
 
   /**
-   * Close the suggestion panel.
+   * Close the suggestion panel and abort an unfinished fetch, so a result
+   * for a closed panel is never rendered (the panel is rebuilt by open()).
    */
   close() {
     this.isOpen = false;
+    if (this.abortController) {
+      this.abortController.abort();
+      // The aborted request no longer owns the instance (fetchSuggestions
+      // compares against this token after every await)
+      this.abortController = null;
+    }
     if (this.panel) {
       this.panel.remove();
       this.panel = null;
+    }
+  }
+
+  /**
+   * Tear down this instance: abort the in-flight fetch, close the panel and
+   * remove the link from the DOM. Used when the issue form that owns the
+   * instance is replaced by a re-render.
+   */
+  destroy() {
+    this.destroyed = true;
+    this.close();
+    if (this.link) {
+      this.link.remove();
+      this.link = null;
+    }
+  }
+
+  /**
+   * Refuse to work after destroy(): a destroyed instance would look up the
+   * elements of the form that replaced its own and write into them.
+   * @param {string} method - The name of the refused method, for the message.
+   * @throws {Error} When the instance was destroyed.
+   */
+  assertNotDestroyed(method) {
+    if (this.destroyed) {
+      throw new Error(`AiHelperAssignmentSuggestion#${method} called on a destroyed instance`);
     }
   }
 
@@ -97,26 +138,19 @@ class AiHelperAssignmentSuggestion {
   }
 
   /**
-   * Fetch assignee suggestions from the API.
-   * Server returns HTML rendered from ERB templates.
+   * Gather the current form fields into the request body.
+   * @returns {object} The POST body with subject, description and, when
+   *   present, the tracker and category ids.
    */
-  async fetchSuggestions() {
+  buildRequestBody() {
     const subjectInput = document.getElementById('issue_subject');
     const descriptionTextarea = document.getElementById('issue_description');
     const trackerSelect = document.getElementById('issue_tracker_id');
     const categorySelect = document.getElementById('issue_category_id');
 
-    const subject = subjectInput ? subjectInput.value : '';
-    const description = descriptionTextarea ? descriptionTextarea.value : '';
-
-    if (!subject.trim() && !description.trim()) {
-      this.renderError(this.labels.emptyContent);
-      return;
-    }
-
     const body = {
-      subject: subject,
-      description: description,
+      subject: subjectInput ? subjectInput.value : '',
+      description: descriptionTextarea ? descriptionTextarea.value : '',
     };
     if (trackerSelect && trackerSelect.value) {
       body.tracker_id = parseInt(trackerSelect.value, 10);
@@ -124,6 +158,27 @@ class AiHelperAssignmentSuggestion {
     if (categorySelect && categorySelect.value) {
       body.category_id = parseInt(categorySelect.value, 10);
     }
+    return body;
+  }
+
+  /**
+   * Fetch assignee suggestions from the API.
+   * Server returns HTML rendered from ERB templates.
+   * Each open() gets its own AbortController; close() (which destroy() calls)
+   * releases it, so a response of an earlier open (closed and reopened) or of a
+   * destroyed instance no longer matches the current controller and is dropped.
+   * Stale results never reach the form the instance no longer owns (CRF-061).
+   */
+  async fetchSuggestions() {
+    const body = this.buildRequestBody();
+
+    if (!body.subject.trim() && !body.description.trim()) {
+      this.renderError(this.labels.emptyContent);
+      return;
+    }
+
+    const controller = new AbortController();
+    this.abortController = controller;
 
     try {
       const csrfToken = document.querySelector('meta[name="csrf-token"]');
@@ -135,6 +190,7 @@ class AiHelperAssignmentSuggestion {
           'X-CSRF-Token': csrfToken ? csrfToken.content : '',
         },
         body: JSON.stringify(body),
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -143,8 +199,17 @@ class AiHelperAssignmentSuggestion {
 
       // Server returns HTML directly
       const html = await response.text();
+      if (this.abortController !== controller) {
+        return;
+      }
       this.renderHtml(html);
     } catch (error) {
+      // A failure of a closed, destroyed or superseded open() (an abort
+      // included) must neither be logged nor rendered as an error of the
+      // current panel
+      if (this.abortController !== controller) {
+        return;
+      }
       console.error('Assignment suggestion error:', error);
       this.renderError(this.labels.error);
     }

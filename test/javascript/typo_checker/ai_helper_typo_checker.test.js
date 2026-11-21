@@ -1075,13 +1075,14 @@ describe("AiHelperTypoChecker destroy (085 US3)", () => {
     try {
       const own = { clearSuggestion: vi.fn(), isEnabled: false, checkbox: { checked: true } };
       checker.options.autoCompletion = own;
+      const hideOverlay = vi.spyOn(checker, "hideOverlay");
 
       checker[method]();
       checker.destroy();
+      hideOverlay.mockClear();
       vi.advanceTimersByTime(3000);
 
-      // hideOverlay() would have re-enabled the (checked) completion
-      expect(own.isEnabled).toBe(false);
+      expect(hideOverlay).not.toHaveBeenCalled();
     } finally {
       vi.useRealTimers();
     }
@@ -1148,6 +1149,29 @@ describe("AiHelperTypoChecker destroy (085 US3)", () => {
     expect(disabledWrites).not.toHaveBeenCalled();
     expect(innerHTMLWrites).not.toHaveBeenCalled();
     consoleError.mockRestore();
+  });
+
+  it("destroying while the overlay is active resumes the checked completions it had paused", () => {
+    const own = { clearSuggestion: vi.fn(), isEnabled: true, checkbox: { checked: true } };
+    checker.options.autoCompletion = own;
+    checker.overlay.classList.add("ai-helper-typo-overlay-active");
+    checker.disableAutocompletion();
+    expect(own.isEnabled).toBe(false);
+
+    checker.destroy();
+
+    expect(own.isEnabled).toBe(true);
+  });
+
+  it("destroying while the overlay is inactive leaves the completions untouched", () => {
+    // Paused by something else (not this checker's overlay): destroy must not resume it
+    const own = { clearSuggestion: vi.fn(), isEnabled: false, checkbox: { checked: true } };
+    checker.options.autoCompletion = own;
+    expect(checker.isOverlayActive()).toBe(false);
+
+    checker.destroy();
+
+    expect(own.isEnabled).toBe(false);
   });
 
   it("destroying twice does not throw", () => {
