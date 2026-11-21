@@ -1053,6 +1053,54 @@ class RedmineAiHelper::Agents::IssueReadAgentTest < ActiveSupport::TestCase
 
           assert_equal "", result
         end
+
+        should "name the class of the cause in the error log when the connection is refused" do
+          mock_prompt = mock("Prompt")
+          mock_prompt.stubs(:format).returns("Complete the text")
+          @agent.stubs(:load_prompt).returns(mock_prompt)
+          @agent.stubs(:chat).raises(build_connection_error(:refused))
+
+          logger = mock("ai_helper_logger")
+          logger.stubs(:debug)
+          logger.stubs(:info)
+          logger.expects(:warn).never
+          logger.stubs(:error)
+          logger.expects(:error).with { |message| message.include?("Faraday::ConnectionFailed") }.at_least_once
+          @agent.stubs(:ai_helper_logger).returns(logger)
+
+          @agent.generate_text_completion(
+            text: "Test completion",
+            cursor_position: 4,
+            context_type: "description",
+            project: @project,
+            issue: @issue
+          )
+        end
+
+        should "log an error and return an empty string for a RubyLLM error that is not a connection error" do
+          mock_prompt = mock("Prompt")
+          mock_prompt.stubs(:format).returns("Complete the text")
+          @agent.stubs(:load_prompt).returns(mock_prompt)
+          @agent.stubs(:chat).raises(RubyLLM::ServerError.new("upstream failure"))
+
+          logger = mock("ai_helper_logger")
+          logger.stubs(:debug)
+          logger.stubs(:info)
+          logger.expects(:warn).never
+          logger.stubs(:error)
+          logger.expects(:error).with { |message| message.include?("RubyLLM::ServerError") }.at_least_once
+          @agent.stubs(:ai_helper_logger).returns(logger)
+
+          result = @agent.generate_text_completion(
+            text: "Test completion",
+            cursor_position: 4,
+            context_type: "description",
+            project: @project,
+            issue: @issue
+          )
+
+          assert_equal "", result
+        end
       end
     end
 

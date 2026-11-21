@@ -2360,6 +2360,48 @@ class AiHelperControllerTest < ActionController::TestCase
         assert_equal "", JSON.parse(response.body)["suggestion"]
       end
 
+      should "return an empty suggestion when only the HTTP adapter fails to connect in time" do
+        issue = Issue.find(1)
+        Faraday::Adapter::NetHttp.any_instance.expects(:call).at_least_once
+          .raises(Faraday::ConnectionFailed.new(Net::OpenTimeout.new("execution expired")))
+
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id },
+             body: { text: "Login page error", cursor_position: 16 }.to_json
+
+        assert_response :success
+        assert_equal "", JSON.parse(response.body)["suggestion"]
+      end
+
+      should "log an adapter-level timeout as a warning, not an error" do
+        issue = Issue.find(1)
+        Faraday::Adapter::NetHttp.any_instance.expects(:call).at_least_once.raises(Faraday::TimeoutError.new("Net::ReadTimeout"))
+        logger = mock("ai_helper_logger")
+        logger.stubs(:debug)
+        logger.stubs(:info)
+        logger.expects(:warn).at_least_once
+        logger.expects(:error).never
+        RedmineAiHelper::Agents::IssueReadAgent.any_instance.stubs(:ai_helper_logger).returns(logger)
+
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id },
+             body: { text: "Login page error", cursor_position: 16 }.to_json
+
+        assert_response :success
+      end
+
+      should "surface a Faraday error that RubyLLM does not wrap" do
+        issue = Issue.find(1)
+        # ErrorMiddleware wraps only ConnectionFailed, TimeoutError and SSLError (ADR-074).
+        Faraday::Adapter::NetHttp.any_instance.expects(:call).at_least_once.raises(Faraday::ParsingError.new("unexpected token"))
+
+        @request.headers["Content-Type"] = "application/json"
+        post :suggest_completion, params: { id: issue.project.id, issue_id: issue.id },
+             body: { text: "Login page error", cursor_position: 16 }.to_json
+
+        assert_response :internal_server_error
+      end
+
       should "handle LLM error gracefully in suggest_completion" do
         issue = Issue.find(1)
         RedmineAiHelper::Llm.any_instance.stubs(:generate_text_completion).raises(StandardError, "LLM error")

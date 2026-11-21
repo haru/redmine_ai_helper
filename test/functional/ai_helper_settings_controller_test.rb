@@ -888,6 +888,17 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       assert_equal({ "success" => false, "error" => "Incorrect API key provided" }, JSON.parse(response.body))
     end
 
+    should "log a provider error that is not a connection failure on one line" do
+      RedmineAiHelper::LlmProvider.stubs(:test_embedding).raises(RubyLLM::UnauthorizedError.new("Incorrect API key provided"))
+      AiHelperSettingsController.ai_helper_logger.expects(:error).with do |message|
+        message == "Embedding connection test failed: RubyLLM::UnauthorizedError: Incorrect API key provided"
+      end
+
+      post_embedding_test
+
+      assert_response :internal_server_error
+    end
+
     should "truncate long error messages to 500 characters" do
       RedmineAiHelper::LlmProvider.stubs(:test_embedding).raises(StandardError.new("x" * 600))
 
@@ -911,10 +922,32 @@ class AiHelperSettingsControllerTest < ActionController::TestCase
       end
     end
 
+    should "return the timeout message when only the HTTP adapter times out" do
+      Faraday::Adapter::NetHttp.any_instance.expects(:call).at_least_once.raises(Faraday::TimeoutError.new("Net::ReadTimeout"))
+
+      post_embedding_test
+
+      assert_response :internal_server_error
+      expected = I18n.t("ai_helper.vector_search.messages.embedding_timeout", seconds: RedmineAiHelper::LlmProvider::EMBEDDING_TEST_TIMEOUT)
+      assert_equal({ "success" => false, "error" => expected }, JSON.parse(response.body))
+    end
+
+    should "return the timeout message when only the HTTP adapter fails to connect in time" do
+      Faraday::Adapter::NetHttp.any_instance.expects(:call).at_least_once
+        .raises(Faraday::ConnectionFailed.new(Net::OpenTimeout.new("execution expired")))
+
+      post_embedding_test
+
+      expected = I18n.t("ai_helper.vector_search.messages.embedding_timeout", seconds: RedmineAiHelper::LlmProvider::EMBEDDING_TEST_TIMEOUT)
+      assert_equal expected, JSON.parse(response.body)["error"]
+    end
+
     should "return the provider message and a one-line log for connection failures that are not timeouts" do
       RedmineAiHelper::LlmProvider.stubs(:test_embedding).raises(build_connection_error(:refused))
       AiHelperSettingsController.ai_helper_logger.expects(:error).with do |message|
-        message.lines.size == 1 && message.start_with?("Embedding connection test failed: RubyLLM::ConnectionError:")
+        message.lines.size == 1 &&
+          message.start_with?("Embedding connection test failed: RubyLLM::ConnectionError:") &&
+          message.include?("Faraday::ConnectionFailed") && message.include?("Errno::ECONNREFUSED")
       end
 
       post_embedding_test

@@ -213,8 +213,8 @@ class WikiAgentTest < ActiveSupport::TestCase
         assert_kind_of String, completion
       end
 
-      should "handle errors gracefully" do
-        @agent.stubs(:chat).raises(StandardError.new("Test error"))
+      should "handle RubyLLM errors gracefully" do
+        @agent.stubs(:chat).raises(RubyLLM::ServerError.new("Test error"))
 
         completion = @agent.generate_wiki_completion(
           text: "Error test",
@@ -292,14 +292,15 @@ class WikiAgentTest < ActiveSupport::TestCase
       end
 
       context "when the LLM request fails for another reason" do
-        should "keep logging an error and returning an empty string" do
-          @agent.stubs(:chat).raises(StandardError.new("boom"))
+        should "log an error and return an empty string for a RubyLLM error that is not a connection error" do
+          @agent.stubs(:chat).raises(RubyLLM::ServerError.new("upstream failure"))
 
           logger = mock("ai_helper_logger")
           logger.stubs(:debug)
           logger.stubs(:info)
           logger.expects(:warn).never
-          logger.expects(:error).at_least_once
+          logger.stubs(:error)
+          logger.expects(:error).with { |message| message.include?("RubyLLM::ServerError") }.at_least_once
           @agent.stubs(:ai_helper_logger).returns(logger)
 
           completion = @agent.generate_wiki_completion(
@@ -310,6 +311,21 @@ class WikiAgentTest < ActiveSupport::TestCase
           )
 
           assert_equal "", completion
+        end
+
+        should "let an error that is not a RubyLLM error surface instead of returning an empty string" do
+          @agent.stubs(:chat).raises(StandardError.new("boom"))
+
+          error = assert_raises(StandardError) do
+            @agent.generate_wiki_completion(
+              text: "Error test",
+              cursor_position: 10,
+              project: @project,
+              wiki_page: @wiki_page
+            )
+          end
+
+          assert_equal "boom", error.message
         end
 
         should "log an error, not a warning, when the connection is refused" do

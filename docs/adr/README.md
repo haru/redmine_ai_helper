@@ -70,7 +70,7 @@ Briefly describe alternatives that were rejected and why.
 | [015](./015-agent-write-capability-routing.md) | Guard write-capable steps with an internal capability check that is never exposed to the router | Accepted |
 | [016](./016-issue-agent-read-write-rename.md) | Rename IssueAgent/IssueUpdateAgent to IssueReadAgent/IssueWriteAgent | Accepted |
 | [017](./017-inbound-chat-webhook-gateway.md) | Inbound chat webhook gateway (amends the scope of ADR-006) | Accepted |
-| [018](./018-completion-llm-requests-timeout-no-retry.md) | Inline completion LLM requests use a short timeout and no retries | Accepted |
+| [018](./018-completion-llm-requests-timeout-no-retry.md) | Inline completion LLM requests use a short timeout and no retries | Accepted (partially superseded by ADR-074) |
 | [019](./019-completion-request-suppression-tied-to-displayed-suggestion.md) | Completion request suppression lasts only while the suggestion is displayed | Accepted (mechanism in decision 2 refined by ADR-021) |
 | [020](./020-plugin-logger-falls-back-to-rails-logger.md) | The plugin logger falls back to Rails.logger when it cannot be built | Accepted |
 | [021](./021-snapshot-teardown-belongs-to-clear-suggestion.md) | Snapshot teardown belongs to clearSuggestion, and no-op editor events are ignored | Accepted |
@@ -114,7 +114,7 @@ Briefly describe alternatives that were rejected and why.
 | [059](./059-health-report-chart-form-by-information.md) | Choose each health report chart's form by what helps the reader | Accepted |
 | [060](./060-health-report-visibility-follows-view-permission.md) | Health report visibility follows the view_ai_helper permission | Accepted |
 | [061](./061-health-report-pdf-body-drawn-by-redmine-pdf-renderer.md) | Draw the health report PDF body with Redmine's PDF renderer from the screen HTML | Accepted |
-| [062](./062-office-attachments-sent-as-redmine-markdown-preview.md) | Send Office attachments to the LLM as Redmine's Markdown preview | Accepted |
+| [062](./062-office-attachments-sent-as-redmine-markdown-preview.md) | Send Office attachments to the LLM as Redmine's Markdown preview | Accepted (partially superseded by ADR-074) |
 | [063](./063-prompt-template-strict-input-variables.md) | PromptTemplate#format requires the declared variables exactly | Accepted |
 | [064](./064-chat-popup-moves-the-sidebar-element.md) | Show the chat as a popup by moving the sidebar element | Accepted |
 | [065](./065-chat-popup-close-animation-reverses-open.md) | Animate the chat popup closing as the reverse of opening | Accepted |
@@ -123,7 +123,7 @@ Briefly describe alternatives that were rejected and why.
 | [068](./068-project-management-tools-atomic-writes-and-guard-scope.md) | Project management tools write atomically and state the guard scope precisely | Proposed |
 | [069](./069-project-management-tools-adr-067-claims-superseded.md) | State which ADR-067 claims ADR-068 supersedes, and type-check boolean tool arguments | Proposed |
 | [070](./070-journal-edit-form-aids-attachment.md) | Attach typo check and auto-completion to comment edit forms through a hook and a MutationObserver | Accepted |
-| [071](./071-comment-completion-context.md) | Comment completion context: note context everywhere, newest-first history, edit scope by earlier comments | Accepted |
+| [071](./071-comment-completion-context.md) | Comment completion context: note context everywhere, newest-first history, edit scope by earlier comments | Accepted (partially superseded by ADR-074) |
 | [072](./072-redmine-6-fallbacks-for-open-color-variables.md) | Redmine 6 fallbacks for Open Color variables in plugin stylesheets | Accepted |
 | [073](./073-issue-form-aids-reattach-on-rerender.md) | Re-attach the issue form aids on every re-render of #all_attributes | Accepted |
 | [074](./074-ruby-llm-2-2-connection-error-classification.md) | Classify LLM network failures with RubyLLM::ConnectionError | Accepted |

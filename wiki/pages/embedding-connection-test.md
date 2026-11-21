@@ -54,9 +54,11 @@ The provider is built with `request_options: { request_timeout: 10, max_retries:
   configuration; it previously always used the 300 s default.
 - Timeout detection: RubyLLM 2.2 wraps both read and connect timeouts in
   `RubyLLM::ConnectionError`, so the controller checks
-  `error.is_a?(RubyLLM::ConnectionError) && error.timeout?` (S065, ADR-074). Other
-  `RubyLLM::Error`s are expected errors; a raw `Faraday::Error` is unexpected and
-  logged with a backtrace.
+  `ConnectionErrorHelper.timeout?(error)`, i.e. `ConnectionError#timeout?` (S065,
+  ADR-074). Other `RubyLLM::Error`s are expected errors and are logged on one line
+  with the class of their cause. A Faraday error RubyLLM does not wrap (anything
+  but `ConnectionFailed`, `TimeoutError`, `SSLError`) is unexpected and logged with
+  a backtrace.
 - Wrapping the call in `Timeout.timeout` was rejected as unsafe (S039).
 
 ## The "dimension" and "embedding URL" settings were removed

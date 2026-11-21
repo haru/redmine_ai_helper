@@ -60,7 +60,8 @@ completion context is
   back to the current user (S061).
 - Context building and prompt rendering run outside any rescue; the agent and
   `Llm#generate_text_completion` rescue only `RubyLLM::Error`
-  (RubyLLM 2.2 wraps network failures in it; S065), so a defect reaches the controller's 500 instead of
+  (RubyLLM 2.2 wraps network failures in it; S065), so a defect reaches the
+  controller's 500 instead of
   appearing as "no suggestion". This holds for every context type of those
   methods (S061).
 

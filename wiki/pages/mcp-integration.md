@@ -27,11 +27,9 @@ Configured in `config/ai_helper/config.json` (under the Redmine root) via an
 | `stdio` | `command` or `args` present | local process over stdin/stdout |
 | `http` | `url` present, no `type` | MCP Streamable HTTP |
 
-External connections are handled by RubyLLM's built-in MCP client (`RubyLLM.mcp`),
-via `RubyLLM.mcp` (ADR-050). SSE is no longer supported, and plain `http://` to a
+External connections use RubyLLM's built-in MCP client (`RubyLLM.mcp`, ADR-050). SSE is no longer supported, and plain `http://` to a
 non-loopback host (or a URL with credentials) is skipped with a logged warning
-(S006, S042). stdio commands are passed as an argv array, not a shell string
-(S042). Rationale: [RubyLLM 2.1 Migration](./ruby-llm-2-1-migration.md).
+(S006, S042). stdio commands are passed as an argv array (S042). Rationale: [RubyLLM 2.1 Migration](./ruby-llm-2-1-migration.md).
 
 ### Dynamic agent generation
 
@@ -40,8 +38,8 @@ non-loopback host (or a URL with credentials) is skipped with a logged warning
 `BaseAgent` subclass at runtime** — no per-server code, only config changes
 trigger regeneration (S006). The naming follows the config key (a `slack` entry
 produces a Slack MCP agent; the project also refers to these as `SubMcpAgent`
-classes). Its tools come from `McpTools.generate_tool_classes`, which now returns the
-client's `mcp.tools` (`RubyLLM::Tool`-compatible, passed via `with_tools`) (S042), and the generated
+classes). Its tools come from `McpTools.generate_tool_classes`, which returns the
+client's `mcp.tools` (S042), and the generated
 agent joins the same dispatcher as built-in agents so orchestration is
 transparent (S006). See [Multi-Agent Architecture](./multi-agent-architecture.md).
 
@@ -85,5 +83,6 @@ file contents and diffs until ADR-037 (S034).
   the shared judgment both MCP directions rely on.
 - [All-Projects Scope: Effects & Alternatives](./all-projects-scope-effects.md) —
   confirms the MCP endpoint needed no separate change.
+- [MCP Tool Call Failures](./mcp-tool-call-failures.md) — what the model sees when a
+  tool call fails (S065).
 
-See [MCP Tool Call Failures](./mcp-tool-call-failures.md) (S065).

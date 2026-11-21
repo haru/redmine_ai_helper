@@ -31,6 +31,17 @@ class ConnectionErrorHelperTest < ActiveSupport::TestCase
       assert_not error.timeout?
     end
 
+    should "build an SSL failure that is not a timeout" do
+      error = build_connection_error(:ssl_error)
+      assert_kind_of RubyLLM::ConnectionError, error
+      assert_kind_of Faraday::SSLError, error.cause
+      assert_not error.timeout?
+    end
+
+    should "expose every supported kind" do
+      assert_equal %i[read_timeout connect_timeout refused ssl_error], RedmineAiHelper::TestSupport::ConnectionErrors::KINDS
+    end
+
     should "raise ArgumentError for an unknown kind" do
       assert_raises(ArgumentError) { build_connection_error(:bogus) }
     end

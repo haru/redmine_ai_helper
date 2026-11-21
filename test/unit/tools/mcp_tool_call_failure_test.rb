@@ -35,7 +35,7 @@ class McpToolCallFailureTest < ActiveSupport::TestCase
 
   context "when the MCP server exits during a tool call" do
     should "give the failure to the model and finish the chat" do
-      stub_replies tool_call(:echo), "final answer"
+      stub_replies tool_call(:exit_now), "final answer"
 
       reply = build_chat.ask("use the tool")
 
@@ -43,7 +43,7 @@ class McpToolCallFailureTest < ActiveSupport::TestCase
     end
 
     should "report the failing server in the tool result" do
-      stub_replies tool_call(:echo), "final answer"
+      stub_replies tool_call(:exit_now), "final answer"
       chat = build_chat
 
       chat.ask("use the tool")
@@ -54,7 +54,9 @@ class McpToolCallFailureTest < ActiveSupport::TestCase
     end
 
     should "not reach the server again while it sits out" do
-      stub_replies tool_call(:echo), tool_call(:echo), "final answer"
+      # The sit-out window is RubyLLM::MCP::Outages::BACKOFF (60 seconds on the
+      # monotonic clock), far longer than this test, so it cannot expire mid-test.
+      stub_replies tool_call(:exit_now), tool_call(:exit_now), "final answer"
       chat = build_chat
 
       chat.ask("use the tool")

@@ -9,7 +9,11 @@ $stdout.sync = true
 
 def reply(id, result: nil, error: nil)
   message = { jsonrpc: "2.0", id: id }
-  error ? message[:error] = error : message[:result] = result
+  if error
+    message[:error] = error
+  else
+    message[:result] = result
+  end
   puts JSON.generate(message)
 end
 
@@ -27,7 +31,7 @@ while (line = $stdin.gets)
     })
   when "tools/list"
     reply(id, result: {
-      tools: [ { name: "echo", description: "Echoes nothing", inputSchema: { type: "object", properties: {} } } ]
+      tools: [ { name: "exit_now", description: "Exits the server process when called", inputSchema: { type: "object", properties: {} } } ]
     })
   when "tools/call"
     exit 1

@@ -28,8 +28,8 @@ class LlmWikiTest < ActiveSupport::TestCase
     assert_equal "test completion", result
   end
 
-  test "generate_wiki_completion should handle agent errors" do
-    RedmineAiHelper::Agents::WikiAgent.any_instance.stubs(:generate_wiki_completion).raises(StandardError.new("Agent error"))
+  test "generate_wiki_completion should return an empty string for a RubyLLM error" do
+    RedmineAiHelper::Agents::WikiAgent.any_instance.stubs(:generate_wiki_completion).raises(RubyLLM::ServerError.new("Agent error"))
 
     result = @llm.generate_wiki_completion(
       text: "Error test",
@@ -39,6 +39,19 @@ class LlmWikiTest < ActiveSupport::TestCase
     )
 
     assert_equal "", result
+  end
+
+  test "generate_wiki_completion should not swallow a programming error raised by the agent" do
+    RedmineAiHelper::Agents::WikiAgent.any_instance.stubs(:generate_wiki_completion).raises(ArgumentError.new("defect"))
+
+    assert_raises(ArgumentError) do
+      @llm.generate_wiki_completion(
+        text: "Error test",
+        cursor_position: 10,
+        project: @project,
+        wiki_page: @wiki_page
+      )
+    end
   end
 
   test "generate_wiki_completion should create WikiAgent with correct options" do

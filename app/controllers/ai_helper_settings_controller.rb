@@ -178,7 +178,7 @@ class AiHelperSettingsController < ApplicationController
   # @param error [Exception] the error raised by the test
   # @return [String]
   def embedding_test_log_message(error)
-    message = "Embedding connection test failed: #{error.class}: #{error.message}"
+    message = "Embedding connection test failed: #{RedmineAiHelper::Util::ConnectionErrorHelper.describe(error)}"
     return message if embedding_test_expected_error?(error)
 
     [ message, *error.backtrace&.first(EMBEDDING_TEST_BACKTRACE_LINES) ].join("\n")
@@ -198,7 +198,7 @@ class AiHelperSettingsController < ApplicationController
   # @param error [StandardError]
   # @return [Boolean]
   def embedding_test_timeout?(error)
-    error.is_a?(RubyLLM::ConnectionError) && error.timeout?
+    RedmineAiHelper::Util::ConnectionErrorHelper.timeout?(error)
   end
 
   # Whether the given string is an http(s) URL with a host.
