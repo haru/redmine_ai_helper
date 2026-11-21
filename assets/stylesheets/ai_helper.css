@@ -907,9 +907,12 @@ body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-conte
 }
 
 .ai-helper-reply-apply-btn {
-  color: var(--oc-gray-9);
-  background-color: var(--oc-white);
-  border: 1px solid var(--oc-gray-4);
+  /* Each Open Color variable exists only in Redmine 7. The fallback is the value
+     Redmine 6 uses for the same element in its "input, select, textarea, button"
+     rule. */
+  color: var(--oc-gray-9, #333);
+  background-color: var(--oc-white, #fff);
+  border: 1px solid var(--oc-gray-4, #ccc);
   border-radius: 3px;
   padding: 6px 12px;
   font-size: 12px;
@@ -919,11 +922,14 @@ body.controller-ai_helper_dashboard.action-index .ai-helper-project-health-conte
 }
 
 .ai-helper-reply-apply-btn:hover {
-  background-color: var(--oc-gray-2);
+  /* Fallback: Redmine 6 'input[type="submit"]:hover, button[type="submit"]:hover'. */
+  background-color: var(--oc-gray-2, #ddd);
 }
 
 .ai-helper-reply-apply-btn:active {
-  background-color: var(--oc-gray-3);
+  /* Neither Redmine 7 nor Redmine 6 styles the active state of a button; the
+     fallback is the same as the hover value. */
+  background-color: var(--oc-gray-3, #ddd);
 }
 
 /* Additional CSS classes for JavaScript-generated elements */
@@ -1705,12 +1711,15 @@ html.aihelper-popup-pending #aihelper-sidebar {
   display: flex;
   flex-direction: column;
   padding: 8px;
-  /* Copied from Redmine's #sidebar (application.css:320), which no longer applies. */
+  /* Copied from Redmine's #sidebar (Redmine 7 application.css:320), which no longer applies. */
   font-size: 0.8125rem;
-  background: var(--oc-gray-0);
-  border: 1px solid var(--oc-gray-4);
-  /* Same shadow as Redmine's #sticky-issue-header (application.css:933-941). */
-  box-shadow: 0 2px 6px rgba(var(--oc-black-rgb), 0.15);
+  /* The Open Color variables exist only in Redmine 7. The fallbacks are the values
+     of Redmine 6's #sidebar background and border-left. */
+  background: var(--oc-gray-0, #f9fafb);
+  border: 1px solid var(--oc-gray-4, #d0d7de);
+  /* Same shadow as Redmine's #sticky-issue-header (Redmine 7 application.css:933-941).
+     The fallback is the value of Redmine 6.1's div#sticky-issue-header. */
+  box-shadow: 0 2px 6px rgba(var(--oc-black-rgb, 0, 0, 0), 0.15);
 }
 
 #aihelper-sidebar.aihelper-popup-mode .aihelper-arrow-button,
@@ -1742,7 +1751,7 @@ html.aihelper-popup-pending #aihelper-sidebar {
   max-height: none;
 }
 
-/* Rules that applied only inside Redmine's #sidebar (application.css:329-337)
+/* Rules that applied only inside Redmine's #sidebar (Redmine 7 application.css:329-337)
    and the plugin's own #sidebar rule (above). :where() keeps their specificity
    at element level, so the plugin's own #aihelper-chat-conversation ul/li and
    #aihelper-chat-clear hr rules still win inside the popup, as they do in
@@ -1751,7 +1760,8 @@ html.aihelper-popup-pending #aihelper-sidebar {
   inline-size: 100%;
   margin: 0 auto;
   block-size: 1px;
-  background: var(--oc-gray-4);
+  /* Fallback: Redmine 6's #sidebar hr background. */
+  background: var(--oc-gray-4, #ccc);
   border: 0;
 }
 
